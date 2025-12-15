@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GIT_USER/GIT_REPO.git # TODO: Replace with your actual Repo URL
+    targetRevision: HEAD
+    path: payload/apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: core-infrastructure
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GIT_USER/GIT_REPO.git # TODO: Replace with your actual Repo URL
+    targetRevision: HEAD
+    path: payload/core
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default # individual apps should override this
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

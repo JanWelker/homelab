@@ -1,0 +1,25 @@
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "default-pool"
+spec:
+  cidrs:
+    - cidr: "10.9.2.240/28"
+  serviceSelector:
+    matchLabels:
+      cilium.io/ingress: "true"
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: "default-announcement"
+spec:
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+  interfaces:
+    - ^e.*
+  externalIPs: true
+  loadBalancerIPs: true

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nginx-test
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/GIT_USER/GIT_REPO.git # TODO: Replace with your actual Repo URL
+    targetRevision: HEAD
+    path: payload/apps/nginx-test
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nginx-test
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

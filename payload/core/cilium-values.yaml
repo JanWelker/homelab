@@ -1,0 +1,33 @@
+ipam:
+  mode: kubernetes
+
+# Explicitly set device to avoid auto-detection issues
+devices: "en+"
+
+kubeProxyReplacement: true
+k8sServiceHost: 10.9.2.1
+k8sServicePort: 6443
+
+operator:
+  replicas: 1
+
+ingressController:
+  enabled: true
+  loadbalancerMode: shared
+  default: true
+  enforceHttps: false
+  service:
+    targetPorts:
+      http: 9999
+      https: 9999
+
+l2announcements:
+  enabled: true
+
+k8sClientRateLimit:
+  qps: 50
+  burst: 200
+
+encryption:
+  enabled: true
+  type: wireguard

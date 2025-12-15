@@ -1,0 +1,49 @@
+---
+- name: Download Flatcar Artifacts
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    output_dir: "{{ playbook_dir }}/../../output"
+    http_dir: "{{ output_dir }}/http"
+    tftp_dir: "{{ output_dir }}/tftp"
+  tasks:
+    - name: Create output directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ http_dir }}"
+        - "{{ tftp_dir }}"
+
+    - name: Download Flatcar OS Artifacts
+      ansible.builtin.include_tasks: tasks/download_flatcar.yml
+      vars:
+        url: "https://{{ flatcar_channel }}.release.flatcar-linux.net/amd64-usr/{{ flatcar_version }}"
+      loop:
+        - name: kernel
+          file: flatcar_production_pxe.vmlinuz
+        - name: initrd
+          file: flatcar_production_pxe_image.cpio.gz
+
+    - name: Download Sysexts
+      ansible.builtin.include_tasks: tasks/download_sysext.yml
+      vars:
+        url: "https://github.com/flatcar/sysext-bakery/releases/download"
+      loop:
+        - name: kubernetes
+          version: "{{ kubernetes_version }}"
+        - name: containerd
+          version: "{{ containerd_version }}"
+
+    - name: Download Noop Sysext Config
+      ansible.builtin.get_url:
+        url: "https://extensions.flatcar.org/extensions/noop.conf"
+        dest: "{{ http_dir }}/noop.conf"
+        mode: "0644"
+
+    - name: Download Syslinux
+      ansible.builtin.include_tasks: tasks/download_syslinux.yml
+      vars:
+        url: "https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux"

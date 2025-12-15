@@ -1,0 +1,32 @@
+global:
+  domain: argo.k8s.wlkr.ch
+
+# Disable HA for single-node lab
+redis-ha:
+  enabled: false
+
+controller:
+  replicas: 1
+
+server:
+  replicas: 1
+  extraArgs:
+    # Enable running on HTTP (we will port-forward to 8080)
+    - --insecure
+  ingress:
+    enabled: true
+    ingressClassName: cilium
+    hostname: argo.k8s.wlkr.ch
+    annotations: {}
+    hosts:
+      - argo.k8s.wlkr.ch
+    tls:
+      - secretName: argocd-server-tls
+        hosts:
+          - argo.k8s.wlkr.ch
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1

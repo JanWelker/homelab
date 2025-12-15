@@ -1,0 +1,9 @@
+DEFAULT flatcar
+PROMPT 1
+TIMEOUT 50
+
+LABEL flatcar
+    MENU LABEL Flatcar Container Linux
+    KERNEL http://{{ boot_server_ip }}:8000/flatcar_production_pxe.vmlinuz
+    INITRD http://{{ boot_server_ip }}:8000/flatcar_production_pxe_image.cpio.gz
+    APPEND flatcar.first_boot=1 ignition.config.url=http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json

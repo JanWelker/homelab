@@ -1,0 +1,51 @@
+---
+- name: Set Syslinux temp path
+  ansible.builtin.set_fact:
+    syslinux_temp:
+      path: "{{ output_dir }}/tmp/syslinux"
+
+- name: Create temporary directory for Syslinux
+  ansible.builtin.file:
+    path: "{{ syslinux_temp.path }}"
+    state: directory
+    mode: "0755"
+
+- name: Download Syslinux Checksums
+  ansible.builtin.uri:
+    url: "{{ url }}/sha256sums.asc"
+    return_content: true
+  register: syslinux_checksums
+
+- name: Set Syslinux Checksum Fact
+  ansible.builtin.set_fact:
+    syslinux_checksum: "{{ syslinux_checksums.content | regex_search('([a-f0-9]+)\\s+syslinux-' + syslinux_version + '.zip', '\\1') | first }}"
+
+- name: Download Syslinux (zip)
+  ansible.builtin.get_url:
+    url: "{{ url }}/syslinux-{{ syslinux_version }}.zip"
+    dest: "{{ syslinux_temp.path }}/syslinux-{{ syslinux_version }}.zip"
+    checksum: "sha256:{{ syslinux_checksum }}"
+    mode: "0644"
+  register: syslinux_download
+
+- name: Extract Syslinux (zip)
+  ansible.builtin.unarchive:
+    src: "{{ syslinux_temp.path }}/syslinux-{{ syslinux_version }}.zip"
+    dest: "{{ syslinux_temp.path }}"
+    remote_src: true
+  when: syslinux_download.changed
+
+- name: Copy PXE binaries to output
+  ansible.builtin.copy:
+    src: "{{ syslinux_temp.path }}/bios/{{ item.src }}"
+    dest: "{{ tftp_dir }}/{{ item.dest }}"
+    mode: "0644"
+    remote_src: true
+  loop:
+    - { src: "core/pxelinux.0", dest: "pxelinux.0" }
+    - { src: "com32/elflink/ldlinux/ldlinux.c32", dest: "ldlinux.c32" }
+    - { src: "com32/libutil/libutil.c32", dest: "libutil.c32" }
+    - { src: "com32/menu/menu.c32", dest: "menu.c32" }
+    # UEFI Binaries
+    - { src: "../efi64/efi/syslinux.efi", dest: "syslinux.efi" }
+    - { src: "../efi64/com32/elflink/ldlinux/ldlinux.e64", dest: "ldlinux.e64" }
