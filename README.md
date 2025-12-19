@@ -89,6 +89,14 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
         make install-argo
         ```
 
+    * **Bootstrap GitOps** (App-of-Apps):
+
+        ```bash
+        make bootstrap-apps
+        ```
+
+        *This applies the root-app which enables ArgoCD to manage all applications from Git, including Rook-Ceph storage.*
+
 ## Architecture
 
 See [architecture.md](architecture.md) for details.

@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint install-argo 
+.PHONY: download config serve clean kubeconfig untaint install-argo bootstrap-apps
 
 setup:
 	python3 -m venv .venv
@@ -53,6 +53,12 @@ install-argo:
 		--values payload/bootstrap/argocd-values.yaml \
 		--version 7.7.0 \
 		--wait
+
+bootstrap-apps:
+	@echo "Bootstrapping ArgoCD App-of-Apps..."
+	kubectl apply -f payload/apps/root-app.yaml
+	@echo "Root app and core-infrastructure apps created."
+	@echo "ArgoCD will now sync all applications from the Git repo."
 
 clean:
 	rm -rf output/*
