@@ -1,12 +1,13 @@
 ---
 # Cilium 1.18+ LoadBalancer IP Pool
+# Single IP configuration for shared ingress VIP
 apiVersion: "cilium.io/v2alpha1"
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: "default-pool"
 spec:
   blocks:
-    - cidr: "10.9.2.240/28"
+    - cidr: "10.9.2.249/32" # Single IP for all ingress traffic
   serviceSelector:
     matchLabels:
       cilium.io/ingress: "true"

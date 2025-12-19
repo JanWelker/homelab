@@ -33,10 +33,10 @@ install-cilium:
 	helm upgrade --install cilium cilium/cilium \
 		--version 1.18.5 \
 		--namespace kube-system \
-		--values payload/core/cilium-values.yaml
+		--values payload/core/cilium/cilium-values.yaml
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
-	kubectl apply -f payload/core/cilium-pool.yaml
+	kubectl apply -f payload/core/cilium/cilium-pool.yaml
 
 install-cert-manager:
 	kubectl apply -f payload/core/cert-manager.yaml

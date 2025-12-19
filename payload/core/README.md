@@ -4,22 +4,54 @@ This directory contains **core infrastructure components** that are applied afte
 
 ## Components
 
+| File/Directory | Description | Managed By |
+|----------------|-------------|------------|
+| `cilium/` | Cilium CNI configuration (kube-proxy replacement, WireGuard, Ingress, L2) | **Makefile** (pre-ArgoCD) |
+| `cert-manager.yaml` | Cert-Manager CRDs and deployment manifest | ArgoCD |
+| `cluster-issuer.yaml` | Let's Encrypt **staging** ClusterIssuer (for testing) | ArgoCD |
+| `cluster-issuer-prod.yaml` | Let's Encrypt **production** ClusterIssuer | ArgoCD |
+| `argocd-cert.yaml` | Certificate resource for ArgoCD Ingress TLS | ArgoCD |
+| `rook-ceph/` | Rook-Ceph storage operator and cluster configuration | ArgoCD |
+
+### Cilium (Bootstrap)
+
+The `cilium/` directory is **excluded from ArgoCD** because Cilium must be installed before ArgoCD exists:
+
 | File | Description |
 |------|-------------|
-| `cilium-values.yaml` | Helm values for Cilium CNI (kube-proxy replacement, WireGuard encryption, Ingress Controller, L2 Announcements) |
-| `cilium-pool.yaml` | `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` for shared ingress VIP |
-| `cert-manager.yaml` | Cert-Manager CRDs and deployment manifest |
-| `cluster-issuer.yaml` | Let's Encrypt **staging** ClusterIssuer (for testing) |
-| `cluster-issuer-prod.yaml` | Let's Encrypt **production** ClusterIssuer |
-| `argocd-cert.yaml` | Certificate resource for ArgoCD Ingress TLS |
+| `cilium-values.yaml` | Helm values for Cilium |
+| `cilium-pool.yaml` | `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` |
+
+### Rook-Ceph Storage
+
+The `rook-ceph/` directory contains ArgoCD Applications for persistent storage:
+
+| File | Description |
+|------|-------------|
+| `operator.yaml` | Rook-Ceph operator (Helm chart v1.16.1) |
+| `cluster.yaml` | CephCluster + CephBlockPool + StorageClass |
+
+**Configuration:**
+
+- **Storage**: Directory-based OSD (`/var/lib/rook/osd`)
+- **Replication**: Single replica (for single-node clusters)
+- **StorageClass**: `rook-ceph-block` (default, RBD-based)
+- **Use case**: PVCs for apps like Home Assistant, Nextcloud, etc.
 
 ## Usage
 
-These manifests are applied in order by `make install-core`:
+### Bootstrap (before ArgoCD)
 
-1. **Cilium** is installed via Helm using `cilium-values.yaml`
-2. **kube-proxy** is deleted (Cilium replaces it)
-3. **Cilium IP Pool** is applied for LoadBalancer services
-4. **Cert-Manager** is installed for ACME TLS certificate management
+```bash
+make install-core  # Installs Cilium + Cert-Manager
+make install-argo  # Installs ArgoCD
+```
 
-After ArgoCD is installed (`make install-argo`), these components can be managed declaratively via GitOps.
+### GitOps (after ArgoCD)
+
+The `core-infrastructure` ArgoCD Application syncs this directory, **excluding**:
+
+- `cilium/` (bootstrapped via Makefile)
+- `README.md` (not a K8s manifest)
+
+Rook-Ceph is deployed automatically via sync waves (`-2` for operator, `-1` for cluster).

@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rook-ceph-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2" # Deploy operator before cluster
+spec:
+  project: default
+  source:
+    repoURL: https://charts.rook.io/release
+    chart: rook-ceph
+    targetRevision: v1.16.1
+    helm:
+      valuesObject:
+        # Single-node cluster optimizations
+        csi:
+          enableRbdDriver: true
+          enableCephfsDriver: false # Disable CephFS for now
+          provisionerReplicas: 1
+          # CSI plugin resources for single node
+          csiRBDPluginResource: |
+            - name: driver-registrar
+              resource:
+                requests:
+                  memory: 32Mi
+                  cpu: 25m
+                limits:
+                  memory: 128Mi
+            - name: csi-rbdplugin
+              resource:
+                requests:
+                  memory: 64Mi
+                  cpu: 50m
+                limits:
+                  memory: 512Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rook-ceph
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
