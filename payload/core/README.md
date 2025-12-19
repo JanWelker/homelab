@@ -33,7 +33,7 @@ The `rook-ceph/` directory contains ArgoCD Applications for persistent storage:
 
 **Configuration:**
 
-- **Storage**: Directory-based OSD (`/var/lib/rook/osd`)
+- **Storage**: Raw partition OSD (`/dev/nvme0n1p2`, labeled `rook-osd`)
 - **Replication**: Single replica (for single-node clusters)
 - **StorageClass**: `rook-ceph-block` (default, RBD-based)
 - **Use case**: PVCs for apps like Home Assistant, Nextcloud, etc.

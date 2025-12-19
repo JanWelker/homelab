@@ -43,15 +43,14 @@ spec:
                 - key: node-role.kubernetes.io/control-plane
                   operator: Exists
 
-          # Directory-based storage (no raw block device required)
+          # Block device storage (partition created by Ignition)
           storage:
             useAllNodes: true
             useAllDevices: false
             config:
               osdsPerDevice: "1"
-            # Directory-based OSD
-            directories:
-              - path: /var/lib/rook/osd
+            # Use the rook-osd partition created by Ignition
+            deviceFilter: "^nvme0n1p2$"
 
           # Resource limits for single-node
           resources:

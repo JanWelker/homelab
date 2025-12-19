@@ -10,14 +10,18 @@ storage:
     - device: /dev/nvme0n1
       wipe_table: true
       partitions:
-        - label: data
-          number: 0
-          size_mib: 0
+        - label: containerd
+          number: 1
+          size_mib: 51200  # 50GB for containerd
+        - label: rook-osd
+          number: 2
+          size_mib: 0      # Use remaining space for Rook OSD
   filesystems:
     - path: /var/lib/containerd
-      device: /dev/disk/by-partlabel/data
+      device: /dev/disk/by-partlabel/containerd
       format: ext4
       with_mount_unit: true
+    # rook-osd partition left unformatted for Rook-Ceph to use as raw block device
   files:
     - path: /etc/containerd/config.toml
       mode: 0644
