@@ -19,7 +19,7 @@ The `cilium/` directory is **excluded from ArgoCD** because Cilium must be insta
 
 | File | Description |
 |------|-------------|
-| `cilium-values.yaml` | Helm values for Cilium |
+| `cilium-values.yaml` | Helm values for Cilium (includes global HTTPS redirect) |
 | `cilium-pool.yaml` | `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` |
 
 ### Rook-Ceph Storage

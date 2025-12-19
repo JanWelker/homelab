@@ -29,7 +29,7 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
     make download
     ```
 
-    *Downloads Flatcar artifacts, Syslinux, and Systemd Sysext images (Kubernetes, Cilium, Containerd) to `output/http`.*
+    *Downloads Flatcar artifacts, Syslinux, and Systemd Sysext images (Kubernetes, Containerd) to `output/http`.*
 
 4. **Generate Configurations**:
 
@@ -37,7 +37,7 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
     make config
     ```
 
-    *Artifacts will be generated in `output/http` (Ignition) and `output/tftp` (PXE).*
+    *Artifacts will be generated in `output/http` (Ignition) and `output/tftp` (PXE). Note: The NVMe disk is partitioned into 50GB for containerd and the remaining space for Rook-Ceph storage.*
 
 5. **Start Boot Server** (Requires sudo for port 69):
 

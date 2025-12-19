@@ -52,7 +52,7 @@ sequenceDiagram
     Target->>Target: 13. Flatcar Boot & Install (Ignition)
     
     Target->>Deploy: 14. Systemd-sysupdate Request (Sysexts)
-    Deploy-->>Target: 15. HTTP File Transfer (k8s + cilium + containerd)
+    Deploy-->>Target: 15. HTTP File Transfer (k8s + containerd)
     
     Target->>Target: 16. Systemd Unit runs Kubeadm
     Note over Target: Node is Ready but CNI not installed
@@ -69,8 +69,12 @@ sequenceDiagram
 
     Admin->>Deploy: 1. make untaint
     Deploy->>Target: 2. Kubectl Taint Node
-    Admin->>Deploy: 3. make install-argo
-    Deploy->>Target: 4. Helm Install ArgoCD
+    Admin->>Deploy: 3. make install-core
+    Note over Deploy,Target: Installs Cilium (CNI) & Cert-Manager
+    Admin->>Deploy: 4. make install-argo
+    Deploy->>Target: 5. Helm Install ArgoCD
+    Admin->>Deploy: 6. make bootstrap-apps
+    Deploy->>Target: 7. Apply root-app.yaml (GitOps)
 ```
 
 ## Directory Structure
@@ -88,24 +92,29 @@ sequenceDiagram
 │   │       ├── download_sysext.yml
 │   │       └── download_syslinux.yml
 │   └── templates
-│       ├── butane_config.yaml.j2 # Butane config template (transpiles to Ignition)
+│       ├── butane_config.yaml.j2 # Partitioning: 50GB containerd, rest Rook OSD
 │       ├── kubeadm.yaml.j2
-│       └── pxe_config.j2         # PXE boot menu config
+│       └── pxe_config.j2
 ├── boot_server
 │   └── serve.py            # Python script for HTTP & TFTP
 ├── output                  # Generated files & Artifacts
-│   ├── credentials/        # Security artifacts (Kubeadm tokens, Certificate Keys)
-│   ├── http/               # Ignition configs, Flatcar artifacts, Sysext images (served via HTTP)
-│   ├── kubeconfig          # Admin Kubeconfig file (retrieved after cluster is ready)
-│   ├── tftp/               # PXE bootloader & configs (served via TFTP)
-│   └── tmp/                # Temporary download/extraction workspace
-│       ├── butane/         # Generated Butane YAMLs
-│       ├── kubeadm/        # Generated Kubeadm server configurations (for debugging)
-│       └── syslinux/       # Extracted Syslinux files
+│   ├── credentials/        # Security artifacts
+│   ├── http/               # Ignition, Flatcar artifacts, Sysext images
+│   ├── kubeconfig          # Admin Kubeconfig file
+│   ├── tftp/               # PXE bootloader & configs
+│   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
 │   ├── apps                # ArgoCD Applications
-│   ├── bootstrap           # Initial cluster bootstrap resources (ArgoCD)
-│   └── core                # Core infrastructure manifests
+│   │   ├── pelican.yaml    # Pelican Application definition
+│   │   ├── pelican/        # Pelican K8s resources
+│   │   ├── nginx-test.yaml
+│   │   └── nginx-test/
+│   ├── bootstrap           # One-time bootstrap resources
+│   │   ├── argocd-values.yaml
+│   │   └── root-app.yaml   # The "App of Apps" entry point
+│   └── core                # Infrastructure managed by ArgoCD
+│       ├── cilium/         # Cilium CNI (manually bootstrapped, then ignored)
+│       └── rook-ceph/      # Rook-Ceph storage operator & cluster
 └── README.md
 ```
 
@@ -113,5 +122,8 @@ sequenceDiagram
 
 * **OS**: Flatcar Container Linux
 * **Orchestrator**: Kubernetes (via Kubeadm)
+* **CNI/Ingress**: Cilium (ebpf-based, kube-proxy replacement)
+* **GitOps**: ArgoCD (App-of-Apps pattern)
+* **Storage**: Rook-Ceph (persistent RBD block storage)
 * **Config Gen**: Ansible (Jinja2 templates)
 * **Serving**: Python (Standard Library + `tftpy`)
