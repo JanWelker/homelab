@@ -1,3 +1,6 @@
+# Cilium v1.18.5 Helm values
+# Install: helm upgrade cilium cilium/cilium --version 1.18.5 -n kube-system -f cilium-values.yaml
+
 ipam:
   mode: kubernetes
 
@@ -16,10 +19,6 @@ ingressController:
   loadbalancerMode: shared
   default: true
   enforceHttps: false
-  service:
-    targetPorts:
-      http: 9999
-      https: 9999
 
 l2announcements:
   enabled: true
