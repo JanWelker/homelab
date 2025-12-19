@@ -31,7 +31,7 @@ install-cilium:
 	helm repo add cilium https://helm.cilium.io/
 	helm repo update
 	helm upgrade --install cilium cilium/cilium \
-		--version 1.14.9 \
+		--version 1.18.5 \
 		--namespace kube-system \
 		--values payload/core/cilium-values.yaml
 	@echo "Waiting for Cilium to be ready..."

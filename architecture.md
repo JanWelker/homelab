@@ -55,7 +55,7 @@ sequenceDiagram
     Deploy-->>Target: 15. HTTP File Transfer (k8s + cilium + containerd)
     
     Target->>Target: 16. Systemd Unit runs Kubeadm
-    Target->>Target: 17. Systemd Unit installs Cilium (WireGuard)
+    Note over Target: Node is Ready but CNI not installed
 
 ```
 
@@ -80,26 +80,28 @@ sequenceDiagram
 ├── ansible
 │   ├── inventory.yml       # Host definitions (MAC addresses, IPs, Roles)
 │   ├── playbooks
+│   │   ├── config.yml      # Generate configs
 │   │   ├── download.yml    # Orchestrate downloads
-│   │   ├── tasks           # Download Task definitions
-│   │   │   ├── download_flatcar.yml
-│   │   │   ├── download_sysext.yml
-│   │   │   └── download_syslinux.yml
-│   │   └── config.yml      # Generate configs
+│   │   ├── kubeconfig.yml  # Retrieve kubeconfig from control plane
+│   │   └── tasks           # Download Task definitions
+│   │       ├── download_flatcar.yml
+│   │       ├── download_sysext.yml
+│   │       └── download_syslinux.yml
 │   └── templates
 │       ├── butane_config.yaml.j2 # Butane config template (transpiles to Ignition)
-│       └── kubeadm.yaml.j2
+│       ├── kubeadm.yaml.j2
+│       └── pxe_config.j2         # PXE boot menu config
 ├── boot_server
 │   └── serve.py            # Python script for HTTP & TFTP
 ├── output                  # Generated files & Artifacts
-│   ├── credentials         # Security artifacts (Kubeadm tokens, Certificate Keys)
-│   ├── http                # Ignition configs, Flatcar artifacts, Sysext images (served via HTTP)
-│   ├── kubeconfig          # Admin Kubeconfig file (generated after cluster is ready)
-│   ├── tftp                # PXE bootloader & configs (served via TFTP)
-│   └── tmp                 # Temporary download/extraction workspace
-│       ├── butane          # Generated Butane YAMLs
-│       ├── kubeadm         # Generated Kubeadm server configurations (for debugging)
-│       └── syslinux        # Extracted Syslinux files
+│   ├── credentials/        # Security artifacts (Kubeadm tokens, Certificate Keys)
+│   ├── http/               # Ignition configs, Flatcar artifacts, Sysext images (served via HTTP)
+│   ├── kubeconfig          # Admin Kubeconfig file (retrieved after cluster is ready)
+│   ├── tftp/               # PXE bootloader & configs (served via TFTP)
+│   └── tmp/                # Temporary download/extraction workspace
+│       ├── butane/         # Generated Butane YAMLs
+│       ├── kubeadm/        # Generated Kubeadm server configurations (for debugging)
+│       └── syslinux/       # Extracted Syslinux files
 ├── payload                 # K8s Manifests & Bootstrap scripts
 │   ├── apps                # ArgoCD Applications
 │   ├── bootstrap           # Initial cluster bootstrap resources (ArgoCD)
