@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -18,6 +19,20 @@ spec:
         # Toolbox for debugging (optional, useful for troubleshooting)
         toolbox:
           enabled: true
+
+        # Expose dashboard via Ingress
+        ingress:
+          dashboard:
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+            host:
+              name: rook.k8s.wlkr.ch
+              path: "/"
+            tls:
+              - hosts:
+                  - rook.k8s.wlkr.ch
+                secretName: rook-ceph-dashboard-tls
+            ingressClassName: cilium
 
         # CephCluster configuration
         cephClusterSpec:
