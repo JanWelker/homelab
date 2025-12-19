@@ -5,6 +5,7 @@ metadata:
   namespace: nginx-test
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    acme.cert-manager.io/http01-edit-in-place: "true"
 spec:
   ingressClassName: cilium
   tls:
