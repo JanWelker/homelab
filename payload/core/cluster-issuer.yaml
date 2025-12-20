@@ -9,20 +9,13 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:
-      # Infra Gateway solver for *.infra.k8s.wlkr.ch
-      - selector:
-          dnsZones:
-            - "infra.k8s.wlkr.ch"
-        http01:
-          gatewayHTTPRoute:
-            parentRefs:
-              - name: infra-gateway
-                namespace: kube-system
-                kind: Gateway
-      # Apps Gateway solver for *.k8s.wlkr.ch (default)
-      - http01:
-          gatewayHTTPRoute:
-            parentRefs:
-              - name: apps-gateway
-                namespace: kube-system
-                kind: Gateway
+      # DNS-01 solver for all domains via Route53
+      - dns01:
+          route53:
+            region: eu-central-1
+            accessKeyIDSecretRef:
+              name: route53-credentials
+              key: access-key-id
+            secretAccessKeySecretRef:
+              name: route53-credentials
+              key: secret-access-key
