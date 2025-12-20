@@ -16,6 +16,26 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
+              # Generate ceph.conf and keyring
+              CEPH_CONFIG="/etc/ceph/ceph.conf"
+              MON_CONFIG="/etc/rook/mon-endpoints"
+              KEYRING_FILE="/etc/ceph/keyring"
+
+              mon_endpoints=$(cat ${MON_CONFIG} | sed 's/[a-z0-9_-]\+=//g')
+              ceph_secret=$(cat /var/lib/rook-ceph-mon/secret.keyring)
+
+              cat <<EOF > ${CEPH_CONFIG}
+              [global]
+              mon_host = ${mon_endpoints}
+              [client.admin]
+              keyring = ${KEYRING_FILE}
+              EOF
+
+              cat <<EOF > ${KEYRING_FILE}
+              [client.admin]
+              key = ${ceph_secret}
+              EOF
+
               # Wait for mgr to be ready with retry loop
               MAX_RETRIES=30
               RETRY_DELAY=10
