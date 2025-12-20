@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fio-benchmark
+  namespace: rook-ceph
+spec:
+  template:
+    spec:
+      containers:
+        - name: fio
+          image: fnndsc/alpine-fio
+          command: ["fio"]
+          args:
+            - "--name=benchtest"
+            - "--size=2G"
+            - "--filename=/data/fio-test-file"
+            - "--direct=1"
+            - "--rw=randrw"
+            - "--rwmixread=70"
+            - "--ioengine=libaio"
+            - "--bs=4k"
+            - "--iodepth=16"
+            - "--numjobs=1"
+            - "--time_based"
+            - "--runtime=60"
+            - "--group_reporting"
+          volumeMounts:
+            - name: fio-vol
+              mountPath: /data
+      restartPolicy: Never
+      volumes:
+        - name: fio-vol
+          persistentVolumeClaim:
+            claimName: fio-benchmark-pvc
+  backoffLimit: 4
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: fio-benchmark-pvc
+  namespace: rook-ceph
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: rook-ceph-block
