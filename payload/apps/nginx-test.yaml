@@ -4,6 +4,8 @@ kind: Application
 metadata:
   name: nginx-test
   namespace: argocd
+  annotations:
+    link.argocd.argoproj.io/external-link: https://nginx.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
