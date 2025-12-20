@@ -11,8 +11,17 @@ kubeProxyReplacement: true
 k8sServiceHost: 10.9.2.1
 k8sServicePort: 6443
 
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
 operator:
   replicas: 1
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 ingressController:
   enabled: true
@@ -30,3 +39,30 @@ k8sClientRateLimit:
 encryption:
   enabled: true
   type: wireguard
+
+hubble:
+  enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+    ingress:
+      enabled: true
+      className: cilium
+      hosts:
+        - hubble.k8s.wlkr.ch
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      tls:
+        - secretName: hubble-ui-tls
+          hosts:
+            - hubble.k8s.wlkr.ch
