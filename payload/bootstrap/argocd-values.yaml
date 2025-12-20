@@ -1,5 +1,5 @@
 global:
-  domain: argo.k8s.wlkr.ch
+  domain: argo.infra.k8s.wlkr.ch
 
 # Enable HA
 redis-ha:
@@ -11,21 +11,9 @@ controller:
 server:
   replicas: 3
   extraArgs:
-    # Enable running on HTTP (we will port-forward to 8080)
+    # Enable running on HTTP (Gateway handles TLS)
     - --insecure
-  ingress:
-    enabled: true
-    ingressClassName: cilium
-    hostname: argo.k8s.wlkr.ch
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-      acme.cert-manager.io/http01-edit-in-place: "true"
-    hosts:
-      - argo.k8s.wlkr.ch
-    tls:
-      - secretName: argocd-server-tls
-        hosts:
-          - argo.k8s.wlkr.ch
+  # Ingress removed - using Gateway API HTTPRoute instead
 
 repoServer:
   replicas: 3

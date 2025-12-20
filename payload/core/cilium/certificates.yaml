@@ -1,0 +1,32 @@
+---
+# Apps Gateway certificate - per-host (HTTP-01 doesn't support wildcards)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: apps-gateway-tls
+  namespace: kube-system
+spec:
+  secretName: apps-gateway-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "nginx.k8s.wlkr.ch"
+    # Add more app hostnames as needed
+---
+# Infra Gateway certificate - per-host (HTTP-01 doesn't support wildcards)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: infra-gateway-tls
+  namespace: kube-system
+spec:
+  secretName: infra-gateway-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "argo.infra.k8s.wlkr.ch"
+    - "monitoring.infra.k8s.wlkr.ch"
+    - "rook.infra.k8s.wlkr.ch"
+    - "hubble.infra.k8s.wlkr.ch"

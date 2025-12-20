@@ -9,13 +9,20 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
+      # Infra Gateway solver for *.infra.k8s.wlkr.ch
+      - selector:
+          dnsZones:
+            - "infra.k8s.wlkr.ch"
+        http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: infra-gateway
+                namespace: kube-system
+                kind: Gateway
+      # Apps Gateway solver for *.k8s.wlkr.ch (default)
       - http01:
-          ingress:
-            ingressClassName: cilium
-            serviceType: ClusterIP
-            ingressTemplate:
-              metadata:
-                annotations:
-                  ingress.kubernetes.io/ssl-redirect: "false"
-                  nginx.ingress.kubernetes.io/ssl-redirect: "false"
-                  ingress.cilium.io/force-https: "false"
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: apps-gateway
+                namespace: kube-system
+                kind: Gateway

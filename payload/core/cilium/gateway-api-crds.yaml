@@ -2,22 +2,22 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: nginx-test
+  name: gateway-api-crds
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10" # Install before everything else
 spec:
   project: default
   source:
-    repoURL: https://github.com/JanWelker/homelab.git
-    targetRevision: HEAD
-    path: payload/apps/nginx-test
+    repoURL: https://github.com/kubernetes-sigs/gateway-api.git
+    targetRevision: v1.2.0
+    path: config/crd/standard
   destination:
     server: https://kubernetes.default.svc
-    namespace: nginx-test
+    namespace: kube-system
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - ServerSideApply=true

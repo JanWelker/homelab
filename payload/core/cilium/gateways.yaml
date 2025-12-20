@@ -1,0 +1,90 @@
+---
+# Apps Gateway - for general payload applications (*.k8s.wlkr.ch)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: apps-gateway
+  namespace: kube-system
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: "10.9.2.249"
+  listeners:
+    # HTTP listener for ACME challenges and redirects
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS listener for secure traffic
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: apps-gateway-tls
+            namespace: kube-system
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Infra Gateway - for core/infrastructure services (*.infra.k8s.wlkr.ch)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: infra-gateway
+  namespace: kube-system
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: "10.9.2.248"
+  listeners:
+    # HTTP listener for ACME challenges and redirects
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.infra.k8s.wlkr.ch"
+      allowedRoutes:
+        namespaces:
+          from: All
+    # HTTPS listener for secure traffic
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.infra.k8s.wlkr.ch"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: infra-gateway-tls
+            namespace: kube-system
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# ReferenceGrant to allow HTTPRoutes from other namespaces to reference Gateway secrets
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-cross-namespace-routes
+  namespace: kube-system
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: argocd
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: monitoring
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: rook-ceph
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: nginx-test
+  to:
+    - group: ""
+      kind: Service

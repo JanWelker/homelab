@@ -1,0 +1,68 @@
+---
+# ArgoCD HTTPRoute - Infra Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "argo.infra.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: argocd-server
+          port: 80
+---
+# Grafana HTTPRoute - Infra Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "monitoring.infra.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: kube-prometheus-stack-grafana
+          port: 80
+---
+# Rook Dashboard HTTPRoute - Infra Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: rook-dashboard
+  namespace: rook-ceph
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "rook.infra.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: rook-ceph-mgr-dashboard
+          port: 7000
+---
+# Hubble UI HTTPRoute - Infra Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "hubble.infra.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: hubble-ui
+          port: 80

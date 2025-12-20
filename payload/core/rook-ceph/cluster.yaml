@@ -20,21 +20,7 @@ spec:
         toolbox:
           enabled: true
 
-        # Expose dashboard via Ingress
-        ingress:
-          dashboard:
-            enabled: true
-            annotations:
-              cert-manager.io/cluster-issuer: letsencrypt-prod
-              acme.cert-manager.io/http01-edit-in-place: "true"
-            host:
-              name: rook.k8s.wlkr.ch
-              path: "/"
-            tls:
-              - hosts:
-                  - rook.k8s.wlkr.ch
-                secretName: rook-ceph-dashboard-tls
-            ingressClassName: cilium
+        # Ingress removed - using Gateway API HTTPRoute instead
 
         # CephCluster configuration
         cephClusterSpec:

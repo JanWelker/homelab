@@ -1,17 +1,23 @@
 ---
-# Cilium 1.18+ LoadBalancer IP Pool
-# Single IP configuration for shared ingress VIP
+# Apps Gateway IP Pool (public apps at *.k8s.wlkr.ch)
 apiVersion: "cilium.io/v2alpha1"
 kind: CiliumLoadBalancerIPPool
 metadata:
-  name: "default-pool"
+  name: "apps-pool"
 spec:
   blocks:
-    - cidr: "10.9.2.249/32" # Single IP for all ingress traffic
-  serviceSelector:
-    matchLabels:
-      cilium.io/ingress: "true"
+    - cidr: "10.9.2.249/32"
 ---
+# Infra Gateway IP Pool (core services at *.infra.k8s.wlkr.ch)
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "infra-pool"
+spec:
+  blocks:
+    - cidr: "10.9.2.248/32"
+---
+# L2 Announcement Policy for LoadBalancer IPs
 apiVersion: "cilium.io/v2alpha1"
 kind: CiliumL2AnnouncementPolicy
 metadata:

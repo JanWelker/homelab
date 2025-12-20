@@ -23,11 +23,9 @@ operator:
     serviceMonitor:
       enabled: true
 
-ingressController:
+# Gateway API (replaces Ingress controller)
+gatewayAPI:
   enabled: true
-  loadbalancerMode: shared
-  default: true
-  enforceHttps: true
 
 l2announcements:
   enabled: true
@@ -55,15 +53,4 @@ hubble:
     enabled: true
   ui:
     enabled: true
-    ingress:
-      enabled: true
-      className: cilium
-      hosts:
-        - hubble.k8s.wlkr.ch
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
-        acme.cert-manager.io/http01-edit-in-place: "true"
-      tls:
-        - secretName: hubble-ui-tls
-          hosts:
-            - hubble.k8s.wlkr.ch
+    # Ingress removed - using Gateway API HTTPRoute instead
