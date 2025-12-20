@@ -40,6 +40,8 @@ spec:
               mountPath: /etc/rook
             - name: ceph-config
               mountPath: /etc/ceph
+            - name: ceph-admin-secret
+              mountPath: /var/lib/rook-ceph-mon
       volumes:
         - name: mon-endpoint-volume
           configMap:
@@ -49,5 +51,11 @@ spec:
                 path: mon-endpoints
         - name: ceph-config
           emptyDir: {}
+        - name: ceph-admin-secret
+          secret:
+            secretName: rook-ceph-mon
+            items:
+              - key: ceph-secret
+                path: secret.keyring
       restartPolicy: OnFailure
-      serviceAccountName: rook-ceph-default # Use default SA which usually has permissions or check if we need specific one
+      serviceAccountName: rook-ceph-default
