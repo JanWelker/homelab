@@ -13,7 +13,8 @@ spec:
     targetRevision: HEAD
     path: payload/apps
     directory:
-      recurse: false # Only apply Application CRs, not app contents
+      recurse: true
+      include: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
