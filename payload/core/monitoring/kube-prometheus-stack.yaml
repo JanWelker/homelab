@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1" # Deploy after rook-ceph
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 80.6.0
+    helm:
+      valuesObject:
+        crds:
+          enabled: true
+          upgradeJob:
+            enabled: true
+            forceConflicts: true
+
+        grafana:
+          enabled: true
+          persistence:
+            enabled: true
+            type: pvc
+            storageClassName: rook-ceph-block
+            accessModes:
+              - ReadWriteOnce
+            size: 2Gi
+          ingress:
+            enabled: true
+            ingressClassName: cilium
+            hosts:
+              - monitoring.k8s.wlkr.ch
+            path: /
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+              ingress.cilium.io/force-https: "true"
+            tls:
+              - secretName: grafana-tls
+                hosts:
+                  - monitoring.k8s.wlkr.ch
+
+        prometheus:
+          prometheusSpec:
+            ruleSelector: {} # Select all rules
+            serviceMonitorSelector: {} # Select all ServiceMonitors
+            podMonitorSelector: {} # Select all PodMonitors
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: rook-ceph-block
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
+            retention: 10d
+
+        alertmanager:
+          alertmanagerSpec:
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: rook-ceph-block
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+
+        nodeExporter:
+          enabled: true
+
+        kubeStateMetrics:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
