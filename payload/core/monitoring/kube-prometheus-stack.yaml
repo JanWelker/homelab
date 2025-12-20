@@ -45,8 +45,11 @@ spec:
         prometheus:
           prometheusSpec:
             ruleSelector: {} # Select all rules
+            ruleNamespaceSelector: {} # Select all namespaces
             serviceMonitorSelector: {} # Select all ServiceMonitors
+            serviceMonitorNamespaceSelector: {} # Select all namespaces
             podMonitorSelector: {} # Select all PodMonitors
+            podMonitorNamespaceSelector: {} # Select all namespaces
             storageSpec:
               volumeClaimTemplate:
                 spec:
