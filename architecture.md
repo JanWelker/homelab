@@ -10,7 +10,7 @@ The machine where this project is executed.
 
 * **Ansible**: Responsible for generating the configuration files (Ignition, Kubeadm config) based on templates and variables.
 * **Python Boot Server**: A custom Python script that runs:
-  * **TFTP Server**: Serves the Bootloader (syslinux.efi/pxelinux.0) and config.
+  * **TFTP Server**: Serves the Bootloader (syslinux.efi/lpxelinux.0) and config.
   * **HTTP Server**: Serves Ignition configs, Flatcar Kernel/Initrd, and Sysext images (`.raw`) + configs (`.conf`).
 * **Artifacts**: Directory containing downloaded OS images (Flatcar) and generated configs.
 
@@ -39,7 +39,7 @@ sequenceDiagram
     Target->>DHCP: 5. DHCP Request (PXE Boot)
     DHCP-->>Target: 6. DHCP Ack (IP + Next-Server IP + Filename)
     
-    Target->>Deploy: 7. TFTP Request (pxelinux.0 / ipxe.efi)
+    Target->>Deploy: 7. TFTP Request (lpxelinux.0 / syslinux.efi)
     Deploy-->>Target: 8. TFTP File Transfer
     
     Target->>Deploy: 9. HTTP Request (Flatcar Kernel + Initrd)
@@ -92,9 +92,9 @@ sequenceDiagram
 │   │       ├── download_sysext.yml
 │   │       └── download_syslinux.yml
 │   └── templates
-│       ├── butane_config.yaml.j2 # Partitioning: 50GB containerd, rest Rook OSD
+│       ├── butane_config.yaml.j2 # Butane config template (transpiles to Ignition)
 │       ├── kubeadm.yaml.j2
-│       └── pxe_config.j2
+│       └── pxe_config.j2         # PXE boot menu config
 ├── boot_server
 │   └── serve.py            # Python script for HTTP & TFTP
 ├── output                  # Generated files & Artifacts

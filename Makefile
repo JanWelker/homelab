@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint install-argo bootstrap-apps
+.PHONY: download config serve clean kubeconfig untaint taint install-argo bootstrap-apps
 
 setup:
 	python3 -m venv .venv
@@ -24,6 +24,10 @@ untaint:
 	@echo "WARNING: Only run this task in a single node cluster setup!"
 	kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
+taint:
+	@echo "Re-applying control-plane taints..."
+	kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane:NoSchedule
+
 install-core: install-cilium install-cert-manager 
 
 install-cilium:
@@ -43,6 +47,7 @@ install-cert-manager:
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
+	kubectl apply -f payload/core/cluster-issuer-prod.yaml
 
 install-argo:
 	helm repo add argocd https://argoproj.github.io/argo-helm

@@ -13,3 +13,9 @@ spec:
           ingress:
             ingressClassName: cilium
             serviceType: ClusterIP
+            ingressTemplate:
+              metadata:
+                annotations:
+                  ingress.kubernetes.io/ssl-redirect: "false"
+                  nginx.ingress.kubernetes.io/ssl-redirect: "false"
+                  ingress.cilium.io/force-https: "false"

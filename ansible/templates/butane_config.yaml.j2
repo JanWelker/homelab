@@ -7,7 +7,7 @@ passwd:
         - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 storage:
   disks:
-    - device: /dev/nvme0n1
+    - device: {{ install_disk }}
       wipe_table: true
       partitions:
         - label: containerd
@@ -19,9 +19,17 @@ storage:
   filesystems:
     - path: /var/lib/containerd
       device: /dev/disk/by-partlabel/containerd
-      format: ext4
+      format: xfs
+      wipe_filesystem: true
       with_mount_unit: true
     # rook-osd partition left unformatted for Rook-Ceph to use as raw block device
+  directories:
+    - path: /etc/sysupdate.containerd.d
+      mode: 0755
+    - path: /etc/sysupdate.kubernetes.d
+      mode: 0755
+    - path: /etc/kubernetes/manifests
+      mode: 0755
   files:
     - path: /etc/containerd/config.toml
       mode: 0644
@@ -63,7 +71,7 @@ storage:
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
-    - path: /etc/sysupdate.d/containerd.conf
+    - path: /etc/sysupdate.containerd.d/containerd.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/containerd.conf
     - path: /opt/extensions/containerd/containerd-{{ containerd_version }}-x86-64.raw

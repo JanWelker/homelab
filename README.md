@@ -8,7 +8,7 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
 * **Butane**: For transpiling config files (`brew install butane` or similar).
 * **SSH Key**: An Ed25519 SSH key at `~/.ssh/id_ed25519.pub` (or modify `ansible/templates/butane_config.yaml.j2`).
 * **External DHCP Server**: Configured to point `next-server` (Option 66) to this host's IP.
-  * **BIOS**: set `filename` (Option 67) to `pxelinux.0`.
+  * **BIOS**: set `filename` (Option 67) to `lpxelinux.0` (Required for HTTP boot support).
   * **UEFI**: set `filename` (Option 67) to `syslinux.efi`.
 
 ## Setup
@@ -68,6 +68,13 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
 
     ```bash
     make untaint
+    ```
+
+    **Re-taint Control Plane** (When worker nodes join):
+    If you add worker nodes later, you should re-apply the scheduling taints to the control plane to ensure workloads are scheduled correctly:
+
+    ```bash
+    make taint
     ```
 
     With `output/kubeconfig` in place (`kubeadm` likely finished):

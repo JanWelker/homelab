@@ -8,6 +8,7 @@ all:
     containerd_version: "1.7.29"
     pod_subnet: "10.244.0.0/16"
     service_subnet: "10.96.0.0/12"
+    install_disk: "/dev/nvme0n1"
   children:
     k8s_nodes:
       vars:
@@ -21,20 +22,24 @@ all:
           hosts:
             odin:
               ansible_host: 10.9.2.1
-              mac_address: "c8:d9:d2:82:5e:76"
+              mac_address: "fc:3f:db:0d:8f:5c"
             thor:
-              ansible_host: 192.168.1.11
-              mac_address: "00:11:22:33:44:56"
+              ansible_host: 10.9.2.2
+              mac_address: "ec:8e:b5:6e:16:e0"
             loki:
-              ansible_host: 192.168.1.12
-              mac_address: "00:11:22:33:44:57"
+              ansible_host: 10.9.2.3
+              mac_address: "fc:3f:db:0e:61:b9"
         workers:
           vars:
             role: worker
           hosts:
             freya:
-              ansible_host: 192.168.1.13
-              mac_address: "00:11:22:33:44:58"
+              ansible_host: 10.9.2.4
+              mac_address: "c8:d3:ff:a2:8d:a9"
+              install_disk: "/dev/sda"
             heimdall:
-              ansible_host: 192.168.1.14
-              mac_address: "00:11:22:33:44:59"
+              ansible_host: 10.9.2.5
+              mac_address: "fc:3f:db:0e:66:7d"
+            valkyrie:
+              ansible_host: 10.9.2.6
+              mac_address: "fc:3f:db:04:c8:59"
