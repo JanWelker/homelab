@@ -2,7 +2,6 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: fio-benchmark
-  namespace: rook-ceph
 spec:
   template:
     spec:
@@ -38,7 +37,6 @@ kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
   name: fio-benchmark-pvc
-  namespace: rook-ceph
 spec:
   accessModes:
     - ReadWriteOnce
