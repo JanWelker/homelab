@@ -32,6 +32,13 @@ install-core: install-cilium install-cert-manager
 
 install-cilium:
 	-kubectl -n kube-system delete ds kube-proxy 2>/dev/null || true
+	@echo "Installing Gateway API CRDs..."
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
 	helm repo add cilium https://helm.cilium.io/
 	helm repo update
 	helm upgrade --install cilium cilium/cilium \
@@ -40,10 +47,20 @@ install-cilium:
 		--values payload/core/cilium/cilium-values.yaml
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
-	kubectl apply -f payload/core/cilium/cilium-pool.yaml
+	kubectl apply -f payload/core/cilium-pool.yaml
 
 install-cert-manager:
-	kubectl apply -f payload/core/cert-manager.yaml
+	helm repo add jetstack https://charts.jetstack.io
+	helm repo update
+	helm upgrade --install cert-manager jetstack/cert-manager \
+		--namespace cert-manager \
+		--create-namespace \
+		--version v1.16.2 \
+		--set crds.enabled=true \
+		--set config.apiVersion=controller.config.cert-manager.io/v1alpha1 \
+		--set config.kind=ControllerConfiguration \
+		--set config.enableGatewayAPI=true \
+		--set prometheus.enabled=true
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
