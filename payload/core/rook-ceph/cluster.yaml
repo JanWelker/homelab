@@ -38,6 +38,8 @@ spec:
 
         # CephCluster configuration
         cephClusterSpec:
+          monitoring:
+            enabled: true
           dataDirHostPath: /var/lib/rook
 
           # HA: 3 mons, 2 mgrs
@@ -89,7 +91,7 @@ spec:
             spec:
               failureDomain: host
               replicated:
-                size: 2
+                size: 3 # Standard replication for HA
                 requireSafeReplicaSize: true
             storageClass:
               enabled: true
