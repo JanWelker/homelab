@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fio-benchmark
+  name: fio-benchmark-seq
 spec:
   template:
     spec:
@@ -10,14 +10,13 @@ spec:
           image: xridge/fio
           command: ["fio"]
           args:
-            - "--name=benchtest"
+            - "--name=benchtest-seq"
             - "--size=2G"
             - "--filename=/data/fio-test-file"
             - "--direct=1"
-            - "--rw=randrw"
-            - "--rwmixread=70"
+            - "--rw=write"
             - "--ioengine=libaio"
-            - "--bs=4k"
+            - "--bs=4M"
             - "--iodepth=16"
             - "--numjobs=1"
             - "--time_based"
