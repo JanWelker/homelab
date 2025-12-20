@@ -104,17 +104,19 @@ sequenceDiagram
 │   ├── tftp/               # PXE bootloader & configs
 │   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
-│   ├── apps                # ArgoCD Applications
-│   │   ├── pelican.yaml    # Pelican Application definition
-│   │   ├── pelican/        # Pelican K8s resources
+│   ├── root-app.yaml       # The "App of Apps" entry point
+│   ├── apps/               # ArgoCD Applications
 │   │   ├── nginx-test.yaml
 │   │   └── nginx-test/
-│   ├── bootstrap           # One-time bootstrap resources
+│   ├── bootstrap/          # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── argocd-values.yaml
-│   │   └── root-app.yaml   # The "App of Apps" entry point
-│   └── core                # Infrastructure managed by ArgoCD
-│       ├── cilium/         # Cilium CNI (manually bootstrapped, then ignored)
-│       └── rook-ceph/      # Rook-Ceph storage operator & cluster
+│   │   └── argocd-httproute.yaml
+│   └── core/               # Infrastructure managed by ArgoCD
+│       ├── cert-manager/   # TLS certificates
+│       ├── cilium/         # CNI + Gateway API
+│       ├── gateway-api/    # Gateway resources
+│       ├── monitoring/     # Prometheus stack
+│       └── rook-ceph/      # Storage operator & cluster
 └── README.md
 ```
 

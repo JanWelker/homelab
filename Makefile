@@ -78,7 +78,7 @@ install-argo:
 
 bootstrap-apps:
 	@echo "Bootstrapping ArgoCD App-of-Apps..."
-	kubectl apply -f payload/bootstrap/root-app.yaml
+	kubectl apply -f payload/root-app.yaml
 	@echo "Root app and core-infrastructure apps created."
 	@echo "ArgoCD will now sync all applications from the Git repo."
 
