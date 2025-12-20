@@ -62,6 +62,7 @@ hubble:
         - hubble.k8s.wlkr.ch
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-prod
+        acme.cert-manager.io/http01-edit-in-place: "true"
       tls:
         - secretName: hubble-ui-tls
           hosts:
