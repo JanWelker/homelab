@@ -36,7 +36,7 @@ spec:
             path: /
             annotations:
               cert-manager.io/cluster-issuer: letsencrypt-prod
-              ingress.cilium.io/force-https: "false"
+              acme.cert-manager.io/http01-edit-in-place: "true"
             tls:
               - secretName: grafana-tls
                 hosts:

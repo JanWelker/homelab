@@ -18,7 +18,8 @@ server:
     ingressClassName: cilium
     hostname: argo.k8s.wlkr.ch
     annotations:
-      ingress.cilium.io/force-https: "true"
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      acme.cert-manager.io/http01-edit-in-place: "true"
     hosts:
       - argo.k8s.wlkr.ch
     tls:
