@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rook-ceph-dashboard-config
+  namespace: rook-ceph
+  annotations:
+    argocd.argoproj.io/sync-wave: "5" # Run after cluster is fully up
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      containers:
+        - name: config
+          image: rook/ceph:v1.16.1
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              # Wait for mgr to be ready (simplified check)
+              sleep 30
+              ceph dashboard set-grafana-api-url http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+              ceph dashboard set-prometheus-api-host http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+              ceph dashboard set-grafana-api-ssl-verify false
+              echo "Dashboard configured successfully."
+          volumeMounts:
+            - name: mon-endpoint-volume
+              mountPath: /etc/rook
+            - name: ceph-config
+              mountPath: /etc/ceph
+      volumes:
+        - name: mon-endpoint-volume
+          configMap:
+            name: rook-ceph-mon-endpoints
+            items:
+              - key: data
+                path: mon-endpoints
+        - name: ceph-config
+          emptyDir: {}
+      restartPolicy: OnFailure
+      serviceAccountName: rook-ceph-default # Use default SA which usually has permissions or check if we need specific one
