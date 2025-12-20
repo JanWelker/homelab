@@ -1,4 +1,18 @@
 ---
+# ArgoCD Server TLS Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-server-tls
+  namespace: argocd
+spec:
+  secretName: argocd-server-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - argo.infra.k8s.wlkr.ch
+---
 # Apps Gateway certificate - per-host (HTTP-01 doesn't support wildcards)
 apiVersion: cert-manager.io/v1
 kind: Certificate

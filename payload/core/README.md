@@ -1,42 +1,90 @@
 # Core Infrastructure
 
-This directory contains **core infrastructure components** that are applied after initial cluster bootstrap via `make install-core`.
+This directory contains **core infrastructure components** managed via ArgoCD GitOps.
+
+## Directory Structure
+
+```text
+core/
+├── cert-manager/          # TLS Certificate Management
+│   ├── application.yaml   # ArgoCD Application (Helm chart)
+│   ├── cluster-issuers.yaml # Let's Encrypt staging + prod issuers
+│   ├── certificates.yaml  # All Certificate resources
+│   └── route53-credentials.yaml.template
+│
+├── cilium/                # CNI + Gateway API Controller
+│   ├── application.yaml   # ArgoCD Application (Helm v1.18.5)
+│   ├── values.yaml        # Helm values
+│   ├── lb-pools.yaml      # CiliumLoadBalancerIPPool + L2 Policy
+│   ├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
+│   └── httproute.yaml     # Hubble UI route
+│
+├── gateway-api/           # Gateway API Resources
+│   ├── crds.yaml          # ArgoCD Application for CRDs (v1.2.0)
+│   └── gateways.yaml      # apps-gateway + infra-gateway
+│
+├── monitoring/            # Observability Stack
+│   ├── application.yaml   # kube-prometheus-stack
+│   └── httproute.yaml     # Grafana route
+│
+└── rook-ceph/             # Distributed Storage
+    ├── operator.yaml      # Rook-Ceph operator (v1.16.1)
+    ├── cluster.yaml       # CephCluster + CephBlockPool + StorageClass
+    ├── dashboard-config-job.yaml
+    └── httproute.yaml     # Rook dashboard route
+```
 
 ## Components
 
-| File/Directory | Description | Managed By |
-|----------------|-------------|------------|
-| `cilium/` | Cilium CNI configuration (kube-proxy replacement, WireGuard, Ingress, L2) | **Makefile** (pre-ArgoCD) |
-| `cert-manager.yaml` | Cert-Manager CRDs and deployment manifest | ArgoCD |
-| `cluster-issuer.yaml` | Let's Encrypt **staging** ClusterIssuer (for testing) | ArgoCD |
-| `cluster-issuer-prod.yaml` | Let's Encrypt **production** ClusterIssuer | ArgoCD |
-| `argocd-cert.yaml` | Certificate resource for ArgoCD Ingress TLS | ArgoCD |
-| `rook-ceph/` | Rook-Ceph storage operator and cluster configuration | ArgoCD |
+### cert-manager/
 
-### Cilium (Bootstrap)
+TLS certificate automation via Let's Encrypt:
 
-The `cilium/` directory is **excluded from ArgoCD** because Cilium must be installed before ArgoCD exists:
+- **ClusterIssuers**: Both staging (testing) and production issuers using DNS-01 via Route53
+- **Certificates**: Gateway TLS certs for `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`
 
-| File | Description |
-|------|-------------|
-| `cilium-values.yaml` | Helm values for Cilium (includes global HTTPS redirect) |
-| `cilium-pool.yaml` | `CiliumLoadBalancerIPPool` and `CiliumL2AnnouncementPolicy` |
+### cilium/
 
-### Rook-Ceph Storage
+CNI with Gateway API, WireGuard encryption, and L2 announcements:
 
-The `rook-ceph/` directory contains ArgoCD Applications for persistent storage:
+- **Gateway API**: Replaces traditional Ingress controller
+- **LoadBalancer Pools**: `10.9.2.249` (apps) and `10.9.2.248` (infra)
+- **Hubble**: Observability with metrics and UI at `hubble.infra.k8s.wlkr.ch`
 
-| File | Description |
-|------|-------------|
-| `operator.yaml` | Rook-Ceph operator (Helm chart v1.16.1) |
-| `cluster.yaml` | CephCluster + CephBlockPool + StorageClass |
+### gateway-api/
 
-**Configuration:**
+Kubernetes Gateway API resources:
+
+- **Gateways**: `apps-gateway` for apps, `infra-gateway` for infrastructure
+- **HTTPRoutes**: Co-located with each app (not centralized)
+
+### monitoring/
+
+Full observability stack:
+
+- **Prometheus**: Metrics collection with 10-day retention
+- **Grafana**: Dashboards at `monitoring.infra.k8s.wlkr.ch`
+- **Alertmanager**: Alert routing and notifications
+
+### rook-ceph/
+
+Distributed storage using Ceph:
 
 - **Storage**: Raw partition OSD (`/dev/disk/by-partlabel/rook-osd`)
-- **Replication**: Single replica (for single-node clusters)
+- **Dashboard**: Ceph UI at `rook.infra.k8s.wlkr.ch`
 - **StorageClass**: `rook-ceph-block` (default, RBD-based)
-- **Use case**: PVCs for apps like Home Assistant, Nextcloud, etc.
+
+## HTTPRoute Locations
+
+HTTPRoutes are co-located with their respective apps:
+
+| Service | HTTPRoute Location |
+|---------|-------------------|
+| ArgoCD | `payload/bootstrap/argocd-httproute.yaml` |
+| Grafana | `payload/core/monitoring/httproute.yaml` |
+| Hubble | `payload/core/cilium/httproute.yaml` |
+| Rook Dashboard | `payload/core/rook-ceph/httproute.yaml` |
+| Apps (nginx, etc.) | `payload/apps/<app>/httproute.yaml` |
 
 ## Usage
 
@@ -49,9 +97,24 @@ make install-argo  # Installs ArgoCD
 
 ### GitOps (after ArgoCD)
 
-The `core-infrastructure` ArgoCD Application syncs this directory, **excluding**:
+Three ArgoCD Applications manage the cluster:
 
-- `cilium/` (bootstrapped via Makefile)
-- `README.md` (not a K8s manifest)
+| Application | Path | Description |
+|-------------|------|-------------|
+| `root-app` | `payload/apps/` | User applications |
+| `core-infrastructure` | `payload/core/` | Core platform components |
+| `bootstrap-argocd` | `payload/bootstrap/` | ArgoCD's own config + HTTPRoute |
 
-Rook-Ceph is deployed automatically via sync waves (`-2` for operator, `-1` for cluster).
+Excluded from sync:
+
+- `cilium/values.yaml`, `argocd-values.yaml` (Helm values)
+- `README.md` (documentation)
+- `**/*.template` (credential templates)
+
+Sync wave ordering:
+
+1. `-10`: Gateway API CRDs
+2. `-5`: cert-manager
+3. `-2`: Rook operator
+4. `-1`: Cilium, Rook cluster
+5. `1`: Monitoring stack

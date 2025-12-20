@@ -35,10 +35,33 @@ spec:
     path: payload/core
     directory:
       recurse: true
-      exclude: "{cilium/cilium-values.yaml,README.md}"
+      exclude: "{cilium/values.yaml,README.md,**/*.template}"
   destination:
     server: https://kubernetes.default.svc
     namespace: default # individual apps should override this
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+# ArgoCD manages its own bootstrap config after initial setup
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bootstrap-argocd
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/bootstrap
+    directory:
+      recurse: false
+      exclude: "argocd-values.yaml" # Helm values excluded
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true

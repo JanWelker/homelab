@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,7 +15,7 @@ spec:
       targetRevision: 1.18.5
       helm:
         valueFiles:
-          - $values/payload/core/cilium/cilium-values.yaml
+          - $values/payload/core/cilium/values.yaml
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       ref: values
