@@ -66,25 +66,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
----
-# Management of the root applications themselves
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: cluster-apps
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/JanWelker/homelab.git
-    targetRevision: HEAD
-    path: payload
-    directory:
-      recurse: false # Only sync root-app.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
