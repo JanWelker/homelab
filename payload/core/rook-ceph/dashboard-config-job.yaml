@@ -16,12 +16,25 @@ spec:
           command: ["/bin/bash", "-c"]
           args:
             - |
-              # Wait for mgr to be ready (simplified check)
-              sleep 30
-              ceph dashboard set-grafana-api-url http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
-              ceph dashboard set-prometheus-api-host http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-              ceph dashboard set-grafana-api-ssl-verify false
-              echo "Dashboard configured successfully."
+              # Wait for mgr to be ready with retry loop
+              MAX_RETRIES=30
+              RETRY_DELAY=10
+
+              for i in $(seq 1 $MAX_RETRIES); do
+                echo "Attempt $i: Setting dashboard config..."
+                if ceph dashboard set-prometheus-api-host http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090; then
+                  echo "Successfully set Prometheus host."
+                  ceph dashboard set-grafana-api-url http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+                  ceph dashboard set-grafana-api-ssl-verify false
+                  echo "Dashboard configured successfully."
+                  exit 0
+                fi
+                echo "Command failed. Retrying in $RETRY_DELAY seconds..."
+                sleep $RETRY_DELAY
+              done
+
+              echo "Failed to configure dashboard after $MAX_RETRIES attempts."
+              exit 1
           volumeMounts:
             - name: mon-endpoint-volume
               mountPath: /etc/rook
