@@ -17,8 +17,12 @@ data:
 
     echo "=== Backup Export Started at $(date) ==="
 
-    # Namespaces to backup
-    NAMESPACES="${BACKUP_NAMESPACES:-nextcloud home-assistant}"
+    # Namespaces to backup (all namespaces if not specified)
+    if [ -z "${BACKUP_NAMESPACES:-}" ]; then
+      NAMESPACES=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
+    else
+      NAMESPACES="${BACKUP_NAMESPACES}"
+    fi
 
     for NS in $NAMESPACES; do
       echo "Processing namespace: $NS"
@@ -29,6 +33,14 @@ data:
       PVCS=$(kubectl get pvc -n "$NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
       
       for PVC in $PVCS; do
+        SC=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.storageClassName}')
+        TARGET="${TARGET_STORAGE_CLASS:-rook-ceph-block}"
+        if [ "$SC" != "$TARGET" ]; then
+           # minimal log to avoid spam
+           # echo "  Skipping $PVC ($SC != $TARGET)"
+           continue
+        fi
+        
         echo "  Backing up PVC: $PVC"
         SNAPSHOT_NAME="${NS}-${PVC}-${DATE}"
         
@@ -148,8 +160,8 @@ spec:
               env:
                 - name: RETENTION_DAYS
                   value: "90"
-                - name: BACKUP_NAMESPACES
-                  value: "nextcloud home-assistant"
+                - name: TARGET_STORAGE_CLASS
+                  value: "rook-ceph-block"
               volumeMounts:
                 - name: backup-storage
                   mountPath: /backup
