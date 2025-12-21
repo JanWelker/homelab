@@ -63,30 +63,3 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
----
-# ReferenceGrant to allow HTTPRoutes from other namespaces to reference Gateway secrets
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind: ReferenceGrant
-metadata:
-  name: allow-cross-namespace-routes
-  namespace: kube-system
-spec:
-  from:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: argocd
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: monitoring
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: rook-ceph
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: nginx-test
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: nextcloud
-  to:
-    - group: ""
-      kind: Service
