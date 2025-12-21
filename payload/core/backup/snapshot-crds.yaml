@@ -10,13 +10,18 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1" # Before other backup resources
 spec:
   project: infra
-  source:
-    repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
-    targetRevision: v8.2.0
-    path: client/config/crd
-    directory:
-      recurse: false
-      exclude: kustomization.yaml
+  sources:
+    - repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
+      targetRevision: v8.2.0
+      path: client/config/crd
+      directory:
+        recurse: false
+        exclude: kustomization.yaml
+    - repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
+      targetRevision: v8.2.0
+      path: deploy/kubernetes/snapshot-controller
+      directory:
+        recurse: false
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
