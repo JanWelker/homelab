@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: home-assistant
+  namespace: argocd
+  annotations:
+    link.argocd.argoproj.io/external-link: https://home.k8s.wlkr.ch
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  # Multiple sources: Helm chart + local manifests (HTTPRoute)
+  sources:
+    # Source 1: Home Assistant Helm chart
+    - repoURL: http://pajikos.github.io/home-assistant-helm-chart/
+      chart: home-assistant
+      targetRevision: 0.3.36
+      helm:
+        valuesObject:
+          # StatefulSet for stable storage
+          controller:
+            type: StatefulSet
+
+          # Persistence using Rook-Ceph
+          persistence:
+            enabled: true
+            storageClass: rook-ceph-block
+            size: 5Gi
+
+          # Ingress disabled - using Gateway API
+          ingress:
+            enabled: false
+
+    # Source 2: Local manifests (HTTPRoute, etc.)
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/apps/home-assistant
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: home-assistant
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
