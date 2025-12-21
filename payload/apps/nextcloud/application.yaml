@@ -22,9 +22,50 @@ spec:
             host: cloud.k8s.wlkr.ch
           ingress:
             enabled: false # Using Gateway API instead
+
+          # Persistence for Nextcloud data
           persistence:
             enabled: true
             size: 10Gi
+            storageClass: rook-ceph-block
+
+          # PostgreSQL database (instead of SQLite)
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  username: nextcloud
+                  password: nextcloud-db-password # TODO: Use existingSecret in production
+                  database: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                storageClass: rook-ceph-block
+                size: 5Gi
+
+          # Redis for caching (session, file locking)
+          redis:
+            enabled: true
+            auth:
+              enabled: true
+              password: nextcloud-redis-password # TODO: Use existingSecret in production
+            master:
+              persistence:
+                enabled: true
+                storageClass: rook-ceph-block
+                size: 1Gi
+            replica:
+              persistence:
+                enabled: true
+                storageClass: rook-ceph-block
+                size: 1Gi
+
+          # Background jobs (cron)
+          cronjob:
+            enabled: true
+            type: sidecar # Runs as sidecar container
+
     # Source 2: Local manifests (HTTPRoute, etc.)
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
