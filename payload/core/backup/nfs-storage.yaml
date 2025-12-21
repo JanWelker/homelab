@@ -1,33 +1,33 @@
 ---
-# NFS PersistentVolume for Velero backups
+# NFS PersistentVolume for backup exports
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: velero-backups-nfs
+  name: backup-nfs
   labels:
     type: nfs
-    app: velero
+    app: backup
 spec:
   capacity:
     storage: 500Gi
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: nfs-velero
+  storageClassName: nfs-backup
   nfs:
     server: bsnas1.somuch.cloud
-    path: /mnt/data/k8s/velero
+    path: /mnt/data/k8s/backup
 ---
 # PVC to claim the NFS volume
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: velero-backups
-  namespace: velero
+  name: backup-storage
+  namespace: backup
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: nfs-velero
+  storageClassName: nfs-backup
   resources:
     requests:
       storage: 500Gi
