@@ -32,6 +32,18 @@ spec:
           ingress:
             enabled: false
 
+          # Home Assistant configuration for reverse proxy
+          configuration:
+            enabled: true
+            templateConfig: |-
+              # Configure trusted proxies for Gateway API
+              http:
+                use_x_forwarded_for: true
+                trusted_proxies:
+                  - 10.0.0.0/8
+                  - 172.16.0.0/12
+                  - 192.168.0.0/16
+
     # Source 2: Local manifests (HTTPRoute, etc.)
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
