@@ -14,6 +14,8 @@ spec:
     repoURL: https://github.com/JanWelker/homelab.git
     targetRevision: HEAD
     path: payload/apps/nginx-test
+    directory:
+      exclude: "application.yaml" # Don't include the Application itself
   destination:
     server: https://kubernetes.default.svc
     namespace: nginx-test

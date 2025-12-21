@@ -10,19 +10,27 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://nextcloud.github.io/helm/
-    chart: nextcloud
-    targetRevision: 8.7.0
-    helm:
-      valuesObject:
-        nextcloud:
-          host: cloud.k8s.wlkr.ch
-        ingress:
-          enabled: false # Using Gateway API instead
-        persistence:
-          enabled: true
-          size: 10Gi
+  # Multiple sources: Helm chart + local manifests (HTTPRoute)
+  sources:
+    # Source 1: Nextcloud Helm chart
+    - repoURL: https://nextcloud.github.io/helm/
+      chart: nextcloud
+      targetRevision: 8.7.0
+      helm:
+        valuesObject:
+          nextcloud:
+            host: cloud.k8s.wlkr.ch
+          ingress:
+            enabled: false # Using Gateway API instead
+          persistence:
+            enabled: true
+            size: 10Gi
+    # Source 2: Local manifests (HTTPRoute, etc.)
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/apps/nextcloud
+      directory:
+        exclude: "application.yaml" # Don't include the Application itself
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud
