@@ -1,0 +1,21 @@
+---
+# Velero BackupStorageLocation using local filesystem (NFS-mounted)
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: nfs-backup
+  namespace: velero
+spec:
+  provider: velero.io/aws # Required even for local storage
+  objectStorage:
+    bucket: velero # Directory name within the NFS mount
+  config:
+    region: local
+    s3ForcePathStyle: "true"
+    s3Url: "" # Empty for local filesystem
+  default: true
+  # Use the NFS PVC as the backup location
+  # Note: Velero needs a plugin for pure NFS; we'll use Restic which stores to the PVC
+---
+# Alternative: Use a ConfigMap to configure Restic repository path
+# Restic will store backups in the velero namespace's default location
