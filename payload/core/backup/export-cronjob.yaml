@@ -25,6 +25,9 @@ data:
     fi
 
     for NS in $NAMESPACES; do
+      if [ "$NS" = "backup" ]; then
+        continue
+      fi
       echo "Processing namespace: $NS"
       BACKUP_DIR="${BACKUP_ROOT}/${NS}/${DATE}"
       mkdir -p "$BACKUP_DIR"
