@@ -155,6 +155,8 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: backup
+              securityContext:
+                runAsUser: 0
               image: bitnami/kubectl:latest
               command: ["/bin/bash", "/scripts/backup.sh"]
               env:
