@@ -76,12 +76,12 @@ data:
         STORAGE_CLASS=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.storageClassName}')
         SIZE=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.resources.requests.storage}')
         
-        cat <<EOF | kubectl apply -f -
+            cat <<EOF | kubectl apply -f -
     apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
       name: ${TEMP_PVC}
-      namespace: backup
+      namespace: ${NS}
     spec:
       storageClassName: ${STORAGE_CLASS}
       dataSource:
@@ -98,7 +98,7 @@ data:
         # Wait for PVC to be bound
         echo "  Waiting for restore PVC..."
         for i in {1..60}; do
-          STATUS=$(kubectl get pvc "$TEMP_PVC" -n backup -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
+          STATUS=$(kubectl get pvc "$TEMP_PVC" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Pending")
           if [ "$STATUS" = "Bound" ]; then
             echo "  Restore PVC bound!"
             break
@@ -115,7 +115,7 @@ data:
     kind: Pod
     metadata:
       name: ${MOVER_POD}
-      namespace: backup
+      namespace: ${NS}
     spec:
       restartPolicy: Never
       securityContext:
@@ -142,28 +142,29 @@ data:
         persistentVolumeClaim:
           claimName: ${TEMP_PVC}
       - name: backup
-        persistentVolumeClaim:
-          claimName: backup-storage
+        nfs:
+          server: ${NFS_SERVER}
+          path: ${NFS_PATH}
     EOF
         
         # Wait for mover pod to finish
         echo "  Waiting for data copy..."
         for i in {1..300}; do # 25 minutes timeout
-          PHASE=$(kubectl get pod "$MOVER_POD" -n backup -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+          PHASE=$(kubectl get pod "$MOVER_POD" -n "$NS" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
           if [ "$PHASE" = "Succeeded" ]; then
             echo "  Data copy succeeded!"
             break
           elif [ "$PHASE" = "Failed" ]; then
             echo "  Data copy FAILED!"
-            kubectl logs "$MOVER_POD" -n backup || true
+            kubectl logs "$MOVER_POD" -n "$NS" || true
             break # Proceed to cleanup but log error
           fi
           sleep 5
         done
         
         # Cleanup
-        kubectl delete pod "$MOVER_POD" -n backup --ignore-not-found=true
-        kubectl delete pvc "$TEMP_PVC" -n backup --ignore-not-found=true
+        kubectl delete pod "$MOVER_POD" -n "$NS" --ignore-not-found=true
+        kubectl delete pvc "$TEMP_PVC" -n "$NS" --ignore-not-found=true
         
         echo "  Snapshot ${SNAPSHOT_NAME} backed up to NFS"
       done
@@ -175,6 +176,7 @@ data:
 
     # Cleanup old snapshots
     for NS in $NAMESPACES; do
+      if [ "$NS" = "backup" ]; then continue; fi
       OLD_SNAPSHOTS=$(kubectl get volumesnapshots -n "$NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
       for SNAP in $OLD_SNAPSHOTS; do
         CREATED=$(kubectl get volumesnapshot "$SNAP" -n "$NS" -o jsonpath='{.metadata.creationTimestamp}')
@@ -219,6 +221,10 @@ spec:
                   value: "90"
                 - name: TARGET_STORAGE_CLASS
                   value: "rook-ceph-block"
+                - name: NFS_SERVER
+                  value: "bsnas1.somuch.cloud"
+                - name: NFS_PATH
+                  value: "/mnt/data/k8s/backup"
               volumeMounts:
                 - name: backup-storage
                   mountPath: /backup
