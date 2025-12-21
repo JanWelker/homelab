@@ -103,14 +103,66 @@ data:
           sleep 5
         done
         
-        # Mount and copy (using a temporary pod would be needed here)
-        # For simplicity, we'll just record the snapshot info
-        echo "${SNAPSHOT_NAME}" >> "${BACKUP_DIR}/snapshots.txt"
+        # Create data mover pod
+        MOVER_POD="${SNAPSHOT_NAME}-mover"
+        echo "  Starting data mover pod: ${MOVER_POD}"
         
-        # Cleanup temporary PVC (keep snapshots for recovery)
+        cat <<EOF | kubectl apply -f -
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: ${MOVER_POD}
+      namespace: backup
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 0  # Run as root for NFS write
+      containers:
+      - name: mover
+        image: alpine:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "Starting backup of ${PVC}..."
+            mkdir -p /backup/${NS}/${DATE}
+            # Archive data to NFS
+            tar czf /backup/${NS}/${DATE}/${PVC}.tar.gz -C /restore .
+            echo "Backup complete!"
+        volumeMounts:
+        - name: restore
+          mountPath: /restore
+          readOnly: true
+        - name: backup
+          mountPath: /backup
+      volumes:
+      - name: restore
+        persistentVolumeClaim:
+          claimName: ${TEMP_PVC}
+      - name: backup
+        persistentVolumeClaim:
+          claimName: backup-storage
+    EOF
+        
+        # Wait for mover pod to finish
+        echo "  Waiting for data copy..."
+        for i in {1..300}; do # 25 minutes timeout
+          PHASE=$(kubectl get pod "$MOVER_POD" -n backup -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+          if [ "$PHASE" = "Succeeded" ]; then
+            echo "  Data copy succeeded!"
+            break
+          elif [ "$PHASE" = "Failed" ]; then
+            echo "  Data copy FAILED!"
+            kubectl logs "$MOVER_POD" -n backup || true
+            break # Proceed to cleanup but log error
+          fi
+          sleep 5
+        done
+        
+        # Cleanup
+        kubectl delete pod "$MOVER_POD" -n backup --ignore-not-found=true
         kubectl delete pvc "$TEMP_PVC" -n backup --ignore-not-found=true
         
-        echo "  Snapshot ${SNAPSHOT_NAME} created and logged"
+        echo "  Snapshot ${SNAPSHOT_NAME} backed up to NFS"
       done
     done
 
