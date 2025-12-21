@@ -1,0 +1,37 @@
+---
+# Central HTTP to HTTPS redirect for apps-gateway
+# This catches all HTTP traffic and redirects to HTTPS
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-to-https-redirect
+  namespace: kube-system
+spec:
+  parentRefs:
+    - name: apps-gateway
+      namespace: kube-system
+      sectionName: http # Only attach to HTTP listener
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+# Central HTTP to HTTPS redirect for infra-gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: infra-http-to-https-redirect
+  namespace: kube-system
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+      sectionName: http # Only attach to HTTP listener
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
