@@ -106,8 +106,12 @@ sequenceDiagram
 ├── payload                 # K8s Manifests & Bootstrap scripts
 │   ├── root-app.yaml       # The "App of Apps" entry point
 │   ├── apps/               # ArgoCD Applications
-│   │   ├── nginx-test.yaml
-│   │   └── nginx-test/
+│   │   └── nginx-test/     # User app directory
+│   │       ├── application.yaml
+│   │       ├── deployment.yaml
+│   │       ├── httproute.yaml
+│   │       ├── namespace.yaml
+│   │       └── service.yaml
 │   ├── bootstrap/          # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── argocd-values.yaml
 │   │   └── argocd-httproute.yaml

@@ -2,21 +2,30 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: nginx-test
+  name: nextcloud
   namespace: argocd
   annotations:
-    link.argocd.argoproj.io/external-link: https://nginx.k8s.wlkr.ch
+    link.argocd.argoproj.io/external-link: https://cloud.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: https://github.com/JanWelker/homelab.git
-    targetRevision: HEAD
-    path: payload/apps/nginx-test
+    repoURL: https://nextcloud.github.io/helm/
+    chart: nextcloud
+    targetRevision: 8.7.0
+    helm:
+      valuesObject:
+        nextcloud:
+          host: cloud.k8s.wlkr.ch
+        ingress:
+          enabled: false # Using Gateway API instead
+        persistence:
+          enabled: true
+          size: 10Gi
   destination:
     server: https://kubernetes.default.svc
-    namespace: nginx-test
+    namespace: nextcloud
   syncPolicy:
     automated:
       prune: true

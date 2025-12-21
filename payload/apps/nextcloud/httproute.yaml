@@ -1,0 +1,17 @@
+---
+# Nextcloud HTTPRoute - Apps Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  parentRefs:
+    - name: apps-gateway
+      namespace: kube-system
+  hostnames:
+    - "cloud.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: nextcloud
+          port: 8080
