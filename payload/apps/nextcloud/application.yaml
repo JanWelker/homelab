@@ -20,6 +20,19 @@ spec:
         valuesObject:
           nextcloud:
             host: cloud.k8s.wlkr.ch
+            # Maintenance window (3 AM UTC - low usage time)
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+
+          # HTTPS configuration
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+
           ingress:
             enabled: false # Using Gateway API instead
 
