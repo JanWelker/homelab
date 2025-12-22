@@ -39,14 +39,3 @@ spec:
       keepMonthly: 6
     failedJobsHistoryLimit: 1
     successfulJobsHistoryLimit: 1
-
-  # Volume configuration - mount the NFS PVC for backup storage
-  podVolumes:
-    - name: backup-storage
-      persistentVolumeClaim:
-        claimName: k8up-backup-storage
-
-  # Mount the volume into backup pods
-  volumeMounts:
-    - name: backup-storage
-      mountPath: /backup
