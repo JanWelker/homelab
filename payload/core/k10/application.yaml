@@ -15,9 +15,15 @@ spec:
     targetRevision: 8.0.15
     helm:
       valuesObject:
+        # Disable network policies to allow pod communication with Cilium CNI
+        networkPolicy:
+          create: false
         auth:
           tokenAuth:
             enabled: true
+        # External gateway configuration for ingress routing
+        externalGateway:
+          create: false # We use our own HTTPRoute
         ingress:
           create: false
         prometheus:
