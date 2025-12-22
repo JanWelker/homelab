@@ -1,0 +1,51 @@
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"k8up.io/v1","kind":"Schedule","metadata":{"annotations":{"argocd.argoproj.io/sync-options":"SkipDryRunOnMissingResource=true"},"labels":{"argocd.argoproj.io/instance":"core-infrastructure"},"name":"daily-backup","namespace":"backup"},"spec":{"backend":{"local":{"mountPath":"/mnt/backup"},"repoPasswordSecretRef":{"key":"password","name":"backup-repo-creds"},"volumeMounts":[{"mountPath":"/mnt/backup","name":"backup-storage"}]},"backup":{"failedJobsHistoryLimit":3,"promURL":"http://prometheus-operated.monitoring.svc:9090","schedule":"0 3 * * *","successfulJobsHistoryLimit":3},"check":{"schedule":"0 5 * * 1"},"prune":{"retention":{"keepDaily":7,"keepMonthly":3,"keepWeekly":4},"schedule":"0 5 * * 0"},"volumes":[{"name":"backup-storage","persistentVolumeClaim":{"claimName":"backup-storage"}}]}}
+  creationTimestamp: "2025-12-22T13:24:02Z"
+  finalizers:
+  - k8up.io/schedule
+  generation: 3
+  labels:
+    argocd.argoproj.io/instance: core-infrastructure
+  name: daily-backup
+  namespace: backup
+  resourceVersion: "1201981"
+  uid: e72081e3-7fbe-47b9-ad56-d220c2a85377
+spec:
+  backend:
+    local:
+      mountPath: /mnt/backup
+    repoPasswordSecretRef:
+      key: password
+      name: backup-repo-creds
+    volumeMounts:
+    - mountPath: /mnt/backup
+      name: backup-storage
+  backup:
+    failedJobsHistoryLimit: 3
+    promURL: http://prometheus-operated.monitoring.svc:9090
+    resources: {}
+    schedule: 0 3 * * *
+    successfulJobsHistoryLimit: 3
+  check:
+    resources: {}
+    schedule: 0 5 * * 1
+  prune:
+    resources: {}
+    retention:
+      keepDaily: 7
+      keepMonthly: 3
+      keepWeekly: 4
+    schedule: 0 5 * * 0
+  resourceRequirementsTemplate: {}
+status:
+  conditions:
+  - lastTransitionTime: "2025-12-22T13:24:08Z"
+    message: The resource is ready
+    reason: Ready
+    status: "True"
+    type: Ready

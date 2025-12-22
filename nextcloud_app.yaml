@@ -1,0 +1,896 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{"link.argocd.argoproj.io/external-link":"https://cloud.k8s.wlkr.ch"},"finalizers":["resources-finalizer.argocd.argoproj.io"],"labels":{"argocd.argoproj.io/instance":"root-app"},"name":"nextcloud","namespace":"argocd"},"spec":{"destination":{"namespace":"nextcloud","server":"https://kubernetes.default.svc"},"project":"apps","sources":[{"chart":"nextcloud","helm":{"valuesObject":{"cronjob":{"enabled":true,"type":"sidecar"},"ingress":{"enabled":false},"nextcloud":{"configs":{"maintenance.config.php":"\u003c?php\n$CONFIG = array (\n  'maintenance_window_start' =\u003e 3,\n);"},"host":"cloud.k8s.wlkr.ch"},"persistence":{"enabled":true,"size":"10Gi","storageClass":"rook-ceph-block"},"phpClientHttpsFix":{"enabled":true,"protocol":"https"},"postgresql":{"enabled":true,"global":{"postgresql":{"auth":{"database":"nextcloud","password":"nextcloud-db-password","username":"nextcloud"}}},"primary":{"persistence":{"enabled":true,"size":"5Gi","storageClass":"rook-ceph-block"}}},"redis":{"auth":{"enabled":true,"password":"nextcloud-redis-password"},"enabled":true,"master":{"persistence":{"enabled":true,"size":"1Gi","storageClass":"rook-ceph-block"}},"replica":{"persistence":{"enabled":true,"size":"1Gi","storageClass":"rook-ceph-block"}}}}},"repoURL":"https://nextcloud.github.io/helm/","targetRevision":"8.7.0"},{"directory":{"exclude":"application.yaml"},"path":"payload/apps/nextcloud","repoURL":"https://github.com/JanWelker/homelab.git","targetRevision":"HEAD"}],"syncPolicy":{"automated":{"prune":true,"selfHeal":true},"syncOptions":["CreateNamespace=true"]}}}
+    link.argocd.argoproj.io/external-link: https://cloud.k8s.wlkr.ch
+  creationTimestamp: "2025-12-21T11:29:48Z"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  generation: 2184
+  labels:
+    argocd.argoproj.io/instance: root-app
+  name: nextcloud
+  namespace: argocd
+  resourceVersion: "1203472"
+  uid: 63571e30-0ed5-403d-b396-4f38a37a2f17
+spec:
+  destination:
+    namespace: nextcloud
+    server: https://kubernetes.default.svc
+  project: apps
+  sources:
+  - chart: nextcloud
+    helm:
+      valuesObject:
+        cronjob:
+          enabled: true
+          type: sidecar
+        ingress:
+          enabled: false
+        nextcloud:
+          configs:
+            maintenance.config.php: |-
+              <?php
+              $CONFIG = array (
+                'maintenance_window_start' => 3,
+              );
+          host: cloud.k8s.wlkr.ch
+        persistence:
+          enabled: true
+          size: 10Gi
+          storageClass: rook-ceph-block
+        phpClientHttpsFix:
+          enabled: true
+          protocol: https
+        postgresql:
+          enabled: true
+          global:
+            postgresql:
+              auth:
+                database: nextcloud
+                password: nextcloud-db-password
+                username: nextcloud
+          primary:
+            persistence:
+              enabled: true
+              size: 5Gi
+              storageClass: rook-ceph-block
+        redis:
+          auth:
+            enabled: true
+            password: nextcloud-redis-password
+          enabled: true
+          master:
+            persistence:
+              enabled: true
+              size: 1Gi
+              storageClass: rook-ceph-block
+          replica:
+            persistence:
+              enabled: true
+              size: 1Gi
+              storageClass: rook-ceph-block
+    repoURL: https://nextcloud.github.io/helm/
+    targetRevision: 8.7.0
+  - directory:
+      exclude: application.yaml
+      jsonnet: {}
+    path: payload/apps/nextcloud
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+status:
+  controllerNamespace: argocd
+  health:
+    status: Healthy
+  history:
+  - deployStartedAt: "2025-12-21T11:29:48Z"
+    deployedAt: "2025-12-21T11:29:50Z"
+    id: 0
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - 596c312644c8966fa42b13c15e74a4c0016b84b4
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T17:51:14Z"
+    deployedAt: "2025-12-21T17:51:16Z"
+    id: 1
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - b6d56489b50f27a7f41ee0a1e45bb72df28bd007
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T02:03:14Z"
+    deployedAt: "2025-12-22T02:03:16Z"
+    id: 2
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - eb68cb8f3d1470fab5c0084ba1c40000bf7e3171
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:27:14Z"
+    deployedAt: "2025-12-22T13:27:16Z"
+    id: 3
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - ce6f33781e7108ae2162c30a8a348d1de9c07705
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:34:55Z"
+    deployedAt: "2025-12-22T13:34:57Z"
+    id: 4
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - 4eedba29af2b514f48d923faa3b2b1b1cc4d9a62
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:39:24Z"
+    deployedAt: "2025-12-22T13:39:26Z"
+    id: 5
+    initiatedBy:
+      automated: true
+    revisions:
+    - 8.7.0
+    - 5dc387d7f4872acede6d2e725e82640331ad0284
+    source:
+      repoURL: ""
+    sources:
+    - chart: nextcloud
+      helm:
+        valuesObject:
+          cronjob:
+            enabled: true
+            type: sidecar
+          ingress:
+            enabled: false
+          nextcloud:
+            configs:
+              maintenance.config.php: |-
+                <?php
+                $CONFIG = array (
+                  'maintenance_window_start' => 3,
+                );
+            host: cloud.k8s.wlkr.ch
+          persistence:
+            enabled: true
+            size: 10Gi
+            storageClass: rook-ceph-block
+          phpClientHttpsFix:
+            enabled: true
+            protocol: https
+          postgresql:
+            enabled: true
+            global:
+              postgresql:
+                auth:
+                  database: nextcloud
+                  password: nextcloud-db-password
+                  username: nextcloud
+            primary:
+              persistence:
+                enabled: true
+                size: 5Gi
+                storageClass: rook-ceph-block
+          redis:
+            auth:
+              enabled: true
+              password: nextcloud-redis-password
+            enabled: true
+            master:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+            replica:
+              persistence:
+                enabled: true
+                size: 1Gi
+                storageClass: rook-ceph-block
+      repoURL: https://nextcloud.github.io/helm/
+      targetRevision: 8.7.0
+    - directory:
+        exclude: application.yaml
+        jsonnet: {}
+      path: payload/apps/nextcloud
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  operationState:
+    finishedAt: "2025-12-22T13:40:49Z"
+    message: successfully synced (all tasks run)
+    operation:
+      initiatedBy:
+        automated: true
+      retry:
+        limit: 5
+      sync:
+        prune: true
+        resources:
+        - group: k8up.io
+          kind: Schedule
+          name: daily-backup
+        revisions:
+        - 8.7.0
+        - 5dc387d7f4872acede6d2e725e82640331ad0284
+        syncOptions:
+        - CreateNamespace=true
+    phase: Succeeded
+    startedAt: "2025-12-22T13:40:49Z"
+    syncResult:
+      resources:
+      - group: k8up.io
+        hookPhase: Running
+        kind: Schedule
+        message: schedule.k8up.io/daily-backup configured
+        name: daily-backup
+        namespace: nextcloud
+        status: Synced
+        syncPhase: Sync
+        version: v1
+      revision: ""
+      revisions:
+      - 8.7.0
+      - 5dc387d7f4872acede6d2e725e82640331ad0284
+      source:
+        repoURL: ""
+      sources:
+      - chart: nextcloud
+        helm:
+          valuesObject:
+            cronjob:
+              enabled: true
+              type: sidecar
+            ingress:
+              enabled: false
+            nextcloud:
+              configs:
+                maintenance.config.php: |-
+                  <?php
+                  $CONFIG = array (
+                    'maintenance_window_start' => 3,
+                  );
+              host: cloud.k8s.wlkr.ch
+            persistence:
+              enabled: true
+              size: 10Gi
+              storageClass: rook-ceph-block
+            phpClientHttpsFix:
+              enabled: true
+              protocol: https
+            postgresql:
+              enabled: true
+              global:
+                postgresql:
+                  auth:
+                    database: nextcloud
+                    password: nextcloud-db-password
+                    username: nextcloud
+              primary:
+                persistence:
+                  enabled: true
+                  size: 5Gi
+                  storageClass: rook-ceph-block
+            redis:
+              auth:
+                enabled: true
+                password: nextcloud-redis-password
+              enabled: true
+              master:
+                persistence:
+                  enabled: true
+                  size: 1Gi
+                  storageClass: rook-ceph-block
+              replica:
+                persistence:
+                  enabled: true
+                  size: 1Gi
+                  storageClass: rook-ceph-block
+        repoURL: https://nextcloud.github.io/helm/
+        targetRevision: 8.7.0
+      - directory:
+          exclude: application.yaml
+          jsonnet: {}
+        path: payload/apps/nextcloud
+        repoURL: https://github.com/JanWelker/homelab.git
+        targetRevision: HEAD
+  reconciledAt: "2025-12-22T13:40:49Z"
+  resources:
+  - kind: ConfigMap
+    name: nextcloud-config
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ConfigMap
+    name: nextcloud-redis-configuration
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ConfigMap
+    name: nextcloud-redis-health
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ConfigMap
+    name: nextcloud-redis-scripts
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: PersistentVolumeClaim
+    name: backup-repo
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: PersistentVolumeClaim
+    name: nextcloud-nextcloud
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: Secret
+    name: backup-repo-creds
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: Secret
+    name: nextcloud
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: Secret
+    name: nextcloud-db
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: Secret
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: Secret
+    name: nextcloud-redis
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud-postgresql-hl
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud-redis-headless
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud-redis-master
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: Service
+    name: nextcloud-redis-replicas
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ServiceAccount
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ServiceAccount
+    name: nextcloud-redis-master
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - kind: ServiceAccount
+    name: nextcloud-redis-replica
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: apps
+    health:
+      status: Healthy
+    kind: Deployment
+    name: nextcloud
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: apps
+    health:
+      message: 'partitioned roll out complete: 1 new pods have been updated...'
+      status: Healthy
+    kind: StatefulSet
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: apps
+    health:
+      message: statefulset rolling update complete 1 pods at revision nextcloud-redis-master-54f8db4b...
+      status: Healthy
+    kind: StatefulSet
+    name: nextcloud-redis-master
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: apps
+    health:
+      message: statefulset rolling update complete 3 pods at revision nextcloud-redis-replicas-664d4868c4...
+      status: Healthy
+    kind: StatefulSet
+    name: nextcloud-redis-replicas
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: nextcloud
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: k8up.io
+    kind: Schedule
+    name: daily-backup
+    namespace: nextcloud
+    status: OutOfSync
+    version: v1
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+    name: nextcloud-redis
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: policy
+    health:
+      message: PodDisruptionBudget has SufficientPods
+      status: Healthy
+    kind: PodDisruptionBudget
+    name: nextcloud-postgresql
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: policy
+    health:
+      message: PodDisruptionBudget has SufficientPods
+      status: Healthy
+    kind: PodDisruptionBudget
+    name: nextcloud-redis-master
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  - group: policy
+    health:
+      message: PodDisruptionBudget has SufficientPods
+      status: Healthy
+    kind: PodDisruptionBudget
+    name: nextcloud-redis-replicas
+    namespace: nextcloud
+    status: Synced
+    version: v1
+  sourceTypes:
+  - Helm
+  - Directory
+  summary:
+    externalURLs:
+    - https://cloud.k8s.wlkr.ch
+    images:
+    - docker.io/bitnamilegacy/postgresql:17.5.0-debian-12-r3
+    - docker.io/bitnamilegacy/redis:8.0.1-debian-12-r1
+    - docker.io/library/nextcloud:32.0.3-apache
+  sync:
+    comparedTo:
+      destination:
+        namespace: nextcloud
+        server: https://kubernetes.default.svc
+      source:
+        repoURL: ""
+      sources:
+      - chart: nextcloud
+        helm:
+          valuesObject:
+            cronjob:
+              enabled: true
+              type: sidecar
+            ingress:
+              enabled: false
+            nextcloud:
+              configs:
+                maintenance.config.php: |-
+                  <?php
+                  $CONFIG = array (
+                    'maintenance_window_start' => 3,
+                  );
+              host: cloud.k8s.wlkr.ch
+            persistence:
+              enabled: true
+              size: 10Gi
+              storageClass: rook-ceph-block
+            phpClientHttpsFix:
+              enabled: true
+              protocol: https
+            postgresql:
+              enabled: true
+              global:
+                postgresql:
+                  auth:
+                    database: nextcloud
+                    password: nextcloud-db-password
+                    username: nextcloud
+              primary:
+                persistence:
+                  enabled: true
+                  size: 5Gi
+                  storageClass: rook-ceph-block
+            redis:
+              auth:
+                enabled: true
+                password: nextcloud-redis-password
+              enabled: true
+              master:
+                persistence:
+                  enabled: true
+                  size: 1Gi
+                  storageClass: rook-ceph-block
+              replica:
+                persistence:
+                  enabled: true
+                  size: 1Gi
+                  storageClass: rook-ceph-block
+        repoURL: https://nextcloud.github.io/helm/
+        targetRevision: 8.7.0
+      - directory:
+          exclude: application.yaml
+          jsonnet: {}
+        path: payload/apps/nextcloud
+        repoURL: https://github.com/JanWelker/homelab.git
+        targetRevision: HEAD
+    revisions:
+    - 8.7.0
+    - 5dc387d7f4872acede6d2e725e82640331ad0284
+    status: OutOfSync

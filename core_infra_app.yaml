@@ -1,0 +1,421 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"argoproj.io/v1alpha1","kind":"Application","metadata":{"annotations":{},"name":"core-infrastructure","namespace":"argocd"},"spec":{"destination":{"namespace":"default","server":"https://kubernetes.default.svc"},"project":"default","source":{"directory":{"exclude":"{cilium/values.yaml,README.md,**/*.template}","recurse":true},"path":"payload/core","repoURL":"https://github.com/JanWelker/homelab.git","targetRevision":"HEAD"},"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}
+  creationTimestamp: "2025-12-20T14:01:21Z"
+  generation: 8417
+  name: core-infrastructure
+  namespace: argocd
+  resourceVersion: "1203471"
+  uid: 0dcbb1f2-12b9-4524-812b-4526b813a8f0
+spec:
+  destination:
+    namespace: default
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    directory:
+      exclude: '{cilium/values.yaml,README.md,**/*.template}'
+      jsonnet: {}
+      recurse: true
+    path: payload/core
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+status:
+  controllerNamespace: argocd
+  health:
+    status: Healthy
+  history:
+  - deployStartedAt: "2025-12-21T18:01:49Z"
+    deployedAt: "2025-12-21T18:02:10Z"
+    id: 19
+    initiatedBy:
+      automated: true
+    revision: dbae0e140ec73bb7562732f2c29b4ce2cc7bb692
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:05:18Z"
+    deployedAt: "2025-12-21T18:05:39Z"
+    id: 20
+    initiatedBy:
+      automated: true
+    revision: f46345e121c623bfc7112e9b7bec857a0b271ec2
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:09:09Z"
+    deployedAt: "2025-12-21T18:09:31Z"
+    id: 21
+    initiatedBy:
+      automated: true
+    revision: 3e0df7232bb9e430c73f198129a0998eb2f1eba5
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:12:40Z"
+    deployedAt: "2025-12-21T18:13:02Z"
+    id: 22
+    initiatedBy:
+      automated: true
+    revision: 154d6e83636af1db4f082d930aab884c380ab10e
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:14:35Z"
+    deployedAt: "2025-12-21T18:14:57Z"
+    id: 23
+    initiatedBy:
+      automated: true
+    revision: 10444bbe56bda4df52664bc3c8a346cc3680b23c
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:17:05Z"
+    deployedAt: "2025-12-21T18:17:28Z"
+    id: 24
+    initiatedBy:
+      automated: true
+    revision: 312aa46b556db871eae6784d8facf1cded5bd4cd
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-21T18:20:06Z"
+    deployedAt: "2025-12-21T18:20:27Z"
+    id: 25
+    initiatedBy:
+      automated: true
+    revision: 4aeba6654ce940e578520aaaabd86164fb4e69aa
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:23:49Z"
+    deployedAt: "2025-12-22T13:24:12Z"
+    id: 26
+    initiatedBy:
+      automated: true
+    revision: ce6f33781e7108ae2162c30a8a348d1de9c07705
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:34:54Z"
+    deployedAt: "2025-12-22T13:35:16Z"
+    id: 27
+    initiatedBy:
+      automated: true
+    revision: 4eedba29af2b514f48d923faa3b2b1b1cc4d9a62
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  - deployStartedAt: "2025-12-22T13:39:25Z"
+    deployedAt: "2025-12-22T13:39:46Z"
+    id: 28
+    initiatedBy:
+      automated: true
+    revision: 5dc387d7f4872acede6d2e725e82640331ad0284
+    source:
+      directory:
+        exclude: '{cilium/values.yaml,README.md,**/*.template}'
+        jsonnet: {}
+        recurse: true
+      path: payload/core
+      repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+  operationState:
+    finishedAt: "2025-12-22T13:40:49Z"
+    message: successfully synced (all tasks run)
+    operation:
+      initiatedBy:
+        automated: true
+      retry:
+        limit: 5
+      sync:
+        prune: true
+        resources:
+        - group: k8up.io
+          kind: Schedule
+          name: daily-backup
+        revision: 5dc387d7f4872acede6d2e725e82640331ad0284
+    phase: Succeeded
+    startedAt: "2025-12-22T13:40:49Z"
+    syncResult:
+      resources:
+      - group: k8up.io
+        hookPhase: Running
+        kind: Schedule
+        message: schedule.k8up.io/daily-backup configured
+        name: daily-backup
+        namespace: backup
+        status: Synced
+        syncPhase: Sync
+        version: v1
+      revision: 5dc387d7f4872acede6d2e725e82640331ad0284
+      source:
+        directory:
+          exclude: '{cilium/values.yaml,README.md,**/*.template}'
+          jsonnet: {}
+          recurse: true
+        path: payload/core
+        repoURL: https://github.com/JanWelker/homelab.git
+        targetRevision: HEAD
+  reconciledAt: "2025-12-22T13:40:49Z"
+  resources:
+  - kind: Namespace
+    name: backup
+    status: Synced
+    version: v1
+  - kind: PersistentVolume
+    name: backup-nfs
+    status: Synced
+    version: v1
+  - health:
+      status: Healthy
+    kind: PersistentVolumeClaim
+    name: backup-storage
+    namespace: backup
+    status: Synced
+    version: v1
+  - group: argoproj.io
+    kind: Application
+    name: cert-manager
+    namespace: argocd
+    status: Synced
+    syncWave: -5
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: cilium
+    namespace: argocd
+    status: Synced
+    syncWave: -1
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: gateway-api-crds
+    namespace: argocd
+    status: Synced
+    syncWave: -10
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: k8up
+    namespace: argocd
+    status: Synced
+    syncWave: -1
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: kube-prometheus-stack
+    namespace: argocd
+    status: Synced
+    syncWave: 1
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: nfs-provisioner
+    namespace: argocd
+    status: Synced
+    syncWave: -1
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: rook-ceph-cluster
+    namespace: argocd
+    status: Synced
+    syncWave: -1
+    version: v1alpha1
+  - group: argoproj.io
+    kind: Application
+    name: rook-ceph-operator
+    namespace: argocd
+    status: Synced
+    syncWave: -2
+    version: v1alpha1
+  - group: cert-manager.io
+    health:
+      message: Certificate is up to date and has not expired
+      status: Healthy
+    kind: Certificate
+    name: argocd-server-tls
+    namespace: argocd
+    status: Synced
+    version: v1
+  - group: cert-manager.io
+    health:
+      message: Certificate is up to date and has not expired
+      status: Healthy
+    kind: Certificate
+    name: apps-gateway-tls
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: cert-manager.io
+    health:
+      message: Certificate is up to date and has not expired
+      status: Healthy
+    kind: Certificate
+    name: infra-gateway-tls
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: cert-manager.io
+    health:
+      message: The ACME account was registered with the ACME server
+      status: Healthy
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+    status: Synced
+    version: v1
+  - group: cert-manager.io
+    health:
+      message: The ACME account was registered with the ACME server
+      status: Healthy
+    kind: ClusterIssuer
+    name: letsencrypt-staging
+    status: Synced
+    version: v1
+  - group: cilium.io
+    kind: CiliumL2AnnouncementPolicy
+    name: default-announcement
+    status: Synced
+    version: v2alpha1
+  - group: cilium.io
+    kind: CiliumLoadBalancerIPPool
+    name: apps-pool
+    status: Synced
+    version: v2alpha1
+  - group: cilium.io
+    kind: CiliumLoadBalancerIPPool
+    name: infra-pool
+    status: Synced
+    version: v2alpha1
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: apps-gateway
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: infra-gateway
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: http-to-https-redirect
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: hubble-ui
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: infra-http-to-https-redirect
+    namespace: kube-system
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: grafana
+    namespace: monitoring
+    status: Synced
+    version: v1
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: rook-dashboard
+    namespace: rook-ceph
+    status: Synced
+    version: v1
+  - group: k8up.io
+    kind: Schedule
+    name: daily-backup
+    namespace: backup
+    status: OutOfSync
+    version: v1
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cilium-operator-ingress-fix
+    status: Synced
+    version: v1
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+    name: cilium-operator-ingress-fix
+    status: Synced
+    version: v1
+  sourceType: Directory
+  summary:
+    externalURLs:
+    - https://hubble.infra.k8s.wlkr.ch
+    - https://monitoring.infra.k8s.wlkr.ch
+    - https://rook.infra.k8s.wlkr.ch
+  sync:
+    comparedTo:
+      destination:
+        namespace: default
+        server: https://kubernetes.default.svc
+      source:
+        directory:
+          exclude: '{cilium/values.yaml,README.md,**/*.template}'
+          jsonnet: {}
+          recurse: true
+        path: payload/core
+        repoURL: https://github.com/JanWelker/homelab.git
+        targetRevision: HEAD
+    revision: 5dc387d7f4872acede6d2e725e82640331ad0284
+    status: OutOfSync
