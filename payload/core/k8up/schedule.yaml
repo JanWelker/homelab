@@ -11,7 +11,8 @@ spec:
       name: backup-repo-password
       key: password
     local:
-      mountPath: /backup
+      # k8up automatically mounts PVCs at /data/<pvc-name>
+      mountPath: /data/k8up-backup-storage
 
   # Backup configuration - runs daily at 2 AM
   backup:
