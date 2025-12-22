@@ -23,8 +23,14 @@ spec:
 
   check:
     schedule: "0 6 * * 1"
+    failedJobsHistoryLimit: 3
+    successfulJobsHistoryLimit: 3
+    resources: {}
   prune:
     schedule: "0 6 * * 0"
+    failedJobsHistoryLimit: 3
+    successfulJobsHistoryLimit: 3
+    resources: {}
     retention:
       keepDaily: 7
       keepWeekly: 4
