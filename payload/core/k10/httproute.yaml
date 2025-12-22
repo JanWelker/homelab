@@ -12,16 +12,6 @@ spec:
   hostnames:
     - "backup.infra.k8s.wlkr.ch"
   rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /k10
-      filters:
-        - type: URLRewrite
-          urlRewrite:
-            path:
-              type: ReplacePrefixMatch
-              replacePrefixMatch: /kasten-k10
-      backendRefs:
-        - name: gateway
-          port: 80
+    backendRefs:
+      - name: gateway
+        port: 80
