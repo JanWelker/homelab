@@ -1,0 +1,43 @@
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: backup
+spec:
+  backend:
+    repoPasswordSecretRef:
+      name: backup-repo-creds
+      key: password
+    local:
+      mountPath: /mnt/backup
+      pvc:
+        claimName: backup-storage
+  backup:
+    schedule: "0 3 * * *"
+    failedJobsHistoryLimit: 3
+    successfulJobsHistoryLimit: 3
+    # Backup all PVCs in the cluster using Restic
+    # K8up by default backs up the specific namespace or can be configured for others.
+    # To backup all PVCs, we usually use 'backup.k8up.io/backup: "true"' annotation on PVCs/Pods
+    # OR configure PreBackupPods (for app consistency).
+    # For robust PVC backup, K8up usually uses PVC mounting.
+    # We will verify simple PVC backup first.
+    promURL: http://prometheus-operated.monitoring.svc:9090
+  check:
+    schedule: "0 5 * * 1"
+  prune:
+    schedule: "0 5 * * 0"
+    retention:
+      keepDaily: 7
+      keepWeekly: 4
+      keepMonthly: 3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-repo-creds
+  namespace: backup
+stringData:
+  # This password performs deduplication/encryption for Restic.
+  # In a real setup, manage this via SealedSecrets or ExternalSecrets.
+  password: "change-me-to-secure-password"

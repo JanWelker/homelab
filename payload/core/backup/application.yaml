@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8up
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: core
+  source:
+    repoURL: https://k8up-io.github.io/k8up
+    chart: k8up
+    targetRevision: 4.8.6
+    helm:
+      valuesObject:
+        k8up:
+          envVars:
+            - name: BACKUP_GLOBALACCESSKEYID
+              value: "unused" # Local backend doesn't need this but chart might require structure
+            - name: BACKUP_GLOBALSECRETACCESSKEY
+              value: "unused"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backup
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
