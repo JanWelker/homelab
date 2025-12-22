@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://doc.crds.dev/github.com/k8up-io/k8up/k8up.io/Schedule/v1
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup-schedule
+  namespace: k8up-system
+spec:
+  # Backend configuration for local NFS storage
+  backend:
+    repoPasswordSecretRef:
+      name: backup-repo-password
+      key: password
+    local:
+      mountPath: /backup
+
+  # Backup configuration - runs daily at 2 AM
+  backup:
+    schedule: "0 2 * * *"
+    failedJobsHistoryLimit: 2
+    successfulJobsHistoryLimit: 2
+    # PodSecurityContext for backup pods
+    podSecurityContext:
+      runAsUser: 1000
+      fsGroup: 1000
+
+  # Check repository integrity weekly on Sundays at 3 AM
+  check:
+    schedule: "0 3 * * 0"
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 1
+
+  # Prune old backups monthly on the 1st at 4 AM
+  prune:
+    schedule: "0 4 1 * *"
+    retention:
+      keepLast: 5
+      keepDaily: 14
+      keepWeekly: 8
+      keepMonthly: 6
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 1
+
+  # Volume configuration - mount the NFS PVC for backup storage
+  podVolumes:
+    - name: backup-storage
+      persistentVolumeClaim:
+        claimName: k8up-backup-storage
+
+  # Mount the volume into backup pods
+  volumeMounts:
+    - name: backup-storage
+      mountPath: /backup
