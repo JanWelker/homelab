@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
----
+
 # NFS-based Location Profile for K10
 # This will be created via K10 API after deployment, documented here for reference
 #
@@ -28,7 +28,7 @@ metadata:
   name: k10-backup-storage
   namespace: kasten-io
 spec:
-  storageClassName: nfs-backup-provisioner
+  storageClassName: nfs-backup
   accessModes:
     - ReadWriteMany
   resources:
