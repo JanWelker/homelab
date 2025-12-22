@@ -1,0 +1,17 @@
+---
+# Kasten K10 Dashboard HTTPRoute - Infra Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: k10-dashboard
+  namespace: kasten-io
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "backup.infra.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: gateway
+          port: 8000

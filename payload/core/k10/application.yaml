@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kasten-k10
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: infra
+  source:
+    repoURL: https://charts.kasten.io/
+    chart: k10
+    targetRevision: 8.0.15 # Latest stable version as of Dec 2024
+    helm:
+      valuesObject:
+        # Basic configuration for K10
+        auth:
+          tokenAuth:
+            enabled: true
+        # Ingress configuration - we'll use Gateway API HTTPRoute instead
+        ingress:
+          create: false
+        # Prometheus metrics
+        prometheus:
+          enabled: true
+        # License - using free tier
+        eula:
+          accept: true
+          company: "homelab"
+          email: "admin@k8s.wlkr.ch"
+        # Resource configuration
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kasten-io
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

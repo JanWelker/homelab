@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -17,13 +18,13 @@ spec:
           server: bsnas1.somuch.cloud
           path: /mnt/data/k8s/backup
         storageClass:
-          name: nfs-backup-provisioner
+          name: nfs-backup
           # We don't make it default, Rook is default for block storage.
           # This SC is specifically for backup targets.
           archiveOnDelete: false
   destination:
     server: https://kubernetes.default.svc
-    namespace: backup
+    namespace: kasten-io
   syncPolicy:
     automated:
       prune: true
