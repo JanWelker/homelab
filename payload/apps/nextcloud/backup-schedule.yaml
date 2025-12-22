@@ -12,13 +12,15 @@ spec:
       key: password
     local:
       mountPath: /mnt/backup
-      pvc:
-        claimName: backup-repo
+    volumeMounts:
+      - name: backup-repo
+        mountPath: /mnt/backup
   backup:
     schedule: "0 4 * * *" # 4 AM (staggered from global 3 AM)
     failedJobsHistoryLimit: 3
     successfulJobsHistoryLimit: 3
     # This will backup all PVCs in the nextcloud namespace
+
   check:
     schedule: "0 6 * * 1"
   prune:
@@ -27,3 +29,8 @@ spec:
       keepDaily: 7
       keepWeekly: 4
       keepMonthly: 3
+
+  volumes:
+    - name: backup-repo
+      persistentVolumeClaim:
+        claimName: backup-repo
