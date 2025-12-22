@@ -19,6 +19,7 @@ spec:
     schedule: "0 4 * * *" # 4 AM (staggered from global 3 AM)
     failedJobsHistoryLimit: 3
     successfulJobsHistoryLimit: 3
+    resources: {}
     # This will backup all PVCs in the nextcloud namespace
 
   check:
@@ -35,6 +36,8 @@ spec:
       keepDaily: 7
       keepWeekly: 4
       keepMonthly: 3
+
+  resourceRequirementsTemplate: {}
 
   volumes:
     - name: backup-repo
