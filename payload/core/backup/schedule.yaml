@@ -3,6 +3,9 @@ kind: Schedule
 metadata:
   name: daily-backup
   namespace: backup
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+
 spec:
   backend:
     repoPasswordSecretRef:
