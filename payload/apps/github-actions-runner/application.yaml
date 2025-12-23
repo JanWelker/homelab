@@ -63,3 +63,11 @@ spec:
         - /metadata/annotations/actions.github.com~1runner-scale-set-name
         - /metadata/annotations/actions.github.com~1values-hash
         - /metadata/annotations/runner-scale-set-id
+    - group: actions.github.com
+      kind: AutoscalingListener
+      jqPathExpressions:
+        - .
+    - group: actions.github.com
+      kind: EphemeralRunnerSet
+      jqPathExpressions:
+        - .
