@@ -2,13 +2,13 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: arc-systems
-  namespace: argocd
+  namespace: arc-systems
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: apps
   sources:
-    - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
+    - repoURL: "ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set-controller
       targetRevision: 0.9.3
   destination:
@@ -25,13 +25,13 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: arc-runner-set
-  namespace: arc-systems
+  namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: apps
   sources:
-    - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
+    - repoURL: "ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set
       targetRevision: 0.9.3
       helm:
