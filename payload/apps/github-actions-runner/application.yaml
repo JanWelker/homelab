@@ -11,15 +11,11 @@ spec:
     - repoURL: "ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set-controller
       targetRevision: 0.9.3
-      helm:
-        valuesObject:
-          listenerRoleRules:
-            - apiGroups: ["rbac.authorization.k8s.io"]
-              resources: ["roles"]
-              verbs: ["create", "delete", "get", "patch", "update"]
-            - apiGroups: ["rbac.authorization.k8s.io"]
-              resources: ["rolebindings"]
-              verbs: ["create", "delete", "get", "patch", "update"]
+    - repoURL: "https://github.com/JanWelker/homelab.git"
+      targetRevision: HEAD
+      path: payload/apps/github-actions-runner
+      directory:
+        include: "extra-rbac.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: arc-systems
