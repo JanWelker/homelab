@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: advent-wollbi-updater
+  namespace: advent-wollbi
+  labels:
+    app: advent-wollbi
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - advent-wollbi
+                  topologyKey: "kubernetes.io/hostname"
+          containers:
+            - name: builder
+              image: python:3.11-slim
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  echo "Installing dependencies..."
+                  apt-get update && apt-get install -y git
+                  pip install pelican markdown
+
+                  if [ ! -d /app/.git ]; then
+                    echo "Cloning repository..."
+                    git clone https://github.com/JanWelker/advent.wollbi.ch /app
+                  fi
+
+                  cd /app
+
+                  echo "Pulling latest changes..."
+                  git pull
+                  echo "Building site..."
+                  pelican content -o /html
+              volumeMounts:
+                - name: html-volume
+                  mountPath: /html
+          restartPolicy: OnFailure
+          volumes:
+            - name: html-volume
+              persistentVolumeClaim:
+                claimName: advent-wollbi-www

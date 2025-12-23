@@ -23,33 +23,6 @@ spec:
           volumeMounts:
             - name: html-volume
               mountPath: /usr/share/nginx/html
-        - name: builder
-          image: python:3.11-slim
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              echo "Installing dependencies..."
-              apt-get update && apt-get install -y git
-              pip install pelican markdown
-
-              if [ ! -d /app/.git ]; then
-                echo "Cloning repository..."
-                git clone https://github.com/JanWelker/advent.wollbi.ch /app
-              fi
-
-              cd /app
-
-              while true; do
-                echo "Pulling latest changes..."
-                git pull
-                echo "Building site..."
-                pelican content -o /html
-                echo "Done. Sleeping..."
-                sleep 300
-              done
-          volumeMounts:
-            - name: html-volume
-              mountPath: /html
       volumes:
         - name: html-volume
           persistentVolumeClaim:
