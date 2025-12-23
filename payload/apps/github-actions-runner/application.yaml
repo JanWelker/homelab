@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-systems
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: action-runner
+  sources:
+    - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
+      chart: gha-runner-scale-set-controller
+      targetRevision: 0.9.3
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-systems
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: arc-runner-set
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
+      chart: gha-runner-scale-set
+      targetRevision: 0.9.3
+      helm:
+        valuesObject:
+          githubConfigUrl: "https://github.com/JanWelker/homelab"
+          githubConfigSecret: "pre-defined-secret"
+          controllerServiceAccount:
+            namespace: arc-systems
+            name: arc-systems-gha-runner-scale-set-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: arc-systems
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
