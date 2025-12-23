@@ -50,3 +50,16 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+  ignoreDifferences:
+    - group: actions.github.com
+      kind: AutoscalingRunnerSet
+      jsonPointers:
+        - /metadata/annotations/actions.github.com~1cleanup-manager-role-binding
+        - /metadata/annotations/actions.github.com~1cleanup-manager-role-name
+        - /metadata/annotations/actions.github.com~1cleanup-no-permission-service-account-name
+        - /metadata/annotations/actions.github.com~1runner-group-name
+        - /metadata/annotations/actions.github.com~1runner-scale-set-name
+        - /metadata/annotations/actions.github.com~1values-hash
+        - /metadata/annotations/runner-scale-set-id
