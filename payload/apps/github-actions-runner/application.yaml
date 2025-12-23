@@ -6,7 +6,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: action-runner
+  project: apps
   sources:
     - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set-controller
@@ -25,11 +25,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: arc-runner-set
-  namespace: argocd
+  namespace: arc-systems
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: apps
   sources:
     - repoURL: "oci://ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set
