@@ -12,6 +12,10 @@ spec:
   hostnames:
     - "nginx.k8s.wlkr.ch"
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: nginx-test
           port: 80
