@@ -1,6 +1,7 @@
 # Architecture
 
-This project provides a mechanism to deploy a Bare Metal Kubernetes Cluster using Flatcar Container Linux and Kubeadm.
+This project provides a mechanism to deploy a Bare Metal Kubernetes Cluster using
+Flatcar Container Linux and Kubeadm.
 
 ## Components
 
@@ -8,11 +9,14 @@ This project provides a mechanism to deploy a Bare Metal Kubernetes Cluster usin
 
 The machine where this project is executed.
 
-* **Ansible**: Responsible for generating the configuration files (Ignition, Kubeadm config) based on templates and variables.
+* **Ansible**: Responsible for generating the configuration files (Ignition,
+  Kubeadm config) based on templates and variables.
 * **Python Boot Server**: A custom Python script that runs:
   * **TFTP Server**: Serves the Bootloader (syslinux.efi/lpxelinux.0) and config.
-  * **HTTP Server**: Serves Ignition configs, Flatcar Kernel/Initrd, and Sysext images (`.raw`) + configs (`.conf`).
-* **Artifacts**: Directory containing downloaded OS images (Flatcar) and generated configs.
+  * **HTTP Server**: Serves Ignition configs, Flatcar Kernel/Initrd, and Sysext
+    images (`.raw`) + configs (`.conf`).
+* **Artifacts**: Directory containing downloaded OS images (Flatcar) and
+  generated configs.
 
 ### 2. Target Host (Bare Metal Node)
 

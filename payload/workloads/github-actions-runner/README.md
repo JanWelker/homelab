@@ -17,7 +17,8 @@ GitHub Actions Job → AutoscalingListener (polls Actions API) → EphemeralRunn
 
 ## Authentication
 
-Uses **GitHub App** authentication. The secret `pre-defined-secret` in the `arc-systems` namespace contains:
+Uses **GitHub App** authentication. The secret `pre-defined-secret` in the
+`arc-systems` namespace contains:
 
 - `github_app_id`: The GitHub App ID
 - `github_app_installation_id`: The installation ID for your repository/organization
@@ -44,7 +45,8 @@ minRunners: 1  # Minimum idle runners
 
 ### RBAC
 
-The `extra-rbac.yaml` file provides additional permissions for the controller to create listener Roles and RoleBindings dynamically.
+The `extra-rbac.yaml` file provides additional permissions for the controller to
+create listener Roles and RoleBindings dynamically.
 
 ## Usage
 
@@ -60,7 +62,8 @@ jobs:
 
 ## ArgoCD Notes
 
-The controller creates several resources dynamically that are excluded from ArgoCD tracking via `resource.exclusions` in `values.yaml`:
+The controller creates several resources dynamically that are excluded from
+ArgoCD tracking via `resource.exclusions` in `values.yaml`:
 
 - `AutoscalingListener`
 - `EphemeralRunnerSet`

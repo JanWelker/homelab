@@ -36,8 +36,11 @@ The `schedule.yaml` defines automated backup operations:
 
 The Restic repository password is stored in the `backup-repo-password` secret.
 
-**IMPORTANT**: Change the default password in `backup-repo-password.yaml` before deploying to production!
+**IMPORTANT**: Change the default password in `backup-repo-password.yaml` before
+deploying to production!
 
 ## Per-Application Backups
 
-To create backups for specific applications, create a `Schedule` resource in the application's namespace with the same backend configuration. See the k8up documentation for examples.
+To create backups for specific applications, create a `Schedule` resource in the
+application's namespace with the same backend configuration. See the k8up
+documentation for examples.

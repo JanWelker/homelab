@@ -40,7 +40,8 @@ core/
 
 TLS certificate automation via Let's Encrypt:
 
-- **ClusterIssuers**: Both staging (testing) and production issuers using DNS-01 via Route53
+- **ClusterIssuers**: Both staging (testing) and production issuers using
+  DNS-01 via Route53
 - **Certificates**: Gateway TLS certs for `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`
 
 ### cilium/
@@ -99,11 +100,13 @@ make install-argo  # Installs ArgoCD
 
 Three parent ArgoCD Applications manage the cluster:
 
+<!-- markdownlint-disable MD013 -->
 | Application      | Role                            | Path                                    |
 |------------------|---------------------------------|-----------------------------------------|
 | Platform Parent  | Core platform components        | `payload/root.yaml` (App: platform)     |
 | Workloads Parent | User applications               | `payload/root.yaml` (App: workloads)    |
 | GitOps           | ArgoCD's own config + HTTPRoute | `payload/argocd/`                       |
+<!-- markdownlint-enable MD013 -->
 
 Excluded from sync:
 
