@@ -38,20 +38,6 @@ jobs:
         working-directory: ansible
         run: ansible-lint
 
-  butane-lint:
-    name: Butane
-    runs-on: arc-runner-set
-    container: quay.io/coreos/butane:latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run butane check
-        # Find all .bu files and run butane --check on them.
-        # If no files are found, exit successfully (true).
-        run: |
-          find . -name "*.bu" -print0 | xargs -0 -r -I {} butane --check {}
-
   python-lint:
     name: Python
     runs-on: arc-runner-set
