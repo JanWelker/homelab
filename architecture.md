@@ -74,7 +74,7 @@ sequenceDiagram
     Admin->>Deploy: 4. make install-argo
     Deploy->>Target: 5. Helm Install ArgoCD
     Admin->>Deploy: 6. make bootstrap-apps
-    Deploy->>Target: 7. Apply root-app.yaml (GitOps)
+    Deploy->>Target: 7. Apply root.yaml (GitOps)
 ```
 
 ### ArgoCD Application Deployment Flow
@@ -127,25 +127,25 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph "Bootstrap (Manual)"
-        RA[root-app.yaml]
+        RA[root.yaml]
     end
 
-    subgraph "ArgoCD Applications"
-        RA --> ROOT[root-app]
-        RA --> CORE[core-infrastructure]
-        RA --> BOOT[bootstrap-argocd]
+    subgraph "Parent Applications"
+        RA --> WL[workloads]
+        RA --> PL[platform]
+        RA --> GO[gitops]
     end
 
-    subgraph "Managed by root-app"
-        ROOT --> |"payload/apps/**/application.yaml"| APPS[User Apps]
+    subgraph "Managed by workloads"
+        WL --> |"payload/workloads/**/application.yaml"| APPS[User Apps]
     end
 
-    subgraph "Managed by core-infrastructure"
-        CORE --> |"payload/core/**"| INFRA[Core Components]
+    subgraph "Managed by platform"
+        PL --> |"payload/platform/**"| INFRA[Core Components]
     end
 
-    subgraph "Managed by bootstrap-argocd"
-        BOOT --> |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
+    subgraph "Managed by gitops"
+        GO --> |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
     end
 ```
 
@@ -176,7 +176,7 @@ flowchart LR
 │   ├── tftp/               # PXE bootloader & configs
 │   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
-│   ├── root-app.yaml       # The "App of Apps" entry point
+│   ├── root.yaml           # Parent Applications (workloads, platform, gitops)
 │   ├── apps/               # ArgoCD Applications
 │   │   └── nginx-test/     # User app directory
 │   │       ├── application.yaml

@@ -1,10 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: advent-wollbi
+  name: nginx-test
   namespace: argocd
   annotations:
-    link.argocd.argoproj.io/external-link: https://advent.k8s.wlkr.ch
+    link.argocd.argoproj.io/external-link: https://nginx.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -12,12 +13,12 @@ spec:
   source:
     repoURL: https://github.com/JanWelker/homelab.git
     targetRevision: HEAD
-    path: payload/apps/advent-wollbi
+    path: payload/workloads/nginx-test
     directory:
-      exclude: "application.yaml"
+      exclude: "application.yaml" # Don't include the Application itself
   destination:
     server: https://kubernetes.default.svc
-    namespace: advent-wollbi
+    namespace: nginx-test
   syncPolicy:
     automated:
       prune: true

@@ -44,10 +44,10 @@ install-cilium:
 	helm upgrade --install cilium cilium/cilium \
 		--version 1.18.5 \
 		--namespace kube-system \
-		--values payload/core/cilium/cilium-values.yaml
+		--values payload/platform/cilium/cilium-values.yaml
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
-	kubectl apply -f payload/core/cilium-pool.yaml
+	kubectl apply -f payload/platform/cilium-pool.yaml
 
 install-cert-manager:
 	helm repo add jetstack https://charts.jetstack.io
@@ -64,7 +64,7 @@ install-cert-manager:
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
-	kubectl apply -f payload/core/cluster-issuer-prod.yaml
+	kubectl apply -f payload/platform/cluster-issuer-prod.yaml
 
 install-argo:
 	helm repo add argocd https://argoproj.github.io/argo-helm
@@ -78,7 +78,7 @@ install-argo:
 
 bootstrap-apps:
 	@echo "Bootstrapping ArgoCD App-of-Apps..."
-	kubectl apply -f payload/root-app.yaml
+	kubectl apply -f payload/root.yaml
 	@echo "Root app and core-infrastructure apps created."
 	@echo "ArgoCD will now sync all applications from the Git repo."
 

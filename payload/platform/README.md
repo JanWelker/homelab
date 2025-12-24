@@ -81,10 +81,10 @@ HTTPRoutes are co-located with their respective apps:
 | Service | HTTPRoute Location |
 |---------|-------------------|
 | ArgoCD | `payload/argocd/argocd-httproute.yaml` |
-| Grafana | `payload/core/monitoring/httproute.yaml` |
-| Hubble | `payload/core/cilium/httproute.yaml` |
-| Rook Dashboard | `payload/core/rook-ceph/httproute.yaml` |
-| Apps (nginx, etc.) | `payload/apps/<app>/httproute.yaml` |
+| Grafana | `payload/platform/monitoring/httproute.yaml` |
+| Hubble | `payload/platform/cilium/httproute.yaml` |
+| Rook Dashboard | `payload/platform/rook-ceph/httproute.yaml` |
+| Apps (nginx, etc.) | `payload/workloads/<app>/httproute.yaml` |
 
 ## Usage
 
@@ -97,13 +97,13 @@ make install-argo  # Installs ArgoCD
 
 ### GitOps (after ArgoCD)
 
-Three ArgoCD Applications manage the cluster:
+Three parent ArgoCD Applications manage the cluster:
 
 | Application | Path | Description |
 |-------------|------|-------------|
-| `root-app` | `payload/apps/` | User applications |
-| `core-infrastructure` | `payload/core/` | Core platform components |
-| `bootstrap-argocd` | `payload/argocd/` | ArgoCD's own config + HTTPRoute |
+| `workloads` | `payload/workloads/` | User applications |
+| `platform` | `payload/platform/` | Core platform components |
+| `gitops` | `payload/argocd/` | ArgoCD's own config + HTTPRoute |
 
 Excluded from sync:
 

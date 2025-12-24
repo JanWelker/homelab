@@ -102,7 +102,7 @@ This project automates the deployment of a bare metal Kubernetes cluster using F
         make bootstrap-apps
         ```
 
-        *This applies the root-app which enables ArgoCD to manage all applications from Git, including Rook-Ceph storage.*
+        *This applies the parent applications (workloads, platform, gitops) which enable ArgoCD to manage all applications from Git.*
 
 ## Architecture
 

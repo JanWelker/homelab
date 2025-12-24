@@ -1,8 +1,8 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+# Parent Application: manages user workloads from payload/workloads/
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root-app
+  name: workloads
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/JanWelker/homelab.git
     targetRevision: HEAD
-    path: payload/apps
+    path: payload/workloads
     directory:
       recurse: true
       include: "{**/application.yaml}"
@@ -23,17 +23,18 @@ spec:
       prune: true
       selfHeal: true
 ---
+# Parent Application: manages platform infrastructure from payload/platform/
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: core-infrastructure
+  name: platform
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/JanWelker/homelab.git
     targetRevision: HEAD
-    path: payload/core
+    path: payload/platform
     directory:
       recurse: true
       exclude: "{cilium/values.yaml,README.md,**/*.template}"
@@ -45,12 +46,11 @@ spec:
       prune: true
       selfHeal: true
 ---
-# ArgoCD manages itself via Helm after initial bootstrap
-# bootstrap-argocd applies argocd-application.yaml which manages the Helm release
+# Parent Application: manages ArgoCD self-management from payload/argocd/
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: bootstrap-argocd
+  name: gitops
   namespace: argocd
 spec:
   project: default
