@@ -61,6 +61,10 @@ spec:
               resources:
                 requests:
                   storage: 1Gi
+          template:
+            spec:
+              securityContext:
+                fsGroup: 1001
           controllerServiceAccount:
             namespace: arc-systems
             name: arc-systems-gha-runner-scale-set-controller
