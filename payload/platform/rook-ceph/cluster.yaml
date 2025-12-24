@@ -51,7 +51,7 @@ spec:
             # Use the rook-osd partition created by Ignition
             devicePathFilter: "^/dev/disk/by-partlabel/rook-osd$"
 
-          # Resource limits for single-node
+          # Resource limits for selected nodes
           resources:
             mon:
               requests:
@@ -68,9 +68,16 @@ spec:
             osd:
               requests:
                 cpu: 100m
-                memory: 512Mi
+                memory: 1Gi
               limits:
                 memory: 2Gi
+
+          placement:
+            all:
+              tolerations:
+                - key: node-role.kubernetes.io/control-plane
+                  operator: Exists
+                  effect: NoSchedule
 
         # CephBlockPool for RBD volumes
         cephBlockPools:
