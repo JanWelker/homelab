@@ -1,0 +1,23 @@
+name: Lint
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  yamllint:
+    name: Lint YAML
+    runs-on: arc-runner-set
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install --user yamllint
+
+      - name: Run yamllint
+        # Lint all YAML files in the current directory and subdirectories
+        run: |
+          export PATH=$PATH:$HOME/.local/bin
+          yamllint .
