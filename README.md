@@ -1,12 +1,14 @@
 # Flatcar Kubernetes Homelab
 
-A declarative, GitOps-driven bare metal Kubernetes cluster using Flatcar Container Linux.
+A declarative, GitOps-driven bare metal Kubernetes cluster using Flatcar
+Container Linux.
 
 ## Documentation
 
 Full documentation is available at: **[https://docs.k8s.wlkr.ch](https://docs.k8s.wlkr.ch)**
 
-The source code for the documentation can be found in `payload/workloads/documentation/src`.
+The source code for the documentation can be found in
+`payload/workloads/documentation/src`.
 
 ## Quickstart
 
@@ -18,7 +20,8 @@ The source code for the documentation can be found in `payload/workloads/documen
 
 ### Bootstrap Deployment
 
-1. **Configure Inventory**: Edit `ansible/inventory.yml` with your node details (MAC addresses, IPs).
+1. **Configure Inventory**: Edit `ansible/inventory.yml` with your node details
+    (MAC addresses, IPs).
 2. **Generate Configs**:
 
     ```bash
@@ -33,7 +36,8 @@ The source code for the documentation can be found in `payload/workloads/documen
     sudo python3 serve.py
     ```
 
-4. **Boot Nodes**: Turn on your bare metal nodes. They should PXE boot into Flatcar Container Linux and install themselves.
+4. **Boot Nodes**: Turn on your bare metal nodes. They should PXE boot into
+    Flatcar Container Linux and install themselves.
 
 ### Accessing the Cluster
 
