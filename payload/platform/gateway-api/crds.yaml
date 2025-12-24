@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: gateway-api-crds
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-10" # Install before everything else
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   project: infra
   source:

@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,7 +15,7 @@ spec:
     targetRevision: HEAD
     path: payload/workloads/nginx-test
     directory:
-      exclude: "application.yaml" # Don't include the Application itself
+      exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: nginx-test

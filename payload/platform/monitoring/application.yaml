@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: kube-prometheus-stack
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "1" # Deploy after rook-ceph
+    argocd.argoproj.io/sync-wave: "1"
     link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -32,16 +32,15 @@ spec:
             accessModes:
               - ReadWriteOnce
             size: 2Gi
-          # Ingress removed - using Gateway API HTTPRoute instead
 
         prometheus:
           prometheusSpec:
-            ruleSelector: {} # Select all rules
-            ruleNamespaceSelector: {} # Select all namespaces
-            serviceMonitorSelector: {} # Select all ServiceMonitors
-            serviceMonitorNamespaceSelector: {} # Select all namespaces
-            podMonitorSelector: {} # Select all PodMonitors
-            podMonitorNamespaceSelector: {} # Select all namespaces
+            ruleSelector: {}
+            ruleNamespaceSelector: {}
+            serviceMonitorSelector: {}
+            serviceMonitorNamespaceSelector: {}
+            podMonitorSelector: {}
+            podMonitorNamespaceSelector: {}
             storageSpec:
               volumeClaimTemplate:
                 spec:

@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: rook-ceph-cluster
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-1" # Deploy after operator
+    argocd.argoproj.io/sync-wave: "-1"
     link.argocd.argoproj.io/external-link: https://rook.infra.k8s.wlkr.ch
 spec:
   project: infra
@@ -78,7 +78,7 @@ spec:
             spec:
               failureDomain: host
               replicated:
-                size: 3 # Standard replication for HA
+                size: 3
                 requireSafeReplicaSize: true
             storageClass:
               enabled: true
@@ -90,12 +90,14 @@ spec:
               parameters:
                 imageFormat: "2"
                 imageFeatures: layering
+                # yamllint disable rule:line-length
                 csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
                 csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
                 csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
                 csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
                 csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
                 csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+                # yamllint enable rule:line-length
                 csi.storage.k8s.io/fstype: ext4
 
         # Disable CephFS for now (can enable later)

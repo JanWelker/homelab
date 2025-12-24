@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -34,7 +34,7 @@ spec:
             protocol: https
 
           ingress:
-            enabled: false # Using Gateway API instead
+            enabled: false
 
           # Persistence for Nextcloud data
           persistence:
@@ -49,7 +49,7 @@ spec:
               postgresql:
                 auth:
                   username: nextcloud
-                  password: nextcloud-db-password # TODO: Use existingSecret in production
+                  password: nextcloud-db-password
                   database: nextcloud
             primary:
               persistence:
@@ -62,7 +62,7 @@ spec:
             enabled: true
             auth:
               enabled: true
-              password: nextcloud-redis-password # TODO: Use existingSecret in production
+              password: nextcloud-redis-password
             master:
               persistence:
                 enabled: true
@@ -77,14 +77,14 @@ spec:
           # Background jobs (cron)
           cronjob:
             enabled: true
-            type: sidecar # Runs as sidecar container
+            type: sidecar
 
     # Source 2: Local manifests (HTTPRoute, etc.)
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/workloads/nextcloud
       directory:
-        exclude: "application.yaml" # Don't include the Application itself
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: nextcloud

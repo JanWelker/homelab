@@ -1,10 +1,11 @@
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: rook-ceph-dashboard-config
   namespace: rook-ceph
   annotations:
-    argocd.argoproj.io/sync-wave: "5" # Run after cluster is fully up
+    argocd.argoproj.io/sync-wave: "5"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
@@ -39,12 +40,14 @@ spec:
               # Wait for mgr to be ready with retry loop
               MAX_RETRIES=30
               RETRY_DELAY=10
+              PROM_HOST="http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+              GRAF_URL="http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
 
               for i in $(seq 1 $MAX_RETRIES); do
                 echo "Attempt $i: Setting dashboard config..."
-                if ceph dashboard set-prometheus-api-host http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090; then
+                if ceph dashboard set-prometheus-api-host $PROM_HOST; then
                   echo "Successfully set Prometheus host."
-                  ceph dashboard set-grafana-api-url http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
+                  ceph dashboard set-grafana-api-url $GRAF_URL
                   ceph dashboard set-grafana-api-ssl-verify false
                   echo "Dashboard configured successfully."
                   exit 0

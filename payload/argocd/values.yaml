@@ -1,3 +1,4 @@
+---
 global:
   domain: argo.infra.k8s.wlkr.ch
 
@@ -11,9 +12,7 @@ controller:
 server:
   replicas: 3
   extraArgs:
-    # Enable running on HTTP (Gateway handles TLS)
     - --insecure
-  # Ingress removed - using Gateway API HTTPRoute instead
 
 repoServer:
   replicas: 3

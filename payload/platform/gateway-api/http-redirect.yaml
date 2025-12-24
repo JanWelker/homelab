@@ -10,7 +10,7 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
-      sectionName: http # Only attach to HTTP listener
+      sectionName: http
   rules:
     - filters:
         - type: RequestRedirect
@@ -28,7 +28,7 @@ spec:
   parentRefs:
     - name: infra-gateway
       namespace: kube-system
-      sectionName: http # Only attach to HTTP listener
+      sectionName: http
   rules:
     - filters:
         - type: RequestRedirect

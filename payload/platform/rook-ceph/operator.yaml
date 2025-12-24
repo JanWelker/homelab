@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/application-crd.yaml
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: rook-ceph-operator
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-2" # Deploy operator before cluster
+    argocd.argoproj.io/sync-wave: "-2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -18,12 +18,10 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        # Single-node cluster optimizations
         csi:
           enableRbdDriver: true
-          enableCephfsDriver: false # Disable CephFS for now
+          enableCephfsDriver: false
           provisionerReplicas: 1
-          # CSI plugin resources for single node
           csiRBDPluginResource: |
             - name: driver-registrar
               resource:

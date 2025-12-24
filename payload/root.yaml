@@ -1,3 +1,4 @@
+---
 # Parent Application: manages user workloads from payload/workloads/
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -42,7 +43,7 @@ spec:
       exclude: "{cilium/values.yaml,README.md,**/*.template}"
   destination:
     server: https://kubernetes.default.svc
-    namespace: default # individual apps should override this
+    namespace: default
   syncPolicy:
     automated:
       prune: true
@@ -64,7 +65,7 @@ spec:
     path: payload/argocd
     directory:
       recurse: false
-      exclude: "{values.yaml}" # Values file referenced by argocd Application
+      exclude: "{values.yaml}"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
