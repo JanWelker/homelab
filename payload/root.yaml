@@ -29,6 +29,8 @@ kind: Application
 metadata:
   name: platform
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -52,6 +54,8 @@ kind: Application
 metadata:
   name: gitops
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -60,7 +64,7 @@ spec:
     path: payload/argocd
     directory:
       recurse: false
-      exclude: "{argocd-values.yaml}" # Values file referenced by argocd Application
+      exclude: "{values.yaml}" # Values file referenced by argocd Application
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

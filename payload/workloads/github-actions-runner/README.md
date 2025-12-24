@@ -60,7 +60,7 @@ jobs:
 
 ## ArgoCD Notes
 
-The controller creates several resources dynamically that are excluded from ArgoCD tracking via `resource.exclusions` in `argocd-values.yaml`:
+The controller creates several resources dynamically that are excluded from ArgoCD tracking via `resource.exclusions` in `values.yaml`:
 
 - `AutoscalingListener`
 - `EphemeralRunnerSet`

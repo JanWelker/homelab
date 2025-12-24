@@ -78,13 +78,13 @@ Distributed storage using Ceph:
 
 HTTPRoutes are co-located with their respective apps:
 
-| Service | HTTPRoute Location |
-|---------|-------------------|
-| ArgoCD | `payload/argocd/argocd-httproute.yaml` |
-| Grafana | `payload/platform/monitoring/httproute.yaml` |
-| Hubble | `payload/platform/cilium/httproute.yaml` |
-| Rook Dashboard | `payload/platform/rook-ceph/httproute.yaml` |
-| Apps (nginx, etc.) | `payload/workloads/<app>/httproute.yaml` |
+| Service            | HTTPRoute Location                           |
+|--------------------|----------------------------------------------|
+| ArgoCD             | `payload/argocd/httproute.yaml`              |
+| Grafana            | `payload/platform/monitoring/httproute.yaml` |
+| Hubble             | `payload/platform/cilium/httproute.yaml`     |
+| Rook Dashboard     | `payload/platform/rook-ceph/httproute.yaml`  |
+| Apps (nginx, etc.) | `payload/workloads/<app>/httproute.yaml`     |
 
 ## Usage
 
@@ -99,15 +99,15 @@ make install-argo  # Installs ArgoCD
 
 Three parent ArgoCD Applications manage the cluster:
 
-| Application | Path | Description |
-|-------------|------|-------------|
-| `workloads` | `payload/workloads/` | User applications |
-| `platform` | `payload/platform/` | Core platform components |
-| `gitops` | `payload/argocd/` | ArgoCD's own config + HTTPRoute |
+| Application      | Role                            | Path                                    |
+|------------------|---------------------------------|-----------------------------------------|
+| Platform Parent  | Core platform components        | `payload/root.yaml` (App: platform)     |
+| Workloads Parent | User applications               | `payload/root.yaml` (App: workloads)    |
+| GitOps           | ArgoCD's own config + HTTPRoute | `payload/argocd/`                       |
 
 Excluded from sync:
 
-- `cilium/values.yaml`, `argocd-values.yaml` (Helm values)
+- `cilium/values.yaml`, `values.yaml` (Helm values)
 - `README.md` (documentation)
 - `**/*.template` (credential templates)
 
