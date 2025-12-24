@@ -1,6 +1,7 @@
 # Boot & Bootstrap Process
 
-This document details the flow of data from the initial PXE boot to a fully operational Kubernetes node.
+This document details the flow of data from the initial PXE boot to a fully
+operational Kubernetes node.
 
 ## 1. Initial Provisioning (PXE + Ignition)
 
@@ -40,7 +41,8 @@ sequenceDiagram
 
 ## 2. Post-Installation Bootstrap
 
-Once the OS is installed and Kubeadm has initialized the node, we manually trigger the bootstrap of cluster components.
+Once the OS is installed and Kubeadm has initialized the node, we manually
+trigger the bootstrap of cluster components.
 
 ```mermaid
 sequenceDiagram

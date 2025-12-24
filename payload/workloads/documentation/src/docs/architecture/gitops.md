@@ -33,7 +33,9 @@ flowchart LR
 
 ## Deployment Waves
 
-ArgoCD uses **sync waves** to control deployment order. Lower waves sync first. This ensures CRDs exist before Operators, and Storage exists before Applications.
+ArgoCD uses **sync waves** to control deployment order. Lower waves sync first.
+This ensures CRDs exist before Operators, and Storage exists before
+Applications.
 
 ```mermaid
 flowchart TB
