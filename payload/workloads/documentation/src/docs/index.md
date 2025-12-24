@@ -1,5 +1,7 @@
 # Bare Metal K8s Deployment
 
+![Homelab Logo](assets/images/logo.png){ align=right width=150 }
+
 This project automates the deployment of a bare metal Kubernetes cluster using
 Flatcar Container Linux and Kubeadm.
 

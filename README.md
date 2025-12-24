@@ -1,5 +1,7 @@
 # Flatcar Kubernetes Homelab
 
+![Homelab Logo](payload/workloads/documentation/src/docs/assets/images/logo.png)
+
 A declarative, GitOps-driven bare metal Kubernetes cluster using Flatcar
 Container Linux.
 
