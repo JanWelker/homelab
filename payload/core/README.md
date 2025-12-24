@@ -80,7 +80,7 @@ HTTPRoutes are co-located with their respective apps:
 
 | Service | HTTPRoute Location |
 |---------|-------------------|
-| ArgoCD | `payload/bootstrap/argocd-httproute.yaml` |
+| ArgoCD | `payload/argocd/argocd-httproute.yaml` |
 | Grafana | `payload/core/monitoring/httproute.yaml` |
 | Hubble | `payload/core/cilium/httproute.yaml` |
 | Rook Dashboard | `payload/core/rook-ceph/httproute.yaml` |
@@ -103,7 +103,7 @@ Three ArgoCD Applications manage the cluster:
 |-------------|------|-------------|
 | `root-app` | `payload/apps/` | User applications |
 | `core-infrastructure` | `payload/core/` | Core platform components |
-| `bootstrap-argocd` | `payload/bootstrap/` | ArgoCD's own config + HTTPRoute |
+| `bootstrap-argocd` | `payload/argocd/` | ArgoCD's own config + HTTPRoute |
 
 Excluded from sync:
 

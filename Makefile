@@ -72,8 +72,8 @@ install-argo:
 	helm upgrade --install argocd argocd/argo-cd \
 		--namespace argocd \
 		--create-namespace \
-		--values payload/bootstrap/argocd-values.yaml \
-		--version 7.7.0 \
+		--values payload/argocd/argocd-values.yaml \
+		--version 9.1.9 \
 		--wait
 
 bootstrap-apps:
