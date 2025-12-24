@@ -2,11 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-test
-  namespace: nginx-test
   labels:
     app: nginx-test
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: nginx-test
@@ -21,7 +19,6 @@ spec:
           ports:
             - containerPort: 80
               name: http
-              protocol: TCP
           resources:
             requests:
               memory: "64Mi"
@@ -33,9 +30,7 @@ spec:
             httpGet:
               path: /
               port: 80
-              scheme: HTTP
           readinessProbe:
             httpGet:
               path: /
               port: 80
-              scheme: HTTP
