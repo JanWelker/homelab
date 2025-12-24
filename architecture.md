@@ -77,6 +77,78 @@ sequenceDiagram
     Deploy->>Target: 7. Apply root-app.yaml (GitOps)
 ```
 
+### ArgoCD Application Deployment Flow
+
+ArgoCD uses **sync waves** to control deployment order. Lower waves sync first.
+
+```mermaid
+flowchart TB
+    subgraph "Wave -10: CRDs"
+        GW[gateway-api-crds]
+    end
+
+    subgraph "Wave -5: Security"
+        CM[cert-manager]
+    end
+
+    subgraph "Wave -2: Operators"
+        RO[rook-ceph-operator]
+    end
+
+    subgraph "Wave -1: Infrastructure"
+        CL[cilium]
+        RC[rook-ceph-cluster]
+    end
+
+    subgraph "Wave 0: Core Apps"
+        AR[argocd]
+        K8[k8up]
+    end
+
+    subgraph "Wave 1+: User Apps"
+        MON[kube-prometheus-stack]
+        NC[nextcloud]
+        HA[home-assistant]
+        ARC[arc-runner-set]
+    end
+
+    %% Dependencies
+    GW --> CL
+    CM --> RC
+    RO --> RC
+    CL --> AR
+    RC --> NC
+    RC --> HA
+    AR --> ARC
+```
+
+### App-of-Apps Pattern
+
+```mermaid
+flowchart LR
+    subgraph "Bootstrap (Manual)"
+        RA[root-app.yaml]
+    end
+
+    subgraph "ArgoCD Applications"
+        RA --> ROOT[root-app]
+        RA --> CORE[core-infrastructure]
+        RA --> BOOT[bootstrap-argocd]
+    end
+
+    subgraph "Managed by root-app"
+        ROOT --> |"payload/apps/**/application.yaml"| APPS[User Apps]
+    end
+
+    subgraph "Managed by core-infrastructure"
+        CORE --> |"payload/core/**"| INFRA[Core Components]
+    end
+
+    subgraph "Managed by bootstrap-argocd"
+        BOOT --> |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
+    end
+```
+
 ## Directory Structure
 
 ```text
