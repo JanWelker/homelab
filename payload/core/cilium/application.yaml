@@ -28,3 +28,19 @@ spec:
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: cilium-ca
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: hubble-relay-client-certs
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: hubble-server-certs
+      jsonPointers:
+        - /data
