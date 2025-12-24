@@ -53,6 +53,14 @@ spec:
           githubConfigUrl: "https://github.com/JanWelker/homelab"
           githubConfigSecret: "pre-defined-secret"
           minRunners: 1
+          containerMode:
+            type: "kubernetes"
+            kubernetesModeWorkVolumeClaim:
+              accessModes: ["ReadWriteOnce"]
+              storageClassName: "rook-ceph-block"
+              resources:
+                requests:
+                  storage: 1Gi
           controllerServiceAccount:
             namespace: arc-systems
             name: arc-systems-gha-runner-scale-set-controller
