@@ -11,7 +11,7 @@ spec:
     # Allow traffic from the Gateway (residing in kube-system)
     - fromEndpoints:
         - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
+            "k8s:io.kubernetes.pod.namespace": kube-system
       toPorts:
         - ports:
             - port: "80"
