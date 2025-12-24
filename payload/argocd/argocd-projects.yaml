@@ -1,5 +1,3 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/crds/appproject-crd.yaml
----
 # Apps Project - for user-facing applications
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
@@ -29,6 +27,23 @@ spec:
     - "*"
   destinations:
     - namespace: "*"
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+# System Project - for ArgoCD and management components
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: system
+  namespace: argocd
+spec:
+  description: System components (ArgoCD, ApplicationSets, etc.)
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: argocd
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: "*"

@@ -28,6 +28,7 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
   ignoreDifferences:
+    # Ignore CA bundle injection by the controller
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
       jsonPointers:
@@ -65,6 +66,7 @@ spec:
     syncOptions:
       - ServerSideApply=true
   ignoreDifferences:
+    # Ignore dynamic controller annotations managed by ARC
     - group: actions.github.com
       kind: AutoscalingRunnerSet
       jsonPointers:
@@ -75,6 +77,7 @@ spec:
         - /metadata/annotations/actions.github.com~1runner-scale-set-name
         - /metadata/annotations/actions.github.com~1values-hash
         - /metadata/annotations/runner-scale-set-id
+    # Ephemeral resources managed fully by the controller
     - group: actions.github.com
       kind: AutoscalingListener
       jqPathExpressions:

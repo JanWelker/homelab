@@ -31,6 +31,7 @@ spec:
     syncOptions:
       - ServerSideApply=true
   ignoreDifferences:
+    # Ignore certificates managed by Cilium operator/agent
     - group: ""
       kind: Secret
       name: cilium-ca
