@@ -45,7 +45,8 @@ spec:
       prune: true
       selfHeal: true
 ---
-# ArgoCD manages its own bootstrap config after initial setup
+# ArgoCD manages itself via Helm after initial bootstrap
+# bootstrap-argocd applies argocd-application.yaml which manages the Helm release
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -59,7 +60,7 @@ spec:
     path: payload/bootstrap
     directory:
       recurse: false
-      exclude: "argocd-values.yaml" # Helm values excluded
+      exclude: "{argocd-values.yaml}" # Values file referenced by argocd Application
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
