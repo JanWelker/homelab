@@ -9,9 +9,18 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
+      kind: Gateway
+      group: gateway.networking.k8s.io
   hostnames:
     - "home.k8s.wlkr.ch"
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: home-assistant
           port: 8080
+          kind: Service
+          group: ""
+          weight: 1
