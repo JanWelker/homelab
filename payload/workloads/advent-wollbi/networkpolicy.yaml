@@ -12,6 +12,12 @@ spec:
     - fromEndpoints:
         - matchLabels:
             "k8s:io.kubernetes.pod.namespace": kube-system
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+        - matchLabels:
+            "k8s:gateway.networking.k8s.io/gateway-name": apps-gateway
+    - fromEntities:
+        - host
       toPorts:
         - ports:
             - port: "80"
