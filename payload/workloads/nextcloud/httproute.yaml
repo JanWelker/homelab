@@ -15,12 +15,6 @@ spec:
     - "cloud.k8s.wlkr.ch"
   rules:
     - matches:
-        - path:
-            type: PathPrefix
-            value: /
       backendRefs:
         - name: nextcloud
           port: 8080
-          kind: Service
-          group: ""
-          weight: 1
