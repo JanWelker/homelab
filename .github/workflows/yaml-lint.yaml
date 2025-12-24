@@ -10,15 +10,14 @@ jobs:
   yamllint:
     name: Lint YAML
     runs-on: arc-runner-set
+    container: python:3.12-slim
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install yamllint
-        run: pip install --user yamllint
+        run: pip install yamllint
 
       - name: Run yamllint
         # Lint all YAML files in the current directory and subdirectories
-        run: |
-          export PATH=$PATH:$HOME/.local/bin
-          yamllint .
+        run: yamllint .
