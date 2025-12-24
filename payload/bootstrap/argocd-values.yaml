@@ -20,3 +20,24 @@ repoServer:
 
 applicationSet:
   replicas: 2
+
+configs:
+  cm:
+    resource.exclusions: |
+      - apiGroups:
+        - actions.github.com
+        kinds:
+        - AutoscalingListener
+        - EphemeralRunnerSet
+        - EphemeralRunner
+        clusters:
+        - "*"
+      - apiGroups:
+        - rbac.authorization.k8s.io
+        kinds:
+        - Role
+        - RoleBinding
+        clusters:
+        - "*"
+        namespaces:
+        - arc-systems
