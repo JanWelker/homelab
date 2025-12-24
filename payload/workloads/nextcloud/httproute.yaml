@@ -9,12 +9,9 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
-      kind: Gateway
-      group: gateway.networking.k8s.io
   hostnames:
     - "cloud.k8s.wlkr.ch"
   rules:
-    - matches:
-      backendRefs:
+    - backendRefs:
         - name: nextcloud
           port: 8080

@@ -32,3 +32,19 @@ configs:
         - EphemeralRunner
         clusters:
         - "*"
+    resource.customizations: |
+      gateway.networking.k8s.io/HTTPRoute:
+        ignoreDifferences: |
+          jsonPointers:
+          - /spec/parentRefs/0/group
+          - /spec/parentRefs/0/kind
+          - /spec/rules/0/backendRefs/0/group
+          - /spec/rules/0/backendRefs/0/kind
+          - /spec/rules/0/backendRefs/0/weight
+          - /spec/rules/0/matches/0/path/type
+          - /spec/rules/0/matches/0/path/value
+      apps/StatefulSet:
+        ignoreDifferences: |
+          jsonPointers:
+          - /spec/volumeClaimTemplates/0/apiVersion
+          - /spec/volumeClaimTemplates/0/kind
