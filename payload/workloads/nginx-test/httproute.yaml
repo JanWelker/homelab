@@ -9,6 +9,8 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
+      kind: Gateway
+      group: gateway.networking.k8s.io
   hostnames:
     - "nginx.k8s.wlkr.ch"
   rules:
@@ -19,3 +21,6 @@ spec:
       backendRefs:
         - name: nginx-test
           port: 80
+          kind: Service
+          group: ""
+          weight: 1
