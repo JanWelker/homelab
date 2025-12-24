@@ -1,0 +1,30 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: nginx-test
+  namespace: nginx-test
+spec:
+  endpointSelector:
+    matchLabels:
+      app: nginx-test
+  ingress:
+    # Allow traffic from the Gateway (residing in kube-system)
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+  egress:
+    # Allow DNS resolution
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
