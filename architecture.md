@@ -112,7 +112,8 @@ sequenceDiagram
 │   │       ├── httproute.yaml
 │   │       ├── namespace.yaml
 │   │       └── service.yaml
-│   ├── bootstrap/          # ArgoCD config (managed by ArgoCD after bootstrap)
+│   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
+│   │   ├── application.yaml     # ArgoCD self-management Application
 │   │   ├── argocd-values.yaml
 │   │   └── argocd-httproute.yaml
 │   └── core/               # Infrastructure managed by ArgoCD
