@@ -16,7 +16,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -43,9 +43,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: payload/workloads/documentation/src
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Update Deployment Image Tag
+        run: |
+          SHA_TAG="sha-$(git rev-parse --short HEAD)"
+          NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA_TAG}"
+
+          # Update the deployment.yaml file
+          sed -i "s|image: .*|image: ${NEW_IMAGE}|" payload/workloads/documentation/deployment.yaml
+
+          # Configure Git
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Commit and Push
+          git add payload/workloads/documentation/deployment.yaml
+          git commit -m "chore: update documentation image to ${SHA_TAG}"
+          git push
