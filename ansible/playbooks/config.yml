@@ -11,7 +11,7 @@
         path: "{{ playbook_dir }}/../../output/credentials"
         state: directory
         mode: "0700"
-      run_once: true
+      run_once: true # noqa: run-once
       delegate_to: localhost
 
     - name: Generate Kubeadm Token
@@ -21,13 +21,13 @@
         token_id: "{{ lookup('password', playbook_dir + '/../../output/credentials/kubeadm_token_id length=6 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}"
         token_secret: >-
           {{ lookup('password', playbook_dir + '/../../output/credentials/kubeadm_token_secret length=16 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}
-      run_once: true
+      run_once: true # noqa: run-once
       delegate_to: localhost
 
     - name: Generate Certificate Key
       ansible.builtin.set_fact:
         certificate_key: "{{ lookup('password', playbook_dir + '/../../output/credentials/certificate_key length=64 chars=0123456789abcdef') }}"
-      run_once: true
+      run_once: true # noqa: run-once
       delegate_to: localhost
 
     - name: Set Cluster Facts
@@ -55,7 +55,7 @@
 
     - name: Generate Kubeadm Config (Verification only, injected into Ignition)
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/kubeadm.yaml.j2"
+        src: "{{ playbook_dir }}/../templates/kubeadm.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/kubeadm/kubeadm-config-{{ inventory_hostname }}.yaml"
         mode: "0755"
 
@@ -67,7 +67,7 @@
 
     - name: Generate Butane Config
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2"
+        src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}.yaml"
         mode: "0755"
       notify:
@@ -84,6 +84,6 @@
 
     - name: Generate PXE Config
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/pxe_config.j2"
+        src: "{{ playbook_dir }}/../templates/pxe_config.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
         mode: "0755"

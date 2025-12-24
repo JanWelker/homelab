@@ -1,11 +1,11 @@
 ---
-- name: "Download {{ item.name | capitalize }} DIGESTS"
+- name: "Download DIGESTS for {{ item.name | capitalize }}"
   ansible.builtin.uri:
     url: "{{ url }}/{{ item.file }}.DIGESTS"
     return_content: true
   register: artifact_digests
 
-- name: "Set {{ item.name | capitalize }} Checksum Fact"
+- name: "Set Checksum Fact for {{ item.name | capitalize }}"
   ansible.builtin.set_fact:
     artifact_checksum: "{{ artifact_digests.content | regex_search('(?s)# SHA512 HASH\\n([a-f0-9]+)', '\\1') | first }}"
 

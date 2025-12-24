@@ -1,22 +1,22 @@
 ---
-- name: "Download {{ item.name | capitalize }} Sysext SHA256SUMS"
+- name: "Download Sysext SHA256SUMS for {{ item.name | capitalize }}"
   ansible.builtin.uri:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/SHA256SUMS"
     return_content: true
   register: sysext_sums
 
-- name: "Set {{ item.name | capitalize }} Sysext Checksum Fact"
+- name: "Set Sysext Checksum Fact for {{ item.name | capitalize }}"
   ansible.builtin.set_fact:
     sysext_checksum: "{{ sysext_sums.content | regex_search('([a-f0-9]+)\\s+' + item.name + '-' + item.version + '-x86-64.raw', '\\1') | first }}"
 
-- name: "Download {{ item.name | capitalize }} Sysext Image"
+- name: "Download Sysext Image for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}-{{ item.version }}-x86-64.raw"
     dest: "{{ http_dir }}/{{ item.name }}-{{ item.version }}-x86-64.raw"
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
 
-- name: "Download {{ item.name | capitalize }} Sysext Config"
+- name: "Download Sysext Config for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}.conf"
     dest: "{{ http_dir }}/{{ item.name }}.conf"

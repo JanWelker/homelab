@@ -28,7 +28,7 @@
     mode: "0644"
   register: syslinux_download
 
-- name: Extract Syslinux (zip)
+- name: Extract Syslinux (zip) # noqa: no-handler
   ansible.builtin.unarchive:
     src: "{{ syslinux_temp.path }}/syslinux-{{ syslinux_version }}.zip"
     dest: "{{ syslinux_temp.path }}"
