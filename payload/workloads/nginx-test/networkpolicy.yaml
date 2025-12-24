@@ -10,9 +10,7 @@ spec:
   ingress:
     # Allow traffic from the Gateway (residing in kube-system)
     - fromEntities:
-        - cluster
-        - host
-        - remote-node
+        - "ingress"
       toPorts:
         - ports:
             - port: "80"
