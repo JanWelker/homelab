@@ -1,0 +1,51 @@
+name: Build and Push Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "payload/workloads/documentation/src/**"
+      - ".github/workflows/docs.yaml"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: janwelker/homelab-docs
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up library
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs and Material
+        run: |
+          pip install mkdocs-material
+
+      - name: Build MkDocs
+        working-directory: payload/workloads/documentation/src
+        run: mkdocs build
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: payload/workloads/documentation/src
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

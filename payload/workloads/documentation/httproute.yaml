@@ -1,0 +1,15 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: homelab-docs
+  namespace: documentation
+spec:
+  parentRefs:
+    - name: apps-gateway
+      namespace: kube-system
+  hostnames:
+    - "docs.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: homelab-docs
+          port: 80

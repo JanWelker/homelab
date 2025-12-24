@@ -1,0 +1,40 @@
+site_name: Homelab Documentation
+theme:
+  name: material
+  features:
+    - navigation.expand
+    - navigation.indexes
+    - content.code.copy
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: teal
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Platform:
+      - Overview: platform/index.md
+      - K8up: platform/k8up.md
+  - Workloads:
+      - Overview: workloads/index.md
+      - GitHub Actions Runner: workloads/github-actions-runner.md
+  - Boot Server: boot_server/index.md
+  - Ansible: ansible/index.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
