@@ -118,6 +118,12 @@ Flatcar Container Linux and Kubeadm.
         *This applies the parent applications (workloads, platform, gitops)
         which enable ArgoCD to manage all applications from Git.*
 
-## Architecture
+## Documentation
 
-See [architecture.md](architecture.md) for details.
+* **Architecture**: [architecture.md](architecture.md)
+* **Ansible & Playbooks**: [ansible/README.md](ansible/README.md)
+* **Boot Server**: [boot_server/README.md](boot_server/README.md)
+* **Platform Infrastructure**: [payload/platform/README.md](payload/platform/README.md)
+  * **Backup System (K8up)**: [payload/platform/k8up/README.md](payload/platform/k8up/README.md)
+* **Workloads**: [payload/workloads/README.md](payload/workloads/README.md)
+  * **GitHub Actions Runner**: [payload/workloads/github-actions-runner/README.md](payload/workloads/github-actions-runner/README.md)

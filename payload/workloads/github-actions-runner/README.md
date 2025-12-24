@@ -11,8 +11,21 @@ Self-hosted GitHub Actions runners deployed using the [Actions Runner Controller
 
 The ARC uses the newer `gha-runner-scale-set` architecture (not the legacy `actions-runner-controller`):
 
-```text
-GitHub Actions Job → AutoscalingListener (polls Actions API) → EphemeralRunner Pod
+```mermaid
+sequenceDiagram
+    participant GH as GitHub Actions
+    participant List as AutoscalingListener
+    participant Set as EphemeralRunnerSet
+    participant Pod as Runner Pod
+
+    GH->>List: Job Queued (Webhook/Poll)
+    List->>Set: Scale Up Request
+    Set->>Pod: Create Runner Pod
+    Pod->>GH: Register & Pick Job
+    Pod->>Pod: Execute Job
+    Pod->>GH: Report Status
+    GH-->>Pod: Job Complete
+    Pod->>Set: Terminate
 ```
 
 ## Authentication

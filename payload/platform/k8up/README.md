@@ -32,6 +32,24 @@ The `schedule.yaml` defines automated backup operations:
 - Weekly backups for 8 weeks
 - Monthly backups for 6 months
 
+### Backup Flow
+
+```mermaid
+sequenceDiagram
+    participant Sched as Schedule
+    participant Op as K8up Operator
+    participant Job as Backup Job
+    participant PVC as App PVC
+    participant NFS as NFS Storage
+
+    Sched->>Op: Trigger Backup
+    Op->>Job: Spawn Backup Job
+    Job->>PVC: Mount & Read Data
+    Job->>NFS: Restic Backup (Push)
+    NFS-->>Job: Acknowledge
+    Job-->>Op: Status Update (Success)
+```
+
 ## Security
 
 The Restic repository password is stored in the `backup-repo-password` secret.

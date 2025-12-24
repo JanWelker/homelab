@@ -75,6 +75,21 @@ Distributed storage using Ceph:
 - **Dashboard**: Ceph UI at `rook.infra.k8s.wlkr.ch`
 - **StorageClass**: `rook-ceph-block` (default, RBD-based)
 
+## Traffic Flow
+
+ ```mermaid
+ flowchart LR
+     Client([Client]) --> LB[Cilium LoadBalancer]
+     LB --> GW[Gateway API]
+     
+     subgraph Cluster
+         GW -->|HTTPRoute| Svc[Service]
+         Svc --> Pod[App Pod]
+     end
+ 
+     style Client fill:#f9f,stroke:#333
+ ```
+
 ## HTTPRoute Locations
 
 HTTPRoutes are co-located with their respective apps:
