@@ -26,6 +26,12 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle
+        - /spec/preserveUnknownFields
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
