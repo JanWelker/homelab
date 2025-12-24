@@ -9,15 +9,10 @@ spec:
       app: nginx-test
   ingress:
     # Allow traffic from the Gateway (residing in kube-system)
-    - fromEndpoints:
-        - matchLabels:
-            "k8s:io.kubernetes.pod.namespace": kube-system
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-        - matchLabels:
-            "k8s:gateway.networking.k8s.io/gateway-name": apps-gateway
     - fromEntities:
+        - cluster
         - host
+        - remote-node
       toPorts:
         - ports:
             - port: "80"
