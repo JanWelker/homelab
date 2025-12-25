@@ -1,7 +1,7 @@
 ---
 name: Lint Ansible
 
-on:
+"on":
   push:
     branches: ["main", "master"]
     paths:
@@ -18,7 +18,8 @@ jobs:
     container: python:3.14-slim
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        # v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Install ansible-lint
         run: pip install ansible-lint
