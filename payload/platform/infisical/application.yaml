@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    link.argocd.argoproj.io/external-link: https://secrets.infra.k8s.wlkr.ch
+    link.argocd.argoproj.io/external-link: "https://secrets.infra.k8s.wlkr.ch"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -32,9 +32,11 @@ spec:
           - name: DB_PASSWORD
             valueFrom:
               secretKeyRef:
+                # yamllint disable-line rule:line-length
                 name: infisical.infisical-db.credentials.postgresql.acid.zalan.do
                 key: password
           - name: DB_CONNECTION_URI
+            # yamllint disable-line rule:line-length
             value: "postgresql://infisical:$(DB_PASSWORD)@infisical-db.infisical.svc:5432/infisical?sslmode=prefer"
           - name: ENCRYPTION_KEY
             valueFrom:
