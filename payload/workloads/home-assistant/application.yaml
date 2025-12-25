@@ -58,6 +58,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: home-assistant
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
   syncPolicy:
     automated:
       prune: true
