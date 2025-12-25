@@ -1,6 +1,51 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":dependencyDashboard",
+    "docker:enableMajor",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "every weekend"
+  ],
+  "rangeStrategy": "pin",
+  "kubernetes": {
+    "fileMatch": [
+      "\\.yaml$"
+    ]
+  },
+  "argocd": {
+    "fileMatch": [
+      "\\.yaml$"
+    ]
+  },
+  "helm-values": {
+    "fileMatch": [
+      "./payload/.*/values.yaml$"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Group all non-major updates to prevent PR noise",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "groupName": "Non-Major Updates"
+    },
+    {
+      "description": "Separate PRs for major updates",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": null
+    }
   ]
 }
