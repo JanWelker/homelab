@@ -7,10 +7,14 @@ on:
     paths:
       - "payload/**/*.yaml"
       - "payload/**/*.yml"
+      - ".gihub/workflows/*.yaml"
+      - ".gihub/workflows/*.yml"
   pull_request:
     paths:
       - "payload/**/*.yaml"
       - "payload/**/*.yml"
+      - ".gihub/workflows/*.yaml"
+      - ".gihub/workflows/*.yml"
   workflow_dispatch:
 
 jobs:
@@ -27,4 +31,4 @@ jobs:
 
       - name: Run yamllint
         # Lint all YAML files in the payload directory
-        run: yamllint payload
+        run: yamllint payload .gihub/workflows

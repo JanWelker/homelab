@@ -5,11 +5,11 @@ on:
   push:
     branches: ["main", "master"]
     paths:
-      - "boot_server/**/*.py"
+      - "boot_server/*.py"
       - "requirements.txt"
   pull_request:
     paths:
-      - "boot_server/**/*.py"
+      - "boot_server/*.py"
       - "requirements.txt"
   workflow_dispatch:
 
@@ -30,5 +30,4 @@ jobs:
       - name: Run pylint
         # Lint specific directories and files
         run: |
-          pylint boot_server/**/*.py || true
-          pylint boot_server/serve.py
+          pylint boot_server/*.py
