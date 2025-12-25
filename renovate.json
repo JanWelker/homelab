@@ -11,7 +11,7 @@
   ],
   "timezone": "Europe/Berlin",
   "schedule": [
-    "every weekend"
+    "before 5am"
   ],
   "rangeStrategy": "pin",
   "kubernetes": {
@@ -27,6 +27,11 @@
   "helm-values": {
     "managerFilePatterns": [
       "/./payload/.*/values.yaml$/"
+    ]
+  },
+  "pip_requirements": {
+    "fileMatch": [
+      "^requirements\\.txt$"
     ]
   },
   "packageRules": [
