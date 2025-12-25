@@ -66,6 +66,21 @@ install-cert-manager:
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
 	kubectl apply -f payload/platform/cluster-issuer-prod.yaml
 
+install-infisical:
+	@echo "Setting up Infisical Secrets..."
+	kubectl create namespace infisical --dry-run=client -o yaml | kubectl apply -f -
+	@if ! kubectl -n infisical get secret infisical-secrets >/dev/null 2>&1; then \
+		echo "Generating initial encryption keys..."; \
+		ENC_KEY=$$(openssl rand -hex 16); \
+		AUTH_SEC=$$(openssl rand -base64 32); \
+		kubectl -n infisical create secret generic infisical-secrets \
+		--from-literal=ENCRYPTION_KEY=$$ENC_KEY \
+		--from-literal=AUTH_SECRET=$$AUTH_SEC; \
+		echo "Secret 'infisical-secrets' created."; \
+	else \
+		echo "Secret 'infisical-secrets' already exists. Skipping."; \
+	fi
+
 install-argo:
 	helm repo add argocd https://argoproj.github.io/argo-helm
 	helm repo update

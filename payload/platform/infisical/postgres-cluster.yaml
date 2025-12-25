@@ -1,0 +1,18 @@
+apiVersion: postgresql.acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: infisical-db
+  namespace: infisical
+spec:
+  teamId: "infisical"
+  volume:
+    size: 5Gi
+  numberOfInstances: 2
+  users:
+    infisical: # database owner
+      - superuser
+      - createdb
+  databases:
+    infisical: infisical # dbname: owner
+  postgresql:
+    version: "16"
