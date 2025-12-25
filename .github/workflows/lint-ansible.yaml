@@ -1,0 +1,28 @@
+---
+name: Lint Ansible
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "ansible/**"
+  pull_request:
+    paths:
+      - "ansible/**"
+  workflow_dispatch:
+
+jobs:
+  ansible-lint:
+    name: Ansible
+    runs-on: arc-runner-set
+    container: python:3.12-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+
+      - name: Run ansible-lint
+        working-directory: ansible
+        run: ansible-lint

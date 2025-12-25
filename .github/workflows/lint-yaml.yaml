@@ -1,0 +1,30 @@
+---
+name: Lint YAML
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "payload/**/*.yaml"
+      - "payload/**/*.yml"
+  pull_request:
+    paths:
+      - "payload/**/*.yaml"
+      - "payload/**/*.yml"
+  workflow_dispatch:
+
+jobs:
+  yaml-lint:
+    name: YAML
+    runs-on: arc-runner-set
+    container: python:3.12-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        # Lint all YAML files in the payload directory
+        run: yamllint payload

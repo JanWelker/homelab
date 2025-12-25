@@ -1,0 +1,27 @@
+---
+name: Lint Markdown
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "**/*.md"
+  pull_request:
+    paths:
+      - "**/*.md"
+  workflow_dispatch:
+
+jobs:
+  markdown-lint:
+    name: Markdown
+    runs-on: arc-runner-set
+    container: node:20-alpine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
+
+      - name: Run markdownlint
+        run: markdownlint-cli2 '**/*.md' '!**/.venv'
