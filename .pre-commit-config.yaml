@@ -1,0 +1,30 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ansible-lint
+        name: Ansible Lint
+        entry: ansible-lint
+        language: system
+        files: ^ansible/
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.12.1
+    hooks:
+      - id: markdownlint-cli2
+        files: \.md$
+        exclude: ^\.venv/
+
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.0.3
+    hooks:
+      - id: pylint
+        files: ^boot_server/.*\.py$
+        # Pylint runs in an isolated environment. Verification might fail if deps aren't there.
+        # Adding a basic check.
+        args: ["--disable=import-error"]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        files: ^(payload/|\.github/workflows/).*\.(yaml|yml)$
