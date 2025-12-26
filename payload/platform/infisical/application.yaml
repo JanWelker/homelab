@@ -11,27 +11,32 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
-    repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
-    chart: infisical-standalone
-    targetRevision: 1.7.2
-    helm:
-      valuesObject:
-        infisical:
-          siteUrl: https://secrets.infra.k8s.wlkr.ch
-        ingress:
-          enabled: false
-          nginx:
+  sources:
+    - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/
+      chart: infisical-standalone
+      targetRevision: 1.7.2
+      helm:
+        valuesObject:
+          infisical:
+            siteUrl: https://secrets.infra.k8s.wlkr.ch
+          ingress:
             enabled: false
-        ingress-nginx:
-          enabled: false
-        postgresql:
-          enabled: false
-        redis:
-          enabled: true
-          architecture: standalone
-          auth:
+            nginx:
+              enabled: false
+          ingress-nginx:
             enabled: false
+          postgresql:
+            enabled: false
+          redis:
+            enabled: true
+            architecture: standalone
+            auth:
+              enabled: false
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/infisical
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: infisical

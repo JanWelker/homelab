@@ -10,11 +10,16 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
+  sources:
     # yamllint disable-line rule:line-length
-    repoURL: https://opensource.zalando.com/postgres-operator/charts/postgres-operator
-    chart: postgres-operator
-    targetRevision: 1.15.1
+    - repoURL: https://opensource.zalando.com/postgres-operator/charts/postgres-operator
+      chart: postgres-operator
+      targetRevision: 1.15.1
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/postgres-operator
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: postgres-operator

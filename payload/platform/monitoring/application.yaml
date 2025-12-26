@@ -11,70 +11,75 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chart: kube-prometheus-stack
-    targetRevision: 80.6.0
-    helm:
-      valuesObject:
-        crds:
-          enabled: true
-          upgradeJob:
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 80.6.0
+      helm:
+        valuesObject:
+          crds:
             enabled: true
-            forceConflicts: true
+            upgradeJob:
+              enabled: true
+              forceConflicts: true
 
-        grafana:
-          enabled: true
-          persistence:
+          grafana:
             enabled: true
-            type: pvc
-            storageClassName: rook-ceph-block
-            accessModes:
-              - ReadWriteOnce
-            size: 2Gi
+            persistence:
+              enabled: true
+              type: pvc
+              storageClassName: rook-ceph-block
+              accessModes:
+                - ReadWriteOnce
+              size: 2Gi
 
-        prometheus:
-          prometheusSpec:
-            ruleSelector: {}
-            ruleNamespaceSelector: {}
-            serviceMonitorSelector: {}
-            serviceMonitorNamespaceSelector: {}
-            podMonitorSelector: {}
-            podMonitorNamespaceSelector: {}
-            storageSpec:
-              volumeClaimTemplate:
-                spec:
-                  storageClassName: rook-ceph-block
-                  accessModes: ["ReadWriteOnce"]
-                  resources:
-                    requests:
-                      storage: 10Gi
-            retention: 10d
+          prometheus:
+            prometheusSpec:
+              ruleSelector: {}
+              ruleNamespaceSelector: {}
+              serviceMonitorSelector: {}
+              serviceMonitorNamespaceSelector: {}
+              podMonitorSelector: {}
+              podMonitorNamespaceSelector: {}
+              storageSpec:
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: rook-ceph-block
+                    accessModes: ["ReadWriteOnce"]
+                    resources:
+                      requests:
+                        storage: 10Gi
+              retention: 10d
 
-        alertmanager:
-          alertmanagerSpec:
-            storage:
-              volumeClaimTemplate:
-                spec:
-                  storageClassName: rook-ceph-block
-                  accessModes: ["ReadWriteOnce"]
-                  resources:
-                    requests:
-                      storage: 5Gi
+          alertmanager:
+            alertmanagerSpec:
+              storage:
+                volumeClaimTemplate:
+                  spec:
+                    storageClassName: rook-ceph-block
+                    accessModes: ["ReadWriteOnce"]
+                    resources:
+                      requests:
+                        storage: 5Gi
 
-        nodeExporter:
-          enabled: true
-          serviceMonitor:
-            relabelings:
-              - action: replace
-                regex: (.*)
-                replacement: $1
-                sourceLabels:
-                  - __meta_kubernetes_pod_node_name
-                targetLabel: instance
+          nodeExporter:
+            enabled: true
+            serviceMonitor:
+              relabelings:
+                - action: replace
+                  regex: (.*)
+                  replacement: $1
+                  sourceLabels:
+                    - __meta_kubernetes_pod_node_name
+                  targetLabel: instance
 
-        kubeStateMetrics:
-          enabled: true
+          kubeStateMetrics:
+            enabled: true
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/monitoring
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
