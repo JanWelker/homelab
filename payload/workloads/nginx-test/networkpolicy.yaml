@@ -16,6 +16,10 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "/"
   egress:
     # Allow DNS resolution
     - toEndpoints:
