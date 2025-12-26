@@ -13,6 +13,8 @@ spec:
     metadata:
       labels:
         app: nginx-test
+      annotations:
+        io.cilium.proxy-visibility: "<Ingress/80/TCP/HTTP>"
     spec:
       containers:
         - name: nginx
