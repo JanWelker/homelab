@@ -19,7 +19,9 @@ spec:
           rules:
             http:
               - method: "GET"
-                path: "/"
+                path: "/.*"
+              - method: "POST"
+                path: "/.*"
   egress:
     # Allow DNS resolution
     - toEndpoints:
