@@ -1,41 +1,59 @@
-# Infisical Secrets Management
+# Infisical
 
-[Infisical](https://infisical.com) is the deployed secrets management platform for the cluster, reachable at `https://secrets.infra.k8s.wlkr.ch`.
-
-It provides a user-friendly Web UI for managing secrets, certificates, and app configurations.
+Infisical is an open-source secret management platform that we use to manage secrets across our infrastructure. It syncs secrets from the Infisical platform to Kubernetes Secrets.
 
 ## Architecture
 
-- **Deployment**: ArgoCD Application `payload/platform/infisical`.
-- **Database**: High-Availability Postgres Cluster managed by `postgres-operator` (Zalando).
-- **Ingress**: Exposed via Gateway API (`HTTPRoute`) through the `apps-gateway`.
-- **Authentication**: Initial login requires creation of the first admin account.
+The Infisical deployment in this cluster consists of:
 
-## Setup
+- **Infisical Backend**: The core service handling API requests.
+- **Redis**: A standalone Redis instance for caching and queuing.
+- **PostgreSQL**: An external PostgreSQL cluster managed by the `zalando-postgres-operator`. We **disable** the Helm chart's built-in PostgreSQL to leverage the robustness and features of the operator-managed cluster.
 
-The installation requires seeding initial encryption keys before the application can start.
+## Installation
 
-### One-Time Initialization
+Infisical is deployed via ArgoCD using the official Helm chart.
 
-Run the following make command to create the necessary namespace and generate secure random keys:
+- **App Path**: `payload/platform/infisical`
+- **Namespace**: `infisical`
+- **External Link**: [https://secrets.infra.k8s.wlkr.ch](https://secrets.infra.k8s.wlkr.ch)
 
-```bash
-make install-infisical
+## Usage
+
+To use Infisical in your workloads, you define an `InfisicalSecret` resource. The Infisical Secrets Operator will then fetch the secrets from the configured project/environment in Infisical and create a native Kubernetes Secret.
+
+### Example: Syncing Secrets
+
+Create an `InfisicalSecret` in your application's namespace:
+
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: my-app-secrets
+  namespace: my-app
+spec:
+  # The path in Infisical to fetch secrets from
+  secretPath: "/my-app"
+  
+  # The Kubernetes Secret to create
+  managedSecretReference:
+    secretName: my-app-secret
+    creationPolicy: Owner
+    
+  # Authentication (assuming Machine Identity is configured)
+  authentication:
+    universalAuth:
+      secretsScope:
+        projectSlug: "my-project-slug"
+        envSlug: "prod"
+      credentialsRef:
+        secretName: infisical-auth
+        secretNamespace: infisical
 ```
 
-This will create the `infisical-secrets` Kubernetes Secret containing `ENCRYPTION_KEY` and `AUTH_SECRET`.
+This will create a Kubernetes Secret named `my-app-secret` containing all secrets found at `/my-app` in the `prod` environment of project `my-project-slug`.
 
-## Access
+### Authentication
 
-1. Navigate to `https://secrets.infra.k8s.wlkr.ch`.
-2. If this is the first time accessing, follow the on-screen prompts to create the **Root Admin** account.
-3. Configure your projects and environments.
-
-## External Secrets Integration
-
-Infisical integrates natively with the **External Secrets Operator**. To sync secrets from Infisical to your workloads:
-
-1. Create an `InfisicalSecretStore` or `ClusterSecretStore`.
-2. Create `ExternalSecret` resources referencing your Infisical project.
-
-*(Refer to External Secrets documentation for CRD specifics)*.
+The `InfisicalSecret` requires authentication details. We typically use Universal Auth with Machine Identities. The credentials (Client ID and Client Secret) should be stored in a collection-level Kubernetes Secret (e.g., `infisical-auth`) that the `InfisicalSecret` can reference.
