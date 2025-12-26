@@ -1,0 +1,16 @@
+---
+# wichteln HTTPRoute - Apps Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: wichteln
+spec:
+  parentRefs:
+    - name: apps-gateway
+      namespace: kube-system
+  hostnames:
+    - "wichteln.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: wichteln
+          port: 80

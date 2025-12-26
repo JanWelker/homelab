@@ -1,0 +1,18 @@
+---
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: wichteln-db
+spec:
+  teamId: "wichteln"
+  volume:
+    size: 100Mi
+  numberOfInstances: 2
+  users:
+    wichteln:
+      - superuser
+      - createdb
+  databases:
+    wichteln: wichteln
+  postgresql:
+    version: "16"
