@@ -1,10 +1,43 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:best-practices",
+    ":prHourlyLimitNone",
+    ":prConcurrentLimitNone"
   ],
   "timezone": "Europe/Berlin",
   "schedule": [
     "before 5pm"
+  ],
+  "includePaths": [
+    "renovate.json",
+    "payload/**"
+  ],
+  "kubernetes": {
+    "fileMatch": [
+      "payload/.+\\.yaml$"
+    ]
+  },
+  "argocd": {
+    "fileMatch": [
+      "payload/.+\\.yaml$"
+    ]
+  },
+  "helm-values": {
+    "fileMatch": [
+      "payload/.+values\\.yaml$"
+    ]
+  },
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "matchFileNames": [
+        "payload/**"
+      ],
+      "groupName": "Kubernetes payload updates"
+    }
   ]
 }
