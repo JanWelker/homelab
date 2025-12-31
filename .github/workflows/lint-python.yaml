@@ -6,11 +6,13 @@ name: Lint Python
     branches: ["main", "master"]
     paths:
       - "boot_server/*.py"
-      - "requirements.txt"
+      - "pyproject.toml"
+      - "uv.lock"
   pull_request:
     paths:
       - "boot_server/*.py"
-      - "requirements.txt"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
 
 jobs:
@@ -23,12 +25,15 @@ jobs:
         # v6
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
-      - name: Install dependencies
-        run: |
-          pip install pylint
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.21"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
       - name: Run pylint
         # Lint specific directories and files
         run: |
-          pylint boot_server/*.py
+          uv run pylint boot_server/*.py

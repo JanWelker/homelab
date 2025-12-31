@@ -15,29 +15,28 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
+    container: python:3.14-slim
     permissions:
       contents: write
       packages: write
 
     steps:
       - name: Checkout repository
-        # v6
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
-      - name: Set up library
-        # v6
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
-        with:
-          python-version: "3.14.2"
+      - name: Install git
+        run: apt-get update && apt-get install -y git
 
-      - name: Install MkDocs and Material
-        run: |
-          pip install mkdocs-material
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
 
       - name: Build MkDocs
         working-directory: payload/workloads/documentation/src
-        run: mkdocs build
+        run: uv run mkdocs build
 
       - name: Log in to the Container registry
         # v3
@@ -49,7 +48,6 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        # v5
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -58,7 +56,6 @@ jobs:
             type=sha,format=short
 
       - name: Build and push Docker image
-        # v6
         uses: docker/build-push-action@9e436ba9f2d7bcd1d038c8e55d039d37896ddc5d
         with:
           context: payload/workloads/documentation/src
