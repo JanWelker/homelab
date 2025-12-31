@@ -8,6 +8,7 @@ name: Build and Push Documentation
     paths:
       - "payload/workloads/documentation/src/**"
       - ".github/workflows/docs.yaml"
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -16,7 +17,7 @@ env:
 jobs:
   build-and-push:
     runs-on: arc-runner-set
-    container: ubuntu-latest
+    container: ubuntu:24.04
     permissions:
       contents: write
       packages: write
