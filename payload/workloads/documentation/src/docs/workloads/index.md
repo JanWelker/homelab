@@ -7,11 +7,12 @@ These are managed by the `workloads` parent application in ArgoCD.
 
 | Application | Description |
 | :--- | :--- |
-| **advent-wollbi** | A custom application for the Advent season. |
-| **github-actions-runner** | Self-hosted GitHub Actions runners (ARC). |
-| **home-assistant** | Home automation platform. |
-| **nextcloud** | File hosting and productivity service. |
-| **nginx-test** | A simple Nginx application for testing deployment flows. |
+| **[advent-wollbi](advent-wollbi.md)** | A custom application for the Advent season. |
+| **[github-actions-runner](github-actions-runner.md)** | Self-hosted GitHub Actions runners (ARC). |
+| **[home-assistant](home-assistant.md)** | Home automation platform. |
+| **[nextcloud](nextcloud.md)** | File hosting and productivity service. |
+| **[nginx-test](nginx-test.md)** | A simple Nginx application for testing deployment flows. |
+| **[wichteln](wichteln.md)** | A Secret Santa application. |
 
 ## Management
 

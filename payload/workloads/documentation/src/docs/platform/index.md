@@ -4,76 +4,18 @@ This directory contains **core infrastructure components** managed via ArgoCD Gi
 
 ## Directory Structure
 
-```text
-core/
-├── cert-manager/          # TLS Certificate Management
-│   ├── application.yaml   # ArgoCD Application (Helm chart)
-│   ├── cluster-issuers.yaml # Let's Encrypt staging + prod issuers
-│   ├── certificates.yaml  # All Certificate resources
-│   └── route53-credentials.yaml.template
-│
-├── cilium/                # CNI + Gateway API Controller
-│   ├── application.yaml   # ArgoCD Application (Helm v1.18.5)
-│   ├── values.yaml        # Helm values
-│   ├── lb-pools.yaml      # CiliumLoadBalancerIPPool + L2 Policy
-│   ├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
-│   └── httproute.yaml     # Hubble UI route
-│
-├── gateway-api/           # Gateway API Resources
-│   ├── crds.yaml          # ArgoCD Application for CRDs (v1.2.0)
-│   └── gateways.yaml      # apps-gateway + infra-gateway
-│
-├── monitoring/            # Observability Stack
-│   ├── application.yaml   # kube-prometheus-stack
-│   └── httproute.yaml     # Grafana route
-│
-└── rook-ceph/             # Distributed Storage
-    ├── operator.yaml      # Rook-Ceph operator (v1.16.1)
-    ├── cluster.yaml       # CephCluster + CephBlockPool + StorageClass
-    ├── dashboard-config-job.yaml
-    └── httproute.yaml     # Rook dashboard route
-```
+See individual component documentation for detailed structure.
 
 ## Components
 
-### cert-manager/
-
-TLS certificate automation via Let's Encrypt:
-
-- **ClusterIssuers**: Both staging (testing) and production issuers using
-  DNS-01 via Route53
-- **Certificates**: Gateway TLS certs for `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`
-
-### cilium/
-
-CNI with Gateway API, WireGuard encryption, and L2 announcements:
-
-- **Gateway API**: Replaces traditional Ingress controller
-- **LoadBalancer Pools**: `10.9.2.249` (apps) and `10.9.2.248` (infra)
-- **Hubble**: Observability with metrics and UI at `hubble.infra.k8s.wlkr.ch`
-
-### gateway-api/
-
-Kubernetes Gateway API resources:
-
-- **Gateways**: `apps-gateway` for apps, `infra-gateway` for infrastructure
-- **HTTPRoutes**: Co-located with each app (not centralized)
-
-### monitoring/
-
-Full observability stack:
-
-- **Prometheus**: Metrics collection with 10-day retention
-- **Grafana**: Dashboards at `monitoring.infra.k8s.wlkr.ch`
-- **Alertmanager**: Alert routing and notifications
-
-### rook-ceph/
-
-Distributed storage using Ceph:
-
-- **Storage**: Raw partition OSD (`/dev/disk/by-partlabel/rook-osd`)
-- **Dashboard**: Ceph UI at `rook.infra.k8s.wlkr.ch`
-- **StorageClass**: `rook-ceph-block` (default, RBD-based)
+- **[cert-manager](cert-manager.md)**: TLS certificate automation.
+- **[cilium](cilium.md)**: CNI, Gateway API, and Network Policies.
+- **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
+- **[infisical](infisical.md)**: Secrets management.
+- **[k8up](k8up.md)**: Backup operator.
+- **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
+- **[postgres-operator](postgres-operator.md)**: Postgres operator.
+- **[rook-ceph](rook-ceph.md)**: Distributed storage.
 
 ## Traffic Flow
 
