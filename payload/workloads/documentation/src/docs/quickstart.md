@@ -7,7 +7,7 @@ Flatcar Container Linux and Kubeadm.
 
 ## Prerequisites
 
-* **Python 3**: For configuration and boot server.
+* **uv**: For dependency management (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
 * **Butane**: For transpiling config files (`brew install butane` or similar).
 * **SSH Key**: An Ed25519 SSH key at `~/.ssh/id_ed25519.pub` (or modify `ansible/templates/butane_config.yaml.j2`).
 * **External DHCP Server**: Configured to point `next-server` (Option 66) to
@@ -26,7 +26,7 @@ Flatcar Container Linux and Kubeadm.
       network encryption.
 
 2. **Initialize Environment**:
-    Create a virtual environment and install dependencies:
+    Initialize the project using `uv` to create the virtual environment and install dependencies:
 
     ```bash
     make setup

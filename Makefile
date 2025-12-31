@@ -1,23 +1,22 @@
 .PHONY: download config serve clean kubeconfig untaint taint install-argo bootstrap-apps
 
 setup:
-	python3 -m venv .venv
-	. .venv/bin/activate && pip install -r requirements.txt
+	uv sync
 	@echo "Virtual environment created. Activate with: source .venv/bin/activate"
 
 artifacts: download config
 
 download:
-	ansible-playbook -i ansible/inventory.yml ansible/playbooks/download.yml
+	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/download.yml
 
 config:
-	ansible-playbook -i ansible/inventory.yml ansible/playbooks/config.yml
+	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/config.yml
 
 serve:
 	sudo python3 boot_server/serve.py
 
 kubeconfig:
-	ansible-playbook -i ansible/inventory.yml ansible/playbooks/kubeconfig.yml
+	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/kubeconfig.yml
 	@echo "Kubeconfig saved to output/kubeconfig"
 
 untaint:
