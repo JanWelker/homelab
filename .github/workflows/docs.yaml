@@ -25,11 +25,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
-      - name: Install git
-        run: apt-get update && apt-get install -y git
-
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
 
       - name: Install the project
         run: uv sync --locked --all-extras --dev
