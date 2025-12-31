@@ -2,52 +2,32 @@
 
 ![Homelab Logo](payload/workloads/documentation/src/docs/assets/images/logo.png)
 
-A declarative, GitOps-driven bare metal Kubernetes cluster using Flatcar
-Container Linux.
+Welcome to the **Flatcar Homelab** project. This repository contains the configuration and automation for a fully automated, GitOps-driven Kubernetes cluster on bare metal, leveraging Flatcar Container Linux and Kubeadm.
+
+## Core Concepts
+
+* **Immutable Infrastructure**: Uses Flatcar Container Linux for secure, auto-updating nodes.
+* **GitOps**: All cluster state is managed via ArgoCD.
+* **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
+* **Storage**: Rook-Ceph for distributed block storage.
 
 ## Documentation
 
-Full documentation is available at: **[https://docs.k8s.wlkr.ch](https://docs.k8s.wlkr.ch)**
+The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https://docs.k8s.wlkr.ch)**.
 
-The source code for the documentation can be found in
-`payload/workloads/documentation/src`.
+* **[Quickstart Guide](https://docs.k8s.wlkr.ch/quickstart)**: Instructions for bootstrapping the cluster.
+* **[Platform Architecture](https://docs.k8s.wlkr.ch/platform/)**: details on core infrastructure components.
+* **[Workloads](https://docs.k8s.wlkr.ch/workloads/)**: Information about deployed applications.
 
-## Quickstart
+## Repository Structure
 
-### Prerequisites
+* `ansible/`: Ansible playbooks for bootstrapping and configuration generation.
+* `boot_server/`: Python-based PXE boot server.
+* `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.
+  * `platform/`: Core infrastructure (Cilium, Rook, etc.).
+  * `workloads/`: User applications (Home Assistant, etc.).
+  * `argocd/`: ArgoCD bootstrap configuration.
 
-- Python 3.x
-- Ansible
-- `tftpy` (if running boot server directly)
+## Contributing
 
-### Bootstrap Deployment
-
-1. **Configure Inventory**: Edit `ansible/inventory.yml` with your node details
-    (MAC addresses, IPs).
-2. **Generate Configs**:
-
-    ```bash
-    cd ansible
-    ansible-playbook playbooks/config.yml
-    ```
-
-3. **Start Boot Server**:
-
-    ```bash
-    cd boot_server
-    sudo python3 serve.py
-    ```
-
-4. **Boot Nodes**: Turn on your bare metal nodes. They should PXE boot into
-    Flatcar Container Linux and install themselves.
-
-### Accessing the Cluster
-
-Once the control plane is ready, retrieve the kubeconfig:
-
-```bash
-cd ansible
-ansible-playbook playbooks/kubeconfig.yml
-export KUBECONFIG=$(pwd)/../output/kubeconfig/admin.conf
-kubectl get nodes
-```
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** (if available) or the `development/` directory in documentation.
