@@ -18,7 +18,14 @@ Flatcar Container Linux and Kubeadm.
 
 ## Setup
 
-1. **Initialize Environment**:
+1. **Configure Inventory**:
+    Edit `ansible/inventory.yml` to define your target nodes (MAC addresses and
+    Roles) and set versions (`kubernetes_version`, `containerd_version`).
+    * **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
+      to replace `kube-proxy` entirely and use **WireGuard** for transparent
+      network encryption.
+
+2. **Initialize Environment**:
     Create a virtual environment and install dependencies:
 
     ```bash
@@ -26,12 +33,6 @@ Flatcar Container Linux and Kubeadm.
     source .venv/bin/activate
     ```
 
-2. **Configure Inventory**: Edit `ansible/inventory.yml` to define your target
-    nodes (MAC addresses and Roles) and set versions (`kubernetes_version`,
-    `containerd_version`).
-    * **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
-      to replace `kube-proxy` entirely and use **WireGuard** for transparent
-      network encryption.
 3. **Download Artifacts**:
 
     ```bash
