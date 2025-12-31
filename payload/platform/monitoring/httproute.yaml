@@ -12,6 +12,18 @@ spec:
   hostnames:
     - "monitoring.infra.k8s.wlkr.ch"
   rules:
-    - backendRefs:
+    - filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Strict-Transport-Security
+                value: "max-age=31536000; includeSubDomains"
+              - name: X-Content-Type-Options
+                value: "nosniff"
+              - name: X-Frame-Options
+                value: "SAMEORIGIN"
+              - name: Referrer-Policy
+                value: "strict-origin-when-cross-origin"
+      backendRefs:
         - name: kube-prometheus-stack-grafana
           port: 80
