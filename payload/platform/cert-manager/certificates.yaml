@@ -7,6 +7,10 @@ metadata:
   namespace: argocd
 spec:
   secretName: argocd-server-tls
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
@@ -21,6 +25,10 @@ metadata:
   namespace: kube-system
 spec:
   secretName: apps-gateway-tls
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
@@ -36,6 +44,10 @@ metadata:
   namespace: kube-system
 spec:
   secretName: infra-gateway-tls
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
