@@ -26,7 +26,8 @@ spec:
         # CephCluster configuration
         cephClusterSpec:
           cephVersion:
-            imagePullPolicy: IfNotPresent
+            image: quay.io/ceph/ceph:v19.2.3
+            imagePullPolicy: "IfNotPresent"
           monitoring:
             enabled: true
           dataDirHostPath: /var/lib/rook
