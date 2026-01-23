@@ -30,4 +30,4 @@ The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https:/
 
 ## Contributing
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** (if available) or the `development/` directory in documentation.
+See the `development/` directory in the documentation for contribution guidelines and development workflows.

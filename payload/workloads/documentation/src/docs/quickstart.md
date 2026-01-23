@@ -18,22 +18,28 @@ Flatcar Container Linux and Kubeadm.
 
 ## Setup
 
-1. **Configure Inventory**:
+1. **Clone Repository**:
+
+    ```bash
+    git clone https://github.com/JanWelker/homelab.git homelab
+    cd homelab
+    ```
+
+2. **Configure Inventory**:
     Edit `ansible/inventory.yml` to define your target nodes (MAC addresses and
     Roles) and set versions (`kubernetes_version`, `containerd_version`).
     * **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
       to replace `kube-proxy` entirely and use **WireGuard** for transparent
       network encryption.
 
-2. **Initialize Environment**:
+3. **Initialize Environment**:
     Initialize the project using `uv` to create the virtual environment and install dependencies:
 
     ```bash
     make setup
-    source .venv/bin/activate
     ```
 
-3. **Download Artifacts**:
+4. **Download Artifacts**:
 
     ```bash
     make download
@@ -42,7 +48,7 @@ Flatcar Container Linux and Kubeadm.
     *Downloads Flatcar artifacts, Syslinux, and Systemd Sysext images
     (Kubernetes, Containerd) to `output/http`.*
 
-4. **Generate Configurations**:
+5. **Generate Configurations**:
 
     ```bash
     make config
@@ -52,18 +58,18 @@ Flatcar Container Linux and Kubeadm.
     (PXE). Note: The NVMe disk is partitioned into 50GB for containerd and the
     remaining space for Rook-Ceph storage.*
 
-5. **Start Boot Server** (Requires sudo for port 69):
+6. **Start Boot Server** (Requires sudo for port 69):
 
     ```bash
     make serve
     ```
 
-6. **Boot Machines**:
+7. **Boot Machines**:
     Power on your bare metal nodes. They will PXE boot, install Flatcar, and reboot.
     * **Note**: The cluster will come up in a `NotReady` state initially because
       no CNI is installed.
 
-7. **Retrieve Kubeconfig**:
+8. **Retrieve Kubeconfig**:
     Once the control plane node responds to SSH (or is pingable), retrieve the
     admin kubeconfig:
 
@@ -78,7 +84,7 @@ Flatcar Container Linux and Kubeadm.
     cp -n output/kubeconfig ~/.kube/config
     ```
 
-8. **Install Core Components** (CRITICAL):
+9. **Install Core Components** (CRITICAL):
     **Untaint Control Plane** (Optional, for single-node clusters):
 
     ```bash
@@ -102,9 +108,10 @@ Flatcar Container Linux and Kubeadm.
     * Installs **Cilium** (CNI, Ingress, L2 Announcements) via Helm.
     * **Removes** `kube-proxy` to resolve IPVS conflicts.
     * Installs **Cert-Manager** (for ACME TLS).
+    * Installs **Infisical** Secrets (Encryption Key/Auth Secret).
     * *The node should become `Ready` after this step.*
 
-9. **Post-Installation**:
+10. **Post-Installation**:
 
     * **Deploy ArgoCD**:
 

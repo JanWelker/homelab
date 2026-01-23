@@ -2,7 +2,7 @@
 
 setup:
 	uv sync
-	@echo "Virtual environment created. Activate with: source .venv/bin/activate"
+	@echo "Virtual environment created."
 
 artifacts: download config
 
@@ -13,7 +13,7 @@ config:
 	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/config.yml
 
 serve:
-	sudo python3 boot_server/serve.py
+	sudo $$(uv python find) boot_server/serve.py
 
 kubeconfig:
 	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/kubeconfig.yml
@@ -27,7 +27,7 @@ taint:
 	@echo "Re-applying control-plane taints..."
 	kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane:NoSchedule
 
-install-core: install-cilium install-cert-manager 
+install-core: install-cilium install-cert-manager install-infisical 
 
 install-cilium:
 	-kubectl -n kube-system delete ds kube-proxy 2>/dev/null || true
