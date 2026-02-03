@@ -34,7 +34,16 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # Allow connection to Postgres (wichteln-db)
+    # Allow connection to Postgres (wichteln-db) via Service
+    - toServices:
+        - k8sService:
+            serviceName: wichteln-db
+            namespace: wichteln
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    # Allow connection to Postgres (wichteln-db) via direct Pod IPs
     - toEndpoints:
         - matchLabels:
             application: spilo
