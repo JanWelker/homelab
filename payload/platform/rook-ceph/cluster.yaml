@@ -30,10 +30,10 @@ spec:
         cephClusterSpec:
           skipUpgradeChecks: true
           cephVersion:
-            image: quay.io/ceph/ceph:v19.2.2
+            image: quay.io/ceph/ceph:v20.2.0
             imagePullPolicy: "Always"
           monitoring:
-            enabled: true
+            enabled: false
           dataDirHostPath: /var/lib/rook
 
           # HA: 3 mons, 2 mgrs
