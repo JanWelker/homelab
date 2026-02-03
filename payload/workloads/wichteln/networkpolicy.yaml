@@ -34,19 +34,11 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    # Allow connection to Postgres
+    # Allow connection to Postgres (wichteln-db)
     - toEndpoints:
         - matchLabels:
             application: spilo
-            spilo-role: master
-      toPorts:
-        - ports:
-            - port: "5432"
-              protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            application: spilo
-            spilo-role: replica
+            cluster-name: wichteln-db
       toPorts:
         - ports:
             - port: "5432"
