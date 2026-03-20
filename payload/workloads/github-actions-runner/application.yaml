@@ -11,7 +11,7 @@ spec:
   sources:
     - repoURL: "ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set-controller
-      targetRevision: 0.13.1
+      targetRevision: 0.14.0
     - repoURL: "https://github.com/JanWelker/homelab.git"
       targetRevision: HEAD
       path: payload/workloads/github-actions-runner
@@ -47,7 +47,7 @@ spec:
   sources:
     - repoURL: "ghcr.io/actions/actions-runner-controller-charts"
       chart: gha-runner-scale-set
-      targetRevision: 0.13.1
+      targetRevision: 0.14.0
       helm:
         valuesObject:
           githubConfigUrl: "https://github.com/JanWelker/homelab"
@@ -61,7 +61,7 @@ spec:
                 fsGroup: 1001
               containers:
                 - name: runner
-                  image: ghcr.io/actions/actions-runner:latest@sha256:8c3f5970b8ceb90cbd3e89b80c6806bb74d9c31686e9177c743323a4539d12f5
+                  image: ghcr.io/actions/actions-runner:latest@sha256:1ad983536759ceec39ed75a2c8f007ca8c37b66eee35ed86f13623b29a4db97d
                   command: ["/home/runner/run.sh"]
                   env:
                     - name: ACTIONS_RUNNER_CONTAINER_HOOKS
