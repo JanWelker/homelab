@@ -17,11 +17,11 @@ jobs:
   markdown-lint:
     name: Markdown
     runs-on: arc-runner-set
-    container: node:24.12.0-alpine
+    container: node:24.14.0-alpine@sha256:7fddd9ddeae8196abf4a3ef2de34e11f7b1a722119f91f28ddf1e99dcafdf114
     steps:
       - name: Checkout
         # v6
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
       - name: Install markdownlint-cli2
         run: npm install -g markdownlint-cli2
