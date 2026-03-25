@@ -90,25 +90,25 @@
     }
   ],
   "kubernetes": {
-    "fileMatch": [
-      "payload/.+\\.yaml$"
+    "managerFilePatterns": [
+      "/payload/.+\\.yaml$/"
     ]
   },
   "argocd": {
-    "fileMatch": [
-      "payload/.+\\.yaml$"
+    "managerFilePatterns": [
+      "/payload/.+\\.yaml$/"
     ]
   },
   "helm-values": {
-    "fileMatch": [
-      "payload/.+values\\.yaml$"
+    "managerFilePatterns": [
+      "/payload/.+values\\.yaml$/"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "ansible/inventory.yml"
+      "managerFilePatterns": [
+        "/ansible/inventory.yml/"
       ],
       "matchStrings": [
         "flatcar_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -119,8 +119,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ansible/inventory.yml"
+      "managerFilePatterns": [
+        "/ansible/inventory.yml/"
       ],
       "matchStrings": [
         "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
@@ -131,8 +131,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ansible/inventory.yml"
+      "managerFilePatterns": [
+        "/ansible/inventory.yml/"
       ],
       "matchStrings": [
         "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -143,8 +143,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "ansible/inventory.yml"
+      "managerFilePatterns": [
+        "/ansible/inventory.yml/"
       ],
       "matchStrings": [
         "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -155,8 +155,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "^ansible/templates/.*\\.j2$"
+      "managerFilePatterns": [
+        "/^ansible/templates/.*\\.j2$/"
       ],
       "matchStrings": [
         "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[^\"'\\s]+)['\"]?"
