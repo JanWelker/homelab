@@ -113,11 +113,23 @@
         "/ansible/inventory.yml/"
       ],
       "matchStrings": [
+        "flatcar_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
+      ],
+      "depNameTemplate": "flatcar",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "flatcar/scripts"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/ansible/inventory.yml/"
+      ],
+      "matchStrings": [
         "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "kubernetes",
       "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "kubernetes/kubernetes"
+      "packageNameTemplate": "flatcar/sysext-bakery"
     },
     {
       "customType": "regex",
@@ -129,7 +141,7 @@
       ],
       "depNameTemplate": "containerd",
       "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "containerd/containerd"
+      "packageNameTemplate": "flatcar/sysext-bakery"
     },
     {
       "customType": "regex",
