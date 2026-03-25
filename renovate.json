@@ -49,6 +49,7 @@
     {
       "description": "Python Tooling and Pre-commit",
       "matchPackageNames": [
+        "ansible",
         "pre-commit",
         "ansible-lint",
         "pylint",
@@ -89,25 +90,25 @@
     }
   ],
   "kubernetes": {
-    "managerFilePatterns": [
-      "/payload/.+\\.yaml$/"
+    "fileMatch": [
+      "payload/.+\\.yaml$"
     ]
   },
   "argocd": {
-    "managerFilePatterns": [
-      "/payload/.+\\.yaml$/"
+    "fileMatch": [
+      "payload/.+\\.yaml$"
     ]
   },
   "helm-values": {
-    "managerFilePatterns": [
-      "/payload/.+values\\.yaml$/"
+    "fileMatch": [
+      "payload/.+values\\.yaml$"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/ansible/inventory.yml/"
+      "fileMatch": [
+        "ansible/inventory.yml"
       ],
       "matchStrings": [
         "flatcar_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -118,8 +119,8 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/ansible/inventory.yml/"
+      "fileMatch": [
+        "ansible/inventory.yml"
       ],
       "matchStrings": [
         "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
@@ -130,8 +131,8 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/ansible/inventory.yml/"
+      "fileMatch": [
+        "ansible/inventory.yml"
       ],
       "matchStrings": [
         "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -142,8 +143,8 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/ansible/inventory.yml/"
+      "fileMatch": [
+        "ansible/inventory.yml"
       ],
       "matchStrings": [
         "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -154,8 +155,8 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
-        "/^ansible/templates/.*\\.j2$/"
+      "fileMatch": [
+        "^ansible/templates/.*\\.j2$"
       ],
       "matchStrings": [
         "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[^\"'\\s]+)['\"]?"
