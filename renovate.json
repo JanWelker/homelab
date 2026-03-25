@@ -2,42 +2,105 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:best-practices",
+    ":dependencyDashboard",
     ":prHourlyLimitNone",
-    ":prConcurrentLimitNone"
+    ":prConcurrentLimitNone",
+    ":timezone(Europe/Berlin)"
   ],
-  "timezone": "Europe/Berlin",
-  "schedule": [
-    "before 5pm"
-  ],
-  "includePaths": [
-    "renovate.json",
-    "payload/**"
-  ],
-  "kubernetes": {
-    "managerFilePatterns": [
-      "/payload/.+\\.yaml$/"
-    ]
-  },
-  "argocd": {
-    "managerFilePatterns": [
-      "/payload/.+\\.yaml$/"
-    ]
-  },
-  "helm-values": {
-    "managerFilePatterns": [
-      "/payload/.+values\\.yaml$/"
-    ]
+  "labels": ["dependencies"],
+  "schedule": ["before 5pm on weekdays"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "schedule": "at any time"
   },
   "packageRules": [
     {
-      "matchDatasources": [
-        "docker",
-        "helm"
+      "description": "Infrastructure Platform Updates",
+      "matchFileNames": ["payload/platform/**"],
+      "groupName": "Platform Infrastructure",
+      "addLabels": ["infrastructure"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Application Workload Updates",
+      "matchFileNames": ["payload/workloads/**"],
+      "groupName": "Workloads",
+      "addLabels": ["application"],
+      "automerge": true,
+      "matchUpdateTypes": ["patch", "minor"]
+    },
+    {
+      "description": "Python Tooling and Pre-commit",
+      "matchPackageNames": ["pre-commit", "ansible-lint", "pylint", "yamllint", "mkdocs-material"],
+      "groupName": "Dev Tooling",
+      "automerge": true
+    },
+    {
+      "description": "Ansible and GitHub Actions",
+      "matchManagers": ["ansible", "github-actions"],
+      "groupName": "Automation & CI",
+      "addLabels": ["devops"]
+    },
+    {
+      "description": "Core Infrastructure (OS, K8s, Containerd)",
+      "matchPackageNames": ["flatcar", "kubernetes", "containerd", "syslinux"],
+      "groupName": "Core Infrastructure",
+      "addLabels": ["infrastructure"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "kubernetes": {
+    "fileMatch": ["payload/.+\\.yaml$"]
+  },
+  "argocd": {
+    "fileMatch": ["payload/.+\\.yaml$"]
+  },
+  "helm-values": {
+    "fileMatch": ["payload/.+values\\.yaml$"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["ansible/inventory.yml"],
+      "matchStrings": [
+        "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
       ],
-      "matchFileNames": [
-        "payload/**"
+      "depNameTemplate": "kubernetes",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "kubernetes/kubernetes"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["ansible/inventory.yml"],
+      "matchStrings": [
+        "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
       ],
-      "groupName": "Kubernetes payload updates"
+      "depNameTemplate": "containerd",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "containerd/containerd"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["ansible/inventory.yml"],
+      "matchStrings": [
+        "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
+      ],
+      "depNameTemplate": "syslinux",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "geneh/syslinux"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^ansible/templates/.*\\.j2$"],
+      "matchStrings": [
+        "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[^\"'\\s]+)['\"]?"
+      ],
+      "datasourceTemplate": "docker"
     }
   ]
 }
