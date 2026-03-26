@@ -1,5 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "platformAutomerge": true,
   "extends": [
     "config:best-practices",
     ":dependencyDashboard",
@@ -58,18 +59,33 @@
         "mkdocs-material"
       ],
       "groupName": "Dev Tooling",
-      "automerge": true
+      "automerge": true,
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ]
     },
     {
-      "description": "Ansible and GitHub Actions",
+      "description": "DevOps, Automation & CI",
       "matchManagers": [
         "ansible",
-        "github-actions"
+        "github-actions",
+        "regex"
       ],
-      "groupName": "Automation & CI",
-      "automerge": true,
+      "groupName": "DevOps",
       "addLabels": [
         "devops"
+      ],
+      "automerge": true,
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "excludePackageNames": [
+        "flatcar",
+        "kubernetes",
+        "containerd",
+        "syslinux"
       ]
     },
     {
@@ -83,12 +99,15 @@
       "groupName": "Core Infrastructure",
       "addLabels": [
         "infrastructure"
-      ]
+      ],
+      "automerge": false
     },
     {
+      "description": "Block all Major updates from automerging",
       "matchUpdateTypes": [
         "major"
-      ]
+      ],
+      "automerge": false
     }
   ],
   "kubernetes": {
