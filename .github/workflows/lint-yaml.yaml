@@ -35,5 +35,4 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Run yamllint
-        # Lint all YAML files in the payload directory
-        run: uv run yamllint -f github payload .github/workflows
+        run: uv run yamllint -f github **/*.yml **/*.yaml

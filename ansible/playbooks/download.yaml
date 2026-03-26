@@ -18,7 +18,7 @@
         - "{{ tftp_dir }}"
 
     - name: Download Flatcar OS Artifacts
-      ansible.builtin.include_tasks: tasks/download_flatcar.yml
+      ansible.builtin.include_tasks: tasks/download_flatcar.yaml
       vars:
         url: "https://{{ flatcar_channel }}.release.flatcar-linux.net/amd64-usr/{{ flatcar_version }}"
       loop:
@@ -28,7 +28,7 @@
           file: flatcar_production_pxe_image.cpio.gz
 
     - name: Download Sysexts
-      ansible.builtin.include_tasks: tasks/download_sysext.yml
+      ansible.builtin.include_tasks: tasks/download_sysext.yaml
       vars:
         url: "https://github.com/flatcar/sysext-bakery/releases/download"
       loop:
@@ -44,6 +44,6 @@
         mode: "0644"
 
     - name: Download Syslinux
-      ansible.builtin.include_tasks: tasks/download_syslinux.yml
+      ansible.builtin.include_tasks: tasks/download_syslinux.yaml
       vars:
         url: "https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux"
