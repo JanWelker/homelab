@@ -70,7 +70,7 @@
       "matchManagers": [
         "ansible",
         "github-actions",
-        "regex"
+        "custom.regex"
       ],
       "groupName": "DevOps",
       "addLabels": [
@@ -81,11 +81,11 @@
         "patch",
         "minor"
       ],
-      "excludePackageNames": [
-        "flatcar",
-        "kubernetes",
-        "containerd",
-        "syslinux"
+      "matchPackageNames": [
+        "!flatcar",
+        "!kubernetes",
+        "!containerd",
+        "!syslinux"
       ]
     },
     {
