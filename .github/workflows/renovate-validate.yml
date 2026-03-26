@@ -1,8 +1,13 @@
 ---
 name: Renovate Config Validation
 
-on:
+permissions:
+  contents: read
+
+"on":
   push:
+    branches:
+      - "main"
     paths:
       - "renovate.json"
       - ".github/workflows/renovate-validate.yml"
@@ -10,9 +15,7 @@ on:
     paths:
       - "renovate.json"
       - ".github/workflows/renovate-validate.yml"
-
-permissions:
-  contents: read
+  workflow_dispatch:
 
 jobs:
   validate:
