@@ -183,6 +183,16 @@
         "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[^\"'\\s]+)['\"]?"
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.*\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "(?<depName>dagandersen/argocd-diff-preview):(?<currentValue>[^\\s\"']+)"
+      ],
+      "datasourceTemplate": "docker"
     }
   ]
 }
