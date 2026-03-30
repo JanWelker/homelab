@@ -7,16 +7,16 @@ setup:
 artifacts: download config
 
 download:
-	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/download.yml
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/download.yaml
 
 config:
-	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/config.yml
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
 
 serve:
 	sudo $$(uv python find) boot_server/serve.py
 
 kubeconfig:
-	uv run ansible-playbook -i ansible/inventory.yml ansible/playbooks/kubeconfig.yml
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml
 	@echo "Kubeconfig saved to output/kubeconfig"
 
 untaint:

@@ -3,15 +3,15 @@
 ```text
 .
 ├── ansible
-│   ├── inventory.yml       # Host definitions (MAC addresses, IPs, Roles)
+│   ├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
 │   ├── playbooks
-│   │   ├── config.yml      # Generate configs
-│   │   ├── download.yml    # Orchestrate downloads
-│   │   ├── kubeconfig.yml  # Retrieve kubeconfig from control plane
+│   │   ├── config.yaml      # Generate configs
+│   │   ├── download.yaml    # Orchestrate downloads
+│   │   ├── kubeconfig.yaml  # Retrieve kubeconfig from control plane
 │   │   └── tasks           # Download Task definitions
-│   │       ├── download_flatcar.yml
-│   │       ├── download_sysext.yml
-│   │       └── download_syslinux.yml
+│   │       ├── download_flatcar.yaml
+│   │       ├── download_sysext.yaml
+│   │       └── download_syslinux.yaml
 │   └── templates
 │       ├── butane_config.yaml.j2 # Butane config template (transpiles to Ignition)
 │       ├── kubeadm.yaml.j2

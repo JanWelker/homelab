@@ -26,7 +26,7 @@ Flatcar Container Linux and Kubeadm.
     ```
 
 2. **Configure Inventory**:
-    Edit `ansible/inventory.yml` to define your target nodes (MAC addresses and
+    Edit `ansible/inventory.yaml` to define your target nodes (MAC addresses and
     Roles) and set versions (`kubernetes_version`, `containerd_version`).
     * **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
       to replace `kube-proxy` entirely and use **WireGuard** for transparent

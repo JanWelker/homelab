@@ -7,11 +7,11 @@ the Flatcar cluster.
 
 ```text
 ansible/
-├── inventory.yml       # Host definitions (MAC addresses, IPs, Roles)
+├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
 ├── playbooks/
-│   ├── config.yml      # Generates Ignition and Kubeadm configurations
-│   ├── download.yml    # Downloads required artifacts (OS images, binaries)
-│   ├── kubeconfig.yml  # Retrieves kubeconfig from the control plane
+│   ├── config.yaml      # Generates Ignition and Kubeadm configurations
+│   ├── download.yaml    # Downloads required artifacts (OS images, binaries)
+│   ├── kubeconfig.yaml  # Retrieves kubeconfig from the control plane
 │   └── tasks/          # Reusable tasks for downloads
 └── templates/
     ├── butane_config.yaml.j2 # Template for Butane config (transpiled to Ignition)
@@ -21,7 +21,7 @@ ansible/
 
 ## Inventory
 
-The `inventory.yml` file defines the cluster layout.
+The `inventory.yaml` file defines the cluster layout.
 
 - **Global Variables**: Flattened variables like versions (`kubernetes_version`,
   `flatcar_version`) and network settings.
@@ -35,7 +35,7 @@ The `inventory.yml` file defines the cluster layout.
 
 ## Playbooks
 
-### `config.yml`
+### `config.yaml`
 
 Generates all necessary configuration files for booting and bootstrapping the
 nodes.
@@ -45,7 +45,7 @@ nodes.
 - Creates PXE boot menus for each host based on MAC address.
 - Outputs to `output/http` and `output/tftp`.
 
-### `download.yml`
+### `download.yaml`
 
 Downloads external artifacts required for provisioning.
 
@@ -53,7 +53,7 @@ Downloads external artifacts required for provisioning.
 - Systemd Sysext images (Kubernetes, Containerd).
 - Syslinux bootloader files.
 
-### `kubeconfig.yml`
+### `kubeconfig.yaml`
 
 Retrieves the admin `kubeconfig` file from the first available control plane
 node after the cluster is bootstrapped.
