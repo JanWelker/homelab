@@ -112,24 +112,24 @@
   ],
   "kubernetes": {
     "managerFilePatterns": [
-      "//payload/.+\.yaml$/"
+      "//payload/.+\\.yaml$/"
     ]
   },
   "argocd": {
     "managerFilePatterns": [
-      "//payload/.+\.yaml$/"
+      "//payload/.+\\.yaml$/"
     ]
   },
   "helm-values": {
     "managerFilePatterns": [
-      "//payload/.+values\.yaml$/"
+      "//payload/.+values\\.yaml$/"
     ]
   },
   "customManagers": [
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ansible/inventory\.yml$/"
+        "/^ansible/inventory\\.yaml$/"
       ],
       "matchStrings": [
         "flatcar_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -141,7 +141,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ansible/inventory\.yml$/"
+        "/^ansible/inventory\\.yaml$/"
       ],
       "matchStrings": [
         "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
@@ -153,7 +153,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ansible/inventory\.yml$/"
+        "/^ansible/inventory\\.yaml$/"
       ],
       "matchStrings": [
         "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -165,7 +165,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ansible/inventory\.yml$/"
+        "/^ansible/inventory\\.yaml$/"
       ],
       "matchStrings": [
         "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
@@ -177,7 +177,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^ansible/templates/.*\.j2$/"
+        "/^ansible/templates/.*\\.j2$/"
       ],
       "matchStrings": [
         "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?['\"]?"
@@ -187,7 +187,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^\.github/workflows/.*\.ya?ml$/"
+        "/^\\.github/workflows/.*\\.yaml$/"
       ],
       "matchStrings": [
         "(?<depName>dagandersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
