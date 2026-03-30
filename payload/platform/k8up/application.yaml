@@ -5,6 +5,7 @@ metadata:
   name: k8up
   namespace: argocd
   annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
     argocd.argoproj.io/sync-wave: "0"
   finalizers:
     - resources-finalizer.argocd.argoproj.io

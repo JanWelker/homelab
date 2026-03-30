@@ -5,6 +5,7 @@ metadata:
   name: kube-prometheus-stack
   namespace: argocd
   annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
     argocd.argoproj.io/sync-wave: "1"
     link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch
   finalizers:

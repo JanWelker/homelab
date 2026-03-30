@@ -5,6 +5,8 @@ metadata:
   name: arc-systems
   namespace: argocd
   finalizers:
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: apps

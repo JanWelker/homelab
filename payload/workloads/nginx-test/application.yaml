@@ -5,6 +5,7 @@ metadata:
   name: nginx-test
   namespace: argocd
   annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
     link.argocd.argoproj.io/external-link: https://nginx.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
