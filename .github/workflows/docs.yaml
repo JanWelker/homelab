@@ -8,7 +8,7 @@ name: Build and Push Documentation
     paths:
       - "payload/workloads/documentation/src/**"
       - ".github/workflows/docs.yaml"
-      - ".github/workflows/reusable-docker-build.yml"
+      - ".github/workflows/reusable-docker-build.yaml"
   workflow_dispatch:
 
 env:
@@ -17,7 +17,7 @@ env:
 
 jobs:
   build:
-    uses: ./.github/workflows/reusable-docker-build.yml
+    uses: ./.github/workflows/reusable-docker-build.yaml
     permissions:
       contents: read
       packages: write
