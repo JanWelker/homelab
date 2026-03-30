@@ -16,7 +16,7 @@ Welcome to the **Flatcar Homelab** project. This repository contains the configu
 The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https://docs.k8s.wlkr.ch)**.
 
 * **[Quickstart Guide](https://docs.k8s.wlkr.ch/quickstart)**: Instructions for bootstrapping the cluster.
-* **[Platform Architecture](https://docs.k8s.wlkr.ch/platform/)**: details on core infrastructure components.
+* **[Platform Architecture](https://docs.k8s.wlkr.ch/platform/)**: Details on core infrastructure components.
 * **[Workloads](https://docs.k8s.wlkr.ch/workloads/)**: Information about deployed applications.
 
 ## Repository Structure
@@ -25,7 +25,7 @@ The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https:/
 * `boot_server/`: Python-based PXE boot server.
 * `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.
   * `platform/`: Core infrastructure (Cilium, Rook, etc.).
-  * `workloads/`: User applications (Home Assistant, etc.).
+  * `workloads/`: User applications (Home Assistant, Nextcloud, etc.).
   * `argocd/`: ArgoCD bootstrap configuration.
 
 ## Contributing

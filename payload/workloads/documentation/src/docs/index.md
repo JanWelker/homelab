@@ -36,5 +36,7 @@ Explore the user-facing applications deployed on the cluster, such as:
 
 ### Developer Resources
 
-* [Development](development/index.md#): Guides for contributing to the project.
-* [Ansible](ansible/index.md#): Configuration management details.
+* [Documentation System](development/documentation.md): How the docs site is built and deployed.
+* [Maintenance](development/maintenance.md): CI/CD workflows and dependency management.
+* [Adding a Workload](development/add-workload.md): Step-by-step guide for deploying a new application.
+* [Ansible](ansible/index.md): Configuration management details.

@@ -26,22 +26,27 @@
 │   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
 │   ├── root.yaml           # Parent Applications (workloads, platform, gitops)
-│   ├── apps/               # ArgoCD Applications
-│   │   └── nginx-test/     # User app directory
-│   │       ├── application.yaml
-│   │       ├── deployment.yaml
-│   │       ├── httproute.yaml
-│   │       ├── namespace.yaml
-│   │       └── service.yaml
 │   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── application.yaml     # ArgoCD self-management Application
-│   │   ├── argocd-values.yaml
-│   │   └── argocd-httproute.yaml
-│   └── core/               # Infrastructure managed by ArgoCD
-│       ├── cert-manager/   # TLS certificates
-│       ├── cilium/         # CNI + Gateway API
-│       ├── gateway-api/    # Gateway resources
-│       ├── monitoring/     # Prometheus stack
-│       └── rook-ceph/      # Storage operator & cluster
+│   │   ├── argocd-projects.yaml # RBAC project definitions
+│   │   ├── httproute.yaml
+│   │   └── values.yaml
+│   ├── platform/           # Core infrastructure managed by ArgoCD
+│   │   ├── cert-manager/   # TLS certificates
+│   │   ├── cilium/         # CNI + Gateway API
+│   │   ├── gateway-api/    # Gateway resources
+│   │   ├── infisical/      # Secrets management
+│   │   ├── k8up/           # Backup operator
+│   │   ├── monitoring/     # Prometheus stack
+│   │   ├── postgres-operator/ # PostgreSQL HA operator
+│   │   └── rook-ceph/      # Storage operator & cluster
+│   └── workloads/          # User-facing applications
+│       ├── advent-wollbi/
+│       ├── documentation/
+│       ├── github-actions-runner/
+│       ├── home-assistant/
+│       ├── nextcloud/
+│       ├── nginx-test/
+│       └── wichteln/
 └── README.md
 ```

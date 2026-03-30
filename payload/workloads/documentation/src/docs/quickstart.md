@@ -5,16 +5,24 @@
 This project automates the deployment of a bare metal Kubernetes cluster using
 Flatcar Container Linux and Kubeadm.
 
+## Hardware Requirements
+
+Each node must have:
+
+- A NIC that supports PXE booting
+- An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`)
+- Sufficient disk space: 50 GB reserved for containerd, remainder used by Rook-Ceph as OSD storage
+
+The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.
+
 ## Prerequisites
 
-* **uv**: For dependency management (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
-* **Butane**: For transpiling config files (`brew install butane` or similar).
-* **SSH Key**: An Ed25519 SSH key at `~/.ssh/id_ed25519.pub` (or modify `ansible/templates/butane_config.yaml.j2`).
-* **External DHCP Server**: Configured to point `next-server` (Option 66) to
-  this host's IP.
-  * **BIOS**: set `filename` (Option 67) to `lpxelinux.0` (Required for HTTP
-    boot support).
-  * **UEFI**: set `filename` (Option 67) to `syslinux.efi`.
+- **uv**: Python package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- **Butane**: Transpiles YAML configs to Ignition JSON (`brew install butane` or see [Flatcar docs](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/))
+- **SSH Key**: An Ed25519 key at `~/.ssh/id_ed25519.pub` (or edit `ansible/templates/butane_config.yaml.j2` to use a different path/key)
+- **External DHCP Server**: Must point PXE clients at the deployment host:
+  - Option 66 (`next-server`): IP of the machine running `make serve`
+  - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
 
 ## Setup
 
@@ -28,7 +36,7 @@ Flatcar Container Linux and Kubeadm.
 2. **Configure Inventory**:
     Edit `ansible/inventory.yaml` to define your target nodes (MAC addresses and
     Roles) and set versions (`kubernetes_version`, `containerd_version`).
-    * **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
+    - **Cilium**: Installed via Helm (version managed in `Makefile`). Configured
       to replace `kube-proxy` entirely and use **WireGuard** for transparent
       network encryption.
 
@@ -66,7 +74,7 @@ Flatcar Container Linux and Kubeadm.
 
 7. **Boot Machines**:
     Power on your bare metal nodes. They will PXE boot, install Flatcar, and reboot.
-    * **Note**: The cluster will come up in a `NotReady` state initially because
+    - **Note**: The cluster will come up in a `NotReady` state initially because
       no CNI is installed.
 
 8. **Retrieve Kubeconfig**:
@@ -105,21 +113,21 @@ Flatcar Container Linux and Kubeadm.
     make install-core
     ```
 
-    * Installs **Cilium** (CNI, Ingress, L2 Announcements) via Helm.
-    * **Removes** `kube-proxy` to resolve IPVS conflicts.
-    * Installs **Cert-Manager** (for ACME TLS).
-    * Installs **Infisical** Secrets (Encryption Key/Auth Secret).
-    * *The node should become `Ready` after this step.*
+    - Installs **Cilium** (CNI, Ingress, L2 Announcements) via Helm.
+    - **Removes** `kube-proxy` to resolve IPVS conflicts.
+    - Installs **Cert-Manager** (for ACME TLS).
+    - Installs **Infisical** Secrets (Encryption Key/Auth Secret).
+    - *The node should become `Ready` after this step.*
 
 10. **Post-Installation**:
 
-    * **Deploy ArgoCD**:
+    - **Deploy ArgoCD**:
 
         ```bash
         make install-argo
         ```
 
-    * **Bootstrap GitOps** (App-of-Apps):
+    - **Bootstrap GitOps** (App-of-Apps):
 
         ```bash
         make bootstrap-apps
