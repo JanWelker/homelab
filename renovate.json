@@ -38,6 +38,12 @@
       "matchFileNames": [
         "payload/workloads/**"
       ],
+      "matchManagers": [
+        "kubernetes",
+        "argocd",
+        "helm-values",
+        "dockerfile"
+      ],
       "groupName": "Workloads",
       "addLabels": [
         "application"
@@ -56,7 +62,8 @@
         "ansible-lint",
         "pylint",
         "yamllint",
-        "mkdocs-material"
+        "mkdocs-material",
+        "tftpy"
       ],
       "groupName": "Dev Tooling",
       "automerge": true,
@@ -70,6 +77,7 @@
       "matchManagers": [
         "ansible",
         "github-actions",
+        "pre-commit",
         "custom.regex"
       ],
       "groupName": "DevOps",
@@ -173,16 +181,6 @@
       "depNameTemplate": "syslinux",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "geneh/syslinux"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^ansible/templates/.*\\.j2$/"
-      ],
-      "matchStrings": [
-        "image:\\s*['\"]?(?<depName>[^:\"'\\s]+):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?['\"]?"
-      ],
-      "datasourceTemplate": "docker"
     },
     {
       "customType": "regex",
