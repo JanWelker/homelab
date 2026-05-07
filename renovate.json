@@ -152,14 +152,14 @@
       "defaultRegistryUrlTemplate": "https://stable.release.flatcar-linux.net/amd64-usr/current/version.txt",
       "format": "plain",
       "transformTemplates": [
-        "{ \"releases\": releases[$contains(version, \"FLATCAR_VERSION=\")].{ \"version\": $substringAfter(version, \"=\") } }"
+        "{ \"releases\": [releases[$contains(version, \"FLATCAR_VERSION=\")].{ \"version\": $substringAfter(version, \"=\") }] }"
       ]
     },
     "syslinux-kernelorg": {
       "defaultRegistryUrlTemplate": "https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/sha256sums.asc",
       "format": "plain",
       "transformTemplates": [
-        "{ \"releases\": releases[$contains(version, \"syslinux-\") and $contains(version, \".tar.xz\")].{ \"version\": $match(version, /syslinux-([0-9.]+)\\.tar\\.xz/)[0].groups[0] } }"
+        "{ \"releases\": [releases[$contains(version, \"syslinux-\") and $contains(version, \".tar.xz\")].{ \"version\": $match(version, /syslinux-([0-9.]+)\\.tar\\.xz/)[0].groups[0] }] }"
       ]
     }
   },
