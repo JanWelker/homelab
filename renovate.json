@@ -111,6 +111,20 @@
       "automerge": false
     },
     {
+      "description": "Strip kubernetes- prefix from sysext-bakery release tags",
+      "matchPackageNames": [
+        "kubernetes"
+      ],
+      "extractVersion": "^kubernetes-(?<version>.+)$"
+    },
+    {
+      "description": "Strip containerd- prefix from sysext-bakery release tags",
+      "matchPackageNames": [
+        "containerd"
+      ],
+      "extractVersion": "^containerd-(?<version>.+)$"
+    },
+    {
       "description": "Block all Major updates from automerging",
       "matchUpdateTypes": [
         "major"
@@ -133,6 +147,22 @@
       "/^payload/.+values\\.yaml$/"
     ]
   },
+  "customDatasources": {
+    "flatcar-stable": {
+      "defaultRegistryUrlTemplate": "https://stable.release.flatcar-linux.net/amd64-usr/current/version.txt",
+      "format": "plain",
+      "transformTemplates": [
+        "{ \"releases\": releases[$contains(version, \"FLATCAR_VERSION=\")].{ \"version\": $substringAfter(version, \"=\") } }"
+      ]
+    },
+    "syslinux-kernelorg": {
+      "defaultRegistryUrlTemplate": "https://mirrors.edge.kernel.org/pub/linux/utils/boot/syslinux/sha256sums.asc",
+      "format": "plain",
+      "transformTemplates": [
+        "{ \"releases\": releases[$contains(version, \"syslinux-\") and $contains(version, \".tar.xz\")].{ \"version\": $match(version, /syslinux-([0-9.]+)\\.tar\\.xz/)[0].groups[0] } }"
+      ]
+    }
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -143,8 +173,7 @@
         "flatcar_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "flatcar",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "flatcar/scripts"
+      "datasourceTemplate": "custom.flatcar-stable"
     },
     {
       "customType": "regex",
@@ -179,8 +208,7 @@
         "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "syslinux",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "geneh/syslinux"
+      "datasourceTemplate": "custom.syslinux-kernelorg"
     },
     {
       "customType": "regex",
