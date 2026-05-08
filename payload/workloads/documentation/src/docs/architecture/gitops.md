@@ -58,14 +58,10 @@ flowchart TB
 
     subgraph "Wave 0: Core Apps"
         AR[argocd]
-        K8[k8up]
     end
 
     subgraph "Wave 1+: User Apps"
         MON[kube-prometheus-stack]
-        NC[nextcloud]
-        HA[home-assistant]
-        ARC[arc-runner-set]
     end
 
     %% Dependencies
@@ -73,7 +69,5 @@ flowchart TB
     CM --> RC
     RO --> RC
     CL --> AR
-    RC --> NC
-    RC --> HA
-    AR --> ARC
+    AR --> MON
 ```

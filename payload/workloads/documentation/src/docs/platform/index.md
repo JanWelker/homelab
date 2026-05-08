@@ -11,10 +11,7 @@ See individual component documentation for detailed structure.
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI, Gateway API, and Network Policies.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
-- **[infisical](infisical.md)**: Secrets management.
-- **[k8up](k8up.md)**: Backup operator.
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
-- **[postgres-operator](postgres-operator.md)**: Postgres operator.
 - **[rook-ceph](rook-ceph.md)**: Distributed storage.
 
 ## Traffic Flow
@@ -36,13 +33,13 @@ See individual component documentation for detailed structure.
 
 HTTPRoutes are co-located with their respective apps:
 
-| Service            | HTTPRoute Location                           |
-|--------------------|----------------------------------------------|
-| ArgoCD             | `payload/argocd/httproute.yaml`              |
-| Grafana            | `payload/platform/monitoring/httproute.yaml` |
-| Hubble             | `payload/platform/cilium/httproute.yaml`     |
-| Rook Dashboard     | `payload/platform/rook-ceph/httproute.yaml`  |
-| Apps (nginx, etc.) | `payload/workloads/<app>/httproute.yaml`     |
+| Service        | HTTPRoute Location                           |
+|----------------|----------------------------------------------|
+| ArgoCD         | `payload/argocd/httproute.yaml`              |
+| Grafana        | `payload/platform/monitoring/httproute.yaml` |
+| Hubble         | `payload/platform/cilium/httproute.yaml`     |
+| Rook Dashboard | `payload/platform/rook-ceph/httproute.yaml`  |
+| Apps           | `payload/workloads/<app>/httproute.yaml`     |
 
 ## Usage
 

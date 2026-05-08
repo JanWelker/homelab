@@ -28,11 +28,7 @@ Deep dive into the core infrastructure components that power the cluster, includ
 
 ### [Workloads](workloads/index.md)
 
-Explore the user-facing applications deployed on the cluster, such as:
-
-* [Home Assistant](workloads/home-assistant.md)
-* [Nextcloud](workloads/nextcloud.md)
-* [Wichteln](workloads/wichteln.md)
+Explore the user-facing applications deployed on the cluster.
 
 ### Developer Resources
 
