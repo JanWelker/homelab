@@ -1,3 +1,3 @@
-FROM nginxinc/nginx-unprivileged:alpine@sha256:53ffe9cc959fc72aeed04a85d517099a42bfcc5f5f0b07a2b1048e08abf2f1eb
+FROM nginxinc/nginx-unprivileged:alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
 COPY site /usr/share/nginx/html
 EXPOSE 8080
