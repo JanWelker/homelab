@@ -116,7 +116,6 @@ The deployment host (the machine running Ansible and the boot server) must be re
     - Installs **Cilium** (CNI, Ingress, L2 Announcements) via Helm.
     - **Removes** `kube-proxy` to resolve IPVS conflicts.
     - Installs **Cert-Manager** (for ACME TLS).
-    - Installs **Infisical** Secrets (Encryption Key/Auth Secret).
     - *The node should become `Ready` after this step.*
 
 10. **Post-Installation**:

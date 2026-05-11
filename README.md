@@ -25,7 +25,7 @@ The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https:/
 * `boot_server/`: Python-based PXE boot server.
 * `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.
   * `platform/`: Core infrastructure (Cilium, Rook, etc.).
-  * `workloads/`: User applications (Home Assistant, Nextcloud, etc.).
+  * `workloads/`: User applications.
   * `argocd/`: ArgoCD bootstrap configuration.
 
 ## Contributing

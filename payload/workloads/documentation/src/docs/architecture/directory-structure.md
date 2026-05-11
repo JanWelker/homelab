@@ -35,18 +35,9 @@
 │   │   ├── cert-manager/   # TLS certificates
 │   │   ├── cilium/         # CNI + Gateway API
 │   │   ├── gateway-api/    # Gateway resources
-│   │   ├── infisical/      # Secrets management
-│   │   ├── k8up/           # Backup operator
 │   │   ├── monitoring/     # Prometheus stack
-│   │   ├── postgres-operator/ # PostgreSQL HA operator
 │   │   └── rook-ceph/      # Storage operator & cluster
 │   └── workloads/          # User-facing applications
-│       ├── advent-wollbi/
-│       ├── documentation/
-│       ├── github-actions-runner/
-│       ├── home-assistant/
-│       ├── nextcloud/
-│       ├── nginx-test/
-│       └── wichteln/
+│       └── documentation/
 └── README.md
 ```

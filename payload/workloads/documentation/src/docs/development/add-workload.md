@@ -43,7 +43,7 @@ spec:
       - CreateNamespace=true
 ```
 
-For a Helm chart, replace `source` with a `sources` block (see existing apps like `home-assistant` for reference).
+For a Helm chart, replace `source` with a `sources` block.
 
 ## Step 3: Add Kubernetes Manifests
 
@@ -83,11 +83,7 @@ spec:
 
 See [Gateway API](../platform/gateway-api.md) for more details.
 
-## Step 5: Handle Secrets (Optional)
-
-If the app needs secrets, create an `InfisicalSecret` resource to sync them from Infisical into a native Kubernetes Secret. See [Infisical](../platform/infisical.md) for the full usage example.
-
-## Step 6: Commit and Push
+## Step 5: Commit and Push
 
 ArgoCD will detect the new `application.yaml` on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload.
 
@@ -97,6 +93,6 @@ git commit -m "feat: add my-app workload"
 git push
 ```
 
-## Step 7: Document It
+## Step 6: Document It
 
 Add a page under `payload/workloads/documentation/src/docs/workloads/my-app.md` and register it in `mkdocs.yaml` under the Workloads nav section.
