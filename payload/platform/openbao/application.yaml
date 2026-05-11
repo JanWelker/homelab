@@ -1,0 +1,109 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openbao
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "0"
+    link.argocd.argoproj.io/external-link: https://vault.infra.k8s.wlkr.ch
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://openbao.github.io/openbao-helm
+      chart: openbao
+      targetRevision: 0.27.2
+      helm:
+        valuesObject:
+          global:
+            enabled: true
+            tlsDisable: true
+
+          injector:
+            enabled: false
+
+          server:
+            image:
+              repository: quay.io/openbao/openbao
+              tag: 2.5.3
+            ha:
+              enabled: true
+              replicas: 3
+              raft:
+                enabled: true
+                setNodeId: true
+                config: |
+                  ui = true
+
+                  listener "tcp" {
+                    tls_disable = 1
+                    address = "[::]:8200"
+                    cluster_address = "[::]:8201"
+                  }
+
+                  storage "raft" {
+                    path = "/openbao/data"
+                  }
+
+                  service_registration "kubernetes" {}
+
+                  telemetry {
+                    prometheus_retention_time = "30s"
+                    disable_hostname = true
+                  }
+            dataStorage:
+              enabled: true
+              size: 10Gi
+              storageClass: rook-ceph-block
+              accessMode: ReadWriteOnce
+            auditStorage:
+              enabled: true
+              size: 10Gi
+              storageClass: rook-ceph-block
+              accessMode: ReadWriteOnce
+            serviceAccount:
+              create: true
+              name: openbao
+            readinessProbe:
+              enabled: true
+              # Allow unsealed nodes to be marked Ready (standby is healthy in HA)
+              path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+
+          ui:
+            enabled: true
+            serviceType: ClusterIP
+
+          serverTelemetry:
+            serviceMonitor:
+              enabled: true
+              interval: 30s
+            prometheusRules:
+              enabled: true
+
+          csi:
+            enabled: false
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/openbao
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openbao
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

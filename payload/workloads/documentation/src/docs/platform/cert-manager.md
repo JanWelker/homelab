@@ -9,26 +9,21 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 
 ## AWS Credentials Setup
 
-The DNS-01 solver needs AWS credentials with Route53 permissions. A template is provided at `route53-credentials.yaml.template`.
+The DNS-01 solver needs AWS credentials with Route53 permissions. The `route53-credentials` Secret is materialised from [OpenBao](openbao.md) via an [ExternalSecret](external-secrets.md).
 
-Copy and fill it in before bootstrapping:
+Store the credentials in OpenBao once OpenBao and ESO are up:
 
 ```bash
-cp payload/platform/cert-manager/route53-credentials.yaml.template \
-   payload/platform/cert-manager/route53-credentials.yaml
+bao kv put kv/cert-manager/route53 \
+  access-key-id="YOUR_AWS_ACCESS_KEY_ID" \
+  secret-access-key="YOUR_AWS_SECRET_ACCESS_KEY"
 ```
 
-The Secret must contain:
+ESO will then create the `route53-credentials` Secret in the `cert-manager` namespace within `refreshInterval` (1h by default). Trigger an immediate sync with:
 
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: route53-credentials
-  namespace: cert-manager
-stringData:
-  access-key-id: "YOUR_AWS_ACCESS_KEY_ID"
-  secret-access-key: "YOUR_AWS_SECRET_ACCESS_KEY"
+```bash
+kubectl annotate externalsecret -n cert-manager route53-credentials \
+  force-sync=$(date +%s) --overwrite
 ```
 
 The IAM user needs at minimum:
@@ -41,8 +36,8 @@ The IAM user needs at minimum:
 }
 ```
 
-!!! warning
-    `route53-credentials.yaml` is gitignored. Never commit real credentials.
+!!! note
+    Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. For the very first bootstrap, see the [Quickstart](../quickstart.md) which walks through the order.
 
 ## Issuers
 
@@ -56,9 +51,9 @@ Use `letsencrypt-staging` first when setting up to avoid hitting Let's Encrypt r
 ## Directory Structure
 
 ```text
-cert-manager/          # TLS Certificate Management
-├── application.yaml   # ArgoCD Application (Helm chart)
-├── cluster-issuers.yaml # Let's Encrypt staging + prod issuers
-├── certificates.yaml  # All Certificate resources
-└── route53-credentials.yaml.template
+cert-manager/                  # TLS Certificate Management
+├── application.yaml           # ArgoCD Application (Helm chart)
+├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
+├── certificates.yaml          # All Certificate resources
+└── route53-credentials.yaml   # ExternalSecret → OpenBao
 ```

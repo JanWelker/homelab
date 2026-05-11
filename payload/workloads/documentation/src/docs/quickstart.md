@@ -134,3 +134,22 @@ The deployment host (the machine running Ansible and the boot server) must be re
 
         *This applies the parent applications (workloads, platform, gitops)
         which enable ArgoCD to manage all applications from Git.*
+
+11. **Initialise the secret store**:
+    OpenBao starts sealed and empty. Until it is initialised and populated,
+    cert-manager cannot issue certificates (the Route53 credentials live in
+    OpenBao). Follow [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
+
+    1. `bao operator init` on `openbao-0` and securely store the unseal keys + root token.
+    2. Unseal all three replicas.
+    3. Enable the `kv` v2 secret engine, the Kubernetes auth method, and the `external-secrets` policy/role (see [OpenBao &rarr; Kubernetes auth method](platform/openbao.md#kubernetes-auth-method)).
+    4. Store the Route53 credentials:
+
+        ```bash
+        bao kv put kv/cert-manager/route53 \
+          access-key-id="$AWS_ACCESS_KEY_ID" \
+          secret-access-key="$AWS_SECRET_ACCESS_KEY"
+        ```
+
+    Cert-manager will then pick up the materialised Secret and issue the
+    gateway certificates.
