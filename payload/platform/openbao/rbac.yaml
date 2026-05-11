@@ -1,0 +1,16 @@
+---
+# Allow OpenBao's ServiceAccount to validate Kubernetes ServiceAccount tokens
+# via the TokenReview API. Required when the OpenBao Kubernetes auth method
+# is configured with `token_reviewer_jwt` from the OpenBao SA (default).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openbao-token-reviewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: openbao
+    namespace: openbao

@@ -10,8 +10,10 @@ See individual component documentation for detailed structure.
 
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI, Gateway API, and Network Policies.
+- **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
+- **[openbao](openbao.md)**: Cluster-wide secret store.
 - **[rook-ceph](rook-ceph.md)**: Distributed storage.
 
 ## Traffic Flow
@@ -38,6 +40,7 @@ HTTPRoutes are co-located with their respective apps:
 | ArgoCD         | `payload/argocd/httproute.yaml`              |
 | Grafana        | `payload/platform/monitoring/httproute.yaml` |
 | Hubble         | `payload/platform/cilium/httproute.yaml`     |
+| OpenBao UI     | `payload/platform/openbao/httproute.yaml`    |
 | Rook Dashboard | `payload/platform/rook-ceph/httproute.yaml`  |
 | Apps           | `payload/workloads/<app>/httproute.yaml`     |
 
@@ -74,4 +77,5 @@ Sync wave ordering:
 2. `-5`: cert-manager
 3. `-2`: Rook operator
 4. `-1`: Cilium, Rook cluster
-5. `1`: Monitoring stack
+5. `0`: OpenBao
+6. `1`: External Secrets Operator, Monitoring stack

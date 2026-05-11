@@ -1,0 +1,28 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: openbao-ui
+  namespace: openbao
+spec:
+  parentRefs:
+    - name: infra-gateway
+      namespace: kube-system
+  hostnames:
+    - "vault.infra.k8s.wlkr.ch"
+  rules:
+    - filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Strict-Transport-Security
+                value: "max-age=31536000; includeSubDomains"
+              - name: X-Content-Type-Options
+                value: "nosniff"
+              - name: X-Frame-Options
+                value: "SAMEORIGIN"
+              - name: Referrer-Policy
+                value: "strict-origin-when-cross-origin"
+      backendRefs:
+        - name: openbao-ui
+          port: 8200
