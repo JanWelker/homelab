@@ -93,10 +93,13 @@ bao secrets enable -path=kv -version=2 kv
 kv/
 ├── cert-manager/
 │   └── route53            # access-key-id, secret-access-key
-├── monitoring/
-│   └── grafana            # admin-user, admin-password
-└── <workload>/<purpose>
+└── <workload>/<purpose>   # one leaf per secret
 ```
+
+`cert-manager/route53` is currently the only path in use — it is consumed by
+the one [ExternalSecret](external-secrets.md) in the repository
+(`payload/platform/cert-manager/route53-credentials.yaml`). Everything else
+follows the same `<workload>/<purpose>` shape.
 
 Each leaf is a single secret with one or more keys. ExternalSecret resources reference paths as `cert-manager/route53` (the KV v2 `data/` prefix is added by ESO automatically).
 

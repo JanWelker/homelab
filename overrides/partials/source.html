@@ -1,0 +1,16 @@
+{#-
+  Overrides the built-in partial. The upstream version carries
+  data-md-component="source", which makes the theme poll the GitHub API for
+  repository facts — including releases/latest, which 404s on every page load
+  because this repository publishes no releases. Dropping the attribute keeps
+  the header link and icon and skips the request.
+-#}
+<a href="{{ config.repo_url }}" title="{{ lang.t('source') }}" class="md-source">
+  <div class="md-source__icon md-icon">
+    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+  </div>
+  <div class="md-source__repository">
+    {{ config.repo_name }}
+  </div>
+</a>

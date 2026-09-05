@@ -11,7 +11,8 @@ Actions workflow.
 ## Workflow
 
 1. **Authoring**: Documentation is written in Markdown within `docs/`. The site
-    is configured in `zensical.toml` at the repository root.
+    is configured in `zensical.toml` at the repository root, and `overrides/`
+    holds the handful of theme templates this project replaces.
 2. **Build**: On push to `main`, the `docs.yaml` workflow runs
     `zensical build --clean --strict`, producing a static site in `site/`.
 3. **Upload**: The build output is uploaded as a GitHub Pages artifact.
@@ -58,4 +59,10 @@ uv run zensical build   # one-off build into site/
 - Diagrams use Mermaid fences; Zensical initialises the runtime automatically on
     pages that contain one.
 - Markdown is linted by `lint-markdown.yaml` and the `markdownlint-cli2`
-    pre-commit hook.
+    pre-commit hook. Note that `markdownlint` reads a blank line followed by an
+    indented one as a code block, so a multi-paragraph `!!!` admonition trips
+    `MD046`. Keep admonition bodies to a single paragraph.
+- Theme templates are overridden by dropping a same-named file under
+    `overrides/` (wired up via `theme.custom_dir`). Currently only
+    `partials/source.html`, which drops the repository-facts API call that 404s
+    because this repository publishes no releases.

@@ -29,7 +29,8 @@ To ensure code quality and consistency, several linting workflows are configured
 
 - **Docs Build & Publish**: The `docs.yaml` workflow builds this
     [Zensical](https://zensical.org/) site and deploys it to GitHub Pages
-    whenever changes land on `main` under `docs/**` or `zensical.toml`. See
+    whenever changes land on `main` under `docs/**`, `overrides/**`, or
+    `zensical.toml`. See
     [Documentation System](documentation.md) for the full pipeline.
 
 ### GitOps

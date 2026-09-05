@@ -46,6 +46,7 @@ To use it explicitly:
 
 ```text
 rook-ceph/             # Distributed Storage
+├── application.yaml   # ArgoCD Application
 ├── operator.yaml      # Rook-Ceph operator
 ├── cluster.yaml       # CephCluster + CephBlockPool + StorageClass
 ├── dashboard-config-job.yaml
