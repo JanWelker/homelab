@@ -1,6 +1,6 @@
 # Flatcar Kubernetes Homelab
 
-![Homelab Logo](payload/workloads/documentation/src/docs/assets/images/logo.png)
+![Homelab Logo](docs/assets/images/logo.png)
 
 Welcome to the **Flatcar Homelab** project. This repository contains the configuration and automation for a fully automated, GitOps-driven Kubernetes cluster on bare metal, leveraging Flatcar Container Linux and Kubeadm.
 
@@ -13,21 +13,24 @@ Welcome to the **Flatcar Homelab** project. This repository contains the configu
 
 ## Documentation
 
-The full project documentation is hosted at **[https://docs.k8s.wlkr.ch](https://docs.k8s.wlkr.ch)**.
+The full project documentation is published to GitHub Pages at
+**[https://janwelker.github.io/homelab/](https://janwelker.github.io/homelab/)**.
 
-* **[Quickstart Guide](https://docs.k8s.wlkr.ch/quickstart)**: Instructions for bootstrapping the cluster.
-* **[Platform Architecture](https://docs.k8s.wlkr.ch/platform/)**: Details on core infrastructure components.
-* **[Workloads](https://docs.k8s.wlkr.ch/workloads/)**: Information about deployed applications.
+* **[Quickstart Guide](https://janwelker.github.io/homelab/quickstart/)**: Instructions for bootstrapping the cluster.
+* **[Platform Architecture](https://janwelker.github.io/homelab/platform/)**: Details on core infrastructure components.
+* **[Workloads](https://janwelker.github.io/homelab/workloads/)**: Information about deployed applications.
 
 ## Repository Structure
 
 * `ansible/`: Ansible playbooks for bootstrapping and configuration generation.
 * `boot_server/`: Python-based PXE boot server.
+* `docs/`: Documentation sources, built with [Zensical](https://zensical.org/)
+  (configured in `zensical.toml`) and published to GitHub Pages.
 * `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.
   * `platform/`: Core infrastructure (Cilium, Rook, etc.).
-  * `workloads/`: User applications.
   * `argocd/`: ArgoCD bootstrap configuration.
 
 ## Contributing
 
-See the `development/` directory in the documentation for contribution guidelines and development workflows.
+See the [Development](https://janwelker.github.io/homelab/development/documentation/)
+section of the documentation for contribution guidelines and development workflows.

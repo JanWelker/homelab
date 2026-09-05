@@ -18,6 +18,11 @@
 │       └── pxe_config.j2         # PXE boot menu config
 ├── boot_server
 │   └── serve.py            # Python script for HTTP & TFTP
+├── docs                    # Documentation sources (this site)
+│   ├── architecture/
+│   ├── development/
+│   ├── platform/
+│   └── assets/             # Images and other static files
 ├── output                  # Generated files & Artifacts
 │   ├── credentials/        # Security artifacts
 │   ├── http/               # Ignition, Flatcar artifacts, Sysext images
@@ -25,19 +30,18 @@
 │   ├── tftp/               # PXE bootloader & configs
 │   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
-│   ├── root.yaml           # Parent Applications (workloads, platform, gitops)
+│   ├── root.yaml           # Parent Applications (platform, gitops)
 │   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── application.yaml     # ArgoCD self-management Application
 │   │   ├── argocd-projects.yaml # RBAC project definitions
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
-│   ├── platform/           # Core infrastructure managed by ArgoCD
-│   │   ├── cert-manager/   # TLS certificates
-│   │   ├── cilium/         # CNI + Gateway API
-│   │   ├── gateway-api/    # Gateway resources
-│   │   ├── monitoring/     # Prometheus stack
-│   │   └── rook-ceph/      # Storage operator & cluster
-│   └── workloads/          # User-facing applications
-│       └── documentation/
+│   └── platform/           # Core infrastructure managed by ArgoCD
+│       ├── cert-manager/   # TLS certificates
+│       ├── cilium/         # CNI + Gateway API
+│       ├── gateway-api/    # Gateway resources
+│       ├── monitoring/     # Prometheus stack
+│       └── rook-ceph/      # Storage operator & cluster
+├── zensical.toml           # Documentation site configuration
 └── README.md
 ```
