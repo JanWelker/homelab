@@ -1,0 +1,64 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubelet-csr-approver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # Before metrics-server (2), which cannot verify a kubelet until these
+    # certificates have been issued.
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://postfinance.github.io/kubelet-csr-approver
+    chart: kubelet-csr-approver
+    targetRevision: 1.2.15
+    helm:
+      valuesObject:
+        # The kubelet is configured with serverTLSBootstrap, so it asks the
+        # cluster CA for a real serving certificate instead of generating a
+        # self-signed one. Nothing in Kubernetes approves those CSRs
+        # automatically -- the built-in signer deliberately leaves
+        # kubernetes.io/kubelet-serving to an external approver, because
+        # approving blindly lets a compromised node claim any identity. Without
+        # this controller the CSRs sit Pending forever and the kubelet keeps
+        # its self-signed certificate.
+        #
+        # Only these six node names may be approved. A CSR from any other
+        # name is denied rather than ignored.
+        providerRegex: "^(odin|thor|loki|freya|heimdall|valkyrie)$"
+        # Node names are not in DNS here -- they resolve through the inventory,
+        # not a resolver -- so the SAN hostname check would fail every CSR.
+        # The regex above is what constrains identity instead.
+        bypassDnsResolution: true
+        # Nodes sit on a known static subnet; a CSR asking for an IP outside it
+        # is not one of ours.
+        providerIpPrefixes:
+          - 10.9.2.0/24
+        # One day, so a compromised certificate expires on its own.
+        maxExpirationSeconds: 86400
+        replicas: 2
+        metrics:
+          enable: true
+          serviceMonitor:
+            enabled: true
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 128Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubelet-csr-approver
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
