@@ -127,9 +127,8 @@ absent, so it will not interfere with a node that has already joined.
 !!! danger
     `odin` is not an interchangeable control-plane node. Its address is baked in
     as the cluster's API endpoint and as Cilium's `k8sServiceHost`, so losing it
-    breaks node joins and Cilium's connection to the API on every other node.
-    Replacing it means updating `controlPlaneEndpoint` and
-    `payload/platform/cilium/values.yaml` to another control-plane address.
+    breaks node joins and Cilium's connection to the API on every other node —
+    see [Single API server endpoint](../architecture/limitations.md#single-api-server-endpoint).
 
 ## Where to look when something is wrong
 
