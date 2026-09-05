@@ -1,0 +1,76 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server
+    chart: metrics-server
+    targetRevision: 3.14.0
+    helm:
+      valuesObject:
+        # Nothing served the metrics.k8s.io API, so `kubectl top` returned an
+        # error and every HorizontalPodAutoscaler would have sat at
+        # <unknown>/<target> indefinitely. Neither Cilium nor
+        # kube-prometheus-stack provides this: Prometheus scrapes into its own
+        # store, the resource metrics API is a separate thing the scheduler and
+        # HPA controller read from.
+        # Overriding defaultArgs rather than appending through `args`: the
+        # chart's default list already sets --kubelet-preferred-address-types,
+        # and passing the flag twice leaves which value wins up to flag
+        # parsing order.
+        defaultArgs:
+          - --cert-dir=/tmp
+          # Nodes have no resolvable hostname here, so prefer the address the
+          # kubelet actually registers with.
+          - --kubelet-preferred-address-types=InternalIP
+          - --kubelet-use-node-status-port
+          - --metric-resolution=15s
+          # Verify the kubelet rather than trusting it. This is only possible
+          # because the kubelet requests a serving certificate from the cluster
+          # CA (serverTLSBootstrap) and kubelet-csr-approver approves it; the
+          # usual homelab shortcut here is --kubelet-insecure-tls, which
+          # disables verification entirely and makes the metrics path
+          # trivially spoofable by anything that can reach it.
+          - --kubelet-certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        # Two replicas across nodes, so a node reboot does not take the
+        # resource metrics API down with it.
+        replicas: 2
+        podDisruptionBudget:
+          enabled: true
+          minAvailable: 1
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: metrics-server
+        metrics:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
