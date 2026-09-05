@@ -69,6 +69,10 @@ The physical machine to be provisioned.
 | heimdall | Worker | 10.9.2.5 |
 | valkyrie | Worker | 10.9.2.6 |
 
+The API server is reached through a kube-vip virtual IP (`10.9.2.10` by
+default) rather than any single node — see
+[Control Plane VIP](../operations/control-plane-vip.md).
+
 **Networks**: Pod subnet `10.244.0.0/16`, Service subnet `10.96.0.0/12`
 
 ## Technologies
@@ -83,3 +87,4 @@ The physical machine to be provisioned.
 | Storage | Rook-Ceph | Distributed block storage |
 | Config Gen | Ansible + Jinja2 | Per-node config generation |
 | Boot Serving | Python (HTTP + TFTP) | PXE boot artifacts |
+| API HA | kube-vip (ARP) | Virtual IP in front of the API servers |

@@ -125,10 +125,11 @@ absent, so it will not interfere with a node that has already joined.
 4. Reprovision the replacement following [Adding a node](#adding-a-node-after-the-initial-build).
 
 !!! danger
-    `odin` is not an interchangeable control-plane node. Its address is baked in
-    as the cluster's API endpoint and as Cilium's `k8sServiceHost`, so losing it
-    breaks node joins and Cilium's connection to the API on every other node —
-    see [Single API server endpoint](../architecture/limitations.md#single-api-server-endpoint).
+    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md),
+    `odin` is not an interchangeable control-plane node: its address is baked in
+    as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks
+    node joins and Cilium's API connection on every other node. Check which
+    endpoint your kubeconfig uses before assuming otherwise.
 
 ## Where to look when something is wrong
 
