@@ -1,9 +1,13 @@
-# Bare Metal K8s Deployment
+---
+description: "Bring up the bare metal Kubernetes cluster from scratch: provision nodes over PXE, bootstrap with Kubeadm, and install the core platform."
+---
+
+# Quickstart
 
 ![Homelab Logo](assets/images/logo.png){ align=right width=150 }
 
-This project automates the deployment of a bare metal Kubernetes cluster using
-Flatcar Container Linux and Kubeadm.
+Bring up the bare metal Kubernetes cluster from scratch. This project automates
+the deployment using Flatcar Container Linux and Kubeadm.
 
 ## Hardware Requirements
 

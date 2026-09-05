@@ -1,3 +1,7 @@
+---
+description: "The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they sync."
+---
+
 # Core Infrastructure
 
 This directory contains **core infrastructure components** managed via ArgoCD GitOps.
@@ -35,14 +39,16 @@ See individual component documentation for detailed structure.
 
 HTTPRoutes are co-located with their respective apps:
 
-| Service        | HTTPRoute Location                           |
-|----------------|----------------------------------------------|
-| ArgoCD         | `payload/argocd/httproute.yaml`              |
-| Grafana        | `payload/platform/monitoring/httproute.yaml` |
-| Hubble         | `payload/platform/cilium/httproute.yaml`     |
-| OpenBao UI     | `payload/platform/openbao/httproute.yaml`    |
-| Rook Dashboard | `payload/platform/rook-ceph/httproute.yaml`  |
-| Apps           | `payload/workloads/<app>/httproute.yaml`     |
+<!-- markdownlint-disable MD013 -->
+| Service        | URL                             | HTTPRoute Location                           |
+|----------------|---------------------------------|----------------------------------------------|
+| ArgoCD         | `argo.infra.k8s.wlkr.ch`        | `payload/argocd/httproute.yaml`              |
+| Grafana        | `monitoring.infra.k8s.wlkr.ch`  | `payload/platform/monitoring/httproute.yaml` |
+| Hubble         | `hubble.infra.k8s.wlkr.ch`      | `payload/platform/cilium/httproute.yaml`     |
+| OpenBao UI     | `vault.infra.k8s.wlkr.ch`       | `payload/platform/openbao/httproute.yaml`    |
+| Rook Dashboard | `rook.infra.k8s.wlkr.ch`        | `payload/platform/rook-ceph/httproute.yaml`  |
+| Apps           | `<app>.k8s.wlkr.ch`             | `payload/workloads/<app>/httproute.yaml`     |
+<!-- markdownlint-enable MD013 -->
 
 ## Usage
 
@@ -55,15 +61,17 @@ make install-argo  # Installs ArgoCD
 
 ### GitOps (after ArgoCD)
 
-Three parent ArgoCD Applications manage the cluster:
+Two parent ArgoCD Applications manage the cluster:
 
 <!-- markdownlint-disable MD013 -->
-| Application      | Role                            | Path                                    |
-|------------------|---------------------------------|-----------------------------------------|
-| Platform Parent  | Core platform components        | `payload/root.yaml` (App: platform)     |
-| Workloads Parent | User applications               | `payload/root.yaml` (App: workloads)    |
-| GitOps           | ArgoCD's own config + HTTPRoute | `payload/argocd/`                       |
+| Application     | Role                            | Path                                |
+|-----------------|---------------------------------|-------------------------------------|
+| Platform Parent | Core platform components        | `payload/root.yaml` (App: platform) |
+| GitOps          | ArgoCD's own config + HTTPRoute | `payload/argocd/`                   |
 <!-- markdownlint-enable MD013 -->
+
+A third parent, `workloads`, is added back alongside the first workload. See
+[Adding a Workload](../development/add-workload.md).
 
 Excluded from sync:
 
@@ -75,7 +83,10 @@ Sync wave ordering:
 
 1. `-10`: Gateway API CRDs
 2. `-5`: cert-manager
-3. `-2`: Rook operator
-4. `-1`: Cilium, Rook cluster
-5. `0`: OpenBao
-6. `1`: External Secrets Operator, Monitoring stack
+3. `-4`: Gateway API
+4. `-3`: Rook-Ceph application
+5. `-2`: Rook operator
+6. `-1`: Cilium, Rook cluster
+7. `0`: OpenBao
+8. `1`: External Secrets Operator, Monitoring stack
+9. `5`: Rook dashboard configuration job

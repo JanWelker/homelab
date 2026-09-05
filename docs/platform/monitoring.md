@@ -1,3 +1,7 @@
+---
+description: "The kube-prometheus-stack observability setup, accessing Grafana, and adding dashboards."
+---
+
 # Monitoring
 
 Full observability stack based on [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack).
@@ -32,6 +36,6 @@ Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be add
 
 ```text
 monitoring/            # Observability Stack
-├── application.yaml   # kube-prometheus-stack (v82.15.1)
+├── application.yaml   # kube-prometheus-stack (Helm chart)
 └── httproute.yaml     # Grafana route
 ```

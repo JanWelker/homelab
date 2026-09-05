@@ -1,3 +1,7 @@
+---
+description: "Ansible playbooks that generate node configuration, download artifacts, and retrieve the cluster kubeconfig."
+---
+
 # Ansible Configuration
 
 This directory contains the Ansible playbooks and configuration used to provision

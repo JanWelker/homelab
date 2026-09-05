@@ -1,3 +1,7 @@
+---
+description: "Rook-Ceph distributed block storage: how it works, its components, and how to request a volume."
+---
+
 # Rook-Ceph
 
 Distributed block storage using [Rook](https://rook.io/) as the Kubernetes operator for [Ceph](https://ceph.io/).
@@ -42,7 +46,7 @@ To use it explicitly:
 
 ```text
 rook-ceph/             # Distributed Storage
-├── operator.yaml      # Rook-Ceph operator (v1.16.1)
+├── operator.yaml      # Rook-Ceph operator
 ├── cluster.yaml       # CephCluster + CephBlockPool + StorageClass
 ├── dashboard-config-job.yaml
 └── httproute.yaml     # Rook dashboard route

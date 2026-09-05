@@ -1,3 +1,7 @@
+---
+description: "Deploy a new application to the cluster, from the ArgoCD Application and manifests through to exposing and documenting it."
+---
+
 # Adding a Workload
 
 This guide walks through deploying a new application to the cluster from scratch.

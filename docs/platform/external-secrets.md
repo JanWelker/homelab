@@ -1,3 +1,7 @@
+---
+description: "The External Secrets Operator bridging OpenBao to native Kubernetes Secrets, and how to add a new secret."
+---
+
 # External Secrets Operator
 
 [External Secrets Operator (ESO)](https://external-secrets.io/) bridges the cluster's secret store ([OpenBao](openbao.md)) to native Kubernetes `Secret` objects. Workloads consume secrets the standard way (`envFrom`, `volumeMounts`, `imagePullSecrets`) without ever talking to OpenBao directly.

@@ -1,3 +1,7 @@
+---
+description: "GitOps-driven Kubernetes homelab on bare metal, running Flatcar Container Linux, Kubeadm, Cilium, Rook-Ceph and ArgoCD."
+---
+
 # Project Overview
 
 ![Homelab Logo](assets/images/logo.png){ align=right width=150 }
@@ -6,33 +10,41 @@ Welcome to the **Flatcar Homelab** documentation. This project provides a fully 
 
 ## Core Concepts
 
-* **Immutable Infrastructure**: Uses Flatcar Container Linux for secure, auto-updating nodes.
-* **GitOps**: All cluster state is managed via ArgoCD.
-* **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
-* **Storage**: Rook-Ceph for distributed block storage.
+- **Immutable Infrastructure**: Uses Flatcar Container Linux for secure, auto-updating nodes.
+- **GitOps**: All cluster state is managed via ArgoCD.
+- **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
+- **Storage**: Rook-Ceph for distributed block storage.
 
 ## Documentation Sections
 
-### [Quickstart Guide](quickstart.md)
+### [Quickstart](quickstart.md)
 
 Get your cluster up and running from scratch. Learn how to provision nodes, bootstrap the cluster, and install core components.
+
+### [Architecture](architecture/index.md)
+
+How the cluster is put together: the [boot process](architecture/boot-process.md), the [GitOps strategy](architecture/gitops.md), and the [directory structure](architecture/directory-structure.md).
 
 ### [Platform Architecture](platform/index.md)
 
 Deep dive into the core infrastructure components that power the cluster, including:
 
-* [Cilium](platform/cilium.md) (Networking & Security)
-* [Rook-Ceph](platform/rook-ceph.md) (Storage)
-* [Monitoring](platform/monitoring.md) (Prometheus & Grafana)
-* [Cert-Manager](platform/cert-manager.md) (TLS)
+- [Cilium](platform/cilium.md) (Networking & Security)
+- [Rook-Ceph](platform/rook-ceph.md) (Storage)
+- [Monitoring](platform/monitoring.md) (Prometheus & Grafana)
+- [cert-manager](platform/cert-manager.md) (TLS)
 
 ### [Workloads](workloads/index.md)
 
 Explore the user-facing applications deployed on the cluster.
 
-### Developer Resources
+### [Development](development/index.md)
 
-* [Documentation System](development/documentation.md): How the docs site is built and deployed.
-* [Maintenance](development/maintenance.md): CI/CD workflows and dependency management.
-* [Adding a Workload](development/add-workload.md): Step-by-step guide for deploying a new application.
-* [Ansible](ansible/index.md): Configuration management details.
+- [Documentation System](development/documentation.md): How the docs site is built and deployed.
+- [Maintenance](development/maintenance.md): CI/CD workflows and dependency management.
+- [Adding a Workload](development/add-workload.md): Step-by-step guide for deploying a new application.
+
+### Machine Provisioning
+
+- [Boot Server](boot_server/index.md): The PXE boot server that serves Flatcar and Ignition to bare metal nodes.
+- [Ansible](ansible/index.md): Configuration management details.

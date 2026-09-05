@@ -1,3 +1,7 @@
+---
+description: "The Python PXE boot server that serves TFTP and HTTP artifacts to bare metal nodes during provisioning."
+---
+
 # Boot Server
 
 This component runs a combined TFTP and HTTP server to support PXE booting of
