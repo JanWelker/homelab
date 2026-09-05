@@ -48,6 +48,7 @@ Explore the user-facing applications deployed on the cluster.
 
 ### [Development](development/index.md)
 
+- [Contributing](development/contributing.md): Setup, checks, and conventions for working on this repository.
 - [Documentation System](development/documentation.md): How the docs site is built and deployed.
 - [Maintenance](development/maintenance.md): CI/CD workflows and dependency management.
 - [Adding a Workload](development/add-workload.md): Step-by-step guide for deploying a new application.

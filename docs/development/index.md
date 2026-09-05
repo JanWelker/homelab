@@ -6,6 +6,8 @@ description: "How to work on this repository — writing documentation, adding w
 
 How to work on this repository.
 
+- **[Contributing](contributing.md)**: Repository setup, the checks that run,
+    commit conventions, and validating a `payload/` change before you push.
 - **[Documentation System](documentation.md)**: How this site is built with
     Zensical and published to GitHub Pages, and how to preview it locally.
 - **[Maintenance](maintenance.md)**: The CI workflows that lint the repository
