@@ -1,3 +1,7 @@
+---
+description: "Gateway API resources: the apps and infra Gateways, HTTP to HTTPS redirection, and how to expose a new service."
+---
+
 # Gateway API
 
 The [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) replaces the traditional Ingress resource. It is implemented by Cilium, which handles both load balancing and TLS termination.
@@ -40,7 +44,9 @@ Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for internal platform 
 ## Directory Structure
 
 ```text
-gateway-api/           # Gateway API Resources
-├── crds.yaml          # ArgoCD Application for CRDs (v1.2.0)
-└── gateways.yaml      # apps-gateway + infra-gateway
+gateway-api/            # Gateway API Resources
+├── application.yaml    # ArgoCD Application
+├── crds.yaml           # ArgoCD Application for the Gateway API CRDs
+├── gateways.yaml       # apps-gateway + infra-gateway
+└── http-redirect.yaml  # Central HTTP to HTTPS redirect
 ```

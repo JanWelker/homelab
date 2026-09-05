@@ -1,3 +1,7 @@
+---
+description: "The CI workflows that lint this repository and the Renovate configuration that keeps dependencies current."
+---
+
 # Maintenance
 
 This section outlines the automated systems used to maintain the repository,

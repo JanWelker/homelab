@@ -1,3 +1,7 @@
+---
+description: "How the cluster is put together: hardware, node roles, networking, and the design decisions behind the homelab."
+---
+
 # Architecture Overview
 
 This project provides a mechanism to deploy a Bare Metal Kubernetes Cluster using

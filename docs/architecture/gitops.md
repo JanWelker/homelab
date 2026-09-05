@@ -1,3 +1,7 @@
+---
+description: "The App-of-Apps pattern, parent ArgoCD Applications, and the sync waves that order cluster deployment."
+---
+
 # GitOps Strategy
 
 We use **ArgoCD** to manage the cluster state declaratively.

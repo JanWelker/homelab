@@ -1,3 +1,7 @@
+---
+description: "User-facing applications deployed to the cluster and how the workloads parent Application manages them."
+---
+
 # Workloads
 
 User-facing applications deployed to the cluster live under

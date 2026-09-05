@@ -1,3 +1,7 @@
+---
+description: "Automated TLS certificates from Let’s Encrypt using cert-manager with a Route53 DNS-01 solver."
+---
+
 # cert-manager
 
 TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53.

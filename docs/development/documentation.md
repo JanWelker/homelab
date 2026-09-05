@@ -1,3 +1,7 @@
+---
+description: "How this documentation site is built with Zensical, published to GitHub Pages, and previewed locally."
+---
+
 # Documentation System
 
 The project documentation (this site) is built with

@@ -1,3 +1,7 @@
+---
+description: "OpenBao as the cluster secret store: bootstrapping, unsealing, the Kubernetes auth method, and backups."
+---
+
 # OpenBao
 
 [OpenBao](https://openbao.org/) is the cluster's secret store — an open-source, Linux Foundation fork of HashiCorp Vault. It holds every secret consumed by workloads on the cluster (cloud credentials, API tokens, registry pulls, database passwords, …). Secrets are surfaced to Kubernetes as native `Secret` objects via the [External Secrets Operator](external-secrets.md).

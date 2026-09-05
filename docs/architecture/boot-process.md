@@ -1,3 +1,7 @@
+---
+description: "How a bare metal node goes from power-on to joined cluster member via PXE, Ignition, and Kubeadm."
+---
+
 # Boot & Bootstrap Process
 
 This document details the flow of data from the initial PXE boot to a fully

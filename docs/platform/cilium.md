@@ -1,4 +1,8 @@
-# cilium
+---
+description: "Cilium as the CNI, providing Gateway API, WireGuard encryption, L2 announcements, and Hubble observability."
+---
+
+# Cilium
 
 CNI with Gateway API, WireGuard encryption, and L2 announcements.
 
@@ -12,7 +16,7 @@ CNI with Gateway API, WireGuard encryption, and L2 announcements.
 
 ```text
 cilium/                # CNI + Gateway API Controller
-├── application.yaml   # ArgoCD Application (Helm v1.19.2)
+├── application.yaml   # ArgoCD Application (Helm chart)
 ├── values.yaml        # Helm values
 ├── lb-pools.yaml      # CiliumLoadBalancerIPPool + L2 Policy
 ├── rbac-gateway-fix.yaml # RBAC fix for Gateway API

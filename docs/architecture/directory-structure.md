@@ -1,3 +1,7 @@
+---
+description: "Repository layout: where Ansible playbooks, the boot server, documentation, and GitOps manifests live."
+---
+
 # Directory Structure
 
 ```text
