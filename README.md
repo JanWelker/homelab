@@ -33,5 +33,7 @@ The full project documentation is published to GitHub Pages at
 
 ## Contributing
 
-See the [Development](https://janwelker.github.io/homelab/development/documentation/)
-section of the documentation for contribution guidelines and development workflows.
+See [CONTRIBUTING.md](CONTRIBUTING.md), or the
+[Contributing](https://janwelker.github.io/homelab/development/contributing/)
+page for setup, checks, commit conventions, and how to validate a `payload/`
+change before opening a pull request.

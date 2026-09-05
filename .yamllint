@@ -5,6 +5,10 @@ ignore: |
   output/
 
 rules:
+  # Renovate writes its version annotations as "@<sha> # v1", with a single
+  # space. Matching that here keeps the pins lint-clean across bumps.
+  comments:
+    min-spaces-from-content: 1
   line-length: disable
   document-start: disable
   comments-indentation: disable
