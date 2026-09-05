@@ -25,5 +25,9 @@ spec:
               - name: Referrer-Policy
                 value: "strict-origin-when-cross-origin"
       backendRefs:
-        - name: rook-ceph-mgr-dashboard
-          port: 7000
+        # Fronted by the Authentik embedded outpost, which authenticates and
+        # then proxies to rook-ceph-mgr-dashboard. Permitted by the
+        # ReferenceGrant in payload/platform/authentik/referencegrant.yaml.
+        - name: authentik-server
+          namespace: authentik
+          port: 80

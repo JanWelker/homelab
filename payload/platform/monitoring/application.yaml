@@ -32,6 +32,35 @@ spec:
 
           grafana:
             enabled: true
+
+            # Single sign-on against Authentik. Grafana previously used the
+            # chart's generated admin password -- a shared credential nobody
+            # rotates, documented as "read it out of the Secret".
+            envFromSecret: grafana-oidc
+            grafana.ini:
+              server:
+                root_url: https://monitoring.infra.k8s.wlkr.ch
+              auth:
+                # No local login form. The admin account still exists and is
+                # reachable through the API as a break-glass path if Authentik
+                # is down -- see docs/platform/authentik.md.
+                disable_login_form: true
+                oauth_auto_login: true
+              auth.generic_oauth:
+                enabled: true
+                name: Authentik
+                allow_sign_up: true
+                scopes: "openid profile email"
+                auth_url: https://auth.infra.k8s.wlkr.ch/application/o/authorize/
+                token_url: https://auth.infra.k8s.wlkr.ch/application/o/token/
+                api_url: https://auth.infra.k8s.wlkr.ch/application/o/userinfo/
+                # Group membership decides the Grafana role. Anyone who
+                # authenticates but is in neither group lands on Viewer.
+                # yamllint disable-line rule:line-length
+                role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-editors') && 'Editor' || 'Viewer'"
+              users:
+                auto_assign_org_role: Viewer
+
             persistence:
               enabled: true
               type: pvc

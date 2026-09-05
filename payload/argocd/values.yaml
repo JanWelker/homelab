@@ -22,8 +22,34 @@ applicationSet:
 
 configs:
   cm:
-    # Enable apiKey capability for admin account (needed for MCP integration)
-    accounts.admin: apiKey, login
+    url: https://argo.infra.k8s.wlkr.ch
+
+    # The local admin account is disabled. With SSO in front of ArgoCD, leaving
+    # it enabled would leave a shared password as a way around it, with no
+    # audit trail and no way to revoke one person's access.
+    #
+    # It is the break-glass path if Authentik is unreachable:
+    #   kubectl -n argocd patch cm argocd-cm --type merge \
+    #     -p '{"data":{"admin.enabled":"true"}}'
+    # See docs/platform/authentik.md.
+    admin.enabled: "false"
+
+    # Client ID and secret come from the same OpenBao path Authentik's
+    # blueprint reads, so neither side has to be copied out of a UI.
+    # `$name:key` resolves against a Secret labelled part-of: argocd.
+    oidc.config: |
+      name: Authentik
+      issuer: https://auth.infra.k8s.wlkr.ch/application/o/argocd/
+      clientID: $argocd-oidc:client-id
+      clientSecret: $argocd-oidc:client-secret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+
     resource.exclusions: |
       - apiGroups:
         - actions.github.com
@@ -43,3 +69,13 @@ configs:
           - /spec/rules/0/backendRefs/0/kind
           - /spec/rules/0/backendRefs/0/weight
           - /spec/rules/0/matches
+
+  rbac:
+    # Nothing by default: an authenticated user with no matching group gets no
+    # access rather than read-only-everything.
+    policy.default: ""
+    # Authentik group -> ArgoCD role.
+    policy.csv: |
+      g, argocd-admins, role:admin
+      g, argocd-viewers, role:readonly
+    scopes: "[groups, email]"

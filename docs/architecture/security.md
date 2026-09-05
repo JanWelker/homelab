@@ -79,19 +79,24 @@ under `*.infra.k8s.wlkr.ch`.
 
 ## Exposed interfaces
 
-Every platform UI is reachable on the infra gateway with only its own
-application-level login in front of it:
+Every platform UI on the infra gateway is behind
+[Authentik](../platform/authentik.md), by one of two routes:
 
 | Service | Authentication |
 | --- | --- |
-| ArgoCD | Local admin account; the server runs with `--insecure` because TLS terminates at the Gateway |
-| Grafana | Chart default admin password unless changed — see [Monitoring](../platform/monitoring.md#accessing-grafana) |
-| OpenBao UI | Token or configured auth method |
-| Hubble UI | **None** |
-| Rook dashboard | Ceph dashboard credentials |
+| ArgoCD | Authentik OIDC; local admin disabled. The server runs with `--insecure` because TLS terminates at the Gateway |
+| Grafana | Authentik OIDC; login form disabled |
+| Hubble UI | Authentik proxy outpost — previously **none at all** |
+| Rook dashboard | Authentik proxy outpost |
+| Prometheus | Authentik proxy outpost; not exposed at all before |
+| Alertmanager | Authentik proxy outpost; not exposed at all before |
+| OpenBao UI | Token or configured auth method — not behind Authentik |
 
-Hubble in particular exposes cluster-wide network flow data to anyone who can
-reach the hostname.
+Two things follow. Authentik is now a dependency of reaching any of them, so
+the break-glass paths in
+[When Authentik is down](../platform/authentik.md#when-authentik-is-down) matter.
+And OpenBao is deliberately left out: putting the thing that holds Authentik's
+own database password behind Authentik would be a loop.
 
 ## What would tighten this up
 
@@ -102,9 +107,8 @@ Roughly in order of value against effort:
    namespaces.
 3. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-4. Put an authenticating proxy in front of Hubble, or stop publishing it.
-5. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
-6. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
+4. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
+5. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
    and the 5-of-N key custody problem.
 
 None of these is implemented. See [Known Limitations](limitations.md) for the
