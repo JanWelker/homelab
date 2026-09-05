@@ -43,10 +43,10 @@ install-cilium:
 	helm upgrade --install cilium cilium/cilium \
 		--version 1.18.5 \
 		--namespace kube-system \
-		--values payload/platform/cilium/cilium-values.yaml
+		--values payload/platform/cilium/values.yaml
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
-	kubectl apply -f payload/platform/cilium-pool.yaml
+	kubectl apply -f payload/platform/cilium/lb-pools.yaml
 
 install-cert-manager:
 	helm repo add jetstack https://charts.jetstack.io
@@ -63,7 +63,7 @@ install-cert-manager:
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
-	kubectl apply -f payload/platform/cluster-issuer-prod.yaml
+	kubectl apply -f payload/platform/cert-manager/cluster-issuers.yaml
 
 install-argo:
 	helm repo add argocd https://argoproj.github.io/argo-helm
@@ -71,7 +71,7 @@ install-argo:
 	helm upgrade --install argocd argocd/argo-cd \
 		--namespace argocd \
 		--create-namespace \
-		--values payload/argocd/argocd-values.yaml \
+		--values payload/argocd/values.yaml \
 		--version 9.1.9 \
 		--wait
 
