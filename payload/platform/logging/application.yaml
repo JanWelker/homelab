@@ -1,0 +1,34 @@
+---
+# Directory Application for the logging stack, following the same shape as
+# rook-ceph/: the platform parent only picks up files named application.yaml,
+# so this is what makes the sibling manifests in this directory reachable.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logging
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "1"
+    link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/logging
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

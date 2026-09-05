@@ -1,0 +1,26 @@
+---
+# Loki as a Grafana datasource.
+#
+# Deliberately in the `monitoring` namespace rather than `logging`: the
+# kube-prometheus-stack Grafana sidecar only watches its own release namespace
+# for `grafana_datasource` ConfigMaps, so one placed next to Loki would never be
+# picked up. It is defined here, with the component it describes, and applied
+# there.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-datasource
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  loki-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.logging.svc.cluster.local:3100
+        isDefault: false
+        jsonData:
+          maxLines: 1000
