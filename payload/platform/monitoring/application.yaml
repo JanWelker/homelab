@@ -27,7 +27,8 @@ spec:
                 kubectl:
                   registry: registry.k8s.io
                   repository: kubectl
-                  tag: v1.34.2
+                  # renovate: datasource=github-releases depName=kubernetes/kubernetes
+                  tag: v1.37.0
 
           grafana:
             enabled: true
@@ -67,6 +68,110 @@ spec:
                     resources:
                       requests:
                         storage: 5Gi
+              # Mounted at /etc/alertmanager/secrets/alertmanager-smtp/.
+              # Rendered from OpenBao by smtp-credentials.yaml in this
+              # directory. Alertmanager has smtp_auth_password_file but no
+              # equivalent for the username, which is why only the password
+              # comes from here.
+              secrets:
+                - alertmanager-smtp
+
+            # Replaces the chart default, which routes everything to the `null`
+            # receiver -- Alertmanager had persistent storage and no way to
+            # tell anyone anything. The inhibit rules and the Watchdog route
+            # are the chart's; supplying `config` replaces the whole document,
+            # so they are repeated here rather than inherited.
+            config:
+              global:
+                resolve_timeout: 5m
+                # The submission host and the two addresses are the only
+                # values here to confirm for a different mail provider.
+                # Nothing secret is in this file: the password is read from the
+                # mounted Secret above. Alertmanager sends STARTTLS on 587.
+                smtp_smarthost: "smtp.wlkr.ch:587"
+                smtp_from: "alertmanager@wlkr.ch"
+                smtp_auth_username: "alertmanager@wlkr.ch"
+                smtp_auth_password_file: /etc/alertmanager/secrets/alertmanager-smtp/password
+                smtp_require_tls: true
+
+              templates:
+                - /etc/alertmanager/config/*.tmpl
+
+              inhibit_rules:
+                - source_matchers:
+                    - severity = critical
+                  target_matchers:
+                    - severity =~ warning|info
+                  equal:
+                    - namespace
+                    - alertname
+                - source_matchers:
+                    - severity = warning
+                  target_matchers:
+                    - severity = info
+                  equal:
+                    - namespace
+                    - alertname
+                - source_matchers:
+                    - alertname = InfoInhibitor
+                  target_matchers:
+                    - severity = info
+                  equal:
+                    - namespace
+                - target_matchers:
+                    - alertname = InfoInhibitor
+
+              route:
+                group_by: ["alertname", "namespace"]
+                group_wait: 30s
+                group_interval: 5m
+                repeat_interval: 12h
+                receiver: email
+                routes:
+                  # Watchdog fires constantly by design -- it is the alert that
+                  # proves the pipeline works. Mailing it every 12 hours would
+                  # train the recipient to ignore the sender.
+                  - receiver: "null"
+                    matchers:
+                      - alertname = "Watchdog"
+                  # Critical repeats four times as often, on the assumption
+                  # that a mail nobody acted on should come back sooner.
+                  - receiver: email
+                    matchers:
+                      - severity = "critical"
+                    repeat_interval: 3h
+
+              receivers:
+                - name: "null"
+                - name: email
+                  email_configs:
+                    - to: "jan@wlkr.ch"
+                      send_resolved: true
+
+          # kubeadm binds these two to 127.0.0.1 by default; the provisioning
+          # change that moves them to 0.0.0.0 is what makes these ServiceMonitors
+          # able to reach anything. Their serving certificates are self-signed
+          # for the node address, so verification is off -- the scrape still
+          # authenticates with the ServiceAccount token.
+          kubeControllerManager:
+            enabled: true
+            serviceMonitor:
+              https: true
+              insecureSkipVerify: true
+          kubeScheduler:
+            enabled: true
+            serviceMonitor:
+              https: true
+              insecureSkipVerify: true
+          # Plain HTTP on 2381, which serves only /metrics and /health. The
+          # client and peer APIs stay on their mTLS listeners.
+          kubeEtcd:
+            enabled: true
+            service:
+              port: 2381
+              targetPort: 2381
+            serviceMonitor:
+              scheme: http
 
           nodeExporter:
             enabled: true
