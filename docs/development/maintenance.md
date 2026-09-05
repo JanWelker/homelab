@@ -60,7 +60,43 @@ located in `renovate.json`.
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests.
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
-    Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources, and
-    Helm values (`payload/**/values.yaml`). Custom regex managers track the
-    Flatcar, Kubernetes, containerd, and syslinux versions pinned in
-    `ansible/inventory.yaml`.
+    Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
+    Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
+    managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
+    versions pinned in `ansible/inventory.yaml`.
+
+### Two things Renovate cannot see by default
+
+Both of these went unnoticed for long enough to let dependencies drift, so they
+are worth knowing about before adding a new one.
+
+**The `pre-commit` manager ships disabled.** Renovate's own default for it is
+`enabled: false`, which is easy to miss because a `packageRules` entry matching
+`matchManagers: ["pre-commit"]` looks like it is doing something. It is not,
+unless `renovate.json` also sets:
+
+```json
+"pre-commit": { "enabled": true }
+```
+
+Without that line `.pre-commit-config.yaml` is never updated, and the hook
+versions there silently diverge from the equivalent pins in `pyproject.toml`.
+
+**The `helm-values` manager only reads real values files.** Its
+`managerFilePatterns` is scoped to `payload/**/values.yaml`, and that is not a
+configuration choice that can be widened — the manager parses a values document,
+so an image tag written inline in an ArgoCD `Application` under
+`helm.valuesObject:` is invisible to it. Those tags are the reason the generic
+annotation manager exists: put a `# renovate:` comment on the line above and the
+custom regex manager picks it up.
+
+```yaml
+image:
+  repository: quay.io/openbao/openbao
+  # renovate: datasource=github-releases depName=openbao/openbao extractVersion=^v(?<version>.+)$
+  tag: 2.6.2
+```
+
+The alternative is to move the values into a real `values.yaml` and reference it
+with `valueFiles`, the way Cilium and ArgoCD already do. Either works; the
+annotation is cheaper for a single tag.
