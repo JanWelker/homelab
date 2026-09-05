@@ -15,20 +15,17 @@ extra_css = [
   "stylesheets/extra.css",
 ]
 
+# Mirrors the reading order of the landing page: get it running, understand it,
+# then the reference sections.
 nav = [
   { "Home" = "index.md" },
   { "Quickstart" = "quickstart.md" },
+  { "Adapting This for Your Cluster" = "adapting.md" },
   { "Architecture" = [
     { "Overview" = "architecture/index.md" },
     { "Boot Process" = "architecture/boot-process.md" },
     { "GitOps Strategy" = "architecture/gitops.md" },
     { "Directory Structure" = "architecture/directory-structure.md" },
-  ] },
-  { "Development" = [
-    { "Overview" = "development/index.md" },
-    { "Documentation System" = "development/documentation.md" },
-    { "Maintenance" = "development/maintenance.md" },
-    { "Adding a Workload" = "development/add-workload.md" },
   ] },
   { "Platform" = [
     { "Overview" = "platform/index.md" },
@@ -43,12 +40,21 @@ nav = [
   { "Workloads" = [
     { "Overview" = "workloads/index.md" },
   ] },
-  { "Boot Server" = "boot_server/index.md" },
-  { "Ansible" = "ansible/index.md" },
+  { "Development" = [
+    { "Overview" = "development/index.md" },
+    { "Documentation System" = "development/documentation.md" },
+    { "Maintenance" = "development/maintenance.md" },
+    { "Adding a Workload" = "development/add-workload.md" },
+  ] },
+  { "Machine Provisioning" = [
+    { "Boot Server" = "boot_server/index.md" },
+    { "Ansible" = "ansible/index.md" },
+  ] },
 ]
 
 [project.theme]
 variant = "modern"
+custom_dir = "overrides"
 logo = "assets/images/logo.png"
 favicon = "assets/images/logo.png"
 features = [

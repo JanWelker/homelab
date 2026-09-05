@@ -18,12 +18,21 @@ Full observability stack based on [kube-prometheus-stack](https://github.com/pro
 
 Grafana is exposed via the `infra-gateway` at `monitoring.infra.k8s.wlkr.ch`.
 
-The default admin credentials are configured in the Helm values (`application.yaml`). Check the `grafana.adminPassword` field or the generated secret in the `monitoring` namespace:
+Log in as `admin`. This repository does not set `grafana.adminPassword` in
+`application.yaml`, so the chart's own default applies. Read the password that
+is actually in effect from the Secret the chart creates:
 
 ```bash
 kubectl get secret -n monitoring kube-prometheus-stack-grafana \
   -o jsonpath='{.data.admin-password}' | base64 -d
 ```
+
+!!! note
+    The Grafana credentials are not yet managed through
+    [OpenBao](openbao.md). Until they are, changing the password means setting
+    `grafana.adminPassword` in `application.yaml` — which would commit it to
+    Git. Prefer an [ExternalSecret](external-secrets.md) and reference it with
+    `grafana.admin.existingSecret`.
 
 ## Adding a Dashboard
 

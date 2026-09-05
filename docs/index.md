@@ -21,11 +21,15 @@ Welcome to the **Flatcar Homelab** documentation. This project provides a fully 
 
 Get your cluster up and running from scratch. Learn how to provision nodes, bootstrap the cluster, and install core components.
 
+### [Adapting This for Your Cluster](adapting.md)
+
+This repository describes one specific homelab. What to change — repository URL, domain, addresses, hardware — before pointing any of it at your own machines.
+
 ### [Architecture](architecture/index.md)
 
 How the cluster is put together: the [boot process](architecture/boot-process.md), the [GitOps strategy](architecture/gitops.md), and the [directory structure](architecture/directory-structure.md).
 
-### [Platform Architecture](platform/index.md)
+### [Platform](platform/index.md)
 
 Deep dive into the core infrastructure components that power the cluster, including:
 

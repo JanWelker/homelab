@@ -2,13 +2,11 @@
 description: "The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they sync."
 ---
 
-# Core Infrastructure
+# Platform
 
-This directory contains **core infrastructure components** managed via ArgoCD GitOps.
-
-## Directory Structure
-
-See individual component documentation for detailed structure.
+The core infrastructure components that run the cluster. Everything here is
+managed by ArgoCD; each component's own page documents its directory layout and
+configuration.
 
 ## Components
 

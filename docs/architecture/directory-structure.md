@@ -41,11 +41,13 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
-│       ├── cert-manager/   # TLS certificates
-│       ├── cilium/         # CNI + Gateway API
-│       ├── gateway-api/    # Gateway resources
-│       ├── monitoring/     # Prometheus stack
-│       └── rook-ceph/      # Storage operator & cluster
+│       ├── cert-manager/     # TLS certificates
+│       ├── cilium/           # CNI + Gateway API
+│       ├── external-secrets/ # OpenBao to K8s Secret bridge
+│       ├── gateway-api/      # Gateway resources
+│       ├── monitoring/       # Prometheus stack
+│       ├── openbao/          # Cluster secret store
+│       └── rook-ceph/        # Storage operator & cluster
 ├── zensical.toml           # Documentation site configuration
 └── README.md
 ```
