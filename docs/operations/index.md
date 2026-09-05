@@ -36,8 +36,11 @@ You need 3 of the 5 unseal keys.
 
 ## Rebooting a node
 
-Nodes do **not** reboot themselves (see [OS updates](upgrades.md#os-updates)),
-so this is a manual, one-node-at-a-time procedure.
+[Kured](../platform/kured.md) reboots nodes on its own between 01:00 and 05:00
+when an update has been staged, one at a time, and refuses while Ceph or etcd is
+unhealthy. The procedure below is for the cases it does not cover: rebooting
+sooner than the window, or rebooting a node for a reason nothing set a sentinel
+for.
 
 ```bash
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
