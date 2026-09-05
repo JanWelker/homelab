@@ -6,7 +6,7 @@ Welcome to the **Flatcar Homelab** project. This repository contains the configu
 
 ## Core Concepts
 
-- **Immutable Infrastructure**: Uses Flatcar Container Linux for secure, auto-updating nodes.
+- **Immutable Infrastructure**: Uses Flatcar Container Linux; updates stage automatically and are applied on a manual reboot.
 - **GitOps**: All cluster state is managed via ArgoCD.
 - **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
 - **Storage**: Rook-Ceph for distributed block storage.

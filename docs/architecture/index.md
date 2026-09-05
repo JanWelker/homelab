@@ -15,7 +15,7 @@ If you're new to this stack, the following concepts are worth understanding befo
 
 [Flatcar](https://www.flatcar.org/) is an immutable, minimal Linux distribution designed specifically for running containers. The root filesystem is read-only — you cannot install packages or modify system files at runtime. This forces all configuration to happen declaratively at first boot via **Ignition**.
 
-Flatcar automatically applies OS updates in the background and uses an A/B partition scheme to roll back if an update fails.
+Flatcar downloads OS updates in the background into an A/B partition pair, so a failed update can be rolled back. This project masks `locksmithd`, the service that would normally coordinate the reboot, so a staged update is applied only when you reboot the node yourself — see [Updates & Upgrades](../operations/upgrades.md).
 
 ### Ignition & Butane
 
@@ -75,7 +75,7 @@ The physical machine to be provisioned.
 
 | Layer | Tool | Purpose |
 | --- | --- | --- |
-| OS | Flatcar Container Linux | Immutable, auto-updating container OS |
+| OS | Flatcar Container Linux | Immutable container OS, updated via A/B partitions |
 | Orchestration | Kubernetes (Kubeadm) | Container scheduling and management |
 | CNI | Cilium (eBPF) | Networking, kube-proxy replacement |
 | Ingress | Gateway API (via Cilium) | HTTP/HTTPS traffic routing |
