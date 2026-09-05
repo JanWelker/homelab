@@ -16,8 +16,44 @@
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
 
-- name: "Download Sysext Config for {{ item.name | capitalize }}"
+# sysext-bakery ships two sysupdate configs per release: a floating
+# `<name>.conf` matching `<name>-@v-%a.raw`, and (for Kubernetes) a
+# series-pinned `<name>-<series>.conf` matching `<name>-<series>.@v-%a.raw`.
+# The floating one is what a node used to get, which meant every node tracked
+# whatever upstream published as newest and could stage a Kubernetes minor
+# kubeadm refuses to skip to. Take the floating config as the source of truth
+# for [Target] and [Source] Path, then narrow MatchPattern to the series pinned
+# in inventory.yaml. For Kubernetes the result is byte-identical to the
+# `<name>-<series>.conf` published upstream; containerd has no pinned variant
+# upstream, so the same rule is applied to it here.
+- name: "Download Upstream Sysupdate Config for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}.conf"
+    dest: "{{ output_dir }}/tmp/sysext/{{ item.name }}.conf"
+    force: true
+    mode: "0644"
+
+- name: "Publish Series-Pinned Sysupdate Config for {{ item.name | capitalize }}"
+  ansible.builtin.copy:
+    content: "{{ upstream_conf | regex_replace(floating_pattern, pinned_pattern) }}\n"
     dest: "{{ http_dir }}/{{ item.name }}.conf"
     mode: "0644"
+  vars:
+    upstream_conf: "{{ lookup('file', output_dir + '/tmp/sysext/' + item.name + '.conf') }}"
+    floating_pattern: "(?m)^MatchPattern={{ item.name }}-@v-"
+    pinned_pattern: "MatchPattern={{ item.name }}-{{ item.series }}.@v-"
+
+# A silent no-op here would put the floating MatchPattern back on the nodes
+# without anything failing, so assert the pin actually landed.
+- name: "Assert Sysupdate Config Is Series-Pinned for {{ item.name | capitalize }}"
+  ansible.builtin.assert:
+    that:
+      - "'MatchPattern=' + item.name + '-' + item.series + '.@v-' in published_conf"
+    fail_msg: >-
+      {{ item.name }}.conf from sysext-bakery did not carry the expected
+      floating MatchPattern, so it could not be pinned to {{ item.series }}.
+      Nodes provisioned from it would track the newest {{ item.name }} upstream
+      publishes instead of the version pinned in inventory.yaml.
+    quiet: true
+  vars:
+    published_conf: "{{ lookup('file', http_dir + '/' + item.name + '.conf') }}"

@@ -16,6 +16,7 @@
       loop:
         - "{{ http_dir }}"
         - "{{ tftp_dir }}"
+        - "{{ output_dir }}/tmp/sysext"
 
     - name: Download Flatcar OS Artifacts
       ansible.builtin.include_tasks: tasks/download_flatcar.yaml
@@ -32,10 +33,15 @@
       vars:
         url: "https://github.com/flatcar/sysext-bakery/releases/download"
       loop:
+        # `series` is the major.minor the node's sysupdate config is pinned to.
+        # Derived from the pinned version so inventory.yaml stays the single
+        # place a version is chosen.
         - name: kubernetes
           version: "{{ kubernetes_version }}"
+          series: "{{ kubernetes_version.split('.')[:2] | join('.') }}"
         - name: containerd
           version: "{{ containerd_version }}"
+          series: "{{ containerd_version.split('.')[:2] | join('.') }}"
 
     - name: Download Noop Sysext Config
       ansible.builtin.get_url:

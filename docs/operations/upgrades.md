@@ -15,8 +15,14 @@ half of its A/B partition pair, so the new image is ready but inactive.
 Normally `locksmithd` would then coordinate a reboot across the cluster.
 
 **This project masks `locksmithd`** (`ansible/templates/butane_config.yaml.j2`),
-so nothing ever triggers that reboot. An OS update is applied only when you
-reboot the node yourself, following
+because reboots are meant to be coordinated by something that drains the node
+first. In its place, a `flatcar-reboot-sentinel.timer` polls
+`update_engine_client -status` every ten minutes and touches
+`/run/reboot-required` once an update is staged — the same marker the sysupdate
+drop-ins below already use, and the file a reboot coordinator watches.
+
+Writing the marker is all this does. Until something consumes it, an OS update
+is still applied only when you reboot the node yourself, following
 [Rebooting a node](index.md#rebooting-a-node).
 
 Check what a node is running and whether an update is staged:
@@ -33,44 +39,74 @@ extensions on every fire. When a new image is fetched, the unit touches
 `/run/reboot-required` — a marker file that, with `locksmithd` masked, nothing
 acts on. The new extension takes effect at the next boot.
 
-!!! warning
-    The sysupdate configs served to the nodes point at
-    `https://extensions.flatcar.org/extensions/`, not at this project's boot
-    server, and match on `kubernetes-@v-%a.raw`. Nodes therefore track whatever
-    version upstream publishes as newest — `kubernetes_version` in
-    `ansible/inventory.yaml` pins only the image baked in at first boot. Left
-    alone long enough, a node can stage a Kubernetes minor version that kubeadm
-    does not support skipping to, and apply it on the next reboot.
+### Nodes are pinned to a minor series
+
+The sysupdate configs served to the nodes point at
+`https://extensions.flatcar.org/extensions/`, not at this project's boot server.
+They used to carry sysext-bakery's *floating* `MatchPattern`
+(`kubernetes-@v-%a.raw`), which meant a node tracked whatever upstream published
+as newest and could stage a Kubernetes minor kubeadm refuses to skip to.
+
+The generated configs now pin the major.minor from `ansible/inventory.yaml`:
+
+```ini
+[Source]
+Type=url-file
+Path=https://extensions.flatcar.org/extensions/kubernetes/
+MatchPattern=kubernetes-v1.37.@v-%a.raw
+```
+
+Patch releases inside `v1.37` are still picked up automatically, which is what
+you want — `v1.38` is not, which is the point. sysext-bakery publishes exactly
+this file as `kubernetes-v1.37.conf` alongside the floating one, and the
+generated config is byte-identical to it. containerd gets the same treatment
+even though upstream ships no pinned variant for it.
+
+The pinning happens in
+`ansible/playbooks/tasks/download_sysext.yaml`, which asserts that the rewrite
+landed. If sysext-bakery ever changes the format, `make download` fails rather
+than quietly handing the nodes a floating config again.
 
 Inspect what is currently staged on a node:
 
 ```bash
 ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'
+cat /etc/sysupdate.d/kubernetes.conf   # confirm the MatchPattern is pinned
 ```
 
-To pin a version instead, edit the `[Source]` `Path`/`MatchPattern` in the
-sysupdate config that the boot server serves, or disable
-`systemd-sysupdate.timer` on the nodes and drive upgrades from `inventory.yaml`
-by hand.
+## Upgrading a minor version deliberately
 
-## Upgrading deliberately
+Changing `kubernetes_version` to a new minor changes what the nodes track, so
+this is the deliberate path:
 
-Because sysupdate tracks upstream, a controlled Kubernetes upgrade means
-choosing the version and applying it one node at a time rather than letting the
-timer decide:
-
-1. Confirm the jump is supported. kubeadm allows one minor version at a time,
-   control plane first.
+1. Confirm the jump is supported. **kubeadm allows one minor version at a
+   time.** Going from v1.34 to v1.37 is three separate passes through this
+   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one.
 2. Update `kubernetes_version` (and `containerd_version` if relevant) in
    `ansible/inventory.yaml`.
-3. `make download && make config` to fetch the new sysext and regenerate the
-   Ignition configs. This matters for any node you later reprovision — an
-   existing node picks the image up from `extensions.flatcar.org`.
-4. Reboot nodes one at a time, control plane first, per
+3. `make download && make config`. This fetches the new sysext, regenerates the
+   Ignition configs, and regenerates the sysupdate configs with the new pinned
+   `MatchPattern`.
+4. Serve the new sysupdate config to the running nodes. They read it from
+   `/etc/sysupdate.d/kubernetes.conf`, which was written at provisioning time,
+   so a node that is not being reprovisioned needs the file replaced:
+
+    ```bash
+    scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
+    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.d/kubernetes.conf
+    ssh core@<node> sudo systemctl start systemd-sysupdate
+    ```
+
+5. Reboot nodes one at a time, control plane first, per
    [Rebooting a node](index.md#rebooting-a-node).
-5. On a control-plane node, run `kubeadm upgrade` as the Kubernetes release
+6. On a control-plane node, run `kubeadm upgrade` as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
    steps kubeadm needs for control-plane components.
+
+!!! note
+    A **newly provisioned** node skips all of this — it installs
+    `kubernetes_version` directly and gets the pinned sysupdate config from the
+    boot server. Only long-running nodes need step 4.
 
 !!! note
     Renovate keeps `kubernetes_version`, `containerd_version`, `flatcar_version`

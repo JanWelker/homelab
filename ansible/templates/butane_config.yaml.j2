@@ -26,15 +26,22 @@ storage:
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755
+{% if role == 'control-plane' %}
+    - path: /etc/kubernetes/enc
+      mode: 0700
+{% endif %}
   files:
     - path: /etc/containerd/config.toml
       mode: 0644
       contents:
+        # Config version 3 with the io.containerd.cri.v1.runtime plugin path is
+        # the containerd 2.x form. Version 2 is still auto-converted, but the
+        # conversion is the deprecated path and goes away in containerd 3.
         inline: |
-          version = 2
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          version = 3
+          [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
             runtime_type = "io.containerd.runc.v2"
-          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+          [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
             SystemdCgroup = true
     - path: /etc/hostname
       mode: 0644
@@ -47,6 +54,26 @@ storage:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
 {% if role == 'control-plane' %}
+    # Key material for API server Secret encryption at rest. Generated once by
+    # `make config` into output/credentials/encryption_key and reused on every
+    # run, so all control-plane nodes share one key -- they must, or a Secret
+    # written through one API server is unreadable through another.
+    - path: /etc/kubernetes/enc/encryption-config.yaml
+      mode: 0600
+      contents:
+        inline: |
+          apiVersion: apiserver.config.k8s.io/v1
+          kind: EncryptionConfiguration
+          resources:
+            - resources:
+                - secrets
+              providers:
+                - secretbox:
+                    keys:
+                      - name: key1
+                        secret: {{ encryption_key }}
+                - identity: {}
+
     # kube-vip holds the API server VIP on whichever control-plane node wins the
     # leader election, so controlPlaneEndpoint does not depend on one machine.
     # Placed here rather than applied later: it has to be running before kubeadm
@@ -194,6 +221,32 @@ systemd:
             Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
     - name: locksmithd.service
       mask: true
+    # locksmithd is masked because Kured coordinates reboots instead, draining
+    # the node first. update-engine stages an OS update but does not write a
+    # sentinel anywhere, so translate its status into the same
+    # /run/reboot-required marker the sysupdate drop-ins above already use.
+    # /run is tmpfs, so the marker clears itself on reboot.
+    - name: flatcar-reboot-sentinel.service
+      contents: |
+        [Unit]
+        Description=Flag a staged Flatcar OS update for Kured
+        ConditionPathExists=/usr/bin/update_engine_client
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/bin/sh -c '/usr/bin/update_engine_client -status | grep -q UPDATE_STATUS_UPDATED_NEED_REBOOT && touch /run/reboot-required || true'
+    - name: flatcar-reboot-sentinel.timer
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Check every 10 minutes whether a Flatcar OS update is staged
+
+        [Timer]
+        OnBootSec=5min
+        OnUnitActiveSec=10min
+
+        [Install]
+        WantedBy=timers.target
     - name: bootstrap-k8s.service
       enabled: true
       contents: |

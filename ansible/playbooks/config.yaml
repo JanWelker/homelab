@@ -30,10 +30,23 @@
       run_once: true # noqa: run-once
       delegate_to: localhost
 
+    # secretbox wants a 32 byte key, base64 encoded. Every control-plane node
+    # gets the same one, otherwise a Secret written through one API server
+    # cannot be decrypted by another. Like the token and certificate key above,
+    # the password lookup reads an existing file back rather than regenerating,
+    # so re-running `make config` does not invalidate what is already in etcd.
+    - name: Generate Secrets Encryption Key
+      ansible.builtin.set_fact:
+        encryption_key: >-
+          {{ lookup('password', playbook_dir + '/../../output/credentials/encryption_key length=32 chars=ascii_letters,digits') | b64encode }}
+      run_once: true # noqa: run-once
+      delegate_to: localhost
+
     - name: Set Cluster Facts
       ansible.builtin.set_fact:
         kubeadm_token: "{{ kubeadm_token }}"
         certificate_key: "{{ certificate_key }}"
+        encryption_key: "{{ encryption_key }}"
         control_plane_endpoint: "{{ control_plane_vip }}:6443"
 
     - name: Create output directories
