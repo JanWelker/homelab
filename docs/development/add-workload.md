@@ -104,6 +104,12 @@ payload/workloads/my-app/
 └── networkpolicy.yaml  # recommended
 ```
 
+!!! note
+    No `NetworkPolicy` exists anywhere in the cluster yet, so yours would be the
+    first. A namespace with a policy is default-deny for ingress once one
+    selects its pods, while every other namespace stays open — see
+    [Security Posture](../architecture/security.md#authorization).
+
 ## Step 5: Expose the App (Optional)
 
 Create `httproute.yaml` to route traffic from the `apps-gateway`:
