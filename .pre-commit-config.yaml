@@ -8,14 +8,14 @@ repos:
         files: ^ansible/
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.12.1
+    rev: v0.23.2
     hooks:
       - id: markdownlint-cli2
         files: \.md$
         exclude: ^\.venv/
 
   - repo: https://github.com/pycqa/pylint
-    rev: v3.0.3
+    rev: v4.0.8
     hooks:
       - id: pylint
         files: ^boot_server/.*\.py$
@@ -24,7 +24,7 @@ repos:
         args: ["--disable=import-error"]
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.33.0
+    rev: v1.38.0
     hooks:
       - id: yamllint
         files: ^(payload/|\.github/workflows/).*\.yaml$
