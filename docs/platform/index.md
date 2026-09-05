@@ -13,6 +13,7 @@ configuration.
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI and Gateway API. Capable of enforcing network
   policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
+- **[external-dns](external-dns.md)**: Publishes Route53 records from HTTPRoutes.
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
@@ -88,4 +89,5 @@ Sync wave ordering:
 6. `-1`: Cilium, Rook cluster
 7. `0`: OpenBao
 8. `1`: External Secrets Operator, Monitoring stack
-9. `5`: Rook dashboard configuration job
+9. `2`: external-dns
+10. `5`: Rook dashboard configuration job

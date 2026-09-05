@@ -1,0 +1,87 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns
+      chart: external-dns
+      targetRevision: 1.21.1
+      helm:
+        valuesObject:
+          # Every hostname on this cluster needed a Route53 record created by
+          # hand, while cert-manager was already automating the certificate for
+          # the same name through the same zone. Adding a workload meant
+          # remembering a step that lives nowhere in the repository.
+          provider:
+            name: aws
+
+          # HTTPRoutes are the only thing that publishes a hostname here;
+          # Ingress is not used at all, and Services are reached through a
+          # Gateway rather than directly. external-dns resolves the address
+          # from the route's parent Gateway.
+          sources:
+            - gateway-httproute
+
+          domainFilters:
+            - k8s.wlkr.ch
+
+          # TXT registry with an owner ID: external-dns will only modify or
+          # delete records it created and marked as its own. Records made by
+          # hand in the same zone are invisible to it.
+          registry: txt
+          txtOwnerId: homelab-k8s
+          txtPrefix: "_externaldns."
+
+          # sync rather than upsert-only, so deleting an HTTPRoute also removes
+          # its record. Safe because of the ownership registry above -- without
+          # that, sync would be a way to lose hand-made records.
+          policy: sync
+
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: route53-credentials
+                  key: access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: route53-credentials
+                  key: secret-access-key
+            - name: AWS_REGION
+              value: eu-central-1
+
+          serviceMonitor:
+            enabled: true
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/external-dns
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
