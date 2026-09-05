@@ -14,8 +14,8 @@ configuration.
 - **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
   see [Backups & Recovery](../operations/backups.md).
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
-- **[cilium](cilium.md)**: CNI and Gateway API. Capable of enforcing network
-  policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
+- **[cilium](cilium.md)**: CNI and Gateway API. Enforces the policies in
+  [security policies](security-policies.md).
 - **[external-dns](external-dns.md)**: Publishes Route53 records from HTTPRoutes.
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
@@ -28,6 +28,8 @@ configuration.
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
 - **[openbao](openbao.md)**: Cluster-wide secret store.
 - **[rook-ceph](rook-ceph.md)**: Distributed storage.
+- **[security policies](security-policies.md)**: Pod Security Admission levels and
+  default-deny ingress policies.
 
 ## Traffic Flow
 
@@ -104,5 +106,5 @@ Sync wave ordering:
    logging, backup
 9. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
    snapshot-controller
-10. `3`: Alloy, Velero
+10. `3`: Alloy, Velero, Pod Security Admission labels and network policies
 11. `5`: Rook dashboard configuration job

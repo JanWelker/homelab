@@ -1,0 +1,32 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: security
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # After the namespaces exist, before it matters what runs in them.
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/security
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      # Deliberately no pruning. This Application owns Namespace objects, and a
+      # prune of a Namespace deletes everything inside it. Removing a policy
+      # here means deleting it by hand, which is the right amount of friction.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
