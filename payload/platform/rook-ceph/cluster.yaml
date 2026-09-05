@@ -17,6 +17,13 @@ spec:
       valuesObject:
         operatorNamespace: rook-ceph
 
+        # Grants the operator RBAC to create ServiceMonitors, and ships Ceph's
+        # own alerting rules (CephClusterErrorState, CephOSDDown,
+        # CephPGsUnhealthy, and the near-full warnings).
+        monitoring:
+          enabled: true
+          createPrometheusRules: true
+
         # Toolbox for debugging (optional, useful for troubleshooting)
         toolbox:
           enabled: true
@@ -25,8 +32,12 @@ spec:
 
         # CephCluster configuration
         cephClusterSpec:
+          # Was false, which meant the prometheus mgr module was never enabled
+          # and no Ceph metric reached Prometheus at all -- storage health was
+          # the one thing the monitoring stack could not see. The operator
+          # creates the ServiceMonitor once this is on.
           monitoring:
-            enabled: false
+            enabled: true
           dataDirHostPath: /var/lib/rook
 
           # HA: 3 mons, 2 mgrs
@@ -110,8 +121,52 @@ spec:
         # Disable CephFS for now (can enable later)
         cephFileSystems: []
 
-        # Disable Object Store for now
-        cephObjectStores: []
+        # RGW, so the cluster has an S3 endpoint of its own. Velero needs a
+        # bucket to put backups in and Loki needs one for chunks; without this
+        # both would have to reach out of the house or fall back to a PVC on
+        # the same Ceph they are supposed to protect.
+        #
+        # Consumers create an ObjectBucketClaim against the `ceph-bucket`
+        # StorageClass below and get a bucket plus credentials as a Secret.
+        cephObjectStores:
+          - name: object-store
+            spec:
+              metadataPool:
+                failureDomain: host
+                replicated:
+                  size: 3
+              # Erasure coded 2+1: 1.5x overhead instead of the 3x a replicated
+              # pool would cost, which matters for backups and log chunks. Safe
+              # at failureDomain host with six nodes.
+              dataPool:
+                failureDomain: host
+                erasureCoded:
+                  dataChunks: 2
+                  codingChunks: 1
+                parameters:
+                  bulk: "true"
+              preservePoolsOnDelete: true
+              gateway:
+                port: 80
+                # Two, so an RGW restart during a node reboot does not stall a
+                # backup or drop log ingestion.
+                instances: 2
+                priorityClassName: system-cluster-critical
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 512Mi
+                  limits:
+                    memory: 2Gi
+            storageClass:
+              enabled: true
+              name: ceph-bucket
+              # Retain, not Delete. Deleting an ObjectBucketClaim should not be
+              # able to take the backups with it.
+              reclaimPolicy: Retain
+              volumeBindingMode: Immediate
+              parameters:
+                region: eu-central-1
   destination:
     server: https://kubernetes.default.svc
     namespace: rook-ceph
@@ -122,3 +177,8 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      # createPrometheusRules renders a PrometheusRule, whose CRD arrives with
+      # kube-prometheus-stack at sync-wave 1 -- after this app at -1. On a
+      # fresh bootstrap the first sync therefore runs before the CRD exists;
+      # skipping the dry run lets ArgoCD retry instead of hard-failing.
+      - SkipDryRunOnMissingResource=true
