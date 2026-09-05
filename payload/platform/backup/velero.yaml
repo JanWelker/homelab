@@ -1,0 +1,142 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://vmware-tanzu.github.io/helm-charts
+    chart: velero
+    targetRevision: 12.1.0
+    helm:
+      valuesObject:
+        # Nothing backed up anything. The cluster is reconstructible from Git
+        # plus the OpenBao unseal keys; everything written into it -- PVC
+        # contents, Grafana dashboards, OpenBao's own Raft data -- was not.
+        initContainers:
+          - name: velero-plugin-for-aws
+            # v1.14.x pairs with Velero v1.18.x, which is this chart's
+            # appVersion. The chart's own commented example still shows
+            # v1.13.1, which is the v1.17 line.
+            # renovate: datasource=docker depName=velero/velero-plugin-for-aws
+            image: velero/velero-plugin-for-aws:v1.14.2
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - mountPath: /target
+                name: plugins
+
+        # No `cloud` credentials file. The AWS plugin uses the AWS SDK, which
+        # picks the keys up from the environment -- and the environment is fed
+        # straight from the Secret Rook writes for the ObjectBucketClaim, so
+        # the credentials are never rendered into a file or into Git.
+        credentials:
+          useSecret: false
+
+        configuration:
+          extraEnvVars:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: velero-bucket
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: velero-bucket
+                  key: AWS_SECRET_ACCESS_KEY
+
+          backupStorageLocation:
+            - name: default
+              provider: aws
+              bucket: velero
+              default: true
+              config:
+                region: eu-central-1
+                # RGW addresses buckets by path and serves plain HTTP inside
+                # the cluster.
+                s3ForcePathStyle: "true"
+                s3Url: http://rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
+                # Required against Ceph RGW. The plugin's aws-sdk-go-v2 sends
+                # a trailing checksum that RGW rejects with
+                # XAmzContentSHA256Mismatch, so every upload fails. Empty
+                # disables it; the plugin README lists Ceph S3 explicitly.
+                checksumAlgorithm: ""
+
+          # CSI snapshots on their own would leave the only copy of the data
+          # inside the same Ceph cluster the backup is supposed to survive.
+          # The data mover copies the snapshot out into the object store and
+          # then throws the snapshot away.
+          features: EnableCSI
+          defaultSnapshotMoveData: true
+          uploaderType: kopia
+
+        snapshotsEnabled: true
+        # Required by the data mover: the node agent is what actually reads the
+        # snapshot and streams it to object storage.
+        deployNodeAgent: true
+
+        metrics:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+          prometheusRule:
+            enabled: true
+            spec:
+              - alert: VeleroBackupPartialFailures
+                expr: increase(velero_backup_partial_failure_total{schedule!=""}[1h]) > 0
+                for: 15m
+                labels:
+                  severity: warning
+                annotations:
+                  message: Velero backup {{ $labels.schedule }} has partial failures.
+              - alert: VeleroBackupFailures
+                expr: increase(velero_backup_failure_total{schedule!=""}[1h]) > 0
+                for: 15m
+                labels:
+                  severity: critical
+                annotations:
+                  message: Velero backup {{ $labels.schedule }} has failed.
+
+        schedules:
+          # Everything, nightly. Small enough a cluster that selecting
+          # namespaces would be more maintenance than it saves.
+          daily:
+            disabled: false
+            schedule: "0 2 * * *"
+            useOwnerReferencesInBackup: false
+            template:
+              ttl: 336h
+              snapshotMoveData: true
+              includedNamespaces:
+                - "*"
+              excludedNamespaces:
+                # Reconstructed from Git on the next sync, and large.
+                - kube-system
+              excludedResources:
+                - events
+                - events.events.k8s.io
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 1Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backup
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

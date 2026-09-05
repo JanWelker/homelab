@@ -53,11 +53,21 @@ Until a receiver exists, the health checks in
 [Operations](../operations/index.md#routine-health-check) are the only way a
 problem is noticed.
 
-## No backups except OpenBao
+## Backups do not leave the cluster
 
-etcd, Ceph volumes, and the Grafana dashboard PVC have no backup path. The
-cluster is reconstructible from Git plus the OpenBao unseal keys; anything
-written into it is not. See [Backups & Recovery](../operations/backups.md).
+**Mostly fixed.** Velero backs up Kubernetes objects and PVC data nightly, and a
+CronJob snapshots etcd, both into the Ceph object store. See
+[Backups & Recovery](../operations/backups.md).
+
+What remains is where they land. Every automated backup is written to the same
+Ceph cluster it was taken from, which protects against the failures that
+actually happen — a deleted PVC, a bad `prune`, a workload that ate its own data
+— and not at all against losing the cluster.
+
+RGW bucket replication or a second Velero `BackupStorageLocation` would close
+it; neither is configured. Until then Git plus the OpenBao unseal keys is the
+real disaster-recovery story, and these backups protect against mistakes rather
+than against the building burning down.
 
 ## Updates are staged, never applied
 

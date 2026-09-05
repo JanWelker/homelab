@@ -1,0 +1,116 @@
+---
+# Velero backs up Kubernetes objects through the API server. That is the wrong
+# tool for the case where there is no API server left to restore through -- a
+# lost quorum, a corrupted data directory, three dead control-plane nodes. For
+# that you need the etcd data itself, which nothing else here captures.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-backup
+  namespace: backup
+spec:
+  schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # etcd listens on 127.0.0.1 and the client certificates are on the
+          # node's filesystem, so this has to run on a control-plane node and
+          # share its network namespace.
+          hostNetwork: true
+          # With hostNetwork the default DNS policy uses the node's resolv.conf,
+          # which cannot resolve the RGW Service the upload step needs.
+          dnsPolicy: ClusterFirstWithHostNet
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          securityContext:
+            runAsUser: 0
+          volumes:
+            - name: etcd-certs
+              hostPath:
+                path: /etc/kubernetes/pki/etcd
+                type: Directory
+            - name: snapshot
+              emptyDir: {}
+          initContainers:
+            - name: snapshot
+              # renovate: datasource=docker depName=registry.k8s.io/etcd
+              image: registry.k8s.io/etcd:3.7.0-0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  ETCDCTL_API=3 etcdctl \
+                    --endpoints=https://127.0.0.1:2379 \
+                    --cacert=/pki/ca.crt \
+                    --cert=/pki/healthcheck-client.crt \
+                    --key=/pki/healthcheck-client.key \
+                    snapshot save /snapshot/etcd.db
+                  # Verify before uploading, so a truncated snapshot fails the
+                  # job rather than quietly replacing a good backup. Note this
+                  # is etcdutl: `etcdctl snapshot status` was removed in 3.6.
+                  etcdutl --write-out=table snapshot status /snapshot/etcd.db
+              volumeMounts:
+                - name: etcd-certs
+                  mountPath: /pki
+                  readOnly: true
+                - name: snapshot
+                  mountPath: /snapshot
+          containers:
+            - name: upload
+              # renovate: datasource=docker depName=public.ecr.aws/aws-cli/aws-cli
+              image: public.ecr.aws/aws-cli/aws-cli:2.36.40
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  S3="http://${BUCKET_HOST}:${BUCKET_PORT}"
+                  # RGW addresses buckets by path; the CLI defaults to
+                  # virtual-host style and there is no environment variable for
+                  # this, only the config file.
+                  mkdir -p /root/.aws
+                  printf '[default]\ns3 =\n    addressing_style = path\n' > /root/.aws/config
+
+                  TS="$(date -u +%Y%m%dT%H%M%SZ)"
+                  aws --endpoint-url "$S3" s3 cp \
+                    /snapshot/etcd.db "s3://${BUCKET_NAME}/etcd-${TS}.db"
+
+                  # Keep the 14 most recent. Names sort chronologically because
+                  # the timestamp is ISO-8601 basic format.
+                  aws --endpoint-url "$S3" s3 ls "s3://${BUCKET_NAME}/" \
+                    | awk '{print $4}' | grep -E '^etcd-.*\.db$' | sort \
+                    | head -n -14 \
+                    | while read -r key; do
+                        echo "pruning $key"
+                        aws --endpoint-url "$S3" s3 rm "s3://${BUCKET_NAME}/${key}"
+                      done
+              envFrom:
+                # Both written by Rook when it provisions the
+                # etcd-backup-bucket claim: the Secret carries the keys, the
+                # ConfigMap the bucket name, host and port.
+                - secretRef:
+                    name: etcd-backup-bucket
+                - configMapRef:
+                    name: etcd-backup-bucket
+              volumeMounts:
+                - name: snapshot
+                  mountPath: /snapshot
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi

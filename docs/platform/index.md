@@ -15,6 +15,8 @@ configuration.
   policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
+- **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
+  see [Backups & Recovery](../operations/backups.md).
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
 - **[openbao](openbao.md)**: Cluster-wide secret store.
 - **[rook-ceph](rook-ceph.md)**: Distributed storage.
@@ -87,5 +89,7 @@ Sync wave ordering:
 5. `-2`: Rook operator
 6. `-1`: Cilium, Rook cluster
 7. `0`: OpenBao
-8. `1`: External Secrets Operator, Monitoring stack
-9. `5`: Rook dashboard configuration job
+8. `1`: External Secrets Operator, Monitoring stack, backup
+9. `2`: snapshot-controller
+10. `3`: Velero
+11. `5`: Rook dashboard configuration job
