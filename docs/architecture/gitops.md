@@ -13,13 +13,8 @@ flowchart LR
     end
 
     subgraph "Parent Applications"
-        RA --> WL[workloads]
         RA --> PL[platform]
         RA --> GO[gitops]
-    end
-
-    subgraph "Managed by workloads"
-        WL --> |"payload/workloads/**/application.yaml"| APPS[User Apps]
     end
 
     subgraph "Managed by platform"

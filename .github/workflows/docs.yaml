@@ -1,64 +1,59 @@
 ---
-name: Build and Push Documentation
+name: Publish Documentation
 
 "on":
   push:
     branches:
       - "main"
     paths:
-      - "payload/workloads/documentation/src/**"
+      - "docs/**"
+      - "zensical.toml"
       - ".github/workflows/docs.yaml"
-      - ".github/workflows/reusable-docker-build.yaml"
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: janwelker/homelab-docs
+permissions:
+  contents: read
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   build:
-    uses: ./.github/workflows/reusable-docker-build.yaml
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-    with:
-      image_name: janwelker/homelab-docs
-      context: payload/workloads/documentation/src
-      use_uv: true
-      build_command: |
-        uv python install
-        uv sync --locked --all-extras --dev
-        cd payload/workloads/documentation/src && uv run mkdocs build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+
+      - name: Build site
+        run: |
+          uv python install
+          uv sync --locked --all-extras --dev
+          uv run zensical build --clean --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: site
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Update Deployment Image Tag
-        run: |
-          # Get the short SHA
-          SHA_TAG="sha-$(git rev-parse --short HEAD)"
-          NEW_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${SHA_TAG}"
-
-          # Update the deployment.yaml file
-          sed -i "s|image: .*|image: ${NEW_IMAGE}|" \
-            payload/workloads/documentation/deployment.yaml
-
-          # Configure Git
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-          # Commit and Push
-          git add payload/workloads/documentation/deployment.yaml
-          if git commit -m "chore: update documentation image to ${SHA_TAG}"; then
-            git push
-          else
-            echo "No changes to commit"
-          fi
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
