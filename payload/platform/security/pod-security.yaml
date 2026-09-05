@@ -1,0 +1,100 @@
+---
+# Pod Security Admission has been the built-in replacement for PodSecurityPolicy
+# since 1.25, and nothing here opted into it -- every namespace ran at the
+# default `privileged`, which enforces nothing at all.
+#
+# Each namespace is labelled with the level it demonstrably needs to *enforce*,
+# and with `restricted` for warn and audit regardless. That combination is the
+# point: enforcement never breaks a running workload, while `warn` surfaces
+# violations to whoever applies a manifest and `audit` records them in the API
+# server audit log. Tightening enforcement later is then an informed change
+# rather than a guess.
+#
+# These Namespace objects are also what ArgoCD's `CreateNamespace=true` would
+# otherwise create unlabelled. Owning them here keeps the labels declarative.
+# They are never pruned -- see application.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-system
+  labels:
+    # Genuinely privileged: kube-proxy is gone but Cilium, the kube-vip static
+    # pod and every control-plane component live here with host networking and
+    # host paths.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rook-ceph
+  labels:
+    # OSDs need raw block devices and host paths; there is no lower level that
+    # works.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    # node-exporter is a host-networked DaemonSet reading /proc and /sys from
+    # the host, which baseline forbids outright.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openbao
+  labels:
+    # OpenBao adds IPC_LOCK to keep the root key out of swap. That capability
+    # is not on baseline's allow-list, so baseline would reject the pod.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false

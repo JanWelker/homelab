@@ -68,10 +68,14 @@ They are useful as grouping and as a place to add restrictions later. They are
 not an isolation boundary today: an Application in the `apps` project can create
 cluster-scoped RBAC.
 
-**There are no NetworkPolicies.** Cilium is capable of enforcing them and the
-[workload guide](../development/add-workload.md) suggests shipping one, but no
-`NetworkPolicy` or `CiliumNetworkPolicy` exists anywhere in `payload/`. Pod-to-pod
-traffic is unrestricted across all namespaces.
+**Network policy covers four namespaces.** `openbao`, `cert-manager`,
+`external-secrets` and `monitoring` have default-deny **ingress**
+`CiliumNetworkPolicy` rules; every other namespace, and all egress everywhere,
+is still unrestricted. See [Security Policies](../platform/security-policies.md).
+
+**Pod Security Admission is on, but mostly auditing.** Every platform namespace
+carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
+stricter one, so violations are visible without breaking what runs today.
 
 **Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`).
 Any namespace can attach an `HTTPRoute` to `infra-gateway` and claim a hostname
