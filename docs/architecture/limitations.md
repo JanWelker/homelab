@@ -70,19 +70,26 @@ etcd, Ceph volumes, and the Grafana dashboard PVC have no backup path. The
 cluster is reconstructible from Git plus the OpenBao unseal keys; anything
 written into it is not. See [Backups & Recovery](../operations/backups.md).
 
-## Updates are staged, never applied
+## Updates apply themselves, within a window
 
-**Half fixed.** The sysupdate configs served to the nodes are now pinned to the
-Kubernetes and containerd major.minor in `ansible/inventory.yaml`, so a node
-picks up patch releases inside its series and cannot stage a minor kubeadm
-refuses to skip to. See
+**Fixed.** Sysupdate configs are pinned to the Kubernetes and containerd
+major.minor in `ansible/inventory.yaml`, so a node picks up patch releases
+inside its series and cannot stage a minor kubeadm refuses to skip to. See
 [Nodes are pinned to a minor series](../operations/upgrades.md#nodes-are-pinned-to-a-minor-series).
+[Kured](../platform/kured.md) then drains and reboots one node at a time
+between 01:00 and 05:00 to apply what has been staged, and refuses while Ceph
+or etcd is unhealthy.
 
-What is still open is the reboot. `locksmithd` is masked and nothing drains and
-reboots a node to apply what has been staged — a `flatcar-reboot-sentinel.timer`
-writes `/run/reboot-required` when update-engine has an OS update ready, but
-nothing consumes that marker yet. Rebooting remains the manual procedure in
-[Rebooting a node](../operations/index.md#rebooting-a-node).
+Two things follow that are worth knowing:
+
+- **A minor Kubernetes upgrade is still manual.** Kured applies whatever the
+  sysext already staged, and the pin means that is only ever a patch. Moving to
+  a new minor means changing the inventory, pushing the new sysupdate config to
+  running nodes, and running `kubeadm upgrade` — see
+  [Upgrading a minor version deliberately](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
+- **The alert list is a judgement call.** Kured blocks on the Ceph, etcd and
+  node-readiness alerts named in its config. An alert outside that list will not
+  stop a reboot.
 
 ## No network policy, and permissive AppProjects
 

@@ -15,6 +15,8 @@ configuration.
   policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
+- **[kured](kured.md)**: Drains and reboots nodes to apply staged OS, Kubernetes
+  and containerd updates.
 - **[metrics-server](metrics-server.md)**: The `metrics.k8s.io` resource metrics
   API, behind `kubectl top` and every HPA. Deployed with kubelet-csr-approver so
   kubelet certificates are verified rather than skipped.
@@ -91,5 +93,5 @@ Sync wave ordering:
 6. `-1`: Cilium, Rook cluster
 7. `0`: OpenBao
 8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver
-9. `2`: metrics-server
+9. `2`: Kured, metrics-server
 10. `5`: Rook dashboard configuration job
