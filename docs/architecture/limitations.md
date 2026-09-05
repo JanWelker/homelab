@@ -49,16 +49,20 @@ The 5 shares survive as recovery keys and are still the way out, so this is
 recoverable rather than fatal. It is a trade of a frequent, certain manual step
 for a rare, external one.
 
-## Nothing is alerted on
+## Alerting reaches one mailbox
 
-Alertmanager is deployed with persistent storage but no route and no receiver,
-so alerts reach the default null receiver. Ceph is not scraped at all
-(`monitoring.enabled` is `false` on the `CephCluster`), so storage health never
-reaches Prometheus in the first place.
+**Fixed.** Alertmanager routes to an email receiver, and Ceph is scraped, so
+storage health reaches Prometheus. See
+[Alerting](../platform/monitoring.md#alerting).
 
-Until a receiver exists, the health checks in
-[Operations](../operations/index.md#routine-health-check) are the only way a
-problem is noticed.
+What is left is that the delivery path is single-homed and unmonitored. There is
+one receiver, one mailbox, and one SMTP provider; if that provider rejects mail
+or the password expires, alerts stop and nothing says so. `Watchdog` proves the
+pipeline as far as Alertmanager, not as far as the inbox.
+
+A second receiver on a different transport would fix it. Meanwhile the health
+checks in [Operations](../operations/index.md#routine-health-check) remain worth
+running.
 
 ## No backups except OpenBao
 
