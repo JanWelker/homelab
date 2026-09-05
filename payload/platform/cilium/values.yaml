@@ -6,6 +6,11 @@ ipam:
 devices: "en+"
 
 kubeProxyReplacement: true
+# With kube-proxy replaced, Cilium cannot reach the API through a Service and
+# needs a literal address. This is still the first control-plane node: switch it
+# to the kube-vip VIP (control_plane_vip in ansible/inventory.yaml) only once
+# that VIP is actually answering, or every Cilium pod loses the API server.
+# See docs/operations/control-plane-vip.md.
 k8sServiceHost: 10.9.2.1
 k8sServicePort: 6443
 

@@ -46,6 +46,73 @@ storage:
       contents:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
+{% if role == 'control-plane' %}
+    # kube-vip holds the API server VIP on whichever control-plane node wins the
+    # leader election, so controlPlaneEndpoint does not depend on one machine.
+    # Placed here rather than applied later: it has to be running before kubeadm
+    # writes the endpoint into the cluster certificates.
+    - path: /etc/kubernetes/manifests/kube-vip.yaml
+      mode: 0644
+      contents:
+        inline: |
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kube-vip
+            namespace: kube-system
+          spec:
+            containers:
+              - name: kube-vip
+                image: ghcr.io/kube-vip/kube-vip:{{ kube_vip_version }}
+                imagePullPolicy: IfNotPresent
+                args:
+                  - manager
+                env:
+                  - name: address
+                    value: "{{ control_plane_vip }}"
+                  - name: port
+                    value: "6443"
+                  - name: vip_interface
+                    value: "{{ control_plane_vip_interface }}"
+                  - name: vip_subnet
+                    value: "32"
+                  - name: vip_arp
+                    value: "true"
+                  - name: cp_enable
+                    value: "true"
+                  - name: cp_namespace
+                    value: kube-system
+                  - name: vip_leaderelection
+                    value: "true"
+                  - name: vip_leaseduration
+                    value: "5"
+                  - name: vip_renewdeadline
+                    value: "3"
+                  - name: vip_retryperiod
+                    value: "1"
+                  # Cilium owns LoadBalancer services via L2 announcements.
+                  # kube-vip must not also claim them.
+                  - name: svc_enable
+                    value: "false"
+                securityContext:
+                  capabilities:
+                    add:
+                      - NET_ADMIN
+                      - NET_RAW
+                      - SYS_TIME
+                volumeMounts:
+                  - mountPath: /etc/kubernetes/admin.conf
+                    name: kubeconfig
+            hostAliases:
+              - hostnames:
+                  - kubernetes
+                ip: 127.0.0.1
+            hostNetwork: true
+            volumes:
+              - name: kubeconfig
+                hostPath:
+                  path: /etc/kubernetes/admin.conf
+{% endif %}
     - path: /etc/modules-load.d/k8s.conf
       mode: 0644
       contents:
@@ -140,10 +207,15 @@ systemd:
         Type=oneshot
         {% if role == 'control-plane' %}
         {% if inventory_hostname == groups['control_plane'][0] %}
-        ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs
-
+        # Since Kubernetes 1.29 admin.conf is not usable until init completes, so
+        # kube-vip is pointed at super-admin.conf for the duration and moved back
+        # afterwards. Only the hostPath changes; the in-container path stays
+        # /etc/kubernetes/admin.conf.
+        ExecStartPre=/usr/bin/sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+        ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         {% else %}
-        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }}
+        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }} --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         {% endif %}
         {% else %}
         ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification

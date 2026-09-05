@@ -47,8 +47,10 @@ bare metal, where there is no cloud load balancer to lean on.
 
 The cost is a hard bootstrap ordering dependency: with no `kube-proxy`, Cilium
 cannot reach the API server through a Service, so it needs a literal address in
-`k8sServiceHost`. That is the root of the
-[single API endpoint limitation](limitations.md#single-api-server-endpoint).
+`k8sServiceHost`. That address should be the
+[control plane VIP](../operations/control-plane-vip.md); pointing it at a single
+node is what made that node a
+[single point of failure](limitations.md#single-api-server-endpoint).
 
 ## Gateway API, not Ingress
 
