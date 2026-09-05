@@ -15,6 +15,7 @@ configuration.
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI and Gateway API. Capable of enforcing network
   policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
+- **[external-dns](external-dns.md)**: Publishes Route53 records from HTTPRoutes.
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
 - **[kured](kured.md)**: Drains and reboots nodes to apply staged OS, Kubernetes
@@ -97,6 +98,6 @@ Sync wave ordering:
 7. `0`: OpenBao
 8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver,
    logging, backup
-9. `2`: Kured, Loki, metrics-server, snapshot-controller
+9. `2`: external-dns, Kured, Loki, metrics-server, snapshot-controller
 10. `3`: Alloy, Velero
 11. `5`: Rook dashboard configuration job
