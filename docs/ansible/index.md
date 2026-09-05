@@ -44,7 +44,7 @@ The `inventory.yaml` file defines the cluster layout.
 Generates all necessary configuration files for booting and bootstrapping the
 nodes.
 
-- Generates credentials (tokens, certificate keys).
+- Generates credentials (bootstrap token, certificate key, etcd encryption key).
 - Creates Ignition configs (via Butane) for each host.
 - Creates PXE boot menus for each host based on MAC address.
 - Outputs to `output/http` and `output/tftp`.
@@ -54,7 +54,8 @@ nodes.
 Downloads external artifacts required for provisioning.
 
 - Flatcar Kernel and Initrd.
-- Systemd Sysext images (Kubernetes, Containerd).
+- Systemd Sysext images (Kubernetes, Containerd), plus their sysupdate configs,
+    rewritten to pin the major.minor from `inventory.yaml`.
 - Syslinux bootloader files.
 
 ### `kubeconfig.yaml`

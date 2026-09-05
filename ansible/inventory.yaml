@@ -12,8 +12,15 @@ all:
     # NIC; Cilium binds to "en+" on the same hardware.
     control_plane_vip_interface: "eno1"
     kube_vip_version: "v1.2.3"
-    kubernetes_version: "v1.34.2"
-    containerd_version: "2.0.7" # pinned to flatcar stable version
+    # Kubernetes and containerd both come from flatcar/sysext-bakery, so these
+    # are Flatcar's builds rather than upstream tarballs. The major.minor of
+    # each is also what the generated sysupdate configs pin to, which is what
+    # stops a running node drifting onto a minor kubeadm cannot skip to --
+    # see ansible/playbooks/tasks/download_sysext.yaml.
+    kubernetes_version: "v1.37.0"
+    # Track the containerd minor Flatcar stable itself ships (2.1.x in
+    # 4593.2.5) so the sysext and the OS agree on containerd's behaviour.
+    containerd_version: "2.1.9"
     pod_subnet: "10.244.0.0/16"
     service_subnet: "10.96.0.0/12"
     install_disk: "/dev/nvme0n1"

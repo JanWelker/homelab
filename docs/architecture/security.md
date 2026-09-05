@@ -55,7 +55,39 @@ Two consequences worth knowing:
 - OpenBao has no auto-unseal, so the unseal keys are the root of trust for every
   other secret and exist only wherever the operator put them.
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
-  a namespace can read what ESO materialised there.
+  a namespace can read what ESO materialised there. Encryption at rest, below,
+  does nothing about this — it protects the bytes in etcd, not the API.
+
+### Encryption at rest
+
+The API server is configured with an `EncryptionConfiguration` that encrypts
+`secrets` with `secretbox` before they reach etcd
+(`ansible/templates/kubeadm.yaml.j2`, and the key file in
+`ansible/templates/butane_config.yaml.j2`). Without it a Secret sits in the etcd
+data directory as plaintext, so an etcd backup, a stolen disk, or read access to
+`/var/lib/etcd` yields every credential the cluster holds.
+
+| Property | Detail |
+| --- | --- |
+| Provider | `secretbox`, with `identity` listed after it |
+| Key | 32 random bytes, generated once by `make config` into `output/credentials/encryption_key` |
+| Scope | `secrets` only; ConfigMaps and other resources are unencrypted |
+| Distribution | The same key on every control-plane node, written by Ignition to `/etc/kubernetes/enc/encryption-config.yaml` (mode `0600`) |
+
+Two things follow from `identity` being listed last. New writes are encrypted,
+and Secrets written *before* this was enabled stay readable — they are not
+rewritten automatically. To encrypt what already exists, rewrite every Secret
+in place once the API servers have restarted:
+
+```bash
+kubectl get secrets -A -o json | kubectl replace -f -
+```
+
+The key is a single static key with no rotation, and it lives beside the
+kubeadm token and certificate key in `output/credentials/`. That directory is
+now the thing to protect: it holds the material that decrypts etcd. A KMS
+provider would remove the static key, at the cost of a dependency the cluster
+must reach before it can serve Secrets.
 
 ## Authorization
 
@@ -107,5 +139,4 @@ Roughly in order of value against effort:
 6. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
    and the 5-of-N key custody problem.
 
-None of these is implemented. See [Known Limitations](limitations.md) for the
-operational counterparts.
+See [Known Limitations](limitations.md) for the operational counterparts.

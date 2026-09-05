@@ -61,11 +61,17 @@ written into it is not. See [Backups & Recovery](../operations/backups.md).
 
 ## Updates are staged, never applied
 
-`locksmithd` is masked, so nothing reboots a node to apply a staged OS update.
-Separately, the sysupdate configs track the newest Kubernetes and containerd
-images published upstream rather than the versions pinned in the inventory, so a
-long-running node can stage a minor version that kubeadm does not support
-skipping to. See [Updates & Upgrades](../operations/upgrades.md).
+**Half fixed.** The sysupdate configs served to the nodes are now pinned to the
+Kubernetes and containerd major.minor in `ansible/inventory.yaml`, so a node
+picks up patch releases inside its series and cannot stage a minor kubeadm
+refuses to skip to. See
+[Nodes are pinned to a minor series](../operations/upgrades.md#nodes-are-pinned-to-a-minor-series).
+
+What is still open is the reboot. `locksmithd` is masked and nothing drains and
+reboots a node to apply what has been staged — a `flatcar-reboot-sentinel.timer`
+writes `/run/reboot-required` when update-engine has an OS update ready, but
+nothing consumes that marker yet. Rebooting remains the manual procedure in
+[Rebooting a node](../operations/index.md#rebooting-a-node).
 
 ## No network policy, and permissive AppProjects
 
