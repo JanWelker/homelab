@@ -142,4 +142,6 @@ absent, so it will not interfere with a node that has already joined.
 | A hostname stopped resolving to the cluster | Gateway lost its LoadBalancer IP; check the Cilium L2 pool |
 | Node not rejoining after reboot | `journalctl -u kubelet` on the node |
 
-Nothing is alerted on. See [Backups &rarr; What is not covered](backups.md#what-is-not-covered).
+Alerts are mailed by Alertmanager — see
+[Monitoring &rarr; Alerting](../platform/monitoring.md#alerting). The checks above
+are still worth running, because the delivery path itself is not monitored.
