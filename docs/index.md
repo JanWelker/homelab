@@ -27,7 +27,7 @@ This repository describes one specific homelab. What to change — repository UR
 
 ### [Architecture](architecture/index.md)
 
-How the cluster is put together: the [boot process](architecture/boot-process.md), the [GitOps strategy](architecture/gitops.md), the [directory structure](architecture/directory-structure.md), and the [security posture](architecture/security.md) it assumes.
+How the cluster is put together: the [boot process](architecture/boot-process.md), the [GitOps strategy](architecture/gitops.md), the [directory structure](architecture/directory-structure.md), the [security posture](architecture/security.md) it assumes, the [decisions](architecture/decisions.md) behind the stack, and its [known limitations](architecture/limitations.md).
 
 ### [Platform](platform/index.md)
 

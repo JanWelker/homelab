@@ -107,4 +107,5 @@ Roughly in order of value against effort:
 6. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
    and the 5-of-N key custody problem.
 
-None of these is implemented.
+None of these is implemented. See [Known Limitations](limitations.md) for the
+operational counterparts.
