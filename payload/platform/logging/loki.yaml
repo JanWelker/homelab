@@ -1,0 +1,133 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 7.3.0
+    helm:
+      valuesObject:
+        # Metrics answered what was happening and never why. Nothing
+        # collected logs at all, so diagnosing a crashed pod meant reaching
+        # it with kubectl logs before it was replaced, and node-level
+        # problems on Flatcar were only visible over SSH.
+        #
+        # Alloy rather than Promtail: Promtail was deprecated in early 2025
+        # and reached end of life in March 2026. Alloy is its replacement.
+        deploymentMode: SingleBinary
+
+        loki:
+          auth_enabled: false
+          commonConfig:
+            replication_factor: 1
+          schemaConfig:
+            configs:
+              - from: "2026-01-01"
+                store: tsdb
+                object_store: s3
+                schema: v13
+                index:
+                  prefix: loki_index_
+                  period: 24h
+          storage:
+            type: s3
+            bucketNames:
+              chunks: loki
+              ruler: loki
+            s3:
+              endpoint: rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
+              region: eu-central-1
+              accessKeyId: "${AWS_ACCESS_KEY_ID}"
+              secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+              # RGW serves plain HTTP inside the cluster and addresses
+              # buckets by path, not by virtual host.
+              s3ForcePathStyle: true
+              insecure: true
+          limits_config:
+            retention_period: 30d
+            reject_old_samples: true
+            reject_old_samples_max_age: 168h
+            volume_enabled: true
+          compactor:
+            retention_enabled: true
+            delete_request_store: s3
+          # Chunks live in Ceph RGW, so the local disk only needs to hold the
+          # write-ahead log and the index being built.
+          storage_config:
+            tsdb_shipper:
+              active_index_directory: /var/loki/tsdb-index
+              cache_location: /var/loki/tsdb-cache
+
+        singleBinary:
+          replicas: 1
+          # Loki's storage config refers to ${AWS_ACCESS_KEY_ID} rather than
+          # embedding credentials, which needs env expansion turned on. These
+          # go on singleBinary rather than global: the single-binary
+          # StatefulSet template only reads singleBinary.extraArgs and
+          # singleBinary.extraEnvFrom, so setting them globally renders a
+          # config full of unexpanded ${...} and a Loki that cannot
+          # authenticate to RGW.
+          extraArgs:
+            - "-config.expand-env=true"
+          # Written by Rook when it provisions the ObjectBucketClaim.
+          extraEnvFrom:
+            - secretRef:
+                name: loki-bucket
+          persistence:
+            enabled: true
+            storageClass: rook-ceph-block
+            size: 10Gi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+
+        # A homelab does not need memcached in front of a Loki this size, and
+        # the two caches would add four more pods.
+        chunksCache:
+          enabled: false
+        resultsCache:
+          enabled: false
+
+        # SimpleScalable-only components, and the smoke tests.
+        backend:
+          replicas: 0
+        read:
+          replicas: 0
+        write:
+          replicas: 0
+        gateway:
+          enabled: false
+        lokiCanary:
+          enabled: false
+        test:
+          enabled: false
+
+        monitoring:
+          selfMonitoring:
+            enabled: false
+            grafanaAgent:
+              installOperator: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
