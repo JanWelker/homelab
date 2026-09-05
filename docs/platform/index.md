@@ -11,7 +11,8 @@ configuration.
 ## Components
 
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
-- **[cilium](cilium.md)**: CNI, Gateway API, and Network Policies.
+- **[cilium](cilium.md)**: CNI and Gateway API. Capable of enforcing network
+  policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
 - **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
