@@ -1,8 +1,15 @@
 [project]
 site_name = "Homelab Documentation"
 site_url = "https://janwelker.github.io/homelab/"
+site_description = "GitOps-driven Kubernetes homelab on bare metal, running Flatcar Container Linux, Kubeadm, Cilium, Rook-Ceph and ArgoCD."
 repo_name = "JanWelker/homelab"
 repo_url = "https://github.com/JanWelker/homelab"
+edit_uri = "edit/main/docs/"
+copyright = "Copyright &copy; 2026 Jan Welker"
+
+# Fail the build on the problems CI would fail on, so a local build and the
+# workflow agree.
+strict = true
 
 extra_css = [
   "stylesheets/extra.css",
@@ -44,9 +51,19 @@ variant = "modern"
 logo = "assets/images/logo.png"
 favicon = "assets/images/logo.png"
 features = [
-  "navigation.expand",
-  "navigation.indexes",
+  "content.action.edit",
+  "content.action.view",
   "content.code.copy",
+  "navigation.expand",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.instant.progress",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
 ]
 
 # Palette toggle for light mode
@@ -67,10 +84,21 @@ accent = "custom"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to light mode"
 
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+unresolved_references = true
+
 [project.markdown_extensions]
 attr_list = {}
 admonition = {}
+toc.permalink = true
 pymdownx.details = {}
+pymdownx.inlinehilite = {}
+pymdownx.snippets = {}
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
 pymdownx.superfences.custom_fences = [
   { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
 ]
