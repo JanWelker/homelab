@@ -1,0 +1,93 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kured
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://kubereboot.github.io/charts
+    chart: kured
+    targetRevision: 6.1.0
+    helm:
+      valuesObject:
+        configuration:
+          # The nodes already write this file. The sysupdate drop-ins touch it
+          # when a new Kubernetes or containerd sysext is fetched, and
+          # flatcar-reboot-sentinel.timer touches it when update-engine has an
+          # OS update staged. Until now nothing acted on it: locksmithd is
+          # masked, so updates landed on disk and waited for a human. This is
+          # the consumer.
+          #
+          # /run is tmpfs, so the marker clears itself on reboot.
+          rebootSentinel: /var/run/reboot-required
+          rebootCommand: /bin/systemctl reboot
+
+          period: 30m
+          # Reboots happen at night, in this timezone, one node at a time.
+          timeZone: Europe/Berlin
+          startTime: "01:00"
+          endTime: "05:00"
+          concurrency: 1
+
+          # Ten minutes between nodes. Rebooting a second node while Ceph is
+          # still backfilling the first can take a placement group below its
+          # minimum replica count -- this is the automated form of the "confirm
+          # Ceph has recovered before moving on" step in the manual procedure.
+          # The alert check below is the real guard; this is the cheap one.
+          lockTtl: 1h
+          lockReleaseDelay: 10m
+
+          drainTimeout: 15m
+          drainGracePeriod: 120
+          # Do not reboot past a drain that did not work. A node that will not
+          # drain is a node with a problem worth looking at.
+          forceReboot: false
+
+          # Ask Prometheus before rebooting. alertFilterMatchOnly inverts the
+          # meaning of the regex from "alerts to ignore" to "alerts that
+          # block", which is the behaviour wanted here: something is almost
+          # always firing in a homelab, and blocking on any alert at all would
+          # mean never rebooting. These are the ones that make taking a node
+          # down actively unsafe -- degraded storage or a control plane already
+          # short a member.
+          prometheusUrl: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          alertFiringOnly: true
+          alertFilterMatchOnly: true
+          # yamllint disable-line rule:line-length
+          alertFilterRegexp: '^(CephClusterErrorState|CephClusterWarningState|CephOSDDown|CephPGsUnhealthy|CephPGsDegraded|CephPGsNotDeepScrubbed|CephMonQuorumAtRisk|CephMonQuorumLost|CephNodeDown|etcdMembersDown|etcdInsufficientMembers|etcdNoLeader|KubeNodeNotReady|KubeAPIDown)$'
+
+          # Taint a node pending reboot so it stops attracting pods that are
+          # about to be evicted again, and annotate so `kubectl get node -o
+          # yaml` shows why a node is cordoned.
+          preferNoScheduleTaint: weave.works/kured-node-reboot
+          annotateNodes: true
+          logFormat: text
+
+        metrics:
+          create: true
+          namespace: kured
+
+        resources:
+          requests:
+            cpu: 10m
+            memory: 48Mi
+          limits:
+            memory: 128Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kured
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
