@@ -34,7 +34,7 @@
       ansible.builtin.set_fact:
         kubeadm_token: "{{ kubeadm_token }}"
         certificate_key: "{{ certificate_key }}"
-        control_plane_endpoint: "{{ hostvars[groups['control_plane'][0]]['ansible_host'] }}:6443"
+        control_plane_endpoint: "{{ control_plane_vip }}:6443"
 
     - name: Create output directories
       ansible.builtin.file:

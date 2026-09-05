@@ -98,6 +98,8 @@ Edit `ansible/inventory.yaml`:
 | Setting | Notes |
 | --- | --- |
 | `boot_server_ip` | The IP of the machine that will run `make serve`. Baked into the generated PXE menus — see the [PXE troubleshooting table](quickstart.md#troubleshooting-pxe-boot). |
+| `control_plane_vip` | Free address on the nodes' subnet, outside DHCP and distinct from the LoadBalancer pools. Becomes the API endpoint in the cluster certificates. |
+| `control_plane_vip_interface` | The NIC kube-vip advertises on; check `ip link` on a provisioned node. |
 | host entries | Replace the six Norse-named hosts with yours. Each needs `ansible_host` (static IP) and `mac_address` (the NIC that PXE boots). |
 | `control_plane` / `workers` | Group membership decides the node role. |
 | `install_disk` | Global default is `/dev/nvme0n1`; override per host as `freya` does with `/dev/sda`. |
@@ -136,6 +138,9 @@ Before `make config`:
 - [ ] Wildcard DNS records created for both gateways
 - [ ] ACME email and DNS-01 provider match your setup
 - [ ] `inventory.yaml` describes your nodes, with the right `boot_server_ip`
-- [ ] `k8sServiceHost` and `devices` match your control plane and NICs
+- [ ] `control_plane_vip` is free, and `control_plane_vip_interface` matches the NIC
+- [ ] `k8sServiceHost` and `devices` match your control plane and NICs. On a new
+      build, point `k8sServiceHost` at `control_plane_vip` once the VIP answers —
+      see [Control Plane VIP](operations/control-plane-vip.md)
 - [ ] SSH public key path is correct
 - [ ] Changes committed and pushed — ArgoCD reads from Git, not your working tree
