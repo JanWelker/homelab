@@ -32,15 +32,22 @@ and must stay that way until the VIP answers — pointing it at an address that
 does not respond takes the CNI down cluster-wide. The ordering is in
 [Migrating a cluster built without a VIP](../operations/control-plane-vip.md#migrating-a-cluster-built-without-a-vip).
 
-## OpenBao must be unsealed by hand
+## OpenBao depends on AWS KMS to start
 
-Auto-unseal is not configured, so OpenBao seals on every pod restart and stays
-sealed until an operator supplies 3 of the 5 unseal keys. While it is sealed no
-`ExternalSecret` resolves, which means cert-manager cannot renew certificates.
+**Fixed, by taking on a different dependency.** OpenBao auto-unseals against
+AWS KMS, so a pod restart no longer needs an operator with 3 of 5 key shares,
+and a power cut no longer leaves the cluster unable to renew certificates. See
+[Auto-unseal](../platform/openbao.md#auto-unseal).
 
-A power cut therefore brings the cluster back into a state where it is running
-but cannot issue certificates until a human intervenes. See
-[Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart).
+What replaces it is a hard dependency on something outside the cluster and
+outside the house. If KMS is unreachable — key deleted, IAM user disabled, no
+internet — every OpenBao pod stays sealed, no `ExternalSecret` resolves, and
+cert-manager cannot renew certificates. That is the same failure mode as before,
+now triggered by an external service rather than by a reboot.
+
+The 5 shares survive as recovery keys and are still the way out, so this is
+recoverable rather than fatal. It is a trade of a frequent, certain manual step
+for a rare, external one.
 
 ## Nothing is alerted on
 
