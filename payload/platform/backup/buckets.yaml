@@ -1,0 +1,24 @@
+---
+# Bucket for Velero's backup metadata and, with the data mover enabled, the
+# volume data itself.
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: velero-bucket
+  namespace: backup
+spec:
+  bucketName: velero
+  storageClassName: ceph-bucket
+---
+# Bucket for raw etcd snapshots. Separate from Velero's, because they are
+# recovered by completely different means: Velero restores objects through the
+# API server, an etcd snapshot is what you use when there is no API server left
+# to restore through.
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: etcd-backup-bucket
+  namespace: backup
+spec:
+  bucketName: etcd-backup
+  storageClassName: ceph-bucket

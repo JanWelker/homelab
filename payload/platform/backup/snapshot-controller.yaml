@@ -1,0 +1,47 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: snapshot-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # Before Velero (3), which cannot take a CSI snapshot until the
+    # VolumeSnapshot CRDs and their controller exist.
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://piraeus.io/helm-charts
+    chart: snapshot-controller
+    targetRevision: 5.2.0
+    helm:
+      valuesObject:
+        # kubeadm does not install this and neither does Rook. Without it the
+        # VolumeSnapshot CRDs are absent, so `kubectl get volumesnapshot`
+        # returns "no resources found" -- and Rook's RBD driver advertises
+        # snapshot support that nothing can actually invoke.
+        installCRDs: true
+        controller:
+          enabled: true
+          replicaCount: 2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        webhook:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backup
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
