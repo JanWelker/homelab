@@ -28,7 +28,19 @@ spec:
           server:
             image:
               repository: quay.io/openbao/openbao
-              tag: 2.5.3
+              # renovate: datasource=github-releases depName=openbao/openbao extractVersion=^v(?<version>.+)$
+              tag: 2.6.2
+            # Credentials for the awskms seal below. This Secret cannot come
+            # from ESO: ESO reads through OpenBao, and OpenBao cannot be
+            # unsealed until it can reach KMS. It is created once by hand from
+            # kms-credentials.yaml.template -- see docs/platform/openbao.md.
+            extraSecretEnvironmentVars:
+              - envName: AWS_ACCESS_KEY_ID
+                secretName: openbao-kms
+                secretKey: access-key-id
+              - envName: AWS_SECRET_ACCESS_KEY
+                secretName: openbao-kms
+                secretKey: secret-access-key
             ha:
               enabled: true
               replicas: 3
@@ -49,6 +61,22 @@ spec:
                   }
 
                   service_registration "kubernetes" {}
+
+                  # Auto-unseal. Without this OpenBao seals on every pod
+                  # restart and stays sealed until an operator supplies 3 of 5
+                  # key shares -- and while it is sealed no ExternalSecret
+                  # resolves, so cert-manager cannot renew certificates. A
+                  # power cut therefore left the cluster running but unable to
+                  # issue certificates until a human intervened.
+                  #
+                  # An alias rather than a key ID or ARN, so this file carries
+                  # no account-specific identifier and the key can be rotated
+                  # in AWS without a commit here. access_key and secret_key
+                  # come from the environment, via extraSecretEnvironmentVars.
+                  seal "awskms" {
+                    region     = "eu-central-1"
+                    kms_key_id = "alias/openbao-unseal"
+                  }
 
                   telemetry {
                     prometheus_retention_time = "30s"
