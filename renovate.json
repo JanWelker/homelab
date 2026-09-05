@@ -133,6 +133,9 @@
       "automerge": false
     }
   ],
+  "pre-commit": {
+    "enabled": true
+  },
   "kubernetes": {
     "managerFilePatterns": [
       "/^payload/.+\\.yaml$/"
@@ -232,6 +235,17 @@
         "(?<depName>dag-andersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "description": "Track versions annotated with a `# renovate:` comment. Needed for image tags written inline in a Helm `valuesObject:`, which the helm-values manager only reads from real values files.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^payload/.+\\.yaml$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?[^\\n]*\\n\\s*[\\w.-]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     }
   ]
 }
