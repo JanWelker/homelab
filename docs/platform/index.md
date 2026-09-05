@@ -10,6 +10,7 @@ configuration.
 
 ## Components
 
+- **[authentik](authentik.md)**: Single sign-on for every platform UI.
 - **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
   see [Backups & Recovery](../operations/backups.md).
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
@@ -48,14 +49,17 @@ configuration.
 HTTPRoutes are co-located with their respective apps:
 
 <!-- markdownlint-disable MD013 -->
-| Service        | URL                             | HTTPRoute Location                           |
-|----------------|---------------------------------|----------------------------------------------|
-| ArgoCD         | `argo.infra.k8s.wlkr.ch`        | `payload/argocd/httproute.yaml`              |
-| Grafana        | `monitoring.infra.k8s.wlkr.ch`  | `payload/platform/monitoring/httproute.yaml` |
-| Hubble         | `hubble.infra.k8s.wlkr.ch`      | `payload/platform/cilium/httproute.yaml`     |
-| OpenBao UI     | `vault.infra.k8s.wlkr.ch`       | `payload/platform/openbao/httproute.yaml`    |
-| Rook Dashboard | `rook.infra.k8s.wlkr.ch`        | `payload/platform/rook-ceph/httproute.yaml`  |
-| Apps           | `<app>.k8s.wlkr.ch`             | `payload/workloads/<app>/httproute.yaml`     |
+| Service        | URL                              | HTTPRoute Location                           |
+|----------------|----------------------------------|----------------------------------------------|
+| ArgoCD         | `argo.infra.k8s.wlkr.ch`         | `payload/argocd/httproute.yaml`              |
+| Authentik      | `auth.infra.k8s.wlkr.ch`         | `payload/platform/authentik/httproute.yaml`  |
+| Prometheus     | `prometheus.infra.k8s.wlkr.ch`   | `payload/platform/authentik/httproute.yaml`  |
+| Alertmanager   | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml`  |
+| Grafana        | `monitoring.infra.k8s.wlkr.ch`   | `payload/platform/monitoring/httproute.yaml` |
+| Hubble         | `hubble.infra.k8s.wlkr.ch`       | `payload/platform/cilium/httproute.yaml`     |
+| OpenBao UI     | `vault.infra.k8s.wlkr.ch`        | `payload/platform/openbao/httproute.yaml`    |
+| Rook Dashboard | `rook.infra.k8s.wlkr.ch`         | `payload/platform/rook-ceph/httproute.yaml`  |
+| Apps           | `<app>.k8s.wlkr.ch`              | `payload/workloads/<app>/httproute.yaml`     |
 <!-- markdownlint-enable MD013 -->
 
 ## Usage
@@ -98,6 +102,7 @@ Sync wave ordering:
 7. `0`: OpenBao
 8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver,
    logging, backup
-9. `2`: external-dns, Kured, Loki, metrics-server, snapshot-controller
+9. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
+   snapshot-controller
 10. `3`: Alloy, Velero
 11. `5`: Rook dashboard configuration job

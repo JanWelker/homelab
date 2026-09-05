@@ -1,0 +1,25 @@
+---
+# The Hubble and Rook dashboard HTTPRoutes stay where they are, next to the
+# component they expose, but now point at the Authentik outpost instead of
+# straight at the backend. Gateway API forbids a backendRef that crosses
+# namespaces unless the target namespace grants it, which is what this does.
+#
+# It is deliberately narrow: only these two namespaces, only HTTPRoutes, and
+# only the authentik-server Service.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-dashboard-routes
+  namespace: authentik
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: kube-system
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: rook-ceph
+  to:
+    - group: ""
+      kind: Service
+      name: authentik-server

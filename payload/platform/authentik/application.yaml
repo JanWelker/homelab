@@ -1,0 +1,96 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authentik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "2"
+    link.argocd.argoproj.io/external-link: https://auth.infra.k8s.wlkr.ch
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://charts.goauthentik.io
+      chart: authentik
+      targetRevision: 2026.8.1
+      helm:
+        valuesObject:
+          # Every platform UI had its own login, or none at all: ArgoCD a local
+          # admin account, Grafana a chart-generated password, the Rook
+          # dashboard its own Ceph credentials, and Hubble nothing whatsoever
+          # while publishing cluster-wide network flow data to anyone who could
+          # reach the hostname.
+          global:
+            envFrom:
+              # AUTHENTIK_SECRET_KEY, the Postgres password, the bootstrap
+              # credentials and the OIDC client secrets, all from OpenBao.
+              # Referenced as !Env from the blueprints below.
+              - secretRef:
+                  name: authentik-secrets
+
+          authentik:
+            log_level: info
+            error_reporting:
+              enabled: false
+            postgresql:
+              host: authentik-postgresql
+              name: authentik
+              user: authentik
+
+          blueprints:
+            configMaps:
+              - authentik-blueprints
+
+          server:
+            replicas: 2
+            metrics:
+              serviceMonitor:
+                enabled: true
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 1Gi
+
+          worker:
+            replicas: 1
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 1Gi
+
+          postgresql:
+            enabled: true
+            auth:
+              username: authentik
+              database: authentik
+              existingSecret: authentik-secrets
+              secretKeys:
+                userPasswordKey: postgres-password
+            primary:
+              persistence:
+                enabled: true
+                storageClass: rook-ceph-block
+                size: 8Gi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/authentik
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentik
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
