@@ -10,7 +10,7 @@ Welcome to the **Flatcar Homelab** documentation. This project provides a fully 
 
 ## Core Concepts
 
-- **Immutable Infrastructure**: Uses Flatcar Container Linux for secure, auto-updating nodes.
+- **Immutable Infrastructure**: Uses Flatcar Container Linux; updates stage automatically and are applied on a manual reboot.
 - **GitOps**: All cluster state is managed via ArgoCD.
 - **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
 - **Storage**: Rook-Ceph for distributed block storage.
@@ -37,6 +37,10 @@ Deep dive into the core infrastructure components that power the cluster, includ
 - [Rook-Ceph](platform/rook-ceph.md) (Storage)
 - [Monitoring](platform/monitoring.md) (Prometheus & Grafana)
 - [cert-manager](platform/cert-manager.md) (TLS)
+
+### [Operations](operations/index.md)
+
+Running the cluster once it is up: health checks, [rebooting nodes](operations/index.md#rebooting-a-node), [how updates actually get applied](operations/upgrades.md), and [what is and is not backed up](operations/backups.md).
 
 ### [Workloads](workloads/index.md)
 

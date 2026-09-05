@@ -10,9 +10,16 @@ Full observability stack based on [kube-prometheus-stack](https://github.com/pro
 
 - **Prometheus**: Metrics collection and storage with 10-day retention.
 - **Grafana**: Dashboards at [https://monitoring.infra.k8s.wlkr.ch](https://monitoring.infra.k8s.wlkr.ch).
-- **Alertmanager**: Alert routing and notifications.
+- **Alertmanager**: Deployed with persistent storage, but **no route and no
+  receiver are configured**, so alerts reach the default null receiver and
+  nobody is notified. See [Backups &rarr; What is not covered](../operations/backups.md#what-is-not-covered).
 - **Node Exporter**: Per-node hardware and OS metrics.
 - **kube-state-metrics**: Kubernetes object metrics (pod status, deployments, etc.).
+
+!!! note
+    Ceph is not scraped. `monitoring.enabled` is `false` in the `CephCluster`
+    spec, so storage health is visible only through `ceph status` and the Rook
+    dashboard, never in Grafana.
 
 ## Accessing Grafana
 
