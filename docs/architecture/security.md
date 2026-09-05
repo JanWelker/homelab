@@ -1,0 +1,110 @@
+---
+description: "The trust boundary this cluster assumes, the tradeoffs made to get there, and what is deliberately not enforced."
+---
+
+# Security Posture
+
+This is a homelab on a private network, and several deliberate shortcuts follow
+from that. They are listed here so the assumptions are explicit rather than
+implied — someone reading the manifests should be able to tell a decision from
+an oversight.
+
+## Assumed trust boundary
+
+The cluster assumes a **trusted L2 network segment**. Anything with a port on
+that segment is treated as friendly. There is no VPN requirement, no mutual TLS
+between components, and no network segmentation inside the cluster.
+
+The published hostnames are a partial exception. Certificates are issued by
+Let's Encrypt through a DNS-01 challenge against a public zone, so
+`argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable names and
+appear in Certificate Transparency logs, even though they point at RFC1918
+addresses that are unreachable from outside the LAN.
+
+## Provisioning
+
+Provisioning is the least protected phase, by design — it has to work before
+any of the cluster's own security exists.
+
+| Property | Detail |
+| --- | --- |
+| Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
+| Those configs embed join credentials | The inlined kubeadm config carries the bootstrap `token` and the `certificateKey`, which together are enough to join a new control-plane node |
+| Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
+| Sysext transfers set `Verify=false` | System extension images are fetched over HTTPS but their signatures are not checked |
+
+The practical mitigation is time: `make serve` is a foreground command, the
+bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
+after two hours. **Stop the boot server when provisioning is finished** — it is
+the only thing keeping those credentials off the network.
+
+`output/credentials/` holds the generated bootstrap token and certificate key in
+plaintext. The directory is `0700` and `output/` is gitignored, but the values
+are reused across `make config` runs — the Ansible `password` lookup reads back
+an existing file rather than regenerating. Delete them to force new ones.
+
+## Secrets
+
+Secrets live in [OpenBao](../platform/openbao.md) and reach workloads as native
+Kubernetes `Secret` objects through the
+[External Secrets Operator](../platform/external-secrets.md). Nothing sensitive
+is committed to Git.
+
+Two consequences worth knowing:
+
+- OpenBao has no auto-unseal, so the unseal keys are the root of trust for every
+  other secret and exist only wherever the operator put them.
+- A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
+  a namespace can read what ESO materialised there.
+
+## Authorization
+
+**ArgoCD AppProjects do not constrain much.** `payload/argocd/argocd-projects.yaml`
+defines three projects, but `apps` and `infra` both allow `sourceRepos: "*"` and
+a `clusterResourceWhitelist` of every group and kind, in every namespace. Only
+`system` restricts its destination namespace.
+
+They are useful as grouping and as a place to add restrictions later. They are
+not an isolation boundary today: an Application in the `apps` project can create
+cluster-scoped RBAC.
+
+**There are no NetworkPolicies.** Cilium is capable of enforcing them and the
+[workload guide](../development/add-workload.md) suggests shipping one, but no
+`NetworkPolicy` or `CiliumNetworkPolicy` exists anywhere in `payload/`. Pod-to-pod
+traffic is unrestricted across all namespaces.
+
+**Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`).
+Any namespace can attach an `HTTPRoute` to `infra-gateway` and claim a hostname
+under `*.infra.k8s.wlkr.ch`.
+
+## Exposed interfaces
+
+Every platform UI is reachable on the infra gateway with only its own
+application-level login in front of it:
+
+| Service | Authentication |
+| --- | --- |
+| ArgoCD | Local admin account; the server runs with `--insecure` because TLS terminates at the Gateway |
+| Grafana | Chart default admin password unless changed — see [Monitoring](../platform/monitoring.md#accessing-grafana) |
+| OpenBao UI | Token or configured auth method |
+| Hubble UI | **None** |
+| Rook dashboard | Ceph dashboard credentials |
+
+Hubble in particular exposes cluster-wide network flow data to anyone who can
+reach the hostname.
+
+## What would tighten this up
+
+Roughly in order of value against effort:
+
+1. Configure Alertmanager receivers, so a failure is noticed at all.
+2. Add default-deny NetworkPolicies per namespace, starting with the platform
+   namespaces.
+3. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
+   repositories actually in use.
+4. Put an authenticating proxy in front of Hubble, or stop publishing it.
+5. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
+6. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
+   and the 5-of-N key custody problem.
+
+None of these is implemented.

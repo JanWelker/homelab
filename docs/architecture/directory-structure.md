@@ -28,7 +28,7 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 │   ├── platform/
 │   └── assets/             # Images and other static files
 ├── output                  # Generated files & Artifacts
-│   ├── credentials/        # Security artifacts
+│   ├── credentials/        # Bootstrap token + certificate key, plaintext
 │   ├── http/               # Ignition, Flatcar artifacts, Sysext images
 │   ├── kubeconfig          # Admin Kubeconfig file
 │   ├── tftp/               # PXE bootloader & configs
@@ -37,7 +37,7 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 │   ├── root.yaml           # Parent Applications (platform, gitops)
 │   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── application.yaml     # ArgoCD self-management Application
-│   │   ├── argocd-projects.yaml # RBAC project definitions
+│   │   ├── argocd-projects.yaml # AppProject grouping (see Security Posture)
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
