@@ -102,7 +102,8 @@
         "flatcar",
         "kubernetes",
         "containerd",
-        "syslinux"
+        "syslinux",
+        "kube-vip"
       ],
       "groupName": "Core Infrastructure",
       "addLabels": [
@@ -198,6 +199,18 @@
       "depNameTemplate": "containerd",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "flatcar/sysext-bakery"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^ansible/inventory\\.yaml$/"
+      ],
+      "matchStrings": [
+        "kube_vip_version:\\s*['\"]?(?<currentValue>v[0-9.]+)['\"]?"
+      ],
+      "depNameTemplate": "kube-vip",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "kube-vip/kube-vip"
     },
     {
       "customType": "regex",

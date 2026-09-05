@@ -10,26 +10,27 @@ accepted tradeoff or work not yet done.
 
 ## Single API server endpoint
 
-Three control-plane nodes run etcd and the control-plane components, so the
-Kubernetes control plane is replicated. **Access to it is not.**
+**Fixed for newly provisioned clusters.** Provisioning now places a [kube-vip](https://kube-vip.io/) virtual IP in front
+of the API servers, so `controlPlaneEndpoint` no longer names one machine. See
+[Control Plane VIP](../operations/control-plane-vip.md).
 
-`controlPlaneEndpoint` is generated as the address of the first control-plane
-node in the inventory, and `k8sServiceHost` in the Cilium values names the same
-address. There is no virtual IP and no load balancer in front of the API
-servers. Concretely, if `odin` is down:
+**A cluster provisioned before that change is not fixed by merging it.** The
+first control-plane node's address is baked into the API server certificates at
+`kubeadm init`, so moving to the VIP is a migration, not a sync. Until it is
+done, if that node is down:
 
 - No node can join the cluster.
 - Cilium on every other node loses its connection to the API server, because
   with `kube-proxy` replaced it cannot reach the API through a Service.
 - `output/kubeconfig` points at an address that is no longer answering.
 
-The other two control-plane nodes keep running and etcd keeps quorum, so
-existing workloads continue; it is control-plane *access* that fails.
+The other control-plane nodes keep running and etcd keeps quorum, so existing
+workloads continue; it is control-plane *access* that fails.
 
-Fixing this properly means a VIP in front of the three API servers — kube-vip or
-keepalived — and pointing `controlPlaneEndpoint` and `k8sServiceHost` at it.
-That has to be decided before provisioning, because `controlPlaneEndpoint` is
-baked into the cluster's certificates at `kubeadm init`.
+`k8sServiceHost` in the Cilium values still names the first control-plane node
+and must stay that way until the VIP answers — pointing it at an address that
+does not respond takes the CNI down cluster-wide. The ordering is in
+[Migrating a cluster built without a VIP](../operations/control-plane-vip.md#migrating-a-cluster-built-without-a-vip).
 
 ## OpenBao must be unsealed by hand
 

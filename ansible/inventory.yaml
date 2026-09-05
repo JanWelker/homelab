@@ -4,6 +4,14 @@ all:
     flatcar_version: "4593.2.5"
     syslinux_version: "6.03"
     boot_server_ip: "10.9.200.222" # IP of the machine running 'make serve'
+    # Virtual IP for the Kubernetes API server, held by kube-vip on whichever
+    # control-plane node is currently the leader. Must be a free address on the
+    # nodes' subnet and outside any DHCP range.
+    control_plane_vip: "10.9.2.10"
+    # Interface kube-vip advertises the VIP on. Must match the nodes' primary
+    # NIC; Cilium binds to "en+" on the same hardware.
+    control_plane_vip_interface: "eno1"
+    kube_vip_version: "v1.2.3"
     kubernetes_version: "v1.34.2"
     containerd_version: "2.0.7" # pinned to flatcar stable version
     pod_subnet: "10.244.0.0/16"
