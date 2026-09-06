@@ -1,0 +1,56 @@
+---
+name: Preview Documentation
+
+"on":
+  pull_request:
+    types:
+      - "opened"
+      - "reopened"
+      - "synchronize"
+      - "closed"
+    paths:
+      - "docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "pr-preview-${{ github.event.number }}"
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    # Fork PRs run without write access, so the deploy would fail rather than
+    # leak the token. Skip them instead.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install uv
+        if: github.event.action != 'closed'
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+
+      # The theme resolves its own links relative to the page, so a build made
+      # for the site root also works from the preview subdirectory.
+      - name: Build site
+        if: github.event.action != 'closed'
+        run: |
+          uv python install
+          uv sync --locked --all-extras --dev
+          uv run zensical build --clean --strict
+
+      # On "closed" this removes the preview instead of publishing one.
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        with:
+          source-dir: site
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto
