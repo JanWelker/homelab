@@ -50,13 +50,9 @@
     
     
       
-        
-        
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
-        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
-      
     
+    
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
     
       <link rel="stylesheet" href="../../stylesheets/extra.css">
     
@@ -1744,6 +1740,16 @@ independently of the homelab. Someone else's uptime problem, for once.</p>
     <code>overrides/</code> (wired up via <code>theme.custom_dir</code>). Currently only
     <code>partials/source.html</code>, which drops the repository-facts API call that 404s
     because this repository publishes no releases.</li>
+<li>Fonts are self-hosted, so the published site makes no third-party requests.
+    <code>theme.font = false</code> in <code>zensical.toml</code> suppresses the theme's Google Fonts
+    <code>&lt;link&gt;</code>, and <code>docs/stylesheets/fonts.css</code> declares Inter and JetBrains Mono
+    from the <code>woff2</code> files in <code>docs/assets/fonts/</code>. Those come from the upstream
+    releases (<a href="https://github.com/rsms/inter/releases">Inter</a> and
+    <a href="https://github.com/JetBrains/JetBrainsMono/releases">JetBrains Mono</a>); the
+    SIL OFL licence of each sits next to them. <code>scripts/update-fonts.sh</code> pins
+    both versions and downloads them (<code>make fonts</code>), and Renovate opens a PR on
+    the pins — see <a href="../maintenance/#vendored-binaries-need-a-follow-up-commit">Maintenance</a>
+    for why that PR needs a second commit.</li>
 </ul>
 
 
