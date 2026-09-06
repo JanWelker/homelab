@@ -45,11 +45,7 @@ acts on. The new extension takes effect at the next boot.
 
 The sysupdate configs served to the nodes point at
 `https://extensions.flatcar.org/extensions/`, not at this project's boot server.
-They used to carry sysext-bakery's *floating* `MatchPattern`
-(`kubernetes-@v-%a.raw`), which meant a node tracked whatever upstream published
-as newest and could stage a Kubernetes minor kubeadm refuses to skip to.
-
-The generated configs now pin the major.minor from `ansible/inventory.yaml`:
+The generated configs pin the major.minor from `ansible/inventory.yaml`:
 
 ```ini
 [Source]
@@ -60,14 +56,19 @@ MatchPattern=kubernetes-v1.37.@v-%a.raw
 
 Patch releases inside `v1.37` are still picked up automatically, which is what
 you want — `v1.38` is not, which is the point. sysext-bakery publishes exactly
-this file as `kubernetes-v1.37.conf` alongside the floating one, and the
-generated config is byte-identical to it. containerd gets the same treatment
-even though upstream ships no pinned variant for it.
+this file as `kubernetes-v1.37.conf`, and the generated config is byte-identical
+to it. containerd gets the same treatment even though upstream ships no pinned
+variant for it.
+
+The alternative sysext-bakery offers is a *floating* `MatchPattern`
+(`kubernetes-@v-%a.raw`). A node on that one tracks whatever upstream publishes
+as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
+to.
 
 The pinning happens in
 `ansible/playbooks/tasks/download_sysext.yaml`, which asserts that the rewrite
 landed. If sysext-bakery ever changes the format, `make download` fails rather
-than quietly handing the nodes a floating config again.
+than quietly handing the nodes a floating config.
 
 Inspect what is currently staged on a node:
 
@@ -126,5 +127,6 @@ Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a
 
 The exception is anything installed by `make install-core` and
 `make install-argo` — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
-itself were installed by Helm before ArgoCD existed, with versions pinned in the
-`Makefile`. Renovate does not track those pins.
+itself. They are installed by Helm during bootstrap, before ArgoCD exists to
+manage them, with versions pinned in the `Makefile`. Renovate does not track
+those pins.

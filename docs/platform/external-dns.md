@@ -8,11 +8,11 @@ description: "external-dns publishes Route53 records from HTTPRoutes, closing th
 Route53 records for this cluster's hostnames, from the `HTTPRoute` objects that
 already declare them.
 
-Before this, every hostname needed a record created by hand in the AWS console
-— while cert-manager was already automating the *certificate* for the same name,
-through the same zone, with the same credentials. Adding a workload meant
-remembering a step that lived nowhere in the repository, and removing one left a
-record pointing at nothing.
+Without it, every hostname needs a record created by hand in the AWS console —
+while cert-manager automates the *certificate* for the same name, through the
+same zone, with the same credentials. Adding a workload would mean remembering a
+step that lives nowhere in the repository, and removing one would leave a record
+pointing at nothing.
 
 ## How it decides what to publish
 
@@ -58,8 +58,8 @@ spec:
           port: 80
 ```
 
-The certificate is already covered by the wildcard on the Gateway, so the record
-is the last piece that was manual.
+The certificate is already covered by the wildcard on the Gateway, so nothing
+outside the `HTTPRoute` needs touching.
 
 ## Credentials
 

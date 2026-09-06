@@ -11,8 +11,9 @@ control-plane node wins the leader election answers on
 takes the address over.
 
 This removes the dependency on a single control-plane node for cluster
-*access* — see the history in
-[Known Limitations](../architecture/limitations.md#single-api-server-endpoint).
+*access* — see
+[Known Limitations](../architecture/limitations.md#single-api-server-endpoint)
+for what still applies to a cluster whose certificates predate the VIP.
 
 ## How it is wired
 

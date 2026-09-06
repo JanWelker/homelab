@@ -5,20 +5,20 @@ description: "Authentik as the single sign-on layer: OIDC for ArgoCD and Grafana
 # Authentik
 
 [Authentik](https://goauthentik.io/) is the cluster's identity provider. Every
-platform UI now sits behind one login.
+platform UI sits behind one login.
 
-Before this, each one had its own answer, and one had none:
+| Service | Authentication |
+| --- | --- |
+| ArgoCD | OIDC, local admin **disabled** |
+| Grafana | OIDC, login form disabled |
+| Rook dashboard | Proxy outpost |
+| Hubble UI | Proxy outpost |
+| Prometheus | Proxy outpost |
+| Alertmanager | Proxy outpost |
 
-| Service | Was | Now |
-| --- | --- | --- |
-| ArgoCD | Local `admin` account with an API key | OIDC, local admin **disabled** |
-| Grafana | Chart-generated admin password | OIDC, login form disabled |
-| Rook dashboard | Separate Ceph credentials | Proxy outpost |
-| Hubble UI | **Nothing at all** | Proxy outpost |
-| Prometheus | Not exposed | Proxy outpost |
-| Alertmanager | Not exposed | Proxy outpost |
-
-Hubble is the one that mattered most: it published cluster-wide network flow
+Left to themselves these each carry a different answer — a local `admin` account
+with an API key, a chart-generated password, separate Ceph credentials — and
+Hubble UI carries none at all, which would publish cluster-wide network flow
 data to anyone who could reach the hostname.
 
 ## Two integration styles
@@ -50,8 +50,9 @@ the target namespace grants it, so `referencegrant.yaml` allows exactly that:
 `authentik-server` Service only.
 
 Prometheus and Alertmanager have no route of their own to reuse, so theirs live
-in the `authentik` directory. **They were not exposed before this** — publishing
-them is only defensible because the outpost authenticates in front of them.
+in the `authentik` directory. **Neither has authentication of its own** —
+publishing them at all is only defensible because the outpost authenticates in
+front of them.
 
 ## Configuration as code
 

@@ -15,10 +15,10 @@ All workloads live under `payload/workloads/<app-name>/`. A `workloads` parent A
     Application do not exist. The first workload needs Step 1 below; subsequent
     ones can skip it.
 
-## Step 1: Restore the Workloads Parent Application
+## Step 1: Create the Workloads Parent Application
 
-Add this document back to `payload/root.yaml` (the `apps` AppProject it
-references is still defined in `payload/argocd/argocd-projects.yaml`):
+Add this document to `payload/root.yaml` (the `apps` AppProject it references is
+already defined in `payload/argocd/argocd-projects.yaml`):
 
 ```yaml
 ---

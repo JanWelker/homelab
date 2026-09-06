@@ -16,11 +16,10 @@ Full observability stack based on [kube-prometheus-stack](https://github.com/pro
 
 ## Alerting
 
-Alertmanager previously had persistent storage, no route and no receiver, so
-every alert reached the chart's `null` receiver. That is worse than not
-deploying it: the stack looked configured and could not tell anyone anything.
-
-It now routes to email.
+Alertmanager routes to email. The chart's default is a `null` receiver that
+swallows every alert, which is worse than not deploying it at all — the stack
+looks configured and cannot tell anyone anything — so the route and receiver
+below are set explicitly.
 
 | Property | Value |
 | --- | --- |

@@ -181,22 +181,21 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-This is the pre-auto-unseal procedure. It should no longer be needed — see
-[Auto-unseal](#auto-unseal) — but it is what to fall back on if KMS is
-unreachable and you need OpenBao up anyway. Adding `disabled = "true"` to the
-`seal` stanza and migrating back to Shamir is the supported way to do that
-permanently.
+[Auto-unseal](#auto-unseal) normally handles this, so the manual procedure is a
+fallback: it is what to reach for if KMS is unreachable and you need OpenBao up
+anyway. Adding `disabled = "true"` to the `seal` stanza and migrating back to
+Shamir is the supported way to make that permanent.
 
 ## Auto-unseal
 
 OpenBao is configured with an [`awskms` seal](https://openbao.org/docs/configuration/seal/awskms/),
 so a restarted pod unseals itself by asking AWS KMS to decrypt its root key.
 
-Before this, OpenBao sealed on every pod restart and stayed sealed until an
-operator supplied 3 of the 5 key shares. That was not just an inconvenience:
-while OpenBao is sealed no `ExternalSecret` resolves, so cert-manager loses the
-Route53 credentials it needs to renew certificates. A power cut left the cluster
-running but unable to issue certificates until a human intervened.
+Without it, a sealed pod stays sealed until an operator supplies 3 of the 5 key
+shares — and that is not just an inconvenience. While OpenBao is sealed no
+`ExternalSecret` resolves, so cert-manager loses the Route53 credentials it
+needs to renew certificates, and a power cut leaves the cluster running but
+unable to issue certificates until a human intervenes.
 
 | Property | Value |
 | --- | --- |
@@ -220,7 +219,7 @@ certificates for the zone, losing this one lets someone decrypt the OpenBao root
 key given a copy of the Raft data.
 
 !!! warning "This is a dependency, not just a convenience"
-    OpenBao can no longer start without AWS KMS. If KMS is unreachable — a
+    OpenBao cannot start without AWS KMS. If KMS is unreachable — a
     deleted key, a disabled IAM user, no internet — every pod stays sealed and
     no `ExternalSecret` resolves. The 5 key shares still work as recovery keys,
     so this is recoverable, but **keep them**. See
