@@ -1,0 +1,162 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # After Loki, which it ships to.
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: alloy
+    targetRevision: 1.12.1
+    helm:
+      valuesObject:
+        controller:
+          type: daemonset
+
+        alloy:
+          # /var/log/pods for container logs and /var/log/journal for the node's
+          # own units. Both live under /var/log, so one mount covers them.
+          mounts:
+            varlog: true
+
+          # Log files are written root-owned with restrictive modes, so a
+          # non-root Alloy silently collects nothing.
+          securityContext:
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+
+          configMap:
+            content: |-
+              logging {
+                level  = "info"
+                format = "logfmt"
+              }
+
+              // Pods on this node only. Without the field selector every Alloy
+              // instance watches every pod in the cluster and discards all but
+              // its own -- six times the API server load for the same result.
+              // K8S_NODE_NAME is injected by the chart from spec.nodeName.
+              discovery.kubernetes "pods" {
+                role = "pod"
+                selectors {
+                  role  = "pod"
+                  field = "spec.nodeName=" + sys.env("K8S_NODE_NAME")
+                }
+              }
+
+              discovery.relabel "pod_logs" {
+                targets = discovery.kubernetes.pods.targets
+
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_node_name"]
+                  target_label  = "node"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+                  target_label  = "app"
+                }
+
+                // Kubelet writes to
+                // /var/log/pods/<namespace>_<pod>_<uid>/<container>/*.log
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  action        = "replace"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                  target_label  = "__path__"
+                }
+              }
+
+              local.file_match "pod_logs" {
+                path_targets = discovery.relabel.pod_logs.output
+              }
+
+              loki.source.file "pod_logs" {
+                targets    = local.file_match.pod_logs.targets
+                forward_to = [loki.process.pod_logs.receiver]
+              }
+
+              loki.process "pod_logs" {
+                // containerd writes "<timestamp> <stream> <flags> <message>".
+                // Without this the timestamp and stream end up inside the log
+                // line and Loki timestamps everything at ingest time instead.
+                stage.cri {}
+
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // kubelet, containerd, systemd-sysupdate and update-engine log to
+              // journald and nowhere else on Flatcar. Without this, the logs
+              // that explain a failed boot or a stuck sysext are reachable only
+              // over SSH -- which is exactly when SSH is least convenient.
+              discovery.relabel "journal" {
+                targets = []
+
+                rule {
+                  source_labels = ["__journal__systemd_unit"]
+                  target_label  = "unit"
+                }
+                rule {
+                  source_labels = ["__journal__hostname"]
+                  target_label  = "node"
+                }
+              }
+
+              loki.source.journal "node" {
+                path          = "/var/log/journal"
+                max_age       = "12h"
+                relabel_rules = discovery.relabel.journal.rules
+                labels        = { job = "systemd-journal" }
+                forward_to    = [loki.write.default.receiver]
+              }
+
+              loki.write "default" {
+                endpoint {
+                  url = "http://loki.logging.svc.cluster.local:3100/loki/api/v1/push"
+                }
+              }
+
+        serviceMonitor:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

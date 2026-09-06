@@ -17,6 +17,7 @@ configuration.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
 - **[kured](kured.md)**: Drains and reboots nodes to apply staged OS, Kubernetes
   and containerd updates.
+- **[logging](logging.md)**: Loki and Grafana Alloy, for container and node logs.
 - **[metrics-server](metrics-server.md)**: The `metrics.k8s.io` resource metrics
   API, behind `kubectl top` and every HPA. Deployed with kubelet-csr-approver so
   kubelet certificates are verified rather than skipped.
@@ -92,6 +93,7 @@ Sync wave ordering:
 5. `-2`: Rook operator
 6. `-1`: Cilium, Rook cluster
 7. `0`: OpenBao
-8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver
-9. `2`: Kured, metrics-server
-10. `5`: Rook dashboard configuration job
+8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver, logging
+9. `2`: Kured, Loki, metrics-server
+10. `3`: Alloy
+11. `5`: Rook dashboard configuration job
