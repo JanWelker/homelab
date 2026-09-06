@@ -27,6 +27,39 @@ All three paths converge on `/run/reboot-required`, which is Kured's default
 sentinel. `/run` is tmpfs, so the marker clears itself on reboot; nothing has to
 remember to delete it.
 
+## The reboot cycle
+
+One pass through the loop, from a staged update to a node serving pods again.
+Kured evaluates the window, the sentinel, the alerts and the lock in that order,
+so a node that is not allowed to reboot never contends for the lock. Every dead
+end below just means waiting for the next 30-minute check:
+
+```mermaid
+flowchart TD
+    OS["update-engine<br/>OS image on the passive partition"] --> SEN
+    KUBE["systemd-sysupdate<br/>kubernetes sysext"] --> SEN
+    CTR["systemd-sysupdate<br/>containerd sysext"] --> SEN
+
+    SEN["/run/reboot-required<br/>sentinel, on tmpfs"] --> TICK{"Kured checks<br/>every 30m"}
+
+    TICK -->|"outside 01:00-05:00"| SLEEP["Nothing happens until<br/>the window opens"]
+    TICK -->|"in window,<br/>sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API"}
+    ALERT -->|"yes"| HELD["Reboot deferred while<br/>the cluster is unhealthy"]
+    ALERT -->|"no"| LOCK{"Cluster lock free?"}
+    LOCK -->|"another node<br/>is rebooting"| TAINT["Taint PreferNoSchedule,<br/>wait for the lock"]
+    LOCK -->|"acquired"| DRAIN["Cordon and drain,<br/>15m timeout"]
+    DRAIN -->|"drain fails"| GIVEUP["No reboot: uncordon,<br/>release the lock, retry"]
+    DRAIN -->|"drained"| BOOT["systemctl reboot;<br/>new partition and<br/>sysexts take effect"]
+    BOOT --> UP["Node comes back,<br/>sentinel gone with tmpfs"]
+    UP --> DONE["Uncordon, drop the annotation,<br/>release the lock after 10m"]
+
+    style SEN stroke-width:3px
+```
+
+Only the bottom half of that path is new. Everything down to the sentinel was
+already happening on every node; what changed is that something now reads the
+file.
+
 ## Configuration
 
 | Setting | Value | Why |
