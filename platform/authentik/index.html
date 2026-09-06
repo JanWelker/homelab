@@ -1817,50 +1817,44 @@
 
 <h1 id="authentik">Authentik<a class="headerlink" href="#authentik" title="Permanent link">&para;</a></h1>
 <p><a href="https://goauthentik.io/">Authentik</a> is the cluster's identity provider. Every
-platform UI now sits behind one login.</p>
-<p>Before this, each one had its own answer, and one had none:</p>
+platform UI sits behind one login.</p>
 <table>
 <thead>
 <tr>
 <th>Service</th>
-<th>Was</th>
-<th>Now</th>
+<th>Authentication</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>ArgoCD</td>
-<td>Local <code>admin</code> account with an API key</td>
 <td>OIDC, local admin <strong>disabled</strong></td>
 </tr>
 <tr>
 <td>Grafana</td>
-<td>Chart-generated admin password</td>
 <td>OIDC, login form disabled</td>
 </tr>
 <tr>
 <td>Rook dashboard</td>
-<td>Separate Ceph credentials</td>
 <td>Proxy outpost</td>
 </tr>
 <tr>
 <td>Hubble UI</td>
-<td><strong>Nothing at all</strong></td>
 <td>Proxy outpost</td>
 </tr>
 <tr>
 <td>Prometheus</td>
-<td>Not exposed</td>
 <td>Proxy outpost</td>
 </tr>
 <tr>
 <td>Alertmanager</td>
-<td>Not exposed</td>
 <td>Proxy outpost</td>
 </tr>
 </tbody>
 </table>
-<p>Hubble is the one that mattered most: it published cluster-wide network flow
+<p>Left to themselves these each carry a different answer — a local <code>admin</code> account
+with an API key, a chart-generated password, separate Ceph credentials — and
+Hubble UI carries none at all, which would publish cluster-wide network flow
 data to anyone who could reach the hostname.</p>
 <h2 id="two-integration-styles">Two integration styles<a class="headerlink" href="#two-integration-styles" title="Permanent link">&para;</a></h2>
 <p><strong>OIDC</strong>, for applications that can do it themselves. ArgoCD and Grafana each
@@ -1883,8 +1877,9 @@ the target namespace grants it, so <code>referencegrant.yaml</code> allows exact
 <code>HTTPRoute</code> objects, from <code>kube-system</code> and <code>rook-ceph</code> only, to the
 <code>authentik-server</code> Service only.</p>
 <p>Prometheus and Alertmanager have no route of their own to reuse, so theirs live
-in the <code>authentik</code> directory. <strong>They were not exposed before this</strong> — publishing
-them is only defensible because the outpost authenticates in front of them.</p>
+in the <code>authentik</code> directory. <strong>Neither has authentication of its own</strong> —
+publishing them at all is only defensible because the outpost authenticates in
+front of them.</p>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
 (<code>blueprints.yaml</code>), mounted into the worker as a ConfigMap. Clicking them

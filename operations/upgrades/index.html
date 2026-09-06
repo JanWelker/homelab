@@ -1768,10 +1768,7 @@ acts on. The new extension takes effect at the next boot.</p>
 <h3 id="nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series<a class="headerlink" href="#nodes-are-pinned-to-a-minor-series" title="Permanent link">&para;</a></h3>
 <p>The sysupdate configs served to the nodes point at
 <code>https://extensions.flatcar.org/extensions/</code>, not at this project's boot server.
-They used to carry sysext-bakery's <em>floating</em> <code>MatchPattern</code>
-(<code>kubernetes-@v-%a.raw</code>), which meant a node tracked whatever upstream published
-as newest and could stage a Kubernetes minor kubeadm refuses to skip to.</p>
-<p>The generated configs now pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
+The generated configs pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
 <div class="language-ini highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[Source]</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="na">Type</span><span class="o">=</span><span class="s">url-file</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="na">Path</span><span class="o">=</span><span class="s">https://extensions.flatcar.org/extensions/kubernetes/</span>
@@ -1779,13 +1776,17 @@ as newest and could stage a Kubernetes minor kubeadm refuses to skip to.</p>
 </span></code></pre></div>
 <p>Patch releases inside <code>v1.37</code> are still picked up automatically, which is what
 you want — <code>v1.38</code> is not, which is the point. sysext-bakery publishes exactly
-this file as <code>kubernetes-v1.37.conf</code> alongside the floating one, and the
-generated config is byte-identical to it. containerd gets the same treatment
-even though upstream ships no pinned variant for it.</p>
+this file as <code>kubernetes-v1.37.conf</code>, and the generated config is byte-identical
+to it. containerd gets the same treatment even though upstream ships no pinned
+variant for it.</p>
+<p>The alternative sysext-bakery offers is a <em>floating</em> <code>MatchPattern</code>
+(<code>kubernetes-@v-%a.raw</code>). A node on that one tracks whatever upstream publishes
+as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
+to.</p>
 <p>The pinning happens in
 <code>ansible/playbooks/tasks/download_sysext.yaml</code>, which asserts that the rewrite
 landed. If sysext-bakery ever changes the format, <code>make download</code> fails rather
-than quietly handing the nodes a floating config again.</p>
+than quietly handing the nodes a floating config.</p>
 <p>Inspect what is currently staged on a node:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
@@ -1840,8 +1841,9 @@ change a running node.</p>
 <a href="../../development/maintenance/">Maintenance</a>.</p>
 <p>The exception is anything installed by <code>make install-core</code> and
 <code>make install-argo</code> — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
-itself were installed by Helm before ArgoCD existed, with versions pinned in the
-<code>Makefile</code>. Renovate does not track those pins.</p>
+itself. They are installed by Helm during bootstrap, before ArgoCD exists to
+manage them, with versions pinned in the <code>Makefile</code>. Renovate does not track
+those pins.</p>
 
 
 

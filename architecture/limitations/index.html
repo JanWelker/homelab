@@ -624,10 +624,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#updates-apply-themselves-within-a-window" class="md-nav__link">
+  <a href="#automatic-updates-stop-at-patch-releases" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Updates apply themselves, within a window
+        Automatic updates stop at patch releases
       </span>
     </span>
   </a>
@@ -1717,10 +1717,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#updates-apply-themselves-within-a-window" class="md-nav__link">
+  <a href="#automatic-updates-stop-at-patch-releases" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Updates apply themselves, within a window
+        Automatic updates stop at patch releases
       </span>
     </span>
   </a>
@@ -1796,74 +1796,69 @@
 findable before they are discovered. None of these is a bug; each is either an
 accepted tradeoff or work not yet done.</p>
 <h2 id="single-api-server-endpoint">Single API server endpoint<a class="headerlink" href="#single-api-server-endpoint" title="Permanent link">&para;</a></h2>
-<p><strong>Fixed for newly provisioned clusters.</strong> Provisioning now places a <a href="https://kube-vip.io/">kube-vip</a> virtual IP in front
-of the API servers, so <code>controlPlaneEndpoint</code> no longer names one machine. See
+<p>Provisioning places a <a href="https://kube-vip.io/">kube-vip</a> virtual IP in front of
+the API servers, so a cluster built by this repo reaches the control plane at an
+address no single machine owns. See
 <a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
-<p><strong>A cluster provisioned before that change is not fixed by merging it.</strong> The
-first control-plane node's address is baked into the API server certificates at
-<code>kubeadm init</code>, so moving to the VIP is a migration, not a sync. Until it is
-done, if that node is down:</p>
+<p>The endpoint is fixed at <code>kubeadm init</code>, though: whatever <code>controlPlaneEndpoint</code>
+named at bootstrap is baked into the API server certificates, and no amount of
+syncing changes it afterwards. A cluster whose certificates name a
+control-plane node rather than the VIP is single-homed on that node, and while
+it is down:</p>
 <ul>
 <li>No node can join the cluster.</li>
 <li>Cilium on every other node loses its connection to the API server, because
   with <code>kube-proxy</code> replaced it cannot reach the API through a Service.</li>
-<li><code>output/kubeconfig</code> points at an address that is no longer answering.</li>
+<li><code>output/kubeconfig</code> points at an address that is not answering.</li>
 </ul>
 <p>The other control-plane nodes keep running and etcd keeps quorum, so existing
 workloads continue; it is control-plane <em>access</em> that fails.</p>
-<p><code>k8sServiceHost</code> in the Cilium values still names the first control-plane node
-and must stay that way until the VIP answers — pointing it at an address that
-does not respond takes the CNI down cluster-wide. The ordering is in
+<p><code>k8sServiceHost</code> in the Cilium values must name an address that actually
+answers — pointing it at one that does not takes the CNI down cluster-wide — so
+it moves to the VIP only once the VIP is live. The ordering is in
 <a href="../../operations/control-plane-vip/#migrating-a-cluster-built-without-a-vip">Migrating a cluster built without a VIP</a>.</p>
 <h2 id="openbao-depends-on-aws-kms-to-start">OpenBao depends on AWS KMS to start<a class="headerlink" href="#openbao-depends-on-aws-kms-to-start" title="Permanent link">&para;</a></h2>
-<p><strong>Fixed, by taking on a different dependency.</strong> OpenBao auto-unseals against
-AWS KMS, so a pod restart no longer needs an operator with 3 of 5 key shares,
-and a power cut no longer leaves the cluster unable to renew certificates. See
-<a href="../../platform/openbao/#auto-unseal">Auto-unseal</a>.</p>
-<p>What replaces it is a hard dependency on something outside the cluster and
-outside the house. If KMS is unreachable — key deleted, IAM user disabled, no
-internet — every OpenBao pod stays sealed, no <code>ExternalSecret</code> resolves, and
-cert-manager cannot renew certificates. That is the same failure mode as before,
-now triggered by an external service rather than by a reboot.</p>
+<p>OpenBao auto-unseals against AWS KMS, which makes a service outside the cluster
+and outside the house a hard dependency of the cluster starting up. If KMS is
+unreachable — key deleted, IAM user disabled, no internet — every OpenBao pod
+stays sealed, no <code>ExternalSecret</code> resolves, and cert-manager cannot renew
+certificates. See <a href="../../platform/openbao/#auto-unseal">Auto-unseal</a>.</p>
 <p>The 5 shares survive as recovery keys and are still the way out, so this is
 recoverable rather than fatal. It is a trade of a frequent, certain manual step
 for a rare, external one.</p>
 <h2 id="alerting-reaches-one-mailbox">Alerting reaches one mailbox<a class="headerlink" href="#alerting-reaches-one-mailbox" title="Permanent link">&para;</a></h2>
-<p><strong>Fixed.</strong> Alertmanager routes to an email receiver, and Ceph is scraped, so
-storage health reaches Prometheus. See
-<a href="../../platform/monitoring/#alerting">Alerting</a>.</p>
-<p>What is left is that the delivery path is single-homed and unmonitored. There is
+<p>The delivery path out of Alertmanager is single-homed and unmonitored. There is
 one receiver, one mailbox, and one SMTP provider; if that provider rejects mail
 or the password expires, alerts stop and nothing says so. <code>Watchdog</code> proves the
-pipeline as far as Alertmanager, not as far as the inbox.</p>
+pipeline as far as Alertmanager, not as far as the inbox. See
+<a href="../../platform/monitoring/#alerting">Alerting</a>.</p>
 <p>A second receiver on a different transport would fix it. Meanwhile the health
 checks in <a href="../../operations/#routine-health-check">Operations</a> remain worth
 running.</p>
 <h2 id="backups-do-not-leave-the-cluster">Backups do not leave the cluster<a class="headerlink" href="#backups-do-not-leave-the-cluster" title="Permanent link">&para;</a></h2>
-<p><strong>Mostly fixed.</strong> Velero backs up Kubernetes objects and PVC data nightly, and a
-CronJob snapshots etcd, both into the Ceph object store. See
+<p>Velero backs up Kubernetes objects and PVC data nightly, and a CronJob snapshots
+etcd — both into the same Ceph object store the cluster runs on. See
 <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
-<p>What remains is where they land. Every automated backup is written to the same
-Ceph cluster it was taken from, which protects against the failures that
-actually happen — a deleted PVC, a bad <code>prune</code>, a workload that ate its own data
-— and not at all against losing the cluster.</p>
+<p>Writing them next to their source protects against the failures that actually
+happen — a deleted PVC, a bad <code>prune</code>, a workload that ate its own data — and
+not at all against losing the cluster.</p>
 <p>RGW bucket replication or a second Velero <code>BackupStorageLocation</code> would close
 it; neither is configured. Until then Git plus the OpenBao unseal keys is the
 real disaster-recovery story, and these backups protect against mistakes rather
 than against the building burning down.</p>
-<h2 id="updates-apply-themselves-within-a-window">Updates apply themselves, within a window<a class="headerlink" href="#updates-apply-themselves-within-a-window" title="Permanent link">&para;</a></h2>
-<p><strong>Fixed.</strong> Sysupdate configs are pinned to the Kubernetes and containerd
-major.minor in <code>ansible/inventory.yaml</code>, so a node picks up patch releases
-inside its series and cannot stage a minor kubeadm refuses to skip to. See
+<h2 id="automatic-updates-stop-at-patch-releases">Automatic updates stop at patch releases<a class="headerlink" href="#automatic-updates-stop-at-patch-releases" title="Permanent link">&para;</a></h2>
+<p>Sysupdate configs are pinned to the Kubernetes and containerd major.minor in
+<code>ansible/inventory.yaml</code>, so a node picks up patch releases inside its series
+and cannot stage a minor kubeadm refuses to skip to. See
 <a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>.
 <a href="../../platform/kured/">Kured</a> then drains and reboots one node at a time
 between 01:00 and 05:00 to apply what has been staged, and refuses while Ceph
 or etcd is unhealthy.</p>
 <p>Two things follow that are worth knowing:</p>
 <ul>
-<li><strong>A minor Kubernetes upgrade is still manual.</strong> Kured applies whatever the
-  sysext already staged, and the pin means that is only ever a patch. Moving to
-  a new minor means changing the inventory, pushing the new sysupdate config to
+<li><strong>A minor Kubernetes upgrade is manual.</strong> Kured applies whatever the sysext
+  already staged, and the pin means that is only ever a patch. Moving to a new
+  minor means changing the inventory, pushing the new sysupdate config to
   running nodes, and running <code>kubeadm upgrade</code> — see
   <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">Upgrading a minor version deliberately</a>.</li>
 <li><strong>The alert list is a judgement call.</strong> Kured blocks on the Ceph, etcd and
@@ -1871,12 +1866,12 @@ or etcd is unhealthy.</p>
   stop a reboot.</li>
 </ul>
 <h2 id="network-policy-is-partial-and-appprojects-are-permissive">Network policy is partial, and AppProjects are permissive<a class="headerlink" href="#network-policy-is-partial-and-appprojects-are-permissive" title="Permanent link">&para;</a></h2>
-<p><strong>Partly fixed.</strong> Four namespaces have default-deny ingress and every platform
-namespace has Pod Security Admission labels — see
+<p>Four namespaces have default-deny ingress and every platform namespace has Pod
+Security Admission labels — see
 <a href="../../platform/security-policies/">Security Policies</a>.</p>
-<p>Still open: all <strong>egress</strong> is unrestricted everywhere, and the namespaces of
-components added since are not covered. Two of the three ArgoCD AppProjects
-still allow every resource kind in every namespace. Details in
+<p>Beyond that: all <strong>egress</strong> is unrestricted everywhere, and the namespaces
+outside those four allow all ingress. Two of the three ArgoCD AppProjects allow
+every resource kind in every namespace. Details in
 <a href="../security/#authorization">Security Posture</a>.</p>
 <h2 id="provisioning-requires-the-boot-server-on-the-same-segment">Provisioning requires the boot server on the same segment<a class="headerlink" href="#provisioning-requires-the-boot-server-on-the-same-segment" title="Permanent link">&para;</a></h2>
 <p>Reprovisioning any node means running <code>make serve</code> on a machine on the nodes' L2

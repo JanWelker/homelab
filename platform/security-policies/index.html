@@ -1794,14 +1794,12 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Two cluster-wide controls that were not in place: Pod Security Admission, and
-any network policy at all.</p>
+<p>Two cluster-wide controls: Pod Security Admission, and default-deny network
+policy.</p>
 <h2 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h2>
-<p>PSA has been the built-in replacement for PodSecurityPolicy since Kubernetes
-1.25. Nothing here opted into it, so every namespace ran at the default
-<code>privileged</code> level — which enforces nothing.</p>
-<p>Each namespace now carries three labels, and the split between them is the
-point:</p>
+<p>PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
+not opt in runs at the default <code>privileged</code> level — which enforces nothing.</p>
+<p>Each namespace carries three labels, and the split between them is the point:</p>
 <table>
 <thead>
 <tr>
@@ -1894,9 +1892,9 @@ deletes everything inside it, which is not a mistake worth leaving available.</p
 <p>That reports every pod in the namespace that would be rejected, without
 changing anything.</p>
 <h2 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h2>
-<p>Pod-to-pod traffic was unrestricted across all namespaces: anything with a
-foothold in one pod could reach OpenBao's API, the Ceph mons and the Kubernetes
-API alike.</p>
+<p>Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
+anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
+the Kubernetes API alike.</p>
 <h3 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h3>
 <p>This is the detail that makes or breaks a default-deny here. Two kinds of
 traffic have no pod identity a standard <code>NetworkPolicy</code> can name:</p>
@@ -1917,10 +1915,9 @@ looks like an application fault rather than a policy one. Cilium's
 <p>Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
-exposed. It is the next step, not this one.</p>
-<p>Namespaces for components introduced by other changes — <code>logging</code>, <code>backup</code>,
-<code>authentik</code>, <code>kured</code>, <code>metrics-server</code> — are <strong>not</strong> covered and still allow all
-ingress.</p>
+exposed. It is the next step to take, not one that is taken here.</p>
+<p>The remaining namespaces — <code>logging</code>, <code>backup</code>, <code>authentik</code>, <code>kured</code>,
+<code>metrics-server</code> — are <strong>not</strong> covered and allow all ingress.</p>
 <h3 id="rolling-this-out-safely">Rolling this out safely<a class="headerlink" href="#rolling-this-out-safely" title="Permanent link">&para;</a></h3>
 <p>Apply one namespace at a time and watch drops in Hubble between each:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80

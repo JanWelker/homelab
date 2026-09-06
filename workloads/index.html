@@ -1582,14 +1582,14 @@
 <h1 id="workloads">Workloads<a class="headerlink" href="#workloads" title="Permanent link">&para;</a></h1>
 <p>User-facing applications deployed to the cluster live under
 <code>payload/workloads/&lt;app-name&gt;/</code>.</p>
-<p>No workloads are currently deployed. The documentation site — previously the
-only workload — is now built with <a href="https://zensical.org/">Zensical</a> and
-published to GitHub Pages instead of being served from the cluster. See
+<p>No workloads are currently deployed. The documentation site is built with
+<a href="https://zensical.org/">Zensical</a> and published to GitHub Pages rather than
+served from the cluster — see
 <a href="../development/documentation/">Documentation System</a>.</p>
 <h2 id="management">Management<a class="headerlink" href="#management" title="Permanent link">&para;</a></h2>
 <p>Because there are no workloads, neither <code>payload/workloads/</code> nor its <code>workloads</code>
-parent ArgoCD Application currently exists. Adding the first one restores both;
-see <a href="../development/add-workload/">Adding a Workload</a>.</p>
+parent ArgoCD Application currently exists. Adding the first workload creates
+both; see <a href="../development/add-workload/">Adding a Workload</a>.</p>
 <p>Once the parent Application is in place, each app folder contains its own ArgoCD
 <code>application.yaml</code> (auto-discovered by the parent App-of-Apps) and the
 Kubernetes manifests (Deployment, Service, HTTPRoute, etc.) or Helm chart

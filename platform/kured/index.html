@@ -1765,8 +1765,8 @@ been staging. It watches every node for a sentinel file, and when it finds one:
 takes a cluster-wide lock, cordons the node, drains it, reboots it, waits for it
 to come back, and uncordons it.</p>
 <h2 id="the-gap-it-closes">The gap it closes<a class="headerlink" href="#the-gap-it-closes" title="Permanent link">&para;</a></h2>
-<p>Three mechanisms update a node, and all three used to stop at the same place —
-changes landed on disk and waited for a human:</p>
+<p>Three mechanisms update a node. All three stop at the same place — the change
+lands on disk, and only a reboot applies it:</p>
 <table>
 <thead>
 <tr>
@@ -1822,9 +1822,8 @@ end below just means waiting for the next 30-minute check:</p>
     UP --&gt; DONE["Uncordon, drop the annotation,&lt;br/&gt;release the lock after 10m"]
 
     style SEN stroke-width:3px</code></pre>
-<p>Only the bottom half of that path is new. Everything down to the sentinel was
-already happening on every node; what changed is that something now reads the
-file.</p>
+<p>Everything down to the sentinel happens on every node regardless; Kured is what
+reads the file and acts on it.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

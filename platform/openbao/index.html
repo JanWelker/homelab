@@ -2206,19 +2206,18 @@ follows the same <code>&lt;workload&gt;/&lt;purpose&gt;</code> shape.</p>
 </span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="k">done</span>
 </span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="k">done</span>
 </span></code></pre></div>
-<p>This is the pre-auto-unseal procedure. It should no longer be needed — see
-<a href="#auto-unseal">Auto-unseal</a> — but it is what to fall back on if KMS is
-unreachable and you need OpenBao up anyway. Adding <code>disabled = "true"</code> to the
-<code>seal</code> stanza and migrating back to Shamir is the supported way to do that
-permanently.</p>
+<p><a href="#auto-unseal">Auto-unseal</a> normally handles this, so the manual procedure is a
+fallback: it is what to reach for if KMS is unreachable and you need OpenBao up
+anyway. Adding <code>disabled = "true"</code> to the <code>seal</code> stanza and migrating back to
+Shamir is the supported way to make that permanent.</p>
 <h2 id="auto-unseal">Auto-unseal<a class="headerlink" href="#auto-unseal" title="Permanent link">&para;</a></h2>
 <p>OpenBao is configured with an <a href="https://openbao.org/docs/configuration/seal/awskms/"><code>awskms</code> seal</a>,
 so a restarted pod unseals itself by asking AWS KMS to decrypt its root key.</p>
-<p>Before this, OpenBao sealed on every pod restart and stayed sealed until an
-operator supplied 3 of the 5 key shares. That was not just an inconvenience:
-while OpenBao is sealed no <code>ExternalSecret</code> resolves, so cert-manager loses the
-Route53 credentials it needs to renew certificates. A power cut left the cluster
-running but unable to issue certificates until a human intervened.</p>
+<p>Without it, a sealed pod stays sealed until an operator supplies 3 of the 5 key
+shares — and that is not just an inconvenience. While OpenBao is sealed no
+<code>ExternalSecret</code> resolves, so cert-manager loses the Route53 credentials it
+needs to renew certificates, and a power cut leaves the cluster running but
+unable to issue certificates until a human intervenes.</p>
 <table>
 <thead>
 <tr>
@@ -2261,7 +2260,7 @@ certificates for the zone, losing this one lets someone decrypt the OpenBao root
 key given a copy of the Raft data.</p>
 <div class="admonition warning">
 <p class="admonition-title">This is a dependency, not just a convenience</p>
-<p>OpenBao can no longer start without AWS KMS. If KMS is unreachable — a
+<p>OpenBao cannot start without AWS KMS. If KMS is unreachable — a
 deleted key, a disabled IAM user, no internet — every pod stays sealed and
 no <code>ExternalSecret</code> resolves. The 5 key shares still work as recovery keys,
 so this is recoverable, but <strong>keep them</strong>. See

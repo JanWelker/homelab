@@ -1708,10 +1708,9 @@
 <a href="https://grafana.com/docs/alloy/latest/">Grafana Alloy</a> collects them. Both are
 queried from the existing Grafana at
 <a href="https://monitoring.infra.k8s.wlkr.ch">monitoring.infra.k8s.wlkr.ch</a>.</p>
-<p>Before this, nothing collected logs at all. Metrics answered <em>what</em> was
-happening and never <em>why</em>: diagnosing a crashed pod meant reaching it with
-<code>kubectl logs</code> before it was replaced, and node-level problems were visible only
-over SSH.</p>
+<p>Metrics answer <em>what</em> is happening; logs answer <em>why</em>. Without them, diagnosing
+a crashed pod means reaching it with <code>kubectl logs</code> before it is replaced, and
+node-level problems are visible only over SSH.</p>
 <div class="admonition note">
 <p class="admonition-title">Not Promtail</p>
 <p>Promtail is the collector most Loki documentation still shows. It was
@@ -1742,8 +1741,9 @@ its supported replacement and the one to reach for now.</p>
 </table>
 <p>The journal matters more here than it would elsewhere. On Flatcar, <code>kubelet</code>,
 <code>containerd</code>, <code>systemd-sysupdate</code> and <code>update-engine</code> log to journald and
-nowhere else — so the logs explaining a failed boot or a stuck sysext were
-reachable only over SSH, which is exactly when SSH is least convenient.</p>
+nowhere else. Without collection, the logs explaining a failed boot or a stuck
+sysext are reachable only over SSH, which is exactly when SSH is least
+convenient.</p>
 <p>Each Alloy pod discovers <strong>only pods on its own node</strong>, via a
 <code>spec.nodeName</code> field selector. Without it every one of the six agents would
 watch every pod in the cluster and discard all but its own.</p>

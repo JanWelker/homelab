@@ -1729,11 +1729,11 @@
 <p><a href="https://kubernetes-sigs.github.io/external-dns/">external-dns</a> creates the
 Route53 records for this cluster's hostnames, from the <code>HTTPRoute</code> objects that
 already declare them.</p>
-<p>Before this, every hostname needed a record created by hand in the AWS console
-— while cert-manager was already automating the <em>certificate</em> for the same name,
-through the same zone, with the same credentials. Adding a workload meant
-remembering a step that lived nowhere in the repository, and removing one left a
-record pointing at nothing.</p>
+<p>Without it, every hostname needs a record created by hand in the AWS console —
+while cert-manager automates the <em>certificate</em> for the same name, through the
+same zone, with the same credentials. Adding a workload would mean remembering a
+step that lives nowhere in the repository, and removing one would leave a record
+pointing at nothing.</p>
 <h2 id="how-it-decides-what-to-publish">How it decides what to publish<a class="headerlink" href="#how-it-decides-what-to-publish" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1797,8 +1797,8 @@ way to lose hand-made records.</p>
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
-<p>The certificate is already covered by the wildcard on the Gateway, so the record
-is the last piece that was manual.</p>
+<p>The certificate is already covered by the wildcard on the Gateway, so nothing
+outside the <code>HTTPRoute</code> needs touching.</p>
 <h2 id="credentials">Credentials<a class="headerlink" href="#credentials" title="Permanent link">&para;</a></h2>
 <p>A <strong>separate</strong> IAM user and OpenBao path from cert-manager's, at
 <code>kv/external-dns/route53</code>:</p>
