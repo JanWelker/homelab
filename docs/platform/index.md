@@ -10,6 +10,8 @@ configuration.
 
 ## Components
 
+- **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
+  see [Backups & Recovery](../operations/backups.md).
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI and Gateway API. Capable of enforcing network
   policy, but none is defined — see [Security Posture](../architecture/security.md#authorization).
@@ -93,7 +95,8 @@ Sync wave ordering:
 5. `-2`: Rook operator
 6. `-1`: Cilium, Rook cluster
 7. `0`: OpenBao
-8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver, logging
-9. `2`: Kured, Loki, metrics-server
-10. `3`: Alloy
+8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver,
+   logging, backup
+9. `2`: Kured, Loki, metrics-server, snapshot-controller
+10. `3`: Alloy, Velero
 11. `5`: Rook dashboard configuration job
