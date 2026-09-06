@@ -4,17 +4,15 @@ description: "Pod Security Admission levels per namespace and the first default-
 
 # Security Policies
 
-Two cluster-wide controls that were not in place: Pod Security Admission, and
-any network policy at all.
+Two cluster-wide controls: Pod Security Admission, and default-deny network
+policy.
 
 ## Pod Security Admission
 
-PSA has been the built-in replacement for PodSecurityPolicy since Kubernetes
-1.25. Nothing here opted into it, so every namespace ran at the default
-`privileged` level — which enforces nothing.
+PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
+not opt in runs at the default `privileged` level — which enforces nothing.
 
-Each namespace now carries three labels, and the split between them is the
-point:
+Each namespace carries three labels, and the split between them is the point:
 
 | Label | Set to | Effect |
 | --- | --- | --- |
@@ -58,9 +56,9 @@ changing anything.
 
 ## Network policies
 
-Pod-to-pod traffic was unrestricted across all namespaces: anything with a
-foothold in one pod could reach OpenBao's API, the Ceph mons and the Kubernetes
-API alike.
+Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
+anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
+the Kubernetes API alike.
 
 ### Why CiliumNetworkPolicy and not NetworkPolicy
 
@@ -86,11 +84,10 @@ Ingress only, in four namespaces: `openbao`, `cert-manager`,
 Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
-exposed. It is the next step, not this one.
+exposed. It is the next step to take, not one that is taken here.
 
-Namespaces for components introduced by other changes — `logging`, `backup`,
-`authentik`, `kured`, `metrics-server` — are **not** covered and still allow all
-ingress.
+The remaining namespaces — `logging`, `backup`, `authentik`, `kured`,
+`metrics-server` — are **not** covered and allow all ingress.
 
 ### Rolling this out safely
 

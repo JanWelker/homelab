@@ -11,8 +11,8 @@ to come back, and uncordons it.
 
 ## The gap it closes
 
-Three mechanisms update a node, and all three used to stop at the same place —
-changes landed on disk and waited for a human:
+Three mechanisms update a node. All three stop at the same place — the change
+lands on disk, and only a reboot applies it:
 
 | Mechanism | Stages | Signals by |
 | --- | --- | --- |
@@ -56,9 +56,8 @@ flowchart TD
     style SEN stroke-width:3px
 ```
 
-Only the bottom half of that path is new. Everything down to the sentinel was
-already happening on every node; what changed is that something now reads the
-file.
+Everything down to the sentinel happens on every node regardless; Kured is what
+reads the file and acts on it.
 
 ## Configuration
 

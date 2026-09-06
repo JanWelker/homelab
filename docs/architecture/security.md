@@ -122,10 +122,10 @@ Every platform UI on the infra gateway is behind
 | --- | --- |
 | ArgoCD | Authentik OIDC; local admin disabled. The server runs with `--insecure` because TLS terminates at the Gateway |
 | Grafana | Authentik OIDC; login form disabled |
-| Hubble UI | Authentik proxy outpost — previously **none at all** |
+| Hubble UI | Authentik proxy outpost |
 | Rook dashboard | Authentik proxy outpost |
-| Prometheus | Authentik proxy outpost; not exposed at all before |
-| Alertmanager | Authentik proxy outpost; not exposed at all before |
+| Prometheus | Authentik proxy outpost |
+| Alertmanager | Authentik proxy outpost |
 | OpenBao UI | Token or configured auth method — not behind Authentik |
 
 Two things follow. Authentik is now a dependency of reaching any of them, so

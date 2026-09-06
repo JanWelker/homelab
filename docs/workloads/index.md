@@ -7,16 +7,16 @@ description: "User-facing applications deployed to the cluster and how the workl
 User-facing applications deployed to the cluster live under
 `payload/workloads/<app-name>/`.
 
-No workloads are currently deployed. The documentation site — previously the
-only workload — is now built with [Zensical](https://zensical.org/) and
-published to GitHub Pages instead of being served from the cluster. See
+No workloads are currently deployed. The documentation site is built with
+[Zensical](https://zensical.org/) and published to GitHub Pages rather than
+served from the cluster — see
 [Documentation System](../development/documentation.md).
 
 ## Management
 
 Because there are no workloads, neither `payload/workloads/` nor its `workloads`
-parent ArgoCD Application currently exists. Adding the first one restores both;
-see [Adding a Workload](../development/add-workload.md).
+parent ArgoCD Application currently exists. Adding the first workload creates
+both; see [Adding a Workload](../development/add-workload.md).
 
 Once the parent Application is in place, each app folder contains its own ArgoCD
 `application.yaml` (auto-discovered by the parent App-of-Apps) and the

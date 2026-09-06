@@ -19,14 +19,14 @@ Each node has a raw disk partition labeled `rook-osd` (created by Ignition at pr
 
 ## Monitoring
 
-`cephClusterSpec.monitoring.enabled` used to be `false`, which meant the mgr
-prometheus module was never turned on and **no Ceph metric reached Prometheus at
-all**. Storage was the one thing the monitoring stack could not see: a degraded
-pool, a down OSD, or a near-full cluster showed up only if somebody ran
-`ceph status` by hand.
+`cephClusterSpec.monitoring.enabled` is `true`, which turns on the mgr
+prometheus module and lets the operator maintain a `ServiceMonitor`. Without it
+no Ceph metric reaches Prometheus at all, and storage becomes the one thing the
+monitoring stack cannot see: a degraded pool, a down OSD, or a near-full cluster
+would show up only if somebody ran `ceph status` by hand.
 
-It is now on, and `monitoring.createPrometheusRules` ships Ceph's own alerting
-rules (`CephClusterErrorState`, `CephOSDDown`, `CephPGsUnhealthy`, the near-full
+`monitoring.createPrometheusRules` ships Ceph's own alerting rules alongside it
+(`CephClusterErrorState`, `CephOSDDown`, `CephPGsUnhealthy`, the near-full
 warnings, and the rest).
 
 !!! note "Sync ordering"
