@@ -1,0 +1,33 @@
+---
+# Grafana's OIDC client credentials. Grafana reads these as environment
+# variables (`envFromSecret`), so the keys have to be named exactly as Grafana
+# expects rather than in this repository's usual style.
+#
+# Same OpenBao path Authentik's blueprint reads, so the client is defined once
+# and both sides pick it up.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-oidc
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao
+    kind: ClusterSecretStore
+  target:
+    name: grafana-oidc
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      data:
+        GF_AUTH_GENERIC_OAUTH_CLIENT_ID: "{{ .clientId }}"
+        GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "{{ .clientSecret }}"
+  data:
+    - secretKey: clientId
+      remoteRef: {key: authentik/config, property: grafana-client-id}
+    - secretKey: clientSecret
+      remoteRef: {key: authentik/config, property: grafana-client-secret}
