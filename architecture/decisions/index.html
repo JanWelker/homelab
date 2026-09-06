@@ -1773,6 +1773,9 @@
 <p>The rest of the architecture section describes <em>what</em> this cluster is. This page
 covers <em>why</em>, including what each choice gives up. Every one of these has a
 reasonable alternative; none of them is the only right answer.</p>
+<p>If you have been doing this long enough, you know that architecture documents
+listing only the benefits of each choice are marketing. The costs below are the
+useful half — they are the things that will actually wake you up.</p>
 <h2 id="flatcar-container-linux-not-talos-or-a-general-purpose-distro">Flatcar Container Linux, not Talos or a general-purpose distro<a class="headerlink" href="#flatcar-container-linux-not-talos-or-a-general-purpose-distro" title="Permanent link">&para;</a></h2>
 <p>Flatcar gives an immutable, minimal, container-focused OS with A/B updates and
 declarative first-boot provisioning through Ignition. Nothing is configured by
@@ -1782,7 +1785,9 @@ hand on a node, which means a node is disposable and reproducible from
 remove a whole class of drift. Flatcar was chosen instead because it keeps a
 conventional Linux underneath: <code>ssh</code>, <code>systemd</code>, <code>journalctl</code> and <code>kubeadm</code> all
 work the way the upstream Kubernetes documentation assumes, which matters more
-for a cluster that is also a learning environment than the extra hardening does.</p>
+for a cluster that is also a learning environment than the extra hardening does.
+When something is broken at midnight, being able to <code>journalctl -u kubelet</code> is
+worth a great deal.</p>
 <p>The cost is that Flatcar's read-only <code>/usr</code> forces everything unusual into
 <a href="../#systemd-sysexts">sysexts</a> — including Kubernetes and containerd
 themselves — which is the source of the update behaviour described in
@@ -1794,24 +1799,33 @@ describes. k3s would have been dramatically less work — a single binary, batte
 included — at the price of a bundled, non-standard set of components.</p>
 <p>The cost of kubeadm is that everything above the API server is now this
 project's problem: CNI, ingress, storage and certificates are all installed and
-sequenced explicitly. Most of <code>payload/</code> exists because of this choice.</p>
+sequenced explicitly. Most of <code>payload/</code> exists because of this choice. Nobody
+picks kubeadm because it is easy; they pick it because when the upstream docs
+say "edit the kube-apiserver manifest", there is one to edit.</p>
 <h2 id="cilium-as-cni-replacing-kube-proxy">Cilium as CNI, replacing kube-proxy<a class="headerlink" href="#cilium-as-cni-replacing-kube-proxy" title="Permanent link">&para;</a></h2>
 <p>Cilium replaces <code>kube-proxy</code> entirely with eBPF, which removes the iptables and
-IPVS service-routing path. It also supplies Gateway API, L2 announcements for
-LoadBalancer addresses, WireGuard transparent encryption, and Hubble for flow
-visibility — four things that would otherwise be four separate components on
-bare metal, where there is no cloud load balancer to lean on.</p>
+IPVS service-routing path. Anyone who has ever run <code>iptables-save | wc -l</code> on a
+busy node and watched the number climb past five figures will understand the
+appeal without further argument.</p>
+<p>It also supplies Gateway API, L2 announcements for LoadBalancer addresses,
+WireGuard transparent encryption, and Hubble for flow visibility — four things
+that would otherwise be four separate components on bare metal, where there is
+no cloud load balancer to lean on.</p>
 <p>The cost is a hard bootstrap ordering dependency: with no <code>kube-proxy</code>, Cilium
 cannot reach the API server through a Service, so it needs a literal address in
 <code>k8sServiceHost</code>. That address should be the
 <a href="../../operations/control-plane-vip/">control plane VIP</a>; pointing it at a single
 node is what made that node a
-<a href="../limitations/#single-api-server-endpoint">single point of failure</a>.</p>
+<a href="../limitations/#single-api-server-endpoint">single point of failure</a>. It is also
+a wonderfully effective way to take down cluster networking everywhere at once,
+should you ever point it at an address that does not answer.</p>
 <h2 id="gateway-api-not-ingress">Gateway API, not Ingress<a class="headerlink" href="#gateway-api-not-ingress" title="Permanent link">&para;</a></h2>
 <p>Ingress is effectively frozen, and its per-controller annotations are the reason
-Ingress manifests are rarely portable. Gateway API separates the cluster-owned
-<code>Gateway</code> from the app-owned <code>HTTPRoute</code>, which fits the split between
-<code>payload/platform/</code> and <code>payload/workloads/</code> exactly.</p>
+Ingress manifests are rarely portable — every non-trivial Ingress in existence
+is really a controller-specific config file wearing a standard resource as a
+disguise. Gateway API separates the cluster-owned <code>Gateway</code> from the app-owned
+<code>HTTPRoute</code>, which fits the split between <code>payload/platform/</code> and
+<code>payload/workloads/</code> exactly.</p>
 <p>The cost is a smaller ecosystem and more moving parts: CRDs must be installed
 before anything that references them, which is why they occupy sync wave <code>-10</code>.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
@@ -1823,15 +1837,17 @@ it — and node reboots are routine here, because that is
 <p>Longhorn is the closer alternative and is easier to operate. Ceph was chosen for
 its maturity and because the same cluster can later serve object and file
 storage, not just block.</p>
-<p>The cost is real: Ceph is the heaviest component in the cluster, wants at least
-three nodes, and has its own failure modes and vocabulary. It also only provides
-<code>ReadWriteOnce</code> here, since CephFS is not deployed.</p>
+<p>The cost is real, and worth stating plainly: Ceph is the heaviest component in
+the cluster, wants at least three nodes, and has its own failure modes and
+vocabulary. You will learn what a placement group is. You will learn it at an
+inconvenient moment. It also only provides <code>ReadWriteOnce</code> here, since CephFS is
+not deployed.</p>
 <h2 id="openbao-not-sealed-secrets-or-sops">OpenBao, not sealed-secrets or SOPS<a class="headerlink" href="#openbao-not-sealed-secrets-or-sops" title="Permanent link">&para;</a></h2>
 <p>Sealed-secrets and SOPS both keep encrypted material in Git, which means
-rotation is a commit and revocation is impossible after the fact. OpenBao keeps
-secrets out of the repository entirely and hands them to workloads as ordinary
-Kubernetes <code>Secret</code> objects through the External Secrets Operator, so nothing in
-Git is sensitive.</p>
+rotation is a commit and revocation is impossible after the fact — the ciphertext
+is in every clone, forever. OpenBao keeps secrets out of the repository
+entirely and hands them to workloads as ordinary Kubernetes <code>Secret</code> objects
+through the External Secrets Operator, so nothing in Git is sensitive.</p>
 <p>The cost is the sealed-at-startup problem: OpenBao is a stateful dependency of
 cert-manager, and a sealed OpenBao means no <code>ExternalSecret</code> resolves.
 Auto-unseal against AWS KMS removes the manual step, at the price of making a
@@ -1839,9 +1855,10 @@ service outside the house a hard dependency of the cluster starting up. See
 <a href="../../platform/openbao/#auto-unseal">Auto-unseal</a> and
 <a href="../limitations/#openbao-depends-on-aws-kms-to-start">the resulting limitation</a>.</p>
 <h2 id="argocd-with-app-of-apps-not-flux">ArgoCD with App-of-Apps, not Flux<a class="headerlink" href="#argocd-with-app-of-apps-not-flux" title="Permanent link">&para;</a></h2>
-<p>Either would work. ArgoCD was chosen mainly for its UI, which makes sync state
-and drift legible at a glance — worth more in a homelab, where the operator is
-often re-learning the system, than Flux's smaller footprint.</p>
+<p>Either would work, and anyone claiming otherwise is selling something. ArgoCD
+was chosen mainly for its UI, which makes sync state and drift legible at a
+glance — worth more in a homelab, where the operator is often re-learning the
+system after three months away, than Flux's smaller footprint.</p>
 <p>The App-of-Apps pattern keeps bootstrap to a single <code>kubectl apply</code> of
 <code>payload/root.yaml</code>; everything else is discovered from the repository. See
 <a href="../gitops/">GitOps Strategy</a>.</p>

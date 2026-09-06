@@ -1847,23 +1847,46 @@
 
 <h1 id="project-overview">Project Overview<a class="headerlink" href="#project-overview" title="Permanent link">&para;</a></h1>
 <p><img align="right" alt="Homelab Logo" src="assets/images/logo.png" width="150" /></p>
-<p>Welcome to the <strong>Flatcar Homelab</strong> documentation. This project provides a fully automated, GitOps-driven Kubernetes cluster on bare metal, leveraging Flatcar Container Linux and Kubeadm.</p>
+<p>Six machines in a rack, a pile of YAML, and a stubborn refusal to pay a cloud
+provider for something that fits under a desk. This is the <strong>Flatcar Homelab</strong>:
+a bare metal Kubernetes cluster that provisions itself over PXE, keeps its
+entire state in Git, and is documented here mostly so that Future Me, at 02:00,
+with one hand holding a phone flashlight, does not have to re-derive any of it.</p>
+<p>It is a real cluster doing real work, built the way a production cluster is
+built, at a scale where breaking it is a learning experience rather than an
+incident review.</p>
 <h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Immutable Infrastructure</strong>: Uses Flatcar Container Linux; updates stage automatically and are applied on a manual reboot.</li>
-<li><strong>GitOps</strong>: All cluster state is managed via ArgoCD.</li>
-<li><strong>Networking</strong>: Cilium for CNI, Gateway API, and WireGuard encryption.</li>
-<li><strong>Storage</strong>: Rook-Ceph for distributed block storage.</li>
+<li><strong>Immutable Infrastructure</strong>: Flatcar Container Linux. You cannot <code>apt install</code>
+  your way out of a problem, which turns out to be the feature.</li>
+<li><strong>GitOps</strong>: All cluster state lives in ArgoCD. If it is not in Git, it is not
+  real, and it will not survive the next reconcile.</li>
+<li><strong>Networking</strong>: Cilium for CNI, Gateway API, and WireGuard encryption. No
+  <code>kube-proxy</code>, no iptables archaeology.</li>
+<li><strong>Storage</strong>: Rook-Ceph. Distributed block storage, and the component most
+  likely to teach you humility.</li>
 </ul>
 <h2 id="documentation-sections">Documentation Sections<a class="headerlink" href="#documentation-sections" title="Permanent link">&para;</a></h2>
 <h3 id="quickstart"><a href="quickstart/">Quickstart</a><a class="headerlink" href="#quickstart" title="Permanent link">&para;</a></h3>
-<p>Get your cluster up and running from scratch. Learn how to provision nodes, bootstrap the cluster, and install core components.</p>
+<p>Get your cluster up and running from scratch. Provision nodes, bootstrap the
+cluster, install the core components — and find out which step everyone gets
+wrong the first time (it's the boot server IP; it's always the boot server IP).</p>
 <h3 id="adapting-this-for-your-cluster"><a href="adapting/">Adapting This for Your Cluster</a><a class="headerlink" href="#adapting-this-for-your-cluster" title="Permanent link">&para;</a></h3>
-<p>This repository describes one specific homelab. What to change — repository URL, domain, addresses, hardware — before pointing any of it at your own machines.</p>
+<p>This repository describes one specific homelab. What to change — repository URL,
+domain, addresses, hardware — before pointing any of it at your own machines.
+Read this before you accidentally build a cluster that faithfully syncs somebody
+else's opinions.</p>
 <h3 id="architecture"><a href="architecture/">Architecture</a><a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h3>
-<p>How the cluster is put together: the <a href="architecture/boot-process/">boot process</a>, the <a href="architecture/gitops/">GitOps strategy</a>, the <a href="architecture/directory-structure/">directory structure</a>, the <a href="architecture/security/">security posture</a> it assumes, the <a href="architecture/decisions/">decisions</a> behind the stack, and its <a href="architecture/limitations/">known limitations</a>.</p>
+<p>How the cluster is put together: the <a href="architecture/boot-process/">boot process</a>,
+the <a href="architecture/gitops/">GitOps strategy</a>, the
+<a href="architecture/directory-structure/">directory structure</a>, the
+<a href="architecture/security/">security posture</a> it assumes, the
+<a href="architecture/decisions/">decisions</a> behind the stack, and its
+<a href="architecture/limitations/">known limitations</a> — written down deliberately,
+because the limitations you have not admitted to are the ones that page you.</p>
 <h3 id="platform"><a href="platform/">Platform</a><a class="headerlink" href="#platform" title="Permanent link">&para;</a></h3>
-<p>Deep dive into the core infrastructure components that power the cluster, including:</p>
+<p>The core infrastructure that makes the cluster more than a very expensive way to
+run <code>nginx</code>:</p>
 <ul>
 <li><a href="platform/cilium/">Cilium</a> (Networking &amp; Security)</li>
 <li><a href="platform/rook-ceph/">Rook-Ceph</a> (Storage)</li>
@@ -1871,19 +1894,30 @@
 <li><a href="platform/cert-manager/">cert-manager</a> (TLS)</li>
 </ul>
 <h3 id="operations"><a href="operations/">Operations</a><a class="headerlink" href="#operations" title="Permanent link">&para;</a></h3>
-<p>Running the cluster once it is up: health checks, <a href="operations/#rebooting-a-node">rebooting nodes</a>, <a href="operations/upgrades/">how updates actually get applied</a>, and <a href="operations/backups/">what is and is not backed up</a>.</p>
+<p>Running the cluster once it is up: health checks,
+<a href="operations/#rebooting-a-node">rebooting nodes</a>,
+<a href="operations/upgrades/">how updates actually get applied</a>, and
+<a href="operations/backups/">what is and is not backed up</a> — the last of which is the
+only page here that will ever matter on your worst day.</p>
 <h3 id="workloads"><a href="workloads/">Workloads</a><a class="headerlink" href="#workloads" title="Permanent link">&para;</a></h3>
-<p>Explore the user-facing applications deployed on the cluster.</p>
+<p>The user-facing applications. Currently a quiet section, which is the natural
+state of a homelab that has just finished rebuilding its platform for the third
+time.</p>
 <h3 id="development"><a href="development/">Development</a><a class="headerlink" href="#development" title="Permanent link">&para;</a></h3>
 <ul>
-<li><a href="development/contributing/">Contributing</a>: Setup, checks, and conventions for working on this repository.</li>
-<li><a href="development/documentation/">Documentation System</a>: How the docs site is built and deployed.</li>
-<li><a href="development/maintenance/">Maintenance</a>: CI/CD workflows and dependency management.</li>
-<li><a href="development/add-workload/">Adding a Workload</a>: Step-by-step guide for deploying a new application.</li>
+<li><a href="development/contributing/">Contributing</a>: Setup, checks, and conventions for
+  working on this repository.</li>
+<li><a href="development/documentation/">Documentation System</a>: How this site is built
+  and deployed.</li>
+<li><a href="development/maintenance/">Maintenance</a>: CI/CD workflows and dependency
+  management.</li>
+<li><a href="development/add-workload/">Adding a Workload</a>: Step-by-step guide for
+  deploying a new application.</li>
 </ul>
 <h3 id="machine-provisioning">Machine Provisioning<a class="headerlink" href="#machine-provisioning" title="Permanent link">&para;</a></h3>
 <ul>
-<li><a href="boot_server/">Boot Server</a>: The PXE boot server that serves Flatcar and Ignition to bare metal nodes.</li>
+<li><a href="boot_server/">Boot Server</a>: The PXE boot server that serves Flatcar
+  and Ignition to bare metal nodes.</li>
 <li><a href="ansible/">Ansible</a>: Configuration management details.</li>
 </ul>
 

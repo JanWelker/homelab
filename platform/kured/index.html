@@ -1764,6 +1764,9 @@
 been staging. It watches every node for a sentinel file, and when it finds one:
 takes a cluster-wide lock, cordons the node, drains it, reboots it, waits for it
 to come back, and uncordons it.</p>
+<p>In other words, it does at 02:00 what you would otherwise do by hand on a
+Saturday, in the same order, without getting bored on node four and skipping the
+Ceph check.</p>
 <h2 id="the-gap-it-closes">The gap it closes<a class="headerlink" href="#the-gap-it-closes" title="Permanent link">&para;</a></h2>
 <p>Three mechanisms update a node. All three stop at the same place — the change
 lands on disk, and only a reboot applies it:</p>
@@ -1794,10 +1797,14 @@ lands on disk, and only a reboot applies it:</p>
 </tbody>
 </table>
 <p><code>locksmithd</code> — the Flatcar daemon that would normally coordinate reboots — is
-masked, because it reboots without draining. Kured replaces it and drains first.</p>
+masked, because it reboots without draining. On a cluster where every node is
+also a storage node, "reboots without draining" is a phrase that should raise
+your pulse slightly. Kured replaces it and drains first.</p>
 <p>All three paths converge on <code>/run/reboot-required</code>, which is Kured's default
 sentinel. <code>/run</code> is tmpfs, so the marker clears itself on reboot; nothing has to
-remember to delete it.</p>
+remember to delete it. Small detail, and a genuinely elegant one — a state file
+that cannot go stale because the thing that clears it is the thing it is waiting
+for.</p>
 <h2 id="the-reboot-cycle">The reboot cycle<a class="headerlink" href="#the-reboot-cycle" title="Permanent link">&para;</a></h2>
 <p>One pass through the loop, from a staged update to a node serving pods again.
 Kured evaluates the window, the sentinel, the alerts and the lock in that order,
@@ -1862,7 +1869,7 @@ reads the file and acts on it.</p>
 <tr>
 <td><code>forceReboot</code></td>
 <td><code>false</code></td>
-<td>A node that will not drain is a node worth looking at</td>
+<td>A node that will not drain is a node worth looking at, not a node worth rebooting anyway</td>
 </tr>
 <tr>
 <td><code>preferNoScheduleTaint</code></td>
@@ -1872,8 +1879,11 @@ reads the file and acts on it.</p>
 </tbody>
 </table>
 <h3 id="asking-prometheus-first">Asking Prometheus first<a class="headerlink" href="#asking-prometheus-first" title="Permanent link">&para;</a></h3>
-<p>The important guard is not the delay, it is the alert check. Kured queries
-Prometheus before taking a node down and refuses if anything matching this fires:</p>
+<p>The important guard is not the delay, it is the alert check. A fixed delay
+assumes recovery takes a predictable amount of time; asking Prometheus asks the
+cluster whether it is actually ready, which is a different and much better
+question. Kured queries Prometheus before taking a node down and refuses if
+anything matching this fires:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>CephClusterErrorState, CephClusterWarningState, CephOSDDown, CephPGsUnhealthy,
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>CephPGsDegraded, CephPGsNotDeepScrubbed, CephMonQuorumAtRisk, CephMonQuorumLost,
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>CephNodeDown, etcdMembersDown, etcdInsufficientMembers, etcdNoLeader,
@@ -1882,16 +1892,11 @@ Prometheus before taking a node down and refuses if anything matching this fires
 <p>This is the automated form of the "confirm Ceph has recovered before moving on"
 step in <a href="../../operations/#rebooting-a-node">Rebooting a node</a>: rebooting a
 second node while a placement group is still backfilling can take it below its
-minimum replica count.</p>
+minimum replica count. Which is to say — this list is what stands between a
+routine patch night and an unplanned lesson in Ceph recovery.</p>
 <div class="admonition note">
 <p class="admonition-title">The regex means the opposite of what it looks like</p>
-<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With
-<code>alertFilterMatchOnly: true</code> the meaning inverts: these become the only
-alerts that block. That is deliberate. Something is almost always firing in
-a homelab, and blocking on <em>any</em> alert would mean never rebooting at all —
-which is exactly the state this component exists to fix. The flip side is
-that an alert not on this list will not stop a reboot: the list is the
-judgement call, so widen it if something turns out to matter.</p>
+<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> the meaning inverts: these become the only alerts that block. That is deliberate — something is almost always firing in a homelab, and blocking on <em>any</em> alert would mean never rebooting at all, which is exactly the state this component exists to fix. The flip side is that an alert not on this list will not stop a reboot: the list is the judgement call, so widen it if something turns out to matter. Read the flag twice before editing it; getting this inverted means either nothing ever reboots or everything reboots regardless.</p>
 </div>
 <h2 id="watching-it-work">Watching it work<a class="headerlink" href="#watching-it-work" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Which nodes want a reboot</span>
@@ -1902,8 +1907,9 @@ judgement call, so widen it if something turns out to matter.</p>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
 </span></code></pre></div>
-<p>To stop Kured rebooting anything without uninstalling it, remove the sentinel or
-scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
+<p>To stop Kured rebooting anything without uninstalling it — before a holiday, say,
+or while something fragile is mid-migration — remove the sentinel or scale the
+DaemonSet to zero. To force a node to reboot on the next pass:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
 </span></code></pre></div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>

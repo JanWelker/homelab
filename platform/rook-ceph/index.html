@@ -1783,8 +1783,14 @@
 
 <h1 id="rook-ceph">Rook-Ceph<a class="headerlink" href="#rook-ceph" title="Permanent link">&para;</a></h1>
 <p>Distributed block storage using <a href="https://rook.io/">Rook</a> as the Kubernetes operator for <a href="https://ceph.io/">Ceph</a>.</p>
+<p>Ceph is the component in this cluster with the steepest learning curve and the
+longest memory. It is also the one that will still have your data after a node
+dies, which is why it is here. Treat <code>ceph status</code> the way a sysadmin treats
+<code>dmesg</code>: check it more often than seems necessary, and never ignore a <code>WARN</code> on
+the grounds that everything still appears to work.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <p>Each node has a raw disk partition labeled <code>rook-osd</code> (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.</p>
+<p>"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>StorageClass</strong>: <code>rook-ceph-block</code> is set as the cluster default. Any <code>PersistentVolumeClaim</code> without an explicit <code>storageClassName</code> will use it.</li>
@@ -1797,7 +1803,9 @@
 prometheus module and lets the operator maintain a <code>ServiceMonitor</code>. Without it
 no Ceph metric reaches Prometheus at all, and storage becomes the one thing the
 monitoring stack cannot see: a degraded pool, a down OSD, or a near-full cluster
-would show up only if somebody ran <code>ceph status</code> by hand.</p>
+would show up only if somebody ran <code>ceph status</code> by hand. A full Ceph cluster
+does not degrade gracefully — it stops accepting writes, and every workload
+finds out simultaneously. This is not a metric to leave unwatched.</p>
 <p><code>monitoring.createPrometheusRules</code> ships Ceph's own alerting rules alongside it
 (<code>CephClusterErrorState</code>, <code>CephOSDDown</code>, <code>CephPGsUnhealthy</code>, the near-full
 warnings, and the rest).</p>
@@ -1814,7 +1822,7 @@ CRD is already there and this never comes up.</p>
 <p>A <code>CephObjectStore</code> provides an S3-compatible endpoint inside the cluster,
 served by two RGW instances. It exists so that backups and log chunks have
 somewhere to live that is not a PVC on the same block pool they are meant to
-protect.</p>
+protect. Same cluster, different pool — half a step, but a real one.</p>
 <table>
 <thead>
 <tr>
@@ -1865,7 +1873,11 @@ the claim's name:</p>
 <p>The resulting <code>Secret</code> holds <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>;
 the <code>ConfigMap</code> holds <code>BUCKET_NAME</code>, <code>BUCKET_HOST</code> and <code>BUCKET_PORT</code>.</p>
 <h2 id="requesting-storage">Requesting Storage<a class="headerlink" href="#requesting-storage" title="Permanent link">&para;</a></h2>
-<p>Any workload can request a PVC using the default storage class:</p>
+<p>Any workload can request a PVC using the default storage class. Note the words
+"default" and "Retain" are doing different jobs here: block PVCs are deleted
+with their claim, and every Application in this repo syncs with <code>prune: true</code>.
+Removing a <code>PersistentVolumeClaim</code> from Git removes the volume. Ask Velero how
+it feels about that in <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
@@ -1883,7 +1895,7 @@ the <code>ConfigMap</code> holds <code>BUCKET_NAME</code>, <code>BUCKET_HOST</co
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>ReadWriteOnce</code> (RWO) is the supported access mode. <code>ReadWriteMany</code> (RWX) requires CephFS, which is not configured here.</p>
+<p><code>ReadWriteOnce</code> (RWO) is the supported access mode. <code>ReadWriteMany</code> (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in <code>ContainerCreating</code>, wondering aloud about a multi-attach error.</p>
 </div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>rook-ceph/             # Distributed Storage

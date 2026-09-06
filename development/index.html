@@ -1580,7 +1580,8 @@
 
 
 <h1 id="development">Development<a class="headerlink" href="#development" title="Permanent link">&para;</a></h1>
-<p>How to work on this repository.</p>
+<p>How to work on this repository — and, more to the point, how to change it
+without surprising the cluster.</p>
 <ul>
 <li><strong><a href="contributing/">Contributing</a></strong>: Repository setup, the checks that run,
     commit conventions, and validating a <code>payload/</code> change before you push.</li>
@@ -1597,7 +1598,9 @@
 <li>Everything in <code>payload/platform/</code> and <code>payload/workloads/</code> is applied by
     ArgoCD. Nothing is applied by hand after the initial bootstrap.</li>
 <li>Do not copy version numbers into prose. <code>targetRevision</code> in the manifests is
-    the single source of truth, and Renovate keeps it current.</li>
+    the single source of truth, and Renovate keeps it current. A version written
+    into a sentence is a version that will be wrong within a month and will stay
+    wrong for a year.</li>
 </ul>
 
 

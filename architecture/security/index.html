@@ -1786,18 +1786,27 @@
 from that. They are listed here so the assumptions are explicit rather than
 implied — someone reading the manifests should be able to tell a decision from
 an oversight.</p>
+<p>That distinction is the whole reason this page exists. Every system carries
+weaknesses; the dangerous ones are the weaknesses nobody chose.</p>
 <h2 id="assumed-trust-boundary">Assumed trust boundary<a class="headerlink" href="#assumed-trust-boundary" title="Permanent link">&para;</a></h2>
 <p>The cluster assumes a <strong>trusted L2 network segment</strong>. Anything with a port on
 that segment is treated as friendly. There is no VPN requirement, no mutual TLS
 between components, and no network segmentation inside the cluster.</p>
+<p>Worth being clear-eyed about what "trusted" means in a house: it includes the
+guest laptop, the smart TV, and the doorbell running firmware from 2019 that
+nobody has thought about since. The boundary is real, it is just not as tidy as
+the phrase suggests.</p>
 <p>The published hostnames are a partial exception. Certificates are issued by
 Let's Encrypt through a DNS-01 challenge against a public zone, so
 <code>argo.infra.k8s.wlkr.ch</code> and its siblings are publicly resolvable names and
 appear in Certificate Transparency logs, even though they point at RFC1918
-addresses that are unreachable from outside the LAN.</p>
+addresses that are unreachable from outside the LAN. Your internal hostnames are
+public knowledge the moment you request a certificate for them; plan names
+accordingly.</p>
 <h2 id="provisioning">Provisioning<a class="headerlink" href="#provisioning" title="Permanent link">&para;</a></h2>
 <p>Provisioning is the least protected phase, by design — it has to work before
-any of the cluster's own security exists.</p>
+any of the cluster's own security exists. This is the classic bootstrap problem,
+and everyone solves it the same way: briefly, and with the door open.</p>
 <table>
 <thead>
 <tr>
@@ -1827,7 +1836,9 @@ any of the cluster's own security exists.</p>
 <p>The practical mitigation is time: <code>make serve</code> is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
 after two hours. <strong>Stop the boot server when provisioning is finished</strong> — it is
-the only thing keeping those credentials off the network.</p>
+the only thing keeping those credentials off the network. A <code>make serve</code> left
+running in a forgotten tmux session for three months is a genuinely bad outcome,
+and it is an easy one to reach.</p>
 <p><code>output/credentials/</code> holds the generated bootstrap token and certificate key in
 plaintext. The directory is <code>0700</code> and <code>output/</code> is gitignored, but the values
 are reused across <code>make config</code> runs — the Ansible <code>password</code> lookup reads back
@@ -1839,11 +1850,18 @@ Kubernetes <code>Secret</code> objects through the
 is committed to Git.</p>
 <p>Two consequences worth knowing:</p>
 <ul>
-<li>OpenBao has no auto-unseal, so the unseal keys are the root of trust for every
-  other secret and exist only wherever the operator put them.</li>
+<li>OpenBao <a href="../../platform/openbao/#auto-unseal">auto-unseals against AWS KMS</a>, so
+  the KMS key is what a restarted pod actually depends on. The 5 shares remain as
+  recovery keys and are still the root of trust for every other secret — they
+  exist only wherever the operator put them, and losing all of them loses
+  everything. The trade is a rare external dependency instead of a frequent
+  manual step; see
+  <a href="../limitations/#openbao-depends-on-aws-kms-to-start">the resulting limitation</a>.</li>
 <li>A Kubernetes <code>Secret</code> is base64, not encryption. Anyone with <code>get secrets</code> in
   a namespace can read what ESO materialised there. Encryption at rest, below,
-  does nothing about this — it protects the bytes in etcd, not the API.</li>
+  does nothing about this — it protects the bytes in etcd, not the API. If you
+  remember one thing from this page, make it this one; the number of people who
+  believe otherwise is remarkable.</li>
 </ul>
 <h3 id="encryption-at-rest">Encryption at rest<a class="headerlink" href="#encryption-at-rest" title="Permanent link">&para;</a></h3>
 <p>The API server is configured with an <code>EncryptionConfiguration</code> that encrypts
@@ -1851,7 +1869,9 @@ is committed to Git.</p>
 (<code>ansible/templates/kubeadm.yaml.j2</code>, and the key file in
 <code>ansible/templates/butane_config.yaml.j2</code>). Without it a Secret sits in the etcd
 data directory as plaintext, so an etcd backup, a stolen disk, or read access to
-<code>/var/lib/etcd</code> yields every credential the cluster holds.</p>
+<code>/var/lib/etcd</code> yields every credential the cluster holds. <code>strings</code> on an
+unencrypted etcd file is a memorable demonstration, and one worth doing exactly
+once, on a cluster you do not care about.</p>
 <table>
 <thead>
 <tr>
@@ -1896,14 +1916,17 @@ a <code>clusterResourceWhitelist</code> of every group and kind, in every namesp
 <code>system</code> restricts its destination namespace.</p>
 <p>They are useful as grouping and as a place to add restrictions later. They are
 not an isolation boundary today: an Application in the <code>apps</code> project can create
-cluster-scoped RBAC.</p>
+cluster-scoped RBAC. Which is to say, a workload's manifest directory can quietly
+grant itself the keys to the cluster, and nothing would object.</p>
 <p><strong>Network policy covers four namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
 <code>external-secrets</code> and <code>monitoring</code> have default-deny <strong>ingress</strong>
 <code>CiliumNetworkPolicy</code> rules; every other namespace, and all egress everywhere,
 is still unrestricted. See <a href="../../platform/security-policies/">Security Policies</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
 carries <code>enforce</code> at the level it demonstrably needs and <code>warn</code>/<code>audit</code> at a
-stricter one, so violations are visible without breaking what runs today.</p>
+stricter one, so violations are visible without breaking what runs today. This is
+the sane order of operations: measure first, enforce second. Enforcing first is
+how you end up disabling the control entirely at 2am.</p>
 <p><strong>Both Gateways admit routes from every namespace</strong> (<code>allowedRoutes.namespaces.from: All</code>).
 Any namespace can attach an <code>HTTPRoute</code> to <code>infra-gateway</code> and claim a hostname
 under <code>*.infra.k8s.wlkr.ch</code>.</p>
@@ -1952,18 +1975,24 @@ under <code>*.infra.k8s.wlkr.ch</code>.</p>
 the break-glass paths in
 <a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a> matter.
 And OpenBao is deliberately left out: putting the thing that holds Authentik's
-own database password behind Authentik would be a loop.</p>
+own database password behind Authentik would be a loop, and circular
+dependencies in an auth stack are only funny from a distance.</p>
 <h2 id="what-would-tighten-this-up">What would tighten this up<a class="headerlink" href="#what-would-tighten-this-up" title="Permanent link">&para;</a></h2>
 <p>Roughly in order of value against effort:</p>
 <ol>
-<li>Configure Alertmanager receivers, so a failure is noticed at all.</li>
-<li>Add default-deny NetworkPolicies per namespace, starting with the platform
-   namespaces.</li>
+<li>Extend default-deny ingress to the namespaces
+   <a href="../../platform/security-policies/#scope">not yet covered</a>, then start on
+   egress — the larger and more breakable half.</li>
 <li>Narrow <code>sourceRepos</code> on the AppProjects to this repository and the Helm
    repositories actually in use.</li>
 <li>Restrict <code>allowedRoutes</code> on <code>infra-gateway</code> to the platform namespaces.</li>
-<li>Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
-   and the 5-of-N key custody problem.</li>
+<li>Add a second Alertmanager receiver on a different transport. One receiver,
+   one mailbox and one SMTP provider means a failure of the mail path is itself
+   unmonitored — see
+   <a href="../limitations/#alerting-reaches-one-mailbox">Alerting reaches one mailbox</a>.</li>
+<li>Move etcd encryption to a KMS provider, removing the static
+   <code>encryption_key</code> that currently sits in <code>output/credentials/</code> with no
+   rotation.</li>
 </ol>
 <p>See <a href="../limitations/">Known Limitations</a> for the operational counterparts.</p>
 

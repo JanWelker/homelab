@@ -1769,6 +1769,11 @@ takes the address over.</p>
 <em>access</em> — see
 <a href="../../architecture/limitations/#single-api-server-endpoint">Known Limitations</a>
 for what still applies to a cluster whose certificates predate the VIP.</p>
+<p>The alternative, which almost every first cluster does, is to name one node in
+the kubeconfig and quietly promote it to Most Important Machine. It works
+perfectly until that machine needs a reboot, at which point you discover that
+"highly available control plane" meant "three copies of etcd behind one
+hostname".</p>
 <h2 id="how-it-is-wired">How it is wired<a class="headerlink" href="#how-it-is-wired" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1802,10 +1807,12 @@ for what still applies to a cluster whose certificates predate the VIP.</p>
 </table>
 <p>kube-vip runs in ARP mode with leader election, advertising a <code>/32</code>. It is
 deliberately configured with <code>svc_enable: "false"</code> — LoadBalancer services
-belong to Cilium's L2 announcements, and both claiming them would conflict.</p>
+belong to Cilium's L2 announcements, and two components fighting over who gets
+to answer an ARP request produces the kind of intermittent, host-dependent
+weirdness that eats an entire evening.</p>
 <p>The manifest is placed by Ignition rather than applied afterwards because it has
 to be running before <code>kubeadm init</code> writes the endpoint into the cluster's
-certificates.</p>
+certificates. Chicken, egg, static pod.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since Kubernetes 1.29, <code>admin.conf</code> is not usable until <code>kubeadm init</code>
@@ -1818,7 +1825,8 @@ Only the host path changes; inside the container the file stays at
 <p>It must be a free address on the nodes' subnet, outside any DHCP range, and
 distinct from the Cilium LoadBalancer pools (<code>10.9.2.248</code> and <code>10.9.2.249</code>).
 Nothing validates this — a collision shows up as an unreachable API server after
-provisioning.</p>
+provisioning, or worse, as an API server that works from some machines and not
+others depending on whose ARP cache won.</p>
 <h2 id="migrating-a-cluster-built-without-a-vip">Migrating a cluster built without a VIP<a class="headerlink" href="#migrating-a-cluster-built-without-a-vip" title="Permanent link">&para;</a></h2>
 <p>A cluster provisioned before this change has its first control-plane node's
 address baked into the API server certificates, so this is not a config change
@@ -1829,7 +1837,8 @@ you can simply sync. Two options:</p>
 <a href="../backups/">Backups &amp; Recovery</a>.</p>
 <h3 id="in-place">In place<a class="headerlink" href="#in-place" title="Permanent link">&para;</a></h3>
 <p>Only worth it if rebuilding is not an option. Work on one node at a time and
-keep a second terminal open with a working kubeconfig.</p>
+keep a second terminal open with a working kubeconfig — not as a nicety, but
+because several of the steps below can leave you unable to open a new one.</p>
 <ol>
 <li>
 <p>Confirm the address is free:</p>
@@ -1882,10 +1891,7 @@ keep a second terminal open with a working kubeconfig.</p>
 </ol>
 <div class="admonition danger">
 <p class="admonition-title">Danger</p>
-<p>Step 6 is the one that bites. Cilium replaces kube-proxy, so if
-<code>k8sServiceHost</code> names an address that is not answering, every Cilium pod
-loses the API server and the cluster's networking goes with it. Do not
-commit that change until <code>curl -k https://&lt;vip&gt;:6443/healthz</code> succeeds.</p>
+<p>Step 6 is the one that bites. Cilium replaces kube-proxy, so if <code>k8sServiceHost</code> names an address that is not answering, every Cilium pod loses the API server and the cluster's networking goes with it — including, delightfully, the networking you were using to fix it. Do not commit that change until <code>curl -k https://&lt;vip&gt;:6443/healthz</code> succeeds.</p>
 </div>
 <h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># which node currently holds the VIP</span>
@@ -1897,7 +1903,8 @@ commit that change until <code>curl -k https://&lt;vip&gt;:6443/healthz</code> s
 </span></code></pre></div>
 <p>To test failover, reboot the leader per
 <a href="../#rebooting-a-node">Rebooting a node</a> and confirm <code>kubectl</code> keeps
-working after a few seconds.</p>
+working after a few seconds. Do this once, deliberately, on a quiet afternoon.
+Untested failover is not failover; it is a hypothesis.</p>
 
 
 

@@ -740,6 +740,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-one-setting-that-will-ruin-your-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The one setting that will ruin your day
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1618,6 +1629,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-one-setting-that-will-ruin-your-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The one setting that will ruin your day
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1660,13 +1682,41 @@
 
 
 <h1 id="cilium">Cilium<a class="headerlink" href="#cilium" title="Permanent link">&para;</a></h1>
-<p>CNI with Gateway API, WireGuard encryption, and L2 announcements.</p>
+<p>Cilium is the CNI, and on this cluster it is considerably more than that. It
+replaces <code>kube-proxy</code>, terminates ingress traffic through Gateway API, hands out
+LoadBalancer addresses on a network with no cloud load balancer, encrypts
+node-to-node traffic, and shows you what is actually talking to what.</p>
+<p>Four components' worth of responsibility in one DaemonSet. That consolidation is
+the whole argument for it on bare metal — and also the reason a broken Cilium is
+never a small problem.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Gateway API</strong>: Replaces traditional Ingress controller.</li>
-<li><strong>LoadBalancer Pools</strong>: <code>10.9.2.249</code> (apps) and <code>10.9.2.248</code> (infra).</li>
-<li><strong>Hubble</strong>: Observability with metrics and UI at <code>hubble.infra.k8s.wlkr.ch</code>.</li>
+<li><strong>kube-proxy replacement</strong>: <code>kubeProxyReplacement: true</code>. Service routing
+  happens in eBPF rather than iptables or IPVS, which is why <code>make install-core</code>
+  deletes <code>kube-proxy</code> outright.</li>
+<li><strong>Gateway API</strong>: Replaces a traditional Ingress controller — see
+  <a href="../gateway-api/">Gateway API</a>.</li>
+<li><strong>LoadBalancer Pools</strong>: <code>10.9.2.249</code> (apps) and <code>10.9.2.248</code> (infra),
+  announced over L2 ARP so the rest of the LAN can find them.</li>
+<li><strong>WireGuard encryption</strong>: <code>encryption.type: wireguard</code>, transparently, between
+  nodes.</li>
+<li><strong>Hubble</strong>: Observability with metrics and UI at <code>hubble.infra.k8s.wlkr.ch</code>,
+  behind the <a href="../authentik/">Authentik</a> proxy outpost.</li>
 </ul>
+<h2 id="the-one-setting-that-will-ruin-your-day">The one setting that will ruin your day<a class="headerlink" href="#the-one-setting-that-will-ruin-your-day" title="Permanent link">&para;</a></h2>
+<p><code>k8sServiceHost</code> in <code>values.yaml</code> is a literal IP address, because with
+<code>kube-proxy</code> gone Cilium cannot reach the API server through a Service. It has to
+be told where the control plane lives.</p>
+<p>Point it at an address that does not answer and every Cilium pod loses the API
+server at once. Cluster networking goes with it, including whatever you were
+using to fix the problem. This is the single most effective way to take the
+whole cluster down from one line of YAML, so treat changes to it with the
+respect they deserve — the ordering is spelled out in
+<a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Hubble earns its keep during a network policy rollout</p>
+<p><code>hubble observe --verdict DROPPED --follow</code> answers the question every default-deny policy raises — <em>what did I just break?</em> — in seconds rather than in an hour of guessing. See <a href="../security-policies/#rolling-this-out-safely">Security Policies</a>.</p>
+</div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cilium/                # CNI + Gateway API Controller
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── application.yaml   # ArgoCD Application (Helm chart)
@@ -1675,6 +1725,10 @@
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── httproute.yaml     # Hubble UI route
 </span></code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Cilium is installed twice, sort of</p>
+<p><code>make install-core</code> installs it by Helm with a version pinned in the <code>Makefile</code>, because it has to exist before ArgoCD does. ArgoCD then adopts it using the pin in <code>application.yaml</code>. Those two numbers are maintained separately and Renovate only tracks the second — a mismatch is not fatal, but it is exactly the kind of thing that makes a rebuilt cluster behave differently from the one it replaced.</p>
+</div>
 
 
 

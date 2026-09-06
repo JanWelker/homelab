@@ -1927,6 +1927,10 @@
 
 <h1 id="external-secrets-operator">External Secrets Operator<a class="headerlink" href="#external-secrets-operator" title="Permanent link">&para;</a></h1>
 <p><a href="https://external-secrets.io/">External Secrets Operator (ESO)</a> bridges the cluster's secret store (<a href="../openbao/">OpenBao</a>) to native Kubernetes <code>Secret</code> objects. Workloads consume secrets the standard way (<code>envFrom</code>, <code>volumeMounts</code>, <code>imagePullSecrets</code>) without ever talking to OpenBao directly.</p>
+<p>That last part is the whole trick. No sidecar, no init container, no application
+code that knows what a Vault token is. Applications keep reading environment
+variables like it is 2014, and the interesting work happens somewhere they never
+have to think about.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1969,6 +1973,7 @@
     ESO-&gt;&gt;K: create/update Secret
     App-&gt;&gt;K: mount / envFrom</code></pre>
 <p>ESO authenticates to OpenBao with its own ServiceAccount (<code>external-secrets-vault</code> in the <code>external-secrets</code> namespace). OpenBao validates the JWT against the Kubernetes TokenReview API and issues a short-lived OpenBao token bound to the <code>external-secrets</code> role/policy.</p>
+<p>Note what is absent from that sentence: any long-lived credential stored anywhere. The cluster's own identity system vouches for ESO, and OpenBao decides whether to believe it. This is the bootstrap problem solved properly, and it is worth understanding once rather than treating as magic — because when it breaks, it breaks in the <code>ClusterSecretStore</code> status and nowhere else.</p>
 <h2 id="adding-a-new-secret">Adding a new secret<a class="headerlink" href="#adding-a-new-secret" title="Permanent link">&para;</a></h2>
 <p>The full round-trip from "I have a new credential" to "my Pod can read it":</p>
 <h3 id="1-store-the-value-in-openbao">1. Store the value in OpenBao<a class="headerlink" href="#1-store-the-value-in-openbao" title="Permanent link">&para;</a></h3>
@@ -2025,8 +2030,10 @@
 </span></code></pre></div>
 <h2 id="refresh-interval">Refresh interval<a class="headerlink" href="#refresh-interval" title="Permanent link">&para;</a></h2>
 <p><code>refreshInterval: 1h</code> polls OpenBao hourly. Set to <code>0</code> to disable polling — ESO will only re-sync on resource changes. For rotated credentials, leave it at a value that matches your rotation cadence.</p>
+<p>Worth knowing: rotating a value in OpenBao updates the Kubernetes <code>Secret</code> within that interval, but it does <strong>not</strong> restart anything. A pod that read the secret into an environment variable at startup will happily keep using the old value until something restarts it. Reloader-style tooling or a rollout is the missing half of "rotation", and forgetting it is how a credential gets rotated on paper and not in practice.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="clustersecretstore-is-not-ready"><code>ClusterSecretStore</code> is not Ready<a class="headerlink" href="#clustersecretstore-is-not-ready" title="Permanent link">&para;</a></h3>
+<p>Start here for basically every secret-related problem. If the store is not Ready, nothing downstream of it will be either, and chasing the individual <code>ExternalSecret</code> first is wasted time.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
 </span></code></pre></div>
 <p>Common causes:</p>

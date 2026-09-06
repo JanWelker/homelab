@@ -1683,6 +1683,7 @@
 
 <h1 id="gateway-api">Gateway API<a class="headerlink" href="#gateway-api" title="Permanent link">&para;</a></h1>
 <p>The <a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a> replaces the traditional Ingress resource. It is implemented by Cilium, which handles both load balancing and TLS termination.</p>
+<p>The practical improvement over Ingress is the split in ownership: the cluster owns the <code>Gateway</code> — addresses, certificates, ports — and each app owns its own <code>HTTPRoute</code>. No more twelve-annotation Ingress manifests that only work on the controller they were written for.</p>
 <h2 id="gateways">Gateways<a class="headerlink" href="#gateways" title="Permanent link">&para;</a></h2>
 <p>Two Gateways are defined in <code>kube-system</code>, each with a dedicated IP from the Cilium L2 pool:</p>
 <table>
@@ -1709,7 +1710,10 @@
 </tr>
 </tbody>
 </table>
-<p>Both gateways terminate TLS using wildcard certificates managed by cert-manager. HTTP traffic is accepted on port 80 from all namespaces (for redirect purposes).</p>
+<p>Both gateways terminate TLS using wildcard certificates managed by cert-manager. HTTP traffic is accepted on port 80 from all namespaces, purely so a central rule can redirect it to HTTPS rather than leaving plain HTTP quietly working forever.</p>
+<p>Wildcard certificates are the reason adding a hostname costs nothing: a new
+<code>*.k8s.wlkr.ch</code> name is already covered, so there is no per-app certificate to
+issue, no ACME rate limit to think about, and nothing to renew.</p>
 <h2 id="exposing-a-new-service">Exposing a New Service<a class="headerlink" href="#exposing-a-new-service" title="Permanent link">&para;</a></h2>
 <p>To expose a service, create an <code>HTTPRoute</code> in the same namespace as your app and reference the appropriate gateway.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
@@ -1729,6 +1733,14 @@
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
 <p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for internal platform tools instead.</p>
+<p>That is the entire procedure. <a href="../external-dns/">external-dns</a> notices the
+hostname and creates the Route53 record; the wildcard certificate already covers
+the name. Two things that used to be manual steps, and used to be the two steps
+everyone forgot.</p>
+<div class="admonition warning">
+<p class="admonition-title">Nothing stops two apps claiming the same hostname</p>
+<p>Both Gateways admit routes from every namespace, so a stray <code>HTTPRoute</code> in an unrelated namespace can attach itself to <code>infra-gateway</code> and claim a name. Whoever wins is not something you want to determine experimentally — see <a href="../../architecture/security/#authorization">Security Posture</a>.</p>
+</div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>gateway-api/            # Gateway API Resources
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── application.yaml    # ArgoCD Application

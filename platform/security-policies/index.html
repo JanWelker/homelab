@@ -1796,9 +1796,15 @@
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
 <p>Two cluster-wide controls: Pod Security Admission, and default-deny network
 policy.</p>
+<p>Both are the kind of thing that is easy to turn on and hard to turn on <em>safely</em>.
+The pattern used here — measure first, enforce second, one namespace at a time —
+is unglamorous and is the only approach that survives contact with a running
+cluster.</p>
 <h2 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h2>
 <p>PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
-not opt in runs at the default <code>privileged</code> level — which enforces nothing.</p>
+not opt in runs at the default <code>privileged</code> level — which enforces nothing at
+all. Every namespace you have not thought about is wide open, silently, by
+default. That is the fact this section exists to address.</p>
 <p>Each namespace carries three labels, and the split between them is the point:</p>
 <table>
 <thead>
@@ -1828,7 +1834,9 @@ not opt in runs at the default <code>privileged</code> level — which enforces 
 </table>
 <p>Enforcement is set to what already works, so <strong>nothing running breaks</strong>, while
 <code>warn</code> and <code>audit</code> show what a stricter level would have caught. Tightening
-enforcement later becomes an informed change rather than a guess.</p>
+enforcement later becomes an informed change rather than a guess — and a
+security control that broke production once is a security control that gets
+switched off permanently, which is the real risk here.</p>
 <table>
 <thead>
 <tr>
@@ -1877,14 +1885,14 @@ enforcement later becomes an informed change rather than a guess.</p>
 </table>
 <div class="admonition note">
 <p class="admonition-title"><code>privileged</code> here means 'not yet reduced', not 'unexamined'</p>
-<p>Each of the four has a specific reason above. <code>audit</code> and <code>warn</code> are still
-set to <code>baseline</code> or <code>restricted</code> on all of them, so the violations are
-visible even where they are not blocked.</p>
+<p>Each of the four has a specific reason above. <code>audit</code> and <code>warn</code> are still set to <code>baseline</code> or <code>restricted</code> on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.</p>
 </div>
 <p>Namespace objects are owned by this Application so the labels stay declarative
 rather than being applied once by <code>CreateNamespace=true</code> and then drifting.
-<strong>Pruning is disabled</strong> for the whole Application — pruning a <code>Namespace</code>
-deletes everything inside it, which is not a mistake worth leaving available.</p>
+<strong>Pruning is disabled</strong> for the whole Application — pruning a <code>Namespace</code> deletes
+everything inside it, including PVCs, so a misplaced deletion in Git becomes an
+irreversible data loss event roughly three minutes later. That is not a mistake
+worth leaving available to a sleepy Tuesday.</p>
 <h3 id="checking-what-would-break">Checking what would break<a class="headerlink" href="#checking-what-would-break" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>--overwrite<span class="w"> </span>ns<span class="w"> </span>cert-manager<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>pod-security.kubernetes.io/enforce<span class="o">=</span>restricted
@@ -1894,7 +1902,8 @@ changing anything.</p>
 <h2 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h2>
 <p>Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
 anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
-the Kubernetes API alike.</p>
+the Kubernetes API alike. The flat network is Kubernetes' default and it is
+almost never what anyone actually wants — it is just what you get for free.</p>
 <h3 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h3>
 <p>This is the detail that makes or breaks a default-deny here. Two kinds of
 traffic have no pod identity a standard <code>NetworkPolicy</code> can name:</p>
@@ -1905,8 +1914,10 @@ traffic have no pod identity a standard <code>NetworkPolicy</code> can name:</p>
   itself.</li>
 </ul>
 <p>A plain <code>NetworkPolicy</code> default-deny therefore kills all ingress <em>and</em> all
-health probes — the pods then fail their probes and restart forever, which
-looks like an application fault rather than a policy one. Cilium's
+health probes — the pods then fail their probes and restart forever, which looks
+exactly like an application fault and not at all like a policy one. Expect to
+spend a while reading application logs before it occurs to you that the
+application is fine and the kubelet is the one being blocked. Cilium's
 <code>fromEntities</code> names these directly: <code>ingress</code> for Envoy-proxied traffic,
 <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
@@ -1915,11 +1926,15 @@ looks like an application fault rather than a policy one. Cilium's
 <p>Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
-exposed. It is the next step to take, not one that is taken here.</p>
+exposed. And you will get it wrong at least twice, because nobody has a complete
+list of what their components phone home to. It is the next step to take, not
+one that is taken here.</p>
 <p>The remaining namespaces — <code>logging</code>, <code>backup</code>, <code>authentik</code>, <code>kured</code>,
 <code>metrics-server</code> — are <strong>not</strong> covered and allow all ingress.</p>
 <h3 id="rolling-this-out-safely">Rolling this out safely<a class="headerlink" href="#rolling-this-out-safely" title="Permanent link">&para;</a></h3>
-<p>Apply one namespace at a time and watch drops in Hubble between each:</p>
+<p>One namespace at a time, watching Hubble between each. Rolling out network
+policy everywhere at once is how people end up reverting the whole thing at
+midnight and never trying again:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
 </span></code></pre></div>

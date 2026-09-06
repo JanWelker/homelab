@@ -1758,8 +1758,12 @@
 
 
 <h1 id="ansible-configuration">Ansible Configuration<a class="headerlink" href="#ansible-configuration" title="Permanent link">&para;</a></h1>
-<p>This directory contains the Ansible playbooks and configuration used to provision
-the Flatcar cluster.</p>
+<p>The Ansible playbooks and configuration used to provision the Flatcar cluster.</p>
+<p>Worth being clear about what Ansible is doing here, because it is not the usual
+job. It never configures a node. It has no <code>hosts: all</code> play that SSHes in and
+converges anything — it generates files on the deployment host, and Ignition
+applies them once at first boot. Ansible is a template engine with an inventory,
+and on an immutable OS that is exactly the right amount of Ansible.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ansible/
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
@@ -1774,7 +1778,10 @@ the Flatcar cluster.</p>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    └── pxe_config.j2         # Template for PXE boot menu
 </span></code></pre></div>
 <h2 id="inventory">Inventory<a class="headerlink" href="#inventory" title="Permanent link">&para;</a></h2>
-<p>The <code>inventory.yaml</code> file defines the cluster layout.</p>
+<p>The <code>inventory.yaml</code> file defines the cluster layout, and it is the single
+source of truth for everything about these machines. Every generated artifact
+comes from it, which is why any edit has to be followed by <code>make config</code> — the
+values are baked into the output, not read at boot.</p>
 <ul>
 <li><strong>Global Variables</strong>: Flattened variables like versions (<code>kubernetes_version</code>,
   <code>flatcar_version</code>) and network settings.</li>
@@ -1807,6 +1814,9 @@ nodes.</p>
 <h3 id="kubeconfigyaml"><code>kubeconfig.yaml</code><a class="headerlink" href="#kubeconfigyaml" title="Permanent link">&para;</a></h3>
 <p>Retrieves the admin <code>kubeconfig</code> file from the first available control plane
 node after the cluster is bootstrapped.</p>
+<p>Keep a copy of the result somewhere off the cluster. It is the credential you
+will want on the day the web UIs are unreachable, and it lives in <code>output/</code>,
+which is gitignored and therefore exactly as durable as the laptop it is on.</p>
 
 
 

@@ -1795,6 +1795,10 @@
 <p>Things this cluster does not currently do, collected in one place so they are
 findable before they are discovered. None of these is a bug; each is either an
 accepted tradeoff or work not yet done.</p>
+<p>Every system has a page like this. Most of them are unwritten, which is why the
+same three failure modes keep surprising the same teams. Writing it down does
+not fix anything — it just means that when one of these bites, the response is
+"ah, that one" rather than four hours of confused archaeology.</p>
 <h2 id="single-api-server-endpoint">Single API server endpoint<a class="headerlink" href="#single-api-server-endpoint" title="Permanent link">&para;</a></h2>
 <p>Provisioning places a <a href="https://kube-vip.io/">kube-vip</a> virtual IP in front of
 the API servers, so a cluster built by this repo reaches the control plane at an
@@ -1812,7 +1816,8 @@ it is down:</p>
 <li><code>output/kubeconfig</code> points at an address that is not answering.</li>
 </ul>
 <p>The other control-plane nodes keep running and etcd keeps quorum, so existing
-workloads continue; it is control-plane <em>access</em> that fails.</p>
+workloads continue; it is control-plane <em>access</em> that fails. Which is its own
+special kind of frustrating: the cluster is fine, you simply cannot talk to it.</p>
 <p><code>k8sServiceHost</code> in the Cilium values must name an address that actually
 answers — pointing it at one that does not takes the CNI down cluster-wide — so
 it moves to the VIP only once the VIP is live. The ordering is in
@@ -1822,15 +1827,21 @@ it moves to the VIP only once the VIP is live. The ordering is in
 and outside the house a hard dependency of the cluster starting up. If KMS is
 unreachable — key deleted, IAM user disabled, no internet — every OpenBao pod
 stays sealed, no <code>ExternalSecret</code> resolves, and cert-manager cannot renew
-certificates. See <a href="../../platform/openbao/#auto-unseal">Auto-unseal</a>.</p>
+certificates.</p>
+<p>Read that sentence again with a power cut in mind: the house comes back, the
+cluster comes back, and the secrets do not, because the ISP is still down. See
+<a href="../../platform/openbao/#auto-unseal">Auto-unseal</a>.</p>
 <p>The 5 shares survive as recovery keys and are still the way out, so this is
 recoverable rather than fatal. It is a trade of a frequent, certain manual step
-for a rare, external one.</p>
+for a rare, external one. Keep the keys somewhere that does not require the
+cluster to read.</p>
 <h2 id="alerting-reaches-one-mailbox">Alerting reaches one mailbox<a class="headerlink" href="#alerting-reaches-one-mailbox" title="Permanent link">&para;</a></h2>
 <p>The delivery path out of Alertmanager is single-homed and unmonitored. There is
 one receiver, one mailbox, and one SMTP provider; if that provider rejects mail
 or the password expires, alerts stop and nothing says so. <code>Watchdog</code> proves the
-pipeline as far as Alertmanager, not as far as the inbox. See
+pipeline as far as Alertmanager, not as far as the inbox.</p>
+<p>This is the oldest failure in monitoring: the thing that tells you when things
+break, breaking quietly. Silence is not evidence of health. See
 <a href="../../platform/monitoring/#alerting">Alerting</a>.</p>
 <p>A second receiver on a different transport would fix it. Meanwhile the health
 checks in <a href="../../operations/#routine-health-check">Operations</a> remain worth
@@ -1841,7 +1852,9 @@ etcd — both into the same Ceph object store the cluster runs on. See
 <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
 <p>Writing them next to their source protects against the failures that actually
 happen — a deleted PVC, a bad <code>prune</code>, a workload that ate its own data — and
-not at all against losing the cluster.</p>
+not at all against losing the cluster. A backup that shares a failure domain
+with its source is a convenience feature, not a backup, and it is worth being
+honest about which one you have.</p>
 <p>RGW bucket replication or a second Velero <code>BackupStorageLocation</code> would close
 it; neither is configured. Until then Git plus the OpenBao unseal keys is the
 real disaster-recovery story, and these backups protect against mistakes rather
@@ -1873,13 +1886,22 @@ Security Admission labels — see
 outside those four allow all ingress. Two of the three ArgoCD AppProjects allow
 every resource kind in every namespace. Details in
 <a href="../security/#authorization">Security Posture</a>.</p>
+<p>Partial network policy is genuinely better than none, but it is worth not
+mistaking it for a boundary. A pod in <code>authentik</code> can still talk to a pod in
+<code>kured</code> all day long.</p>
 <h2 id="provisioning-requires-the-boot-server-on-the-same-segment">Provisioning requires the boot server on the same segment<a class="headerlink" href="#provisioning-requires-the-boot-server-on-the-same-segment" title="Permanent link">&para;</a></h2>
 <p>Reprovisioning any node means running <code>make serve</code> on a machine on the nodes' L2
 segment, with the external DHCP server pointing at it. There is no way to
 rebuild a node remotely, and the deployment host is not part of the cluster.</p>
+<p>Translation: you cannot fix a dead node from a hotel room. Plan holidays
+accordingly.</p>
 <h2 id="single-region-single-site-single-rack">Single-region, single-site, single-rack<a class="headerlink" href="#single-region-single-site-single-rack" title="Permanent link">&para;</a></h2>
 <p>There is no failure domain larger than a node. Ceph replicates across nodes in
 one rack on one power feed; a site-level event takes everything.</p>
+<p>The cluster's true availability zone is "this building has electricity", and no
+amount of replication factor changes that. This is the honest limit of a
+homelab, and pretending otherwise is how people end up genuinely surprised by a
+tripped breaker.</p>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How the OS, Kubernetes, and containerd actually get updated on these nodes, and why a reboot is always a manual step.">
+        <meta name="description" content="How the OS, Kubernetes, and containerd actually get updated on these nodes, and why nothing takes effect until a reboot.">
       
       
       
@@ -1739,8 +1739,13 @@
 
 <h1 id="updates-upgrades">Updates &amp; Upgrades<a class="headerlink" href="#updates-upgrades" title="Permanent link">&para;</a></h1>
 <p>Three separate mechanisms update a node, and none of them completes on its own.
-All three land their changes on disk and then wait for a reboot that nothing
-schedules.</p>
+All three land their changes on disk and then wait for a reboot.</p>
+<p>This is the part that surprises people coming from a normal distro. Nothing here
+is "installed" in the sense you are used to. The new version is sitting on the
+disk, fully downloaded, politely doing nothing, until the machine is restarted.
+A node can be four patch releases behind while reporting that everything is up
+to date, because from its point of view everything <em>is</em> up to date — just not
+running yet.</p>
 <h2 id="os-updates">OS updates<a class="headerlink" href="#os-updates" title="Permanent link">&para;</a></h2>
 <p>Flatcar downloads OS updates in the background and writes them to the passive
 half of its A/B partition pair, so the new image is ready but inactive.
@@ -1756,6 +1761,9 @@ it, and uncordons it, one node at a time inside a nightly window and only while
 Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
 do when you do not want to wait for the window — see
 <a href="../#rebooting-a-node">Rebooting a node</a>.</p>
+<p><code>locksmithd</code> is masked rather than merely disabled, incidentally, because a
+service that reboots a storage node without draining it first is not a feature,
+it is a scheduled outage with good manners.</p>
 <p>Check what a node is running and whether an update is staged:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
 </span></code></pre></div>
@@ -1775,14 +1783,17 @@ The generated configs pin the major.minor from <code>ansible/inventory.yaml</cod
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="na">MatchPattern</span><span class="o">=</span><span class="s">kubernetes-v1.37.@v-%a.raw</span>
 </span></code></pre></div>
 <p>Patch releases inside <code>v1.37</code> are still picked up automatically, which is what
-you want — <code>v1.38</code> is not, which is the point. sysext-bakery publishes exactly
+you want — <code>v1.38</code> is not, which is very much the point. An unattended jump to a
+new minor is how a cluster wakes up with kubelets a version ahead of a control
+plane that refuses to talk to them. sysext-bakery publishes exactly
 this file as <code>kubernetes-v1.37.conf</code>, and the generated config is byte-identical
 to it. containerd gets the same treatment even though upstream ships no pinned
 variant for it.</p>
 <p>The alternative sysext-bakery offers is a <em>floating</em> <code>MatchPattern</code>
 (<code>kubernetes-@v-%a.raw</code>). A node on that one tracks whatever upstream publishes
 as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
-to.</p>
+to — and it will do so overnight, without asking, on whichever node happens to
+check first.</p>
 <p>The pinning happens in
 <code>ansible/playbooks/tasks/download_sysext.yaml</code>, which asserts that the rewrite
 landed. If sysext-bakery ever changes the format, <code>make download</code> fails rather
@@ -1797,7 +1808,9 @@ this is the deliberate path:</p>
 <ol>
 <li>Confirm the jump is supported. <strong>kubeadm allows one minor version at a
    time.</strong> Going from v1.34 to v1.37 is three separate passes through this
-   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one.</li>
+   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one. There is no
+   shortcut, there has never been a shortcut, and the release notes for each
+   intermediate version are not optional reading.</li>
 <li>Update <code>kubernetes_version</code> (and <code>containerd_version</code> if relevant) in
    <code>ansible/inventory.yaml</code>.</li>
 <li><code>make download &amp;&amp; make config</code>. This fetches the new sysext, regenerates the
@@ -1819,7 +1832,9 @@ this is the deliberate path:</p>
 </li>
 <li>On a control-plane node, run <code>kubeadm upgrade</code> as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
-   steps kubeadm needs for control-plane components.</li>
+   steps kubeadm needs for control-plane components. Swapping binaries and
+   calling it an upgrade is exactly the kind of thing that works on five nodes
+   and then does not work on the sixth.</li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1843,7 +1858,9 @@ change a running node.</p>
 <code>make install-argo</code> — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
 itself. They are installed by Helm during bootstrap, before ArgoCD exists to
 manage them, with versions pinned in the <code>Makefile</code>. Renovate does not track
-those pins.</p>
+those pins, so they drift quietly and only reveal themselves the next time
+somebody rebuilds a cluster from scratch and gets a different result. Worth a
+glance whenever you touch the <code>Makefile</code> anyway.</p>
 
 
 

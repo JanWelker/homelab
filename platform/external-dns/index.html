@@ -1731,9 +1731,12 @@ Route53 records for this cluster's hostnames, from the <code>HTTPRoute</code> ob
 already declare them.</p>
 <p>Without it, every hostname needs a record created by hand in the AWS console —
 while cert-manager automates the <em>certificate</em> for the same name, through the
-same zone, with the same credentials. Adding a workload would mean remembering a
-step that lives nowhere in the repository, and removing one would leave a record
-pointing at nothing.</p>
+same zone, with the same credentials. Automating the hard half and leaving the
+easy half manual is a very common shape, and it is always the manual half that
+gets forgotten. Adding a workload would mean remembering a step that lives
+nowhere in the repository, and removing one would leave a record pointing at
+nothing, forever, until somebody audits the zone and cannot work out what
+<code>old-thing.k8s.wlkr.ch</code> was.</p>
 <h2 id="how-it-decides-what-to-publish">How it decides what to publish<a class="headerlink" href="#how-it-decides-what-to-publish" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1771,13 +1774,7 @@ to <code>infra-gateway</code> resolves to <code>10.9.2.248</code>, and one on <c
 <code>10.9.2.249</code>, without either address being written down again.</p>
 <div class="admonition note">
 <p class="admonition-title">Why <code>sync</code> is safe here</p>
-<p><code>sync</code> lets external-dns <strong>delete</strong> records, which is usually where people
-reach for <code>upsert-only</code> instead. It is safe because of the TXT registry: for
-every record it creates, external-dns writes a companion
-<code>_externaldns.*</code> TXT record stamped with <code>homelab-k8s</code>, and it will only
-modify or delete records carrying that stamp. Anything created by hand in
-the same zone is invisible to it. Without the registry, <code>sync</code> would be a
-way to lose hand-made records.</p>
+<p><code>sync</code> lets external-dns <strong>delete</strong> records, which is reasonably where people reach for <code>upsert-only</code> instead — pointing a deletion-capable robot at a production DNS zone is not a decision to make casually. It is safe because of the TXT registry: for every record it creates, external-dns writes a companion <code>_externaldns.*</code> TXT record stamped with <code>homelab-k8s</code>, and it will only modify or delete records carrying that stamp. Anything created by hand in the same zone is invisible to it. Without the registry, <code>sync</code> would be a genuinely excellent way to delete your MX records.</p>
 </div>
 <h2 id="adding-a-hostname">Adding a hostname<a class="headerlink" href="#adding-a-hostname" title="Permanent link">&para;</a></h2>
 <p>Nothing beyond the <code>HTTPRoute</code> you were already writing:</p>
@@ -1809,7 +1806,9 @@ outside the <code>HTTPRoute</code> needs touching.</p>
 <p>They are split because the blast radii differ. cert-manager writes only
 <code>_acme-challenge</code> TXT records, and a stolen key means someone can issue
 certificates for the zone. external-dns creates and deletes A and TXT records,
-and a stolen key means someone can repoint hostnames.</p>
+and a stolen key means someone can repoint hostnames. One shared key would
+collapse both into "someone owns your domain", which is a strictly worse
+sentence.</p>
 <p>The policy needs <code>route53:ChangeResourceRecordSets</code> on the hosted zone, plus
 <code>route53:ListHostedZones</code> and <code>route53:ListResourceRecordSets</code>.</p>
 <h2 id="checking-it-works">Checking it works<a class="headerlink" href="#checking-it-works" title="Permanent link">&para;</a></h2>
@@ -1817,9 +1816,10 @@ and a stolen key means someone can repoint hostnames.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>dig<span class="w"> </span>+short<span class="w"> </span>argo.infra.k8s.wlkr.ch
 </span></code></pre></div>
 <p>A record that will not update is usually one external-dns does not own — check
-for the matching <code>_externaldns.</code> TXT record in Route53. Adopting a hand-made
-record means creating that TXT entry, or deleting the record and letting
-external-dns recreate it.</p>
+for the matching <code>_externaldns.</code> TXT record in Route53. This is the safety
+mechanism working exactly as designed, and it will still confuse you the first
+time. Adopting a hand-made record means creating that TXT entry, or deleting the
+record and letting external-dns recreate it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>external-dns/
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml            # ArgoCD Application (Helm: external-dns)

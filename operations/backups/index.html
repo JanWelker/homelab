@@ -1904,6 +1904,9 @@
 
 
 <h1 id="backups-recovery">Backups &amp; Recovery<a class="headerlink" href="#backups-recovery" title="Permanent link">&para;</a></h1>
+<p>Nobody wants backups. Everybody wants restores. This page is written with that
+distinction in mind: every mechanism below is described in terms of what it can
+actually get back for you, and — more importantly — what it cannot.</p>
 <h2 id="current-state">Current state<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1958,7 +1961,8 @@
 </table>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
 <p>Alerting is the other half of a backup: a backup that silently stopped running
-is indistinguishable from one that works until you need it. Velero's
+is indistinguishable from one that works, right up until the moment you need it,
+which is also the moment you find out. Velero's
 <code>PrometheusRule</code> covers that, but only reaches whoever Alertmanager is
 configured to tell — see
 <a href="../../platform/monitoring/">Monitoring</a> for the state of that.</p>
@@ -1967,6 +1971,11 @@ configured to tell — see
 against the failures that actually happen — a deleted PVC, a bad <code>prune</code>, a
 corrupted database, a workload that ate its own data. It does not protect
 against losing the cluster, because the backups go with it.</p>
+<p>This is worth sitting with for a moment rather than nodding past. A backup that
+shares a failure domain with its source covers operator error and nothing else.
+Operator error is genuinely the most common cause of data loss, so this is not
+worthless — it is just precisely one half of the job, and it is important to
+know which half you have.</p>
 <p>Off-site replication is the missing piece. RGW supports bucket replication and
 Velero supports a second <code>BackupStorageLocation</code>, so the shape of the fix is
 known; neither is configured. Until then, treat the OpenBao unseal keys plus
@@ -2006,7 +2015,9 @@ and is large. <code>events</code> are excluded because they expire anyway.</p>
 <h3 id="why-the-data-mover-matters">Why the data mover matters<a class="headerlink" href="#why-the-data-mover-matters" title="Permanent link">&para;</a></h3>
 <p>A CSI snapshot on its own is a Ceph object. Backing up a PVC by snapshotting it
 would leave the only copy inside the same Ceph cluster the backup exists to
-survive — protection against a deleted PVC, but not against a broken pool. With
+survive — protection against a deleted PVC, but not against a broken pool. A
+snapshot is a bookmark, not a copy, and confusing the two is one of the more
+expensive mistakes available in storage. With
 <code>defaultSnapshotMoveData</code>, Velero takes the snapshot, streams the data out to
 the object store, and deletes the snapshot. The durable copy is the one in the
 bucket.</p>
@@ -2017,7 +2028,9 @@ and does the streaming.</p>
 </span></code></pre></div>
 <p>The AWS plugin's <code>aws-sdk-go-v2</code> sends a trailing checksum that Ceph RGW rejects
 with <code>api error XAmzContentSHA256Mismatch</code>, so <strong>every upload fails</strong> without
-this. The plugin's own README lists Ceph S3 as needing it.</p>
+this. The plugin's own README lists Ceph S3 as needing it. "S3-compatible" is
+one of the great load-bearing hyphens of our industry, and this is the sort of
+thing it is carrying.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">velero/velero-plugin-for-aws:v1.14.2</span>
 </span></code></pre></div>
 <p>Plugin <code>v1.14.x</code> pairs with Velero <code>v1.18.x</code>, this chart's appVersion. The
@@ -2034,16 +2047,21 @@ chart's commented example still shows <code>v1.13.1</code>, which is the v1.17 l
 </span></code></pre></div>
 <p>If backups sit in <code>PartiallyFailed</code>, check that a <code>VolumeSnapshotClass</code> labelled
 <code>velero.io/csi-volumesnapshot-class: "true"</code> exists — without it Velero finds no
-class for the RBD driver and skips volumes silently.</p>
+class for the RBD driver and skips volumes <strong>silently</strong>, leaving you with a
+backup full of Kubernetes objects and none of the data anybody cared about.</p>
 <h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
 <p>Velero ships a <code>PrometheusRule</code> here: <code>VeleroBackupFailures</code> (critical) and
 <code>VeleroBackupPartialFailures</code> (warning). A backup that silently stopped running
-is the failure mode this exists to prevent.</p>
+is the failure mode this exists to prevent — and it is the one that catches
+experienced people, because the dashboard stays green and the CronJob still
+exists and everything looks exactly like it did last month.</p>
 <h2 id="etcd">etcd<a class="headerlink" href="#etcd" title="Permanent link">&para;</a></h2>
 <p>Velero restores objects <em>through the API server</em>. That is the wrong tool for the
 case where there is no API server left to restore through — lost quorum, a
 corrupted data directory, three dead control-plane nodes. For that you need the
 etcd data itself, which Velero does not capture.</p>
+<p>Two backup systems for two genuinely different disasters. It looks like
+redundancy until the day you need the one you skipped.</p>
 <p>A CronJob takes one nightly at 01:00, an hour before Velero runs:</p>
 <table>
 <thead>
@@ -2089,8 +2107,9 @@ ships in the same image.</p>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>kubectl<span class="w"> </span>cp<span class="w"> </span>kube-system/etcd-&lt;node&gt;:/var/lib/etcd/snapshot.db<span class="w"> </span>./etcd-snapshot.db
 </span></code></pre></div>
-<p>Copy it off the cluster. A snapshot stored only on a Ceph PVC does not survive
-the failure it exists for.</p>
+<p>Copy it off the cluster. Now. A snapshot stored only on a Ceph PVC does not
+survive the failure it exists for, and "I'll move it later" has never once
+happened in the history of operations.</p>
 <p>Restoring is <code>etcdctl snapshot restore</code> into a fresh data directory on a stopped
 control plane, then restarting kubelet — see the
 <a href="https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster">upstream kubeadm documentation</a>.</p>
@@ -2099,7 +2118,8 @@ control plane, then restarting kubelet — see the
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
 </span></code></pre></div>
 <p>The snapshot contains all KV data plus policies, roles and mounts. It does
-<strong>not</strong> contain the unseal keys, and it is useless without them. Details in
+<strong>not</strong> contain the unseal keys, and it is useless without them — a perfect,
+verified, encrypted brick. Details in
 <a href="../../platform/openbao/#backups">OpenBao &rarr; Backups</a>.</p>
 <h2 id="ceph-volumes">Ceph volumes<a class="headerlink" href="#ceph-volumes" title="Permanent link">&para;</a></h2>
 <p>There is no volume backup. Rook-Ceph replicates across OSDs, which protects
@@ -2121,6 +2141,9 @@ second cluster would close it.</p>
 <li>Optionally an etcd snapshot, to skip re-issuing certificates and waiting for
    the platform to re-converge.</li>
 </ol>
+<p>Items 1 and 2 are the ones that actually matter, and only one of them lives
+somewhere GitHub keeps a copy. If you take a single action after reading this
+page, make it checking that you still know where those five key shares are.</p>
 <p>The rebuild itself is the <a href="../../quickstart/">Quickstart</a> from step 1. Because
 the platform is declarative, the cluster converges back to its documented state
 once ArgoCD points at the repository and OpenBao is unsealed.</p>

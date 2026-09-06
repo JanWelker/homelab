@@ -789,6 +789,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-certificate-will-not-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When a certificate will not issue
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1662,6 +1673,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#when-a-certificate-will-not-issue" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        When a certificate will not issue
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1705,10 +1727,14 @@
 
 <h1 id="cert-manager">cert-manager<a class="headerlink" href="#cert-manager" title="Permanent link">&para;</a></h1>
 <p>TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53.</p>
+<p>DNS-01 rather than HTTP-01 for one decisive reason: these hostnames resolve to
+RFC1918 addresses that Let's Encrypt cannot reach. Nothing on the public internet
+can complete an HTTP challenge against <code>10.9.2.248</code>. Proving control of the DNS
+zone works from anywhere, and it is also the only way to get a wildcard.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>ClusterIssuers</strong>: Both staging (testing) and production issuers using DNS-01 via Route53.</li>
-<li><strong>Certificates</strong>: Wildcard TLS certs for <code>*.k8s.wlkr.ch</code> and <code>*.infra.k8s.wlkr.ch</code>, stored as Secrets in <code>kube-system</code> and referenced by the Gateways.</li>
+<li><strong>Certificates</strong>: Wildcard TLS certs for <code>*.k8s.wlkr.ch</code> and <code>*.infra.k8s.wlkr.ch</code>, stored as Secrets in <code>kube-system</code> and referenced by the Gateways. Two certificates cover every hostname this cluster will ever serve, which is a pleasant place to be.</li>
 </ul>
 <h2 id="aws-credentials-setup">AWS Credentials Setup<a class="headerlink" href="#aws-credentials-setup" title="Permanent link">&para;</a></h2>
 <p>The DNS-01 solver needs AWS credentials with Route53 permissions. The <code>route53-credentials</code> Secret is materialised from <a href="../openbao/">OpenBao</a> via an <a href="../external-secrets/">ExternalSecret</a>.</p>
@@ -1717,7 +1743,7 @@
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"YOUR_AWS_ACCESS_KEY_ID"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"YOUR_AWS_SECRET_ACCESS_KEY"</span>
 </span></code></pre></div>
-<p>ESO will then create the <code>route53-credentials</code> Secret in the <code>cert-manager</code> namespace within <code>refreshInterval</code> (1h by default). Trigger an immediate sync with:</p>
+<p>ESO will then create the <code>route53-credentials</code> Secret in the <code>cert-manager</code> namespace within <code>refreshInterval</code> (1h by default) — or, if you would rather not spend an hour wondering whether it worked, immediately:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>cert-manager<span class="w"> </span>route53-credentials<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
@@ -1730,7 +1756,7 @@
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. For the very first bootstrap, see the <a href="../../quickstart/">Quickstart</a> which walks through the order.</p>
+<p>Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. This is the dependency that catches people after every power cut: sealed OpenBao means no Route53 credentials, which means no renewals, which means an expired certificate roughly two months later with no obvious connection to the outage that caused it. For the very first bootstrap, see the <a href="../../quickstart/">Quickstart</a> which walks through the order.</p>
 </div>
 <h2 id="issuers">Issuers<a class="headerlink" href="#issuers" title="Permanent link">&para;</a></h2>
 <table>
@@ -1751,13 +1777,20 @@
 </tr>
 </tbody>
 </table>
-<p>Use <code>letsencrypt-staging</code> first when setting up to avoid hitting Let's Encrypt rate limits.</p>
+<p>Use <code>letsencrypt-staging</code> first when setting up. Production allows five duplicate certificates per week, a misconfigured solver will retry cheerfully until that is gone, and then you wait — there is no appeals process and no amount of restarting the pod helps. Staging exists exactly so you can get it wrong as many times as you need to.</p>
+<h2 id="when-a-certificate-will-not-issue">When a certificate will not issue<a class="headerlink" href="#when-a-certificate-will-not-issue" title="Permanent link">&para;</a></h2>
+<p>Work down the chain of custody; the answer is nearly always further back than the <code>Certificate</code> itself:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>describe<span class="w"> </span>certificate<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>&lt;name&gt;
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificaterequest,order,challenge<span class="w"> </span>-A
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>cert-manager<span class="w"> </span>logs<span class="w"> </span>deploy/cert-manager<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span>
+</span></code></pre></div>
+<p>A <code>Challenge</code> stuck in <code>pending</code> is a DNS problem, not a cert-manager problem: either the credentials cannot write to the zone, or the TXT record is there and the resolver has not caught up yet. <code>dig +short TXT _acme-challenge.&lt;host&gt;</code> settles which.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>cert-manager/                  # TLS Certificate Management
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml           # ArgoCD Application (Helm chart)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── certificates.yaml          # All Certificate resources
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>└── route53-credentials.yaml   # ExternalSecret → OpenBao
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cert-manager/                  # TLS Certificate Management
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml           # ArgoCD Application (Helm chart)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── certificates.yaml          # All Certificate resources
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>└── route53-credentials.yaml   # ExternalSecret → OpenBao
 </span></code></pre></div>
 
 

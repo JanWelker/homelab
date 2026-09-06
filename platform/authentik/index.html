@@ -1818,6 +1818,10 @@
 <h1 id="authentik">Authentik<a class="headerlink" href="#authentik" title="Permanent link">&para;</a></h1>
 <p><a href="https://goauthentik.io/">Authentik</a> is the cluster's identity provider. Every
 platform UI sits behind one login.</p>
+<p>The alternative — the state most homelabs live in — is six dashboards with six
+different credentials, three of which are the chart default, one of which is
+written on a sticky note, and one of which has no authentication at all because
+the project never shipped any.</p>
 <table>
 <thead>
 <tr>
@@ -1855,14 +1859,18 @@ platform UI sits behind one login.</p>
 <p>Left to themselves these each carry a different answer — a local <code>admin</code> account
 with an API key, a chart-generated password, separate Ceph credentials — and
 Hubble UI carries none at all, which would publish cluster-wide network flow
-data to anyone who could reach the hostname.</p>
+data to anyone who could reach the hostname. Hubble is the one that should make
+you sit up: it is a live map of every connection in the cluster, served without
+so much as a password prompt.</p>
 <h2 id="two-integration-styles">Two integration styles<a class="headerlink" href="#two-integration-styles" title="Permanent link">&para;</a></h2>
 <p><strong>OIDC</strong>, for applications that can do it themselves. ArgoCD and Grafana each
 talk to Authentik directly and map group membership to a role.</p>
 <p><strong>Proxy</strong>, for the four that cannot. Authentik's embedded outpost is a reverse
 proxy: the hostname resolves to the outpost, the outpost authenticates the
 request, and only then forwards it to the real backend. No support is needed
-from the application, which is the only option for something like Hubble.</p>
+from the application, which is the only option for something like Hubble. It is
+the classic auth-in-front-of-a-dumb-backend pattern, and it works precisely as
+well as your certainty that nothing else can reach the backend directly.</p>
 <pre class="mermaid"><code>flowchart LR
     U([Browser]) --&gt; GW[infra-gateway]
     GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
@@ -1883,7 +1891,9 @@ front of them.</p>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
 (<code>blueprints.yaml</code>), mounted into the worker as a ConfigMap. Clicking them
-together in the UI would mean losing them on the next rebuild.</p>
+together in the UI would mean losing them on the next rebuild — and identity
+configuration is exactly the sort of thing you set up once, forget entirely, and
+then cannot reconstruct under pressure two years later.</p>
 <p>Three tags do the work:</p>
 <ul>
 <li><code>!Find</code> resolves objects Authentik ships by default, such as the default
@@ -1894,9 +1904,7 @@ together in the UI would mean losing them on the next rebuild.</p>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">The outpost entry replaces its provider list</p>
-<p>The <code>authentik_outposts.outpost</code> entry sets <code>providers</code> wholesale rather
-than appending. Every proxied application must be listed there — adding a
-fifth and forgetting this line silently unassigns the other four.</p>
+<p>The <code>authentik_outposts.outpost</code> entry sets <code>providers</code> wholesale rather than appending. Every proxied application must be listed there — adding a fifth and forgetting this line silently unassigns the other four, which means four dashboards quietly stop being protected rather than loudly breaking. Failing open is the worst failure mode a security control can have.</p>
 </div>
 <h2 id="client-secrets-are-generated-up-front">Client secrets are generated up front<a class="headerlink" href="#client-secrets-are-generated-up-front" title="Permanent link">&para;</a></h2>
 <p>The OIDC client ID and secret are shared values: Authentik needs them, and so do
@@ -1905,7 +1913,9 @@ only in its database, both are generated once into OpenBao and read from there
 by both sides — Authentik through <code>!Env</code>, the clients through their own
 <code>ExternalSecret</code>.</p>
 <p>That is what makes the whole thing reproducible: a rebuilt Authentik gets the
-same client credentials, and nothing has to be copied out of a UI.</p>
+same client credentials, and nothing has to be copied out of a UI. Anything that
+exists only inside a running system's database is not configuration, it is a
+hostage situation.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/authentik/config<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>secret-key<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>postgres-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -1947,13 +1957,18 @@ same client credentials, and nothing has to be copied out of a UI.</p>
 </tbody>
 </table>
 <p>ArgoCD's <code>policy.default</code> is empty, so an authenticated user in neither ArgoCD
-group gets <strong>no</strong> access rather than read-only-everything. Grafana falls back to
+group gets <strong>no</strong> access rather than read-only-everything. That default is worth
+copying elsewhere: "authenticated" and "authorised" are different questions, and
+plenty of systems answer the second one with a shrug. Grafana falls back to
 <code>Viewer</code>.</p>
 <p>Access to a proxied application is controlled in Authentik itself, by binding
 policies or groups to the application.</p>
 <h2 id="when-authentik-is-down">When Authentik is down<a class="headerlink" href="#when-authentik-is-down" title="Permanent link">&para;</a></h2>
-<p>Authentik becoming a dependency of every UI is the cost of this. Both OIDC
-integrations keep a break-glass path:</p>
+<p>Authentik becoming a dependency of every UI is the cost of this, and it is a real
+one: single sign-on is also a single point of failure for logging in at all.
+Read this section <em>before</em> you need it, because the ArgoCD escape hatch below
+requires a working <code>kubectl</code>, and you will be reaching for it on the day nothing
+else works. Both OIDC integrations keep a break-glass path:</p>
 <p><strong>ArgoCD</strong> — re-enable the local admin account:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
@@ -1963,7 +1978,9 @@ integrations keep a break-glass path:</p>
 works through the API, and setting <code>GF_AUTH_DISABLE_LOGIN_FORM=false</code> brings the
 form back.</p>
 <p>The four proxied dashboards have no bypass: with the outpost down, the hostname
-does not answer. Reach them by port-forward instead:</p>
+does not answer, full stop. Reach them by port-forward instead — which is a
+reminder that <code>kubectl port-forward</code> is the universal break-glass tool and the
+reason keeping a working kubeconfig off-cluster matters:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
 </span></code></pre></div>

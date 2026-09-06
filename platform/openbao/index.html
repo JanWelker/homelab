@@ -2061,6 +2061,10 @@
 
 <h1 id="openbao">OpenBao<a class="headerlink" href="#openbao" title="Permanent link">&para;</a></h1>
 <p><a href="https://openbao.org/">OpenBao</a> is the cluster's secret store — an open-source, Linux Foundation fork of HashiCorp Vault. It holds every secret consumed by workloads on the cluster (cloud credentials, API tokens, registry pulls, database passwords, …). Secrets are surfaced to Kubernetes as native <code>Secret</code> objects via the <a href="../external-secrets/">External Secrets Operator</a>.</p>
+<p>It is also the single most consequential component on this cluster. When
+OpenBao is unhappy, nothing that needs a credential works, and the failure
+presents as six unrelated things breaking at once. Learn its two states —
+sealed and unsealed — before you need to.</p>
 <pre class="mermaid"><code>flowchart LR
     Operator([Operator]) --&gt;|bao CLI| Bao[(OpenBao&lt;br/&gt;KV v2)]
     ESO[External Secrets&lt;br/&gt;Operator] --&gt;|read| Bao
@@ -2109,45 +2113,53 @@
 </table>
 <p>The chart is the official upstream <a href="https://github.com/openbao/openbao-helm"><code>openbao/openbao-helm</code></a>, pinned in <code>application.yaml</code>.</p>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<p>OpenBao is sync-wave <code>0</code> — it starts after cert-manager (<code>-5</code>), Cilium (<code>-1</code>), and the Rook-Ceph cluster (<code>-1</code>). ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed.</p>
+<p>OpenBao is sync-wave <code>0</code> — it starts after cert-manager (<code>-5</code>), Cilium (<code>-1</code>), and the Rook-Ceph cluster (<code>-1</code>). ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised. Unsealing is normally automatic — see <a href="#auto-unseal">Auto-unseal</a> — but initialisation is a one-time manual step that nothing does for you.</p>
 <h3 id="1-initialise-the-cluster-one-time">1. Initialise the cluster (one-time)<a class="headerlink" href="#1-initialise-the-cluster-one-time" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>-key-shares<span class="o">=</span><span class="m">5</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>-key-threshold<span class="o">=</span><span class="m">3</span>
 </span></code></pre></div>
-<p>The command prints <strong>5 unseal keys</strong> and an <strong>initial root token</strong>. Store them in a password manager — losing all 5 keys means the data is unrecoverable.</p>
+<p>The command prints <strong>5 unseal keys</strong> and an <strong>initial root token</strong>. Store them in a password manager, right now, before you run another command. Not in the terminal scrollback. Not in a note you will "tidy up later". Losing all 5 keys means the data is unrecoverable, and OpenBao is not being dramatic about that — there is no support line, no recovery flow, and no clever trick. There is just the ciphertext and no way in.</p>
 <div class="admonition danger">
 <p class="admonition-title">Danger</p>
-<p>These keys protect every other secret on the cluster. They are written <strong>once</strong>, to the operator's terminal. There is no backup. Treat them like the root credentials they are.</p>
+<p>These keys protect every other secret on the cluster. They are written <strong>once</strong>, to the operator's terminal. There is no backup, no second chance, and no amount of Ceph replication that helps. Treat them like the root credentials they are, and keep them somewhere that does not require this cluster to be running in order to read.</p>
 </div>
 <h3 id="2-unseal-each-replica">2. Unseal each replica<a class="headerlink" href="#2-unseal-each-replica" title="Permanent link">&para;</a></h3>
-<p>Repeat for <code>openbao-0</code>, <code>openbao-1</code>, <code>openbao-2</code>, providing 3 of the 5 keys each time:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="k">done</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">done</span>
+<p>With the <a href="#auto-unseal"><code>awskms</code> seal</a> already in place — which it is on a
+cluster built from this repository — the pods unseal themselves as soon as they
+can reach KMS, and the five shares init handed you are <strong>recovery</strong> keys rather
+than unseal keys. Check before doing anything by hand:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Seal Type: awskms, Sealed: false</span>
 </span></code></pre></div>
-<p>Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
+<p>The manual procedure below applies when the seal is Shamir, or when KMS is
+unreachable and you need OpenBao up anyway. Repeat for <code>openbao-0</code>,
+<code>openbao-1</code>, <code>openbao-2</code>, providing 3 of the 5 keys each time:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="k">done</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">done</span>
+</span></code></pre></div>
+<p>Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is exactly why <a href="#auto-unseal">auto-unseal</a> is configured. Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
 </span></code></pre></div>
 <p>You should see <code>Initialized: true</code>, <code>Sealed: false</code>, <code>HA Mode: active</code> on one pod and <code>standby</code> on the others.</p>
 <h3 id="3-authenticate-locally">3. Authenticate locally<a class="headerlink" href="#3-authenticate-locally" title="Permanent link">&para;</a></h3>
 <p>For convenience, port-forward and point the CLI at the local instance:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>port-forward<span class="w"> </span>svc/openbao<span class="w"> </span><span class="m">8200</span>:8200<span class="w"> </span><span class="p">&amp;</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BAO_ADDR</span><span class="o">=</span>http://127.0.0.1:8200
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>bao<span class="w"> </span>login<span class="w">   </span><span class="c1"># paste the root token</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>port-forward<span class="w"> </span>svc/openbao<span class="w"> </span><span class="m">8200</span>:8200<span class="w"> </span><span class="p">&amp;</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BAO_ADDR</span><span class="o">=</span>http://127.0.0.1:8200
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>bao<span class="w"> </span>login<span class="w">   </span><span class="c1"># paste the root token</span>
 </span></code></pre></div>
 <p>The remaining steps assume <code>bao</code> is configured this way.</p>
 <h2 id="secret-engine">Secret engine<a class="headerlink" href="#secret-engine" title="Permanent link">&para;</a></h2>
-<p>We mount a single KV v2 engine at the path <code>kv/</code>. All cluster secrets live under it.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>bao<span class="w"> </span>secrets<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>-path<span class="o">=</span>kv<span class="w"> </span>-version<span class="o">=</span><span class="m">2</span><span class="w"> </span>kv
+<p>A single KV v2 engine is mounted at the path <code>kv/</code>. All cluster secrets live under it. One engine, one convention, no debates six months from now about whether it was <code>kv/</code> or <code>secret/</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>bao<span class="w"> </span>secrets<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>-path<span class="o">=</span>kv<span class="w"> </span>-version<span class="o">=</span><span class="m">2</span><span class="w"> </span>kv
 </span></code></pre></div>
 <h3 id="layout-convention">Layout convention<a class="headerlink" href="#layout-convention" title="Permanent link">&para;</a></h3>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kv/
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├── cert-manager/
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│   └── route53            # access-key-id, secret-access-key
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kv/
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>├── cert-manager/
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>│   └── route53            # access-key-id, secret-access-key
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
 </span></code></pre></div>
 <p><code>cert-manager/route53</code> is currently the only path in use — it is consumed by
 the one <a href="../external-secrets/">ExternalSecret</a> in the repository
@@ -2155,56 +2167,56 @@ the one <a href="../external-secrets/">ExternalSecret</a> in the repository
 follows the same <code>&lt;workload&gt;/&lt;purpose&gt;</code> shape.</p>
 <p>Each leaf is a single secret with one or more keys. ExternalSecret resources reference paths as <code>cert-manager/route53</code> (the KV v2 <code>data/</code> prefix is added by ESO automatically).</p>
 <h3 id="storing-a-secret">Storing a secret<a class="headerlink" href="#storing-a-secret" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"AKIA..."</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"..."</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"AKIA..."</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"..."</span>
 </span></code></pre></div>
 <h3 id="reading-a-secret">Reading a secret<a class="headerlink" href="#reading-a-secret" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>kv/cert-manager/route53
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>kv/cert-manager/route53
 </span></code></pre></div>
 <h2 id="kubernetes-auth-method">Kubernetes auth method<a class="headerlink" href="#kubernetes-auth-method" title="Permanent link">&para;</a></h2>
 <p>External Secrets Operator authenticates to OpenBao using ServiceAccount JWTs. Set this up once after init:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Enable the auth method</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>bao<span class="w"> </span>auth<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>kubernetes
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Tell OpenBao how to reach the cluster's TokenReview API. The CA cert</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># and host are read from the in-cluster ServiceAccount projection.</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/config<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span><span class="nv">kubernetes_host</span><span class="o">=</span><span class="s2">"https://kubernetes.default.svc"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Enable the auth method</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>bao<span class="w"> </span>auth<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>kubernetes
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># Tell OpenBao how to reach the cluster's TokenReview API. The CA cert</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># and host are read from the in-cluster ServiceAccount projection.</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/config<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span><span class="nv">kubernetes_host</span><span class="o">=</span><span class="s2">"https://kubernetes.default.svc"</span>
 </span></code></pre></div>
 <p>The OpenBao ServiceAccount (<code>openbao</code> in namespace <code>openbao</code>) already has the <code>system:auth-delegator</code> ClusterRole bound to it via <code>rbac.yaml</code> in this directory, so the TokenReview calls succeed without additional setup.</p>
 <h3 id="policy-for-eso">Policy for ESO<a class="headerlink" href="#policy-for-eso" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>bao<span class="w"> </span>policy<span class="w"> </span>write<span class="w"> </span>external-secrets<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="s">path "kv/data/*" {</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="s">  capabilities = ["read"]</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="s">}</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="s">path "kv/metadata/*" {</span>
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="s">  capabilities = ["read", "list"]</span>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="s">}</span>
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="s">EOF</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>bao<span class="w"> </span>policy<span class="w"> </span>write<span class="w"> </span>external-secrets<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s">path "kv/data/*" {</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s">  capabilities = ["read"]</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s">}</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="s">path "kv/metadata/*" {</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="s">  capabilities = ["read", "list"]</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="s">}</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="s">EOF</span>
 </span></code></pre></div>
 <h3 id="role-binding-esos-serviceaccount">Role binding ESO's ServiceAccount<a class="headerlink" href="#role-binding-esos-serviceaccount" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/role/external-secrets<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span><span class="nv">bound_service_account_names</span><span class="o">=</span>external-secrets-vault<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span><span class="nv">bound_service_account_namespaces</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span><span class="nv">policies</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span><span class="nv">ttl</span><span class="o">=</span>1h
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/role/external-secrets<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nv">bound_service_account_names</span><span class="o">=</span>external-secrets-vault<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span><span class="nv">bound_service_account_namespaces</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span><span class="nv">policies</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span><span class="nv">ttl</span><span class="o">=</span>1h
 </span></code></pre></div>
 <p>The <code>external-secrets-vault</code> ServiceAccount is created by <code>payload/platform/external-secrets/cluster-secret-store.yaml</code> — see <a href="../external-secrets/">External Secrets</a>.</p>
 <p>Once this is done, ExternalSecret resources cluster-wide will resolve. Verify with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>-A
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span>yaml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>-A
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span>yaml
 </span></code></pre></div>
 <p>The <code>Status.Conditions</code> of the <code>ClusterSecretStore</code> should report <code>Ready=True</code>.</p>
 <h2 id="unsealing-after-a-restart">Unsealing after a restart<a class="headerlink" href="#unsealing-after-a-restart" title="Permanent link">&para;</a></h2>
-<p>OpenBao seals itself on every pod restart. After a node reboot, ArgoCD upgrade, or chart bump:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.containerStatuses[0].ready}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">      </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="k">done</span>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="k">done</span>
+<p>OpenBao seals itself on every pod restart — every node reboot, every ArgoCD upgrade, every chart bump, every time a kubelet has a bad day. This is by design and it is not going to stop:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.containerStatuses[0].ready}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">    </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">      </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span><span class="k">done</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="k">done</span>
 </span></code></pre></div>
 <p><a href="#auto-unseal">Auto-unseal</a> normally handles this, so the manual procedure is a
 fallback: it is what to reach for if KMS is unreachable and you need OpenBao up
@@ -2218,6 +2230,9 @@ shares — and that is not just an inconvenience. While OpenBao is sealed no
 <code>ExternalSecret</code> resolves, so cert-manager loses the Route53 credentials it
 needs to renew certificates, and a power cut leaves the cluster running but
 unable to issue certificates until a human intervenes.</p>
+<p>The failure is also slow, which makes it worse. Nothing breaks the day OpenBao
+seals; things break sixty days later when a certificate expires and nobody
+connects the two events.</p>
 <table>
 <thead>
 <tr>
@@ -2257,7 +2272,9 @@ carries the full AWS-side setup. ArgoCD does not sync <code>.template</code> fil
 <p>Its IAM user is deliberately separate from the one cert-manager uses for
 Route53. The blast radii differ: losing the Route53 key lets someone mint
 certificates for the zone, losing this one lets someone decrypt the OpenBao root
-key given a copy of the Raft data.</p>
+key given a copy of the Raft data. One shared "homelab" IAM user for everything
+is the convenient option, and it is convenient precisely because it makes every
+compromise a total one.</p>
 <div class="admonition warning">
 <p class="admonition-title">This is a dependency, not just a convenience</p>
 <p>OpenBao cannot start without AWS KMS. If KMS is unreachable — a
@@ -2278,8 +2295,11 @@ a surprise, but it is a real migration when it comes.</p>
 <h3 id="migrating-an-already-initialised-cluster">Migrating an already-initialised cluster<a class="headerlink" href="#migrating-an-already-initialised-cluster" title="Permanent link">&para;</a></h3>
 <p>A cluster initialised with Shamir keys does not switch seals by syncing this
 change. The root key has to be re-wrapped, and OpenBao requires the whole
-cluster to go down briefly to do it. <strong>Take a Raft snapshot first.</strong></p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>pre-migration.bao
+cluster to go down briefly to do it. <strong>Take a Raft snapshot first.</strong> This is one
+of the few procedures here with a real chance of leaving you with an unusable
+secret store, and the snapshot is what turns that from a catastrophe into an
+annoying evening.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>pre-migration.bao
 </span></code></pre></div>
 <p>Then, following the
 <a href="https://openbao.org/docs/concepts/seal/#seal-migration">seal migration procedure</a>:</p>
@@ -2289,10 +2309,10 @@ cluster to go down briefly to do it. <strong>Take a Raft snapshot first.</strong
 <li>
 <p>Restart one <strong>standby</strong> pod. When it comes back it will report that a seal
    migration is pending. Unseal it with <code>-migrate</code>, three times:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>openbao-2
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-2<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal<span class="w"> </span>-migrate
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>openbao-2
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-2<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal<span class="w"> </span>-migrate
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="k">done</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2301,7 +2321,7 @@ cluster to go down briefly to do it. <strong>Take a Raft snapshot first.</strong
 </li>
 <li>
 <p>Step down the active node and let a migrated standby take over:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>step-down
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>step-down
 </span></code></pre></div>
 </li>
 <li>
@@ -2311,22 +2331,24 @@ cluster to go down briefly to do it. <strong>Take a Raft snapshot first.</strong
 </ol>
 <p>Afterwards the 5 shares are <strong>recovery keys</strong>, not unseal keys. They no longer
 unseal a pod, but they are still required for <code>bao operator generate-root</code>,
-rekey, and any future seal migration. Keep them exactly as carefully as before.</p>
+rekey, and any future seal migration. Keep them exactly as carefully as before —
+the temptation to relax about keys you no longer type in every week is real, and
+it is a trap.</p>
 <p>Confirm the result:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># Seal Type: awskms   Initialized: true   Sealed: false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># Seal Type: awskms   Initialized: true   Sealed: false</span>
 </span></code></pre></div>
 <h2 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h2>
 <p>The Raft storage backend supports snapshotting:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
 </span></code></pre></div>
-<p>Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster. Restore with <code>bao operator raft snapshot restore</code>.</p>
+<p>Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster — a snapshot on a PVC inside the cluster it is meant to rebuild is decoration. Restore with <code>bao operator raft snapshot restore</code>. And note the obvious: the snapshot is encrypted with a key that lives in KMS or in those five shares, so it is exactly as recoverable as your key custody is.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>openbao/
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>├── kms-credentials.yaml.template   # awskms bootstrap Secret, applied by hand
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>└── rbac.yaml                       # system:auth-delegator binding for the openbao SA
+<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>openbao/
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>├── kms-credentials.yaml.template   # awskms bootstrap Secret, applied by hand
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>└── rbac.yaml                       # system:auth-delegator binding for the openbao SA
 </span></code></pre></div>
 
 

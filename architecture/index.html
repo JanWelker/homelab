@@ -1691,18 +1691,34 @@
 
 
 <h1 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
-<p>This project provides a mechanism to deploy a Bare Metal Kubernetes Cluster using
-Flatcar Container Linux and Kubeadm.</p>
+<p>This project deploys a bare metal Kubernetes cluster using Flatcar Container
+Linux and Kubeadm. No cloud provider, no managed control plane, no friendly
+button labelled "create cluster" — just six machines, a network, and a
+deployment host that talks them into existence.</p>
 <h2 id="key-concepts">Key Concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
-<p>If you're new to this stack, the following concepts are worth understanding before diving in.</p>
+<p>If you're new to this stack, the following concepts are worth understanding
+before diving in. They are also the four things that, once they click, make the
+rest of this documentation stop feeling like a list of unrelated tools.</p>
 <h3 id="flatcar-container-linux">Flatcar Container Linux<a class="headerlink" href="#flatcar-container-linux" title="Permanent link">&para;</a></h3>
 <p><a href="https://www.flatcar.org/">Flatcar</a> is an immutable, minimal Linux distribution designed specifically for running containers. The root filesystem is read-only — you cannot install packages or modify system files at runtime. This forces all configuration to happen declaratively at first boot via <strong>Ignition</strong>.</p>
-<p>Flatcar downloads OS updates in the background into an A/B partition pair, so a failed update can be rolled back. This project masks <code>locksmithd</code>, the service that would normally coordinate the reboot, so a staged update is applied only when you reboot the node yourself — see <a href="../operations/upgrades/">Updates &amp; Upgrades</a>.</p>
+<p>That constraint is the entire point. Anyone who has inherited a fleet of
+"identical" servers knows they are identical the way siblings are: broadly
+similar, differing in ways nobody wrote down, and each carrying one undocumented
+fix applied at 3am by someone who has since left. A read-only <code>/usr</code> makes that
+impossible rather than merely discouraged.</p>
+<p>Flatcar downloads OS updates in the background into an A/B partition pair, so a failed update can be rolled back. This project masks <code>locksmithd</code>, the service that would normally coordinate the reboot, so a staged update is applied only when <a href="../platform/kured/">Kured</a> drains the node — or when you reboot it yourself. See <a href="../operations/upgrades/">Updates &amp; Upgrades</a>.</p>
 <h3 id="ignition-butane">Ignition &amp; Butane<a class="headerlink" href="#ignition-butane" title="Permanent link">&para;</a></h3>
 <p><strong>Ignition</strong> is Flatcar's first-boot provisioning system. It reads a JSON config on first boot and applies it: creates users, writes files, partitions disks, enables systemd units, etc.</p>
 <p><strong>Butane</strong> is a human-friendly YAML format that compiles down to Ignition JSON. In this project, Ansible generates Butane configs from Jinja2 templates, then transpiles them to Ignition JSON which the boot server serves over HTTP.</p>
+<p>Ignition runs <em>once</em>, in the initramfs, before the real root is mounted. It is
+not a configuration management system and it will not converge anything on the
+second boot. If you change a template, the node has to be reprovisioned to care.</p>
 <h3 id="systemd-sysexts">Systemd Sysexts<a class="headerlink" href="#systemd-sysexts" title="Permanent link">&para;</a></h3>
 <p>Because Flatcar's root filesystem is read-only, software like <code>kubernetes</code> and <code>containerd</code> is delivered as <strong>system extensions</strong> (sysexts) — read-only overlay images that extend <code>/usr</code> at boot time via <code>systemd-sysupdate</code>. The nodes download these from the HTTP boot server on first boot.</p>
+<p>This is where "immutable OS" stops being an abstract virtue and starts being a
+thing you have to reason about: upgrading Kubernetes on these nodes is not
+<code>apt upgrade</code>, it is swapping a squashfs image and rebooting. See
+<a href="../operations/upgrades/">Updates &amp; Upgrades</a> for how that actually plays out.</p>
 <h3 id="pxe-boot">PXE Boot<a class="headerlink" href="#pxe-boot" title="Permanent link">&para;</a></h3>
 <p><strong>PXE (Preboot Execution Environment)</strong> allows machines to boot from the network instead of a local disk. The NIC requests a boot file from a TFTP server (pointed to by the DHCP server). In this project:</p>
 <ul>
@@ -1710,9 +1726,15 @@ Flatcar Container Linux and Kubeadm.</p>
 <li>TFTP serves the syslinux bootloader</li>
 <li>Syslinux fetches the Flatcar kernel + initrd over HTTP, passing the Ignition config URL as a kernel parameter</li>
 </ul>
+<p>PXE is a protocol from 1998 that runs over UDP with no error correction worth
+the name, which is why everything larger than the bootloader moves over HTTP as
+fast as possible. Respect it; it has outlived most of the things designed to
+replace it.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <h3 id="1-deployment-host-local-machine">1. Deployment Host (Local Machine)<a class="headerlink" href="#1-deployment-host-local-machine" title="Permanent link">&para;</a></h3>
-<p>The machine where this project is executed.</p>
+<p>The machine where this project is executed. Notably <strong>not</strong> part of the cluster —
+it is a laptop on the same network, and the cluster does not depend on it once
+provisioning is done.</p>
 <ul>
 <li><strong>Ansible</strong>: Responsible for generating the configuration files (Ignition,
   Kubeadm config) based on templates and variables.</li>
@@ -1772,9 +1794,12 @@ Flatcar Container Linux and Kubeadm.</p>
 </tr>
 </tbody>
 </table>
+<p>Three control-plane nodes, because etcd needs an odd number and two is the worst
+possible answer: twice the hardware, and you still lose quorum when one dies.</p>
 <p>The API server is reached through a kube-vip virtual IP (<code>10.9.2.10</code> by
 default) rather than any single node — see
-<a href="../operations/control-plane-vip/">Control Plane VIP</a>.</p>
+<a href="../operations/control-plane-vip/">Control Plane VIP</a>. Naming a node as the
+API endpoint works fine right up until that node is the one you need to reboot.</p>
 <p><strong>Networks</strong>: Pod subnet <code>10.244.0.0/16</code>, Service subnet <code>10.96.0.0/12</code></p>
 <h2 id="technologies">Technologies<a class="headerlink" href="#technologies" title="Permanent link">&para;</a></h2>
 <table>
@@ -1833,6 +1858,9 @@ default) rather than any single node — see
 </tr>
 </tbody>
 </table>
+<p>Every one of these had a simpler alternative that was rejected on purpose. The
+reasoning, including what each choice costs, is in
+<a href="decisions/">Design Decisions</a>.</p>
 
 
 

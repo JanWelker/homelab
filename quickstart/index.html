@@ -1807,20 +1807,19 @@
 <p><img align="right" alt="Homelab Logo" src="../assets/images/logo.png" width="150" /></p>
 <p>Bring up the bare metal Kubernetes cluster from scratch. This project automates
 the deployment using Flatcar Container Linux and Kubeadm.</p>
+<p>Set aside an afternoon. Not because the steps are long — they are eleven
+commands — but because somewhere around step 7 a machine will sit at a blinking
+cursor, and you will learn something about your DHCP server that you did not
+want to know.</p>
 <div class="admonition warning">
 <p class="admonition-title">Read this first if the cluster isn't mine</p>
-<p>This repository describes a specific homelab. Node names, IP addresses, the
-<code>wlkr.ch</code> domain, and the Git repository URL are hardcoded throughout
-<code>payload/</code>. Following the steps below verbatim gives you a cluster whose
-ArgoCD syncs from <strong>this</strong> repository and whose certificates are issued for
-a domain you don't control. Work through
-<a href="../adapting/">Adapting This for Your Cluster</a> <strong>before</strong> step 1.</p>
+<p>This repository describes a specific homelab. Node names, IP addresses, the <code>wlkr.ch</code> domain, and the Git repository URL are hardcoded throughout <code>payload/</code>. Following the steps below verbatim gives you a cluster whose ArgoCD syncs from <strong>this</strong> repository and whose certificates are issued for a domain you don't control. Work through <a href="../adapting/">Adapting This for Your Cluster</a> <strong>before</strong> step 1.</p>
 </div>
 <h2 id="hardware-requirements">Hardware Requirements<a class="headerlink" href="#hardware-requirements" title="Permanent link">&para;</a></h2>
 <p>Each node must have:</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
-<li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>)</li>
+<li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>, because hardware is a collection of exceptions wearing a trenchcoat)</li>
 <li>Sufficient disk space: 50 GB reserved for containerd, remainder used by Rook-Ceph as OSD storage</li>
 </ul>
 <p>The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.</p>
@@ -1879,6 +1878,10 @@ a domain you don't control. Work through
 <li>Option 66 (<code>next-server</code>): IP of the machine running <code>make serve</code></li>
 <li>Option 67 (<code>filename</code>): <code>lpxelinux.0</code> for BIOS, <code>syslinux.efi</code> for UEFI</li>
 </ul>
+<div class="admonition tip">
+<p class="admonition-title">Consumer routers and PXE</p>
+<p>Plenty of home routers will happily let you set options 66 and 67 and then serve neither. If step 7 produces total silence in the boot server log, prove the DHCP side first with <code>tcpdump -i &lt;iface&gt; port 67 or port 68</code> before you go looking for bugs in anything more interesting.</p>
+</div>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
@@ -1942,7 +1945,10 @@ a domain you don't control. Work through
 (PXE). Note: The install disk is partitioned into 50GB for containerd and the
 remaining space for Rook-Ceph storage.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
-into the generated files. <code>make artifacts</code> runs steps 4 and 5 together.</p>
+into the generated files. Editing the inventory and skipping this step is the
+homelab equivalent of changing the config and forgetting to reload the
+service, and it fails just as quietly. <code>make artifacts</code> runs steps 4 and 5
+together.</p>
 <p>Check that one PXE menu was generated per node:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ls<span class="w"> </span>output/tftp/pxelinux.cfg/<span class="w">     </span><span class="c1"># one 01-&lt;mac&gt; file per host</span>
 </span></code></pre></div>
@@ -1953,7 +1959,9 @@ into the generated files. <code>make artifacts</code> runs steps 4 and 5 togethe
 </span></code></pre></div>
 <p>Leave this running for the whole of step 7 — it serves every artifact the
 nodes fetch. It logs each TFTP and HTTP request, which is the best signal
-that a node is progressing.</p>
+that a node is progressing. Keep the window visible: watching those requests
+arrive in order is the single most useful debugging tool in this entire
+procedure.</p>
 </li>
 <li>
 <p><strong>Boot Machines</strong>:
@@ -1963,7 +1971,7 @@ that a node is progressing.</p>
   bootloader and its <code>01-&lt;mac&gt;</code> menu, then HTTP requests for the kernel,
   the initrd, <code>ignition-&lt;host&gt;.json</code>, and finally the sysext images.</li>
 <li><strong>Note</strong>: The cluster will come up in a <code>NotReady</code> state initially because
-  no CNI is installed.</li>
+  no CNI is installed. This is correct. Do not fix it yet.</li>
 <li>If a node stalls, see <a href="#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</li>
 </ul>
 </li>
@@ -1996,11 +2004,7 @@ that a node is progressing.</p>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This target pins its own Cilium, cert-manager, and Gateway API CRD
-versions directly in the <code>Makefile</code>, because it runs before ArgoCD
-exists. Those pins are separate from the ones ArgoCD manages in
-<code>payload/platform/</code> and are not updated by Renovate — check them if a
-component behaves differently before and after the GitOps handover.</p>
+<p>This target pins its own Cilium, cert-manager, and Gateway API CRD versions directly in the <code>Makefile</code>, because it runs before ArgoCD exists. Those pins are separate from the ones ArgoCD manages in <code>payload/platform/</code> and are not updated by Renovate — check them if a component behaves differently before and after the GitOps handover.</p>
 </div>
 <p>Nodes should reach <code>Ready</code> once Cilium is up:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
@@ -2028,8 +2032,9 @@ reach the UI by port-forward and log in as <code>admin</code>:</p>
 </span></code></pre></div>
 <p><em>This applies the parent applications (platform, gitops)
 which enable ArgoCD to manage all applications from Git.</em></p>
-<p>Watch the platform sync. Applications appear in
-<a href="../platform/#usage">sync-wave order</a>:</p>
+<p>This is the handover moment: from here on the cluster takes its orders
+from the repository rather than from you. Watch the platform sync.
+Applications appear in <a href="../platform/#usage">sync-wave order</a>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
 </span></code></pre></div>
 <p>The <code>Certificate</code> resources stay un-Ready until step 11 — that is
@@ -2039,12 +2044,15 @@ expected, since their Route53 credentials don't exist yet.</p>
 </li>
 <li>
 <p><strong>Initialise the secret store</strong>:
-    OpenBao starts sealed and empty. Until it is initialised and populated,
-    cert-manager cannot issue certificates (the Route53 credentials live in
-    OpenBao). Follow <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a> end-to-end:</p>
+    OpenBao starts uninitialised and empty. Until it is initialised and
+    populated, cert-manager cannot issue certificates (the Route53 credentials
+    live in OpenBao). This step assumes the <code>openbao-kms</code> Secret already exists
+    — it is applied by hand from <code>kms-credentials.yaml.template</code> and is what
+    lets OpenBao unseal itself at all. Follow
+    <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a> end-to-end:</p>
 <ol>
-<li><code>bao operator init</code> on <code>openbao-0</code> and securely store the unseal keys + root token.</li>
-<li>Unseal all three replicas.</li>
+<li><code>bao operator init</code> on <code>openbao-0</code> and securely store the recovery keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.</li>
+<li>Confirm all three replicas came up unsealed (<code>bao status</code>). With the KMS seal in place they unseal themselves; if they did not, KMS is unreachable and you unseal by hand with 3 of the 5 keys.</li>
 <li>Enable the <code>kv</code> v2 secret engine, the Kubernetes auth method, and the <code>external-secrets</code> policy/role (see <a href="../platform/openbao/#kubernetes-auth-method">OpenBao &rarr; Kubernetes auth method</a>).</li>
 <li>
 <p>Store the Route53 credentials:</p>
@@ -2069,6 +2077,7 @@ schedule:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
+<p>The four commands that answer "is it actually fine?":</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
 </span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
 </span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
@@ -2077,8 +2086,10 @@ schedule:</p>
 <p>Once DNS points at the gateway IPs, the platform UIs are reachable — see
 <a href="../platform/#httproute-locations">Platform &rarr; HTTPRoute Locations</a>.</p>
 <h2 id="troubleshooting-pxe-boot">Troubleshooting PXE boot<a class="headerlink" href="#troubleshooting-pxe-boot" title="Permanent link">&para;</a></h2>
-<p>Step 7 is the most failure-prone part of the process. Work through it by
-watching the <code>make serve</code> log and asking how far the node got.</p>
+<p>Step 7 is the most failure-prone part of the process, and it fails in a
+particularly demoralising way: a black screen with a blinking cursor and no
+error message. The trick is to stop staring at the node and start reading the
+<code>make serve</code> log, asking one question — how far did it get?</p>
 <table>
 <thead>
 <tr>
@@ -2113,6 +2124,11 @@ watching the <code>make serve</code> log and asking how far the node got.</p>
 </tr>
 </tbody>
 </table>
+<p>Two things worth internalising. A machine with two NICs will PXE boot from
+whichever one it feels like, and the MAC printed on the case is frequently not
+that one. And a node that boots the menu but stalls immediately after is almost
+never a broken image — it is <code>boot_server_ip</code>, pointing at an address that was
+correct on some other network, on some other day.</p>
 <p>The boot server serves <code>output/tftp</code> over TFTP and <code>output/http</code> over HTTP —
 see <a href="../boot_server/">Boot Server</a>. If a file is missing from those
 directories, re-run <code>make artifacts</code>.</p>

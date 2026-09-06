@@ -1816,9 +1816,9 @@
 
 
 <h1 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h1>
-<p>This section outlines the automated systems used to maintain the repository,
-including Continuous Integration/Continuous Deployment (CI/CD) workflows and
-dependency management.</p>
+<p>The automation that keeps this repository from rotting: CI workflows that lint
+everything, and Renovate, which does the dependency chasing that nobody does
+reliably by hand for more than about six weeks.</p>
 <h2 id="cicd-workflows">CI/CD Workflows<a class="headerlink" href="#cicd-workflows" title="Permanent link">&para;</a></h2>
 <p>The project uses GitHub Actions for automation, defined in <code>.github/workflows</code>.</p>
 <h3 id="linting">Linting<a class="headerlink" href="#linting" title="Permanent link">&para;</a></h3>
@@ -1876,11 +1876,14 @@ located in <code>renovate.json</code>.</p>
 </ul>
 <h3 id="two-things-renovate-cannot-see-by-default">Two things Renovate cannot see by default<a class="headerlink" href="#two-things-renovate-cannot-see-by-default" title="Permanent link">&para;</a></h3>
 <p>Both of these went unnoticed for long enough to let dependencies drift, so they
-are worth knowing about before adding a new one.</p>
+are worth knowing about before adding a new one. They share a failure mode, and
+it is the worst one automation has: the config looks right, the tool reports
+success, and nothing is actually being checked. A silent no-op is much harder to
+notice than an error.</p>
 <p><strong>The <code>pre-commit</code> manager ships disabled.</strong> Renovate's own default for it is
-<code>enabled: false</code>, which is easy to miss because a <code>packageRules</code> entry matching
-<code>matchManagers: ["pre-commit"]</code> looks like it is doing something. It is not,
-unless <code>renovate.json</code> also sets:</p>
+<code>enabled: false</code>, which is very easy to miss because a <code>packageRules</code> entry
+matching <code>matchManagers: ["pre-commit"]</code> looks for all the world like it is doing
+something. It is not, unless <code>renovate.json</code> also sets:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">"pre-commit"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"enabled"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span>
 </span></code></pre></div>
 <p>Without that line <code>.pre-commit-config.yaml</code> is never updated, and the hook
@@ -1899,7 +1902,8 @@ custom regex manager picks it up.</p>
 </span></code></pre></div>
 <p>The alternative is to move the values into a real <code>values.yaml</code> and reference it
 with <code>valueFiles</code>, the way Cilium and ArgoCD already do. Either works; the
-annotation is cheaper for a single tag.</p>
+annotation is cheaper for a single tag, and the values file pays off the moment
+there is a second one.</p>
 <h3 id="vendored-binaries-need-a-follow-up-commit">Vendored binaries need a follow-up commit<a class="headerlink" href="#vendored-binaries-need-a-follow-up-commit" title="Permanent link">&para;</a></h3>
 <p>The docs site self-hosts its webfonts, so <code>docs/assets/fonts/</code> holds <code>woff2</code>
 files that no manager can rewrite. <code>scripts/update-fonts.sh</code> pins the two
@@ -1908,7 +1912,8 @@ upstream releases those files come from, and a custom manager tracks the pins:</
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
 </span></code></pre></div>
 <p>A Renovate PR therefore changes one line and nothing else — the fonts it claims
-to update are still the old ones. Check out the branch, run <code>make fonts</code> to
+to update are still the old ones, which is a uniquely deceptive kind of green
+tick. Check out the branch, run <code>make fonts</code> to
 fetch the release the pin now names, and commit the result before merging. That
 is why <code>Documentation Fonts</code> never automerges. <code>make fonts-check</code> re-downloads
 both releases and diffs them against what is committed, so it will tell you

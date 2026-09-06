@@ -1792,14 +1792,15 @@
 
 
 <h1 id="adding-a-workload">Adding a Workload<a class="headerlink" href="#adding-a-workload" title="Permanent link">&para;</a></h1>
-<p>This guide walks through deploying a new application to the cluster from scratch.</p>
+<p>This guide walks through deploying a new application to the cluster from
+scratch. The good news: once the first one exists, adding the next is creating a
+directory and pushing. The whole point of the machinery in the rest of this
+documentation is that this page is short.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>All workloads live under <code>payload/workloads/&lt;app-name&gt;/</code>. A <code>workloads</code> parent ArgoCD Application auto-discovers any <code>application.yaml</code> file in that directory tree, so once the parent exists, adding a new folder is all that's needed to register an app with ArgoCD.</p>
+<p>All workloads live under <code>payload/workloads/&lt;app-name&gt;/</code>. A <code>workloads</code> parent ArgoCD Application auto-discovers any <code>application.yaml</code> file in that directory tree, so once the parent exists, adding a new folder is all that's needed to register an app with ArgoCD. No console, no <code>kubectl apply</code>, no step that only exists in someone's memory.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>There are currently no workloads, so <code>payload/workloads/</code> and its parent
-Application do not exist. The first workload needs Step 1 below; subsequent
-ones can skip it.</p>
+<p>There are currently no workloads, so <code>payload/workloads/</code> and its parent Application do not exist. The first workload needs Step 1 below; subsequent ones can skip it.</p>
 </div>
 <h2 id="step-1-create-the-workloads-parent-application">Step 1: Create the Workloads Parent Application<a class="headerlink" href="#step-1-create-the-workloads-parent-application" title="Permanent link">&para;</a></h2>
 <p>Add this document to <code>payload/root.yaml</code> (the <code>apps</code> AppProject it references is
@@ -1875,10 +1876,7 @@ already defined in <code>payload/argocd/argocd-projects.yaml</code>):</p>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>No <code>NetworkPolicy</code> exists anywhere in the cluster yet, so yours would be the
-first. A namespace with a policy is default-deny for ingress once one
-selects its pods, while every other namespace stays open — see
-<a href="../../architecture/security/#authorization">Security Posture</a>.</p>
+<p>A namespace with a policy is default-deny for ingress once one selects its pods, while every other namespace stays open. If you write one, use a <code>CiliumNetworkPolicy</code> rather than a plain <code>NetworkPolicy</code> — the reasons are in <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security Policies</a>, and the short version is that a plain one blocks health probes and your pods will restart forever. See also <a href="../../architecture/security/#authorization">Security Posture</a>.</p>
 </div>
 <h2 id="step-5-expose-the-app-optional">Step 5: Expose the App (Optional)<a class="headerlink" href="#step-5-expose-the-app-optional" title="Permanent link">&para;</a></h2>
 <p>Create <code>httproute.yaml</code> to route traffic from the <code>apps-gateway</code>:</p>
@@ -1900,14 +1898,16 @@ selects its pods, while every other namespace stays open — see
 </span></code></pre></div>
 <p>See <a href="../../platform/gateway-api/">Gateway API</a> for more details.</p>
 <h2 id="step-6-commit-and-push">Step 6: Commit and Push<a class="headerlink" href="#step-6-commit-and-push" title="Permanent link">&para;</a></h2>
-<p>ArgoCD will detect the new <code>application.yaml</code> on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload.</p>
+<p>ArgoCD will detect the new <code>application.yaml</code> on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload. The hostname's DNS record and TLS certificate are already handled — <a href="../../platform/external-dns/">external-dns</a> publishes the record from the <code>HTTPRoute</code>, and the Gateway's wildcard certificate covers the name. Neither needs a step of its own.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>add<span class="w"> </span>payload/workloads/my-app/
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"feat: add my-app workload"</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>git<span class="w"> </span>push
 </span></code></pre></div>
 <h2 id="step-7-document-it">Step 7: Document It<a class="headerlink" href="#step-7-document-it" title="Permanent link">&para;</a></h2>
-<p>Add a page at <code>docs/workloads/my-app.md</code> and register it in <code>zensical.toml</code>
-under the Workloads <code>nav</code> section:</p>
+<p>Not optional, and not busywork. An undocumented workload is one you will
+rediscover in eighteen months by reading YAML and guessing. Add a page at
+<code>docs/workloads/my-app.md</code> and register it in <code>zensical.toml</code> under the
+Workloads <code>nav</code> section:</p>
 <div class="language-toml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">  </span><span class="err">{</span><span class="w"> </span><span class="s2">"Workloads"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="s2">"Overview"</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"workloads/index.md"</span><span class="w"> </span><span class="p">},</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="s2">"My App"</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"workloads/my-app.md"</span><span class="w"> </span><span class="p">},</span>

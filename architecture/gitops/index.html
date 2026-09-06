@@ -1660,9 +1660,17 @@
 
 
 <h1 id="gitops-strategy">GitOps Strategy<a class="headerlink" href="#gitops-strategy" title="Permanent link">&para;</a></h1>
-<p>We use <strong>ArgoCD</strong> to manage the cluster state declaratively.</p>
+<p><strong>ArgoCD</strong> manages the cluster state declaratively. The rule is simple and
+absolute: if it is not in Git, it is not in the cluster — and if you put it in
+the cluster anyway, <code>selfHeal</code> will remove it while you are still admiring your
+work.</p>
+<p>This is not pedantry. It is the difference between a cluster you can rebuild
+from a repository and a cluster held together by a series of <code>kubectl apply</code>
+commands that exist only in one person's shell history.</p>
 <h2 id="app-of-apps-pattern">App-of-Apps Pattern<a class="headerlink" href="#app-of-apps-pattern" title="Permanent link">&para;</a></h2>
-<p>We use a hierarchical Application structure to manage dependencies and logical grouping.</p>
+<p>A hierarchical Application structure manages dependencies and logical grouping.
+One <code>kubectl apply</code> of <code>payload/root.yaml</code> bootstraps everything else; from
+there the repository discovers itself.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (Manual)"
         RA[root.yaml]
@@ -1680,10 +1688,17 @@
     subgraph "Managed by gitops"
         GO --&gt; |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
     end</code></pre>
+<p>Yes, ArgoCD manages ArgoCD. It is exactly as recursive as it sounds, and it
+works fine until the day you sync a broken ArgoCD config with ArgoCD. Keep
+<code>make install-argo</code> in your back pocket for that day.</p>
 <h2 id="deployment-waves">Deployment Waves<a class="headerlink" href="#deployment-waves" title="Permanent link">&para;</a></h2>
 <p>ArgoCD uses <strong>sync waves</strong> to control deployment order. Lower waves sync first.
 This ensures CRDs exist before Operators, and Storage exists before
 Applications.</p>
+<p>Sync waves are the answer to the question "why did my perfectly correct manifest
+fail on a fresh cluster and work on an existing one?" On a running cluster
+everything it depends on already exists. On a fresh one, ordering is the whole
+game.</p>
 <pre class="mermaid"><code>flowchart TB
     subgraph "Wave -10: CRDs"
         GW[gateway-api-crds]
@@ -1716,6 +1731,7 @@ Applications.</p>
     RO --&gt; RC
     CL --&gt; AR
     AR --&gt; MON</code></pre>
+<p>The full wave-by-wave listing is in <a href="../../platform/#usage">Platform &rarr; Usage</a>.</p>
 
 
 

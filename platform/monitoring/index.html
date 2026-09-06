@@ -1805,6 +1805,7 @@
 
 <h1 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h1>
 <p>Full observability stack based on <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>.</p>
+<p>One chart, five components, and roughly a hundred alerting rules you did not write and should read at least once. The default rule set is genuinely good; the default <em>routing</em> is not, which is what most of this page is about.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Prometheus</strong>: Metrics collection and storage with 10-day retention.</li>
@@ -1815,9 +1816,11 @@
 </ul>
 <h2 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h2>
 <p>Alertmanager routes to email. The chart's default is a <code>null</code> receiver that
-swallows every alert, which is worse than not deploying it at all — the stack
-looks configured and cannot tell anyone anything — so the route and receiver
-below are set explicitly.</p>
+swallows every alert, which is worse than not deploying it at all: the stack
+looks configured, the dashboards are full of data, the rules evaluate correctly,
+and every single alert goes into a bin. Monitoring you believe in but that
+cannot reach you is strictly more dangerous than no monitoring, because it buys
+false confidence. So the route and receiver below are set explicitly.</p>
 <table>
 <thead>
 <tr>
@@ -1854,7 +1857,9 @@ below are set explicitly.</p>
 </table>
 <p><code>Watchdog</code> is routed to <code>null</code> on purpose. It fires continuously by design, as
 proof the pipeline is alive; mailing it every twelve hours would train the
-recipient to filter the sender.</p>
+recipient to filter the sender — and a filtered alert sender is how outages get
+missed. Alert fatigue is not a personal failing, it is a design outcome, and the
+design is under your control.</p>
 <h3 id="why-only-the-password-is-a-secret">Why only the password is a secret<a class="headerlink" href="#why-only-the-password-is-a-secret" title="Permanent link">&para;</a></h3>
 <p>Alertmanager supports <code>smtp_auth_password_file</code> but has no equivalent for the
 username, so the smarthost, from address and username stay in
@@ -1868,8 +1873,11 @@ OpenBao by <code>smtp-credentials.yaml</code> and mounted at
 <p>For a different mail provider, the three values in <code>global:</code> are the only ones
 to change.</p>
 <h3 id="checking-it-works">Checking it works<a class="headerlink" href="#checking-it-works" title="Permanent link">&para;</a></h3>
-<p><code>Watchdog</code> proves the pipeline as far as Alertmanager. To prove delivery,
-inspect what Alertmanager thinks it is doing:</p>
+<p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step further.
+Everything between Alertmanager and your inbox — SMTP auth, the provider's spam
+heuristics, a password that expired — is unmonitored. To prove delivery, inspect
+what Alertmanager thinks it is doing, and then, once, actually send yourself a
+test alert and confirm it arrives:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
 </span></code></pre></div>
@@ -1880,7 +1888,9 @@ inspect what Alertmanager thinks it is doing:</p>
 because the provisioning config binds them somewhere reachable. kubeadm binds
 the first two to <code>127.0.0.1</code> and gives etcd no metrics listener, which leaves
 their ServiceMonitors permanently down and <code>KubeSchedulerDown</code>,
-<code>KubeControllerManagerDown</code> and the etcd alerts permanently firing. The
+<code>KubeControllerManagerDown</code> and the etcd alerts permanently firing. Three alerts
+that are always red is how a team learns to ignore red, so this is worth fixing
+rather than silencing. The
 <code>bind-address</code> and <code>listen-metrics-urls</code> arguments in
 <code>ansible/templates/kubeadm.yaml.j2</code> are what make these targets real.</p>
 <div class="admonition note">
@@ -1891,20 +1901,41 @@ those nodes are reprovisioned or the manifests edited, expect those three
 targets to be down.</p>
 </div>
 <h2 id="accessing-grafana">Accessing Grafana<a class="headerlink" href="#accessing-grafana" title="Permanent link">&para;</a></h2>
-<p>Grafana is exposed via the <code>infra-gateway</code> at <code>monitoring.infra.k8s.wlkr.ch</code>.</p>
-<p>Log in as <code>admin</code>. This repository does not set <code>grafana.adminPassword</code> in
-<code>application.yaml</code>, so the chart's own default applies. Read the password that
-is actually in effect from the Secret the chart creates:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>kube-prometheus-stack-grafana<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.admin-password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d
-</span></code></pre></div>
+<p>Grafana is exposed via the <code>infra-gateway</code> at <code>monitoring.infra.k8s.wlkr.ch</code>,
+behind <a href="../authentik/">Authentik</a>. There is no login form: <code>disable_login_form</code>
+and <code>oauth_auto_login</code> are both set, so opening the URL bounces straight to
+Authentik and back.</p>
+<p>Your role comes from group membership, evaluated by <code>role_attribute_path</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Authentik group</th>
+<th>Grafana role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>grafana-admins</code></td>
+<td><code>Admin</code></td>
+</tr>
+<tr>
+<td><code>grafana-editors</code></td>
+<td><code>Editor</code></td>
+</tr>
+<tr>
+<td>neither</td>
+<td><code>Viewer</code></td>
+</tr>
+</tbody>
+</table>
+<p>The OIDC client ID and secret are not minted by Grafana. They are generated once
+into OpenBao and materialised as the <code>grafana-oidc</code> Secret by
+<code>grafana-oidc.yaml</code>, then read by both sides — which is what lets a rebuilt
+Grafana and a rebuilt Authentik still agree with each other. See
+<a href="../authentik/#client-secrets-are-generated-up-front">Authentik &rarr; Client secrets are generated up front</a>.</p>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The Grafana credentials are not yet managed through
-<a href="../openbao/">OpenBao</a>. Until they are, changing the password means setting
-<code>grafana.adminPassword</code> in <code>application.yaml</code> — which would commit it to
-Git. Prefer an <a href="../external-secrets/">ExternalSecret</a> and reference it with
-<code>grafana.admin.existingSecret</code>.</p>
+<p class="admonition-title">The admin account still exists</p>
+<p>Disabling the login form hides it, it does not remove it. The local admin remains reachable through the API, which is the break-glass path for when Authentik is down — see <a href="../authentik/#when-authentik-is-down">When Authentik is down</a>. Do not set <code>grafana.adminPassword</code> in <code>application.yaml</code> to make that easier; it would commit a credential to Git for a path that already works without one.</p>
 </div>
 <h2 id="adding-a-dashboard">Adding a Dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h2>
 <p>Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be added:</p>
@@ -1912,11 +1943,16 @@ Git. Prefer an <a href="../external-secrets/">ExternalSecret</a> and reference i
 <li><strong>Via the UI</strong>: Changes persist across restarts because of the PVC.</li>
 <li><strong>Via ConfigMap</strong>: Add a ConfigMap with the label <code>grafana_dashboard: "1"</code> to the <code>monitoring</code> namespace and it will be auto-imported.</li>
 </ul>
+<p>Prefer the ConfigMap for anything you would be annoyed to lose. A dashboard
+built in the UI lives in one PVC and nowhere else — it is not in Git, Velero is
+its only copy, and it will not follow you to a rebuilt cluster. Every
+organisation has exactly one irreplaceable dashboard that someone made in the UI
+four years ago, and nobody knows how to recreate it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>monitoring/                  # Observability Stack
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>└── httproute.yaml           # Grafana route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>monitoring/                  # Observability Stack
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>└── httproute.yaml           # Grafana route
 </span></code></pre></div>
 
 

@@ -1704,8 +1704,10 @@
 
 
 <h1 id="boot-bootstrap-process">Boot &amp; Bootstrap Process<a class="headerlink" href="#boot-bootstrap-process" title="Permanent link">&para;</a></h1>
-<p>This document details the flow of data from the initial PXE boot to a fully
-operational Kubernetes node.</p>
+<p>This page follows a single node from the moment you press the power button to
+the moment it shows up in <code>kubectl get nodes</code>. Understanding this sequence is
+what turns a stalled PXE boot from a mystery into a question with an obvious
+next step: <em>which arrow didn't happen?</em></p>
 <h2 id="1-preparation-on-the-deployment-host">1. Preparation (on the deployment host)<a class="headerlink" href="#1-preparation-on-the-deployment-host" title="Permanent link">&para;</a></h2>
 <p>Before any node is powered on, the operator runs <code>make config</code> to generate the
 per-host Ignition and PXE configs, then <code>make serve</code> to start the TFTP and HTTP
@@ -1725,6 +1727,9 @@ servers. See the <a href="../../quickstart/">Quickstart</a> for the exact sequen
 <p>The DHCP server is external to this project. It must hand out the boot server's
 IP as <code>next-server</code> and a syslinux filename — see the
 <a href="../../quickstart/#prerequisites">Quickstart prerequisites</a>.</p>
+<p>Step 2 is where most first attempts die, and it dies silently: the node asks,
+nothing useful answers, and the firmware moves on to the next boot device
+without a word of complaint.</p>
 <h2 id="3-install-bootstrap">3. Install &amp; Bootstrap<a class="headerlink" href="#3-install-bootstrap" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
     participant Node
@@ -1738,9 +1743,16 @@ IP as <code>next-server</code> and a syslinux filename — see the
     Server--&gt;&gt;Node: 11. kubernetes, containerd
     Node-&gt;&gt;Node: 12. systemd unit runs kubeadm
     Note over Node: Node is NotReady - no CNI yet</code></pre>
+<p>Step 9 is the point of no return: the installer partitions the disk without
+asking twice. Whatever was on that machine before is now a memory. Check
+<code>install_disk</code> before you check anything else.</p>
+<p>Step 12 leaving the node <code>NotReady</code> is correct and expected — there is no CNI
+yet, so the kubelet has nothing to plug pods into. It stays that way until
+<code>make install-core</code> lands Cilium.</p>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once Kubeadm has initialized the control plane, the remaining components are
-installed from the deployment host.</p>
+installed from the deployment host. This is the last time anything is applied by
+hand; after step 6 the repository is in charge.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant Admin as Operator
     participant Deploy as Deployment Host
@@ -1755,10 +1767,7 @@ installed from the deployment host.</p>
     Deploy-&gt;&gt;Cluster: 6. Apply root.yaml (App-of-Apps)</code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane
-<code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in
-<a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so
-the taint should stay in place.</p>
+<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in <a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests.</p>
 </div>
 
 

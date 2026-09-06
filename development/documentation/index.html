@@ -1685,6 +1685,9 @@
 <p>The project documentation (this site) is built with
 <a href="https://zensical.org/">Zensical</a> and published to GitHub Pages by a GitHub
 Actions workflow.</p>
+<p>Deliberately not hosted on the cluster. Documentation that goes down with the
+thing it documents is documentation you cannot read at the exact moment you need
+it, which is a mistake people make once.</p>
 <h2 id="workflow">Workflow<a class="headerlink" href="#workflow" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Authoring</strong>: Documentation is written in Markdown within <code>docs/</code>. The site
@@ -1697,7 +1700,7 @@ Actions workflow.</p>
     <a href="https://janwelker.github.io/homelab/">https://janwelker.github.io/homelab/</a>.</li>
 </ol>
 <p>No container image, registry, or cluster is involved — the docs stay available
-independently of the homelab.</p>
+independently of the homelab. Someone else's uptime problem, for once.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant Dev as Developer
     participant Git as GitHub Repo
@@ -1720,7 +1723,9 @@ independently of the homelab.</p>
 <h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Every page must be reachable from the <code>nav</code> in <code>zensical.toml</code>; the build runs
-    with <code>--strict</code>, so broken links and orphaned pages fail CI.</li>
+    with <code>--strict</code>, so broken links and orphaned pages fail CI. Strict mode is
+    unforgiving and that is the point — rotten cross-references are how a docs
+    site stops being trusted.</li>
 <li>Cross-references use relative Markdown paths (for example
     <code>platform/openbao.md</code>, <code>../quickstart.md</code>) so they resolve both on the site
     and when browsing the repository on GitHub.</li>
@@ -1729,7 +1734,8 @@ independently of the homelab.</p>
 <li>Markdown is linted by <code>lint-markdown.yaml</code> and the <code>markdownlint-cli2</code>
     pre-commit hook. Note that <code>markdownlint</code> reads a blank line followed by an
     indented one as a code block, so a multi-paragraph <code>!!!</code> admonition trips
-    <code>MD046</code>. Keep admonition bodies to a single paragraph.</li>
+    <code>MD046</code>. Keep admonition bodies to a single paragraph. This one will catch
+    you, probably today.</li>
 <li>Theme templates are overridden by dropping a same-named file under
     <code>overrides/</code> (wired up via <code>theme.custom_dir</code>). Currently only
     <code>partials/source.html</code>, which drops the repository-facts API call that 404s

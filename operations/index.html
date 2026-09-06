@@ -1549,10 +1549,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#after-any-node-reboot-unseal-openbao" class="md-nav__link">
+  <a href="#after-any-node-reboot-check-openbao-came-back-unsealed" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        After any node reboot: unseal OpenBao
+        After any node reboot: check OpenBao came back unsealed
       </span>
     </span>
   </a>
@@ -1648,7 +1648,10 @@
 <h1 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h1>
 <p>Everything on this page assumes a cluster that is already up. For first
 provisioning see the <a href="../quickstart/">Quickstart</a>.</p>
+<p>Building a cluster is a weekend. Operating one is the rest of your life. This is
+the page you will actually come back to.</p>
 <h2 id="routine-health-check">Routine health check<a class="headerlink" href="#routine-health-check" title="Permanent link">&para;</a></h2>
+<p>Four commands, thirty seconds, run them when you walk past the rack:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A
@@ -1658,61 +1661,70 @@ provisioning see the <a href="../quickstart/">Quickstart</a>.</p>
 <code>ceph health detail</code> are available without installing anything.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Ceph metrics are <strong>not</strong> scraped: <code>monitoring.enabled</code> is <code>false</code> in the
-<code>CephCluster</code> spec, so storage problems show up in <code>ceph status</code> and the
-<a href="../platform/rook-ceph/">Rook dashboard</a> but never in Grafana or
-Prometheus.</p>
+<p>Ceph metrics <strong>are</strong> scraped — <code>monitoring.enabled</code> is <code>true</code> in the <code>CephCluster</code> spec, and <code>createPrometheusRules</code> ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running <code>ceph status</code>. Run it anyway: it is the fastest way to see <em>why</em>, and it is what <a href="../platform/kured/">Kured</a> is really asking about before it reboots anything. See <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
 </div>
-<h2 id="after-any-node-reboot-unseal-openbao">After any node reboot: unseal OpenBao<a class="headerlink" href="#after-any-node-reboot-unseal-openbao" title="Permanent link">&para;</a></h2>
-<p>This is the single most common way the cluster comes back "up" but broken.
-OpenBao seals itself whenever its pods restart, and while it is sealed no
-<code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.</p>
-<p>Follow <a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>.
-You need 3 of the 5 unseal keys.</p>
+<h2 id="after-any-node-reboot-check-openbao-came-back-unsealed">After any node reboot: check OpenBao came back unsealed<a class="headerlink" href="#after-any-node-reboot-check-openbao-came-back-unsealed" title="Permanent link">&para;</a></h2>
+<p>OpenBao seals itself whenever its pods restart, and while it is sealed no
+<code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
+<a href="../platform/openbao/#auto-unseal">Auto-unseal</a> normally handles this on its
+own, so this is a check rather than a chore:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
+</span></code></pre></div>
+<p>It is worth actually running. A cluster that comes back with OpenBao still
+sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and the
+consequence surfaces sixty days later when a certificate expires on a Sunday,
+with nothing connecting it to the reboot that caused it.</p>
+<p>If the pods did stay sealed, AWS KMS was unreachable when they started. Unseal
+by hand with 3 of the 5 recovery keys per
+<a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>,
+then find out why KMS could not be reached — see
+<a href="../architecture/limitations/#openbao-depends-on-aws-kms-to-start">the limitation this creates</a>.</p>
 <h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
 <p><a href="../platform/kured/">Kured</a> reboots nodes on its own between 01:00 and 05:00
 when an update has been staged, one at a time, and refuses while Ceph or etcd is
 unhealthy. The procedure below is for the cases it does not cover: rebooting
 sooner than the window, or rebooting a node for a reason nothing set a sentinel
 for.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>reboot
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># wait for the node to come back</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>kubectl<span class="w"> </span>uncordon<span class="w"> </span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>reboot
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># wait for the node to come back</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>uncordon<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
 <p>Between each node, confirm Ceph has recovered before moving on — draining a
 second node while the first is still backfilling can take a placement group
-below its minimum replica count:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status<span class="w">   </span><span class="c1"># HEALTH_OK</span>
+below its minimum replica count. Ceph is patient; impatient operators are how
+"one node down" becomes "read-only cluster":</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status<span class="w">   </span><span class="c1"># HEALTH_OK</span>
 </span></code></pre></div>
-<p>If the rebooted node hosted an OpenBao replica, unseal it afterwards.</p>
+<p>If the rebooted node hosted an OpenBao replica, confirm it came back unsealed.</p>
 <h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
 <p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
 a revert commit. To stop the bleeding first, disable auto-sync on the affected
 Application and roll it back:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app&gt;<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"syncPolicy":{"automated":null}}}'</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app&gt;<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"syncPolicy":{"automated":null}}}'</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
 </span></code></pre></div>
 <p>Re-enable auto-sync by restoring <code>syncPolicy.automated</code> once the revert has
 landed on <code>main</code>. Leaving it disabled means the Application silently stops
-tracking Git.</p>
+tracking Git — and an Application that has quietly stopped tracking Git is a
+time bomb with a three-month fuse, defused only by somebody wondering why their
+change never took effect.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>.
-Every Application here runs with <code>selfHeal: true</code>, so ArgoCD reverts the
-change within minutes and the real cause gets harder to find.</p>
+<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>. Every Application here runs with <code>selfHeal: true</code>, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.</p>
 </div>
 <h2 id="adding-a-node-after-the-initial-build">Adding a node after the initial build<a class="headerlink" href="#adding-a-node-after-the-initial-build" title="Permanent link">&para;</a></h2>
 <p>The bootstrap token generated at provisioning time has a 24 hour TTL, so it has
-long expired on an established cluster. Generate a fresh join command on a
-control-plane node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ssh<span class="w"> </span>core@&lt;control-plane-node&gt;
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>token<span class="w"> </span>create<span class="w"> </span>--print-join-command
+long expired on an established cluster. This trips up everyone exactly once.
+Generate a fresh join command on a control-plane node:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ssh<span class="w"> </span>core@&lt;control-plane-node&gt;
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>token<span class="w"> </span>create<span class="w"> </span>--print-join-command
 </span></code></pre></div>
 <p>For a new <strong>control-plane</strong> node you also need a current certificate key, which
 expires after two hours:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>upload-certs<span class="w"> </span>--upload-certs
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>upload-certs<span class="w"> </span>--upload-certs
 </span></code></pre></div>
 <p>Add the host to <code>ansible/inventory.yaml</code>, re-run <code>make config</code> and <code>make serve</code>
 so it can PXE boot, then run the printed join command on it. The
@@ -1722,22 +1734,26 @@ absent, so it will not interfere with a node that has already joined.</p>
 <ol>
 <li>
 <p>Remove it from the cluster:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
 </li>
 <li>
 <p>Let Ceph re-replicate. With <code>useAllNodes: true</code> the OSD on that disk is gone
-   for good; check <code>ceph status</code> returns to <code>HEALTH_OK</code> before continuing.</p>
+   for good; check <code>ceph status</code> returns to <code>HEALTH_OK</code> before continuing. This
+   is not a step to rush — Ceph will tell you when it is done, and it is never as
+   fast as you would like.</p>
 </li>
 <li>
-<p>If it was a control-plane node, remove its etcd member:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
+<p>If it was a control-plane node, remove its etcd member. A dead member left in
+   the list still counts toward quorum, which is a delightful way to lose a
+   cluster that is otherwise fine:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>member<span class="w"> </span>list
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -1746,13 +1762,12 @@ absent, so it will not interfere with a node that has already joined.</p>
 </ol>
 <div class="admonition danger">
 <p class="admonition-title">Danger</p>
-<p>On a cluster provisioned before the <a href="control-plane-vip/">Control Plane VIP</a>,
-<code>odin</code> is not an interchangeable control-plane node: its address is baked in
-as the API endpoint and as Cilium's <code>k8sServiceHost</code>, so losing it breaks
-node joins and Cilium's API connection on every other node. Check which
-endpoint your kubeconfig uses before assuming otherwise.</p>
+<p>On a cluster provisioned before the <a href="control-plane-vip/">Control Plane VIP</a>, <code>odin</code> is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's <code>k8sServiceHost</code>, so losing it breaks node joins and Cilium's API connection on every other node. Check which endpoint your kubeconfig uses before assuming otherwise.</p>
 </div>
 <h2 id="where-to-look-when-something-is-wrong">Where to look when something is wrong<a class="headerlink" href="#where-to-look-when-something-is-wrong" title="Permanent link">&para;</a></h2>
+<p>The table that saves the most time. Resist the urge to start with <code>kubectl
+describe</code> on the thing that looks broken; start here, because the thing that
+looks broken is usually downstream of something duller:</p>
 <table>
 <thead>
 <tr>
@@ -1789,7 +1804,9 @@ endpoint your kubeconfig uses before assuming otherwise.</p>
 </table>
 <p>Alerts are mailed by Alertmanager — see
 <a href="../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a>. The checks above
-are still worth running, because the delivery path itself is not monitored.</p>
+are still worth running, because the delivery path itself is not monitored. An
+empty inbox means either that nothing is wrong or that the mail stopped working,
+and those two look identical from here.</p>
 
 
 

@@ -1797,12 +1797,16 @@
 <code>payload/</code> and <code>ansible/</code>. Run the <a href="../quickstart/">Quickstart</a> unchanged and you
 get a cluster that syncs from <em>this</em> repository and requests certificates for a
 domain you don't control.</p>
+<p>Which is a fascinating way to discover that GitOps works exactly as advertised:
+your cluster will be beautifully, obediently, continuously reconciled to
+somebody else's intentions.</p>
 <p>Work through this page first. Everything below is a change you make in your own
 fork, before step 1 of the Quickstart.</p>
 <h2 id="1-fork-and-repoint-argocd">1. Fork and repoint ArgoCD<a class="headerlink" href="#1-fork-and-repoint-argocd" title="Permanent link">&para;</a></h2>
 <p>Every ArgoCD <code>Application</code> points at this repository by URL. Until you change
 them, your cluster pulls its desired state from here — your own commits will
-have no effect, and a push here would deploy to your cluster.</p>
+have no effect, and a push here would deploy to your cluster. Neither of those
+is a good afternoon.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-l<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab'</span><span class="w"> </span>--<span class="w"> </span>payload/
 </span></code></pre></div>
 <p>Rewrite them to your fork:</p>
@@ -1811,7 +1815,7 @@ have no effect, and a push here would deploy to your cluster.</p>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>sed -i ''</code> is the BSD/macOS form. On Linux use <code>sed -i</code> with no argument.</p>
+<p><code>sed -i ''</code> is the BSD/macOS form. On Linux use <code>sed -i</code> with no argument. Getting this backwards creates a file literally named <code>''</code> or silently eats your argument, depending on which side of the fence you are standing.</p>
 </div>
 <p>If your fork is private, ArgoCD also needs repository credentials — see the
 <a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories">ArgoCD private repository docs</a>.</p>
@@ -1844,7 +1848,9 @@ have no effect, and a push here would deploy to your cluster.</p>
 <code>link.argocd.argoproj.io/external-link</code> annotations that render as links in the
 ArgoCD UI.</p>
 <p>You must own this domain — the certificates are issued by Let's Encrypt through
-a DNS-01 challenge, which requires write access to the zone.</p>
+a DNS-01 challenge, which requires write access to the zone. <code>.local</code>, <code>.lan</code>
+and your favourite made-up TLD will not work, and finding that out three hours
+into a cert-manager debugging session is a rite of passage you can simply skip.</p>
 <h2 id="3-point-dns-at-the-gateway-ips">3. Point DNS at the gateway IPs<a class="headerlink" href="#3-point-dns-at-the-gateway-ips" title="Permanent link">&para;</a></h2>
 <p>The two Gateways take fixed addresses from the Cilium L2 pool, defined in
 <code>payload/platform/cilium/lb-pools.yaml</code>:</p>
@@ -1872,6 +1878,9 @@ a DNS-01 challenge, which requires write access to the zone.</p>
 <p>Change both CIDRs to free addresses on your LAN — they must be in the nodes'
 subnet, since Cilium announces them over L2 ARP — then create the two wildcard
 <code>A</code> records.</p>
+<p>"Free" means free <em>and</em> outside the DHCP range. An address that is unused today
+and inside the pool is an address your router will hand to a laptop next Tuesday,
+and the resulting intermittent outage is genuinely unpleasant to diagnose.</p>
 <h2 id="4-set-up-the-dns-01-solver">4. Set up the DNS-01 solver<a class="headerlink" href="#4-set-up-the-dns-01-solver" title="Permanent link">&para;</a></h2>
 <p><code>payload/platform/cert-manager/cluster-issuers.yaml</code> is written for <strong>AWS
 Route53</strong>. Update:</p>
@@ -1884,9 +1893,7 @@ matching <a href="https://cert-manager.io/docs/configuration/acme/dns01/">cert-m
 and adjust the credential path in OpenBao accordingly.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Switch <code>issuerRef</code> in <code>certificates.yaml</code> to <code>letsencrypt-staging</code> while you
-are still iterating. Production has strict rate limits, and a failed setup
-can burn your quota for a week.</p>
+<p>Switch <code>issuerRef</code> in <code>certificates.yaml</code> to <code>letsencrypt-staging</code> while you are still iterating. Production allows 5 duplicate certificates per week, and a misconfigured solver will burn through that in about ten minutes of enthusiastic retrying — after which you wait seven days with nothing to show for it.</p>
 </div>
 <h2 id="5-describe-your-hardware">5. Describe your hardware<a class="headerlink" href="#5-describe-your-hardware" title="Permanent link">&para;</a></h2>
 <p>Edit <code>ansible/inventory.yaml</code>:</p>
@@ -1940,11 +1947,18 @@ can burn your quota for a week.</p>
 <li><code>devices</code> — the interface prefix Cilium binds to, <code>"en+"</code> by default. Linux
   hosts are usually <code>"en+"</code> or <code>"eth+"</code>; check <code>ip link</code> on a provisioned node.</li>
 </ul>
+<p>A note on naming your nodes: pick a theme with more members than you currently
+have machines. Norse gods scale further than you would think, and nothing is
+more annoying than a cluster where the seventh node has to be called <code>node7</code>.</p>
 <h2 id="6-provisioning-access">6. Provisioning access<a class="headerlink" href="#6-provisioning-access" title="Permanent link">&para;</a></h2>
 <p><code>ansible/templates/butane_config.yaml.j2</code> injects
 <code>~/.ssh/id_ed25519.pub</code> as the authorized key for the <code>core</code> user. Point it at
 your own key if you use a different path or algorithm — this is the only way
 into the nodes afterwards, so get it right before the first boot.</p>
+<p>There is no password, no console login, and no rescue path short of
+reprovisioning. Immutable infrastructure is wonderful right up until the moment
+you have locked yourself out of all six machines at once, at which point it is
+merely instructive.</p>
 <h2 id="7-the-documentation-site">7. The documentation site<a class="headerlink" href="#7-the-documentation-site" title="Permanent link">&para;</a></h2>
 <p>If you want your fork to publish its own copy of these docs, update
 <code>zensical.toml</code>: <code>site_url</code>, <code>repo_url</code>, <code>repo_name</code>, and <code>copyright</code>. The
@@ -1966,6 +1980,9 @@ into the nodes afterwards, so get it right before the first boot.</p>
 <li>[ ] SSH public key path is correct</li>
 <li>[ ] Changes committed and pushed — ArgoCD reads from Git, not your working tree</li>
 </ul>
+<p>That last one deserves emphasis. ArgoCD cannot see your uncommitted brilliance.
+Every "why is it not picking up my change" incident in the history of GitOps has
+ended the same way, and it ends with <code>git push</code>.</p>
 
 
 

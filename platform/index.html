@@ -1644,6 +1644,11 @@
 <p>The core infrastructure components that run the cluster. Everything here is
 managed by ArgoCD; each component's own page documents its directory layout and
 configuration.</p>
+<p>Fourteen components sounds like a lot for a homelab, and it is — but every one of
+them exists because bare metal does not come with the thing a cloud provider
+would have handed you. No load balancer, no managed certificates, no block
+storage API, no identity provider, no backup service. This section is the bill
+for not having those.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="authentik/">authentik</a></strong>: Single sign-on for every platform UI.</li>
@@ -1678,6 +1683,10 @@ configuration.</p>
     end
 
     style Client fill:#f9f,stroke:#333</code></pre>
+<p>Four hops, and Cilium is three of them. When a hostname stops answering, the
+question is which hop stopped: does the Gateway still hold its LoadBalancer IP,
+does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have endpoints.
+In that order — the answer is usually the first one.</p>
 <h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
 <p>HTTPRoutes are co-located with their respective apps:</p>
 <!-- markdownlint-disable MD013 -->
@@ -1778,7 +1787,9 @@ configuration.</p>
 <li><code>README.md</code> (documentation)</li>
 <li><code>**/*.template</code> (credential templates)</li>
 </ul>
-<p>Sync wave ordering:</p>
+<p>Sync wave ordering. This is the dependency graph made explicit, and it is the
+reason a fresh bootstrap converges rather than deadlocking on a CRD that does
+not exist yet:</p>
 <ol>
 <li><code>-10</code>: Gateway API CRDs</li>
 <li><code>-5</code>: cert-manager</li>
@@ -1794,6 +1805,9 @@ configuration.</p>
 <li><code>3</code>: Alloy, Velero, Pod Security Admission labels and network policies</li>
 <li><code>5</code>: Rook dashboard configuration job</li>
 </ol>
+<p>The negative waves are the interesting half: nothing above wave <code>0</code> can work
+until networking, storage and certificates exist, so those get to go first and
+everything else waits its turn.</p>
 
 
 

@@ -1709,8 +1709,10 @@
 queried from the existing Grafana at
 <a href="https://monitoring.infra.k8s.wlkr.ch">monitoring.infra.k8s.wlkr.ch</a>.</p>
 <p>Metrics answer <em>what</em> is happening; logs answer <em>why</em>. Without them, diagnosing
-a crashed pod means reaching it with <code>kubectl logs</code> before it is replaced, and
-node-level problems are visible only over SSH.</p>
+a crashed pod means racing the scheduler to <code>kubectl logs --previous</code> before the
+evidence is garbage-collected — a game you lose roughly every time it matters.
+Node-level problems are worse: visible only over SSH, on the node that is
+currently misbehaving.</p>
 <div class="admonition note">
 <p class="admonition-title">Not Promtail</p>
 <p>Promtail is the collector most Loki documentation still shows. It was
@@ -1742,14 +1744,18 @@ its supported replacement and the one to reach for now.</p>
 <p>The journal matters more here than it would elsewhere. On Flatcar, <code>kubelet</code>,
 <code>containerd</code>, <code>systemd-sysupdate</code> and <code>update-engine</code> log to journald and
 nowhere else. Without collection, the logs explaining a failed boot or a stuck
-sysext are reachable only over SSH, which is exactly when SSH is least
-convenient.</p>
+sysext are reachable only over SSH — which is exactly the moment SSH is least
+convenient, and occasionally the moment it is not available at all.</p>
 <p>Each Alloy pod discovers <strong>only pods on its own node</strong>, via a
 <code>spec.nodeName</code> field selector. Without it every one of the six agents would
-watch every pod in the cluster and discard all but its own.</p>
+watch every pod in the cluster and discard all but its own — six times the API
+server load for identical output. Log collectors are famously good at costing
+more than the thing they observe; this is one of the cheap ways to avoid that.</p>
 <p>Container logs pass through <code>stage.cri {}</code>. containerd writes
 <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
-stream end up inside the log line and Loki stamps everything at ingest time.</p>
+stream end up inside the log line and Loki stamps everything at ingest time —
+which quietly destroys the one property you actually needed, namely being able
+to line logs up against the incident.</p>
 <h2 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h2>
 <p>Loki runs as a single binary and keeps chunks in the
 <a href="../rook-ceph/#object-storage">Ceph object store</a> rather than on a PVC.</p>
@@ -1786,21 +1792,18 @@ stream end up inside the log line and Loki stamps everything at ingest time.</p>
 <p>The bucket uses a fixed <code>bucketName</code> rather than <code>generateBucketName</code>. A
 generated name carries a random suffix, which would have to be read back out of
 the ConfigMap and injected at runtime; a fixed name keeps the storage config
-static.</p>
+static and, more usefully, keeps it the same after a rebuild.</p>
 <p>Credentials are never written to Git. Rook puts them in a Secret when it
 provisions the claim, Loki reads them as environment variables, and the config
 refers to <code>${AWS_ACCESS_KEY_ID}</code> — which is why <code>-config.expand-env=true</code> is
 set.</p>
 <div class="admonition warning">
 <p class="admonition-title">Those settings belong on <code>singleBinary</code>, not <code>global</code></p>
-<p>The chart's <code>global.extraArgs</code> and <code>global.extraEnvFrom</code> look like the right
-place, but the single-binary StatefulSet template reads only
-<code>singleBinary.extraArgs</code> and <code>singleBinary.extraEnvFrom</code>. Setting them
-globally renders a config full of unexpanded <code>${...}</code> and a Loki that cannot
-authenticate to RGW.</p>
+<p>The chart's <code>global.extraArgs</code> and <code>global.extraEnvFrom</code> look like the right place — the name says global, the documentation implies global — but the single-binary StatefulSet template reads only <code>singleBinary.extraArgs</code> and <code>singleBinary.extraEnvFrom</code>. Setting them globally renders a config full of unexpanded <code>${...}</code> and a Loki that cannot authenticate to RGW, with an error message that points nowhere near the actual cause.</p>
 </div>
 <p><code>chunksCache</code> and <code>resultsCache</code> are off. They are memcached deployments and
-would add four pods in front of a Loki this size.</p>
+would add four pods in front of a Loki this size — caching infrastructure larger
+than the thing it caches is a decision best left to people with more logs.</p>
 <h2 id="querying">Querying<a class="headerlink" href="#querying" title="Permanent link">&para;</a></h2>
 <p>The Loki datasource is registered with Grafana automatically. In Grafana,
 choose <strong>Loki</strong> as the datasource and query by label:</p>
