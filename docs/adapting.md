@@ -10,6 +10,10 @@ This repository documents one specific homelab. Node names, addresses, the
 get a cluster that syncs from *this* repository and requests certificates for a
 domain you don't control.
 
+Which is a fascinating way to discover that GitOps works exactly as advertised:
+your cluster will be beautifully, obediently, continuously reconciled to
+somebody else's intentions.
+
 Work through this page first. Everything below is a change you make in your own
 fork, before step 1 of the Quickstart.
 
@@ -17,7 +21,8 @@ fork, before step 1 of the Quickstart.
 
 Every ArgoCD `Application` points at this repository by URL. Until you change
 them, your cluster pulls its desired state from here — your own commits will
-have no effect, and a push here would deploy to your cluster.
+have no effect, and a push here would deploy to your cluster. Neither of those
+is a good afternoon.
 
 ```bash
 git grep -l 'github.com/JanWelker/homelab' -- payload/
@@ -31,7 +36,7 @@ git grep -lz 'github.com/JanWelker/homelab' -- payload/ | \
 ```
 
 !!! note
-    `sed -i ''` is the BSD/macOS form. On Linux use `sed -i` with no argument.
+    `sed -i ''` is the BSD/macOS form. On Linux use `sed -i` with no argument. Getting this backwards creates a file literally named `''` or silently eats your argument, depending on which side of the fence you are standing.
 
 If your fork is private, ArgoCD also needs repository credentials — see the
 [ArgoCD private repository docs](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories).
@@ -58,7 +63,9 @@ That covers the Gateway hostnames, the wildcard `Certificate` resources, every
 ArgoCD UI.
 
 You must own this domain — the certificates are issued by Let's Encrypt through
-a DNS-01 challenge, which requires write access to the zone.
+a DNS-01 challenge, which requires write access to the zone. `.local`, `.lan`
+and your favourite made-up TLD will not work, and finding that out three hours
+into a cert-manager debugging session is a rite of passage you can simply skip.
 
 ## 3. Point DNS at the gateway IPs
 
@@ -74,6 +81,10 @@ Change both CIDRs to free addresses on your LAN — they must be in the nodes'
 subnet, since Cilium announces them over L2 ARP — then create the two wildcard
 `A` records.
 
+"Free" means free *and* outside the DHCP range. An address that is unused today
+and inside the pool is an address your router will hand to a laptop next Tuesday,
+and the resulting intermittent outage is genuinely unpleasant to diagnose.
+
 ## 4. Set up the DNS-01 solver
 
 `payload/platform/cert-manager/cluster-issuers.yaml` is written for **AWS
@@ -87,9 +98,7 @@ matching [cert-manager DNS-01 provider](https://cert-manager.io/docs/configurati
 and adjust the credential path in OpenBao accordingly.
 
 !!! tip
-    Switch `issuerRef` in `certificates.yaml` to `letsencrypt-staging` while you
-    are still iterating. Production has strict rate limits, and a failed setup
-    can burn your quota for a week.
+    Switch `issuerRef` in `certificates.yaml` to `letsencrypt-staging` while you are still iterating. Production allows 5 duplicate certificates per week, and a misconfigured solver will burn through that in about ten minutes of enthusiastic retrying — after which you wait seven days with nothing to show for it.
 
 ## 5. Describe your hardware
 
@@ -114,12 +123,21 @@ Then update `payload/platform/cilium/values.yaml`:
 - `devices` — the interface prefix Cilium binds to, `"en+"` by default. Linux
   hosts are usually `"en+"` or `"eth+"`; check `ip link` on a provisioned node.
 
+A note on naming your nodes: pick a theme with more members than you currently
+have machines. Norse gods scale further than you would think, and nothing is
+more annoying than a cluster where the seventh node has to be called `node7`.
+
 ## 6. Provisioning access
 
 `ansible/templates/butane_config.yaml.j2` injects
 `~/.ssh/id_ed25519.pub` as the authorized key for the `core` user. Point it at
 your own key if you use a different path or algorithm — this is the only way
 into the nodes afterwards, so get it right before the first boot.
+
+There is no password, no console login, and no rescue path short of
+reprovisioning. Immutable infrastructure is wonderful right up until the moment
+you have locked yourself out of all six machines at once, at which point it is
+merely instructive.
 
 ## 7. The documentation site
 
@@ -144,3 +162,7 @@ Before `make config`:
       see [Control Plane VIP](operations/control-plane-vip.md)
 - [ ] SSH public key path is correct
 - [ ] Changes committed and pushed — ArgoCD reads from Git, not your working tree
+
+That last one deserves emphasis. ArgoCD cannot see your uncommitted brilliance.
+Every "why is it not picking up my change" incident in the history of GitOps has
+ended the same way, and it ends with `git push`.

@@ -10,7 +10,8 @@ every `HorizontalPodAutoscaler` read from.
 
 Nothing served that API before. `kubectl top node` returned an error, and any
 HPA added to a workload would have sat at `<unknown>/<target>` indefinitely
-without ever explaining why.
+without ever explaining why — one of those failures that produces no logs, no
+events, and no clue, just a dash where a number should be.
 
 !!! note "Prometheus is not a substitute"
     It is easy to assume kube-prometheus-stack covers this. It does not.
@@ -24,8 +25,10 @@ without ever explaining why.
 metrics-server scrapes each kubelet over TLS. By default a kubelet serves a
 **self-signed** certificate it generates itself, which metrics-server cannot
 verify — so the near-universal shortcut is to run it with
-`--kubelet-insecure-tls` and skip verification entirely. That makes the metrics
-path spoofable by anything that can occupy a kubelet's address.
+`--kubelet-insecure-tls` and skip verification entirely. It is in every quickstart,
+it is in most production clusters, and it makes the metrics path spoofable by
+anything that can occupy a kubelet's address. It is also, to be fair, the flag
+that makes the thing work in five minutes instead of an afternoon.
 
 This cluster does it properly instead, which takes three pieces:
 
@@ -41,7 +44,8 @@ Kubernetes deliberately does **not** auto-approve
 `kubernetes.io/kubelet-serving` CSRs. Approving them blindly would let a
 compromised node request a certificate for any name or address it liked, and
 then impersonate another node. So the CSRs sit `Pending` forever unless
-something decides.
+something decides — which is the correct default and also why so many clusters
+end up reaching for `--kubelet-insecure-tls` and never looking back.
 
 [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver)
 is that something, and it is constrained rather than permissive:
@@ -73,10 +77,7 @@ not match the regex. If they are `Denied`, the regex or the IP prefix is wrong �
 check the controller's logs before widening either.
 
 !!! warning "Adding a node means editing the regex"
-    A node whose name is not in `providerRegex` will have its CSR denied, keep
-    its self-signed certificate, and silently miss from `kubectl top`. The
-    regex lives in
-    `payload/platform/kubelet-csr-approver/application.yaml`.
+    A node whose name is not in `providerRegex` will have its CSR denied, keep its self-signed certificate, and go silently missing from `kubectl top` — the node is fine, the cluster is fine, and one row is simply absent from a table nobody reads carefully. Add it to the regex at the same time you add it to the inventory; the regex lives in `payload/platform/kubelet-csr-approver/application.yaml`.
 
 ## Directory Structure
 

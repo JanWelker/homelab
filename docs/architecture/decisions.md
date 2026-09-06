@@ -8,6 +8,10 @@ The rest of the architecture section describes *what* this cluster is. This page
 covers *why*, including what each choice gives up. Every one of these has a
 reasonable alternative; none of them is the only right answer.
 
+If you have been doing this long enough, you know that architecture documents
+listing only the benefits of each choice are marketing. The costs below are the
+useful half — they are the things that will actually wake you up.
+
 ## Flatcar Container Linux, not Talos or a general-purpose distro
 
 Flatcar gives an immutable, minimal, container-focused OS with A/B updates and
@@ -20,6 +24,8 @@ remove a whole class of drift. Flatcar was chosen instead because it keeps a
 conventional Linux underneath: `ssh`, `systemd`, `journalctl` and `kubeadm` all
 work the way the upstream Kubernetes documentation assumes, which matters more
 for a cluster that is also a learning environment than the extra hardening does.
+When something is broken at midnight, being able to `journalctl -u kubelet` is
+worth a great deal.
 
 The cost is that Flatcar's read-only `/usr` forces everything unusual into
 [sysexts](index.md#systemd-sysexts) — including Kubernetes and containerd
@@ -35,29 +41,39 @@ included — at the price of a bundled, non-standard set of components.
 
 The cost of kubeadm is that everything above the API server is now this
 project's problem: CNI, ingress, storage and certificates are all installed and
-sequenced explicitly. Most of `payload/` exists because of this choice.
+sequenced explicitly. Most of `payload/` exists because of this choice. Nobody
+picks kubeadm because it is easy; they pick it because when the upstream docs
+say "edit the kube-apiserver manifest", there is one to edit.
 
 ## Cilium as CNI, replacing kube-proxy
 
 Cilium replaces `kube-proxy` entirely with eBPF, which removes the iptables and
-IPVS service-routing path. It also supplies Gateway API, L2 announcements for
-LoadBalancer addresses, WireGuard transparent encryption, and Hubble for flow
-visibility — four things that would otherwise be four separate components on
-bare metal, where there is no cloud load balancer to lean on.
+IPVS service-routing path. Anyone who has ever run `iptables-save | wc -l` on a
+busy node and watched the number climb past five figures will understand the
+appeal without further argument.
+
+It also supplies Gateway API, L2 announcements for LoadBalancer addresses,
+WireGuard transparent encryption, and Hubble for flow visibility — four things
+that would otherwise be four separate components on bare metal, where there is
+no cloud load balancer to lean on.
 
 The cost is a hard bootstrap ordering dependency: with no `kube-proxy`, Cilium
 cannot reach the API server through a Service, so it needs a literal address in
 `k8sServiceHost`. That address should be the
 [control plane VIP](../operations/control-plane-vip.md); pointing it at a single
 node is what made that node a
-[single point of failure](limitations.md#single-api-server-endpoint).
+[single point of failure](limitations.md#single-api-server-endpoint). It is also
+a wonderfully effective way to take down cluster networking everywhere at once,
+should you ever point it at an address that does not answer.
 
 ## Gateway API, not Ingress
 
 Ingress is effectively frozen, and its per-controller annotations are the reason
-Ingress manifests are rarely portable. Gateway API separates the cluster-owned
-`Gateway` from the app-owned `HTTPRoute`, which fits the split between
-`payload/platform/` and `payload/workloads/` exactly.
+Ingress manifests are rarely portable — every non-trivial Ingress in existence
+is really a controller-specific config file wearing a standard resource as a
+disguise. Gateway API separates the cluster-owned `Gateway` from the app-owned
+`HTTPRoute`, which fits the split between `payload/platform/` and
+`payload/workloads/` exactly.
 
 The cost is a smaller ecosystem and more moving parts: CRDs must be installed
 before anything that references them, which is why they occupy sync wave `-10`.
@@ -74,17 +90,19 @@ Longhorn is the closer alternative and is easier to operate. Ceph was chosen for
 its maturity and because the same cluster can later serve object and file
 storage, not just block.
 
-The cost is real: Ceph is the heaviest component in the cluster, wants at least
-three nodes, and has its own failure modes and vocabulary. It also only provides
-`ReadWriteOnce` here, since CephFS is not deployed.
+The cost is real, and worth stating plainly: Ceph is the heaviest component in
+the cluster, wants at least three nodes, and has its own failure modes and
+vocabulary. You will learn what a placement group is. You will learn it at an
+inconvenient moment. It also only provides `ReadWriteOnce` here, since CephFS is
+not deployed.
 
 ## OpenBao, not sealed-secrets or SOPS
 
 Sealed-secrets and SOPS both keep encrypted material in Git, which means
-rotation is a commit and revocation is impossible after the fact. OpenBao keeps
-secrets out of the repository entirely and hands them to workloads as ordinary
-Kubernetes `Secret` objects through the External Secrets Operator, so nothing in
-Git is sensitive.
+rotation is a commit and revocation is impossible after the fact — the ciphertext
+is in every clone, forever. OpenBao keeps secrets out of the repository
+entirely and hands them to workloads as ordinary Kubernetes `Secret` objects
+through the External Secrets Operator, so nothing in Git is sensitive.
 
 The cost is the sealed-at-startup problem: OpenBao is a stateful dependency of
 cert-manager, and a sealed OpenBao means no `ExternalSecret` resolves.
@@ -95,9 +113,10 @@ service outside the house a hard dependency of the cluster starting up. See
 
 ## ArgoCD with App-of-Apps, not Flux
 
-Either would work. ArgoCD was chosen mainly for its UI, which makes sync state
-and drift legible at a glance — worth more in a homelab, where the operator is
-often re-learning the system, than Flux's smaller footprint.
+Either would work, and anyone claiming otherwise is selling something. ArgoCD
+was chosen mainly for its UI, which makes sync state and drift legible at a
+glance — worth more in a homelab, where the operator is often re-learning the
+system after three months away, than Flux's smaller footprint.
 
 The App-of-Apps pattern keeps bootstrap to a single `kubectl apply` of
 `payload/root.yaml`; everything else is discovered from the repository. See

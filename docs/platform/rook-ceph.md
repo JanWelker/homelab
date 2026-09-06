@@ -6,9 +6,17 @@ description: "Rook-Ceph distributed storage: block volumes, the S3 object store,
 
 Distributed block storage using [Rook](https://rook.io/) as the Kubernetes operator for [Ceph](https://ceph.io/).
 
+Ceph is the component in this cluster with the steepest learning curve and the
+longest memory. It is also the one that will still have your data after a node
+dies, which is why it is here. Treat `ceph status` the way a sysadmin treats
+`dmesg`: check it more often than seems necessary, and never ignore a `WARN` on
+the grounds that everything still appears to work.
+
 ## How It Works
 
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
+
+"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear.
 
 ## Components
 
@@ -23,7 +31,9 @@ Each node has a raw disk partition labeled `rook-osd` (created by Ignition at pr
 prometheus module and lets the operator maintain a `ServiceMonitor`. Without it
 no Ceph metric reaches Prometheus at all, and storage becomes the one thing the
 monitoring stack cannot see: a degraded pool, a down OSD, or a near-full cluster
-would show up only if somebody ran `ceph status` by hand.
+would show up only if somebody ran `ceph status` by hand. A full Ceph cluster
+does not degrade gracefully — it stops accepting writes, and every workload
+finds out simultaneously. This is not a metric to leave unwatched.
 
 `monitoring.createPrometheusRules` ships Ceph's own alerting rules alongside it
 (`CephClusterErrorState`, `CephOSDDown`, `CephPGsUnhealthy`, the near-full
@@ -42,7 +52,7 @@ warnings, and the rest).
 A `CephObjectStore` provides an S3-compatible endpoint inside the cluster,
 served by two RGW instances. It exists so that backups and log chunks have
 somewhere to live that is not a PVC on the same block pool they are meant to
-protect.
+protect. Same cluster, different pool — half a step, but a real one.
 
 | Property | Value |
 | --- | --- |
@@ -75,7 +85,11 @@ the `ConfigMap` holds `BUCKET_NAME`, `BUCKET_HOST` and `BUCKET_PORT`.
 
 ## Requesting Storage
 
-Any workload can request a PVC using the default storage class:
+Any workload can request a PVC using the default storage class. Note the words
+"default" and "Retain" are doing different jobs here: block PVCs are deleted
+with their claim, and every Application in this repo syncs with `prune: true`.
+Removing a `PersistentVolumeClaim` from Git removes the volume. Ask Velero how
+it feels about that in [Backups & Recovery](../operations/backups.md).
 
 ```yaml
 apiVersion: v1
@@ -98,7 +112,7 @@ To use it explicitly:
 ```
 
 !!! note
-    `ReadWriteOnce` (RWO) is the supported access mode. `ReadWriteMany` (RWX) requires CephFS, which is not configured here.
+    `ReadWriteOnce` (RWO) is the supported access mode. `ReadWriteMany` (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in `ContainerCreating`, wondering aloud about a multi-attach error.
 
 ## Directory Structure
 

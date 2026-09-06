@@ -10,8 +10,10 @@ queried from the existing Grafana at
 [monitoring.infra.k8s.wlkr.ch](https://monitoring.infra.k8s.wlkr.ch).
 
 Metrics answer *what* is happening; logs answer *why*. Without them, diagnosing
-a crashed pod means reaching it with `kubectl logs` before it is replaced, and
-node-level problems are visible only over SSH.
+a crashed pod means racing the scheduler to `kubectl logs --previous` before the
+evidence is garbage-collected — a game you lose roughly every time it matters.
+Node-level problems are worse: visible only over SSH, on the node that is
+currently misbehaving.
 
 !!! note "Not Promtail"
     Promtail is the collector most Loki documentation still shows. It was
@@ -28,16 +30,20 @@ node-level problems are visible only over SSH.
 The journal matters more here than it would elsewhere. On Flatcar, `kubelet`,
 `containerd`, `systemd-sysupdate` and `update-engine` log to journald and
 nowhere else. Without collection, the logs explaining a failed boot or a stuck
-sysext are reachable only over SSH, which is exactly when SSH is least
-convenient.
+sysext are reachable only over SSH — which is exactly the moment SSH is least
+convenient, and occasionally the moment it is not available at all.
 
 Each Alloy pod discovers **only pods on its own node**, via a
 `spec.nodeName` field selector. Without it every one of the six agents would
-watch every pod in the cluster and discard all but its own.
+watch every pod in the cluster and discard all but its own — six times the API
+server load for identical output. Log collectors are famously good at costing
+more than the thing they observe; this is one of the cheap ways to avoid that.
 
 Container logs pass through `stage.cri {}`. containerd writes
 `<timestamp> <stream> <flags> <message>`; without that stage the timestamp and
-stream end up inside the log line and Loki stamps everything at ingest time.
+stream end up inside the log line and Loki stamps everything at ingest time —
+which quietly destroys the one property you actually needed, namely being able
+to line logs up against the incident.
 
 ## Storage
 
@@ -55,7 +61,7 @@ Loki runs as a single binary and keeps chunks in the
 The bucket uses a fixed `bucketName` rather than `generateBucketName`. A
 generated name carries a random suffix, which would have to be read back out of
 the ConfigMap and injected at runtime; a fixed name keeps the storage config
-static.
+static and, more usefully, keeps it the same after a rebuild.
 
 Credentials are never written to Git. Rook puts them in a Secret when it
 provisions the claim, Loki reads them as environment variables, and the config
@@ -63,14 +69,11 @@ refers to `${AWS_ACCESS_KEY_ID}` — which is why `-config.expand-env=true` is
 set.
 
 !!! warning "Those settings belong on `singleBinary`, not `global`"
-    The chart's `global.extraArgs` and `global.extraEnvFrom` look like the right
-    place, but the single-binary StatefulSet template reads only
-    `singleBinary.extraArgs` and `singleBinary.extraEnvFrom`. Setting them
-    globally renders a config full of unexpanded `${...}` and a Loki that cannot
-    authenticate to RGW.
+    The chart's `global.extraArgs` and `global.extraEnvFrom` look like the right place — the name says global, the documentation implies global — but the single-binary StatefulSet template reads only `singleBinary.extraArgs` and `singleBinary.extraEnvFrom`. Setting them globally renders a config full of unexpanded `${...}` and a Loki that cannot authenticate to RGW, with an error message that points nowhere near the actual cause.
 
 `chunksCache` and `resultsCache` are off. They are memcached deployments and
-would add four pods in front of a Loki this size.
+would add four pods in front of a Loki this size — caching infrastructure larger
+than the thing it caches is a decision best left to people with more logs.
 
 ## Querying
 

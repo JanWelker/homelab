@@ -4,8 +4,13 @@ description: "Ansible playbooks that generate node configuration, download artif
 
 # Ansible Configuration
 
-This directory contains the Ansible playbooks and configuration used to provision
-the Flatcar cluster.
+The Ansible playbooks and configuration used to provision the Flatcar cluster.
+
+Worth being clear about what Ansible is doing here, because it is not the usual
+job. It never configures a node. It has no `hosts: all` play that SSHes in and
+converges anything — it generates files on the deployment host, and Ignition
+applies them once at first boot. Ansible is a template engine with an inventory,
+and on an immutable OS that is exactly the right amount of Ansible.
 
 ## Directory Structure
 
@@ -25,7 +30,10 @@ ansible/
 
 ## Inventory
 
-The `inventory.yaml` file defines the cluster layout.
+The `inventory.yaml` file defines the cluster layout, and it is the single
+source of truth for everything about these machines. Every generated artifact
+comes from it, which is why any edit has to be followed by `make config` — the
+values are baked into the output, not read at boot.
 
 - **Global Variables**: Flattened variables like versions (`kubernetes_version`,
   `flatcar_version`) and network settings.
@@ -62,3 +70,7 @@ Downloads external artifacts required for provisioning.
 
 Retrieves the admin `kubeconfig` file from the first available control plane
 node after the cluster is bootstrapped.
+
+Keep a copy of the result somewhere off the cluster. It is the credential you
+will want on the day the web UIs are unreachable, and it lives in `output/`,
+which is gitignored and therefore exactly as durable as the laptop it is on.

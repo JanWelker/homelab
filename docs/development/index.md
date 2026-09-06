@@ -4,7 +4,8 @@ description: "How to work on this repository — writing documentation, adding w
 
 # Development
 
-How to work on this repository.
+How to work on this repository — and, more to the point, how to change it
+without surprising the cluster.
 
 - **[Contributing](contributing.md)**: Repository setup, the checks that run,
     commit conventions, and validating a `payload/` change before you push.
@@ -21,4 +22,6 @@ How to work on this repository.
 - Everything in `payload/platform/` and `payload/workloads/` is applied by
     ArgoCD. Nothing is applied by hand after the initial bootstrap.
 - Do not copy version numbers into prose. `targetRevision` in the manifests is
-    the single source of truth, and Renovate keeps it current.
+    the single source of truth, and Renovate keeps it current. A version written
+    into a sentence is a version that will be wrong within a month and will stay
+    wrong for a year.

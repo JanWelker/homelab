@@ -7,7 +7,12 @@ description: "Running the cluster day to day: health checks, rebooting nodes, an
 Everything on this page assumes a cluster that is already up. For first
 provisioning see the [Quickstart](../quickstart.md).
 
+Building a cluster is a weekend. Operating one is the rest of your life. This is
+the page you will actually come back to.
+
 ## Routine health check
+
+Four commands, thirty seconds, run them when you walk past the rack:
 
 ```bash
 kubectl get nodes
@@ -20,19 +25,30 @@ The Rook toolbox pod is enabled, so `ceph status`, `ceph osd tree` and
 `ceph health detail` are available without installing anything.
 
 !!! note
-    Ceph metrics are **not** scraped: `monitoring.enabled` is `false` in the
-    `CephCluster` spec, so storage problems show up in `ceph status` and the
-    [Rook dashboard](../platform/rook-ceph.md) but never in Grafana or
-    Prometheus.
+    Ceph metrics **are** scraped — `monitoring.enabled` is `true` in the `CephCluster` spec, and `createPrometheusRules` ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running `ceph status`. Run it anyway: it is the fastest way to see *why*, and it is what [Kured](../platform/kured.md) is really asking about before it reboots anything. See [Rook-Ceph &rarr; Monitoring](../platform/rook-ceph.md#monitoring).
 
-## After any node reboot: unseal OpenBao
+## After any node reboot: check OpenBao came back unsealed
 
-This is the single most common way the cluster comes back "up" but broken.
 OpenBao seals itself whenever its pods restart, and while it is sealed no
 `ExternalSecret` resolves — which means cert-manager cannot renew certificates.
+[Auto-unseal](../platform/openbao.md#auto-unseal) normally handles this on its
+own, so this is a check rather than a chore:
 
-Follow [OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart).
-You need 3 of the 5 unseal keys.
+```bash
+kubectl -n openbao get pods          # all three Ready
+kubectl -n openbao exec -it openbao-0 -- bao status   # Sealed: false
+```
+
+It is worth actually running. A cluster that comes back with OpenBao still
+sealed looks entirely healthy — every pod green, every node `Ready` — and the
+consequence surfaces sixty days later when a certificate expires on a Sunday,
+with nothing connecting it to the reboot that caused it.
+
+If the pods did stay sealed, AWS KMS was unreachable when they started. Unseal
+by hand with 3 of the 5 recovery keys per
+[OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart),
+then find out why KMS could not be reached — see
+[the limitation this creates](../architecture/limitations.md#openbao-depends-on-aws-kms-to-start).
 
 ## Rebooting a node
 
@@ -51,13 +67,14 @@ kubectl uncordon <node>
 
 Between each node, confirm Ceph has recovered before moving on — draining a
 second node while the first is still backfilling can take a placement group
-below its minimum replica count:
+below its minimum replica count. Ceph is patient; impatient operators are how
+"one node down" becomes "read-only cluster":
 
 ```bash
 kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status   # HEALTH_OK
 ```
 
-If the rebooted node hosted an OpenBao replica, unseal it afterwards.
+If the rebooted node hosted an OpenBao replica, confirm it came back unsealed.
 
 ## Rolling back a bad sync
 
@@ -73,18 +90,18 @@ argocd app rollback <app>
 
 Re-enable auto-sync by restoring `syncPolicy.automated` once the revert has
 landed on `main`. Leaving it disabled means the Application silently stops
-tracking Git.
+tracking Git — and an Application that has quietly stopped tracking Git is a
+time bomb with a three-month fuse, defused only by somebody wondering why their
+change never took effect.
 
 !!! warning
-    Do not fix a broken workload by editing live objects with `kubectl edit`.
-    Every Application here runs with `selfHeal: true`, so ArgoCD reverts the
-    change within minutes and the real cause gets harder to find.
+    Do not fix a broken workload by editing live objects with `kubectl edit`. Every Application here runs with `selfHeal: true`, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.
 
 ## Adding a node after the initial build
 
 The bootstrap token generated at provisioning time has a 24 hour TTL, so it has
-long expired on an established cluster. Generate a fresh join command on a
-control-plane node:
+long expired on an established cluster. This trips up everyone exactly once.
+Generate a fresh join command on a control-plane node:
 
 ```bash
 ssh core@<control-plane-node>
@@ -113,8 +130,12 @@ absent, so it will not interfere with a node that has already joined.
     ```
 
 2. Let Ceph re-replicate. With `useAllNodes: true` the OSD on that disk is gone
-   for good; check `ceph status` returns to `HEALTH_OK` before continuing.
-3. If it was a control-plane node, remove its etcd member:
+   for good; check `ceph status` returns to `HEALTH_OK` before continuing. This
+   is not a step to rush — Ceph will tell you when it is done, and it is never as
+   fast as you would like.
+3. If it was a control-plane node, remove its etcd member. A dead member left in
+   the list still counts toward quorum, which is a delightful way to lose a
+   cluster that is otherwise fine:
 
     ```bash
     kubectl -n kube-system exec -it etcd-<healthy-node> -- etcdctl \
@@ -128,13 +149,13 @@ absent, so it will not interfere with a node that has already joined.
 4. Reprovision the replacement following [Adding a node](#adding-a-node-after-the-initial-build).
 
 !!! danger
-    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md),
-    `odin` is not an interchangeable control-plane node: its address is baked in
-    as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks
-    node joins and Cilium's API connection on every other node. Check which
-    endpoint your kubeconfig uses before assuming otherwise.
+    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection on every other node. Check which endpoint your kubeconfig uses before assuming otherwise.
 
 ## Where to look when something is wrong
+
+The table that saves the most time. Resist the urge to start with `kubectl
+describe` on the thing that looks broken; start here, because the thing that
+looks broken is usually downstream of something duller:
 
 | Symptom | First check |
 | --- | --- |
@@ -147,4 +168,6 @@ absent, so it will not interfere with a node that has already joined.
 
 Alerts are mailed by Alertmanager — see
 [Monitoring &rarr; Alerting](../platform/monitoring.md#alerting). The checks above
-are still worth running, because the delivery path itself is not monitored.
+are still worth running, because the delivery path itself is not monitored. An
+empty inbox means either that nothing is wrong or that the mail stopped working,
+and those two look identical from here.

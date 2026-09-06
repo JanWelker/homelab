@@ -4,9 +4,9 @@ description: "The CI workflows that lint this repository and the Renovate config
 
 # Maintenance
 
-This section outlines the automated systems used to maintain the repository,
-including Continuous Integration/Continuous Deployment (CI/CD) workflows and
-dependency management.
+The automation that keeps this repository from rotting: CI workflows that lint
+everything, and Renovate, which does the dependency chasing that nobody does
+reliably by hand for more than about six weeks.
 
 ## CI/CD Workflows
 
@@ -71,12 +71,15 @@ located in `renovate.json`.
 ### Two things Renovate cannot see by default
 
 Both of these went unnoticed for long enough to let dependencies drift, so they
-are worth knowing about before adding a new one.
+are worth knowing about before adding a new one. They share a failure mode, and
+it is the worst one automation has: the config looks right, the tool reports
+success, and nothing is actually being checked. A silent no-op is much harder to
+notice than an error.
 
 **The `pre-commit` manager ships disabled.** Renovate's own default for it is
-`enabled: false`, which is easy to miss because a `packageRules` entry matching
-`matchManagers: ["pre-commit"]` looks like it is doing something. It is not,
-unless `renovate.json` also sets:
+`enabled: false`, which is very easy to miss because a `packageRules` entry
+matching `matchManagers: ["pre-commit"]` looks for all the world like it is doing
+something. It is not, unless `renovate.json` also sets:
 
 ```json
 "pre-commit": { "enabled": true }
@@ -102,7 +105,8 @@ image:
 
 The alternative is to move the values into a real `values.yaml` and reference it
 with `valueFiles`, the way Cilium and ArgoCD already do. Either works; the
-annotation is cheaper for a single tag.
+annotation is cheaper for a single tag, and the values file pays off the moment
+there is a second one.
 
 ### Vendored binaries need a follow-up commit
 
@@ -116,7 +120,8 @@ INTER_VERSION="v4.1"
 ```
 
 A Renovate PR therefore changes one line and nothing else — the fonts it claims
-to update are still the old ones. Check out the branch, run `make fonts` to
+to update are still the old ones, which is a uniquely deceptive kind of green
+tick. Check out the branch, run `make fonts` to
 fetch the release the pin now names, and commit the result before merging. That
 is why `Documentation Fonts` never automerges. `make fonts-check` re-downloads
 both releases and diffs them against what is committed, so it will tell you

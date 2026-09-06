@@ -4,8 +4,10 @@ description: "How a bare metal node goes from power-on to joined cluster member 
 
 # Boot & Bootstrap Process
 
-This document details the flow of data from the initial PXE boot to a fully
-operational Kubernetes node.
+This page follows a single node from the moment you press the power button to
+the moment it shows up in `kubectl get nodes`. Understanding this sequence is
+what turns a stalled PXE boot from a mystery into a question with an obvious
+next step: *which arrow didn't happen?*
 
 ## 1. Preparation (on the deployment host)
 
@@ -33,6 +35,10 @@ The DHCP server is external to this project. It must hand out the boot server's
 IP as `next-server` and a syslinux filename — see the
 [Quickstart prerequisites](../quickstart.md#prerequisites).
 
+Step 2 is where most first attempts die, and it dies silently: the node asks,
+nothing useful answers, and the firmware moves on to the next boot device
+without a word of complaint.
+
 ## 3. Install & Bootstrap
 
 ```mermaid
@@ -50,10 +56,19 @@ sequenceDiagram
     Note over Node: Node is NotReady - no CNI yet
 ```
 
+Step 9 is the point of no return: the installer partitions the disk without
+asking twice. Whatever was on that machine before is now a memory. Check
+`install_disk` before you check anything else.
+
+Step 12 leaving the node `NotReady` is correct and expected — there is no CNI
+yet, so the kubelet has nothing to plug pods into. It stays that way until
+`make install-core` lands Cilium.
+
 ## 4. Post-Installation Bootstrap
 
 Once Kubeadm has initialized the control plane, the remaining components are
-installed from the deployment host.
+installed from the deployment host. This is the last time anything is applied by
+hand; after step 6 the repository is in charge.
 
 ```mermaid
 sequenceDiagram
@@ -71,7 +86,4 @@ sequenceDiagram
 ```
 
 !!! note
-    `make untaint` is **not** part of this flow. It removes the control-plane
-    `NoSchedule` taint and applies only to a single-node cluster. The layout in
-    [Architecture Overview](index.md#cluster-layout) has dedicated workers, so
-    the taint should stay in place.
+    `make untaint` is **not** part of this flow. It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster. The layout in [Architecture Overview](index.md#cluster-layout) has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests.

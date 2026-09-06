@@ -4,16 +4,17 @@ description: "Deploy a new application to the cluster, from the ArgoCD Applicati
 
 # Adding a Workload
 
-This guide walks through deploying a new application to the cluster from scratch.
+This guide walks through deploying a new application to the cluster from
+scratch. The good news: once the first one exists, adding the next is creating a
+directory and pushing. The whole point of the machinery in the rest of this
+documentation is that this page is short.
 
 ## Overview
 
-All workloads live under `payload/workloads/<app-name>/`. A `workloads` parent ArgoCD Application auto-discovers any `application.yaml` file in that directory tree, so once the parent exists, adding a new folder is all that's needed to register an app with ArgoCD.
+All workloads live under `payload/workloads/<app-name>/`. A `workloads` parent ArgoCD Application auto-discovers any `application.yaml` file in that directory tree, so once the parent exists, adding a new folder is all that's needed to register an app with ArgoCD. No console, no `kubectl apply`, no step that only exists in someone's memory.
 
 !!! note
-    There are currently no workloads, so `payload/workloads/` and its parent
-    Application do not exist. The first workload needs Step 1 below; subsequent
-    ones can skip it.
+    There are currently no workloads, so `payload/workloads/` and its parent Application do not exist. The first workload needs Step 1 below; subsequent ones can skip it.
 
 ## Step 1: Create the Workloads Parent Application
 
@@ -105,10 +106,7 @@ payload/workloads/my-app/
 ```
 
 !!! note
-    No `NetworkPolicy` exists anywhere in the cluster yet, so yours would be the
-    first. A namespace with a policy is default-deny for ingress once one
-    selects its pods, while every other namespace stays open — see
-    [Security Posture](../architecture/security.md#authorization).
+    A namespace with a policy is default-deny for ingress once one selects its pods, while every other namespace stays open. If you write one, use a `CiliumNetworkPolicy` rather than a plain `NetworkPolicy` — the reasons are in [Security Policies](../platform/security-policies.md#why-ciliumnetworkpolicy-and-not-networkpolicy), and the short version is that a plain one blocks health probes and your pods will restart forever. See also [Security Posture](../architecture/security.md#authorization).
 
 ## Step 5: Expose the App (Optional)
 
@@ -136,7 +134,7 @@ See [Gateway API](../platform/gateway-api.md) for more details.
 
 ## Step 6: Commit and Push
 
-ArgoCD will detect the new `application.yaml` on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload.
+ArgoCD will detect the new `application.yaml` on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload. The hostname's DNS record and TLS certificate are already handled — [external-dns](../platform/external-dns.md) publishes the record from the `HTTPRoute`, and the Gateway's wildcard certificate covers the name. Neither needs a step of its own.
 
 ```bash
 git add payload/workloads/my-app/
@@ -146,8 +144,10 @@ git push
 
 ## Step 7: Document It
 
-Add a page at `docs/workloads/my-app.md` and register it in `zensical.toml`
-under the Workloads `nav` section:
+Not optional, and not busywork. An undocumented workload is one you will
+rediscover in eighteen months by reading YAML and guessing. Add a page at
+`docs/workloads/my-app.md` and register it in `zensical.toml` under the
+Workloads `nav` section:
 
 ```toml
   { "Workloads" = [

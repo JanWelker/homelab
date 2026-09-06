@@ -4,6 +4,12 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 
 # Directory Structure
 
+Four directories do the real work, and knowing which is which saves a lot of
+grepping. `ansible/` describes the machines, `boot_server/` hands them their
+operating system, `payload/` is everything the cluster runs, and `output/` is
+generated — never edit anything in there, it will be overwritten by the next
+`make config` without ceremony.
+
 ```text
 .
 ├── ansible
@@ -51,3 +57,9 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 ├── zensical.toml           # Documentation site configuration
 └── README.md
 ```
+
+A useful mental split: `ansible/` and `boot_server/` only matter while a node is
+being built. `payload/` matters every day after that. If you are debugging a
+running cluster and find yourself in `ansible/`, you are probably in the wrong
+place — with the honourable exception of `kubeadm.yaml.j2`, which explains why
+half the control plane is configured the way it is.

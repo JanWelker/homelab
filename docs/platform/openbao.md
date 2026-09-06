@@ -6,6 +6,11 @@ description: "OpenBao as the cluster secret store: bootstrapping, unsealing, the
 
 [OpenBao](https://openbao.org/) is the cluster's secret store — an open-source, Linux Foundation fork of HashiCorp Vault. It holds every secret consumed by workloads on the cluster (cloud credentials, API tokens, registry pulls, database passwords, …). Secrets are surfaced to Kubernetes as native `Secret` objects via the [External Secrets Operator](external-secrets.md).
 
+It is also the single most consequential component on this cluster. When
+OpenBao is unhappy, nothing that needs a credential works, and the failure
+presents as six unrelated things breaking at once. Learn its two states —
+sealed and unsealed — before you need to.
+
 ```mermaid
 flowchart LR
     Operator([Operator]) -->|bao CLI| Bao[(OpenBao<br/>KV v2)]
@@ -32,7 +37,7 @@ The chart is the official upstream [`openbao/openbao-helm`](https://github.com/o
 
 ## Bootstrap
 
-OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed.
+OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised. Unsealing is normally automatic — see [Auto-unseal](#auto-unseal) — but initialisation is a one-time manual step that nothing does for you.
 
 ### 1. Initialise the cluster (one-time)
 
@@ -42,14 +47,25 @@ kubectl -n openbao exec -it openbao-0 -- bao operator init \
   -key-threshold=3
 ```
 
-The command prints **5 unseal keys** and an **initial root token**. Store them in a password manager — losing all 5 keys means the data is unrecoverable.
+The command prints **5 unseal keys** and an **initial root token**. Store them in a password manager, right now, before you run another command. Not in the terminal scrollback. Not in a note you will "tidy up later". Losing all 5 keys means the data is unrecoverable, and OpenBao is not being dramatic about that — there is no support line, no recovery flow, and no clever trick. There is just the ciphertext and no way in.
 
 !!! danger
-    These keys protect every other secret on the cluster. They are written **once**, to the operator's terminal. There is no backup. Treat them like the root credentials they are.
+    These keys protect every other secret on the cluster. They are written **once**, to the operator's terminal. There is no backup, no second chance, and no amount of Ceph replication that helps. Treat them like the root credentials they are, and keep them somewhere that does not require this cluster to be running in order to read.
 
 ### 2. Unseal each replica
 
-Repeat for `openbao-0`, `openbao-1`, `openbao-2`, providing 3 of the 5 keys each time:
+With the [`awskms` seal](#auto-unseal) already in place — which it is on a
+cluster built from this repository — the pods unseal themselves as soon as they
+can reach KMS, and the five shares init handed you are **recovery** keys rather
+than unseal keys. Check before doing anything by hand:
+
+```bash
+kubectl -n openbao exec -it openbao-0 -- bao status   # Seal Type: awskms, Sealed: false
+```
+
+The manual procedure below applies when the seal is Shamir, or when KMS is
+unreachable and you need OpenBao up anyway. Repeat for `openbao-0`,
+`openbao-1`, `openbao-2`, providing 3 of the 5 keys each time:
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do
@@ -59,7 +75,7 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:
+Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is exactly why [auto-unseal](#auto-unseal) is configured. Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao status
@@ -81,7 +97,7 @@ The remaining steps assume `bao` is configured this way.
 
 ## Secret engine
 
-We mount a single KV v2 engine at the path `kv/`. All cluster secrets live under it.
+A single KV v2 engine is mounted at the path `kv/`. All cluster secrets live under it. One engine, one convention, no debates six months from now about whether it was `kv/` or `secret/`.
 
 ```bash
 bao secrets enable -path=kv -version=2 kv
@@ -169,7 +185,7 @@ The `Status.Conditions` of the `ClusterSecretStore` should report `Ready=True`.
 
 ## Unsealing after a restart
 
-OpenBao seals itself on every pod restart. After a node reboot, ArgoCD upgrade, or chart bump:
+OpenBao seals itself on every pod restart — every node reboot, every ArgoCD upgrade, every chart bump, every time a kubelet has a bad day. This is by design and it is not going to stop:
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do
@@ -197,6 +213,10 @@ shares — and that is not just an inconvenience. While OpenBao is sealed no
 needs to renew certificates, and a power cut leaves the cluster running but
 unable to issue certificates until a human intervenes.
 
+The failure is also slow, which makes it worse. Nothing breaks the day OpenBao
+seals; things break sixty days later when a certificate expires and nobody
+connects the two events.
+
 | Property | Value |
 | --- | --- |
 | Seal type | `awskms` (built into the OpenBao binary through v2.6) |
@@ -216,7 +236,9 @@ carries the full AWS-side setup. ArgoCD does not sync `.template` files.
 Its IAM user is deliberately separate from the one cert-manager uses for
 Route53. The blast radii differ: losing the Route53 key lets someone mint
 certificates for the zone, losing this one lets someone decrypt the OpenBao root
-key given a copy of the Raft data.
+key given a copy of the Raft data. One shared "homelab" IAM user for everything
+is the convenient option, and it is convenient precisely because it makes every
+compromise a total one.
 
 !!! warning "This is a dependency, not just a convenience"
     OpenBao cannot start without AWS KMS. If KMS is unreachable — a
@@ -237,7 +259,10 @@ key given a copy of the Raft data.
 
 A cluster initialised with Shamir keys does not switch seals by syncing this
 change. The root key has to be re-wrapped, and OpenBao requires the whole
-cluster to go down briefly to do it. **Take a Raft snapshot first.**
+cluster to go down briefly to do it. **Take a Raft snapshot first.** This is one
+of the few procedures here with a real chance of leaving you with an unusable
+secret store, and the snapshot is what turns that from a catastrophe into an
+annoying evening.
 
 ```bash
 bao operator raft snapshot save pre-migration.bao
@@ -271,7 +296,9 @@ Then, following the
 
 Afterwards the 5 shares are **recovery keys**, not unseal keys. They no longer
 unseal a pod, but they are still required for `bao operator generate-root`,
-rekey, and any future seal migration. Keep them exactly as carefully as before.
+rekey, and any future seal migration. Keep them exactly as carefully as before —
+the temptation to relax about keys you no longer type in every week is real, and
+it is a trap.
 
 Confirm the result:
 
@@ -288,7 +315,7 @@ The Raft storage backend supports snapshotting:
 bao operator raft snapshot save snapshot.bao
 ```
 
-Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster. Restore with `bao operator raft snapshot restore`.
+Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster — a snapshot on a PVC inside the cluster it is meant to rebuild is decoration. Restore with `bao operator raft snapshot restore`. And note the obvious: the snapshot is encrypted with a key that lives in KMS or in those five shares, so it is exactly as recoverable as your key custody is.
 
 ## Directory Structure
 
