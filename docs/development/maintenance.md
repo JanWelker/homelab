@@ -53,17 +53,20 @@ located in `renovate.json`.
 - **Grouping**: Updates are grouped by area rather than by update type —
     `Platform Infrastructure` (`payload/platform/**`), `Workloads`
     (`payload/workloads/**`), `Dev Tooling` (Python tooling and pre-commit),
-    `DevOps` (GitHub Actions, Ansible, pre-commit hooks), and
-    `Core Infrastructure` (Flatcar, Kubernetes, containerd, syslinux).
+    `DevOps` (GitHub Actions, Ansible, pre-commit hooks),
+    `Core Infrastructure` (Flatcar, Kubernetes, containerd, syslinux), and
+    `Documentation Fonts` (the webfonts vendored into the docs site).
 - **Automerge**: Patch and minor updates automerge within their group. Major
-    updates and everything in `Core Infrastructure` always require review.
+    updates and everything in `Core Infrastructure` and `Documentation Fonts`
+    always require review.
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests.
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
     Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
     managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
-    versions pinned in `ansible/inventory.yaml`.
+    versions pinned in `ansible/inventory.yaml`, and the font releases pinned in
+    `scripts/update-fonts.sh`.
 
 ### Two things Renovate cannot see by default
 
@@ -100,3 +103,25 @@ image:
 The alternative is to move the values into a real `values.yaml` and reference it
 with `valueFiles`, the way Cilium and ArgoCD already do. Either works; the
 annotation is cheaper for a single tag.
+
+### Vendored binaries need a follow-up commit
+
+The docs site self-hosts its webfonts, so `docs/assets/fonts/` holds `woff2`
+files that no manager can rewrite. `scripts/update-fonts.sh` pins the two
+upstream releases those files come from, and a custom manager tracks the pins:
+
+```bash
+# renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?<major>\d+)\.(?<minor>\d+)$
+INTER_VERSION="v4.1"
+```
+
+A Renovate PR therefore changes one line and nothing else — the fonts it claims
+to update are still the old ones. Check out the branch, run `make fonts` to
+fetch the release the pin now names, and commit the result before merging. That
+is why `Documentation Fonts` never automerges. `make fonts-check` re-downloads
+both releases and diffs them against what is committed, so it will tell you
+whether a branch still needs that second commit.
+
+The `versioning` in the annotation is a `regex:` rather than `semver`: Inter
+tags prereleases as `v4.0-beta9h`, and only accepting two-part tags keeps those
+out of the update stream.

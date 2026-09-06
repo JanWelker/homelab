@@ -93,7 +93,9 @@
         "!flatcar",
         "!kubernetes",
         "!containerd",
-        "!syslinux"
+        "!syslinux",
+        "!inter",
+        "!jetbrains-mono"
       ]
     },
     {
@@ -108,6 +110,18 @@
       "groupName": "Core Infrastructure",
       "addLabels": [
         "infrastructure"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "Webfonts vendored into the docs site. The PR only moves the pin, so a human has to run `make fonts` on the branch and commit the binaries.",
+      "matchPackageNames": [
+        "inter",
+        "jetbrains-mono"
+      ],
+      "groupName": "Documentation Fonts",
+      "addLabels": [
+        "documentation"
       ],
       "automerge": false
     },
@@ -235,6 +249,16 @@
         "(?<depName>dag-andersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "description": "Webfont releases vendored into docs/assets/fonts by scripts/update-fonts.sh",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^scripts/update-fonts\\.sh$/"
+      ],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s+packageName=(?<packageName>\\S+)\\s+versioning=(?<versioning>\\S+)[^\\n]*\\n\\s*\\w+=\"(?<currentValue>[^\"]+)\""
+      ]
     },
     {
       "description": "Track versions annotated with a `# renovate:` comment. Needed for image tags written inline in a Helm `valuesObject:`, which the helm-values manager only reads from real values files.",

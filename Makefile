@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint install-core install-cilium install-cert-manager install-argo bootstrap-apps
+.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps
 
 setup:
 	uv sync
@@ -26,6 +26,12 @@ untaint:
 taint:
 	@echo "Re-applying control-plane taints..."
 	kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane:NoSchedule
+
+fonts:
+	scripts/update-fonts.sh
+
+fonts-check:
+	scripts/update-fonts.sh --check
 
 install-core: install-cilium install-cert-manager
 
