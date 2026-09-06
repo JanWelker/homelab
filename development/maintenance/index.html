@@ -50,13 +50,9 @@
     
     
       
-        
-        
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
-        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
-      
     
+    
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
     
       <link rel="stylesheet" href="../../stylesheets/extra.css">
     
@@ -1491,6 +1487,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vendored-binaries-need-a-follow-up-commit" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vendored binaries need a follow-up commit
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1761,6 +1768,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vendored-binaries-need-a-follow-up-commit" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vendored binaries need a follow-up commit
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1841,17 +1859,20 @@ located in <code>renovate.json</code>.</p>
 <li><strong>Grouping</strong>: Updates are grouped by area rather than by update type —
     <code>Platform Infrastructure</code> (<code>payload/platform/**</code>), <code>Workloads</code>
     (<code>payload/workloads/**</code>), <code>Dev Tooling</code> (Python tooling and pre-commit),
-    <code>DevOps</code> (GitHub Actions, Ansible, pre-commit hooks), and
-    <code>Core Infrastructure</code> (Flatcar, Kubernetes, containerd, syslinux).</li>
+    <code>DevOps</code> (GitHub Actions, Ansible, pre-commit hooks),
+    <code>Core Infrastructure</code> (Flatcar, Kubernetes, containerd, syslinux), and
+    <code>Documentation Fonts</code> (the webfonts vendored into the docs site).</li>
 <li><strong>Automerge</strong>: Patch and minor updates automerge within their group. Major
-    updates and everything in <code>Core Infrastructure</code> always require review.</li>
+    updates and everything in <code>Core Infrastructure</code> and <code>Documentation Fonts</code>
+    always require review.</li>
 <li><strong>Pinning</strong>: The <code>config:best-practices</code> preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests.</li>
 <li><strong>Scope</strong>: Renovate checks Python dependencies (<code>pyproject.toml</code>, <code>uv.lock</code>),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
     Helm values (<code>payload/**/values.yaml</code>), and pre-commit hooks. Custom regex
     managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
-    versions pinned in <code>ansible/inventory.yaml</code>.</li>
+    versions pinned in <code>ansible/inventory.yaml</code>, and the font releases pinned in
+    <code>scripts/update-fonts.sh</code>.</li>
 </ul>
 <h3 id="two-things-renovate-cannot-see-by-default">Two things Renovate cannot see by default<a class="headerlink" href="#two-things-renovate-cannot-see-by-default" title="Permanent link">&para;</a></h3>
 <p>Both of these went unnoticed for long enough to let dependencies drift, so they
@@ -1879,6 +1900,22 @@ custom regex manager picks it up.</p>
 <p>The alternative is to move the values into a real <code>values.yaml</code> and reference it
 with <code>valueFiles</code>, the way Cilium and ArgoCD already do. Either works; the
 annotation is cheaper for a single tag.</p>
+<h3 id="vendored-binaries-need-a-follow-up-commit">Vendored binaries need a follow-up commit<a class="headerlink" href="#vendored-binaries-need-a-follow-up-commit" title="Permanent link">&para;</a></h3>
+<p>The docs site self-hosts its webfonts, so <code>docs/assets/fonts/</code> holds <code>woff2</code>
+files that no manager can rewrite. <code>scripts/update-fonts.sh</code> pins the two
+upstream releases those files come from, and a custom manager tracks the pins:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
+</span></code></pre></div>
+<p>A Renovate PR therefore changes one line and nothing else — the fonts it claims
+to update are still the old ones. Check out the branch, run <code>make fonts</code> to
+fetch the release the pin now names, and commit the result before merging. That
+is why <code>Documentation Fonts</code> never automerges. <code>make fonts-check</code> re-downloads
+both releases and diffs them against what is committed, so it will tell you
+whether a branch still needs that second commit.</p>
+<p>The <code>versioning</code> in the annotation is a <code>regex:</code> rather than <code>semver</code>: Inter
+tags prereleases as <code>v4.0-beta9h</code>, and only accepting two-part tags keeps those
+out of the update stream.</p>
 
 
 
