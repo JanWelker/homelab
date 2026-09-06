@@ -1,12 +1,18 @@
 ---
-description: "How the OS, Kubernetes, and containerd actually get updated on these nodes, and why a reboot is always a manual step."
+description: "How the OS, Kubernetes, and containerd actually get updated on these nodes, and why nothing takes effect until a reboot."
 ---
 
 # Updates & Upgrades
 
 Three separate mechanisms update a node, and none of them completes on its own.
-All three land their changes on disk and then wait for a reboot that nothing
-schedules.
+All three land their changes on disk and then wait for a reboot.
+
+This is the part that surprises people coming from a normal distro. Nothing here
+is "installed" in the sense you are used to. The new version is sitting on the
+disk, fully downloaded, politely doing nothing, until the machine is restarted.
+A node can be four patch releases behind while reporting that everything is up
+to date, because from its point of view everything *is* up to date — just not
+running yet.
 
 ## OS updates
 
@@ -26,6 +32,10 @@ it, and uncordons it, one node at a time inside a nightly window and only while
 Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
 do when you do not want to wait for the window — see
 [Rebooting a node](index.md#rebooting-a-node).
+
+`locksmithd` is masked rather than merely disabled, incidentally, because a
+service that reboots a storage node without draining it first is not a feature,
+it is a scheduled outage with good manners.
 
 Check what a node is running and whether an update is staged:
 
@@ -55,7 +65,9 @@ MatchPattern=kubernetes-v1.37.@v-%a.raw
 ```
 
 Patch releases inside `v1.37` are still picked up automatically, which is what
-you want — `v1.38` is not, which is the point. sysext-bakery publishes exactly
+you want — `v1.38` is not, which is very much the point. An unattended jump to a
+new minor is how a cluster wakes up with kubelets a version ahead of a control
+plane that refuses to talk to them. sysext-bakery publishes exactly
 this file as `kubernetes-v1.37.conf`, and the generated config is byte-identical
 to it. containerd gets the same treatment even though upstream ships no pinned
 variant for it.
@@ -63,7 +75,8 @@ variant for it.
 The alternative sysext-bakery offers is a *floating* `MatchPattern`
 (`kubernetes-@v-%a.raw`). A node on that one tracks whatever upstream publishes
 as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
-to.
+to — and it will do so overnight, without asking, on whichever node happens to
+check first.
 
 The pinning happens in
 `ansible/playbooks/tasks/download_sysext.yaml`, which asserts that the rewrite
@@ -84,7 +97,9 @@ this is the deliberate path:
 
 1. Confirm the jump is supported. **kubeadm allows one minor version at a
    time.** Going from v1.34 to v1.37 is three separate passes through this
-   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one.
+   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one. There is no
+   shortcut, there has never been a shortcut, and the release notes for each
+   intermediate version are not optional reading.
 2. Update `kubernetes_version` (and `containerd_version` if relevant) in
    `ansible/inventory.yaml`.
 3. `make download && make config`. This fetches the new sysext, regenerates the
@@ -105,7 +120,9 @@ this is the deliberate path:
    [Rebooting a node](index.md#rebooting-a-node) instead.
 6. On a control-plane node, run `kubeadm upgrade` as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
-   steps kubeadm needs for control-plane components.
+   steps kubeadm needs for control-plane components. Swapping binaries and
+   calling it an upgrade is exactly the kind of thing that works on five nodes
+   and then does not work on the sixth.
 
 !!! note
     A **newly provisioned** node skips all of this — it installs
@@ -129,4 +146,6 @@ The exception is anything installed by `make install-core` and
 `make install-argo` — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
 itself. They are installed by Helm during bootstrap, before ArgoCD exists to
 manage them, with versions pinned in the `Makefile`. Renovate does not track
-those pins.
+those pins, so they drift quietly and only reveal themselves the next time
+somebody rebuilds a cluster from scratch and gets a different result. Worth a
+glance whenever you touch the `Makefile` anyway.

@@ -8,6 +8,10 @@ The project documentation (this site) is built with
 [Zensical](https://zensical.org/) and published to GitHub Pages by a GitHub
 Actions workflow.
 
+Deliberately not hosted on the cluster. Documentation that goes down with the
+thing it documents is documentation you cannot read at the exact moment you need
+it, which is a mistake people make once.
+
 ## Workflow
 
 1. **Authoring**: Documentation is written in Markdown within `docs/`. The site
@@ -20,7 +24,7 @@ Actions workflow.
     <https://janwelker.github.io/homelab/>.
 
 No container image, registry, or cluster is involved — the docs stay available
-independently of the homelab.
+independently of the homelab. Someone else's uptime problem, for once.
 
 ```mermaid
 sequenceDiagram
@@ -52,7 +56,9 @@ uv run zensical build   # one-off build into site/
 ## Conventions
 
 - Every page must be reachable from the `nav` in `zensical.toml`; the build runs
-    with `--strict`, so broken links and orphaned pages fail CI.
+    with `--strict`, so broken links and orphaned pages fail CI. Strict mode is
+    unforgiving and that is the point — rotten cross-references are how a docs
+    site stops being trusted.
 - Cross-references use relative Markdown paths (for example
     `platform/openbao.md`, `../quickstart.md`) so they resolve both on the site
     and when browsing the repository on GitHub.
@@ -61,7 +67,8 @@ uv run zensical build   # one-off build into site/
 - Markdown is linted by `lint-markdown.yaml` and the `markdownlint-cli2`
     pre-commit hook. Note that `markdownlint` reads a blank line followed by an
     indented one as a code block, so a multi-paragraph `!!!` admonition trips
-    `MD046`. Keep admonition bodies to a single paragraph.
+    `MD046`. Keep admonition bodies to a single paragraph. This one will catch
+    you, probably today.
 - Theme templates are overridden by dropping a same-named file under
     `overrides/` (wired up via `theme.custom_dir`). Currently only
     `partials/source.html`, which drops the repository-facts API call that 404s

@@ -8,6 +8,12 @@ The core infrastructure components that run the cluster. Everything here is
 managed by ArgoCD; each component's own page documents its directory layout and
 configuration.
 
+Fourteen components sounds like a lot for a homelab, and it is — but every one of
+them exists because bare metal does not come with the thing a cloud provider
+would have handed you. No load balancer, no managed certificates, no block
+storage API, no identity provider, no backup service. This section is the bill
+for not having those.
+
 ## Components
 
 - **[authentik](authentik.md)**: Single sign-on for every platform UI.
@@ -33,18 +39,23 @@ configuration.
 
 ## Traffic Flow
 
- ```mermaid
- flowchart LR
-     Client([Client]) --> LB[Cilium LoadBalancer]
-     LB --> GW[Gateway API]
-     
-     subgraph Cluster
-         GW -->|HTTPRoute| Svc[Service]
-         Svc --> Pod[App Pod]
-     end
- 
-     style Client fill:#f9f,stroke:#333
- ```
+```mermaid
+flowchart LR
+    Client([Client]) --> LB[Cilium LoadBalancer]
+    LB --> GW[Gateway API]
+
+    subgraph Cluster
+        GW -->|HTTPRoute| Svc[Service]
+        Svc --> Pod[App Pod]
+    end
+
+    style Client fill:#f9f,stroke:#333
+```
+
+Four hops, and Cilium is three of them. When a hostname stops answering, the
+question is which hop stopped: does the Gateway still hold its LoadBalancer IP,
+does the `HTTPRoute` still say `Accepted`, does the Service still have endpoints.
+In that order — the answer is usually the first one.
 
 ## HTTPRoute Locations
 
@@ -93,7 +104,9 @@ Excluded from sync:
 - `README.md` (documentation)
 - `**/*.template` (credential templates)
 
-Sync wave ordering:
+Sync wave ordering. This is the dependency graph made explicit, and it is the
+reason a fresh bootstrap converges rather than deadlocking on a CRD that does
+not exist yet:
 
 1. `-10`: Gateway API CRDs
 2. `-5`: cert-manager
@@ -108,3 +121,7 @@ Sync wave ordering:
    snapshot-controller
 10. `3`: Alloy, Velero, Pod Security Admission labels and network policies
 11. `5`: Rook dashboard configuration job
+
+The negative waves are the interesting half: nothing above wave `0` can work
+until networking, storage and certificates exist, so those get to go first and
+everything else waits its turn.

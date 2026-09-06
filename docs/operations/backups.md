@@ -4,6 +4,10 @@ description: "What is backed up, what is not, and how to snapshot etcd and OpenB
 
 # Backups & Recovery
 
+Nobody wants backups. Everybody wants restores. This page is written with that
+distinction in mind: every mechanism below is described in terms of what it can
+actually get back for you, and — more importantly — what it cannot.
+
 ## Current state
 
 | Data | Backed up | How |
@@ -20,7 +24,8 @@ description: "What is backed up, what is not, and how to snapshot etcd and OpenB
 ## What is not covered
 
 Alerting is the other half of a backup: a backup that silently stopped running
-is indistinguishable from one that works until you need it. Velero's
+is indistinguishable from one that works, right up until the moment you need it,
+which is also the moment you find out. Velero's
 `PrometheusRule` covers that, but only reaches whoever Alertmanager is
 configured to tell — see
 [Monitoring](../platform/monitoring.md) for the state of that.
@@ -31,6 +36,12 @@ The bigger gap is where the backups land.
 against the failures that actually happen — a deleted PVC, a bad `prune`, a
 corrupted database, a workload that ate its own data. It does not protect
 against losing the cluster, because the backups go with it.
+
+This is worth sitting with for a moment rather than nodding past. A backup that
+shares a failure domain with its source covers operator error and nothing else.
+Operator error is genuinely the most common cause of data loss, so this is not
+worthless — it is just precisely one half of the job, and it is important to
+know which half you have.
 
 Off-site replication is the missing piece. RGW supports bucket replication and
 Velero supports a second `BackupStorageLocation`, so the shape of the fix is
@@ -57,7 +68,9 @@ and is large. `events` are excluded because they expire anyway.
 
 A CSI snapshot on its own is a Ceph object. Backing up a PVC by snapshotting it
 would leave the only copy inside the same Ceph cluster the backup exists to
-survive — protection against a deleted PVC, but not against a broken pool. With
+survive — protection against a deleted PVC, but not against a broken pool. A
+snapshot is a bookmark, not a copy, and confusing the two is one of the more
+expensive mistakes available in storage. With
 `defaultSnapshotMoveData`, Velero takes the snapshot, streams the data out to
 the object store, and deletes the snapshot. The durable copy is the one in the
 bucket.
@@ -73,7 +86,9 @@ checksumAlgorithm: ""      # on the BackupStorageLocation config
 
 The AWS plugin's `aws-sdk-go-v2` sends a trailing checksum that Ceph RGW rejects
 with `api error XAmzContentSHA256Mismatch`, so **every upload fails** without
-this. The plugin's own README lists Ceph S3 as needing it.
+this. The plugin's own README lists Ceph S3 as needing it. "S3-compatible" is
+one of the great load-bearing hyphens of our industry, and this is the sort of
+thing it is carrying.
 
 ```yaml
 image: velero/velero-plugin-for-aws:v1.14.2
@@ -97,13 +112,16 @@ velero restore create --from-backup velero-daily-20260905020000
 
 If backups sit in `PartiallyFailed`, check that a `VolumeSnapshotClass` labelled
 `velero.io/csi-volumesnapshot-class: "true"` exists — without it Velero finds no
-class for the RBD driver and skips volumes silently.
+class for the RBD driver and skips volumes **silently**, leaving you with a
+backup full of Kubernetes objects and none of the data anybody cared about.
 
 ### Alerting
 
 Velero ships a `PrometheusRule` here: `VeleroBackupFailures` (critical) and
 `VeleroBackupPartialFailures` (warning). A backup that silently stopped running
-is the failure mode this exists to prevent.
+is the failure mode this exists to prevent — and it is the one that catches
+experienced people, because the dashboard stays green and the CronJob still
+exists and everything looks exactly like it did last month.
 
 ## etcd
 
@@ -111,6 +129,9 @@ Velero restores objects *through the API server*. That is the wrong tool for the
 case where there is no API server left to restore through — lost quorum, a
 corrupted data directory, three dead control-plane nodes. For that you need the
 etcd data itself, which Velero does not capture.
+
+Two backup systems for two genuinely different disasters. It looks like
+redundancy until the day you need the one you skipped.
 
 A CronJob takes one nightly at 01:00, an hour before Velero runs:
 
@@ -144,8 +165,9 @@ kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
 kubectl cp kube-system/etcd-<node>:/var/lib/etcd/snapshot.db ./etcd-snapshot.db
 ```
 
-Copy it off the cluster. A snapshot stored only on a Ceph PVC does not survive
-the failure it exists for.
+Copy it off the cluster. Now. A snapshot stored only on a Ceph PVC does not
+survive the failure it exists for, and "I'll move it later" has never once
+happened in the history of operations.
 
 Restoring is `etcdctl snapshot restore` into a fresh data directory on a stopped
 control plane, then restarting kubelet — see the
@@ -159,7 +181,8 @@ kubectl -n openbao cp openbao-0:/tmp/snapshot.bao ./openbao-snapshot.bao
 ```
 
 The snapshot contains all KV data plus policies, roles and mounts. It does
-**not** contain the unseal keys, and it is useless without them. Details in
+**not** contain the unseal keys, and it is useless without them — a perfect,
+verified, encrypted brick. Details in
 [OpenBao &rarr; Backups](../platform/openbao.md#backups).
 
 ## Ceph volumes
@@ -185,6 +208,10 @@ What you need, in order:
 3. An OpenBao raft snapshot, or the willingness to re-enter every secret.
 4. Optionally an etcd snapshot, to skip re-issuing certificates and waiting for
    the platform to re-converge.
+
+Items 1 and 2 are the ones that actually matter, and only one of them lives
+somewhere GitHub keeps a copy. If you take a single action after reading this
+page, make it checking that you still know where those five key shares are.
 
 The rebuild itself is the [Quickstart](../quickstart.md) from step 1. Because
 the platform is declarative, the cluster converges back to its documented state

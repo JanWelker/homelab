@@ -15,6 +15,12 @@ This removes the dependency on a single control-plane node for cluster
 [Known Limitations](../architecture/limitations.md#single-api-server-endpoint)
 for what still applies to a cluster whose certificates predate the VIP.
 
+The alternative, which almost every first cluster does, is to name one node in
+the kubeconfig and quietly promote it to Most Important Machine. It works
+perfectly until that machine needs a reboot, at which point you discover that
+"highly available control plane" meant "three copies of etcd behind one
+hostname".
+
 ## How it is wired
 
 | Piece | Where |
@@ -27,11 +33,13 @@ for what still applies to a cluster whose certificates predate the VIP.
 
 kube-vip runs in ARP mode with leader election, advertising a `/32`. It is
 deliberately configured with `svc_enable: "false"` — LoadBalancer services
-belong to Cilium's L2 announcements, and both claiming them would conflict.
+belong to Cilium's L2 announcements, and two components fighting over who gets
+to answer an ARP request produces the kind of intermittent, host-dependent
+weirdness that eats an entire evening.
 
 The manifest is placed by Ignition rather than applied afterwards because it has
 to be running before `kubeadm init` writes the endpoint into the cluster's
-certificates.
+certificates. Chicken, egg, static pod.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init`
@@ -45,7 +53,8 @@ certificates.
 It must be a free address on the nodes' subnet, outside any DHCP range, and
 distinct from the Cilium LoadBalancer pools (`10.9.2.248` and `10.9.2.249`).
 Nothing validates this — a collision shows up as an unreachable API server after
-provisioning.
+provisioning, or worse, as an API server that works from some machines and not
+others depending on whose ARP cache won.
 
 ## Migrating a cluster built without a VIP
 
@@ -62,7 +71,8 @@ Reprovision from the [Quickstart](../quickstart.md). The VIP is in place from
 ### In place
 
 Only worth it if rebuilding is not an option. Work on one node at a time and
-keep a second terminal open with a working kubeconfig.
+keep a second terminal open with a working kubeconfig — not as a nicety, but
+because several of the steps below can leave you unable to open a new one.
 
 1. Confirm the address is free:
 
@@ -118,10 +128,7 @@ keep a second terminal open with a working kubeconfig.
     ```
 
 !!! danger
-    Step 6 is the one that bites. Cilium replaces kube-proxy, so if
-    `k8sServiceHost` names an address that is not answering, every Cilium pod
-    loses the API server and the cluster's networking goes with it. Do not
-    commit that change until `curl -k https://<vip>:6443/healthz` succeeds.
+    Step 6 is the one that bites. Cilium replaces kube-proxy, so if `k8sServiceHost` names an address that is not answering, every Cilium pod loses the API server and the cluster's networking goes with it — including, delightfully, the networking you were using to fix it. Do not commit that change until `curl -k https://<vip>:6443/healthz` succeeds.
 
 ## Verifying
 
@@ -136,4 +143,5 @@ kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'; echo
 
 To test failover, reboot the leader per
 [Rebooting a node](index.md#rebooting-a-node) and confirm `kubectl` keeps
-working after a few seconds.
+working after a few seconds. Do this once, deliberately, on a quiet afternoon.
+Untested failover is not failover; it is a hypothesis.

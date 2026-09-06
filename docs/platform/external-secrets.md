@@ -6,6 +6,11 @@ description: "The External Secrets Operator bridging OpenBao to native Kubernete
 
 [External Secrets Operator (ESO)](https://external-secrets.io/) bridges the cluster's secret store ([OpenBao](openbao.md)) to native Kubernetes `Secret` objects. Workloads consume secrets the standard way (`envFrom`, `volumeMounts`, `imagePullSecrets`) without ever talking to OpenBao directly.
 
+That last part is the whole trick. No sidecar, no init container, no application
+code that knows what a Vault token is. Applications keep reading environment
+variables like it is 2014, and the interesting work happens somewhere they never
+have to think about.
+
 ## Components
 
 | Resource              | Scope        | Purpose                                                |
@@ -33,6 +38,8 @@ sequenceDiagram
 ```
 
 ESO authenticates to OpenBao with its own ServiceAccount (`external-secrets-vault` in the `external-secrets` namespace). OpenBao validates the JWT against the Kubernetes TokenReview API and issues a short-lived OpenBao token bound to the `external-secrets` role/policy.
+
+Note what is absent from that sentence: any long-lived credential stored anywhere. The cluster's own identity system vouches for ESO, and OpenBao decides whether to believe it. This is the bootstrap problem solved properly, and it is worth understanding once rather than treating as magic — because when it breaks, it breaks in the `ClusterSecretStore` status and nowhere else.
 
 ## Adding a new secret
 
@@ -110,9 +117,13 @@ spec:
 
 `refreshInterval: 1h` polls OpenBao hourly. Set to `0` to disable polling — ESO will only re-sync on resource changes. For rotated credentials, leave it at a value that matches your rotation cadence.
 
+Worth knowing: rotating a value in OpenBao updates the Kubernetes `Secret` within that interval, but it does **not** restart anything. A pod that read the secret into an environment variable at startup will happily keep using the old value until something restarts it. Reloader-style tooling or a rollout is the missing half of "rotation", and forgetting it is how a credential gets rotated on paper and not in practice.
+
 ## Troubleshooting
 
 ### `ClusterSecretStore` is not Ready
+
+Start here for basically every secret-related problem. If the store is not Ready, nothing downstream of it will be either, and chasing the individual `ExternalSecret` first is wasted time.
 
 ```bash
 kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq

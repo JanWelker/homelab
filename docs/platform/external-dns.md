@@ -10,9 +10,12 @@ already declare them.
 
 Without it, every hostname needs a record created by hand in the AWS console —
 while cert-manager automates the *certificate* for the same name, through the
-same zone, with the same credentials. Adding a workload would mean remembering a
-step that lives nowhere in the repository, and removing one would leave a record
-pointing at nothing.
+same zone, with the same credentials. Automating the hard half and leaving the
+easy half manual is a very common shape, and it is always the manual half that
+gets forgotten. Adding a workload would mean remembering a step that lives
+nowhere in the repository, and removing one would leave a record pointing at
+nothing, forever, until somebody audits the zone and cannot work out what
+`old-thing.k8s.wlkr.ch` was.
 
 ## How it decides what to publish
 
@@ -28,13 +31,7 @@ to `infra-gateway` resolves to `10.9.2.248`, and one on `apps-gateway` to
 `10.9.2.249`, without either address being written down again.
 
 !!! note "Why `sync` is safe here"
-    `sync` lets external-dns **delete** records, which is usually where people
-    reach for `upsert-only` instead. It is safe because of the TXT registry: for
-    every record it creates, external-dns writes a companion
-    `_externaldns.*` TXT record stamped with `homelab-k8s`, and it will only
-    modify or delete records carrying that stamp. Anything created by hand in
-    the same zone is invisible to it. Without the registry, `sync` would be a
-    way to lose hand-made records.
+    `sync` lets external-dns **delete** records, which is reasonably where people reach for `upsert-only` instead — pointing a deletion-capable robot at a production DNS zone is not a decision to make casually. It is safe because of the TXT registry: for every record it creates, external-dns writes a companion `_externaldns.*` TXT record stamped with `homelab-k8s`, and it will only modify or delete records carrying that stamp. Anything created by hand in the same zone is invisible to it. Without the registry, `sync` would be a genuinely excellent way to delete your MX records.
 
 ## Adding a hostname
 
@@ -75,7 +72,9 @@ bao kv put kv/external-dns/route53 \
 They are split because the blast radii differ. cert-manager writes only
 `_acme-challenge` TXT records, and a stolen key means someone can issue
 certificates for the zone. external-dns creates and deletes A and TXT records,
-and a stolen key means someone can repoint hostnames.
+and a stolen key means someone can repoint hostnames. One shared key would
+collapse both into "someone owns your domain", which is a strictly worse
+sentence.
 
 The policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus
 `route53:ListHostedZones` and `route53:ListResourceRecordSets`.
@@ -88,9 +87,10 @@ dig +short argo.infra.k8s.wlkr.ch
 ```
 
 A record that will not update is usually one external-dns does not own — check
-for the matching `_externaldns.` TXT record in Route53. Adopting a hand-made
-record means creating that TXT entry, or deleting the record and letting
-external-dns recreate it.
+for the matching `_externaldns.` TXT record in Route53. This is the safety
+mechanism working exactly as designed, and it will still confuse you the first
+time. Adopting a hand-made record means creating that TXT entry, or deleting the
+record and letting external-dns recreate it.
 
 ## Directory Structure
 

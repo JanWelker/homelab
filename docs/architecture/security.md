@@ -9,22 +9,33 @@ from that. They are listed here so the assumptions are explicit rather than
 implied — someone reading the manifests should be able to tell a decision from
 an oversight.
 
+That distinction is the whole reason this page exists. Every system carries
+weaknesses; the dangerous ones are the weaknesses nobody chose.
+
 ## Assumed trust boundary
 
 The cluster assumes a **trusted L2 network segment**. Anything with a port on
 that segment is treated as friendly. There is no VPN requirement, no mutual TLS
 between components, and no network segmentation inside the cluster.
 
+Worth being clear-eyed about what "trusted" means in a house: it includes the
+guest laptop, the smart TV, and the doorbell running firmware from 2019 that
+nobody has thought about since. The boundary is real, it is just not as tidy as
+the phrase suggests.
+
 The published hostnames are a partial exception. Certificates are issued by
 Let's Encrypt through a DNS-01 challenge against a public zone, so
 `argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable names and
 appear in Certificate Transparency logs, even though they point at RFC1918
-addresses that are unreachable from outside the LAN.
+addresses that are unreachable from outside the LAN. Your internal hostnames are
+public knowledge the moment you request a certificate for them; plan names
+accordingly.
 
 ## Provisioning
 
 Provisioning is the least protected phase, by design — it has to work before
-any of the cluster's own security exists.
+any of the cluster's own security exists. This is the classic bootstrap problem,
+and everyone solves it the same way: briefly, and with the door open.
 
 | Property | Detail |
 | --- | --- |
@@ -36,7 +47,9 @@ any of the cluster's own security exists.
 The practical mitigation is time: `make serve` is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
 after two hours. **Stop the boot server when provisioning is finished** — it is
-the only thing keeping those credentials off the network.
+the only thing keeping those credentials off the network. A `make serve` left
+running in a forgotten tmux session for three months is a genuinely bad outcome,
+and it is an easy one to reach.
 
 `output/credentials/` holds the generated bootstrap token and certificate key in
 plaintext. The directory is `0700` and `output/` is gitignored, but the values
@@ -52,11 +65,18 @@ is committed to Git.
 
 Two consequences worth knowing:
 
-- OpenBao has no auto-unseal, so the unseal keys are the root of trust for every
-  other secret and exist only wherever the operator put them.
+- OpenBao [auto-unseals against AWS KMS](../platform/openbao.md#auto-unseal), so
+  the KMS key is what a restarted pod actually depends on. The 5 shares remain as
+  recovery keys and are still the root of trust for every other secret — they
+  exist only wherever the operator put them, and losing all of them loses
+  everything. The trade is a rare external dependency instead of a frequent
+  manual step; see
+  [the resulting limitation](limitations.md#openbao-depends-on-aws-kms-to-start).
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
   a namespace can read what ESO materialised there. Encryption at rest, below,
-  does nothing about this — it protects the bytes in etcd, not the API.
+  does nothing about this — it protects the bytes in etcd, not the API. If you
+  remember one thing from this page, make it this one; the number of people who
+  believe otherwise is remarkable.
 
 ### Encryption at rest
 
@@ -65,7 +85,9 @@ The API server is configured with an `EncryptionConfiguration` that encrypts
 (`ansible/templates/kubeadm.yaml.j2`, and the key file in
 `ansible/templates/butane_config.yaml.j2`). Without it a Secret sits in the etcd
 data directory as plaintext, so an etcd backup, a stolen disk, or read access to
-`/var/lib/etcd` yields every credential the cluster holds.
+`/var/lib/etcd` yields every credential the cluster holds. `strings` on an
+unencrypted etcd file is a memorable demonstration, and one worth doing exactly
+once, on a cluster you do not care about.
 
 | Property | Detail |
 | --- | --- |
@@ -98,7 +120,8 @@ a `clusterResourceWhitelist` of every group and kind, in every namespace. Only
 
 They are useful as grouping and as a place to add restrictions later. They are
 not an isolation boundary today: an Application in the `apps` project can create
-cluster-scoped RBAC.
+cluster-scoped RBAC. Which is to say, a workload's manifest directory can quietly
+grant itself the keys to the cluster, and nothing would object.
 
 **Network policy covers four namespaces.** `openbao`, `cert-manager`,
 `external-secrets` and `monitoring` have default-deny **ingress**
@@ -107,7 +130,9 @@ is still unrestricted. See [Security Policies](../platform/security-policies.md)
 
 **Pod Security Admission is on, but mostly auditing.** Every platform namespace
 carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
-stricter one, so violations are visible without breaking what runs today.
+stricter one, so violations are visible without breaking what runs today. This is
+the sane order of operations: measure first, enforce second. Enforcing first is
+how you end up disabling the control entirely at 2am.
 
 **Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`).
 Any namespace can attach an `HTTPRoute` to `infra-gateway` and claim a hostname
@@ -132,19 +157,25 @@ Two things follow. Authentik is now a dependency of reaching any of them, so
 the break-glass paths in
 [When Authentik is down](../platform/authentik.md#when-authentik-is-down) matter.
 And OpenBao is deliberately left out: putting the thing that holds Authentik's
-own database password behind Authentik would be a loop.
+own database password behind Authentik would be a loop, and circular
+dependencies in an auth stack are only funny from a distance.
 
 ## What would tighten this up
 
 Roughly in order of value against effort:
 
-1. Configure Alertmanager receivers, so a failure is noticed at all.
-2. Add default-deny NetworkPolicies per namespace, starting with the platform
-   namespaces.
-3. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
+1. Extend default-deny ingress to the namespaces
+   [not yet covered](../platform/security-policies.md#scope), then start on
+   egress — the larger and more breakable half.
+2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-4. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
-5. Configure OpenBao auto-unseal against a KMS, removing the manual unseal step
-   and the 5-of-N key custody problem.
+3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
+4. Add a second Alertmanager receiver on a different transport. One receiver,
+   one mailbox and one SMTP provider means a failure of the mail path is itself
+   unmonitored — see
+   [Alerting reaches one mailbox](limitations.md#alerting-reaches-one-mailbox).
+5. Move etcd encryption to a KMS provider, removing the static
+   `encryption_key` that currently sits in `output/credentials/` with no
+   rotation.
 
 See [Known Limitations](limitations.md) for the operational counterparts.

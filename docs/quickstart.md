@@ -9,20 +9,20 @@ description: "Bring up the bare metal Kubernetes cluster from scratch: provision
 Bring up the bare metal Kubernetes cluster from scratch. This project automates
 the deployment using Flatcar Container Linux and Kubeadm.
 
+Set aside an afternoon. Not because the steps are long — they are eleven
+commands — but because somewhere around step 7 a machine will sit at a blinking
+cursor, and you will learn something about your DHCP server that you did not
+want to know.
+
 !!! warning "Read this first if the cluster isn't mine"
-    This repository describes a specific homelab. Node names, IP addresses, the
-    `wlkr.ch` domain, and the Git repository URL are hardcoded throughout
-    `payload/`. Following the steps below verbatim gives you a cluster whose
-    ArgoCD syncs from **this** repository and whose certificates are issued for
-    a domain you don't control. Work through
-    [Adapting This for Your Cluster](adapting.md) **before** step 1.
+    This repository describes a specific homelab. Node names, IP addresses, the `wlkr.ch` domain, and the Git repository URL are hardcoded throughout `payload/`. Following the steps below verbatim gives you a cluster whose ArgoCD syncs from **this** repository and whose certificates are issued for a domain you don't control. Work through [Adapting This for Your Cluster](adapting.md) **before** step 1.
 
 ## Hardware Requirements
 
 Each node must have:
 
 - A NIC that supports PXE booting
-- An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`)
+- An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`, because hardware is a collection of exceptions wearing a trenchcoat)
 - Sufficient disk space: 50 GB reserved for containerd, remainder used by Rook-Ceph as OSD storage
 
 The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.
@@ -47,6 +47,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
 - **External DHCP Server**: Must point PXE clients at the deployment host:
   - Option 66 (`next-server`): IP of the machine running `make serve`
   - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
+
+!!! tip "Consumer routers and PXE"
+    Plenty of home routers will happily let you set options 66 and 67 and then serve neither. If step 7 produces total silence in the boot server log, prove the DHCP side first with `tcpdump -i <iface> port 67 or port 68` before you go looking for bugs in anything more interesting.
 
 ## Setup
 
@@ -95,7 +98,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
     remaining space for Rook-Ceph storage.*
 
     Re-run this after **any** change to `inventory.yaml` — the values are baked
-    into the generated files. `make artifacts` runs steps 4 and 5 together.
+    into the generated files. Editing the inventory and skipping this step is the
+    homelab equivalent of changing the config and forgetting to reload the
+    service, and it fails just as quietly. `make artifacts` runs steps 4 and 5
+    together.
 
     Check that one PXE menu was generated per node:
 
@@ -111,7 +117,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
 
     Leave this running for the whole of step 7 — it serves every artifact the
     nodes fetch. It logs each TFTP and HTTP request, which is the best signal
-    that a node is progressing.
+    that a node is progressing. Keep the window visible: watching those requests
+    arrive in order is the single most useful debugging tool in this entire
+    procedure.
 
 7. **Boot Machines**:
     Power on your bare metal nodes. They will PXE boot, install Flatcar, and reboot.
@@ -119,7 +127,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
       bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
       the initrd, `ignition-<host>.json`, and finally the sysext images.
     - **Note**: The cluster will come up in a `NotReady` state initially because
-      no CNI is installed.
+      no CNI is installed. This is correct. Do not fix it yet.
     - If a node stalls, see [Troubleshooting PXE boot](#troubleshooting-pxe-boot).
 
 8. **Retrieve Kubeconfig**:
@@ -158,11 +166,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
       ClusterIssuers.
 
     !!! note
-        This target pins its own Cilium, cert-manager, and Gateway API CRD
-        versions directly in the `Makefile`, because it runs before ArgoCD
-        exists. Those pins are separate from the ones ArgoCD manages in
-        `payload/platform/` and are not updated by Renovate — check them if a
-        component behaves differently before and after the GitOps handover.
+        This target pins its own Cilium, cert-manager, and Gateway API CRD versions directly in the `Makefile`, because it runs before ArgoCD exists. Those pins are separate from the ones ArgoCD manages in `payload/platform/` and are not updated by Renovate — check them if a component behaves differently before and after the GitOps handover.
 
     Nodes should reach `Ready` once Cilium is up:
 
@@ -198,8 +202,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
         *This applies the parent applications (platform, gitops)
         which enable ArgoCD to manage all applications from Git.*
 
-        Watch the platform sync. Applications appear in
-        [sync-wave order](platform/index.md#usage):
+        This is the handover moment: from here on the cluster takes its orders
+        from the repository rather than from you. Watch the platform sync.
+        Applications appear in [sync-wave order](platform/index.md#usage):
 
         ```bash
         kubectl -n argocd get applications -w
@@ -209,12 +214,15 @@ The deployment host (the machine running Ansible and the boot server) must be re
         expected, since their Route53 credentials don't exist yet.
 
 11. **Initialise the secret store**:
-    OpenBao starts sealed and empty. Until it is initialised and populated,
-    cert-manager cannot issue certificates (the Route53 credentials live in
-    OpenBao). Follow [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
+    OpenBao starts uninitialised and empty. Until it is initialised and
+    populated, cert-manager cannot issue certificates (the Route53 credentials
+    live in OpenBao). This step assumes the `openbao-kms` Secret already exists
+    — it is applied by hand from `kms-credentials.yaml.template` and is what
+    lets OpenBao unseal itself at all. Follow
+    [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
 
-    1. `bao operator init` on `openbao-0` and securely store the unseal keys + root token.
-    2. Unseal all three replicas.
+    1. `bao operator init` on `openbao-0` and securely store the recovery keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.
+    2. Confirm all three replicas came up unsealed (`bao status`). With the KMS seal in place they unseal themselves; if they did not, KMS is unreachable and you unseal by hand with 3 of the 5 keys.
     3. Enable the `kv` v2 secret engine, the Kubernetes auth method, and the `external-secrets` policy/role (see [OpenBao &rarr; Kubernetes auth method](platform/openbao.md#kubernetes-auth-method)).
     4. Store the Route53 credentials:
 
@@ -246,6 +254,8 @@ make taint
 
 ## Verifying the result
 
+The four commands that answer "is it actually fine?":
+
 ```bash
 kubectl get nodes                                  # all Ready
 kubectl -n argocd get applications                 # all Synced / Healthy
@@ -258,8 +268,10 @@ Once DNS points at the gateway IPs, the platform UIs are reachable — see
 
 ## Troubleshooting PXE boot
 
-Step 7 is the most failure-prone part of the process. Work through it by
-watching the `make serve` log and asking how far the node got.
+Step 7 is the most failure-prone part of the process, and it fails in a
+particularly demoralising way: a black screen with a blinking cursor and no
+error message. The trick is to stop staring at the node and start reading the
+`make serve` log, asking one question — how far did it get?
 
 | Symptom | Likely cause |
 | --- | --- |
@@ -269,6 +281,12 @@ watching the `make serve` log and asking how far the node got.
 | TFTP requests arrive but no `01-<mac>` file is served | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. Compare against `ls output/tftp/pxelinux.cfg/`. |
 | Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
 | Node installs but never joins the cluster | Sysext download failed, or the kubeadm systemd unit errored. SSH in as `core` and check `journalctl -u kubeadm`. |
+
+Two things worth internalising. A machine with two NICs will PXE boot from
+whichever one it feels like, and the MAC printed on the case is frequently not
+that one. And a node that boots the menu but stalls immediately after is almost
+never a broken image — it is `boot_server_ip`, pointing at an address that was
+correct on some other network, on some other day.
 
 The boot server serves `output/tftp` over TFTP and `output/http` over HTTP —
 see [Boot Server](boot_server/index.md). If a file is missing from those

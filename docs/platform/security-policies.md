@@ -7,10 +7,17 @@ description: "Pod Security Admission levels per namespace and the first default-
 Two cluster-wide controls: Pod Security Admission, and default-deny network
 policy.
 
+Both are the kind of thing that is easy to turn on and hard to turn on *safely*.
+The pattern used here — measure first, enforce second, one namespace at a time —
+is unglamorous and is the only approach that survives contact with a running
+cluster.
+
 ## Pod Security Admission
 
 PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
-not opt in runs at the default `privileged` level — which enforces nothing.
+not opt in runs at the default `privileged` level — which enforces nothing at
+all. Every namespace you have not thought about is wide open, silently, by
+default. That is the fact this section exists to address.
 
 Each namespace carries three labels, and the split between them is the point:
 
@@ -22,7 +29,9 @@ Each namespace carries three labels, and the split between them is the point:
 
 Enforcement is set to what already works, so **nothing running breaks**, while
 `warn` and `audit` show what a stricter level would have caught. Tightening
-enforcement later becomes an informed change rather than a guess.
+enforcement later becomes an informed change rather than a guess — and a
+security control that broke production once is a security control that gets
+switched off permanently, which is the real risk here.
 
 | Namespace | Enforce | Why not stricter |
 | --- | --- | --- |
@@ -35,14 +44,14 @@ enforcement later becomes an informed change rather than a guess.
 | `argocd` | `baseline` | — |
 
 !!! note "`privileged` here means 'not yet reduced', not 'unexamined'"
-    Each of the four has a specific reason above. `audit` and `warn` are still
-    set to `baseline` or `restricted` on all of them, so the violations are
-    visible even where they are not blocked.
+    Each of the four has a specific reason above. `audit` and `warn` are still set to `baseline` or `restricted` on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.
 
 Namespace objects are owned by this Application so the labels stay declarative
 rather than being applied once by `CreateNamespace=true` and then drifting.
-**Pruning is disabled** for the whole Application — pruning a `Namespace`
-deletes everything inside it, which is not a mistake worth leaving available.
+**Pruning is disabled** for the whole Application — pruning a `Namespace` deletes
+everything inside it, including PVCs, so a misplaced deletion in Git becomes an
+irreversible data loss event roughly three minutes later. That is not a mistake
+worth leaving available to a sleepy Tuesday.
 
 ### Checking what would break
 
@@ -58,7 +67,8 @@ changing anything.
 
 Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
 anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
-the Kubernetes API alike.
+the Kubernetes API alike. The flat network is Kubernetes' default and it is
+almost never what anyone actually wants — it is just what you get for free.
 
 ### Why CiliumNetworkPolicy and not NetworkPolicy
 
@@ -71,8 +81,10 @@ traffic have no pod identity a standard `NetworkPolicy` can name:
   itself.
 
 A plain `NetworkPolicy` default-deny therefore kills all ingress *and* all
-health probes — the pods then fail their probes and restart forever, which
-looks like an application fault rather than a policy one. Cilium's
+health probes — the pods then fail their probes and restart forever, which looks
+exactly like an application fault and not at all like a policy one. Expect to
+spend a while reading application logs before it occurs to you that the
+application is fine and the kubelet is the one being blocked. Cilium's
 `fromEntities` names these directly: `ingress` for Envoy-proxied traffic,
 `host` and `remote-node` for the kubelet.
 
@@ -84,14 +96,18 @@ Ingress only, in four namespaces: `openbao`, `cert-manager`,
 Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
-exposed. It is the next step to take, not one that is taken here.
+exposed. And you will get it wrong at least twice, because nobody has a complete
+list of what their components phone home to. It is the next step to take, not
+one that is taken here.
 
 The remaining namespaces — `logging`, `backup`, `authentik`, `kured`,
 `metrics-server` — are **not** covered and allow all ingress.
 
 ### Rolling this out safely
 
-Apply one namespace at a time and watch drops in Hubble between each:
+One namespace at a time, watching Hubble between each. Rolling out network
+policy everywhere at once is how people end up reverting the whole thing at
+midnight and never trying again:
 
 ```bash
 kubectl -n kube-system port-forward svc/hubble-relay 4245:80

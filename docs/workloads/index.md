@@ -7,9 +7,14 @@ description: "User-facing applications deployed to the cluster and how the workl
 User-facing applications deployed to the cluster live under
 `payload/workloads/<app-name>/`.
 
-No workloads are currently deployed. The documentation site is built with
-[Zensical](https://zensical.org/) and published to GitHub Pages rather than
-served from the cluster — see
+No workloads are currently deployed — which, if you have been reading the rest of
+this site, is quite funny: fourteen platform components, three control-plane
+nodes, distributed storage, single sign-on and a full observability stack, all
+faithfully running nothing in particular. That is homelabs for you. The platform
+*is* the project, and it is now ready for whatever eventually lands on it.
+
+The documentation site is built with [Zensical](https://zensical.org/) and
+published to GitHub Pages rather than served from the cluster — see
 [Documentation System](../development/documentation.md).
 
 ## Management
