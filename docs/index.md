@@ -8,6 +8,11 @@ description: "GitOps-driven Kubernetes homelab on bare metal, running Flatcar Co
 
 Welcome to the **Flatcar Homelab** documentation. This project provides a fully automated, GitOps-driven Kubernetes cluster on bare metal, leveraging Flatcar Container Linux and Kubeadm.
 
+!!! warning "Preview smoke test"
+
+    Temporary marker added by a throwaway PR to verify the documentation
+    preview workflow renders and publishes. This never merges.
+
 ## Core Concepts
 
 - **Immutable Infrastructure**: Uses Flatcar Container Linux; updates stage automatically and are applied on a manual reboot.
