@@ -101,10 +101,15 @@ Two things follow that are worth knowing:
   node-readiness alerts named in its config. An alert outside that list will not
   stop a reboot.
 
-## No network policy, and permissive AppProjects
+## Network policy is partial, and AppProjects are permissive
 
-Pod-to-pod traffic is unrestricted, and two of the three ArgoCD AppProjects
-allow every resource kind in every namespace. Details and the reasoning in
+**Partly fixed.** Four namespaces have default-deny ingress and every platform
+namespace has Pod Security Admission labels — see
+[Security Policies](../platform/security-policies.md).
+
+Still open: all **egress** is unrestricted everywhere, and the namespaces of
+components added since are not covered. Two of the three ArgoCD AppProjects
+still allow every resource kind in every namespace. Details in
 [Security Posture](security.md#authorization).
 
 ## Provisioning requires the boot server on the same segment

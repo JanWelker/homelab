@@ -1,0 +1,113 @@
+---
+# Pod-to-pod traffic was unrestricted across every namespace: anything that got
+# a foothold in one pod could reach OpenBao's API, the Ceph mons and the
+# Kubernetes API alike.
+#
+# These are CiliumNetworkPolicies rather than plain NetworkPolicies for one
+# specific reason. With Cilium's Gateway API implementation the request reaching
+# a backend pod comes from the per-node Envoy, and kubelet's liveness and
+# readiness probes come from the node itself. Neither has a pod identity a
+# standard NetworkPolicy can name, so a plain default-deny silently kills health
+# probes and all ingress. Cilium's `fromEntities` can name them: `ingress` for
+# Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
+#
+# Scope is deliberately ingress-only. A default-deny on egress additionally
+# needs rules for DNS, the API server, and every external endpoint a component
+# talks to, and getting that wrong takes out the component rather than merely
+# exposing it. Egress is the next step, not this one.
+#
+# Namespaces belonging to components that arrive in other changes -- logging,
+# backup, authentik, kured, metrics-server -- are not covered here and still
+# allow all ingress.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: openbao
+spec:
+  description: >-
+    Default-deny ingress for OpenBao, allowing only the cluster's own traffic:
+    peers within the namespace for Raft, the Gateway for the UI, Prometheus for
+    the metrics endpoint, ESO for secret reads, and the node for health probes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: external-secrets
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: cert-manager
+spec:
+  description: >-
+    Default-deny ingress for cert-manager. It is a client of everything and a
+    server to almost nothing -- only the webhook, which the API server calls
+    from the node.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: external-secrets
+spec:
+  description: >-
+    Default-deny ingress for the External Secrets Operator. Its webhook is
+    called by the API server from the node; nothing else needs to reach it.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: monitoring
+spec:
+  description: >-
+    Default-deny ingress for the monitoring stack. Grafana is reached through
+    the Gateway; Prometheus and Alertmanager are reached by each other and by
+    Grafana within the namespace.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
