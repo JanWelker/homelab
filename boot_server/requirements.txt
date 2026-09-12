@@ -1,0 +1,6 @@
+# The only runtime dependency of serve.py, installed into the image by
+# boot_server/Dockerfile. The same pin exists in pyproject.toml, where it is
+# what lets pylint resolve the import -- the image deliberately does not install
+# from uv.lock, whose runtime half is almost entirely Ansible and never runs
+# here. Renovate moves both, in two pull requests.
+tftpy==0.8.7

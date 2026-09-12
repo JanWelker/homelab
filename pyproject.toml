@@ -9,6 +9,9 @@ dependencies = [
     "ansible==14.4.0",
     "ansible-lint>=25.12.2",
     "pre-commit>=4.5.1",
+    # Runtime dependency of boot_server/serve.py, which runs from its own image
+    # and not from this environment. The pin is here so pylint can resolve the
+    # import; boot_server/requirements.txt is what the image installs.
     "tftpy==0.8.7",
 ]
 

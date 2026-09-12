@@ -35,11 +35,11 @@ The deployment host (the machine running Ansible and the boot server) must be re
 | --- | --- | --- |
 | `make` | every step | Xcode CLT / `build-essential` |
 | `git` | cloning this repository | your package manager |
-| `uv` | Ansible and the boot server | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| `uv` | Ansible | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `butane` | transpiling Butane YAML to Ignition JSON | `brew install butane` or the [Flatcar docs](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/) |
 | `kubectl` | steps 8 onwards | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
 | `helm` | `make install-core`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
-| `sudo` | `make serve` binds privileged port 69 | — |
+| `docker` | `make serve` runs the boot server as a container | [docs.docker.com](https://docs.docker.com/engine/install/) or `podman` with `CONTAINER_ENGINE=podman` |
 
 ### Other requirements
 
@@ -47,6 +47,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
 - **External DHCP Server**: Must point PXE clients at the deployment host:
   - Option 66 (`next-server`): IP of the machine running `make serve`
   - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
+- **A Linux host on the nodes' segment**: `make serve` needs the container to
+  share the host's network namespace, which Docker Desktop on macOS cannot do —
+  its "host" is a VM. See
+  [Why host networking](boot_server/index.md#why-host-networking).
 
 !!! tip "Consumer routers and PXE"
     Plenty of home routers will happily let you set options 66 and 67 and then serve neither. If step 7 produces total silence in the boot server log, prove the DHCP side first with `tcpdump -i <iface> port 67 or port 68` before you go looking for bugs in anything more interesting.
@@ -109,11 +113,14 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ls output/tftp/pxelinux.cfg/     # one 01-<mac> file per host
     ```
 
-6. **Start Boot Server** (Requires sudo for port 69):
+6. **Start Boot Server**:
 
     ```bash
     make serve
     ```
+
+    *Runs the published container image with the host's network and `output/`
+    mounted read-only. No `sudo`; see [Boot Server](boot_server/index.md).*
 
     Leave this running for the whole of step 7 — it serves every artifact the
     nodes fetch. It logs each TFTP and HTTP request, which is the best signal
@@ -432,7 +439,7 @@ error message. The trick is to stop staring at the node and start reading the
 | Symptom | Likely cause |
 | --- | --- |
 | Node never requests anything; no log output at all | DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware. |
-| `PXE-E32: TFTP open timeout` | `make serve` isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall. |
+| `PXE-E32: TFTP open timeout` | `make serve` isn't running, a firewall is blocking UDP/69, or the container is not on the host's network — a published port cannot serve TFTP at all, and Docker Desktop on macOS cannot avoid one. |
 | Bootloader loads, then "Could not find kernel image" or a hang at the menu | `boot_server_ip` in `inventory.yaml` is wrong. It is baked into the menu's kernel/initrd URLs. Fix it, re-run `make config`, and reboot the node. |
 | TFTP requests arrive but no `01-<mac>` file is served | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. Compare against `ls output/tftp/pxelinux.cfg/`. |
 | Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |

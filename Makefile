@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
+.PHONY: download config serve serve-dev clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
 
 # Bootstrap component versions are not pinned here. Each one is read out of the
 # ArgoCD Application that owns the component after the GitOps handover, so the
@@ -14,7 +14,7 @@ GATEWAY_API_VERSION  := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevi
 
 # Abort the target rather than handing Helm an empty --version if a manifest
 # moves or changes shape.
-require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
+require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a value from $(2)"; exit 1; }
 
 setup:
 	uv sync
@@ -28,8 +28,39 @@ download:
 config:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
 
+# The boot server runs as a container built from boot_server/Dockerfile, so the
+# host needs a container engine and nothing else -- no sudo, and no Python
+# environment shared with Ansible.
+#
+# --network host is not a convenience. TFTP answers every request from a fresh
+# ephemeral port, and neither a published port nor a NAT'd bridge translates
+# that back: the reply reaches the node from an address it never asked, and PXE
+# firmware discards it without a word. The same reason the image is amd64 only
+# and Docker Desktop on macOS cannot host this -- see
+# docs/boot_server/index.md.
+#
+# BIND_IP comes from the inventory, which is also where the generated PXE menus
+# get the address they tell nodes to fetch from. One value, one place.
+BOOT_SERVER_IMAGE ?= ghcr.io/janwelker/homelab/boot-server:latest
+CONTAINER_ENGINE  ?= docker
+BIND_IP           ?= $(shell awk '/^[[:space:]]*boot_server_ip:/{gsub(/["\047]/, "", $$2); print $$2; exit}' ansible/inventory.yaml)
+
 serve:
-	sudo $$(uv python find) boot_server/serve.py
+	$(call require,BIND_IP,ansible/inventory.yaml)
+	@mkdir -p output/http output/tftp
+	$(CONTAINER_ENGINE) run --rm --name boot-server \
+		--network host \
+		--read-only \
+		--cap-drop ALL --cap-add NET_BIND_SERVICE \
+		--env BIND_IP=$(BIND_IP) \
+		--volume "$(CURDIR)/output:/output:ro" \
+		$(BOOT_SERVER_IMAGE)
+
+# Serve from a locally built image, for a change to serve.py that CI has not
+# published yet.
+serve-dev:
+	$(CONTAINER_ENGINE) build --tag boot-server:dev boot_server
+	$(MAKE) serve BOOT_SERVER_IMAGE=boot-server:dev
 
 kubeconfig:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml
