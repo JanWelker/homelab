@@ -121,6 +121,5 @@ rook-ceph/             # Distributed Storage
 ├── application.yaml   # ArgoCD Application
 ├── operator.yaml      # Rook-Ceph operator
 ├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
-├── dashboard-config-job.yaml
 └── httproute.yaml     # Rook dashboard route
 ```
