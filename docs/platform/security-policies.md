@@ -39,12 +39,13 @@ switched off permanently, which is the real risk here.
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap — not on baseline's capability allow-list |
+| `boot-server` | `privileged` | `hostNetwork` and root, because TFTP has to bind port 69 on the node's own interfaces — see [In-Cluster Boot Server](../boot_server/in-cluster.md#why-it-is-pinned-to-a-node) |
 | `cert-manager` | `baseline` | — |
 | `external-secrets` | `baseline` | — |
 | `argocd` | `baseline` | — |
 
 !!! note "`privileged` here means 'not yet reduced', not 'unexamined'"
-    Each of the four has a specific reason above. `audit` and `warn` are still set to `baseline` or `restricted` on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.
+    Each of the five has a specific reason above. `audit` and `warn` are still set to `baseline` or `restricted` on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.
 
 Namespace objects are owned by this Application so the labels stay declarative
 rather than being applied once by `CreateNamespace=true` and then drifting.
@@ -102,6 +103,12 @@ one that is taken here.
 
 The remaining namespaces — `logging`, `backup`, `authentik`, `kured`,
 `metrics-server` — are **not** covered and allow all ingress.
+
+`boot-server` is a fifth, and a different case: its pod runs with `hostNetwork`,
+so it carries the node's identity rather than an endpoint identity, and there is
+no `endpointSelector` that would match it. A policy there would be decoration.
+What limits that exposure is time — it runs at zero replicas until somebody
+scales it up.
 
 ### Rolling this out safely
 

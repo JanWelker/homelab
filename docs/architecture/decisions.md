@@ -123,3 +123,31 @@ system after three months away, than Flux's smaller footprint.
 The App-of-Apps pattern keeps bootstrap to a single `kubectl apply` of
 `payload/root.yaml`; everything else is discovered from the repository. See
 [GitOps Strategy](gitops.md).
+
+## The boot server is a container, in two places
+
+`serve.py` used to be a `sudo` process in this project's virtualenv on the
+deployment host. It is now an image: run with `--network host` on the external
+boot host, and as a Deployment pinned to a control-plane node in the cluster.
+The same bytes either way, which is the point — a node rebuilt from the cluster
+cannot behave differently from one rebuilt from the rack.
+
+Host networking in both places is not a shortcut. TFTP answers from a fresh
+ephemeral port, which neither a published container port nor a Kubernetes
+`Service` reverse-translates, so the node gets a reply from an address it never
+spoke to and its firmware discards it in silence. A LoadBalancer IP from the
+Cilium pool would be tidier and would not boot a single machine.
+
+The costs are both written into the manifest. The in-cluster server is **pinned
+to one node**, because its address is what DHCP and the generated PXE menus
+name, so the pod is not free to reschedule — and that node is the one node it
+cannot rebuild. And it ships at **zero replicas with `/spec/replicas` ignored by
+ArgoCD**, which is a deliberate hole in "everything is reconciled from Git": a
+server that hands out kubeadm join credentials to anything that asks is not
+something to leave switched on, and not something `selfHeal` should be switching
+back off mid-boot either.
+
+The alternative was iPXE with HTTP chainloading, which removes TFTP and with it
+all of the above. It also moves the problem into the DHCP server, which is the
+one piece of this network the project does not own. See
+[In-Cluster Boot Server](../boot_server/in-cluster.md).

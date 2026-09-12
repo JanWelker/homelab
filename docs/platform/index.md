@@ -8,7 +8,7 @@ The core infrastructure components that run the cluster. Everything here is
 managed by ArgoCD; each component's own page documents its directory layout and
 configuration.
 
-Fourteen components sounds like a lot for a homelab, and it is — but every one of
+Fifteen components sounds like a lot for a homelab, and it is — but every one of
 them exists because bare metal does not come with the thing a cloud provider
 would have handed you. No load balancer, no managed certificates, no block
 storage API, no identity provider, no backup service. This section is the bill
@@ -19,6 +19,8 @@ for not having those.
 - **[authentik](authentik.md)**: Single sign-on for every platform UI.
 - **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
   see [Backups & Recovery](../operations/backups.md).
+- **boot-server**: The PXE boot server, scaled to zero until a node has to be
+  rebuilt — see [In-Cluster Boot Server](../boot_server/in-cluster.md).
 - **[cert-manager](cert-manager.md)**: TLS certificate automation.
 - **[cilium](cilium.md)**: CNI and Gateway API. Enforces the policies in
   [security policies](security-policies.md).
@@ -119,7 +121,8 @@ not exist yet:
 9. `1`: Monitoring stack, kubelet-csr-approver, logging, backup
 10. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
     snapshot-controller
-11. `3`: Alloy, Velero, Pod Security Admission labels and network policies
+11. `3`: Alloy, Velero, the boot server, Pod Security Admission labels and
+    network policies
 12. `5`: Rook dashboard configuration job
 
 The negative waves are the interesting half: nothing above wave `0` can work

@@ -15,8 +15,10 @@ software.
 
 It runs as a container. The script itself is unchanged by that — it reads its
 address, its ports and its artifact directory from the environment, so the same
-image serves from the deployment host during a first build and from anywhere
-else on the nodes' segment afterwards.
+image serves from the deployment host during a first build and, once there is a
+cluster, [from inside it](in-cluster.md) when a node has to be rebuilt. This page
+is the external one; the first boot of a cluster is always served from outside
+it.
 
 ## Usage
 

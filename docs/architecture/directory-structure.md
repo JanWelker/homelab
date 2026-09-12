@@ -49,6 +49,7 @@ generated — never edit anything in there, it will be overwritten by the next
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
+│       ├── boot-server/      # PXE boot server, scaled to 0 until needed
 │       ├── cert-manager/     # TLS certificates
 │       ├── cilium/           # CNI + Gateway API
 │       ├── external-secrets/ # OpenBao to K8s Secret bridge

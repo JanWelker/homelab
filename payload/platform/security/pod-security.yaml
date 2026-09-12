@@ -98,3 +98,18 @@ metadata:
     pod-security.kubernetes.io/warn: restricted
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: boot-server
+  labels:
+    # hostNetwork, and root for port 69: a PXE server that cannot bind the
+    # node's own interfaces is not a PXE server, and baseline forbids both. The
+    # pod still drops every capability but NET_BIND_SERVICE and runs with a
+    # read-only root -- see payload/platform/boot-server/deployment.yaml.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false

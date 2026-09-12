@@ -122,6 +122,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
     *Runs the published container image with the host's network and `output/`
     mounted read-only. No `sudo`; see [Boot Server](boot_server/index.md).*
 
+    !!! tip "Later rebuilds can be served from the cluster"
+        Once the cluster exists, the same image runs inside it as a Deployment scaled to zero, so one node can be rebuilt without a machine on the rack's segment — see [In-Cluster Boot Server](boot_server/in-cluster.md). This step is not one of those cases: there is no cluster yet.
+
     Leave this running for the whole of step 7 — it serves every artifact the
     nodes fetch. It logs each TFTP and HTTP request, which is the best signal
     that a node is progressing. Keep the window visible: watching those requests

@@ -74,6 +74,27 @@ kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status   # HEALTH_OK
 
 If the rebooted node hosted an OpenBao replica, it came back sealed — unseal it before moving on.
 
+## Reprovisioning a node
+
+A node that has to go back to a fresh Flatcar install needs a boot server on its
+segment, and the cluster can be that boot server — a Deployment scaled to zero
+until somebody scales it up:
+
+```bash
+make config BOOT_SERVER_IP=10.9.2.3   # the node the boot server is pinned to
+make serve-cluster
+make serve-cluster-push
+# point DHCP option 66 at the same address, then power-cycle the node
+make serve-cluster-stop
+```
+
+Scale it back down when the node has joined. While it serves, the Ignition
+configs and the join credentials inside them are available to anything on the
+segment — the full procedure, and what it cannot do, is in
+[In-Cluster Boot Server](../boot_server/in-cluster.md). Check whether the
+rebuilt node brought an old Ceph OSD back with it:
+[No OSDs after reprovisioning](../platform/rook-ceph.md#no-osds-after-reprovisioning).
+
 ## Rolling back a bad sync
 
 Everything under `payload/` is applied by ArgoCD from Git, so the durable fix is
