@@ -21,11 +21,30 @@ spec:
         controller:
           type: daemonset
 
+          volumes:
+            extra:
+              # Alloy's data directory, see the mount below.
+              - name: tmp
+                emptyDir: {}
+
         alloy:
           # /var/log/pods for container logs and /var/log/journal for the node's
           # own units. Both live under /var/log, so one mount covers them.
           mounts:
             varlog: true
+
+            # Alloy writes its data directory to storagePath, which the chart
+            # defaults to /tmp/alloy -- and with a read-only root filesystem it
+            # cannot create it, so every pod dies at startup with
+            # "failed to create the remotecfg service: mkdir /tmp/alloy:
+            # read-only file system". An emptyDir restores exactly what the
+            # chart assumes without giving up the read-only root. The directory
+            # holds file-tailing positions and is ephemeral here, which is also
+            # true of the chart's default: on a writable root it is the
+            # container layer, and that does not survive a restart either.
+            extra:
+              - name: tmp
+                mountPath: /tmp
 
           # Log files are written root-owned with restrictive modes, so a
           # non-root Alloy silently collects nothing.
