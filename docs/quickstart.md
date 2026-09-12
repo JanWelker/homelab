@@ -186,15 +186,40 @@ The deployment host (the machine running Ansible and the boot server) must be re
         make install-argo
         ```
 
-        The Gateway and DNS for `argo.infra.k8s.wlkr.ch` don't work yet, so
-        reach the UI by port-forward and log in as `admin`:
+        There is no way into the UI yet, and that is expected. The local
+        admin account is disabled in `payload/argocd/values.yaml`, so the
+        server never generates `argocd-initial-admin-secret`; Authentik, the
+        only other way in, arrives later through GitOps and needs the client
+        secret that OpenBao does not hold until step 11. Follow the bootstrap
+        with `kubectl` instead.
+
+        If you want the UI before then, re-enable the local admin for as long
+        as you need it. The password is generated the first time the server
+        starts with the account enabled, so the restart is what creates the
+        Secret:
 
         ```bash
+        kubectl -n argocd patch cm argocd-cm --type merge \
+          -p '{"data":{"admin.enabled":"true"}}'
+        kubectl -n argocd rollout restart deploy/argocd-server
+        kubectl -n argocd rollout status deploy/argocd-server
+
         kubectl -n argocd get secret argocd-initial-admin-secret \
           -o jsonpath='{.data.password}' | base64 -d; echo
+        ```
+
+        The Gateway and DNS for `argo.infra.k8s.wlkr.ch` don't work yet, so
+        reach it by port-forward and log in as `admin`:
+
+        ```bash
         kubectl -n argocd port-forward svc/argocd-server 8080:80
         # http://localhost:8080
         ```
+
+        Set `admin.enabled` back to `"false"` once Authentik can log you in.
+        It is the same escape hatch you will reach for on the day SSO is down,
+        documented at
+        [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down).
 
     - **Bootstrap GitOps** (App-of-Apps):
 
