@@ -1767,7 +1767,7 @@ hand; after step 6 the repository is in charge.</p>
     Deploy-&gt;&gt;Cluster: 6. Apply root.yaml (App-of-Apps)</code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in <a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests.</p>
+<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in <a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes <em>before</em> step 1: cert-manager has no tolerations, so <code>make install-core</code> hangs waiting on pods that cannot be scheduled. See <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
 </div>
 
 

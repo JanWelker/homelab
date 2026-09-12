@@ -2002,6 +2002,10 @@ procedure.</p>
 <li>Installs <strong>cert-manager</strong> (for ACME TLS) and the Let's Encrypt
   ClusterIssuers.</li>
 </ul>
+<div class="admonition warning">
+<p class="admonition-title">Single-node clusters: untaint first</p>
+<p>cert-manager ships no tolerations, so on one tainted node this target hangs at <code>rollout status deploy/cert-manager</code> and never returns. Run <code>make untaint</code> before it — see <a href="#single-node-clusters">Single-node clusters</a>.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the <code>Makefile</code> reads each version out of the ArgoCD <code>Application</code> that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while <code>monitoring.coreos.com/v1</code> is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See <a href="../platform/monitoring/#crds">Monitoring</a>.</p>
@@ -2067,10 +2071,22 @@ gateway certificates.</p>
 <h2 id="single-node-clusters">Single-node clusters<a class="headerlink" href="#single-node-clusters" title="Permanent link">&para;</a></h2>
 <p>The <a href="../architecture/#cluster-layout">documented layout</a> has dedicated
 worker nodes, so the control-plane taint stays in place. If you are instead
-running everything on one node, remove the taint after step 9 so workloads can
+running everything on one node, remove the taint before step 9 so workloads can
 schedule:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>
+<p>Before, not after, because step 9 does not survive the taint. Cilium does: the
+agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
+control-plane one by name, so the node reaches <code>Ready</code> and it looks like the
+taint is not in the way. cert-manager carries no tolerations at all, so
+<code>make install-core</code> gets as far as <code>rollout status deploy/cert-manager</code> and
+stops there: none of its three Deployments can be placed, and <code>rollout status</code>
+has no timeout, so it waits for a scheduling decision that is never coming.
+Hubble's relay and UI are Pending for the same reason, quietly, because nothing
+waits on them.</p>
+<p>The taint can come off any time after step 8 puts a kubeconfig in place. The
+node being <code>NotReady</code> until Cilium lands does not matter — this is an API call
+against the node object, not something that has to schedule.</p>
 <p>Re-apply it when you later add worker nodes:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
