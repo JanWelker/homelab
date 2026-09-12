@@ -20,108 +20,17 @@
   },
   "packageRules": [
     {
-      "description": "Infrastructure Platform Updates",
-      "matchFileNames": [
-        "payload/platform/**"
-      ],
-      "groupName": "Platform Infrastructure",
-      "addLabels": [
-        "infrastructure"
-      ],
-      "automerge": true,
-      "matchUpdateTypes": [
-        "patch"
-      ]
-    },
-    {
-      "description": "Application Workload Updates",
-      "matchFileNames": [
-        "payload/workloads/**"
-      ],
-      "matchManagers": [
-        "kubernetes",
-        "argocd",
-        "helm-values",
-        "dockerfile"
-      ],
-      "groupName": "Workloads",
-      "addLabels": [
-        "application"
-      ],
-      "automerge": true,
-      "matchUpdateTypes": [
-        "patch",
-        "minor"
-      ]
-    },
-    {
-      "description": "Python Tooling and Pre-commit",
-      "matchPackageNames": [
-        "ansible",
-        "pre-commit",
-        "ansible-lint",
-        "pylint",
-        "yamllint",
-        "zensical",
-        "tftpy"
-      ],
-      "groupName": "Dev Tooling",
-      "automerge": true,
-      "matchUpdateTypes": [
-        "patch",
-        "minor"
-      ]
-    },
-    {
-      "description": "DevOps, Automation & CI",
-      "matchManagers": [
-        "ansible",
-        "github-actions",
-        "pre-commit",
-        "custom.regex"
-      ],
-      "groupName": "DevOps",
-      "addLabels": [
-        "devops"
-      ],
-      "automerge": true,
+      "description": "One policy for everything: patch and minor automerge, majors wait for a human. No groups -- every component gets its own PR.",
       "matchUpdateTypes": [
         "patch",
         "minor"
       ],
-      "matchPackageNames": [
-        "!flatcar",
-        "!kubernetes",
-        "!containerd",
-        "!syslinux",
-        "!inter",
-        "!jetbrains-mono"
-      ]
+      "automerge": true
     },
     {
-      "description": "Core Infrastructure (OS, K8s, Containerd)",
-      "matchPackageNames": [
-        "flatcar",
-        "kubernetes",
-        "containerd",
-        "syslinux",
-        "kube-vip"
-      ],
-      "groupName": "Core Infrastructure",
-      "addLabels": [
-        "infrastructure"
-      ],
-      "automerge": false
-    },
-    {
-      "description": "Webfonts vendored into the docs site. The PR only moves the pin, so a human has to run `make fonts` on the branch and commit the binaries.",
-      "matchPackageNames": [
-        "inter",
-        "jetbrains-mono"
-      ],
-      "groupName": "Documentation Fonts",
-      "addLabels": [
-        "documentation"
+      "description": "Major updates always require review.",
+      "matchUpdateTypes": [
+        "major"
       ],
       "automerge": false
     },
@@ -138,13 +47,6 @@
         "containerd"
       ],
       "extractVersion": "^containerd-(?<version>.+)$"
-    },
-    {
-      "description": "Block all Major updates from automerging",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false
     }
   ],
   "pre-commit": {
