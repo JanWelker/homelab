@@ -33,6 +33,16 @@ spec:
 
           authentik:
             log_level: info
+
+            # Authentik needs to be told the URL it is reached on: it has no
+            # reliable way to infer one, and it builds e-mail links and outpost
+            # redirects from it. Unset, every admin page carries a "The base URL
+            # has not been configured" banner and the worker logs the same on
+            # every reconcile. The setting lives on the tenant, where the UI
+            # writes it into the database; this is the config source that
+            # backfills it instead, so a rebuilt cluster does not need the click.
+            web:
+              base_url: https://auth.infra.k8s.wlkr.ch
             error_reporting:
               enabled: false
             postgresql:
