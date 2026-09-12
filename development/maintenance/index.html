@@ -2047,10 +2047,10 @@ container image in the repository that <code>config:best-practices</code> never 
 digest.</p>
 <h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
 <p><code>make install-core</code> and <code>make install-argo</code> install Cilium, cert-manager, the
-Gateway API CRDs and ArgoCD itself before ArgoCD exists to manage them. The
-<code>Makefile</code> used to carry its own pins for those four, and Renovate never saw
-them — by the time anybody looked, the bootstrap Cilium was two minors behind
-the one the cluster was actually running.</p>
+Gateway API and Prometheus operator CRDs, and ArgoCD itself before ArgoCD exists
+to manage them. The <code>Makefile</code> used to carry its own pins for those, and
+Renovate never saw them — by the time anybody looked, the bootstrap Cilium was
+two minors behind the one the cluster was actually running.</p>
 <p>The fix was not another custom manager. A second copy of a version is the
 problem; tracking both copies only makes the drift arrive in pairs. Each target
 now reads <code>targetRevision</code> out of the <code>Application</code> manifest that owns the

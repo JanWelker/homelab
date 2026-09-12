@@ -1996,15 +1996,15 @@ procedure.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>install-core
 </span></code></pre></div>
 <ul>
-<li>Installs the Gateway API CRDs, then <strong>Cilium</strong> (CNI, Ingress, L2
-  Announcements) via Helm.</li>
+<li>Installs the Gateway API and Prometheus operator CRDs, then <strong>Cilium</strong>
+  (CNI, Ingress, L2 Announcements) via Helm.</li>
 <li><strong>Removes</strong> <code>kube-proxy</code> to resolve IPVS conflicts.</li>
 <li>Installs <strong>cert-manager</strong> (for ACME TLS) and the Let's Encrypt
   ClusterIssuers.</li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the <code>Makefile</code> reads each version out of the ArgoCD <code>Application</code> that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move.</p>
+<p>This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the <code>Makefile</code> reads each version out of the ArgoCD <code>Application</code> that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while <code>monitoring.coreos.com/v1</code> is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See <a href="../platform/monitoring/#crds">Monitoring</a>.</p>
 </div>
 <p>Nodes should reach <code>Ready</code> once Cilium is up:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
