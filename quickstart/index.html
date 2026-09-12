@@ -2022,17 +2022,37 @@ procedure.</p>
 <p><strong>Deploy ArgoCD</strong>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>install-argo
 </span></code></pre></div>
-<p>The Gateway and DNS for <code>argo.infra.k8s.wlkr.ch</code> don't work yet, so
-reach the UI by port-forward and log in as <code>admin</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># http://localhost:8080</span>
+<p>There is no way into the UI yet, and that is expected. The local
+admin account is disabled in <code>payload/argocd/values.yaml</code>, so the
+server never generates <code>argocd-initial-admin-secret</code>; Authentik, the
+only other way in, arrives later through GitOps and needs the client
+secret that OpenBao does not hold until step 11. Follow the bootstrap
+with <code>kubectl</code> instead.</p>
+<p>If you want the UI before then, re-enable the local admin for as long
+as you need it. The password is generated the first time the server
+starts with the account enabled, so the restart is what creates the
+Secret:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span></code></pre></div>
+<p>The Gateway and DNS for <code>argo.infra.k8s.wlkr.ch</code> don't work yet, so
+reach it by port-forward and log in as <code>admin</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># http://localhost:8080</span>
+</span></code></pre></div>
+<p>Set <code>admin.enabled</code> back to <code>"false"</code> once Authentik can log you in.
+It is the same escape hatch you will reach for on the day SSO is down,
+documented at
+<a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>.</p>
 </li>
 <li>
 <p><strong>Bootstrap GitOps</strong> (App-of-Apps):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>make<span class="w"> </span>bootstrap-apps
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
 <p><em>This applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects and then
 the parent applications (platform, gitops) which enable ArgoCD to
@@ -2044,7 +2064,7 @@ same bootstrap-by-hand handover as <code>make install-core</code>.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
 from the repository rather than from you. Watch the platform sync.
 Applications appear in <a href="../platform/#usage">sync-wave order</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
 </span></code></pre></div>
 <p>The <code>Certificate</code> resources stay un-Ready until step 11 — that is
 expected, since their Route53 credentials don't exist yet.</p>
@@ -2063,9 +2083,9 @@ expected, since their Route53 credentials don't exist yet.</p>
 <li>Enable the <code>kv</code> v2 secret engine, the Kubernetes auth method, and the <code>external-secrets</code> policy/role (see <a href="../platform/openbao/#kubernetes-auth-method">OpenBao &rarr; Kubernetes auth method</a>).</li>
 <li>
 <p>Store the Route53 credentials:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_ACCESS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_SECRET_ACCESS_KEY</span><span class="s2">"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_ACCESS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_SECRET_ACCESS_KEY</span><span class="s2">"</span>
 </span></code></pre></div>
 </li>
 </ol>
@@ -2078,7 +2098,7 @@ gateway certificates.</p>
 worker nodes, so the control-plane taint stays in place. If you are instead
 running everything on one node, remove the taint before step 9 so workloads can
 schedule:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>make<span class="w"> </span>untaint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>
 <p>Before, not after, because step 9 does not survive the taint. Cilium does: the
 agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
@@ -2093,14 +2113,14 @@ waits on them.</p>
 node being <code>NotReady</code> until Cilium lands does not matter — this is an API call
 against the node object, not something that has to schedule.</p>
 <p>Re-apply it when you later add worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>taint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
 <p>The four commands that answer "is it actually fine?":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
 </span></code></pre></div>
 <p>Once DNS points at the gateway IPs, the platform UIs are reachable — see
 <a href="../platform/#httproute-locations">Platform &rarr; HTTPRoute Locations</a>.</p>
