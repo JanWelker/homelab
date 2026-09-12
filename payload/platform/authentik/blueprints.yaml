@@ -26,6 +26,14 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
+          # Authentik 2026.x restricts which OAuth2 grants a provider will
+          # serve, and the field defaults to an empty list -- a provider that
+          # does not name them serves none, and the authorize endpoint turns
+          # every login away with `invalid_request: The request is otherwise
+          # malformed`. Not optional; only looks it.
+          grant_types:
+            - authorization_code
+            - refresh_token
           client_id: !Env ARGOCD_CLIENT_ID
           client_secret: !Env ARGOCD_CLIENT_SECRET
           redirect_uris:
@@ -60,6 +68,10 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
+          # See the note on the ArgoCD provider above.
+          grant_types:
+            - authorization_code
+            - refresh_token
           client_id: !Env GRAFANA_CLIENT_ID
           client_secret: !Env GRAFANA_CLIENT_SECRET
           redirect_uris:
