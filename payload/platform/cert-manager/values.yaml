@@ -8,10 +8,9 @@ config:
   kind: ControllerConfiguration
   enableGatewayAPI: true
 
-# The chart renders the ServiceMonitor unconditionally, with none of the
-# capability check Cilium's chart does, so `make install-cert-manager` turns
-# servicemonitor off again -- at bootstrap the Prometheus operator CRDs it
-# refers to do not exist yet.
+# The chart renders the ServiceMonitor unconditionally, so this depends on
+# `make install-cilium` having landed the Prometheus operator CRDs first --
+# kube-prometheus-stack itself arrives sync-waves later.
 prometheus:
   enabled: true
   servicemonitor:

@@ -9,6 +9,7 @@ chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}
 CILIUM_VERSION       := $(call chart_version,payload/platform/cilium/application.yaml)
 CERT_MANAGER_VERSION := $(call chart_version,payload/platform/cert-manager/application.yaml)
 ARGOCD_VERSION       := $(call chart_version,payload/argocd/application.yaml)
+MONITORING_VERSION   := $(call chart_version,payload/platform/monitoring/application.yaml)
 GATEWAY_API_VERSION  := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
 
 # Abort the target rather than handing Helm an empty --version if a manifest
@@ -50,14 +51,30 @@ fonts-check:
 
 install-core: install-cilium install-cert-manager
 
+# Cilium and cert-manager both render a ServiceMonitor, and Cilium's chart
+# aborts the render outright when monitoring.coreos.com/v1 is missing. That is
+# still the case when ArgoCD first syncs them, several sync waves ahead of
+# kube-prometheus-stack, so the CRDs land here instead: the same files the stack
+# ships, at the chart version its Application pins, which its CRD upgrade job
+# then adopts.
 install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
+	$(call require,MONITORING_VERSION,payload/platform/monitoring/application.yaml)
 	-kubectl -n kube-system delete ds kube-proxy 2>/dev/null || true
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
 	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
 	helm repo add cilium https://helm.cilium.io/
+	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 	helm repo update
+	@echo "Installing Prometheus operator CRDs (kube-prometheus-stack $(MONITORING_VERSION))..."
+	rm -rf output/tmp/kube-prometheus-stack
+	helm pull prometheus-community/kube-prometheus-stack \
+		--version $(MONITORING_VERSION) \
+		--untar --untardir output/tmp
+	kubectl apply --server-side --force-conflicts \
+		-f output/tmp/kube-prometheus-stack/charts/crds/crds/
+	rm -rf output/tmp/kube-prometheus-stack
 	helm upgrade --install cilium cilium/cilium \
 		--version $(CILIUM_VERSION) \
 		--namespace kube-system \
@@ -74,8 +91,7 @@ install-cert-manager:
 		--namespace cert-manager \
 		--create-namespace \
 		--version $(CERT_MANAGER_VERSION) \
-		--values payload/platform/cert-manager/values.yaml \
-		--set prometheus.servicemonitor.enabled=false
+		--values payload/platform/cert-manager/values.yaml
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
