@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps
+.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
 
 # Bootstrap component versions are not pinned here. Each one is read out of the
 # ArgoCD Application that owns the component after the GitOps handover, so the
@@ -119,6 +119,17 @@ bootstrap-apps:
 	kubectl apply -f payload/root.yaml
 	@echo "AppProjects, root app and core-infrastructure apps created."
 	@echo "ArgoCD will now sync all applications from the Git repo."
+
+# Whether storage can actually serve a volume is not something the ArgoCD sync
+# waves answer: a CephCluster reports Ready with no OSDs and no CSI driver, and
+# the apps at later waves start anyway. Run this before trusting them.
+storage-check:
+	scripts/storage-check.sh
+
+# Recovery for nodes that were provisioned before, whose rook-osd partition
+# still holds the previous cluster's OSD. Destroys data; asks first.
+wipe-osd:
+	scripts/wipe-osd.sh
 
 clean:
 	rm -rf output/*
