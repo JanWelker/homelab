@@ -317,6 +317,42 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ESO refresh. Authentik's is what finally gives you a login for the ArgoCD
     and Grafana UIs.
 
+12. **Create the first administrator**:
+    There is no sign-up, and no user to be created: Authentik ships the built-in
+    `akadmin` account, and its password is the `bootstrap-password` step 11
+    generated and never showed you. Read it back out of OpenBao:
+
+    ```bash
+    bao kv get -field=bootstrap-password kv/authentik/config
+    ```
+
+    Log in at
+    [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as `akadmin`, then
+    create the four groups under *Directory &rarr; Groups* and add yourself to
+    the ones you need — see
+    [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles):
+
+    | Group | Grants |
+    | --- | --- |
+    | `argocd-admins` | ArgoCD `role:admin` |
+    | `argocd-viewers` | ArgoCD `role:readonly` |
+    | `grafana-admins` | Grafana `Admin` |
+    | `grafana-editors` | Grafana `Editor` |
+
+    Do the groups before you try the other UIs, because membership is the whole
+    of authorisation here. ArgoCD's `policy.default` is empty, so a user in
+    neither ArgoCD group is authenticated and entitled to nothing — an SSO login
+    that succeeds and lands on an ArgoCD with no applications in it is this, not
+    a broken integration.
+
+    Two follow-ups worth doing the same evening: create a personal account in
+    *Directory &rarr; Users*, put it in the groups, and use that from then on,
+    leaving `akadmin` as the break-glass identity for the day SSO is the thing
+    that is broken — see
+    [When Authentik is down](platform/authentik.md#when-authentik-is-down). And
+    keep `bootstrap-password` in OpenBao rather than rotating it out: it is what
+    the account falls back to after a rebuild.
+
 ## Single-node clusters
 
 The [documented layout](architecture/index.md#cluster-layout) has dedicated
@@ -370,7 +406,7 @@ reprovisioning](platform/rook-ceph.md#no-osds-after-reprovisioning).
 
 ## Verifying the result
 
-The four commands that answer "is it actually fine?":
+The five commands that answer "is it actually fine?":
 
 ```bash
 kubectl get nodes                                  # all Ready
