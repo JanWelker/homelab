@@ -142,10 +142,10 @@ Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a
 `targetRevision` and the PR merges. No manual step is involved. See
 [Maintenance](../development/maintenance.md).
 
-The exception is anything installed by `make install-core` and
-`make install-argo` — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
-itself. They are installed by Helm during bootstrap, before ArgoCD exists to
-manage them, with versions pinned in the `Makefile`. Renovate does not track
-those pins, so they drift quietly and only reveal themselves the next time
-somebody rebuilds a cluster from scratch and gets a different result. Worth a
-glance whenever you touch the `Makefile` anyway.
+Cilium, cert-manager, the Gateway API CRDs and ArgoCD itself are a little
+different, because `make install-core` and `make install-argo` install them by
+Helm during bootstrap, before ArgoCD exists to manage them. They are still not
+a second place to bump: those targets read each version out of the same
+`Application` manifest Renovate updates, so merging a `targetRevision` bump
+moves the bootstrap install and the running cluster together. A rebuild from
+scratch lands where the cluster already is.
