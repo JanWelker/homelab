@@ -1448,6 +1448,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vendored-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vendored assets
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1762,6 +1773,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vendored-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Vendored assets
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1915,6 +1937,14 @@ reliably by hand for more than about six weeks.</p>
 <li><strong>Renovate Config</strong>: Changes to <code>renovate.json</code> are validated with
     <code>renovate-config-validator</code> (<code>renovate-validate.yaml</code>).</li>
 </ul>
+<h3 id="vendored-assets">Vendored assets<a class="headerlink" href="#vendored-assets" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fonts</strong>: Pull requests touching <code>scripts/update-fonts.sh</code> or
+    <code>docs/assets/fonts/**</code> re-download both pinned font releases and diff them
+    against the committed <code>woff2</code> files (<code>fonts-check.yaml</code>). It exists because
+    Renovate can move those pins but cannot write the binaries -- see
+    <a href="#vendored-binaries-need-a-follow-up-commit">Vendored binaries need a follow-up commit</a>.</li>
+</ul>
 <h2 id="dependency-management">Dependency Management<a class="headerlink" href="#dependency-management" title="Permanent link">&para;</a></h2>
 <p>We use <strong>Renovate</strong> to automate dependency updates. The configuration is
 located in <code>renovate.json</code>.</p>
@@ -1951,11 +1981,12 @@ Kubernetes minors has an upgrade path that no longer exists. See
 <a href="../../operations/upgrades/">Upgrades</a>.</p>
 <p><strong>Font bumps automerge without their second commit.</strong> The PR moves the pin in
 <code>scripts/update-fonts.sh</code> and nothing else; the <code>woff2</code> files under
-<code>docs/assets/fonts/</code> are still the old ones, and now nobody is asked before that
+<code>docs/assets/fonts/</code> are still the old ones, and nobody is asked before that
 merges. The site keeps working -- it serves the fonts it has -- but the pin
-claims a release the repository does not contain. <code>make fonts-check</code> is the
-detector, and until it runs somewhere automatic it has to be run by hand after a
-font PR lands.</p>
+claims a release the repository does not contain. The <code>fonts-check.yaml</code>
+workflow is what stops it: the check fails on exactly that branch, and a red
+check holds the automerge. It only holds it while the check is one <code>main</code>
+requires, so if branch protection is ever rebuilt, put it back.</p>
 <h3 id="ways-a-manager-can-silently-do-nothing">Ways a manager can silently do nothing<a class="headerlink" href="#ways-a-manager-can-silently-do-nothing" title="Permanent link">&para;</a></h3>
 <p>Each of these went unnoticed for long enough to let dependencies drift, so they
 are worth knowing about before adding a new one. They share a failure mode, and
@@ -2044,8 +2075,9 @@ tick. Check out the branch, run <code>make fonts</code> to
 fetch the release the pin now names, and commit the result before merging.
 <code>make fonts-check</code> re-downloads both releases and diffs them against what is
 committed, so it will tell you whether a branch still needs that second commit.</p>
-<p>Under the flat automerge policy nobody is prompted to do any of that, so a font
-PR merges with the pin ahead of the binaries -- see
+<p>Nobody is prompted to do any of that under the flat automerge policy, so
+<code>fonts-check.yaml</code> runs it on every PR that touches the pins or the files and
+fails the branch until the second commit arrives -- see
 <a href="#what-automerging-everything-actually-means">What automerging everything actually means</a>.</p>
 <p>The <code>versioning</code> in the annotation is a <code>regex:</code> rather than <code>semver</code>: Inter
 tags prereleases as <code>v4.0-beta9h</code>, and only accepting two-part tags keeps those
