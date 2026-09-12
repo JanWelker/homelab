@@ -139,6 +139,23 @@ reprovisioning. Immutable infrastructure is wonderful right up until the moment
 you have locked yourself out of all six machines at once, at which point it is
 merely instructive.
 
+### The in-cluster boot server
+
+`payload/platform/boot-server/deployment.yaml` names two things that belong to
+this cluster and not yours:
+
+- `kubernetes.io/hostname: loki` — the node the boot server is pinned to. Name
+  one of yours. Its address is what DHCP option 66 and
+  `make config BOOT_SERVER_IP=` have to carry when you rebuild a node from the
+  cluster, and it is the one node that cannot be rebuilt that way.
+- `image: ghcr.io/janwelker/homelab/boot-server:latest` — published by *this*
+  repository's workflow. Your fork publishes its own at
+  `ghcr.io/YOUR_USER/YOUR_REPO/boot-server`; repoint this line and make the
+  package public, or the pull fails with `denied`. The `Makefile` reads
+  `BOOT_SERVER_IMAGE` from this same line, so it is the only copy to change.
+
+See [In-Cluster Boot Server](boot_server/in-cluster.md).
+
 ## 7. The documentation site
 
 If you want your fork to publish its own copy of these docs, update
@@ -161,6 +178,8 @@ Before `make config`:
       build, point `k8sServiceHost` at `control_plane_vip` once the VIP answers —
       see [Control Plane VIP](operations/control-plane-vip.md)
 - [ ] SSH public key path is correct
+- [ ] `payload/platform/boot-server/deployment.yaml` pins one of *your* nodes and
+      points at *your* GHCR package
 - [ ] Changes committed and pushed — ArgoCD reads from Git, not your working tree
 
 That last one deserves emphasis. ArgoCD cannot see your uncommitted brilliance.

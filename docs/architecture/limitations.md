@@ -133,12 +133,19 @@ mistaking it for a boundary. A pod in `authentik` can still talk to a pod in
 
 ## Provisioning requires the boot server on the same segment
 
-Reprovisioning any node means running `make serve` on a machine on the nodes' L2
-segment, with the external DHCP server pointing at it. There is no way to
-rebuild a node remotely, and the deployment host is not part of the cluster.
+Reprovisioning any node means a boot server on the nodes' L2 segment, with the
+external DHCP server pointing at it. Two machines can be that boot server: the
+external boot host, and the cluster itself — the Deployment in
+`payload/platform/boot-server/` runs the same image on a control-plane node. See
+[In-Cluster Boot Server](../boot_server/in-cluster.md).
 
-Translation: you cannot fix a dead node from a hotel room. Plan holidays
-accordingly.
+So a single dead node can now be rebuilt from a hotel room, as long as the rest
+of the cluster is up and the dead node is not the one the boot server is pinned
+to. The two cases that matter most are unchanged: a cluster that is down cannot
+reprovision anything, and a first build has nothing to run the server on. Both
+need a machine physically on the segment.
+
+Plan holidays accordingly — just fewer of them.
 
 ## Single-region, single-site, single-rack
 

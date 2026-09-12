@@ -1,0 +1,47 @@
+---
+# Directory Application for the in-cluster boot server. The platform parent only
+# picks up files named application.yaml, so this is what makes the siblings
+# reachable.
+#
+# Wave 3: the PVC needs Rook, which arrives at wave -1, and nothing in the
+# cluster depends on this in turn -- it exists for the day a node has to be
+# rebuilt, which is never the day the cluster is being built.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: boot-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/boot-server
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: boot-server
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  # The replica count is an operator decision, not a desired state: the
+  # Deployment ships at 0 and is scaled up for as long as a node is being
+  # provisioned. Without this, selfHeal notices the drift and scales it back to
+  # 0 within minutes -- in the middle of a PXE boot, which fails the node in the
+  # most confusing way available.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: boot-server
+      jsonPointers:
+        - /spec/replicas

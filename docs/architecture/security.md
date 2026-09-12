@@ -58,6 +58,14 @@ the artifacts — and it shares the host's network namespace, because
 [TFTP cannot be NAT'd](../boot_server/index.md#why-host-networking). What keeps
 the door shut is still the operator closing it.
 
+The cluster can run a second one, for rebuilding a node without a machine on the
+rack's segment — and a Deployment has no window to close. That is why it ships at
+zero replicas with `/spec/replicas` excluded from ArgoCD's self-healing: the
+exclusion stops a sync from scaling the server away mid-boot, and the cost of it
+is that nothing but the operator will ever scale it back down. Treat it the way
+you treat the foreground command. See
+[In-Cluster Boot Server](../boot_server/in-cluster.md).
+
 `output/credentials/` holds the generated bootstrap token and certificate key in
 plaintext. The directory is `0700` and `output/` is gitignored, but the values
 are reused across `make config` runs — the Ansible `password` lookup reads back

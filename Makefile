@@ -1,4 +1,4 @@
-.PHONY: download config serve serve-dev clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
+.PHONY: download config serve serve-dev serve-cluster serve-cluster-push serve-cluster-stop clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
 
 # Bootstrap component versions are not pinned here. Each one is read out of the
 # ArgoCD Application that owns the component after the GitOps handover, so the
@@ -25,8 +25,14 @@ artifacts: download config
 download:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/download.yaml
 
+# BOOT_SERVER_IP overrides the address baked into the generated PXE menus and
+# Ignition URLs for one run, without editing the inventory: artifacts for the
+# in-cluster boot server have to name the node it is pinned to rather than the
+# external host. `make config BOOT_SERVER_IP=10.9.2.3`.
+config_extra_vars = $(if $(BOOT_SERVER_IP),--extra-vars boot_server_ip=$(BOOT_SERVER_IP))
+
 config:
-	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml $(config_extra_vars)
 
 # The boot server runs as a container built from boot_server/Dockerfile, so the
 # host needs a container engine and nothing else -- no sudo, and no Python
@@ -39,14 +45,21 @@ config:
 # and Docker Desktop on macOS cannot host this -- see
 # docs/boot_server/index.md.
 #
+# Neither value is written here twice. The image ref is read out of the manifest
+# that deploys the same image in the cluster, for the same reason the chart
+# versions above are -- the boot host and the cluster cannot then serve two
+# different builds, and Renovate has one line to move when it pins the digest.
 # BIND_IP comes from the inventory, which is also where the generated PXE menus
-# get the address they tell nodes to fetch from. One value, one place.
-BOOT_SERVER_IMAGE ?= ghcr.io/janwelker/homelab/boot-server:latest
+# get the address they tell nodes to fetch from.
+boot_server_image = $(shell awk '/^[[:space:]]*image:[[:space:]]*ghcr/{print $$2; exit}' payload/platform/boot-server/deployment.yaml)
+
+BOOT_SERVER_IMAGE ?= $(boot_server_image)
 CONTAINER_ENGINE  ?= docker
 BIND_IP           ?= $(shell awk '/^[[:space:]]*boot_server_ip:/{gsub(/["\047]/, "", $$2); print $$2; exit}' ansible/inventory.yaml)
 
 serve:
 	$(call require,BIND_IP,ansible/inventory.yaml)
+	$(call require,BOOT_SERVER_IMAGE,payload/platform/boot-server/deployment.yaml)
 	@mkdir -p output/http output/tftp
 	$(CONTAINER_ENGINE) run --rm --name boot-server \
 		--network host \
@@ -61,6 +74,30 @@ serve:
 serve-dev:
 	$(CONTAINER_ENGINE) build --tag boot-server:dev boot_server
 	$(MAKE) serve BOOT_SERVER_IMAGE=boot-server:dev
+
+# The in-cluster boot server, for reprovisioning a node once the cluster exists.
+# It ships scaled to 0 -- while it serves, the Ignition configs and the join
+# credentials in them are on the segment -- so these three targets are the whole
+# interface: scale up, push what `make config` generated, scale down when the
+# node has joined.
+serve-cluster:
+	kubectl -n boot-server scale deploy/boot-server --replicas=1
+	kubectl -n boot-server rollout status deploy/boot-server
+	@echo "Serving on $$(kubectl -n boot-server get pod -l app.kubernetes.io/name=boot-server \
+		-o jsonpath='{.items[0].status.hostIP}') -- DHCP option 66 and boot_server_ip must name it"
+
+# Artifacts live on the PVC rather than in the image: 600 MB of files, some of
+# them per-host and carrying join credentials. This is the only thing that puts
+# them there, and it needs the pod up first.
+serve-cluster-push:
+	@test -d output/http -a -d output/tftp || \
+		{ echo "ERROR: no artifacts in output/ -- run 'make artifacts' first"; exit 1; }
+	COPYFILE_DISABLE=1 tar cf - -C output http tftp \
+		| kubectl -n boot-server exec -i deploy/boot-server -- tar xf - -C /output
+	@echo "Artifacts pushed to the boot-server volume."
+
+serve-cluster-stop:
+	kubectl -n boot-server scale deploy/boot-server --replicas=0
 
 kubeconfig:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml

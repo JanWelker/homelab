@@ -24,7 +24,8 @@ The full project documentation is published to GitHub Pages at
 ## Repository Structure
 
 - `ansible/`: Ansible playbooks for bootstrapping and configuration generation.
-- `boot_server/`: Python-based PXE boot server.
+- `boot_server/`: Python-based PXE boot server, built as a container image and
+  run both on the boot host and, for rebuilds, in the cluster.
 - `docs/`: Documentation sources, built with [Zensical](https://zensical.org/)
   (configured in `zensical.toml`) and published to GitHub Pages.
 - `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.

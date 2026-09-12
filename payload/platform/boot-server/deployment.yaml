@@ -1,0 +1,111 @@
+---
+# The same image `make serve` runs on the external boot host, in the cluster, so
+# a node can be reprovisioned without carrying a laptop to the rack. It does not
+# replace that host: nothing in here can serve the first boot of the cluster it
+# runs on.
+#
+# replicas: 0 deliberately. While this serves, anything on the segment can fetch
+# the Ignition configs, which carry the kubeadm bootstrap token and the
+# certificate key -- see docs/architecture/security.md#provisioning. An external
+# `make serve` is a foreground command in a window somebody eventually closes; a
+# Deployment is not, so this one is off until an operator scales it up and off
+# again afterwards. /spec/replicas is in the Application's ignoreDifferences, so
+# ArgoCD leaves that decision alone.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: boot-server
+  namespace: boot-server
+  labels:
+    app.kubernetes.io/name: boot-server
+spec:
+  replicas: 0
+  # Two pods cannot hold port 69 on one node, and the artifact volume is
+  # ReadWriteOnce, so the new pod would wait for a port and a disk the old one
+  # only releases once the new one is Ready. Recreate, for the same reason
+  # Grafana uses it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: boot-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: boot-server
+    spec:
+      # TFTP answers every request from a fresh ephemeral port, which no Service
+      # can reverse-translate: the reply would reach the node from an address it
+      # never asked, and PXE firmware discards it without a word. So this binds
+      # the node's own interfaces instead of a LoadBalancer IP -- and the node is
+      # therefore part of the configuration, because its address is what DHCP
+      # option 66 and boot_server_ip have to name.
+      #
+      # Pinned to a control-plane node: they are the long-lived ones here, and
+      # workers are what this is most likely to be rebuilding. The consequence
+      # is that loki itself cannot be reprovisioned from the cluster -- that one
+      # goes back to the external boot server.
+      hostNetwork: true
+      # With hostNetwork the default policy takes the node's resolv.conf, which
+      # knows nothing about cluster DNS.
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: loki
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      volumes:
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: boot-server-artifacts
+      containers:
+        - name: boot-server
+          # renovate: datasource=docker depName=ghcr.io/janwelker/homelab/boot-server
+          image: ghcr.io/janwelker/homelab/boot-server:latest
+          # BIND_IP is left at its 0.0.0.0 default: with hostNetwork the pod
+          # cannot know which of the node's addresses the nodes will use, and
+          # OUTPUT_DIR is already /output in the image.
+          ports:
+            - name: tftp
+              containerPort: 69
+              protocol: UDP
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          # Runs as root for one reason: binding port 69. A non-root process
+          # cannot, without ambient capabilities that Kubernetes does not grant.
+          # Everything else is taken away again.
+          securityContext:
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: artifacts
+              mountPath: /output
+          # The HTTP root answering at all is the only health signal worth
+          # having. A TFTP probe would need a TFTP client, and the artifacts are
+          # pushed in after the pod starts, so their absence is not a fault.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
