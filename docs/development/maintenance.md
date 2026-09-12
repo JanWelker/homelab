@@ -41,6 +41,14 @@ To ensure code quality and consistency, several linting workflows are configured
 - **Renovate Config**: Changes to `renovate.json` are validated with
     `renovate-config-validator` (`renovate-validate.yaml`).
 
+### Vendored assets
+
+- **Fonts**: Pull requests touching `scripts/update-fonts.sh` or
+    `docs/assets/fonts/**` re-download both pinned font releases and diff them
+    against the committed `woff2` files (`fonts-check.yaml`). It exists because
+    Renovate can move those pins but cannot write the binaries -- see
+    [Vendored binaries need a follow-up commit](#vendored-binaries-need-a-follow-up-commit).
+
 ## Dependency Management
 
 We use **Renovate** to automate dependency updates. The configuration is
@@ -82,11 +90,12 @@ Kubernetes minors has an upgrade path that no longer exists. See
 
 **Font bumps automerge without their second commit.** The PR moves the pin in
 `scripts/update-fonts.sh` and nothing else; the `woff2` files under
-`docs/assets/fonts/` are still the old ones, and now nobody is asked before that
+`docs/assets/fonts/` are still the old ones, and nobody is asked before that
 merges. The site keeps working -- it serves the fonts it has -- but the pin
-claims a release the repository does not contain. `make fonts-check` is the
-detector, and until it runs somewhere automatic it has to be run by hand after a
-font PR lands.
+claims a release the repository does not contain. The `fonts-check.yaml`
+workflow is what stops it: the check fails on exactly that branch, and a red
+check holds the automerge. It only holds it while the check is one `main`
+requires, so if branch protection is ever rebuilt, put it back.
 
 ### Ways a manager can silently do nothing
 
@@ -207,8 +216,9 @@ fetch the release the pin now names, and commit the result before merging.
 `make fonts-check` re-downloads both releases and diffs them against what is
 committed, so it will tell you whether a branch still needs that second commit.
 
-Under the flat automerge policy nobody is prompted to do any of that, so a font
-PR merges with the pin ahead of the binaries -- see
+Nobody is prompted to do any of that under the flat automerge policy, so
+`fonts-check.yaml` runs it on every PR that touches the pins or the files and
+fails the branch until the second commit arrives -- see
 [What automerging everything actually means](#what-automerging-everything-actually-means).
 
 The `versioning` in the annotation is a `regex:` rather than `semver`: Inter
