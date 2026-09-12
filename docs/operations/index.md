@@ -27,28 +27,26 @@ The Rook toolbox pod is enabled, so `ceph status`, `ceph osd tree` and
 !!! note
     Ceph metrics **are** scraped — `monitoring.enabled` is `true` in the `CephCluster` spec, and `createPrometheusRules` ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running `ceph status`. Run it anyway: it is the fastest way to see *why*, and it is what [Kured](../platform/kured.md) is really asking about before it reboots anything. See [Rook-Ceph &rarr; Monitoring](../platform/rook-ceph.md#monitoring).
 
-## After any node reboot: check OpenBao came back unsealed
+## After any node reboot: unseal OpenBao
 
 OpenBao seals itself whenever its pods restart, and while it is sealed no
 `ExternalSecret` resolves — which means cert-manager cannot renew certificates.
-[Auto-unseal](../platform/openbao.md#auto-unseal) normally handles this on its
-own, so this is a check rather than a chore:
+Nothing unseals it for you, so this is a chore rather than a check:
 
 ```bash
 kubectl -n openbao get pods          # all three Ready
 kubectl -n openbao exec -it openbao-0 -- bao status   # Sealed: false
 ```
 
-It is worth actually running. A cluster that comes back with OpenBao still
-sealed looks entirely healthy — every pod green, every node `Ready` — and the
-consequence surfaces sixty days later when a certificate expires on a Sunday,
-with nothing connecting it to the reboot that caused it.
+Any pod reporting `Sealed: true` needs 3 of the 5 key shares, once per pod —
+[OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
+has the loop.
 
-If the pods did stay sealed, AWS KMS was unreachable when they started. Unseal
-by hand with 3 of the 5 recovery keys per
-[OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart),
-then find out why KMS could not be reached — see
-[the limitation this creates](../architecture/limitations.md#openbao-depends-on-aws-kms-to-start).
+It is worth actually running, every time. A cluster that comes back with OpenBao
+still sealed looks entirely healthy — every pod green, every node `Ready` — and
+the consequence surfaces sixty days later when a certificate expires on a
+Sunday, with nothing connecting it to the reboot that caused it. See
+[the limitation this creates](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
 
 ## Rebooting a node
 
@@ -74,7 +72,7 @@ below its minimum replica count. Ceph is patient; impatient operators are how
 kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status   # HEALTH_OK
 ```
 
-If the rebooted node hosted an OpenBao replica, confirm it came back unsealed.
+If the rebooted node hosted an OpenBao replica, it came back sealed — unseal it before moving on.
 
 ## Rolling back a bad sync
 

@@ -31,13 +31,13 @@ flowchart LR
 | TLS                | Disabled inside the cluster — TLS terminates at the Gateway |
 | UI                 | `https://vault.infra.k8s.wlkr.ch`                           |
 | In-cluster service | `http://openbao.openbao.svc.cluster.local:8200`             |
-| Auto-unseal        | `awskms`, against the KMS alias `alias/openbao-unseal`      |
+| Seal               | Shamir — 5 key shares, threshold 3, unsealed by hand        |
 
 The chart is the official upstream [`openbao/openbao-helm`](https://github.com/openbao/openbao-helm), pinned in `application.yaml`.
 
 ## Bootstrap
 
-OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised. Unsealing is normally automatic — see [Auto-unseal](#auto-unseal) — but initialisation is a one-time manual step that nothing does for you.
+OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time manual step, and unsealing is a manual step you will repeat after every restart.
 
 ### 1. Initialise the cluster (one-time)
 
@@ -54,18 +54,8 @@ The command prints **5 unseal keys** and an **initial root token**. Store them i
 
 ### 2. Unseal each replica
 
-With the [`awskms` seal](#auto-unseal) already in place — which it is on a
-cluster built from this repository — the pods unseal themselves as soon as they
-can reach KMS, and the five shares init handed you are **recovery** keys rather
-than unseal keys. Check before doing anything by hand:
-
-```bash
-kubectl -n openbao exec -it openbao-0 -- bao status   # Seal Type: awskms, Sealed: false
-```
-
-The manual procedure below applies when the seal is Shamir, or when KMS is
-unreachable and you need OpenBao up anyway. Repeat for `openbao-0`,
-`openbao-1`, `openbao-2`, providing 3 of the 5 keys each time:
+The seal is Shamir, so nothing unseals these pods but you. Repeat for
+`openbao-0`, `openbao-1`, `openbao-2`, providing 3 of the 5 keys each time:
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do
@@ -75,7 +65,7 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is exactly why [auto-unseal](#auto-unseal) is configured. Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:
+Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is the price of keeping the key material off every machine but yours. Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao status
@@ -197,115 +187,16 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-[Auto-unseal](#auto-unseal) normally handles this, so the manual procedure is a
-fallback: it is what to reach for if KMS is unreachable and you need OpenBao up
-anyway. Adding `disabled = "true"` to the `seal` stanza and migrating back to
-Shamir is the supported way to make that permanent.
+Nothing does this for you. There is no auto-unseal seal configured, so a
+reboot at 03:00 leaves the cluster running and its secret store shut until
+someone with the key shares logs in. Plan for that rather than being surprised
+by it: while OpenBao is sealed no `ExternalSecret` resolves, so cert-manager
+loses the Route53 credentials it needs to renew certificates.
 
-## Auto-unseal
-
-OpenBao is configured with an [`awskms` seal](https://openbao.org/docs/configuration/seal/awskms/),
-so a restarted pod unseals itself by asking AWS KMS to decrypt its root key.
-
-Without it, a sealed pod stays sealed until an operator supplies 3 of the 5 key
-shares — and that is not just an inconvenience. While OpenBao is sealed no
-`ExternalSecret` resolves, so cert-manager loses the Route53 credentials it
-needs to renew certificates, and a power cut leaves the cluster running but
-unable to issue certificates until a human intervenes.
-
-The failure is also slow, which makes it worse. Nothing breaks the day OpenBao
-seals; things break sixty days later when a certificate expires and nobody
-connects the two events.
-
-| Property | Value |
-| --- | --- |
-| Seal type | `awskms` (built into the OpenBao binary through v2.6) |
-| Key | `alias/openbao-unseal` — an alias, so no account-specific identifier is committed and the key can be rotated in AWS without a change here |
-| Region | `eu-central-1` |
-| Credentials | `openbao-kms` Secret in the `openbao` namespace, via `extraSecretEnvironmentVars` |
-| IAM permissions | `kms:Encrypt`, `kms:Decrypt`, `kms:DescribeKey` on that one key |
-
-### The one secret that cannot be an ExternalSecret
-
-Every other secret in this cluster is an `ExternalSecret` resolved through
-OpenBao. This one cannot be: ESO reads *through* OpenBao, and OpenBao cannot
-unseal until it can already reach KMS. So `openbao-kms` is created once by
-hand from `payload/platform/openbao/kms-credentials.yaml.template`, which
-carries the full AWS-side setup. ArgoCD does not sync `.template` files.
-
-Its IAM user is deliberately separate from the one cert-manager uses for
-Route53. The blast radii differ: losing the Route53 key lets someone mint
-certificates for the zone, losing this one lets someone decrypt the OpenBao root
-key given a copy of the Raft data. One shared "homelab" IAM user for everything
-is the convenient option, and it is convenient precisely because it makes every
-compromise a total one.
-
-!!! warning "This is a dependency, not just a convenience"
-    OpenBao cannot start without AWS KMS. If KMS is unreachable — a
-    deleted key, a disabled IAM user, no internet — every pod stays sealed and
-    no `ExternalSecret` resolves. The 5 key shares still work as recovery keys,
-    so this is recoverable, but **keep them**. See
-    [Unsealing after a restart](#unsealing-after-a-restart).
-
-!!! note "OpenBao 2.7 moves this to a plugin"
-    `awskms` is compiled into the binary through v2.6.x. From v2.7.0 the
-    vendor-specific seals move out of the standalone binary and become external
-    KMS plugins, which will need a `plugin "kms" "awskms"` stanza and the plugin
-    binary in the image. Renovate does not automerge minor bumps for
-    `payload/platform/**`, so that upgrade arrives as a PR to review rather than
-    a surprise, but it is a real migration when it comes.
-
-### Migrating an already-initialised cluster
-
-A cluster initialised with Shamir keys does not switch seals by syncing this
-change. The root key has to be re-wrapped, and OpenBao requires the whole
-cluster to go down briefly to do it. **Take a Raft snapshot first.** This is one
-of the few procedures here with a real chance of leaving you with an unusable
-secret store, and the snapshot is what turns that from a catastrophe into an
-annoying evening.
-
-```bash
-bao operator raft snapshot save pre-migration.bao
-```
-
-Then, following the
-[seal migration procedure](https://openbao.org/docs/concepts/seal/#seal-migration):
-
-1. Create the KMS key and the `openbao-kms` Secret, and let ArgoCD sync the new
-   `seal` stanza into the ConfigMap.
-2. Restart one **standby** pod. When it comes back it will report that a seal
-   migration is pending. Unseal it with `-migrate`, three times:
-
-    ```bash
-    kubectl -n openbao delete pod openbao-2
-    for i in 1 2 3; do
-      kubectl -n openbao exec -it openbao-2 -- bao operator unseal -migrate
-    done
-    ```
-
-3. Repeat for the other standby, one at a time, waiting for each to rejoin so
-   Raft keeps quorum.
-4. Step down the active node and let a migrated standby take over:
-
-    ```bash
-    kubectl -n openbao exec -it openbao-0 -- bao operator step-down
-    ```
-
-5. Restart the last pod. The new active node performs the migration; watch its
-   log for it to complete.
-
-Afterwards the 5 shares are **recovery keys**, not unseal keys. They no longer
-unseal a pod, but they are still required for `bao operator generate-root`,
-rekey, and any future seal migration. Keep them exactly as carefully as before —
-the temptation to relax about keys you no longer type in every week is real, and
-it is a trap.
-
-Confirm the result:
-
-```bash
-kubectl -n openbao exec -it openbao-0 -- bao status
-# Seal Type: awskms   Initialized: true   Sealed: false
-```
+The failure is slow, which is what makes it dangerous. Nothing breaks the day
+OpenBao seals; things break sixty days later when a certificate expires and
+nobody connects the two events. See
+[OpenBao needs an operator to unseal it](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
 
 ## Backups
 
@@ -315,7 +206,7 @@ The Raft storage backend supports snapshotting:
 bao operator raft snapshot save snapshot.bao
 ```
 
-Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster — a snapshot on a PVC inside the cluster it is meant to rebuild is decoration. Restore with `bao operator raft snapshot restore`. And note the obvious: the snapshot is encrypted with a key that lives in KMS or in those five shares, so it is exactly as recoverable as your key custody is.
+Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster — a snapshot on a PVC inside the cluster it is meant to rebuild is decoration. Restore with `bao operator raft snapshot restore`. And note the obvious: the snapshot is encrypted with a key that exists only in those five shares, so it is exactly as recoverable as your key custody is.
 
 ## Directory Structure
 
@@ -323,6 +214,5 @@ Snapshots include all KV data and OpenBao's own config (policies, roles, mounts)
 openbao/
 ├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
 ├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
-├── kms-credentials.yaml.template   # awskms bootstrap Secret, applied by hand
 └── rbac.yaml                       # system:auth-delegator binding for the openbao SA
 ```
