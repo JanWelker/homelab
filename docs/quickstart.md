@@ -199,8 +199,13 @@ The deployment host (the machine running Ansible and the boot server) must be re
         make bootstrap-apps
         ```
 
-        *This applies the parent applications (platform, gitops)
-        which enable ArgoCD to manage all applications from Git.*
+        *This applies the `apps`, `infra` and `system` AppProjects and then
+        the parent applications (platform, gitops) which enable ArgoCD to
+        manage all applications from Git.* The projects go on first because
+        both parent applications name one, and the file defining them is
+        synced by `gitops` — which needs `system` to exist before it can sync
+        anything. ArgoCD adopts that file on the first sync, so this is the
+        same bootstrap-by-hand handover as `make install-core`.
 
         This is the handover moment: from here on the cluster takes its orders
         from the repository rather than from you. Watch the platform sync.
