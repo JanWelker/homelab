@@ -247,24 +247,60 @@ The deployment host (the machine running Ansible and the boot server) must be re
         expected, since their Route53 credentials don't exist yet.
 
 11. **Initialise the secret store**:
-    OpenBao starts uninitialised, sealed and empty. Until it is initialised,
-    unsealed and populated, cert-manager cannot issue certificates (the Route53
-    credentials live in OpenBao). Follow
+    OpenBao starts uninitialised, sealed and empty, and four of the platform
+    components read their credentials out of it through
+    [ExternalSecrets](platform/external-secrets.md). Until it is initialised,
+    unsealed and populated, none of those Secrets exist, so cert-manager issues
+    no certificates and the pods that mount one never start:
+
+    ```text
+    Warning  Failed  12s (x7 over 72s)  kubelet  Error: secret "route53-credentials" not found
+    Warning  Failed   2s (x7 over 69s)  kubelet  Error: secret "authentik-secrets" not found
+    ```
+
+    That is expected until this step is done; the pods recover on their own once
+    the Secrets materialise. Follow
     [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
 
     1. `bao operator init` on `openbao-0` and securely store the 5 unseal keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.
     2. Unseal all three replicas by hand, 3 of the 5 keys each. Nothing does this for you, here or after any later restart.
     3. Enable the `kv` v2 secret engine, the Kubernetes auth method, and the `external-secrets` policy/role (see [OpenBao &rarr; Kubernetes auth method](platform/openbao.md#kubernetes-auth-method)).
-    4. Store the Route53 credentials:
+    4. Store every path the cluster reads. Each `ExternalSecret` in `payload/`
+       carries the `bao kv put` that feeds it in a header comment; the four
+       paths are:
 
         ```bash
+        # cert-manager: writes _acme-challenge TXT records only
         bao kv put kv/cert-manager/route53 \
           access-key-id="$AWS_ACCESS_KEY_ID" \
           secret-access-key="$AWS_SECRET_ACCESS_KEY"
+
+        # external-dns: creates and deletes A and TXT records, so a separate
+        # IAM user on purpose -- see payload/platform/external-dns/route53-credentials.yaml
+        bao kv put kv/external-dns/route53 \
+          access-key-id="$EXTERNAL_DNS_KEY_ID" \
+          secret-access-key="$EXTERNAL_DNS_SECRET_KEY"
+
+        # Authentik, plus the OIDC client credentials ArgoCD and Grafana read
+        # back from this same path
+        bao kv put kv/authentik/config \
+          secret-key="$(openssl rand -base64 60 | tr -d '\n')" \
+          postgres-password="$(openssl rand -base64 32 | tr -d '\n')" \
+          bootstrap-password="$(openssl rand -base64 24 | tr -d '\n')" \
+          bootstrap-token="$(openssl rand -hex 32)" \
+          argocd-client-id="$(openssl rand -hex 16)" \
+          argocd-client-secret="$(openssl rand -base64 48 | tr -d '\n')" \
+          grafana-client-id="$(openssl rand -hex 16)" \
+          grafana-client-secret="$(openssl rand -base64 48 | tr -d '\n')"
+
+        # Alertmanager's SMTP password
+        bao kv put kv/monitoring/smtp password="$SMTP_PASSWORD"
         ```
 
-    Cert-manager will then pick up the materialised Secret and issue the
-    gateway certificates.
+    Cert-manager then picks up the materialised Secret and issues the gateway
+    certificates, and the pods that were waiting on the others start on the next
+    ESO refresh. Authentik's is what finally gives you a login for the ArgoCD
+    and Grafana UIs.
 
 ## Single-node clusters
 

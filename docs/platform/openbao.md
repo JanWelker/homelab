@@ -97,15 +97,30 @@ bao secrets enable -path=kv -version=2 kv
 
 ```text
 kv/
+├── authentik/
+│   └── config             # secret-key, postgres-password, bootstrap-password,
+│                          # bootstrap-token, and the client id/secret pairs
+│                          # ArgoCD and Grafana read back from here
 ├── cert-manager/
 │   └── route53            # access-key-id, secret-access-key
+├── external-dns/
+│   └── route53            # access-key-id, secret-access-key
+├── monitoring/
+│   └── smtp               # password
 └── <workload>/<purpose>   # one leaf per secret
 ```
 
-`cert-manager/route53` is currently the only path in use — it is consumed by
-the one [ExternalSecret](external-secrets.md) in the repository
-(`payload/platform/cert-manager/route53-credentials.yaml`). Everything else
-follows the same `<workload>/<purpose>` shape.
+Four paths, six [ExternalSecrets](external-secrets.md): `authentik/config` is
+read by three of them, because generating the OIDC client credentials up front
+is what keeps both sides of each integration declarative. The two `route53`
+leaves are deliberately separate and meant to be separate IAM users --
+cert-manager only writes `_acme-challenge` TXT records, while external-dns can
+repoint hostnames. Anything added later follows the same `<workload>/<purpose>`
+shape.
+
+The `bao kv put` for each path lives in a comment at the top of the
+`ExternalSecret` that consumes it, which is the list to trust; they are
+collected in [Quickstart step 11](../quickstart.md).
 
 Each leaf is a single secret with one or more keys. ExternalSecret resources reference paths as `cert-manager/route53` (the KV v2 `data/` prefix is added by ESO automatically).
 
