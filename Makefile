@@ -108,10 +108,16 @@ install-argo:
 		--version $(ARGOCD_VERSION) \
 		--wait
 
+# Both parent applications name an AppProject, and the file defining those
+# projects is synced by one of them: gitops belongs to system and would have to
+# create it before it could sync anything. So the projects are applied here,
+# ahead of the apps that reference them, or both sit in Unknown with
+# InvalidSpecError forever. The gitops app adopts the file on its first sync.
 bootstrap-apps:
 	@echo "Bootstrapping ArgoCD App-of-Apps..."
+	kubectl apply -f payload/argocd/argocd-projects.yaml
 	kubectl apply -f payload/root.yaml
-	@echo "Root app and core-infrastructure apps created."
+	@echo "AppProjects, root app and core-infrastructure apps created."
 	@echo "ArgoCD will now sync all applications from the Git repo."
 
 clean:
