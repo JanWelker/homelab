@@ -50,15 +50,13 @@ located in `renovate.json`.
 
 - **Schedule**: Renovate runs at any time, with no PR hourly or concurrency
     limits.
-- **Grouping**: Updates are grouped by area rather than by update type —
-    `Platform Infrastructure` (`payload/platform/**`), `Workloads`
-    (`payload/workloads/**`), `Dev Tooling` (Python tooling and pre-commit),
-    `DevOps` (GitHub Actions, Ansible, pre-commit hooks),
-    `Core Infrastructure` (Flatcar, Kubernetes, containerd, syslinux), and
-    `Documentation Fonts` (the webfonts vendored into the docs site).
-- **Automerge**: Patch and minor updates automerge within their group. Major
-    updates and everything in `Core Infrastructure` and `Documentation Fonts`
-    always require review.
+- **Grouping**: None. Every component gets its own pull request, so a failing
+    update never holds up an unrelated one and the branch name says what moved.
+- **Automerge**: One policy for everything — patch and minor automerge, majors
+    wait for a human. There are no per-area exceptions: a Flatcar or Kubernetes
+    minor lands the same way a Grafana chart patch does. What that buys is a
+    config short enough to hold in your head; what it costs is listed under
+    [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests.
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
@@ -69,13 +67,46 @@ located in `renovate.json`.
     `scripts/update-fonts.sh`. The `Makefile` is deliberately not in that list —
     see [Bootstrap versions are derived, not pinned](#bootstrap-versions-are-derived-not-pinned).
 
-### Two things Renovate cannot see by default
+### What automerging everything actually means
 
-Both of these went unnoticed for long enough to let dependencies drift, so they
+A single policy is worth the loss of the per-area exceptions that used to exist,
+but two of them were load-bearing and are worth naming rather than discovering.
+
+**Flatcar, Kubernetes and containerd now land unattended.** A minor bump to
+`ansible/inventory.yaml` changes what a *newly provisioned* node installs, not
+what a running node runs, so nothing moves under the cluster when the PR merges.
+It surfaces the next time a node is rebuilt. Kubernetes is the one to watch:
+kubeadm cannot skip a minor, so a cluster left unrebuilt across two automerged
+Kubernetes minors has an upgrade path that no longer exists. See
+[Upgrades](../operations/upgrades.md).
+
+**Font bumps automerge without their second commit.** The PR moves the pin in
+`scripts/update-fonts.sh` and nothing else; the `woff2` files under
+`docs/assets/fonts/` are still the old ones, and now nobody is asked before that
+merges. The site keeps working -- it serves the fonts it has -- but the pin
+claims a release the repository does not contain. `make fonts-check` is the
+detector, and until it runs somewhere automatic it has to be run by hand after a
+font PR lands.
+
+### Ways a manager can silently do nothing
+
+Each of these went unnoticed for long enough to let dependencies drift, so they
 are worth knowing about before adding a new one. They share a failure mode, and
 it is the worst one automation has: the config looks right, the tool reports
 success, and nothing is actually being checked. A silent no-op is much harder to
 notice than an error.
+
+The quickest way to prove a manager does what it claims is to run the extraction
+locally and read what comes back:
+
+```bash
+LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup
+```
+
+It needs no credentials for a public repository, changes nothing, and prints
+every dependency it found along with the reason it skipped any of them. Both of
+the version-level cases below were found that way, after the Dependency
+Dashboard showed a file with no dependencies under it.
 
 **The `pre-commit` manager ships disabled.** Renovate's own default for it is
 `enabled: false`, which is very easy to miss because a `packageRules` entry
@@ -110,6 +141,30 @@ works; the annotation is cheaper for a single tag, and the values file pays off
 the moment there is a second one -- or the moment `make install-core` needs the
 same settings, since a bootstrap target can pass a file to Helm and cannot pass
 a `valuesObject`.
+
+### A dependency can be extracted and still never looked up
+
+`syslinux_version` in `ansible/inventory.yaml` is a two-part version, and
+Renovate's default `semver-coerced` refuses it:
+
+```text
+DEBUG: Dependency syslinux has unsupported/unversioned value 6.03 (versioning=semver-coerced)
+DEBUG: Skipping syslinux because no currentDigest or pinDigests
+```
+
+The custom manager matched the file and extracted the value; the lookup was then
+dropped, so no update was ever raised. The fix is a `versioningTemplate` on that
+manager -- `regex:^(?<major>\d+)\.(?<minor>\d+)$`, the same shape the Inter
+pin uses for the same reason. 6.03 is still upstream's newest stable, so nothing
+had actually drifted, which is precisely why it went unnoticed.
+
+The neighbouring trap is a regex that cannot match at all. The diff preview
+manager looked for `dag-andersen/argocd-diff-preview` -- the GitHub org -- while
+the image on Docker Hub is `dagandersen/argocd-diff-preview`, without the
+hyphen, which is what the workflow correctly uses. Nothing matched, so the image
+sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
+container image in the repository that `config:best-practices` never pinned to a
+digest.
 
 ### Bootstrap versions are derived, not pinned
 
@@ -148,10 +203,13 @@ INTER_VERSION="v4.1"
 A Renovate PR therefore changes one line and nothing else — the fonts it claims
 to update are still the old ones, which is a uniquely deceptive kind of green
 tick. Check out the branch, run `make fonts` to
-fetch the release the pin now names, and commit the result before merging. That
-is why `Documentation Fonts` never automerges. `make fonts-check` re-downloads
-both releases and diffs them against what is committed, so it will tell you
-whether a branch still needs that second commit.
+fetch the release the pin now names, and commit the result before merging.
+`make fonts-check` re-downloads both releases and diffs them against what is
+committed, so it will tell you whether a branch still needs that second commit.
+
+Under the flat automerge policy nobody is prompted to do any of that, so a font
+PR merges with the pin ahead of the binaries -- see
+[What automerging everything actually means](#what-automerging-everything-actually-means).
 
 The `versioning` in the annotation is a `regex:` rather than `semver`: Inter
 tags prereleases as `v4.0-beta9h`, and only accepting two-part tags keeps those

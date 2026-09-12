@@ -83,8 +83,7 @@ admonitions, `MD007` on nested list indentation).
 requests need that review before merging. On a single-maintainer homelab this is
 mostly a speed bump against your own 23:00 enthusiasm, which is exactly the
 enthusiasm most in need of a speed bump. Renovate PRs for patch and minor
-updates automerge within their group; majors and anything in
-`Core Infrastructure` always wait for a human.
+updates automerge, whatever the component; majors always wait for a human.
 
 ## Agent-assisted changes
 
