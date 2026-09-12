@@ -53,6 +53,20 @@ spec:
             enabled: true
             ssl: false
 
+          # The dashboard's Prometheus and Grafana links. `ceph dashboard
+          # set-prometheus-api-host` and friends only write these keys into the
+          # MON config store, which the operator can do directly -- so this
+          # replaces a sync-hook Job that carried its own rook/ceph image pin
+          # and retried the same three commands thirty times. The operator also
+          # reapplies them on every reconcile, where the Job ran once per sync.
+          cephConfig:
+            mgr:
+              # yamllint disable rule:line-length
+              mgr/dashboard/PROMETHEUS_API_HOST: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+              mgr/dashboard/GRAFANA_API_URL: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+              mgr/dashboard/GRAFANA_API_SSL_VERIFY: "false"
+              # yamllint enable rule:line-length
+
           # Block device storage (partition created by Ignition)
           storage:
             useAllNodes: true
