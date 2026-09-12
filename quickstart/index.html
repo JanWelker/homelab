@@ -2034,8 +2034,13 @@ reach the UI by port-forward and log in as <code>admin</code>:</p>
 <p><strong>Bootstrap GitOps</strong> (App-of-Apps):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
-<p><em>This applies the parent applications (platform, gitops)
-which enable ArgoCD to manage all applications from Git.</em></p>
+<p><em>This applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects and then
+the parent applications (platform, gitops) which enable ArgoCD to
+manage all applications from Git.</em> The projects go on first because
+both parent applications name one, and the file defining them is
+synced by <code>gitops</code> — which needs <code>system</code> to exist before it can sync
+anything. ArgoCD adopts that file on the first sync, so this is the
+same bootstrap-by-hand handover as <code>make install-core</code>.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
 from the repository rather than from you. Watch the platform sync.
 Applications appear in <a href="../platform/#usage">sync-wave order</a>:</p>
