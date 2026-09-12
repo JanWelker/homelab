@@ -41,6 +41,15 @@ To ensure code quality and consistency, several linting workflows are configured
 - **Renovate Config**: Changes to `renovate.json` are validated with
     `renovate-config-validator` (`renovate-validate.yaml`).
 
+### Container images
+
+- **Boot Server**: `build-boot-server.yaml` builds `boot_server/Dockerfile` and
+    pushes it to `ghcr.io/janwelker/homelab/boot-server` on every push to `main`
+    that touches `boot_server/**`, tagged `latest` and with the full commit SHA.
+    Pull requests build the image and discard it — a fork PR has no registry
+    write access, and a branch that could publish the image the boot host pulls
+    is not a review step. See [Boot Server](../boot_server/index.md#the-image).
+
 ### Vendored assets
 
 - **Fonts**: Pull requests touching `scripts/update-fonts.sh` or
@@ -67,9 +76,10 @@ located in `renovate.json`.
     [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests.
-- **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
-    Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
-    Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
+- **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`,
+    `boot_server/requirements.txt`), Docker images — including the base image in
+    `boot_server/Dockerfile` — GitHub Actions, Kubernetes manifests, ArgoCD
+    resources, Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
     managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
     versions pinned in `ansible/inventory.yaml`, and the font releases pinned in
     `scripts/update-fonts.sh`. The `Makefile` is deliberately not in that list —
@@ -150,6 +160,21 @@ works; the annotation is cheaper for a single tag, and the values file pays off
 the moment there is a second one -- or the moment `make install-core` needs the
 same settings, since a bootstrap target can pass a file to Helm and cannot pass
 a `valuesObject`.
+
+### One pin deliberately exists twice
+
+`tftpy` is pinned in both `pyproject.toml` and `boot_server/requirements.txt`,
+which is exactly what
+[Bootstrap versions are derived, not pinned](#bootstrap-versions-are-derived-not-pinned)
+argues against — and is still the right call here. The image installs from
+`requirements.txt` because the runtime half of `uv.lock` is almost entirely
+Ansible, which never runs in the container; the copy in `pyproject.toml` is what
+lets `pylint` resolve the import in CI.
+
+Both are default-manager files, so Renovate moves both, in two pull requests that
+land minutes apart. The failure mode if one lags is visible rather than silent:
+`pylint` resolves a different version than the image installs, and the image is
+the one that serves.
 
 ### A dependency can be extracted and still never looked up
 

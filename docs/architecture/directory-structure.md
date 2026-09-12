@@ -27,6 +27,8 @@ generated — never edit anything in there, it will be overwritten by the next
 │       ├── kubeadm.yaml.j2
 │       └── pxe_config.j2         # PXE boot menu config
 ├── boot_server
+│   ├── Dockerfile          # Image the build-boot-server workflow publishes
+│   ├── requirements.txt    # tftpy, the only runtime dependency
 │   └── serve.py            # Python script for HTTP & TFTP
 ├── docs                    # Documentation sources (this site)
 │   ├── architecture/

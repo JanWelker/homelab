@@ -51,6 +51,13 @@ the only thing keeping those credentials off the network. A `make serve` left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.
 
+Containerising it changes none of that. The container drops every capability but
+`NET_BIND_SERVICE`, runs with a read-only root filesystem and mounts `output/`
+read-only — which protects the artifacts from the server, not the network from
+the artifacts — and it shares the host's network namespace, because
+[TFTP cannot be NAT'd](../boot_server/index.md#why-host-networking). What keeps
+the door shut is still the operator closing it.
+
 `output/credentials/` holds the generated bootstrap token and certificate key in
 plaintext. The directory is `0700` and `output/` is gitignored, but the values
 are reused across `make config` runs — the Ansible `password` lookup reads back

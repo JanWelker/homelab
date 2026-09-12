@@ -13,7 +13,9 @@ next step: *which arrow didn't happen?*
 
 Before any node is powered on, the operator runs `make config` to generate the
 per-host Ignition and PXE configs, then `make serve` to start the TFTP and HTTP
-servers. See the [Quickstart](../quickstart.md) for the exact sequence.
+servers in a container on the host's network. See the
+[Quickstart](../quickstart.md) for the exact sequence and
+[Boot Server](../boot_server/index.md) for what that container is.
 
 ## 2. Network Boot
 
