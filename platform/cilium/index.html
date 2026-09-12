@@ -1727,7 +1727,7 @@ respect they deserve — the ordering is spelled out in
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Cilium is installed twice, sort of</p>
-<p><code>make install-core</code> installs it by Helm with a version pinned in the <code>Makefile</code>, because it has to exist before ArgoCD does. ArgoCD then adopts it using the pin in <code>application.yaml</code>. Those two numbers are maintained separately and Renovate only tracks the second — a mismatch is not fatal, but it is exactly the kind of thing that makes a rebuilt cluster behave differently from the one it replaced.</p>
+<p><code>make install-core</code> installs it by Helm, because it has to exist before ArgoCD does, and ArgoCD then adopts it. There is only one number: the <code>Makefile</code> reads <code>targetRevision</code> straight out of <code>application.yaml</code> instead of keeping a pin of its own, so a rebuilt cluster cannot quietly land on a different Cilium than the one it replaced.</p>
 </div>
 
 

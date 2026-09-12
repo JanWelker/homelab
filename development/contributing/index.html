@@ -1816,7 +1816,7 @@ different Kubernetes objects, and the diff is the only place that shows up
 before the cluster finds out.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Do not hand-edit version numbers. <code>targetRevision</code> in the manifests and the versions in <code>ansible/inventory.yaml</code> are owned by Renovate — see <a href="../maintenance/">Maintenance</a>. Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. The one exception is the <code>Makefile</code>, which pins the components installed before ArgoCD exists and which Renovate does not track.</p>
+<p>Do not hand-edit version numbers. <code>targetRevision</code> in the manifests and the versions in <code>ansible/inventory.yaml</code> are owned by Renovate — see <a href="../maintenance/">Maintenance</a>. Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. There is no exception: the <code>Makefile</code> installs the pre-ArgoCD components from the same <code>targetRevision</code> values rather than pinning its own.</p>
 </div>
 <h2 id="changing-documentation">Changing documentation<a class="headerlink" href="#changing-documentation" title="Permanent link">&para;</a></h2>
 <p>See <a href="../documentation/">Documentation System</a> for the build, the conventions, and

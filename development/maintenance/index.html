@@ -1488,6 +1488,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bootstrap-versions-are-derived-not-pinned" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap versions are derived, not pinned
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#vendored-binaries-need-a-follow-up-commit" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1769,6 +1780,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bootstrap-versions-are-derived-not-pinned" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap versions are derived, not pinned
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#vendored-binaries-need-a-follow-up-commit" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1872,7 +1894,8 @@ located in <code>renovate.json</code>.</p>
     Helm values (<code>payload/**/values.yaml</code>), and pre-commit hooks. Custom regex
     managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
     versions pinned in <code>ansible/inventory.yaml</code>, and the font releases pinned in
-    <code>scripts/update-fonts.sh</code>.</li>
+    <code>scripts/update-fonts.sh</code>. The <code>Makefile</code> is deliberately not in that list —
+    see <a href="#bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned</a>.</li>
 </ul>
 <h3 id="two-things-renovate-cannot-see-by-default">Two things Renovate cannot see by default<a class="headerlink" href="#two-things-renovate-cannot-see-by-default" title="Permanent link">&para;</a></h3>
 <p>Both of these went unnoticed for long enough to let dependencies drift, so they
@@ -1904,12 +1927,29 @@ custom regex manager picks it up.</p>
 with <code>valueFiles</code>, the way Cilium and ArgoCD already do. Either works; the
 annotation is cheaper for a single tag, and the values file pays off the moment
 there is a second one.</p>
+<h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
+<p><code>make install-core</code> and <code>make install-argo</code> install Cilium, cert-manager, the
+Gateway API CRDs and ArgoCD itself before ArgoCD exists to manage them. The
+<code>Makefile</code> used to carry its own pins for those four, and Renovate never saw
+them — by the time anybody looked, the bootstrap Cilium was two minors behind
+the one the cluster was actually running.</p>
+<p>The fix was not another custom manager. A second copy of a version is the
+problem; tracking both copies only makes the drift arrive in pairs. Each target
+now reads <code>targetRevision</code> out of the <code>Application</code> manifest that owns the
+component after the handover:</p>
+<div class="language-make highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">CILIUM_VERSION</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>call<span class="w"> </span>chart_version,payload/platform/cilium/application.yaml<span class="k">)</span>
+</span></code></pre></div>
+<p>So there is nothing <code>Makefile</code>-shaped in <code>renovate.json</code>, and nothing to add
+there when a new bootstrap component appears — point the target at the manifest
+instead. The targets abort with an explicit error if a manifest moves and the
+lookup comes back empty, because the alternative is Helm receiving an empty
+<code>--version</code> and cheerfully installing whatever is latest.</p>
 <h3 id="vendored-binaries-need-a-follow-up-commit">Vendored binaries need a follow-up commit<a class="headerlink" href="#vendored-binaries-need-a-follow-up-commit" title="Permanent link">&para;</a></h3>
 <p>The docs site self-hosts its webfonts, so <code>docs/assets/fonts/</code> holds <code>woff2</code>
 files that no manager can rewrite. <code>scripts/update-fonts.sh</code> pins the two
 upstream releases those files come from, and a custom manager tracks the pins:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
 </span></code></pre></div>
 <p>A Renovate PR therefore changes one line and nothing else — the fonts it claims
 to update are still the old ones, which is a uniquely deceptive kind of green

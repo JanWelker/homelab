@@ -2004,7 +2004,7 @@ procedure.</p>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This target pins its own Cilium, cert-manager, and Gateway API CRD versions directly in the <code>Makefile</code>, because it runs before ArgoCD exists. Those pins are separate from the ones ArgoCD manages in <code>payload/platform/</code> and are not updated by Renovate — check them if a component behaves differently before and after the GitOps handover.</p>
+<p>This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the <code>Makefile</code> reads each version out of the ArgoCD <code>Application</code> that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move.</p>
 </div>
 <p>Nodes should reach <code>Ready</code> once Cilium is up:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium

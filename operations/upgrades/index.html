@@ -1854,13 +1854,13 @@ change a running node.</p>
 <p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
 <code>targetRevision</code> and the PR merges. No manual step is involved. See
 <a href="../../development/maintenance/">Maintenance</a>.</p>
-<p>The exception is anything installed by <code>make install-core</code> and
-<code>make install-argo</code> — Cilium, cert-manager, the Gateway API CRDs and ArgoCD
-itself. They are installed by Helm during bootstrap, before ArgoCD exists to
-manage them, with versions pinned in the <code>Makefile</code>. Renovate does not track
-those pins, so they drift quietly and only reveal themselves the next time
-somebody rebuilds a cluster from scratch and gets a different result. Worth a
-glance whenever you touch the <code>Makefile</code> anyway.</p>
+<p>Cilium, cert-manager, the Gateway API CRDs and ArgoCD itself are a little
+different, because <code>make install-core</code> and <code>make install-argo</code> install them by
+Helm during bootstrap, before ArgoCD exists to manage them. They are still not
+a second place to bump: those targets read each version out of the same
+<code>Application</code> manifest Renovate updates, so merging a <code>targetRevision</code> bump
+moves the bootstrap install and the running cluster together. A rebuild from
+scratch lands where the cluster already is.</p>
 
 
 
