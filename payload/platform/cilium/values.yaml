@@ -14,6 +14,9 @@ kubeProxyReplacement: true
 k8sServiceHost: 10.9.2.1
 k8sServicePort: 6443
 
+# The chart aborts the whole render when monitoring.coreos.com/v1 is missing, so
+# these two depend on `make install-cilium` having landed the Prometheus
+# operator CRDs first -- kube-prometheus-stack itself arrives sync-waves later.
 prometheus:
   enabled: true
   serviceMonitor:

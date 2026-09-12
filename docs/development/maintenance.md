@@ -178,10 +178,10 @@ digest.
 ### Bootstrap versions are derived, not pinned
 
 `make install-core` and `make install-argo` install Cilium, cert-manager, the
-Gateway API CRDs and ArgoCD itself before ArgoCD exists to manage them. The
-`Makefile` used to carry its own pins for those four, and Renovate never saw
-them — by the time anybody looked, the bootstrap Cilium was two minors behind
-the one the cluster was actually running.
+Gateway API and Prometheus operator CRDs, and ArgoCD itself before ArgoCD exists
+to manage them. The `Makefile` used to carry its own pins for those, and
+Renovate never saw them — by the time anybody looked, the bootstrap Cilium was
+two minors behind the one the cluster was actually running.
 
 The fix was not another custom manager. A second copy of a version is the
 problem; tracking both copies only makes the drift arrive in pairs. Each target

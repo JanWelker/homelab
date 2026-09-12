@@ -16,6 +16,17 @@ One chart, five components, and roughly a hundred alerting rules you did not wri
 - **Node Exporter**: Per-node hardware and OS metrics.
 - **kube-state-metrics**: Kubernetes object metrics (pod status, deployments, etc.).
 
+## CRDs
+
+The chart owns the `monitoring.coreos.com` CRDs -- `crds.enabled`, plus an
+upgrade job that re-applies them on every chart bump -- but it is not the first
+thing in the cluster that needs them. Cilium's chart aborts its render while
+`monitoring.coreos.com/v1` is missing, cert-manager renders a `ServiceMonitor`
+unconditionally, and both sync waves ahead of this stack, at bootstrap and on
+every rebuild since. So `make install-cilium` applies the CRD files out of this
+same chart, at the version `application.yaml` pins, and the upgrade job adopts
+them when the stack itself lands.
+
 ## Alerting
 
 Alertmanager routes to email. The chart's default is a `null` receiver that

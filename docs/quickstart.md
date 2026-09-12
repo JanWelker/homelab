@@ -159,14 +159,14 @@ The deployment host (the machine running Ansible and the boot server) must be re
     make install-core
     ```
 
-    - Installs the Gateway API CRDs, then **Cilium** (CNI, Ingress, L2
-      Announcements) via Helm.
+    - Installs the Gateway API and Prometheus operator CRDs, then **Cilium**
+      (CNI, Ingress, L2 Announcements) via Helm.
     - **Removes** `kube-proxy` to resolve IPVS conflicts.
     - Installs **cert-manager** (for ACME TLS) and the Let's Encrypt
       ClusterIssuers.
 
     !!! note
-        This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move.
+        This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while `monitoring.coreos.com/v1` is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See [Monitoring](platform/monitoring.md#crds).
 
     Nodes should reach `Ready` once Cilium is up:
 
