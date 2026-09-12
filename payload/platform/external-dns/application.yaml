@@ -34,6 +34,16 @@ spec:
           domainFilters:
             - k8s.wlkr.ch
 
+          # k8s.wlkr.ch is not a hosted zone of its own -- the records live in
+          # the wlkr.ch zone, whose SOA answers for the whole subtree. Without
+          # this flag external-dns only considers zones whose name the domain
+          # filter covers, finds none, and reports "no changes for the matching
+          # hosted zones" on every pass while quietly holding the endpoints it
+          # built. The filter still applies: the zone is wlkr.ch, the records
+          # it will write are the ones under k8s.wlkr.ch.
+          extraArgs:
+            - --aws-zone-match-parent
+
           # TXT registry with an owner ID: external-dns will only modify or
           # delete records it created and marked as its own. Records made by
           # hand in the same zone are invisible to it.
