@@ -1767,6 +1767,11 @@ nothing, forever, until somebody audits the zone and cannot work out what
 <td><code>sync</code></td>
 <td>Deleting an HTTPRoute removes its record</td>
 </tr>
+<tr>
+<td>Zone matching</td>
+<td><code>--aws-zone-match-parent</code></td>
+<td>The records live in the <code>wlkr.ch</code> zone, not a zone of their own</td>
+</tr>
 </tbody>
 </table>
 <p>The address comes from the <code>HTTPRoute</code>'s parent <code>Gateway</code> — so a route attached
@@ -1815,15 +1820,28 @@ sentence.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>external-dns<span class="w"> </span>logs<span class="w"> </span>deploy/external-dns<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>dig<span class="w"> </span>+short<span class="w"> </span>argo.infra.k8s.wlkr.ch
 </span></code></pre></div>
+<p>If it publishes nothing at all, and says so as
+<code>All records are already up to date, there are no changes for the matching
+hosted zones</code>, read that message literally: it found no zone to change. The
+metrics separate the two halves —</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>external-dns<span class="w"> </span>port-forward<span class="w"> </span>deploy/external-dns<span class="w"> </span><span class="m">7979</span>:7979
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:7979/metrics<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>endpoints_total
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># external_dns_source_endpoints_total   8   &lt;- hostnames it can see</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># external_dns_registry_endpoints_total 0   &lt;- records it owns</span>
+</span></code></pre></div>
+<p>— so 8 and 0 together means the sources are fine and the provider is the
+problem, which on Route53 is usually zone matching: <code>k8s.wlkr.ch</code> has no
+hosted zone of its own, and <code>--aws-zone-match-parent</code> is what lets the
+<code>wlkr.ch</code> zone satisfy the filter.</p>
 <p>A record that will not update is usually one external-dns does not own — check
 for the matching <code>_externaldns.</code> TXT record in Route53. This is the safety
 mechanism working exactly as designed, and it will still confuse you the first
 time. Adopting a hand-made record means creating that TXT entry, or deleting the
 record and letting external-dns recreate it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>external-dns/
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml            # ArgoCD Application (Helm: external-dns)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>└── route53-credentials.yaml    # ExternalSecret: scoped Route53 IAM user
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>external-dns/
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml            # ArgoCD Application (Helm: external-dns)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>└── route53-credentials.yaml    # ExternalSecret: scoped Route53 IAM user
 </span></code></pre></div>
 
 
