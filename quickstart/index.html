@@ -2044,15 +2044,13 @@ expected, since their Route53 credentials don't exist yet.</p>
 </li>
 <li>
 <p><strong>Initialise the secret store</strong>:
-    OpenBao starts uninitialised and empty. Until it is initialised and
-    populated, cert-manager cannot issue certificates (the Route53 credentials
-    live in OpenBao). This step assumes the <code>openbao-kms</code> Secret already exists
-    — it is applied by hand from <code>kms-credentials.yaml.template</code> and is what
-    lets OpenBao unseal itself at all. Follow
+    OpenBao starts uninitialised, sealed and empty. Until it is initialised,
+    unsealed and populated, cert-manager cannot issue certificates (the Route53
+    credentials live in OpenBao). Follow
     <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a> end-to-end:</p>
 <ol>
-<li><code>bao operator init</code> on <code>openbao-0</code> and securely store the recovery keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.</li>
-<li>Confirm all three replicas came up unsealed (<code>bao status</code>). With the KMS seal in place they unseal themselves; if they did not, KMS is unreachable and you unseal by hand with 3 of the 5 keys.</li>
+<li><code>bao operator init</code> on <code>openbao-0</code> and securely store the 5 unseal keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.</li>
+<li>Unseal all three replicas by hand, 3 of the 5 keys each. Nothing does this for you, here or after any later restart.</li>
 <li>Enable the <code>kv</code> v2 secret engine, the Kubernetes auth method, and the <code>external-secrets</code> policy/role (see <a href="../platform/openbao/#kubernetes-auth-method">OpenBao &rarr; Kubernetes auth method</a>).</li>
 <li>
 <p>Store the Route53 credentials:</p>

@@ -1549,10 +1549,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#after-any-node-reboot-check-openbao-came-back-unsealed" class="md-nav__link">
+  <a href="#after-any-node-reboot-unseal-openbao" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        After any node reboot: check OpenBao came back unsealed
+        After any node reboot: unseal OpenBao
       </span>
     </span>
   </a>
@@ -1663,23 +1663,21 @@ the page you will actually come back to.</p>
 <p class="admonition-title">Note</p>
 <p>Ceph metrics <strong>are</strong> scraped — <code>monitoring.enabled</code> is <code>true</code> in the <code>CephCluster</code> spec, and <code>createPrometheusRules</code> ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running <code>ceph status</code>. Run it anyway: it is the fastest way to see <em>why</em>, and it is what <a href="../platform/kured/">Kured</a> is really asking about before it reboots anything. See <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
 </div>
-<h2 id="after-any-node-reboot-check-openbao-came-back-unsealed">After any node reboot: check OpenBao came back unsealed<a class="headerlink" href="#after-any-node-reboot-check-openbao-came-back-unsealed" title="Permanent link">&para;</a></h2>
+<h2 id="after-any-node-reboot-unseal-openbao">After any node reboot: unseal OpenBao<a class="headerlink" href="#after-any-node-reboot-unseal-openbao" title="Permanent link">&para;</a></h2>
 <p>OpenBao seals itself whenever its pods restart, and while it is sealed no
 <code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
-<a href="../platform/openbao/#auto-unseal">Auto-unseal</a> normally handles this on its
-own, so this is a check rather than a chore:</p>
+Nothing unseals it for you, so this is a chore rather than a check:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
 </span></code></pre></div>
-<p>It is worth actually running. A cluster that comes back with OpenBao still
-sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and the
-consequence surfaces sixty days later when a certificate expires on a Sunday,
-with nothing connecting it to the reboot that caused it.</p>
-<p>If the pods did stay sealed, AWS KMS was unreachable when they started. Unseal
-by hand with 3 of the 5 recovery keys per
-<a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>,
-then find out why KMS could not be reached — see
-<a href="../architecture/limitations/#openbao-depends-on-aws-kms-to-start">the limitation this creates</a>.</p>
+<p>Any pod reporting <code>Sealed: true</code> needs 3 of the 5 key shares, once per pod —
+<a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
+has the loop.</p>
+<p>It is worth actually running, every time. A cluster that comes back with OpenBao
+still sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and
+the consequence surfaces sixty days later when a certificate expires on a
+Sunday, with nothing connecting it to the reboot that caused it. See
+<a href="../architecture/limitations/#openbao-needs-an-operator-to-unseal-it">the limitation this creates</a>.</p>
 <h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
 <p><a href="../platform/kured/">Kured</a> reboots nodes on its own between 01:00 and 05:00
 when an update has been staged, one at a time, and refuses while Ceph or etcd is
@@ -1697,7 +1695,7 @@ below its minimum replica count. Ceph is patient; impatient operators are how
 "one node down" becomes "read-only cluster":</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status<span class="w">   </span><span class="c1"># HEALTH_OK</span>
 </span></code></pre></div>
-<p>If the rebooted node hosted an OpenBao replica, confirm it came back unsealed.</p>
+<p>If the rebooted node hosted an OpenBao replica, it came back sealed — unseal it before moving on.</p>
 <h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
 <p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
 a revert commit. To stop the bleeding first, disable auto-sync on the affected

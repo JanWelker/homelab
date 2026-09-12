@@ -1849,11 +1849,13 @@ is in every clone, forever. OpenBao keeps secrets out of the repository
 entirely and hands them to workloads as ordinary Kubernetes <code>Secret</code> objects
 through the External Secrets Operator, so nothing in Git is sensitive.</p>
 <p>The cost is the sealed-at-startup problem: OpenBao is a stateful dependency of
-cert-manager, and a sealed OpenBao means no <code>ExternalSecret</code> resolves.
-Auto-unseal against AWS KMS removes the manual step, at the price of making a
-service outside the house a hard dependency of the cluster starting up. See
-<a href="../../platform/openbao/#auto-unseal">Auto-unseal</a> and
-<a href="../limitations/#openbao-depends-on-aws-kms-to-start">the resulting limitation</a>.</p>
+cert-manager, and a sealed OpenBao means no <code>ExternalSecret</code> resolves. The seal
+is Shamir and unsealing is manual, so every restart needs an operator with the
+key shares. Auto-unseal against a cloud KMS would remove that step and make a
+service outside the house a hard dependency of the cluster starting up instead;
+the manual step is the side of that trade this cluster takes. See
+<a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>
+and <a href="../limitations/#openbao-needs-an-operator-to-unseal-it">the resulting limitation</a>.</p>
 <h2 id="argocd-with-app-of-apps-not-flux">ArgoCD with App-of-Apps, not Flux<a class="headerlink" href="#argocd-with-app-of-apps-not-flux" title="Permanent link">&para;</a></h2>
 <p>Either would work, and anyone claiming otherwise is selling something. ArgoCD
 was chosen mainly for its UI, which makes sync state and drift legible at a

@@ -591,10 +591,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#openbao-depends-on-aws-kms-to-start" class="md-nav__link">
+  <a href="#openbao-needs-an-operator-to-unseal-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        OpenBao depends on AWS KMS to start
+        OpenBao needs an operator to unseal it
       </span>
     </span>
   </a>
@@ -1684,10 +1684,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#openbao-depends-on-aws-kms-to-start" class="md-nav__link">
+  <a href="#openbao-needs-an-operator-to-unseal-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        OpenBao depends on AWS KMS to start
+        OpenBao needs an operator to unseal it
       </span>
     </span>
   </a>
@@ -1822,19 +1822,24 @@ special kind of frustrating: the cluster is fine, you simply cannot talk to it.<
 answers — pointing it at one that does not takes the CNI down cluster-wide — so
 it moves to the VIP only once the VIP is live. The ordering is in
 <a href="../../operations/control-plane-vip/#migrating-a-cluster-built-without-a-vip">Migrating a cluster built without a VIP</a>.</p>
-<h2 id="openbao-depends-on-aws-kms-to-start">OpenBao depends on AWS KMS to start<a class="headerlink" href="#openbao-depends-on-aws-kms-to-start" title="Permanent link">&para;</a></h2>
-<p>OpenBao auto-unseals against AWS KMS, which makes a service outside the cluster
-and outside the house a hard dependency of the cluster starting up. If KMS is
-unreachable — key deleted, IAM user disabled, no internet — every OpenBao pod
-stays sealed, no <code>ExternalSecret</code> resolves, and cert-manager cannot renew
-certificates.</p>
-<p>Read that sentence again with a power cut in mind: the house comes back, the
-cluster comes back, and the secrets do not, because the ISP is still down. See
-<a href="../../platform/openbao/#auto-unseal">Auto-unseal</a>.</p>
-<p>The 5 shares survive as recovery keys and are still the way out, so this is
-recoverable rather than fatal. It is a trade of a frequent, certain manual step
-for a rare, external one. Keep the keys somewhere that does not require the
-cluster to read.</p>
+<h2 id="openbao-needs-an-operator-to-unseal-it">OpenBao needs an operator to unseal it<a class="headerlink" href="#openbao-needs-an-operator-to-unseal-it" title="Permanent link">&para;</a></h2>
+<p>The seal is Shamir, with no auto-unseal configured, so every OpenBao pod comes
+back sealed after any restart — a node reboot, a Kured cycle, a chart bump — and
+stays that way until someone supplies 3 of the 5 key shares to each of the three
+replicas. While it is sealed no <code>ExternalSecret</code> resolves and cert-manager
+cannot renew certificates.</p>
+<p>Read that with a power cut in mind: the house comes back, the cluster comes
+back, and the secrets do not, because nobody has typed in the keys yet. See
+<a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
+<p>The failure is quiet, which is the part that bites. A cluster with OpenBao
+sealed looks entirely healthy, and the consequence surfaces sixty days later
+when a certificate expires. Checking <code>bao status</code> after every reboot is the
+<a href="../../operations/#after-any-node-reboot-unseal-openbao">routine</a> that
+catches it.</p>
+<p>An auto-unseal seal — a cloud KMS, or a transit seal against a second OpenBao —
+would remove the manual step, at the price of making something outside the
+cluster a hard dependency of it starting up. That trade was made deliberately in
+the other direction: the key shares stay entirely in the operator's hands.</p>
 <h2 id="alerting-reaches-one-mailbox">Alerting reaches one mailbox<a class="headerlink" href="#alerting-reaches-one-mailbox" title="Permanent link">&para;</a></h2>
 <p>The delivery path out of Alertmanager is single-homed and unmonitored. There is
 one receiver, one mailbox, and one SMTP provider; if that provider rejects mail

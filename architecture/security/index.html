@@ -1850,13 +1850,13 @@ Kubernetes <code>Secret</code> objects through the
 is committed to Git.</p>
 <p>Two consequences worth knowing:</p>
 <ul>
-<li>OpenBao <a href="../../platform/openbao/#auto-unseal">auto-unseals against AWS KMS</a>, so
-  the KMS key is what a restarted pod actually depends on. The 5 shares remain as
-  recovery keys and are still the root of trust for every other secret — they
-  exist only wherever the operator put them, and losing all of them loses
-  everything. The trade is a rare external dependency instead of a frequent
-  manual step; see
-  <a href="../limitations/#openbao-depends-on-aws-kms-to-start">the resulting limitation</a>.</li>
+<li>OpenBao is sealed with Shamir and
+  <a href="../../platform/openbao/#unsealing-after-a-restart">unsealed by hand</a>, so the 5
+  key shares are the root of trust for every other secret and the only thing that
+  brings the store back after a restart. They exist only wherever the operator
+  put them; losing all of them loses everything, and nothing outside the cluster
+  holds a copy. The cost is a manual step after every reboot — see
+  <a href="../limitations/#openbao-needs-an-operator-to-unseal-it">the resulting limitation</a>.</li>
 <li>A Kubernetes <code>Secret</code> is base64, not encryption. Anyone with <code>get secrets</code> in
   a namespace can read what ESO materialised there. Encryption at rest, below,
   does nothing about this — it protects the bytes in etcd, not the API. If you
