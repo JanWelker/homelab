@@ -74,6 +74,7 @@ A `Challenge` stuck in `pending` is a DNS problem, not a cert-manager problem: e
 ```text
 cert-manager/                  # TLS Certificate Management
 ├── application.yaml           # ArgoCD Application (Helm chart)
+├── values.yaml                # Helm values, shared with `make install-core`
 ├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
 ├── certificates.yaml          # All Certificate resources
 └── route53-credentials.yaml   # ExternalSecret → OpenBao

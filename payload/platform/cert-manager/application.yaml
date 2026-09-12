@@ -16,18 +16,11 @@ spec:
       chart: cert-manager
       targetRevision: v1.21.2
       helm:
-        valuesObject:
-          crds:
-            enabled: true
-          # Enable Gateway API support
-          config:
-            apiVersion: controller.config.cert-manager.io/v1alpha1
-            kind: ControllerConfiguration
-            enableGatewayAPI: true
-          prometheus:
-            enabled: true
-            servicemonitor:
-              enabled: true
+        valueFiles:
+          - $values/payload/platform/cert-manager/values.yaml
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      ref: values
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/cert-manager
