@@ -50,6 +50,26 @@ spec:
 
                   storage "raft" {
                     path = "/openbao/data"
+
+                    # Every replica lists all three, itself included -- a node
+                    # skips its own address. Without these, a follower comes up
+                    # as its own uninitialised cluster and stays there: it
+                    # reports "Vault is not initialized" and refuses unseal
+                    # keys, because `bao operator init` initialises the leader's
+                    # raft cluster, not the pod. Kubernetes service
+                    # registration does not join anything; it only labels pods
+                    # active and standby.
+                    retry_join {
+                      leader_api_addr = "http://openbao-0.openbao-internal:8200"
+                    }
+
+                    retry_join {
+                      leader_api_addr = "http://openbao-1.openbao-internal:8200"
+                    }
+
+                    retry_join {
+                      leader_api_addr = "http://openbao-2.openbao-internal:8200"
+                    }
                   }
 
                   service_registration "kubernetes" {}

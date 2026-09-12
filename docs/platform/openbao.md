@@ -65,7 +65,21 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is the price of keeping the key material off every machine but yours. Once the first pod is unsealed and joined the cluster's other replicas auto-join via the Kubernetes service registration. Confirm with:
+Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is the price of keeping the key material off every machine but yours.
+
+!!! note "If a replica says `Vault is not initialized`"
+    `bao operator init` initialises one raft cluster, on the pod you ran it against — not the other two. A follower that has not joined that cluster reports `Initialized: false` and turns unseal keys away, which is the error the loop above produces if the replicas are not members yet. The `retry_join` stanzas in `application.yaml` are what make them join on their own as they start. `service_registration "kubernetes"` does not join anything; it only labels pods `active` and `standby`.
+
+A pod that predates those stanzas, or that started before `openbao-0` was
+initialised, needs pointing at the leader once. It takes unseal keys
+afterwards:
+
+```bash
+kubectl -n openbao exec openbao-1 -- \
+  bao operator raft join http://openbao-0.openbao-internal:8200
+```
+
+Confirm the result with:
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao status
