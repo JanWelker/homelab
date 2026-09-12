@@ -166,7 +166,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
       ClusterIssuers.
 
     !!! note
-        This target pins its own Cilium, cert-manager, and Gateway API CRD versions directly in the `Makefile`, because it runs before ArgoCD exists. Those pins are separate from the ones ArgoCD manages in `payload/platform/` and are not updated by Renovate — check them if a component behaves differently before and after the GitOps handover.
+        This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move.
 
     Nodes should reach `Ready` once Cilium is up:
 

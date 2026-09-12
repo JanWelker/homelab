@@ -66,7 +66,8 @@ located in `renovate.json`.
     Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
     managers track the Flatcar, Kubernetes, containerd, kube-vip and syslinux
     versions pinned in `ansible/inventory.yaml`, and the font releases pinned in
-    `scripts/update-fonts.sh`.
+    `scripts/update-fonts.sh`. The `Makefile` is deliberately not in that list —
+    see [Bootstrap versions are derived, not pinned](#bootstrap-versions-are-derived-not-pinned).
 
 ### Two things Renovate cannot see by default
 
@@ -107,6 +108,29 @@ The alternative is to move the values into a real `values.yaml` and reference it
 with `valueFiles`, the way Cilium and ArgoCD already do. Either works; the
 annotation is cheaper for a single tag, and the values file pays off the moment
 there is a second one.
+
+### Bootstrap versions are derived, not pinned
+
+`make install-core` and `make install-argo` install Cilium, cert-manager, the
+Gateway API CRDs and ArgoCD itself before ArgoCD exists to manage them. The
+`Makefile` used to carry its own pins for those four, and Renovate never saw
+them — by the time anybody looked, the bootstrap Cilium was two minors behind
+the one the cluster was actually running.
+
+The fix was not another custom manager. A second copy of a version is the
+problem; tracking both copies only makes the drift arrive in pairs. Each target
+now reads `targetRevision` out of the `Application` manifest that owns the
+component after the handover:
+
+```make
+CILIUM_VERSION := $(call chart_version,payload/platform/cilium/application.yaml)
+```
+
+So there is nothing `Makefile`-shaped in `renovate.json`, and nothing to add
+there when a new bootstrap component appears — point the target at the manifest
+instead. The targets abort with an explicit error if a manifest moves and the
+lookup comes back empty, because the alternative is Helm receiving an empty
+`--version` and cheerfully installing whatever is latest.
 
 ### Vendored binaries need a follow-up commit
 

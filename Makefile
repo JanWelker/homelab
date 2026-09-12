@@ -1,5 +1,20 @@
 .PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps
 
+# Bootstrap component versions are not pinned here. Each one is read out of the
+# ArgoCD Application that owns the component after the GitOps handover, so the
+# release installed before ArgoCD exists is the same one ArgoCD then adopts.
+# Renovate keeps those manifests current; there is nothing to bump in this file.
+chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
+
+CILIUM_VERSION       := $(call chart_version,payload/platform/cilium/application.yaml)
+CERT_MANAGER_VERSION := $(call chart_version,payload/platform/cert-manager/application.yaml)
+ARGOCD_VERSION       := $(call chart_version,payload/argocd/application.yaml)
+GATEWAY_API_VERSION  := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
+
+# Abort the target rather than handing Helm an empty --version if a manifest
+# moves or changes shape.
+require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
+
 setup:
 	uv sync
 	@echo "Virtual environment created."
@@ -36,18 +51,15 @@ fonts-check:
 install-core: install-cilium install-cert-manager
 
 install-cilium:
+	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
+	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	-kubectl -n kube-system delete ds kube-proxy 2>/dev/null || true
-	@echo "Installing Gateway API CRDs..."
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
-	kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
+	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
 	helm repo add cilium https://helm.cilium.io/
 	helm repo update
 	helm upgrade --install cilium cilium/cilium \
-		--version 1.18.5 \
+		--version $(CILIUM_VERSION) \
 		--namespace kube-system \
 		--values payload/platform/cilium/values.yaml
 	@echo "Waiting for Cilium to be ready..."
@@ -55,12 +67,13 @@ install-cilium:
 	kubectl apply -f payload/platform/cilium/lb-pools.yaml
 
 install-cert-manager:
+	$(call require,CERT_MANAGER_VERSION,payload/platform/cert-manager/application.yaml)
 	helm repo add jetstack https://charts.jetstack.io
 	helm repo update
 	helm upgrade --install cert-manager jetstack/cert-manager \
 		--namespace cert-manager \
 		--create-namespace \
-		--version v1.16.2 \
+		--version $(CERT_MANAGER_VERSION) \
 		--set crds.enabled=true \
 		--set config.apiVersion=controller.config.cert-manager.io/v1alpha1 \
 		--set config.kind=ControllerConfiguration \
@@ -72,13 +85,14 @@ install-cert-manager:
 	kubectl apply -f payload/platform/cert-manager/cluster-issuers.yaml
 
 install-argo:
+	$(call require,ARGOCD_VERSION,payload/argocd/application.yaml)
 	helm repo add argocd https://argoproj.github.io/argo-helm
 	helm repo update
 	helm upgrade --install argocd argocd/argo-cd \
 		--namespace argocd \
 		--create-namespace \
 		--values payload/argocd/values.yaml \
-		--version 9.1.9 \
+		--version $(ARGOCD_VERSION) \
 		--wait
 
 bootstrap-apps:

@@ -55,4 +55,4 @@ cilium/                # CNI + Gateway API Controller
 ```
 
 !!! note "Cilium is installed twice, sort of"
-    `make install-core` installs it by Helm with a version pinned in the `Makefile`, because it has to exist before ArgoCD does. ArgoCD then adopts it using the pin in `application.yaml`. Those two numbers are maintained separately and Renovate only tracks the second — a mismatch is not fatal, but it is exactly the kind of thing that makes a rebuilt cluster behave differently from the one it replaced.
+    `make install-core` installs it by Helm, because it has to exist before ArgoCD does, and ArgoCD then adopts it. There is only one number: the `Makefile` reads `targetRevision` straight out of `application.yaml` instead of keeping a pin of its own, so a rebuilt cluster cannot quietly land on a different Cilium than the one it replaced.

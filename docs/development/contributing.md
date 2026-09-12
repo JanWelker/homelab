@@ -69,7 +69,7 @@ different Kubernetes objects, and the diff is the only place that shows up
 before the cluster finds out.
 
 !!! warning
-    Do not hand-edit version numbers. `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](maintenance.md). Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. The one exception is the `Makefile`, which pins the components installed before ArgoCD exists and which Renovate does not track.
+    Do not hand-edit version numbers. `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](maintenance.md). Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. There is no exception: the `Makefile` installs the pre-ArgoCD components from the same `targetRevision` values rather than pinning its own.
 
 ## Changing documentation
 
