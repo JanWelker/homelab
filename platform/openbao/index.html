@@ -2072,14 +2072,28 @@ sealed and unsealed — before you need to.</p>
 </span></code></pre></div>
 <h3 id="layout-convention">Layout convention<a class="headerlink" href="#layout-convention" title="Permanent link">&para;</a></h3>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kv/
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├── cert-manager/
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│   └── route53            # access-key-id, secret-access-key
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├── authentik/
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│   └── config             # secret-key, postgres-password, bootstrap-password,
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│                          # bootstrap-token, and the client id/secret pairs
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│                          # ArgoCD and Grafana read back from here
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>├── cert-manager/
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>│   └── route53            # access-key-id, secret-access-key
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>├── external-dns/
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>│   └── route53            # access-key-id, secret-access-key
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>├── monitoring/
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>│   └── smtp               # password
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
 </span></code></pre></div>
-<p><code>cert-manager/route53</code> is currently the only path in use — it is consumed by
-the one <a href="../external-secrets/">ExternalSecret</a> in the repository
-(<code>payload/platform/cert-manager/route53-credentials.yaml</code>). Everything else
-follows the same <code>&lt;workload&gt;/&lt;purpose&gt;</code> shape.</p>
+<p>Four paths, six <a href="../external-secrets/">ExternalSecrets</a>: <code>authentik/config</code> is
+read by three of them, because generating the OIDC client credentials up front
+is what keeps both sides of each integration declarative. The two <code>route53</code>
+leaves are deliberately separate and meant to be separate IAM users --
+cert-manager only writes <code>_acme-challenge</code> TXT records, while external-dns can
+repoint hostnames. Anything added later follows the same <code>&lt;workload&gt;/&lt;purpose&gt;</code>
+shape.</p>
+<p>The <code>bao kv put</code> for each path lives in a comment at the top of the
+<code>ExternalSecret</code> that consumes it, which is the list to trust; they are
+collected in <a href="../../quickstart/">Quickstart step 11</a>.</p>
 <p>Each leaf is a single secret with one or more keys. ExternalSecret resources reference paths as <code>cert-manager/route53</code> (the KV v2 <code>data/</code> prefix is added by ESO automatically).</p>
 <h3 id="storing-a-secret">Storing a secret<a class="headerlink" href="#storing-a-secret" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
