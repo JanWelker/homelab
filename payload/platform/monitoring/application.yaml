@@ -61,6 +61,17 @@ spec:
               users:
                 auto_assign_org_role: Viewer
 
+            # The dashboard PVC is ReadWriteOnce, so two Grafana pods cannot
+            # exist at once -- and the chart's default RollingUpdate strategy
+            # tries: the new pod waits on a volume the old pod will not release
+            # until the new one is Ready, which it cannot become. A rollout then
+            # parks at `FailedAttachVolume: Volume is already used by pod(s)`
+            # until someone deletes a pod by hand. Recreate takes the old pod
+            # down first, and the seconds of downtime are the price of a
+            # single-replica, single-volume Grafana.
+            deploymentStrategy:
+              type: Recreate
+
             persistence:
               enabled: true
               type: pvc
