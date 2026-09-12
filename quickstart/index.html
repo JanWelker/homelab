@@ -2160,13 +2160,64 @@ certificates, and the pods that were waiting on the others start on the next
 ESO refresh. Authentik's is what finally gives you a login for the ArgoCD
 and Grafana UIs.</p>
 </li>
+<li>
+<p><strong>Create the first administrator</strong>:
+    There is no sign-up, and no user to be created: Authentik ships the built-in
+    <code>akadmin</code> account, and its password is the <code>bootstrap-password</code> step 11
+    generated and never showed you. Read it back out of OpenBao:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>kv/authentik/config
+</span></code></pre></div>
+<p>Log in at
+<a href="https://auth.infra.k8s.wlkr.ch">auth.infra.k8s.wlkr.ch</a> as <code>akadmin</code>, then
+create the four groups under <em>Directory &rarr; Groups</em> and add yourself to
+the ones you need — see
+<a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Grants</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>argocd-admins</code></td>
+<td>ArgoCD <code>role:admin</code></td>
+</tr>
+<tr>
+<td><code>argocd-viewers</code></td>
+<td>ArgoCD <code>role:readonly</code></td>
+</tr>
+<tr>
+<td><code>grafana-admins</code></td>
+<td>Grafana <code>Admin</code></td>
+</tr>
+<tr>
+<td><code>grafana-editors</code></td>
+<td>Grafana <code>Editor</code></td>
+</tr>
+</tbody>
+</table>
+<p>Do the groups before you try the other UIs, because membership is the whole
+of authorisation here. ArgoCD's <code>policy.default</code> is empty, so a user in
+neither ArgoCD group is authenticated and entitled to nothing — an SSO login
+that succeeds and lands on an ArgoCD with no applications in it is this, not
+a broken integration.</p>
+<p>Two follow-ups worth doing the same evening: create a personal account in
+<em>Directory &rarr; Users</em>, put it in the groups, and use that from then on,
+leaving <code>akadmin</code> as the break-glass identity for the day SSO is the thing
+that is broken — see
+<a href="../platform/authentik/#when-authentik-is-down">When Authentik is down</a>. And
+keep <code>bootstrap-password</code> in OpenBao rather than rotating it out: it is what
+the account falls back to after a rebuild.</p>
+</li>
 </ol>
 <h2 id="single-node-clusters">Single-node clusters<a class="headerlink" href="#single-node-clusters" title="Permanent link">&para;</a></h2>
 <p>The <a href="../architecture/#cluster-layout">documented layout</a> has dedicated
 worker nodes, so the control-plane taint stays in place. If you are instead
 running everything on one node, remove the taint before step 9 so workloads can
 schedule:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>make<span class="w"> </span>untaint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>
 <p>Before, not after, because step 9 does not survive the taint. Cilium does: the
 agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
@@ -2181,7 +2232,7 @@ waits on them.</p>
 node being <code>NotReady</code> until Cilium lands does not matter — this is an API call
 against the node object, not something that has to schedule.</p>
 <p>Re-apply it when you later add worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>make<span class="w"> </span>taint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
 <h2 id="reprovisioned-nodes">Reprovisioned nodes<a class="headerlink" href="#reprovisioned-nodes" title="Permanent link">&para;</a></h2>
 <p>Reinstalling the nodes does not hand Ceph empty disks back. Butane creates the
@@ -2190,8 +2241,8 @@ rebuild onto the same hardware inherits the previous cluster's OSDs — and Rook
 will not adopt an OSD belonging to a cluster it does not know. There are no
 <code>rook-ceph-osd</code> pods, the <code>CephCluster</code> still reports <code>Ready</code>, and the failure
 surfaces one layer up, at step 11:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
-</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
 </span></code></pre></div>
 <p><code>openbao-0</code> is <code>Pending</code> on an unbound PVC because the cluster has no OSDs to
 provision one from. <code>make storage-check</code> says so in one line. The fix is
@@ -2199,12 +2250,12 @@ provision one from. <code>make storage-check</code> says so in one line. The fix
 it does: <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after
 reprovisioning</a>.</p>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
-<p>The four commands that answer "is it actually fine?":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
-</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
-</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
-</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
+<p>The five commands that answer "is it actually fine?":</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
 </span></code></pre></div>
 <p>The last one earns its place: the <code>cephcluster</code> line above is the one that
 lies, reporting <code>Ready</code> on a cluster with no OSDs and no CSI driver.</p>
