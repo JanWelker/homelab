@@ -114,6 +114,37 @@ To use it explicitly:
 !!! note
     `ReadWriteOnce` (RWO) is the supported access mode. `ReadWriteMany` (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in `ContainerCreating`, wondering aloud about a multi-attach error.
 
+## Is storage ready?
+
+```bash
+make storage-check
+```
+
+Run it after the GitOps handover and before trusting anything that mounts a
+volume. The sync waves already put Rook ahead of every such workload, and that
+is not the same question: a `CephCluster` reports `Ready` with mons and mgrs up
+while having no OSDs to store data on, and a `StorageClass` exists whether or
+not a CSI driver ever registered for its provisioner. Both failures leave the
+apps at later waves running and their pods `Pending`, several layers away from
+the cause.
+
+The script walks the chain instead, in the order it breaks, and stops at the
+first missing link with the command that explains it:
+
+| Check | What its absence means |
+| --- | --- |
+| `CephCluster` is `Ready` | the cluster Application has not synced yet |
+| an OSD pod is `Running` | Rook took no disk — see [No OSDs after reprovisioning](#no-osds-after-reprovisioning) |
+| `ceph health` is not `HEALTH_ERR` | Ceph itself is unwell; `HEALTH_WARN` is allowed through |
+| the CSI driver is registered | no `Driver` CR, so the ceph-csi-operator deployed nothing |
+| node plugin and provisioner are up | usually a ServiceAccount the DaemonSet cannot find |
+| a 1 GiB PVC binds and is cleaned up | the only check that proves the other five |
+
+The last one is the point of the exercise: it asks for a volume the same way a
+workload would, waits up to `TIMEOUT` seconds (120 by default) for it to bind,
+and deletes it again. `NAMESPACE` and `CLASS` override where it asks and which
+`StorageClass` it asks for.
+
 ## No OSDs after reprovisioning
 
 Reinstalling the nodes does not give Ceph empty disks back. Butane creates the
@@ -154,23 +185,27 @@ start: `bao operator init` has no pod to exec into.
 Clear the partition on every node and let the operator try again:
 
 ```bash
-ansible -i ansible/inventory.yaml k8s_nodes -b -m raw -a '
-  wipefs -a /dev/disk/by-partlabel/rook-osd &&
-  dd if=/dev/zero of=/dev/disk/by-partlabel/rook-osd bs=1M count=200 oflag=direct,dsync'
-
-kubectl -n rook-ceph rollout restart deploy/rook-ceph-operator
+make wipe-osd                    # every host in k8s_nodes
+make wipe-osd LIMIT=odin,thor    # only these
 ```
 
-`wipefs` removes the signature that made Rook skip the device and the `dd`
-removes the BlueStore label and superblock behind it, which is what
-`ceph-volume raw list` reads. Addressing the partition by label rather than by
-name matters: the control-plane nodes present it as `nvme0n1p2` and the worker
-as `sda2`, and nothing at that path can be the `containerd` partition. `-m raw`
-matters for the same reason `kubeconfig.yaml` uses it — Flatcar ships no
-`/usr/bin/python3`, so every other Ansible module fails with `rc=127`.
+It prints the hosts it is about to wipe and waits for you to type `WIPE`.
+There is no flag to skip that, and it refuses to run without a terminal to ask
+at: the partitions do not come back, and neither does what was on them.
 
-The restarted operator recreates the `osd-prepare` jobs, an OSD appears per
-node, and the pending PVCs bind on the next provisioning attempt.
+What it runs, per node, is `wipefs -a` followed by a 200 MiB `dd` over
+`/dev/disk/by-partlabel/rook-osd`. `wipefs` removes the signature that made
+Rook skip the device; the `dd` removes the BlueStore label and superblock
+behind it, which is what `ceph-volume raw list` reads. Addressing the partition
+by label rather than by name matters: the control-plane nodes present it as
+`nvme0n1p2` and the worker as `sda2`, and nothing at that path can be the
+`containerd` partition. Ansible runs it with `-m raw` for the same reason
+`kubeconfig.yaml` does — Flatcar ships no `/usr/bin/python3`, so every other
+module fails with `rc=127`.
+
+It then restarts the operator, which recreates the `osd-prepare` jobs. An OSD
+appears per node and the pending PVCs bind on the next provisioning attempt;
+`make storage-check` is the way to confirm that rather than assume it.
 
 ## Directory Structure
 

@@ -246,6 +246,21 @@ The deployment host (the machine running Ansible and the boot server) must be re
         The `Certificate` resources stay un-Ready until step 11 — that is
         expected, since their Route53 credentials don't exist yet.
 
+    - **Gate on storage** before trusting the workloads that need it:
+
+        ```bash
+        make storage-check
+        ```
+
+        The sync waves put Rook ahead of everything that mounts a volume, which
+        is not the same as Rook being able to serve one: a `CephCluster` reports
+        `Ready` with no OSDs, and a `StorageClass` exists whether or not a CSI
+        driver registered for it. Either way the later waves start regardless
+        and their pods sit in `Pending`. This asks for a volume the way a
+        workload would and names the first broken link if it does not get one —
+        see [Rook-Ceph &rarr; Is storage
+        ready?](platform/rook-ceph.md#is-storage-ready).
+
 11. **Initialise the secret store**:
     OpenBao starts uninitialised, sealed and empty, and four of the platform
     components read their credentials out of it through
@@ -348,8 +363,9 @@ error: unable to upgrade connection: pod openbao-0 does not have a host assigned
 ```
 
 `openbao-0` is `Pending` on an unbound PVC because the cluster has no OSDs to
-provision one from. Wiping the partitions is the fix and it destroys whatever
-the old cluster held: [Rook-Ceph &rarr; No OSDs after
+provision one from. `make storage-check` says so in one line. The fix is
+`make wipe-osd`, which destroys whatever the old cluster held and asks before
+it does: [Rook-Ceph &rarr; No OSDs after
 reprovisioning](platform/rook-ceph.md#no-osds-after-reprovisioning).
 
 ## Verifying the result
@@ -361,7 +377,11 @@ kubectl get nodes                                  # all Ready
 kubectl -n argocd get applications                 # all Synced / Healthy
 kubectl get certificate -A                         # READY=True
 kubectl -n rook-ceph get cephcluster               # HEALTH_OK
+make storage-check                                 # a PVC actually binds
 ```
+
+The last one earns its place: the `cephcluster` line above is the one that
+lies, reporting `Ready` on a cluster with no OSDs and no CSI driver.
 
 Once DNS points at the gateway IPs, the platform UIs are reachable — see
 [Platform &rarr; HTTPRoute Locations](platform/index.md#httproute-locations).
