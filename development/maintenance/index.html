@@ -1924,9 +1924,11 @@ custom regex manager picks it up.</p>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.6.2</span>
 </span></code></pre></div>
 <p>The alternative is to move the values into a real <code>values.yaml</code> and reference it
-with <code>valueFiles</code>, the way Cilium and ArgoCD already do. Either works; the
-annotation is cheaper for a single tag, and the values file pays off the moment
-there is a second one.</p>
+with <code>valueFiles</code>, the way Cilium, ArgoCD and cert-manager already do. Either
+works; the annotation is cheaper for a single tag, and the values file pays off
+the moment there is a second one -- or the moment <code>make install-core</code> needs the
+same settings, since a bootstrap target can pass a file to Helm and cannot pass
+a <code>valuesObject</code>.</p>
 <h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
 <p><code>make install-core</code> and <code>make install-argo</code> install Cilium, cert-manager, the
 Gateway API CRDs and ArgoCD itself before ArgoCD exists to manage them. The
