@@ -6,7 +6,14 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    argocd.argoproj.io/sync-wave: "1"
+    # Ahead of every Application that ships an ExternalSecret, and cert-manager
+    # at -5 is the earliest of those. A CustomResource whose CRD does not exist
+    # yet does not merely fail and retry: ArgoCD marks the task SyncFailed,
+    # leaves the operation Running while it waits on the rest of the wave to
+    # become healthy, and starts no new sync until that one finishes. When the
+    # resource it could not apply is the credential the wave is waiting for,
+    # that is a deadlock, not a delay. See docs/architecture/gitops.md.
+    argocd.argoproj.io/sync-wave: "-6"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
