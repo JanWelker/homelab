@@ -25,6 +25,7 @@ nothing, forever, until somebody audits the zone and cannot work out what
 | Domain filter | `k8s.wlkr.ch` | Nothing outside that subtree is touched |
 | Registry | `txt`, owner `homelab-k8s` | Ownership marker on every record it creates |
 | Policy | `sync` | Deleting an HTTPRoute removes its record |
+| Zone matching | `--aws-zone-match-parent` | The records live in the `wlkr.ch` zone, not a zone of their own |
 
 The address comes from the `HTTPRoute`'s parent `Gateway` — so a route attached
 to `infra-gateway` resolves to `10.9.2.248`, and one on `apps-gateway` to
@@ -85,6 +86,23 @@ The policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus
 kubectl -n external-dns logs deploy/external-dns --tail=50
 dig +short argo.infra.k8s.wlkr.ch
 ```
+
+If it publishes nothing at all, and says so as
+`All records are already up to date, there are no changes for the matching
+hosted zones`, read that message literally: it found no zone to change. The
+metrics separate the two halves —
+
+```bash
+kubectl -n external-dns port-forward deploy/external-dns 7979:7979
+curl -s localhost:7979/metrics | grep endpoints_total
+# external_dns_source_endpoints_total   8   <- hostnames it can see
+# external_dns_registry_endpoints_total 0   <- records it owns
+```
+
+— so 8 and 0 together means the sources are fine and the provider is the
+problem, which on Route53 is usually zone matching: `k8s.wlkr.ch` has no
+hosted zone of its own, and `--aws-zone-match-parent` is what lets the
+`wlkr.ch` zone satisfy the filter.
 
 A record that will not update is usually one external-dns does not own — check
 for the matching `_externaldns.` TXT record in Route53. This is the safety
