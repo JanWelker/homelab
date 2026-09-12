@@ -65,8 +65,9 @@ metadata:
   name: my-app-credentials
   namespace: my-app
   annotations:
-    # ESO CRDs install at sync-wave 1. If your Application syncs earlier,
-    # this annotation prevents ArgoCD from failing the dry-run.
+    # ESO and its CRDs install at sync-wave -6, ahead of everything that
+    # consumes them. This annotation is what covers the first sync of a
+    # cluster where they have not landed yet.
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   refreshInterval: 1h

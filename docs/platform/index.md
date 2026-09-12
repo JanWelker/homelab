@@ -109,19 +109,28 @@ reason a fresh bootstrap converges rather than deadlocking on a CRD that does
 not exist yet:
 
 1. `-10`: Gateway API CRDs
-2. `-5`: cert-manager
-3. `-4`: Gateway API
-4. `-3`: Rook-Ceph application
-5. `-2`: Rook operator
-6. `-1`: Cilium, Rook cluster
-7. `0`: OpenBao
-8. `1`: External Secrets Operator, Monitoring stack, kubelet-csr-approver,
-   logging, backup
-9. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
-   snapshot-controller
-10. `3`: Alloy, Velero, Pod Security Admission labels and network policies
-11. `5`: Rook dashboard configuration job
+2. `-6`: External Secrets Operator
+3. `-5`: cert-manager
+4. `-4`: Gateway API
+5. `-3`: Rook-Ceph application
+6. `-2`: Rook operator
+7. `-1`: Cilium, Rook cluster
+8. `0`: OpenBao
+9. `1`: Monitoring stack, kubelet-csr-approver, logging, backup
+10. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
+    snapshot-controller
+11. `3`: Alloy, Velero, Pod Security Admission labels and network policies
+12. `5`: Rook dashboard configuration job
 
 The negative waves are the interesting half: nothing above wave `0` can work
 until networking, storage and certificates exist, so those get to go first and
 everything else waits its turn.
+
+External Secrets sits at the very front despite needing OpenBao, which arrives
+six waves later, because what the wave has to guarantee is the *CRD*, not a
+working secret store. An `ExternalSecret` whose CRD is missing is not applied
+at all, and ArgoCD keeps the operation open waiting for the rest of the wave —
+so cert-manager's Route53 credential, which sits beside the `Certificate`
+resources that cannot go Ready without it, would wait for a retry that never
+comes. A store that is not ready yet is a normal, self-correcting state; a
+resource that was never applied is not.
