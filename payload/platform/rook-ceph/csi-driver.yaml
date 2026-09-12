@@ -1,0 +1,75 @@
+---
+# The RBD CSI driver, which the chart no longer deploys on its own.
+#
+# Up to rook-ceph v1.19 the operator chart's `csi` values built the provisioner
+# Deployment and the plugin DaemonSet directly. v1.20 hands that job to the
+# ceph-csi-operator, installed as a subchart (`csi.installCsiOperator`, default
+# true), which deploys nothing until an OperatorConfig and a Driver CR tell it
+# what to run. The chart ships neither -- upstream keeps them in
+# `deploy/examples/operator.yaml`, for the admin to apply -- so without this
+# file there is no provisioner registered for `rook-ceph.rbd.csi.ceph.com` and
+# every PVC against `rook-ceph-block` stays Pending with ExternalProvisioning.
+#
+# Both CRs need the operator's CRDs, which arrive with the chart at sync-wave
+# -2, hence wave 0 and the skipped dry run on the first pass.
+apiVersion: csi.ceph.io/v1
+kind: OperatorConfig
+metadata:
+  name: ceph-csi-operator-config
+  namespace: rook-ceph
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  driverSpecDefaults:
+    # Pins every sidecar and the cephcsi image to the ConfigMap the chart
+    # renders, so a chart bump moves them together and the csi-operator's own
+    # image defaults never apply.
+    imageSet:
+      name: rook-csi-operator-image-set-configmap
+    log:
+      verbosity: 0
+    enableMetadata: true
+    generateOMapInfo: false
+    fsGroupPolicy: File
+    deployCsiAddons: false
+    nodePlugin:
+      priorityClassName: system-node-critical
+      kubeletDirPath: /var/lib/kubelet
+      enableSeLinuxHostMount: false
+    controllerPlugin:
+      priorityClassName: system-cluster-critical
+      deploymentStrategy:
+        type: Recreate
+---
+# CephFS is not enabled, so only the RBD driver exists. The name is not free:
+# Rook derives the provisioner from its own namespace, and it has to match the
+# `provisioner` the StorageClasses in cluster.yaml name.
+apiVersion: csi.ceph.io/v1
+kind: Driver
+metadata:
+  name: rook-ceph.rbd.csi.ceph.com
+  namespace: rook-ceph
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  fsGroupPolicy: File
+  nodePlugin:
+    updateStrategy:
+      type: RollingUpdate
+    resources:
+      registrar:
+        requests:
+          memory: 32Mi
+          cpu: 25m
+        limits:
+          memory: 128Mi
+      plugin:
+        requests:
+          memory: 64Mi
+          cpu: 50m
+        limits:
+          memory: 512Mi
+  controllerPlugin:
+    replicas: 1

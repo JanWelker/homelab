@@ -18,25 +18,10 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        csi:
-          enableRbdDriver: true
-          enableCephfsDriver: false
-          provisionerReplicas: 1
-          csiRBDPluginResource: |
-            - name: driver-registrar
-              resource:
-                requests:
-                  memory: 32Mi
-                  cpu: 25m
-                limits:
-                  memory: 128Mi
-            - name: csi-rbdplugin
-              resource:
-                requests:
-                  memory: 64Mi
-                  cpu: 50m
-                limits:
-                  memory: 512Mi
+        # The CSI driver itself is configured in csi-driver.yaml: v1.20 moved
+        # every setting that used to live under `csi` here into the
+        # ceph-csi-operator's OperatorConfig and Driver CRs, and Helm accepts
+        # values a chart no longer reads without a word of complaint.
   destination:
     server: https://kubernetes.default.svc
     namespace: rook-ceph
