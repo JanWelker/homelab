@@ -165,6 +165,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
     - Installs **cert-manager** (for ACME TLS) and the Let's Encrypt
       ClusterIssuers.
 
+    !!! warning "Single-node clusters: untaint first"
+        cert-manager ships no tolerations, so on one tainted node this target hangs at `rollout status deploy/cert-manager` and never returns. Run `make untaint` before it — see [Single-node clusters](#single-node-clusters).
+
     !!! note
         This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while `monitoring.coreos.com/v1` is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See [Monitoring](platform/monitoring.md#crds).
 
@@ -237,12 +240,26 @@ The deployment host (the machine running Ansible and the boot server) must be re
 
 The [documented layout](architecture/index.md#cluster-layout) has dedicated
 worker nodes, so the control-plane taint stays in place. If you are instead
-running everything on one node, remove the taint after step 9 so workloads can
+running everything on one node, remove the taint before step 9 so workloads can
 schedule:
 
 ```bash
 make untaint
 ```
+
+Before, not after, because step 9 does not survive the taint. Cilium does: the
+agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
+control-plane one by name, so the node reaches `Ready` and it looks like the
+taint is not in the way. cert-manager carries no tolerations at all, so
+`make install-core` gets as far as `rollout status deploy/cert-manager` and
+stops there: none of its three Deployments can be placed, and `rollout status`
+has no timeout, so it waits for a scheduling decision that is never coming.
+Hubble's relay and UI are Pending for the same reason, quietly, because nothing
+waits on them.
+
+The taint can come off any time after step 8 puts a kubeconfig in place. The
+node being `NotReady` until Cilium lands does not matter — this is an API call
+against the node object, not something that has to schedule.
 
 Re-apply it when you later add worker nodes:
 
