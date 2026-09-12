@@ -1,0 +1,18 @@
+---
+crds:
+  enabled: true
+
+# Enable Gateway API support
+config:
+  apiVersion: controller.config.cert-manager.io/v1alpha1
+  kind: ControllerConfiguration
+  enableGatewayAPI: true
+
+# The chart renders the ServiceMonitor unconditionally, with none of the
+# capability check Cilium's chart does, so `make install-cert-manager` turns
+# servicemonitor off again -- at bootstrap the Prometheus operator CRDs it
+# refers to do not exist yet.
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true

@@ -105,9 +105,11 @@ image:
 ```
 
 The alternative is to move the values into a real `values.yaml` and reference it
-with `valueFiles`, the way Cilium and ArgoCD already do. Either works; the
-annotation is cheaper for a single tag, and the values file pays off the moment
-there is a second one.
+with `valueFiles`, the way Cilium, ArgoCD and cert-manager already do. Either
+works; the annotation is cheaper for a single tag, and the values file pays off
+the moment there is a second one -- or the moment `make install-core` needs the
+same settings, since a bootstrap target can pass a file to Helm and cannot pass
+a `valuesObject`.
 
 ### Bootstrap versions are derived, not pinned
 
