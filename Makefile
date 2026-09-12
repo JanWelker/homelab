@@ -74,11 +74,8 @@ install-cert-manager:
 		--namespace cert-manager \
 		--create-namespace \
 		--version $(CERT_MANAGER_VERSION) \
-		--set crds.enabled=true \
-		--set config.apiVersion=controller.config.cert-manager.io/v1alpha1 \
-		--set config.kind=ControllerConfiguration \
-		--set config.enableGatewayAPI=true \
-		--set prometheus.enabled=true
+		--values payload/platform/cert-manager/values.yaml \
+		--set prometheus.servicemonitor.enabled=false
 	@echo "Waiting for Cert-Manager..."
 	kubectl -n cert-manager rollout status deploy/cert-manager
 	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
