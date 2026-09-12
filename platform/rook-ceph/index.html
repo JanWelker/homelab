@@ -1071,6 +1071,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#is-storage-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Is storage ready?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#no-osds-after-reprovisioning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1751,6 +1762,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#is-storage-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Is storage ready?
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#no-osds-after-reprovisioning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1919,26 +1941,76 @@ it feels about that in <a href="../../operations/backups/">Backups &amp; Recover
 <p class="admonition-title">Note</p>
 <p><code>ReadWriteOnce</code> (RWO) is the supported access mode. <code>ReadWriteMany</code> (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in <code>ContainerCreating</code>, wondering aloud about a multi-attach error.</p>
 </div>
+<h2 id="is-storage-ready">Is storage ready?<a class="headerlink" href="#is-storage-ready" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>storage-check
+</span></code></pre></div>
+<p>Run it after the GitOps handover and before trusting anything that mounts a
+volume. The sync waves already put Rook ahead of every such workload, and that
+is not the same question: a <code>CephCluster</code> reports <code>Ready</code> with mons and mgrs up
+while having no OSDs to store data on, and a <code>StorageClass</code> exists whether or
+not a CSI driver ever registered for its provisioner. Both failures leave the
+apps at later waves running and their pods <code>Pending</code>, several layers away from
+the cause.</p>
+<p>The script walks the chain instead, in the order it breaks, and stops at the
+first missing link with the command that explains it:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>What its absence means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CephCluster</code> is <code>Ready</code></td>
+<td>the cluster Application has not synced yet</td>
+</tr>
+<tr>
+<td>an OSD pod is <code>Running</code></td>
+<td>Rook took no disk — see <a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a></td>
+</tr>
+<tr>
+<td><code>ceph health</code> is not <code>HEALTH_ERR</code></td>
+<td>Ceph itself is unwell; <code>HEALTH_WARN</code> is allowed through</td>
+</tr>
+<tr>
+<td>the CSI driver is registered</td>
+<td>no <code>Driver</code> CR, so the ceph-csi-operator deployed nothing</td>
+</tr>
+<tr>
+<td>node plugin and provisioner are up</td>
+<td>usually a ServiceAccount the DaemonSet cannot find</td>
+</tr>
+<tr>
+<td>a 1 GiB PVC binds and is cleaned up</td>
+<td>the only check that proves the other five</td>
+</tr>
+</tbody>
+</table>
+<p>The last one is the point of the exercise: it asks for a volume the same way a
+workload would, waits up to <code>TIMEOUT</code> seconds (120 by default) for it to bind,
+and deletes it again. <code>NAMESPACE</code> and <code>CLASS</code> override where it asks and which
+<code>StorageClass</code> it asks for.</p>
 <h2 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h2>
 <p>Reinstalling the nodes does not give Ceph empty disks back. Butane creates the
 <code>rook-osd</code> partition only when it is absent and deliberately leaves it
 unformatted, so a rebuild onto the same hardware inherits the previous
 cluster's OSDs — and Rook will not touch an OSD that belongs to a cluster it
 does not know:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">skipping OSD configuration as no devices matched the storage settings for this node "odin"</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="go">skipping OSD configuration as no devices matched the storage settings for this node "odin"</span>
 </span></code></pre></div>
 <p>The <code>CephCluster</code> reports <code>Ready</code> with <code>HEALTH_WARN</code> and the mons and mgrs come
 up, so the cluster looks alive; it simply has nowhere to put data. What you
 notice instead is the first workload that wants a volume:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>rook-ceph-osd
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">No resources found in rook-ceph namespace.</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pvc
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="go">data-openbao-0   Pending   rook-ceph-block</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="go">0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>rook-ceph-osd
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">No resources found in rook-ceph namespace.</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pvc
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">data-openbao-0   Pending   rook-ceph-block</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="go">0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.</span>
 </span></code></pre></div>
 <p>which in a fresh bootstrap means <a href="../../quickstart/">quickstart</a> step 11 cannot
 start: <code>bao operator init</code> has no pod to exec into.</p>
@@ -1950,27 +2022,30 @@ those OSDs cannot be re-adopted by anything. Take a backup off the disks
 first if you need one, then wipe with your eyes open.</p>
 </div>
 <p>Clear the partition on every node and let the operator try again:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ansible<span class="w"> </span>-i<span class="w"> </span>ansible/inventory.yaml<span class="w"> </span>k8s_nodes<span class="w"> </span>-b<span class="w"> </span>-m<span class="w"> </span>raw<span class="w"> </span>-a<span class="w"> </span><span class="s1">'</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="s1">  wipefs -a /dev/disk/by-partlabel/rook-osd &amp;&amp;</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="s1">  dd if=/dev/zero of=/dev/disk/by-partlabel/rook-osd bs=1M count=200 oflag=direct,dsync'</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/rook-ceph-operator
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>wipe-osd<span class="w">                    </span><span class="c1"># every host in k8s_nodes</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>make<span class="w"> </span>wipe-osd<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin,thor<span class="w">    </span><span class="c1"># only these</span>
 </span></code></pre></div>
-<p><code>wipefs</code> removes the signature that made Rook skip the device and the <code>dd</code>
-removes the BlueStore label and superblock behind it, which is what
-<code>ceph-volume raw list</code> reads. Addressing the partition by label rather than by
-name matters: the control-plane nodes present it as <code>nvme0n1p2</code> and the worker
-as <code>sda2</code>, and nothing at that path can be the <code>containerd</code> partition. <code>-m raw</code>
-matters for the same reason <code>kubeconfig.yaml</code> uses it — Flatcar ships no
-<code>/usr/bin/python3</code>, so every other Ansible module fails with <code>rc=127</code>.</p>
-<p>The restarted operator recreates the <code>osd-prepare</code> jobs, an OSD appears per
-node, and the pending PVCs bind on the next provisioning attempt.</p>
+<p>It prints the hosts it is about to wipe and waits for you to type <code>WIPE</code>.
+There is no flag to skip that, and it refuses to run without a terminal to ask
+at: the partitions do not come back, and neither does what was on them.</p>
+<p>What it runs, per node, is <code>wipefs -a</code> followed by a 200 MiB <code>dd</code> over
+<code>/dev/disk/by-partlabel/rook-osd</code>. <code>wipefs</code> removes the signature that made
+Rook skip the device; the <code>dd</code> removes the BlueStore label and superblock
+behind it, which is what <code>ceph-volume raw list</code> reads. Addressing the partition
+by label rather than by name matters: the control-plane nodes present it as
+<code>nvme0n1p2</code> and the worker as <code>sda2</code>, and nothing at that path can be the
+<code>containerd</code> partition. Ansible runs it with <code>-m raw</code> for the same reason
+<code>kubeconfig.yaml</code> does — Flatcar ships no <code>/usr/bin/python3</code>, so every other
+module fails with <code>rc=127</code>.</p>
+<p>It then restarts the operator, which recreates the <code>osd-prepare</code> jobs. An OSD
+appears per node and the pending PVCs bind on the next provisioning attempt;
+<code>make storage-check</code> is the way to confirm that rather than assume it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>rook-ceph/             # Distributed Storage
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>├── application.yaml   # ArgoCD Application
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>├── operator.yaml      # Rook-Ceph operator
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>└── httproute.yaml     # Rook dashboard route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>rook-ceph/             # Distributed Storage
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>├── application.yaml   # ArgoCD Application
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>├── operator.yaml      # Rook-Ceph operator
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>└── httproute.yaml     # Rook dashboard route
 </span></code></pre></div>
 
 
