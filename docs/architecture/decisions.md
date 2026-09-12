@@ -105,11 +105,13 @@ entirely and hands them to workloads as ordinary Kubernetes `Secret` objects
 through the External Secrets Operator, so nothing in Git is sensitive.
 
 The cost is the sealed-at-startup problem: OpenBao is a stateful dependency of
-cert-manager, and a sealed OpenBao means no `ExternalSecret` resolves.
-Auto-unseal against AWS KMS removes the manual step, at the price of making a
-service outside the house a hard dependency of the cluster starting up. See
-[Auto-unseal](../platform/openbao.md#auto-unseal) and
-[the resulting limitation](limitations.md#openbao-depends-on-aws-kms-to-start).
+cert-manager, and a sealed OpenBao means no `ExternalSecret` resolves. The seal
+is Shamir and unsealing is manual, so every restart needs an operator with the
+key shares. Auto-unseal against a cloud KMS would remove that step and make a
+service outside the house a hard dependency of the cluster starting up instead;
+the manual step is the side of that trade this cluster takes. See
+[Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
+and [the resulting limitation](limitations.md#openbao-needs-an-operator-to-unseal-it).
 
 ## ArgoCD with App-of-Apps, not Flux
 

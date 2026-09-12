@@ -65,13 +65,13 @@ is committed to Git.
 
 Two consequences worth knowing:
 
-- OpenBao [auto-unseals against AWS KMS](../platform/openbao.md#auto-unseal), so
-  the KMS key is what a restarted pod actually depends on. The 5 shares remain as
-  recovery keys and are still the root of trust for every other secret — they
-  exist only wherever the operator put them, and losing all of them loses
-  everything. The trade is a rare external dependency instead of a frequent
-  manual step; see
-  [the resulting limitation](limitations.md#openbao-depends-on-aws-kms-to-start).
+- OpenBao is sealed with Shamir and
+  [unsealed by hand](../platform/openbao.md#unsealing-after-a-restart), so the 5
+  key shares are the root of trust for every other secret and the only thing that
+  brings the store back after a restart. They exist only wherever the operator
+  put them; losing all of them loses everything, and nothing outside the cluster
+  holds a copy. The cost is a manual step after every reboot — see
+  [the resulting limitation](limitations.md#openbao-needs-an-operator-to-unseal-it).
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
   a namespace can read what ESO materialised there. Encryption at rest, below,
   does nothing about this — it protects the bytes in etcd, not the API. If you

@@ -40,22 +40,28 @@ answers — pointing it at one that does not takes the CNI down cluster-wide —
 it moves to the VIP only once the VIP is live. The ordering is in
 [Migrating a cluster built without a VIP](../operations/control-plane-vip.md#migrating-a-cluster-built-without-a-vip).
 
-## OpenBao depends on AWS KMS to start
+## OpenBao needs an operator to unseal it
 
-OpenBao auto-unseals against AWS KMS, which makes a service outside the cluster
-and outside the house a hard dependency of the cluster starting up. If KMS is
-unreachable — key deleted, IAM user disabled, no internet — every OpenBao pod
-stays sealed, no `ExternalSecret` resolves, and cert-manager cannot renew
-certificates.
+The seal is Shamir, with no auto-unseal configured, so every OpenBao pod comes
+back sealed after any restart — a node reboot, a Kured cycle, a chart bump — and
+stays that way until someone supplies 3 of the 5 key shares to each of the three
+replicas. While it is sealed no `ExternalSecret` resolves and cert-manager
+cannot renew certificates.
 
-Read that sentence again with a power cut in mind: the house comes back, the
-cluster comes back, and the secrets do not, because the ISP is still down. See
-[Auto-unseal](../platform/openbao.md#auto-unseal).
+Read that with a power cut in mind: the house comes back, the cluster comes
+back, and the secrets do not, because nobody has typed in the keys yet. See
+[Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart).
 
-The 5 shares survive as recovery keys and are still the way out, so this is
-recoverable rather than fatal. It is a trade of a frequent, certain manual step
-for a rare, external one. Keep the keys somewhere that does not require the
-cluster to read.
+The failure is quiet, which is the part that bites. A cluster with OpenBao
+sealed looks entirely healthy, and the consequence surfaces sixty days later
+when a certificate expires. Checking `bao status` after every reboot is the
+[routine](../operations/index.md#after-any-node-reboot-unseal-openbao) that
+catches it.
+
+An auto-unseal seal — a cloud KMS, or a transit seal against a second OpenBao —
+would remove the manual step, at the price of making something outside the
+cluster a hard dependency of it starting up. That trade was made deliberately in
+the other direction: the key shares stay entirely in the operator's hands.
 
 ## Alerting reaches one mailbox
 

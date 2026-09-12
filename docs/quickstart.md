@@ -214,15 +214,13 @@ The deployment host (the machine running Ansible and the boot server) must be re
         expected, since their Route53 credentials don't exist yet.
 
 11. **Initialise the secret store**:
-    OpenBao starts uninitialised and empty. Until it is initialised and
-    populated, cert-manager cannot issue certificates (the Route53 credentials
-    live in OpenBao). This step assumes the `openbao-kms` Secret already exists
-    — it is applied by hand from `kms-credentials.yaml.template` and is what
-    lets OpenBao unseal itself at all. Follow
+    OpenBao starts uninitialised, sealed and empty. Until it is initialised,
+    unsealed and populated, cert-manager cannot issue certificates (the Route53
+    credentials live in OpenBao). Follow
     [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
 
-    1. `bao operator init` on `openbao-0` and securely store the recovery keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.
-    2. Confirm all three replicas came up unsealed (`bao status`). With the KMS seal in place they unseal themselves; if they did not, KMS is unreachable and you unseal by hand with 3 of the 5 keys.
+    1. `bao operator init` on `openbao-0` and securely store the 5 unseal keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.
+    2. Unseal all three replicas by hand, 3 of the 5 keys each. Nothing does this for you, here or after any later restart.
     3. Enable the `kv` v2 secret engine, the Kubernetes auth method, and the `external-secrets` policy/role (see [OpenBao &rarr; Kubernetes auth method](platform/openbao.md#kubernetes-auth-method)).
     4. Store the Route53 credentials:
 
