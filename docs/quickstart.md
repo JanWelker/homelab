@@ -333,6 +333,25 @@ Re-apply it when you later add worker nodes:
 make taint
 ```
 
+## Reprovisioned nodes
+
+Reinstalling the nodes does not hand Ceph empty disks back. Butane creates the
+`rook-osd` partition only when it is missing and leaves it unformatted, so a
+rebuild onto the same hardware inherits the previous cluster's OSDs — and Rook
+will not adopt an OSD belonging to a cluster it does not know. There are no
+`rook-ceph-osd` pods, the `CephCluster` still reports `Ready`, and the failure
+surfaces one layer up, at step 11:
+
+```console
+$ kubectl -n openbao exec -it openbao-0 -- bao operator init
+error: unable to upgrade connection: pod openbao-0 does not have a host assigned
+```
+
+`openbao-0` is `Pending` on an unbound PVC because the cluster has no OSDs to
+provision one from. Wiping the partitions is the fix and it destroys whatever
+the old cluster held: [Rook-Ceph &rarr; No OSDs after
+reprovisioning](platform/rook-ceph.md#no-osds-after-reprovisioning).
+
 ## Verifying the result
 
 The four commands that answer "is it actually fine?":

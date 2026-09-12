@@ -16,7 +16,7 @@ the grounds that everything still appears to work.
 
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
 
-"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear.
+"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see [No OSDs after reprovisioning](#no-osds-after-reprovisioning).
 
 ## Components
 
@@ -113,6 +113,64 @@ To use it explicitly:
 
 !!! note
     `ReadWriteOnce` (RWO) is the supported access mode. `ReadWriteMany` (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in `ContainerCreating`, wondering aloud about a multi-attach error.
+
+## No OSDs after reprovisioning
+
+Reinstalling the nodes does not give Ceph empty disks back. Butane creates the
+`rook-osd` partition only when it is absent and deliberately leaves it
+unformatted, so a rebuild onto the same hardware inherits the previous
+cluster's OSDs — and Rook will not touch an OSD that belongs to a cluster it
+does not know:
+
+```console
+$ kubectl -n rook-ceph logs job/rook-ceph-osd-prepare-odin | tail -3
+skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"
+skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."
+skipping OSD configuration as no devices matched the storage settings for this node "odin"
+```
+
+The `CephCluster` reports `Ready` with `HEALTH_WARN` and the mons and mgrs come
+up, so the cluster looks alive; it simply has nowhere to put data. What you
+notice instead is the first workload that wants a volume:
+
+```console
+$ kubectl -n rook-ceph get pods -l app=rook-ceph-osd
+No resources found in rook-ceph namespace.
+$ kubectl -n openbao get pvc
+data-openbao-0   Pending   rook-ceph-block
+$ kubectl -n openbao describe pod openbao-0 | tail -1
+0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.
+```
+
+which in a fresh bootstrap means [quickstart](../quickstart.md) step 11 cannot
+start: `bao operator init` has no pod to exec into.
+
+!!! danger "This destroys the old cluster's data"
+    Wiping the partition is not recoverable, and neither is declining to: once
+    the mons that held the cluster map are gone with the old control plane,
+    those OSDs cannot be re-adopted by anything. Take a backup off the disks
+    first if you need one, then wipe with your eyes open.
+
+Clear the partition on every node and let the operator try again:
+
+```bash
+ansible -i ansible/inventory.yaml k8s_nodes -b -m raw -a '
+  wipefs -a /dev/disk/by-partlabel/rook-osd &&
+  dd if=/dev/zero of=/dev/disk/by-partlabel/rook-osd bs=1M count=200 oflag=direct,dsync'
+
+kubectl -n rook-ceph rollout restart deploy/rook-ceph-operator
+```
+
+`wipefs` removes the signature that made Rook skip the device and the `dd`
+removes the BlueStore label and superblock behind it, which is what
+`ceph-volume raw list` reads. Addressing the partition by label rather than by
+name matters: the control-plane nodes present it as `nvme0n1p2` and the worker
+as `sda2`, and nothing at that path can be the `containerd` partition. `-m raw`
+matters for the same reason `kubeconfig.yaml` uses it — Flatcar ships no
+`/usr/bin/python3`, so every other Ansible module fails with `rc=127`.
+
+The restarted operator recreates the `osd-prepare` jobs, an OSD appears per
+node, and the pending PVCs bind on the next provisioning attempt.
 
 ## Directory Structure
 
