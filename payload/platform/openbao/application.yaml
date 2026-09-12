@@ -27,7 +27,10 @@ spec:
 
           server:
             image:
-              repository: quay.io/openbao/openbao
+              # The chart prepends server.image.registry, which already
+              # defaults to quay.io -- spelling it here too asks the kubelet
+              # for quay.io/quay.io/openbao/openbao.
+              repository: openbao/openbao
               # renovate: datasource=github-releases depName=openbao/openbao extractVersion=^v(?<version>.+)$
               tag: 2.6.2
             ha:
