@@ -69,13 +69,25 @@ located in `renovate.json`.
     `scripts/update-fonts.sh`. The `Makefile` is deliberately not in that list —
     see [Bootstrap versions are derived, not pinned](#bootstrap-versions-are-derived-not-pinned).
 
-### Two things Renovate cannot see by default
+### Ways a manager can silently do nothing
 
-Both of these went unnoticed for long enough to let dependencies drift, so they
+Each of these went unnoticed for long enough to let dependencies drift, so they
 are worth knowing about before adding a new one. They share a failure mode, and
 it is the worst one automation has: the config looks right, the tool reports
 success, and nothing is actually being checked. A silent no-op is much harder to
 notice than an error.
+
+The quickest way to prove a manager does what it claims is to run the extraction
+locally and read what comes back:
+
+```bash
+LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup
+```
+
+It needs no credentials for a public repository, changes nothing, and prints
+every dependency it found along with the reason it skipped any of them. Both of
+the version-level cases below were found that way, after the Dependency
+Dashboard showed a file with no dependencies under it.
 
 **The `pre-commit` manager ships disabled.** Renovate's own default for it is
 `enabled: false`, which is very easy to miss because a `packageRules` entry
@@ -110,6 +122,30 @@ works; the annotation is cheaper for a single tag, and the values file pays off
 the moment there is a second one -- or the moment `make install-core` needs the
 same settings, since a bootstrap target can pass a file to Helm and cannot pass
 a `valuesObject`.
+
+### A dependency can be extracted and still never looked up
+
+`syslinux_version` in `ansible/inventory.yaml` is a two-part version, and
+Renovate's default `semver-coerced` refuses it:
+
+```text
+DEBUG: Dependency syslinux has unsupported/unversioned value 6.03 (versioning=semver-coerced)
+DEBUG: Skipping syslinux because no currentDigest or pinDigests
+```
+
+The custom manager matched the file and extracted the value; the lookup was then
+dropped, so no update was ever raised. The fix is a `versioningTemplate` on that
+manager -- `regex:^(?<major>\d+)\.(?<minor>\d+)$`, the same shape the Inter
+pin uses for the same reason. 6.03 is still upstream's newest stable, so nothing
+had actually drifted, which is precisely why it went unnoticed.
+
+The neighbouring trap is a regex that cannot match at all. The diff preview
+manager looked for `dag-andersen/argocd-diff-preview` -- the GitHub org -- while
+the image on Docker Hub is `dagandersen/argocd-diff-preview`, without the
+hyphen, which is what the workflow correctly uses. Nothing matched, so the image
+sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
+container image in the repository that `config:best-practices` never pinned to a
+digest.
 
 ### Bootstrap versions are derived, not pinned
 

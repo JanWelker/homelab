@@ -238,17 +238,21 @@
         "syslinux_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "syslinux",
-      "datasourceTemplate": "custom.syslinux-kernelorg"
+      "datasourceTemplate": "custom.syslinux-kernelorg",
+      "description": "syslinux versions are two-part (6.03), which the default semver-coerced rejects -- without this versioning the dependency is extracted and then silently dropped before lookup.",
+      "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)$"
     },
     {
+      "description": "Diff preview image. The Docker Hub namespace is `dagandersen`, without the hyphen the GitHub org `dag-andersen` has -- matching on the org spelling makes this manager find nothing at all.",
       "customType": "regex",
       "managerFilePatterns": [
         "/^\\.github/workflows/.*\\.yaml$/"
       ],
       "matchStrings": [
-        "(?<depName>dag-andersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
+        "(?<depName>dagandersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
-      "datasourceTemplate": "docker"
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     },
     {
       "description": "Webfont releases vendored into docs/assets/fonts by scripts/update-fonts.sh",
