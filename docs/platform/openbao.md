@@ -37,7 +37,24 @@ The chart is the official upstream [`openbao/openbao-helm`](https://github.com/o
 
 ## Bootstrap
 
-OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time manual step, and unsealing is a manual step you will repeat after every restart.
+OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
+
+Two commands do all of it:
+
+```bash
+make bao-init      # initialise, unseal, configure the engine and ESO's auth
+make bao-secrets   # populate the four paths the cluster reads
+```
+
+The rest of this section is what those do, in the order they do it — worth
+reading once, because the failure modes are much easier to recognise if you
+know what was supposed to happen.
+
+!!! note "`make bao-init` is safe to re-run"
+    Each configuration step is skipped if it is already in place, so a
+    half-finished bootstrap can be resumed. Initialisation itself is not
+    re-runnable by design: an already-initialised cluster is left alone and the
+    command exits.
 
 ### 1. Initialise the cluster (one-time)
 
@@ -50,7 +67,10 @@ kubectl -n openbao exec -it openbao-0 -- bao operator init \
 The command prints **5 unseal keys** and an **initial root token**. Store them in a password manager, right now, before you run another command. Not in the terminal scrollback. Not in a note you will "tidy up later". Losing all 5 keys means the data is unrecoverable, and OpenBao is not being dramatic about that — there is no support line, no recovery flow, and no clever trick. There is just the ciphertext and no way in.
 
 !!! danger
-    These keys protect every other secret on the cluster. They are written **once**, to the operator's terminal. There is no backup, no second chance, and no amount of Ceph replication that helps. Treat them like the root credentials they are, and keep them somewhere that does not require this cluster to be running in order to read.
+    These keys protect every other secret on the cluster. There is no backup, no second chance, and no amount of Ceph replication that helps. Treat them like the root credentials they are, and keep them somewhere that does not require this cluster to be running in order to read.
+
+!!! warning "Where `make bao-init` puts them"
+    Rather than to the terminal, `make bao-init` writes the whole `-format=json` output to **`output/credentials/openbao-init.json`**, mode `0600`, in a `0700` directory that is gitignored. That is what lets `make bao-unseal` work without prompting fifteen times, and it is also a plaintext copy of the keys to every secret the cluster holds, sitting on the deployment host next to [the etcd encryption key](../architecture/security.md#encryption-at-rest). Copy them into a password manager and **delete the file**; unsealing then goes back to being manual, which is the same trade the rest of this repository already makes — see [the limitation](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
 
 ### 2. Unseal each replica
 
@@ -205,6 +225,17 @@ The `Status.Conditions` of the `ClusterSecretStore` should report `Ready=True`.
 ## Unsealing after a restart
 
 OpenBao seals itself on every pod restart — every node reboot, every ArgoCD upgrade, every chart bump, every time a kubelet has a bad day. This is by design and it is not going to stop:
+
+```bash
+make bao-unseal
+```
+
+That checks each replica and feeds three shares to whichever are sealed, reading
+them from `output/credentials/openbao-init.json`. It waits for a replica that has
+not joined the raft cluster yet rather than failing on it, and it is idempotent —
+on an unsealed cluster it says so and stops.
+
+With the key file deleted, which is the [correct end state](#1-initialise-the-cluster-one-time), it is the loop below instead, three shares per pod:
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do

@@ -304,43 +304,40 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     That is expected until this step is done; the pods recover on their own once
-    the Secrets materialise. Follow
-    [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap) end-to-end:
+    the Secrets materialise.
 
-    1. `bao operator init` on `openbao-0` and securely store the 5 unseal keys + root token. "Securely" means a password manager, not a terminal scrollback you will close in an hour.
-    2. Unseal all three replicas by hand, 3 of the 5 keys each. Nothing does this for you, here or after any later restart.
-    3. Enable the `kv` v2 secret engine, the Kubernetes auth method, and the `external-secrets` policy/role (see [OpenBao &rarr; Kubernetes auth method](platform/openbao.md#kubernetes-auth-method)).
-    4. Store every path the cluster reads. Each `ExternalSecret` in `payload/`
-       carries the `bao kv put` that feeds it in a header comment; the four
-       paths are:
+    ```bash
+    make bao-init
+    ```
 
-        ```bash
-        # cert-manager: writes _acme-challenge TXT records only
-        bao kv put kv/cert-manager/route53 \
-          access-key-id="$AWS_ACCESS_KEY_ID" \
-          secret-access-key="$AWS_SECRET_ACCESS_KEY"
+    That initialises OpenBao with 5 key shares and a threshold of 3, unseals all
+    three replicas, enables the `kv` v2 engine, enables the Kubernetes auth
+    method, and writes the policy and role External Secrets authenticates with.
+    It writes the keys and root token to `output/credentials/openbao-init.json`.
 
-        # external-dns: creates and deletes A and TXT records, so a separate
-        # IAM user on purpose -- see payload/platform/external-dns/route53-credentials.yaml
-        bao kv put kv/external-dns/route53 \
-          access-key-id="$EXTERNAL_DNS_KEY_ID" \
-          secret-access-key="$EXTERNAL_DNS_SECRET_KEY"
+    !!! danger "Move those keys before you do anything else"
+        That file is a plaintext copy of the keys to every secret the cluster
+        holds. Copy them into a password manager and delete it. Losing all five
+        means the data is unrecoverable — there is no support line and no
+        recovery flow. See [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap).
 
-        # Authentik, plus the OIDC client credentials ArgoCD and Grafana read
-        # back from this same path
-        bao kv put kv/authentik/config \
-          secret-key="$(openssl rand -base64 60 | tr -d '\n')" \
-          postgres-password="$(openssl rand -base64 32 | tr -d '\n')" \
-          bootstrap-password="$(openssl rand -base64 24 | tr -d '\n')" \
-          bootstrap-token="$(openssl rand -hex 32)" \
-          argocd-client-id="$(openssl rand -hex 16)" \
-          argocd-client-secret="$(openssl rand -base64 48 | tr -d '\n')" \
-          grafana-client-id="$(openssl rand -hex 16)" \
-          grafana-client-secret="$(openssl rand -base64 48 | tr -d '\n')"
+    Then populate the four paths the cluster reads. Three values belong to
+    accounts outside the cluster and have to be supplied; everything under
+    `kv/authentik/config`, including the OIDC client credentials ArgoCD and
+    Grafana read back, is generated:
 
-        # Alertmanager's SMTP password
-        bao kv put kv/monitoring/smtp password="$SMTP_PASSWORD"
-        ```
+    ```bash
+    CERT_MANAGER_KEY_ID=AKIA... CERT_MANAGER_SECRET_KEY=... \
+    EXTERNAL_DNS_KEY_ID=AKIA... EXTERNAL_DNS_SECRET_KEY=... \
+    SMTP_PASSWORD=... \
+    make bao-secrets
+    ```
+
+    Two Route53 IAM users on purpose: cert-manager only ever writes
+    `_acme-challenge` TXT records, external-dns creates and deletes an A record
+    for every hostname. Existing paths are left alone — rewriting
+    `kv/authentik/config` on a running cluster rotates Authentik's Postgres
+    password out from under its database.
 
     Cert-manager then picks up the materialised Secret and issues the gateway
     certificates, and the pods that were waiting on the others start on the next
@@ -353,8 +350,13 @@ The deployment host (the machine running Ansible and the boot server) must be re
     generated and never showed you. Read it back out of OpenBao:
 
     ```bash
-    bao kv get -field=bootstrap-password kv/authentik/config
+    kubectl -n openbao exec openbao-0 -- \
+      bao kv get -mount=kv -field=bootstrap-password authentik/config
     ```
+
+    (That needs a token — `bao login` inside the pod, or the port-forward in
+    [OpenBao &rarr; Authenticate locally](platform/openbao.md#3-authenticate-locally).
+    `make bao-secrets` prints the same command when it finishes.)
 
     Log in at
     [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as `akadmin`, then

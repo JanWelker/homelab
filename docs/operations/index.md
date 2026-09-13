@@ -34,12 +34,17 @@ OpenBao seals itself whenever its pods restart, and while it is sealed no
 Nothing unseals it for you, so this is a chore rather than a check:
 
 ```bash
+make bao-unseal                      # unseals whatever is sealed
 kubectl -n openbao get pods          # all three Ready
-kubectl -n openbao exec -it openbao-0 -- bao status   # Sealed: false
 ```
 
-Any pod reporting `Sealed: true` needs 3 of the 5 key shares, once per pod —
-[OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
+`make bao-unseal` reads the key shares from `output/credentials/openbao-init.json`,
+checks each replica, and feeds three shares to any that is sealed. It is
+idempotent — on an unsealed cluster it reports that and stops.
+
+If you have moved the keys into a password manager and deleted that file, which
+is where they belong, it cannot help: each pod then wants 3 of the 5 shares by
+hand. [OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
 has the loop.
 
 It is worth actually running, every time. A cluster that comes back with OpenBao

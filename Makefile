@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel
+.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
 
 # Bootstrap component versions are not pinned here. Each one is read out of the
 # ArgoCD Application that owns the component after the GitOps handover, so the
@@ -125,6 +125,23 @@ bootstrap-apps:
 # the apps at later waves start anyway. Run this before trusting them.
 storage-check:
 	scripts/storage-check.sh
+
+# One-time: initialise OpenBao, unseal it, and configure the kv engine, the
+# Kubernetes auth method and the policy/role External Secrets authenticates
+# with. Safe to re-run -- an initialised cluster is left alone.
+bao-init:
+	scripts/bao-init.sh
+
+# Unseals every sealed replica. This is the one that gets run again after every
+# node reboot, Kured cycle and chart bump.
+bao-unseal:
+	scripts/bao-unseal.sh
+
+# Writes the four kv paths the ExternalSecrets read. Generates what it can;
+# the Route53 and SMTP credentials come from the environment. Existing paths
+# are left alone unless FORCE=1.
+bao-secrets:
+	scripts/bao-secrets.sh
 
 # Recovery for nodes that were provisioned before, whose rook-osd partition
 # still holds the previous cluster's OSD. Destroys data; asks first.
