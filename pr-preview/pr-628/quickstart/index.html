@@ -2379,8 +2379,8 @@ error message. The trick is to stop staring at the node and start reading the
 <td>The node couldn't fetch <code>ignition-&lt;host&gt;-install.json</code> over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist.</td>
 </tr>
 <tr>
-<td><code>disks failed</code> and an emergency shell</td>
-<td>The wrong disk stanza reached that environment. See <a href="../architecture/boot-process/#wiping-the-disk">Wiping the disk</a>.</td>
+<td><code>refusing to wipe active disk</code> on the first boot after an install</td>
+<td>The installer's disk stanza reached the installed system. <code>wipe_table</code> belongs in <code>ignition-&lt;host&gt;-install.json</code> only — see <a href="../architecture/boot-process/#wiping-the-disk">Wiping the disk</a>.</td>
 </tr>
 <tr>
 <td>Node installs but never joins the cluster</td>

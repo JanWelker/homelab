@@ -1890,16 +1890,20 @@ it, and <code>ignition-disks.service</code> fails in the initramfs:</p>
 <p>The node drops to an emergency shell before <code>flatcar-install.service</code> ever runs,
 so the disk is never touched. A node that has never been installed is
 unaffected, which is why this only appears on a rebuild.</p>
-<p>In the <strong>installed system</strong> it must be <code>false</code>. That config runs on the first
-boot from the disk it would be wiping — the one the initramfs is running from.
-<code>ignition-disks.service</code> fails there too, and differently: immediately, without
-reaching the partition table or running <code>sgdisk</code> at all.</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">disks: createPartitions: op(2): [started]  partitioning "/run/ignition/dev_aliases/dev/nvme0n1"</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">disks failed</span>
+<p>In the <strong>installed system</strong> it must be <code>false</code>, and Ignition will not do it
+anyway. That config runs on the first boot from the disk it would be wiping, and
+Ignition refuses by name — before reading the partition table, before running
+<code>sgdisk</code>, about a millisecond into the stage:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">Ignition failed: create partitions failed: refusing to wipe active disk "/run/ignition/dev_aliases/dev/nvme0n1"</span>
 </span></code></pre></div>
-<p>Nothing enforces either value. The tell that they have been collapsed into one
-is that <code>resize: true</code> on <code>ROOT</code> stops mattering: with the table always wiped
-there is never an existing partition to match, so the flag can never fire.</p>
+<p>Which makes it the safer of the two mistakes: loud, and before anything is
+written. The installer side has no such guard. A missing wipe there does not
+announce itself — it surfaces as the <code>sgdisk</code> error above, about offsets you
+have to work backwards from, and only on hardware that has been installed
+before.</p>
+<p>The tell that the two values have been collapsed into one is quieter still:
+<code>resize: true</code> on <code>ROOT</code> stops mattering. With the table always wiped there is
+never an existing partition to match, so the flag can never fire.</p>
 <p>The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
 the raw <code>rook-osd</code> partition, and <code>ceph-volume</code> reads that <em>signature</em> rather
 than the partition table — so a repartition alone can resurrect an OSD on a
