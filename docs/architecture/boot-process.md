@@ -66,6 +66,7 @@ sequenceDiagram
     Note over Node,Server: Only when armed with make reinstall
     Server-->>Node: 8. ignition-<host>.json
     Node->>Server: 9. HTTP Flatcar image + signature
+    Note over Server: Server disarms the menu back to localboot
     Node->>Node: 10. Wipe disk, flatcar-install, reboot
     Note over Node: Now booting from disk, not the network
     Node->>Node: 11. Ignition partitions and writes /etc
@@ -91,6 +92,13 @@ cluster that has never heard of it. The partition is new; the bytes under it are
 not, which is why the erase belongs where the partition is created.
 
 Check `install_disk` before you check anything else.
+
+Between steps 9 and 10 the boot server rewrites that node's menu back to
+`DEFAULT localboot`. Nothing else would: `make reinstall` arms the menu and the
+generated files never disarm it, so on firmware that network boots first the
+reboot in step 10 would read the same armed menu and start the install over.
+See [Boot Server &rarr; Switching back to local
+boot](../boot_server/index.md#switching-back-to-local-boot).
 
 Step 11 runs from disk, not from the network. Ignition is embedded in the OEM
 partition by `flatcar-install -i`, so the node no longer depends on the boot
