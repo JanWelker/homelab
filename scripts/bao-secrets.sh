@@ -99,7 +99,7 @@ with open(sys.argv[1]) as handle:
 
 printf '%s' "$root_token" | bao_in login - >/dev/null
 cleanup() {
-  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token" /tmp/bao-secret.json' >/dev/null 2>&1 || true
+  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token"' >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -107,22 +107,27 @@ exists() {
   bao kv get -mount=kv "$1" >/dev/null 2>&1 && echo yes || echo no
 }
 
-# Values reach the pod as a JSON file on stdin rather than as arguments, so
-# they stay out of both this shell's history and the pod's process list.
+# Values reach the pod as JSON on stdin rather than as arguments, so they stay
+# out of both this shell's history and the pod's process list.
+#
+# The JSON is built into a variable before anything is piped. `kubectl exec -i`
+# reads stdin once, as the remote command starts: a producer that is not ready
+# by then -- `uv run python` starting an interpreter is easily slow enough --
+# hands the pod an empty stream. A pipeline starting with `uv run` loses the
+# secret that way, and reports success while doing it; a `printf` of a string
+# that already exists has nothing to be late with.
 put() {
-  local path="$1"
+  local path="$1" json
   shift
   if [ "$(exists "$path")" = "yes" ] && [ "$FORCE" != "1" ]; then
     printf '  %-24s exists, left alone\n' "kv/${path}"
     return
   fi
-  uv run python -c '
+  json="$(uv run python -c '
 import json, sys
 print(json.dumps(dict(pair.split("=", 1) for pair in sys.argv[1:])))
-' "$@" \
-    | kubectl -n "$NAMESPACE" exec -i "$POD" -- sh -c 'umask 077; cat > /tmp/bao-secret.json'
-  bao kv put -mount=kv "$path" @/tmp/bao-secret.json >/dev/null
-  kubectl -n "$NAMESPACE" exec "$POD" -- rm -f /tmp/bao-secret.json
+' "$@")"
+  printf '%s' "$json" | bao_in kv put -mount=kv "$path" - >/dev/null
   printf '  %-24s written\n' "kv/${path}"
 }
 
