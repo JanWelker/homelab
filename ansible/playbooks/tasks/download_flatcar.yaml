@@ -22,7 +22,6 @@
     checksum: "sha512:{{ artifact_checksum }}"
     mode: "0644"
 
-# No DIGESTS of its own: the signature is the verification.
 - name: "Download the signature for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.file }}.sig"

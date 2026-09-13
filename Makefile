@@ -1,19 +1,12 @@
 .PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
 
-# Bootstrap component versions are not pinned here. Each one is read out of the
-# ArgoCD Application that owns the component after the GitOps handover, so the
-# release installed before ArgoCD exists is the same one ArgoCD then adopts.
-# Renovate keeps those manifests current; there is nothing to bump in this file.
 chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
-
 CILIUM_VERSION       := $(call chart_version,payload/platform/cilium/application.yaml)
 CERT_MANAGER_VERSION := $(call chart_version,payload/platform/cert-manager/application.yaml)
 ARGOCD_VERSION       := $(call chart_version,payload/argocd/application.yaml)
 MONITORING_VERSION   := $(call chart_version,payload/platform/monitoring/application.yaml)
 GATEWAY_API_VERSION  := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
 
-# Abort the target rather than handing Helm an empty --version if a manifest
-# moves or changes shape.
 require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
 
 setup:
@@ -51,12 +44,6 @@ fonts-check:
 
 install-core: install-cilium install-cert-manager
 
-# Cilium and cert-manager both render a ServiceMonitor, and Cilium's chart
-# aborts the render outright when monitoring.coreos.com/v1 is missing. That is
-# still the case when ArgoCD first syncs them, several sync waves ahead of
-# kube-prometheus-stack, so the CRDs land here instead: the same files the stack
-# ships, at the chart version its Application pins, which its CRD upgrade job
-# then adopts.
 install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
@@ -108,11 +95,6 @@ install-argo:
 		--version $(ARGOCD_VERSION) \
 		--wait
 
-# Both parent applications name an AppProject, and the file defining those
-# projects is synced by one of them: gitops belongs to system and would have to
-# create it before it could sync anything. So the projects are applied here,
-# ahead of the apps that reference them, or both sit in Unknown with
-# InvalidSpecError forever. The gitops app adopts the file on its first sync.
 bootstrap-apps:
 	@echo "Bootstrapping ArgoCD App-of-Apps..."
 	kubectl apply -f payload/argocd/argocd-projects.yaml
@@ -120,34 +102,18 @@ bootstrap-apps:
 	@echo "AppProjects, root app and core-infrastructure apps created."
 	@echo "ArgoCD will now sync all applications from the Git repo."
 
-# Whether storage can actually serve a volume is not something the ArgoCD sync
-# waves answer: a CephCluster reports Ready with no OSDs and no CSI driver, and
-# the apps at later waves start anyway. Run this before trusting them.
 storage-check:
 	scripts/storage-check.sh
 
-# One-time: initialise OpenBao, unseal it, and configure the kv engine, the
-# Kubernetes auth method and the policy/role External Secrets authenticates
-# with. Safe to re-run -- an initialised cluster is left alone.
 bao-init:
 	scripts/bao-init.sh
 
-# Unseals every sealed replica. This is the one that gets run again after every
-# node reboot, Kured cycle and chart bump.
 bao-unseal:
 	scripts/bao-unseal.sh
 
-# Writes the four kv paths the ExternalSecrets read. Generates what it can;
-# the Route53 and SMTP credentials come from the environment. Existing paths
-# are left alone unless FORCE=1.
 bao-secrets:
 	scripts/bao-secrets.sh
 
-# Recovery for nodes that were provisioned before, whose rook-osd partition
-# still holds the previous cluster's OSD. Destroys data; asks first.
-# Flips DEFAULT in the generated PXE menus so a node reinstalls on its next
-# network boot. The template always writes `DEFAULT localboot`; this edits
-# output/, so `make config` puts the safe default back.
 reinstall:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml $(if $(LIMIT),--limit "$(LIMIT)")
 

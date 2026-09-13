@@ -1,9 +1,4 @@
 ---
-# Flips DEFAULT in the generated PXE menus so a node reinstalls on its next
-# network boot. Edits output/, never the template, so `make config` disarms.
-#
-#   make reinstall [LIMIT=odin]    # arm
-#   make reinstall-cancel          # disarm
 - name: Set the PXE boot default
   hosts: k8s_nodes
   connection: local

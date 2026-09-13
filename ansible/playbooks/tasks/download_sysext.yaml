@@ -16,9 +16,6 @@
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
 
-# Take upstream's floating config for [Target] and [Source] Path, then narrow
-# MatchPattern to the series pinned in inventory.yaml. A floating pattern lets a
-# node stage a Kubernetes minor kubeadm refuses to skip to.
 - name: "Download Upstream Sysupdate Config for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}.conf"
@@ -36,7 +33,6 @@
     floating_pattern: "(?m)^MatchPattern={{ item.name }}-@v-"
     pinned_pattern: "MatchPattern={{ item.name }}-{{ item.series }}.@v-"
 
-# A silent no-op would restore the floating pattern, so assert the pin landed.
 - name: "Assert Sysupdate Config Is Series-Pinned for {{ item.name | capitalize }}"
   ansible.builtin.assert:
     that:
