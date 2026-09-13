@@ -47,9 +47,9 @@ the control-plane nodes and **7.4 GB** on the workers — the request alone made
 the pod unschedulable on half the cluster, and what it did allocate would have
 been RAM shared with etcd.
 
-`/var/lib/kubelet` is
-[its own 40 GB partition](../operations/index.md#repartitioning-the-nodes) now,
-so the request is ordinary and the pod lands anywhere.
+`/var/lib/kubelet` is a directory on a
+[125 GB root filesystem](../operations/index.md#repartitioning-the-nodes) now, so
+the request is ordinary and the pod lands anywhere.
 
 `relevancy` is the setting that makes the output worth reading. Without it a CVE
 report lists every vulnerability in every layer of every image; with it, findings

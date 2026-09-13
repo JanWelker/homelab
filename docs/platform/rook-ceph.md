@@ -17,9 +17,8 @@ the grounds that everything still appears to work.
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
 
 `rook-osd` is the **last** partition on the disk and takes whatever is left after
-Flatcar's own partitions, the 25GB root, `containerd` (50GB), `kubelet` (40GB)
-and `varlog` (10GB) — about 111GB per node on the 256GB disks here, so roughly
-650GB raw and 220GB usable at three replicas. It is last for a reason: the
+Flatcar's own partitions and the 125GB root — about 111GB per node on the 256GB
+disks here, so roughly 650GB raw and 220GB usable at three replicas. It is last for a reason: the
 partition is raw, so its contents are wherever Ceph last wrote them, and
 inserting anything ahead of it shifts its start offset and takes the OSD data
 with it. Changing the partition table above `rook-osd` is a
@@ -217,7 +216,7 @@ If a node cannot be rebuilt right now, the same thing by hand over SSH is
 skip the device; the `dd` removes the BlueStore label and superblock behind it,
 which is what `ceph-volume raw list` reads. Address it by label, not by name —
 the control-plane nodes present it as a different partition number than the
-worker does, and nothing at the label path can be the `containerd` partition.
+worker does, and the label path can only ever be the OSD partition.
 
 Either way, restart the operator afterwards so it recreates the `osd-prepare`
 jobs. An OSD appears per node and the pending PVCs bind on the next provisioning

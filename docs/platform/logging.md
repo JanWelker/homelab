@@ -42,20 +42,17 @@ more than the thing they observe; this is one of the cheap ways to avoid that.
 
 The audit log is a different case again. It exists only on the three
 control-plane nodes and it is JSON rather than text, so it gets its own pipeline.
-It lives on the `varlog` partition and survives a reboot there — collecting it
-is still what makes it queryable next to everything else, and what keeps a copy
+It lives on the root filesystem and survives a reboot there — collecting it is
+still what makes it queryable next to everything else, and what keeps a copy
 when the node itself is the thing that failed. See
 [Audit logging](../architecture/security.md#audit-logging) for what is recorded
 and at which level. Alloy runs on all six nodes and `local.file_match` simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.
 
-!!! note "`/var/log` is a partition, not the root filesystem"
-    All three sources Alloy reads — `/var/log/pods`, `/var/log/journal` and
-    `/var/log/kubernetes/audit` — sit on a dedicated 10GB XFS partition rather
-    than on the 25GB root. That keeps log volume off the filesystem etcd is on,
-    and it is why the audit log can keep the ten rotations CIS asks for. The
-    chart mount is unchanged: one `varlog: true` still covers all three.
+All three sources Alloy reads — `/var/log/pods`, `/var/log/journal` and
+`/var/log/kubernetes/audit` — are directories on the 125GB root filesystem, so
+one `varlog: true` mount in the chart covers all three.
 
 Container logs pass through `stage.cri {}`. containerd writes
 `<timestamp> <stream> <flags> <message>`; without that stage the timestamp and
