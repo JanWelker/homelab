@@ -1778,7 +1778,7 @@ so it can PXE boot, then run the printed join command on it. The
 <code>bootstrap-k8s.service</code> unit only fires when <code>/etc/kubernetes/kubelet.conf</code> is
 absent, so it will not interfere with a node that has already joined.</p>
 <h2 id="repartitioning-the-nodes">Repartitioning the nodes<a class="headerlink" href="#repartitioning-the-nodes" title="Permanent link">&para;</a></h2>
-<p>The disk layout lives in <code>ansible/templates/butane_config.yaml.j2</code> and is applied
+<p>The disk layout lives in <code>ansible/templates/butane_node_config.yaml.j2</code> and is applied
 by Ignition, which runs once — on the first boot after a node is installed.
 Changing a <em>size</em> or <em>order</em> in it is not an edit you roll out. Neither is
 changing anything else under <code>ansible/</code>: the node's Ignition config is embedded

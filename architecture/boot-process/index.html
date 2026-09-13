@@ -1820,20 +1820,42 @@ without a word of complaint.</p>
 has been armed with <code>make reinstall</code>, since the generated config otherwise says
 <code>DEFAULT localboot</code>. What it loads is a RAM environment whose only job is to
 write Flatcar to <code>install_disk</code> and reboot into it.</p>
-<p>There is <strong>one Butane template per host, rendered twice</strong>. <code>make config</code>
-writes <code>ignition-&lt;host&gt;-install.json</code>, which the PXE environment runs to wipe
-the disk and install, and <code>ignition-&lt;host&gt;.json</code>, which <code>flatcar-install -i</code>
-embeds into the system being installed, where it runs on first boot to partition
-the disk and lay down <code>/etc</code>.</p>
-<p>The two files are identical apart from <code>storage.disks</code> and
-<code>storage.filesystems</code>, which are the only things the two environments need
-different answers for — see <a href="#wiping-the-disk">Wiping the disk</a>. Everything else is separated by
-<code>ConditionKernelCommandLine</code>: a PXE boot carries <code>ignition.config.url</code> on the
-kernel command line and a disk boot does not, so each unit declares which side
-it belongs on.</p>
-<div class="admonition warning">
-<p class="admonition-title">Every unit has to pick a side</p>
-<p>That condition is what keeps the two files down to one differing stanza, and nothing enforces it. <code>bootstrap-k8s.service</code> is the cautionary one: its other guard is <code>ConditionPathExists=!/etc/kubernetes/kubelet.conf</code>, which is satisfied in the PXE environment too — unguarded, it would run <code>kubeadm</code> in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and <code>systemctl status</code> reporting "Condition check resulted in the unit being skipped" is how you find out.</p>
+<p>There are <strong>two templates, because there are two machines</strong>. The RAM
+environment and the node it installs share a disk and nothing else, and
+pretending otherwise is what made every failure in this page's troubleshooting
+possible.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>renders to</th>
+<th>runs in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>butane_installer_config.yaml.j2</code></td>
+<td><code>ignition-&lt;host&gt;-install.json</code></td>
+<td>the PXE environment</td>
+</tr>
+<tr>
+<td><code>butane_node_config.yaml.j2</code></td>
+<td><code>ignition-&lt;host&gt;.json</code></td>
+<td>the installed system, on first boot</td>
+</tr>
+</tbody>
+</table>
+<p>The PXE menu points at the first. The installer fetches the second as a plain
+file and hands it to <code>flatcar-install -i</code>, which embeds it in the OEM partition
+of the system it writes — so the node's own config is delivered <em>by</em> the
+installer without ever being executed in it.</p>
+<p>The installer config is deliberately small: an SSH key, <code>wipe_table: true</code>, the
+one file to hand onward, and the two <code>flatcar-install</code> units. Everything it does
+not contain is downloaded into a RAM disk and discarded ninety seconds later —
+which used to include 144 MiB of sysext images the installer had no use for.</p>
+<div class="admonition tip">
+<p class="admonition-title">Keep the installer minimal</p>
+<p>Anything added to <code>butane_installer_config.yaml.j2</code> is paid for on every install of every node, in RAM and in download time, and thrown away. If it configures the node rather than the installation, it belongs in <code>butane_node_config.yaml.j2</code>.</p>
 </div>
 <pre class="mermaid"><code>sequenceDiagram
     participant Node
@@ -1871,7 +1893,7 @@ rather than one:</p>
 </tr>
 <tr>
 <td><code>format: none</code> on <code>rook-osd</code></td>
-<td>On the <strong>installed</strong> system's first boot, in <code>butane_config.yaml.j2</code></td>
+<td>On the <strong>installed</strong> system's first boot, in <code>butane_node_config.yaml.j2</code></td>
 </tr>
 </tbody>
 </table>

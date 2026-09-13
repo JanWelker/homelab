@@ -1779,7 +1779,7 @@ running yet.</p>
 <p>Flatcar downloads OS updates in the background and writes them to the passive
 half of its A/B partition pair, so the new image is ready but inactive.
 Normally <code>locksmithd</code> would then coordinate a reboot across the cluster.</p>
-<p><strong>This project masks <code>locksmithd</code></strong> (<code>ansible/templates/butane_config.yaml.j2</code>),
+<p><strong>This project masks <code>locksmithd</code></strong> (<code>ansible/templates/butane_node_config.yaml.j2</code>),
 because reboots are meant to be coordinated by something that drains the node
 first. In its place, a <code>flatcar-reboot-sentinel.timer</code> polls
 <code>update_engine_client -status</code> every ten minutes and touches

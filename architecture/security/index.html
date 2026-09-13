@@ -2030,7 +2030,7 @@ is committed to Git.</p>
 <p>The API server is configured with an <code>EncryptionConfiguration</code> that encrypts
 <code>secrets</code> with <code>secretbox</code> before they reach etcd
 (<code>ansible/templates/kubeadm.yaml.j2</code>, and the key file in
-<code>ansible/templates/butane_config.yaml.j2</code>). Without it a Secret sits in the etcd
+<code>ansible/templates/butane_node_config.yaml.j2</code>). Without it a Secret sits in the etcd
 data directory as plaintext, so an etcd backup, a stolen disk, or read access to
 <code>/var/lib/etcd</code> yields every credential the cluster holds. <code>strings</code> on an
 unencrypted etcd file is a memorable demonstration, and one worth doing exactly
@@ -2088,7 +2088,7 @@ afterwards, did not exist.</p>
 API server declines to open a log, and the failure is silent — no error, no
 file, an audit configuration that looks present in the manifest and produces
 nothing. The policy lives in
-<code>ansible/templates/butane_config.yaml.j2</code> and is written by Ignition to
+<code>ansible/templates/butane_node_config.yaml.j2</code> and is written by Ignition to
 <code>/etc/kubernetes/audit/policy.yaml</code>.</p>
 <p>Rules are evaluated top to bottom and <strong>the first match wins</strong>, so the order is
 the design:</p>

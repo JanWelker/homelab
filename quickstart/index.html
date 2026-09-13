@@ -1871,7 +1871,7 @@ want to know.</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>, because hardware is a collection of exceptions wearing a trenchcoat)</li>
-<li>Sufficient disk space: Flatcar itself, a 50 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. A 240 GB disk leaves about 167 GB for Ceph per node</li>
+<li>Sufficient disk space: Flatcar itself, a 50 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. Measured on a 256 GB disk: 48.8 GB root, 183 GB left for Ceph</li>
 <li>At least 4 GB of RAM: the installer runs from a RAM disk, but streams the Flatcar image straight to disk rather than staging it</li>
 </ul>
 <p>The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.</p>
@@ -1925,7 +1925,7 @@ want to know.</p>
 </table>
 <h3 id="other-requirements">Other requirements<a class="headerlink" href="#other-requirements" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>SSH Key</strong>: An Ed25519 key at <code>~/.ssh/id_ed25519.pub</code> (or edit <code>ansible/templates/butane_config.yaml.j2</code> to use a different path/key)</li>
+<li><strong>SSH Key</strong>: An Ed25519 key at <code>~/.ssh/id_ed25519.pub</code> (or edit <code>ansible/templates/butane_node_config.yaml.j2</code> and <code>butane_installer_config.yaml.j2</code> to use a different path/key)</li>
 <li><strong>External DHCP Server</strong>: Must point PXE clients at the deployment host:</li>
 <li>Option 66 (<code>next-server</code>): IP of the machine running <code>make serve</code></li>
 <li>Option 67 (<code>filename</code>): <code>lpxelinux.0</code> for BIOS, <code>syslinux.efi</code> for UEFI</li>
@@ -1994,10 +1994,10 @@ want to know.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>config
 </span></code></pre></div>
 <p><em>Artifacts will be generated in <code>output/http</code> (Ignition) and <code>output/tftp</code>
-(PXE). Two Ignition configs per host from one template:
+(PXE). Two Ignition configs per host, from two templates:
 <code>ignition-&lt;host&gt;-install.json</code>, which the PXE environment runs to wipe the
 disk and install, and <code>ignition-&lt;host&gt;.json</code>, which <code>flatcar-install</code> embeds
-into the installed system. They differ only in how they treat the disk. The
+into the installed system. The installer one is deliberately tiny. The
 install disk ends up as a 50GB root filesystem and the remaining space as a
 raw partition for Rook-Ceph.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
