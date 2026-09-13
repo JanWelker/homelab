@@ -98,7 +98,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
     (PXE). Two Ignition configs per host from one template:
     `ignition-<host>-install.json`, which the PXE environment runs to wipe the
     disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds
-    into the installed system. They differ only in the disk stanza. The
+    into the installed system. They differ only in how they treat the disk. The
     install disk ends up as a 50GB root filesystem and the remaining space as a
     raw partition for Rook-Ceph.*
 

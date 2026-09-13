@@ -29,11 +29,15 @@ storage:
         - label: rook-osd
           number: 10
           size_mib: 0
-{% endif %}
+  # Inside the else: the installer just wiped the table, so this partition does
+  # not exist there and Ignition would block waiting for a device that cannot
+  # appear. Erasing the previous cluster's BlueStore signature belongs on the
+  # installed system anyway, where the partition is.
   filesystems:
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
       wipe_filesystem: true
+{% endif %}
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755
