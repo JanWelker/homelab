@@ -2023,14 +2023,14 @@ procedure.</p>
 <p><strong>Arm the install, then boot the machines</strong>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall
 </span></code></pre></div>
-<p>The generated PXE menus default to <code>Boot from local disk</code>, which is what you
-want on every boot <em>except</em> this one — it is why a reboot later cannot
+<p>The generated PXE configs default to booting the local disk, which is what
+you want on every boot <em>except</em> this one — it is why a reboot later cannot
 reinstall a node. <code>make reinstall</code> flips that to <code>Install</code> in
 <code>output/tftp/pxelinux.cfg/</code>, for every host or for <code>LIMIT=&lt;node&gt;</code>;
 <code>make reinstall-cancel</code> puts it back, as does re-running <code>make config</code>.</p>
-<p>Then power on your bare metal nodes. (Selecting <code>Install</code> from the menu at
-each console does the same thing, if you would rather not arm anything.)
-See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
+<p>Then power on your bare metal nodes. No menu appears and nothing waits for a
+keypress — each node does whatever it was armed to do, so the whole build is
+unattended. See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
 <ul>
 <li>The node wipes the disk, writes Flatcar, and reboots into it. From that
   reboot on it is booting from its own disk.</li>

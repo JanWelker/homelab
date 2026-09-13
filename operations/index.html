@@ -1810,8 +1810,9 @@ person.</p>
 <p>That flips <code>DEFAULT localboot</code> to <code>DEFAULT install</code> in
 <code>output/tftp/pxelinux.cfg/01-&lt;mac&gt;</code>. The template is untouched, so the next
 <code>make config</code> puts the safe default back — including over anything armed and
-not used. <code>make reinstall-cancel</code> does the same deliberately. Picking
-<code>install</code> at the console by hand works just as well.
+not used. <code>make reinstall-cancel</code> does the same deliberately.</p>
+<p>Arming is the <em>only</em> way in: the menu shows no prompt, so there is nothing
+to pick at the console and nothing to mistype at three in the morning.
 5. Network-boot the node. The installer wipes the disk — every partition
    signature, the GPT, and a device-level discard where the hardware supports
    it — runs <code>flatcar-install</code>, and reboots into the freshly installed system,
