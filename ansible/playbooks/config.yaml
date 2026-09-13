@@ -78,40 +78,60 @@
         state: directory
         mode: "0755"
 
+    # Everything below generates a file in output/ and is a plain task rather
+    # than a handler. Handlers only fire when the task that notifies them
+    # reports `changed`, which means a settled config regenerated nothing -- and
+    # a file deleted, edited by `make reinstall`, or truncated by a full disk
+    # stayed that way, because the Butane template it depended on had not moved.
+    # `make config` has to be the thing that puts output/ back, so these run
+    # every time.
     - name: Generate Butane Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}.yaml"
         mode: "0755"
-      notify:
-        - Transpile Butane to Ignition
-        - Generate PXE Config
+      register: butane_config
 
     # The throwaway config the PXE `install` entry boots into. It wipes the
-    # disk, runs flatcar-install with the config above, and reboots. Generated
-    # unconditionally rather than via a handler: it embeds the URL of the config
-    # above, so it has to exist whether or not that one changed.
+    # disk, runs flatcar-install with the config above, and reboots.
     - name: Generate Installer Butane Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/butane_install.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml"
         mode: "0755"
+      register: butane_install_config
+
+    # butane is a command, so it cannot report its own idempotence. Transpiling
+    # only when the input moved or the output is missing keeps `make config`
+    # honest about what it changed, without letting a missing Ignition config
+    # survive the run.
+    - name: Check for existing Ignition configs
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: ignition_configs
+      loop:
+        - "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
+        - "{{ output_dir }}/http/ignition-install-{{ inventory_hostname }}.json"
+
+    - name: Transpile Butane to Ignition
+      ansible.builtin.command:
+        cmd: >-
+          butane --pretty --strict {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}.yaml
+          -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}.json
+      when: butane_config.changed or not ignition_configs.results[0].stat.exists
+      changed_when: true
 
     - name: Transpile Installer Butane to Ignition
       ansible.builtin.command:
         cmd: >-
           butane --pretty --strict {{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml
           -o {{ output_dir }}/http/ignition-install-{{ inventory_hostname }}.json
+      when: butane_install_config.changed or not ignition_configs.results[1].stat.exists
       changed_when: true
 
-  handlers:
-    - name: Transpile Butane to Ignition
-      ansible.builtin.command:
-        cmd: >-
-          butane --pretty --strict {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}.yaml
-          -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}.json
-      changed_when: true
-
+    # A plain template, so it is idempotent on its own and costs nothing to run
+    # every time. This is also what makes `make config` undo `make reinstall`:
+    # the file goes back to DEFAULT localboot whether or not anything else moved.
     - name: Generate PXE Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/pxe_config.j2" # noqa: no-relative-paths
