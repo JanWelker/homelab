@@ -9,8 +9,14 @@ metadata:
   labels:
     velero.io/csi-volumesnapshot-class: "true"
   annotations:
-    # The CRD ships with snapshot-controller at sync-wave 2, in the same
-    # Application tree as this file.
+    # After snapshot-controller at 2, which is what installs the CRD this
+    # resource is an instance of. At the default wave it went first, and the
+    # apply -- not the dry run, so SkipDryRunOnMissingResource did nothing for
+    # it -- failed with "no matches for kind VolumeSnapshotClass". That ends
+    # the sync, so the snapshot-controller and velero Applications queued
+    # behind it were never created at all: the entire backup stack was missing
+    # because of one resource applied too early.
+    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 driver: rook-ceph.rbd.csi.ceph.com
 parameters:
