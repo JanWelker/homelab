@@ -1,9 +1,17 @@
 ---
+# Sync wave 2, between the ExternalSecret that writes route53-credentials and
+# the Certificates that need an issuer to be Ready. Applied alongside that
+# ExternalSecret instead, both issuers come up Ready=False InvalidSolver --
+# "failed to get secret route53-credentials" -- and stay there until something
+# resyncs them.
+
 # Let's Encrypt Staging ClusterIssuer (for testing)
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   acme:
     email: jan@wlkr.ch
@@ -27,6 +35,8 @@ apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
   name: letsencrypt-prod
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   acme:
     email: jan@wlkr.ch

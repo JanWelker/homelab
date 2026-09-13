@@ -33,6 +33,17 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    # Without this a failed task ends the operation where it fell and nothing
+    # picks it up again. The ExternalSecret apply lost a race with the
+    # external-secrets admission webhook once -- "no route to host", on a
+    # cluster whose CNI had just come up -- and one flake at the front of the
+    # chain leaves every issuer and certificate behind it unmade.
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
