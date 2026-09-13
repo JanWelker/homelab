@@ -51,7 +51,7 @@ finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.
 
 All three sources Alloy reads — `/var/log/pods`, `/var/log/journal` and
-`/var/log/kubernetes/audit` — are directories on the 125GB root filesystem, so
+`/var/log/kubernetes/audit` — are directories on the 50GB root filesystem, so
 one `varlog: true` mount in the chart covers all three.
 
 Container logs pass through `stage.cri {}`. containerd writes

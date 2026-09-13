@@ -116,7 +116,7 @@ switched off.
 
 | | |
 | --- | --- |
-| `/` | ext4 on partition 9, capped at 125 GB and grown into it by `grow-root.service` |
+| `/` | ext4 on partition 9, capped at 50 GB and grown into it by `grow-root.service` |
 | Ignition | Runs **once**, on the first boot after the install |
 | `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
 | `rook-osd` | Partition 10, raw and unmounted — Ceph owns it |
@@ -127,7 +127,7 @@ satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
 
 !!! note "Why `grow-root.service` exists"
-    Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock `systemd-growfs-root.service` is `static` and is pulled in by an `x-systemd.growfs` mount option, which a root mounted from `root=LABEL=ROOT` on the kernel command line does not carry. Without the unit, a node comes up with a 125 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.
+    Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock `systemd-growfs-root.service` is `static` and is pulled in by an `x-systemd.growfs` mount option, which a root mounted from `root=LABEL=ROOT` on the kernel command line does not carry. Without the unit, a node comes up with a 50 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.
 
 !!! note "Two boot paths, and the menu picks the safe one"
     Nothing is chosen at the console. `PROMPT 0` boots whatever `DEFAULT` names and shows no menu, and the template always emits `DEFAULT localboot` — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with `make reinstall`, which rewrites that one line in the generated file; see [Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). On UEFI firmware `flatcar-install -u` writes a real boot entry, so the firmware usually goes straight to disk without reading this file at all; set the disk ahead of PXE in the boot order and it never will. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.

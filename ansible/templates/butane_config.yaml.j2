@@ -8,16 +8,16 @@ passwd:
 storage:
   disks:
     - device: {{ install_disk }}
-      wipe_table: false
+      wipe_table: true
       partitions:
         # Everything the node writes. Only /usr is read-only on Flatcar.
         - label: ROOT
           number: 9
-          size_mib: 128000  # 125GB, capped so rook-osd gets the rest
+          size_mib: 50000
           resize: true
         - label: rook-osd
           number: 10
-          size_mib: 0       # Use remaining space for Rook OSD
+          size_mib: 0
   filesystems:
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
