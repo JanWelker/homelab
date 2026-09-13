@@ -111,19 +111,24 @@ The node drops to an emergency shell before `flatcar-install.service` ever runs,
 so the disk is never touched. A node that has never been installed is
 unaffected, which is why this only appears on a rebuild.
 
-In the **installed system** it must be `false`. That config runs on the first
-boot from the disk it would be wiping — the one the initramfs is running from.
-`ignition-disks.service` fails there too, and differently: immediately, without
-reaching the partition table or running `sgdisk` at all.
+In the **installed system** it must be `false`, and Ignition will not do it
+anyway. That config runs on the first boot from the disk it would be wiping, and
+Ignition refuses by name — before reading the partition table, before running
+`sgdisk`, about a millisecond into the stage:
 
 ```console
-disks: createPartitions: op(2): [started]  partitioning "/run/ignition/dev_aliases/dev/nvme0n1"
-disks failed
+Ignition failed: create partitions failed: refusing to wipe active disk "/run/ignition/dev_aliases/dev/nvme0n1"
 ```
 
-Nothing enforces either value. The tell that they have been collapsed into one
-is that `resize: true` on `ROOT` stops mattering: with the table always wiped
-there is never an existing partition to match, so the flag can never fire.
+Which makes it the safer of the two mistakes: loud, and before anything is
+written. The installer side has no such guard. A missing wipe there does not
+announce itself — it surfaces as the `sgdisk` error above, about offsets you
+have to work backwards from, and only on hardware that has been installed
+before.
+
+The tell that the two values have been collapsed into one is quieter still:
+`resize: true` on `ROOT` stops mattering. With the table always wiped there is
+never an existing partition to match, so the flag can never fire.
 
 The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
 the raw `rook-osd` partition, and `ceph-volume` reads that *signature* rather

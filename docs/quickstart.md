@@ -506,7 +506,7 @@ error message. The trick is to stop staring at the node and start reading the
 | `no generated menu has that MAC` in the boot server log | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. The log prints the MAC the node actually asked for; put that in the inventory and re-run `make config`. |
 | `collecting its boot menu -- booting from its local disk` | The node is not armed. `make reinstall LIMIT=<node>` and boot it again. Expected after an install: the boot server disarms a node once it has the OS image. |
 | Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>-install.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
-| `disks failed` and an emergency shell | The wrong disk stanza reached that environment. See [Wiping the disk](architecture/boot-process.md#wiping-the-disk). |
+| `refusing to wipe active disk` on the first boot after an install | The installer's disk stanza reached the installed system. `wipe_table` belongs in `ignition-<host>-install.json` only — see [Wiping the disk](architecture/boot-process.md#wiping-the-disk). |
 | Node installs but never joins the cluster | Sysext download failed, or the kubeadm systemd unit errored. SSH in as `core` and check `journalctl -u kubeadm`. |
 
 Two things worth internalising. A machine with two NICs will PXE boot from
