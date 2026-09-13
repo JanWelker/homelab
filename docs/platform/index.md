@@ -8,7 +8,7 @@ The core infrastructure components that run the cluster. Everything here is
 managed by ArgoCD; each component's own page documents its directory layout and
 configuration.
 
-Fourteen components sounds like a lot for a homelab, and it is — but every one of
+Fifteen components sounds like a lot for a homelab, and it is — but every one of
 them exists because bare metal does not come with the thing a cloud provider
 would have handed you. No load balancer, no managed certificates, no block
 storage API, no identity provider, no backup service. This section is the bill
@@ -25,6 +25,8 @@ for not having those.
 - **[external-dns](external-dns.md)**: Publishes Route53 records from HTTPRoutes.
 - **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
 - **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
+- **[kubescape](kubescape.md)**: Scans the cluster against CIS, NSA and MITRE
+  nightly and exports the findings to Grafana.
 - **[kured](kured.md)**: Drains and reboots nodes to apply staged OS, Kubernetes
   and containerd updates.
 - **[logging](logging.md)**: Loki and Grafana Alloy, for container and node logs.
@@ -117,7 +119,7 @@ not exist yet:
 7. `-1`: Cilium, Rook cluster
 8. `0`: OpenBao
 9. `1`: Monitoring stack, kubelet-csr-approver, logging, backup
-10. `2`: Authentik, external-dns, Kured, Loki, metrics-server,
+10. `2`: Authentik, external-dns, Kubescape, Kured, Loki, metrics-server,
     snapshot-controller
 11. `3`: Alloy, Velero, Pod Security Admission labels and network policies
 12. `5`: Rook dashboard configuration job

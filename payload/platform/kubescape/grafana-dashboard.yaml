@@ -1,0 +1,303 @@
+---
+# The Kubescape posture dashboard.
+#
+# Deliberately in the `monitoring` namespace rather than `kubescape`, for the
+# same reason as `payload/platform/logging/grafana-datasource.yaml`: the
+# kube-prometheus-stack Grafana sidecar only watches its own release namespace
+# for `grafana_dashboard` ConfigMaps, so one placed next to Kubescape would
+# never be picked up. It is defined with the component it describes and applied
+# where Grafana can see it.
+#
+# The JSON is upstream's, from kubescape/prometheus-exporter, unmodified. It
+# carries no datasource of its own, which is what makes it work here -- the
+# panels bind to Grafana's default datasource, and the Loki datasource next door
+# explicitly sets `isDefault: false`, leaving Prometheus holding that role.
+#
+# Two of its five panels query `kubescape_vulnerabilities_*` and will stay
+# empty: those come from image CVE scanning, which application.yaml disables
+# because kubevuln cannot schedule on these nodes. The three
+# `kubescape_controls_*` panels -- cluster, namespace and workload control
+# failures by severity -- are the posture half, and those are the ones this
+# component exists for.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubescape-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  kubescape-dashboard.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": null,
+      "iteration": 1680000000000,
+      "links": [],
+      "panels": [
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "kubescape_controls_total_cluster_critical",
+              "legendFormat": "Critical"
+            },
+            {
+              "expr": "kubescape_controls_total_cluster_high",
+              "legendFormat": "High"
+            },
+            {
+              "expr": "kubescape_controls_total_cluster_medium",
+              "legendFormat": "Medium"
+            },
+            {
+              "expr": "kubescape_controls_total_cluster_low",
+              "legendFormat": "Low"
+            },
+            {
+              "expr": "kubescape_controls_total_cluster_unknown",
+              "legendFormat": "Unknown"
+            }
+          ],
+          "title": "Cluster Controls Vulnerabilities",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "kubescape_vulnerabilities_total_cluster_critical",
+              "legendFormat": "Critical"
+            },
+            {
+              "expr": "kubescape_vulnerabilities_total_cluster_high",
+              "legendFormat": "High"
+            },
+            {
+              "expr": "kubescape_vulnerabilities_total_cluster_medium",
+              "legendFormat": "Medium"
+            },
+            {
+              "expr": "kubescape_vulnerabilities_total_cluster_low",
+              "legendFormat": "Low"
+            },
+            {
+              "expr": "kubescape_vulnerabilities_total_cluster_unknown",
+              "legendFormat": "Unknown"
+            }
+          ],
+          "title": "Cluster Vulnerabilities",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace) (kubescape_controls_total_namespace_critical)",
+              "legendFormat": "{{namespace}} Critical"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_controls_total_namespace_high)",
+              "legendFormat": "{{namespace}} High"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_controls_total_namespace_medium)",
+              "legendFormat": "{{namespace}} Medium"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_controls_total_namespace_low)",
+              "legendFormat": "{{namespace}} Low"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_controls_total_namespace_unknown)",
+              "legendFormat": "{{namespace}} Unknown"
+            }
+          ],
+          "title": "Namespace Controls Vulnerabilities",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace) (kubescape_vulnerabilities_total_namespace_critical)",
+              "legendFormat": "{{namespace}} Critical"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_vulnerabilities_total_namespace_high)",
+              "legendFormat": "{{namespace}} High"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_vulnerabilities_total_namespace_medium)",
+              "legendFormat": "{{namespace}} Medium"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_vulnerabilities_total_namespace_low)",
+              "legendFormat": "{{namespace}} Low"
+            },
+            {
+              "expr": "sum by (namespace) (kubescape_vulnerabilities_total_namespace_unknown)",
+              "legendFormat": "{{namespace}} Unknown"
+            }
+          ],
+          "title": "Namespace Vulnerabilities",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Prometheus",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 5,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, workload, workload_kind) (kubescape_controls_total_workload_critical)",
+              "legendFormat": "{{namespace}}/{{workload}} ({{workload_kind}}) Critical"
+            },
+            {
+              "expr": "sum by (namespace, workload, workload_kind) (kubescape_controls_total_workload_high)",
+              "legendFormat": "{{namespace}}/{{workload}} ({{workload_kind}}) High"
+            },
+            {
+              "expr": "sum by (namespace, workload, workload_kind) (kubescape_controls_total_workload_medium)",
+              "legendFormat": "{{namespace}}/{{workload}} ({{workload_kind}}) Medium"
+            },
+            {
+              "expr": "sum by (namespace, workload, workload_kind) (kubescape_controls_total_workload_low)",
+              "legendFormat": "{{namespace}}/{{workload}} ({{workload_kind}}) Low"
+            },
+            {
+              "expr": "sum by (namespace, workload, workload_kind) (kubescape_controls_total_workload_unknown)",
+              "legendFormat": "{{namespace}}/{{workload}} ({{workload_kind}}) Unknown"
+            }
+          ],
+          "title": "Workload Controls Vulnerabilities",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": [
+        "kubescape",
+        "vulnerabilities"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Kubescape Vulnerabilities Overview",
+      "uid": "kubescape-vuln-overview",
+      "version": 1,
+      "weekStart": ""
+    }
