@@ -23,7 +23,7 @@ Each node must have:
 
 - A NIC that supports PXE booting
 - An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`, because hardware is a collection of exceptions wearing a trenchcoat)
-- Sufficient disk space: Flatcar itself, a 50 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. A 240 GB disk leaves about 167 GB for Ceph per node
+- Sufficient disk space: Flatcar itself, a 50 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. Measured on a 256 GB disk: 48.8 GB root, 183 GB left for Ceph
 - At least 4 GB of RAM: the installer runs from a RAM disk, but streams the Flatcar image straight to disk rather than staging it
 
 The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.

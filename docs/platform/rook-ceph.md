@@ -17,8 +17,8 @@ the grounds that everything still appears to work.
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
 
 `rook-osd` is the **last** partition on the disk and takes whatever is left after
-Flatcar's own partitions and the 50GB root — about 167GB per node on a 240GB
-disk, so roughly 1TB raw and 335GB usable at three replicas across six nodes. It is last for a reason: the
+Flatcar's own partitions and the 50GB root — 183GB per node on the 256GB disks
+here, so roughly 1.1TB raw and 365GB usable at three replicas across six nodes. It is last for a reason: the
 partition is raw, so its contents are wherever Ceph last wrote them, and
 inserting anything ahead of it shifts its start offset and takes the OSD data
 with it. Changing the partition table above `rook-osd` is a
