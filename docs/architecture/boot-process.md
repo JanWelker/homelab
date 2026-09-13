@@ -46,16 +46,21 @@ has been armed with `make reinstall`, since the generated config otherwise says
 `DEFAULT localboot`. What it loads is a RAM environment whose only job is to
 write Flatcar to `install_disk` and reboot into it.
 
-There is **one Ignition config per host**, and it does both jobs. The PXE
-environment runs it to install; `flatcar-install -i` embeds the same file into
-the system being installed, where it runs again on first boot to partition the
-disk and lay down `/etc`. What separates the two is
+There is **one Butane template per host, rendered twice**. `make config`
+writes `ignition-<host>-install.json`, which the PXE environment runs to wipe
+the disk and install, and `ignition-<host>.json`, which `flatcar-install -i`
+embeds into the system being installed, where it runs on first boot to partition
+the disk and lay down `/etc`.
+
+The two files are identical apart from the disk stanza, and that stanza is the
+only thing the two environments need opposite answers for — see [Wiping the
+disk](#wiping-the-disk). Everything else is separated by
 `ConditionKernelCommandLine`: a PXE boot carries `ignition.config.url` on the
 kernel command line and a disk boot does not, so each unit declares which side
 it belongs on.
 
 !!! warning "Every unit has to pick a side"
-    That condition is the price of one config rather than two, and nothing enforces it. `bootstrap-k8s.service` is the cautionary one: its other guard is `ConditionPathExists=!/etc/kubernetes/kubelet.conf`, which is satisfied in the PXE environment too — unguarded, it would run `kubeadm` in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and `systemctl status` reporting "Condition check resulted in the unit being skipped" is how you find out.
+    That condition is what keeps the two files down to one differing stanza, and nothing enforces it. `bootstrap-k8s.service` is the cautionary one: its other guard is `ConditionPathExists=!/etc/kubernetes/kubelet.conf`, which is satisfied in the PXE environment too — unguarded, it would run `kubeadm` in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and `systemctl status` reporting "Condition check resulted in the unit being skipped" is how you find out.
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +69,7 @@ sequenceDiagram
 
     Node->>Server: 7. HTTP Ignition config
     Note over Node,Server: Only when armed with make reinstall
-    Server-->>Node: 8. ignition-<host>.json
+    Server-->>Node: 8. ignition-<host>-install.json
     Node->>Server: 9. HTTP Flatcar image + signature
     Note over Server: Server disarms the menu back to localboot
     Node->>Node: 10. Wipe disk, flatcar-install, reboot
@@ -81,11 +86,46 @@ rather than one:
 
 | | |
 | --- | --- |
-| Ignition `wipe_table` | Destroys the GPT, in the initramfs, before the installer unit runs |
+| Ignition `wipe_table` | Destroys the GPT, in the initramfs, before the installer unit runs. Only in `ignition-<host>-install.json` — see [Wiping the disk](#wiping-the-disk) |
 | `blkdiscard` | Returns the whole device to unwritten. Best-effort — SATA without TRIM declines it |
 | `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_config.yaml.j2` |
 
-The third is about Ceph specifically. BlueStore metadata lives at the start of
+### Wiping the disk
+
+`wipe_table` is the one setting the two environments need opposite answers for,
+and it is why there are two files rather than one.
+
+In the **installer** it must be `true`. The disk is about to be overwritten
+wholesale, so starting from a blank table is what makes an install reproducible:
+partition numbers, offsets and sizes come out the same whether the disk was
+empty or held the last cluster. With it `false`, a rebuild inherits the previous
+layout — Ignition pins `rook-osd` to its old offset while growing `ROOT` over
+it, and `ignition-disks.service` fails in the initramfs:
+
+```console
+sgdisk --delete=9 --delete=10 --new=9:12722176:+102400000 --new=10:65150976:+0
+Could not create partition 9 from 12722176 to 115122175
+```
+
+The node drops to an emergency shell before `flatcar-install.service` ever runs,
+so the disk is never touched. A node that has never been installed is
+unaffected, which is why this only appears on a rebuild.
+
+In the **installed system** it must be `false`. That config runs on the first
+boot from the disk it would be wiping — the one the initramfs is running from.
+`ignition-disks.service` fails there too, and differently: immediately, without
+reaching the partition table or running `sgdisk` at all.
+
+```console
+disks: createPartitions: op(2): [started]  partitioning "/run/ignition/dev_aliases/dev/nvme0n1"
+disks failed
+```
+
+Nothing enforces either value. The tell that they have been collapsed into one
+is that `resize: true` on `ROOT` stops mattering: with the table always wiped
+there is never an existing partition to match, so the flag can never fire.
+
+The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
 the raw `rook-osd` partition, and `ceph-volume` reads that *signature* rather
 than the partition table — so a repartition alone can resurrect an OSD on a
 cluster that has never heard of it. The partition is new; the bytes under it are

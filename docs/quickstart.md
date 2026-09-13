@@ -95,9 +95,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     *Artifacts will be generated in `output/http` (Ignition) and `output/tftp`
-    (PXE). One Ignition config per host, `ignition-<host>.json`: the PXE
-    environment runs it to install, and `flatcar-install` embeds the same file
-    into the installed system. The
+    (PXE). Two Ignition configs per host from one template:
+    `ignition-<host>-install.json`, which the PXE environment runs to wipe the
+    disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds
+    into the installed system. They differ only in the disk stanza. The
     install disk ends up as a 50GB root filesystem and the remaining space as a
     raw partition for Rook-Ceph.*
 
@@ -165,7 +166,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
       reboot on it is booting from its own disk.
     - Expect the boot server log to name each node and walk it through the
       sequence: the bootloader and its `01-<mac>` menu over TFTP, then the
-      kernel, the initrd, its Ignition config and the OS image over HTTP, then
+      kernel, the initrd, its installer config and the OS image over HTTP, then
       `switching to local boot` — and after the reboot, the Ignition config
       again plus the sysext images. A node that is still on the bare IP rather
       than its name has not fetched a menu the server recognises.
@@ -504,7 +505,8 @@ error message. The trick is to stop staring at the node and start reading the
 | Bootloader loads, then "Could not find kernel image" or a hang at the menu | `boot_server_ip` in `inventory.yaml` is wrong. It is baked into the menu's kernel/initrd URLs. Fix it, re-run `make config`, and reboot the node. |
 | `no generated menu has that MAC` in the boot server log | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. The log prints the MAC the node actually asked for; put that in the inventory and re-run `make config`. |
 | `collecting its boot menu -- booting from its local disk` | The node is not armed. `make reinstall LIMIT=<node>` and boot it again. Expected after an install: the boot server disarms a node once it has the OS image. |
-| Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
+| Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>-install.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
+| `disks failed` and an emergency shell | The wrong disk stanza reached that environment. See [Wiping the disk](architecture/boot-process.md#wiping-the-disk). |
 | Node installs but never joins the cluster | Sysext download failed, or the kubeadm systemd unit errored. SSH in as `core` and check `journalctl -u kubeadm`. |
 
 Two things worth internalising. A machine with two NICs will PXE boot from
