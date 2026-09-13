@@ -52,9 +52,9 @@ the disk and install, and `ignition-<host>.json`, which `flatcar-install -i`
 embeds into the system being installed, where it runs on first boot to partition
 the disk and lay down `/etc`.
 
-The two files are identical apart from the disk stanza, and that stanza is the
-only thing the two environments need opposite answers for — see [Wiping the
-disk](#wiping-the-disk). Everything else is separated by
+The two files are identical apart from `storage.disks` and
+`storage.filesystems`, which are the only things the two environments need
+different answers for — see [Wiping the disk](#wiping-the-disk). Everything else is separated by
 `ConditionKernelCommandLine`: a PXE boot carries `ignition.config.url` on the
 kernel command line and a disk boot does not, so each unit declares which side
 it belongs on.
@@ -129,6 +129,18 @@ before.
 The tell that the two values have been collapsed into one is quieter still:
 `resize: true` on `ROOT` stops mattering. With the table always wiped there is
 never an existing partition to match, so the flag can never fire.
+
+`storage.filesystems` follows the same split for the same reason. The installer
+has just wiped the table, so `rook-osd` does not exist there, and asking Ignition
+to prepare a filesystem on it blocks until it gives up:
+
+```console
+Ignition failed: failed to create filesystems: failed to wait on filesystems devs:
+device unit dev-disk-by\x2dpartlabel-rook\x2dosd.device timeout
+```
+
+Erasing the previous cluster's BlueStore signature belongs on the installed
+system regardless — that is where the partition is.
 
 The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
 the raw `rook-osd` partition, and `ceph-volume` reads that *signature* rather
