@@ -1984,6 +1984,14 @@ and everyone solves it the same way: briefly, and with the door open.</p>
 </tr>
 </tbody>
 </table>
+<p>The OS image is the exception, and deliberately so. <code>flatcar-install</code> is given
+<code>-b</code>/<code>-V</code> rather than a local file, so the node downloads the image <em>and</em> its
+detached signature from the boot server and checks both against Flatcar's
+signing key before writing anything. Serving it over plain HTTP on a segment
+this page calls only conditionally trusted is fine precisely because a
+substituted image fails the signature check. It is the one artifact on that
+server that becomes the operating system, which is why it gets the treatment the
+sysexts still do not.</p>
 <p>The practical mitigation is time: <code>make serve</code> is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
 after two hours. <strong>Stop the boot server when provisioning is finished</strong> — it is

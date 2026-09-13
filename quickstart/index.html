@@ -1872,7 +1872,7 @@ want to know.</p>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>, because hardware is a collection of exceptions wearing a trenchcoat)</li>
 <li>Sufficient disk space: Flatcar itself, a 125 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. 256 GB leaves about 111 GB for Ceph per node</li>
-<li>At least 8 GB of RAM: the installer stages the ~700 MB Flatcar image in the PXE environment's tmpfs before writing it</li>
+<li>At least 4 GB of RAM: the installer runs from a RAM disk, but streams the Flatcar image straight to disk rather than staging it</li>
 </ul>
 <p>The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
@@ -2035,8 +2035,9 @@ unattended. See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Pro
   reboot on it is booting from its own disk.</li>
 <li>Expect the boot server log to show, per node: a TFTP request for the
   bootloader and its <code>01-&lt;mac&gt;</code> menu, then HTTP requests for the kernel,
-  the initrd, <code>ignition-install-&lt;host&gt;.json</code>, the Flatcar disk image, and
-  <code>ignition-&lt;host&gt;.json</code> — then, after the reboot, only the sysext images.</li>
+  the initrd, <code>ignition-install-&lt;host&gt;.json</code>, <code>ignition-&lt;host&gt;.json</code>, and
+  then <code>&lt;version&gt;/flatcar_production_image.bin.bz2</code> with its <code>.sig</code> — then,
+  after the reboot, only the sysext images.</li>
 <li><strong>Leave the boot server running until every node is up.</strong> The sysexts are
   fetched on the first boot from disk. After that nothing needs it.</li>
 <li><strong>Note</strong>: The cluster will come up in a <code>NotReady</code> state initially because
