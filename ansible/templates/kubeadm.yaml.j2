@@ -19,8 +19,7 @@ bootstrapTokens:
       - signing
       - authentication
 certificateKey: "{{ certificate_key }}"
-# v1beta4 moved this out of apiServer.timeoutForControlPlane, which no longer
-# exists on ClusterConfiguration.
+# v1beta4 moved this off ClusterConfiguration.
 timeouts:
   controlPlaneComponentHealthCheck: 4m0s
 ---
@@ -28,30 +27,16 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ control_plane_endpoint }}"
 apiServer:
-  # Encrypt Secrets at rest in etcd. Without this a Secret is stored as
-  # plaintext, so anything with read access to an etcd data directory or a
-  # backup of one reads every credential the cluster holds.
-  #
-  # `identity` is listed after `secretbox` deliberately: new writes are
-  # encrypted, and Secrets written before this was enabled stay readable. They
-  # are not rewritten automatically -- see docs/architecture/security.md.
+  # Secrets are encrypted at rest; identity comes after secretbox so Secrets
+  # written before this stay readable. See docs/architecture/security.md.
   extraArgs:
     - name: encryption-provider-config
       value: /etc/kubernetes/enc/encryption-config.yaml
     - name: encryption-provider-config-automatic-reload
       value: "true"
-    # Audit logging. The policy file is written by Ignition and decides what is
-    # recorded and at which level; see butane_config.yaml.j2. Without
-    # audit-policy-file the API server keeps no audit log at all, which also
-    # means the `audit` level on every Pod Security Admission label has nowhere
-    # to write.
-    #
-    # /var/log is now its own 10GB partition rather than part of the tmpfs root,
-    # so the rotation numbers are the ones CIS asks for: eleven files of 100MB
-    # is ~1.1GB of disk, which was the whole objection to maxbackup=10 when that
-    # space was RAM shared with etcd. Alloy still ships every event to Loki --
-    # the partition is wiped on each boot like the rest, so the Ceph-backed copy
-    # is still the one that outlives a reboot.
+    # Without audit-policy-file there is no audit log at all, and the `audit`
+    # level on every PSA label has nowhere to write. Rotation is CIS 1.2.16-19:
+    # eleven 100MB files, ~1.1GB. Alloy ships every event to Loki as well.
     - name: audit-policy-file
       value: /etc/kubernetes/audit/policy.yaml
     - name: audit-log-path
@@ -73,9 +58,7 @@ apiServer:
       mountPath: /etc/kubernetes/audit
       readOnly: true
       pathType: Directory
-    # The one writable host mount the API server gets. Kept to the log
-    # directory rather than /var/log so a bug in rotation cannot reach the
-    # container logs Alloy is reading.
+    # The one writable host mount, scoped to the audit directory.
     - name: audit-log
       hostPath: /var/log/kubernetes/audit
       mountPath: /var/log/kubernetes/audit
@@ -83,11 +66,9 @@ apiServer:
       pathType: DirectoryOrCreate
 certificatesDir: /etc/kubernetes/pki
 clusterName: kubernetes
-# kubeadm binds these two to 127.0.0.1 by default, which leaves the
-# kube-prometheus-stack ServiceMonitors for them permanently down and the
-# matching KubeSchedulerDown / KubeControllerManagerDown alerts permanently
-# firing. The nodes sit on a trusted segment and both endpoints require
-# authentication, so binding them to the node address is the intended fix.
+# Not 127.0.0.1: that leaves the kube-prometheus-stack ServiceMonitors down and
+# KubeSchedulerDown / KubeControllerManagerDown firing forever. Both endpoints
+# authenticate.
 controllerManager:
   extraArgs:
     - name: bind-address
@@ -96,8 +77,7 @@ dns: {}
 etcd:
   local:
     dataDir: /var/lib/etcd
-    # Serves only /metrics and /health, on a separate port from the client and
-    # peer APIs, which stay on their mTLS listeners.
+    # /metrics and /health only; client and peer APIs stay on mTLS.
     extraArgs:
       - name: listen-metrics-urls
         value: "http://0.0.0.0:2381"
@@ -115,9 +95,6 @@ scheduler:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
-# Request a real serving certificate from the cluster CA instead of the
-# self-signed one the kubelet generates. metrics-server then verifies the
-# kubelet it scrapes rather than being run with --kubelet-insecure-tls.
-# The resulting CSRs are approved by kubelet-csr-approver; until that is
-# running they stay Pending and the kubelet keeps its self-signed cert.
+# A real serving cert from the cluster CA, so metrics-server does not need
+# --kubelet-insecure-tls. kubelet-csr-approver approves the CSRs.
 serverTLSBootstrap: true

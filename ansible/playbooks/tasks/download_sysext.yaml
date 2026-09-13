@@ -16,16 +16,9 @@
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
 
-# sysext-bakery ships two sysupdate configs per release: a floating
-# `<name>.conf` matching `<name>-@v-%a.raw`, and (for Kubernetes) a
-# series-pinned `<name>-<series>.conf` matching `<name>-<series>.@v-%a.raw`.
-# The floating one is what a node used to get, which meant every node tracked
-# whatever upstream published as newest and could stage a Kubernetes minor
-# kubeadm refuses to skip to. Take the floating config as the source of truth
-# for [Target] and [Source] Path, then narrow MatchPattern to the series pinned
-# in inventory.yaml. For Kubernetes the result is byte-identical to the
-# `<name>-<series>.conf` published upstream; containerd has no pinned variant
-# upstream, so the same rule is applied to it here.
+# Take upstream's floating config for [Target] and [Source] Path, then narrow
+# MatchPattern to the series pinned in inventory.yaml. A floating pattern lets a
+# node stage a Kubernetes minor kubeadm refuses to skip to.
 - name: "Download Upstream Sysupdate Config for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}.conf"
@@ -43,8 +36,7 @@
     floating_pattern: "(?m)^MatchPattern={{ item.name }}-@v-"
     pinned_pattern: "MatchPattern={{ item.name }}-{{ item.series }}.@v-"
 
-# A silent no-op here would put the floating MatchPattern back on the nodes
-# without anything failing, so assert the pin actually landed.
+# A silent no-op would restore the floating pattern, so assert the pin landed.
 - name: "Assert Sysupdate Config Is Series-Pinned for {{ item.name | capitalize }}"
   ansible.builtin.assert:
     that:

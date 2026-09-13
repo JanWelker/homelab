@@ -30,11 +30,8 @@
       run_once: true # noqa: run-once
       delegate_to: localhost
 
-    # secretbox wants a 32 byte key, base64 encoded. Every control-plane node
-    # gets the same one, otherwise a Secret written through one API server
-    # cannot be decrypted by another. Like the token and certificate key above,
-    # the password lookup reads an existing file back rather than regenerating,
-    # so re-running `make config` does not invalidate what is already in etcd.
+    # 32 bytes, base64, shared by every control-plane node. The password lookup
+    # reads an existing file back, so re-running this does not invalidate etcd.
     - name: Generate Secrets Encryption Key
       ansible.builtin.set_fact:
         encryption_key: >-
@@ -78,13 +75,9 @@
         state: directory
         mode: "0755"
 
-    # Everything below generates a file in output/ and is a plain task rather
-    # than a handler. Handlers only fire when the task that notifies them
-    # reports `changed`, which means a settled config regenerated nothing -- and
-    # a file deleted, edited by `make reinstall`, or truncated by a full disk
-    # stayed that way, because the Butane template it depended on had not moved.
-    # `make config` has to be the thing that puts output/ back, so these run
-    # every time.
+    # Plain tasks, not handlers: a handler only fires when its notifying task
+    # reports `changed`, so a deleted or armed file in output/ would never be
+    # put back once the template settled.
     - name: Generate Butane Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2" # noqa: no-relative-paths
@@ -92,10 +85,8 @@
         mode: "0755"
       register: butane_config
 
-    # butane is a command, so it cannot report its own idempotence. Transpiling
-    # only when the input moved or the output is missing keeps `make config`
-    # honest about what it changed, without letting a missing Ignition config
-    # survive the run.
+    # butane cannot report its own idempotence, so guard on input changed or
+    # output missing.
     - name: Check for an existing Ignition config
       ansible.builtin.stat:
         path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
@@ -109,9 +100,7 @@
       when: butane_config.changed or not ignition_config.stat.exists
       changed_when: true
 
-    # A plain template, so it is idempotent on its own and costs nothing to run
-    # every time. This is also what makes `make config` undo `make reinstall`:
-    # the file goes back to DEFAULT localboot whether or not anything else moved.
+    # Runs every time, which is what makes `make config` undo `make reinstall`.
     - name: Generate PXE Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/pxe_config.j2" # noqa: no-relative-paths

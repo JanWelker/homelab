@@ -1,36 +1,14 @@
+# PROMPT 0: no menu, no keypress. `make reinstall` rewrites DEFAULT in the
+# generated copy, `make config` puts it back. TIMEOUT applies only to the prompt
+# Shift/Alt forces -- the escape hatch for a node armed by mistake.
 DEFAULT localboot
 PROMPT 0
 TIMEOUT 50
 
-# Nobody chooses anything at the console. PROMPT 0 boots whatever DEFAULT names
-# and shows no menu, so a node that network-boots does exactly one thing and
-# does it without a keyboard attached.
-#
-# Which of the two that is comes from `make reinstall`, which rewrites the
-# DEFAULT line above in this generated file -- see
-# ansible/playbooks/reinstall.yaml. The template always emits `localboot`, so
-# `make config` disarms whatever was armed.
-#
-# The default is the local disk, and that is the whole point of this file.
-# Flatcar is installed to {{ install_disk }}, so normal operation never touches
-# the boot server -- and a node that reboots while the boot server happens to be
-# running boots what it already has rather than reinstalling itself.
-#
-# On UEFI firmware flatcar-install writes a real boot entry (-u), so the
-# firmware usually goes straight to disk without consulting this file at all.
-# On BIOS the disk is next in the boot order and LOCALBOOT hands over to it.
-#
-# TIMEOUT is kept for the one case PROMPT 0 still allows: holding Shift or Alt
-# at boot forces the prompt, which is the escape hatch when a node is armed and
-# should not be.
 LABEL localboot
     MENU LABEL ^Boot from local disk (default)
     LOCALBOOT 0
 
-# Armed by `make reinstall`, never chosen by hand. Wipes {{ install_disk }}
-# completely -- including any previous Ceph OSD -- installs Flatcar, embeds
-# ignition-{{ inventory_hostname }}.json into the OEM partition and reboots
-# into it.
 LABEL install
     MENU LABEL ^Install Flatcar to {{ install_disk }} (ERASES THE DISK)
     KERNEL http://{{ boot_server_ip }}:8000/flatcar_production_pxe.vmlinuz
