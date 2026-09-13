@@ -589,6 +589,8 @@
       
         
       
+        
+      
     
     
     
@@ -786,6 +788,33 @@
     
   
   Gateway API
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./kubescape/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubescape
 
     
   </span>
@@ -1644,7 +1673,7 @@
 <p>The core infrastructure components that run the cluster. Everything here is
 managed by ArgoCD; each component's own page documents its directory layout and
 configuration.</p>
-<p>Fourteen components sounds like a lot for a homelab, and it is — but every one of
+<p>Fifteen components sounds like a lot for a homelab, and it is — but every one of
 them exists because bare metal does not come with the thing a cloud provider
 would have handed you. No load balancer, no managed certificates, no block
 storage API, no identity provider, no backup service. This section is the bill
@@ -1660,6 +1689,8 @@ for not having those.</p>
 <li><strong><a href="external-dns/">external-dns</a></strong>: Publishes Route53 records from HTTPRoutes.</li>
 <li><strong><a href="external-secrets/">external-secrets</a></strong>: Bridges OpenBao to native K8s Secrets.</li>
 <li><strong><a href="gateway-api/">gateway-api</a></strong>: Gateway API resources (Gateways, HTTPRoutes).</li>
+<li><strong><a href="kubescape/">kubescape</a></strong>: Scans the cluster against CIS, NSA and MITRE
+  nightly and exports the findings to Grafana.</li>
 <li><strong><a href="kured/">kured</a></strong>: Drains and reboots nodes to apply staged OS, Kubernetes
   and containerd updates.</li>
 <li><strong><a href="logging/">logging</a></strong>: Loki and Grafana Alloy, for container and node logs.</li>
@@ -1800,7 +1831,7 @@ not exist yet:</p>
 <li><code>-1</code>: Cilium, Rook cluster</li>
 <li><code>0</code>: OpenBao</li>
 <li><code>1</code>: Monitoring stack, kubelet-csr-approver, logging, backup</li>
-<li><code>2</code>: Authentik, external-dns, Kured, Loki, metrics-server,
+<li><code>2</code>: Authentik, external-dns, Kubescape, Kured, Loki, metrics-server,
     snapshot-controller</li>
 <li><code>3</code>: Alloy, Velero, Pod Security Admission labels and network policies</li>
 <li><code>5</code>: Rook dashboard configuration job</li>

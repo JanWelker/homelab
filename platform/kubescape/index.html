@@ -6,40 +6,40 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Running the cluster day to day: health checks, rebooting nodes, and recovering from the failures that actually happen.">
+        <meta name="description" content="Kubescape scans this cluster against CIS, NSA and MITRE on a schedule and exports the results to Grafana. What is enabled, what is deliberately not, and which failures are decisions.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/">
+        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/kubescape/">
       
       
-        <link rel="prev" href="../platform/security-policies/">
+        <link rel="prev" href="../gateway-api/">
       
       
-        <link rel="next" href="./upgrades/">
+        <link rel="next" href="../kured/">
       
       
         
       
       
-      <link rel="icon" href="../assets/images/logo.png">
+      <link rel="icon" href="../../assets/images/logo.png">
       <meta name="generator" content="zensical-0.0.59">
     
     
       
-        <title>Overview - Homelab Documentation</title>
+        <title>Kubescape - Homelab Documentation</title>
       
     
     
       
         
       
-      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.5da3a30f.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.812a03bb.min.css">
       
       
 
@@ -52,11 +52,11 @@
       
     
     
-      <link rel="stylesheet" href="../stylesheets/fonts.css">
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
     
-      <link rel="stylesheet" href="../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#operations" class="md-skip">
+        <a href="#kubescape" class="md-skip">
           Skip to content
         </a>
       
@@ -97,9 +97,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="./.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="../.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="../assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Overview
+              Kubescape
             
           </span>
         </div>
@@ -205,9 +205,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="./.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="../.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="../assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     Homelab Documentation
@@ -234,7 +234,7 @@
   
   
     <li class="md-nav__item">
-      <a href="./.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -260,7 +260,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
@@ -286,7 +286,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adapting/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
@@ -344,7 +344,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../architecture/" class="md-nav__link ">
+            <a href="../../architecture/" class="md-nav__link ">
               
   
   
@@ -386,7 +386,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/boot-process/" class="md-nav__link">
+      <a href="../../architecture/boot-process/" class="md-nav__link">
         
   
   
@@ -413,7 +413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/gitops/" class="md-nav__link">
+      <a href="../../architecture/gitops/" class="md-nav__link">
         
   
   
@@ -440,7 +440,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/directory-structure/" class="md-nav__link">
+      <a href="../../architecture/directory-structure/" class="md-nav__link">
         
   
   
@@ -467,7 +467,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/decisions/" class="md-nav__link">
+      <a href="../../architecture/decisions/" class="md-nav__link">
         
   
   
@@ -494,7 +494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/security/" class="md-nav__link">
+      <a href="../../architecture/security/" class="md-nav__link">
         
   
   
@@ -521,7 +521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/limitations/" class="md-nav__link">
+      <a href="../../architecture/limitations/" class="md-nav__link">
         
   
   
@@ -552,6 +552,8 @@
       
   
   
+    
+  
   
   
     
@@ -593,17 +595,15 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../platform/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -626,7 +626,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -645,7 +645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/authentik/" class="md-nav__link">
+      <a href="../authentik/" class="md-nav__link">
         
   
   
@@ -672,7 +672,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/cilium/" class="md-nav__link">
+      <a href="../cilium/" class="md-nav__link">
         
   
   
@@ -699,7 +699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/cert-manager/" class="md-nav__link">
+      <a href="../cert-manager/" class="md-nav__link">
         
   
   
@@ -726,7 +726,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/external-dns/" class="md-nav__link">
+      <a href="../external-dns/" class="md-nav__link">
         
   
   
@@ -753,7 +753,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/external-secrets/" class="md-nav__link">
+      <a href="../external-secrets/" class="md-nav__link">
         
   
   
@@ -780,7 +780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/gateway-api/" class="md-nav__link">
+      <a href="../gateway-api/" class="md-nav__link">
         
   
   
@@ -804,10 +804,36 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../platform/kubescape/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubescape
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -822,6 +848,154 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-it-scans" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What it scans
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-deliberately-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is deliberately off
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is deliberately off">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-vulnerability-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image vulnerability scanning
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-runtime-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The runtime stack
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-admission-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The admission controller
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The dashboard
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-results-without-grafana" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reading results without Grafana
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failures-that-are-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Failures that are decisions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kubescape-and-kube-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Kubescape and kube-bench
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namespace-security-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Namespace security level
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#directory-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Directory Structure
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -834,7 +1008,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/kured/" class="md-nav__link">
+      <a href="../kured/" class="md-nav__link">
         
   
   
@@ -861,7 +1035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/logging/" class="md-nav__link">
+      <a href="../logging/" class="md-nav__link">
         
   
   
@@ -888,7 +1062,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/metrics-server/" class="md-nav__link">
+      <a href="../metrics-server/" class="md-nav__link">
         
   
   
@@ -915,7 +1089,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/monitoring/" class="md-nav__link">
+      <a href="../monitoring/" class="md-nav__link">
         
   
   
@@ -942,7 +1116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/openbao/" class="md-nav__link">
+      <a href="../openbao/" class="md-nav__link">
         
   
   
@@ -969,7 +1143,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/rook-ceph/" class="md-nav__link">
+      <a href="../rook-ceph/" class="md-nav__link">
         
   
   
@@ -996,7 +1170,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../platform/security-policies/" class="md-nav__link">
+      <a href="../security-policies/" class="md-nav__link">
         
   
   
@@ -1027,8 +1201,6 @@
       
   
   
-    
-  
   
   
     
@@ -1048,15 +1220,17 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="././" class="md-nav__link md-nav__link--active">
+            <a href="../../operations/" class="md-nav__link ">
               
   
   
@@ -1073,13 +1247,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1098,7 +1272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="./upgrades/" class="md-nav__link">
+      <a href="../../operations/upgrades/" class="md-nav__link">
         
   
   
@@ -1125,7 +1299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="./control-plane-vip/" class="md-nav__link">
+      <a href="../../operations/control-plane-vip/" class="md-nav__link">
         
   
   
@@ -1152,7 +1326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="./backups/" class="md-nav__link">
+      <a href="../../operations/backups/" class="md-nav__link">
         
   
   
@@ -1206,7 +1380,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../workloads/" class="md-nav__link ">
+            <a href="../../workloads/" class="md-nav__link ">
               
   
   
@@ -1278,7 +1452,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../development/" class="md-nav__link ">
+            <a href="../../development/" class="md-nav__link ">
               
   
   
@@ -1320,7 +1494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/contributing/" class="md-nav__link">
+      <a href="../../development/contributing/" class="md-nav__link">
         
   
   
@@ -1347,7 +1521,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/documentation/" class="md-nav__link">
+      <a href="../../development/documentation/" class="md-nav__link">
         
   
   
@@ -1374,7 +1548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/maintenance/" class="md-nav__link">
+      <a href="../../development/maintenance/" class="md-nav__link">
         
   
   
@@ -1401,7 +1575,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/add-workload/" class="md-nav__link">
+      <a href="../../development/add-workload/" class="md-nav__link">
         
   
   
@@ -1457,7 +1631,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../boot_server/" class="md-nav__link ">
+            <a href="../../boot_server/" class="md-nav__link ">
               
   
   
@@ -1499,7 +1673,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ansible/" class="md-nav__link">
+      <a href="../../ansible/" class="md-nav__link">
         
   
   
@@ -1567,10 +1741,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#routine-health-check" class="md-nav__link">
+  <a href="#what-it-scans" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Routine health check
+        What it scans
       </span>
     </span>
   </a>
@@ -1578,10 +1752,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#after-any-node-reboot-unseal-openbao" class="md-nav__link">
+  <a href="#what-is-deliberately-off" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        After any node reboot: unseal OpenBao
+        What is deliberately off
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is deliberately off">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image-vulnerability-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Image vulnerability scanning
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-runtime-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The runtime stack
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-admission-controller" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The admission controller
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The dashboard
       </span>
     </span>
   </a>
@@ -1589,10 +1813,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebooting-a-node" class="md-nav__link">
+  <a href="#reading-results-without-grafana" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rebooting a node
+        Reading results without Grafana
       </span>
     </span>
   </a>
@@ -1600,10 +1824,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rolling-back-a-bad-sync" class="md-nav__link">
+  <a href="#failures-that-are-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rolling back a bad sync
+        Failures that are decisions
       </span>
     </span>
   </a>
@@ -1611,10 +1835,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-a-node-after-the-initial-build" class="md-nav__link">
+  <a href="#kubescape-and-kube-bench" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Adding a node after the initial build
+        Kubescape and kube-bench
       </span>
     </span>
   </a>
@@ -1622,10 +1846,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#replacing-a-failed-node" class="md-nav__link">
+  <a href="#namespace-security-level" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Replacing a failed node
+        Namespace security level
       </span>
     </span>
   </a>
@@ -1633,10 +1857,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-to-look-when-something-is-wrong" class="md-nav__link">
+  <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Where to look when something is wrong
+        Directory Structure
       </span>
     </span>
   </a>
@@ -1658,7 +1882,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/operations/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/kubescape.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1667,173 +1891,247 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/operations/index.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/kubescape.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h1>
-<p>Everything on this page assumes a cluster that is already up. For first
-provisioning see the <a href="../quickstart/">Quickstart</a>.</p>
-<p>Building a cluster is a weekend. Operating one is the rest of your life. This is
-the page you will actually come back to.</p>
-<h2 id="routine-health-check">Routine health check<a class="headerlink" href="#routine-health-check" title="Permanent link">&para;</a></h2>
-<p>Four commands, thirty seconds, run them when you walk past the rack:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status
-</span></code></pre></div>
-<p>The Rook toolbox pod is enabled, so <code>ceph status</code>, <code>ceph osd tree</code> and
-<code>ceph health detail</code> are available without installing anything.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Ceph metrics <strong>are</strong> scraped — <code>monitoring.enabled</code> is <code>true</code> in the <code>CephCluster</code> spec, and <code>createPrometheusRules</code> ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running <code>ceph status</code>. Run it anyway: it is the fastest way to see <em>why</em>, and it is what <a href="../platform/kured/">Kured</a> is really asking about before it reboots anything. See <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
-</div>
-<h2 id="after-any-node-reboot-unseal-openbao">After any node reboot: unseal OpenBao<a class="headerlink" href="#after-any-node-reboot-unseal-openbao" title="Permanent link">&para;</a></h2>
-<p>OpenBao seals itself whenever its pods restart, and while it is sealed no
-<code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
-Nothing unseals it for you, so this is a chore rather than a check:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
-</span></code></pre></div>
-<p>Any pod reporting <code>Sealed: true</code> needs 3 of the 5 key shares, once per pod —
-<a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
-has the loop.</p>
-<p>It is worth actually running, every time. A cluster that comes back with OpenBao
-still sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and
-the consequence surfaces sixty days later when a certificate expires on a
-Sunday, with nothing connecting it to the reboot that caused it. See
-<a href="../architecture/limitations/#openbao-needs-an-operator-to-unseal-it">the limitation this creates</a>.</p>
-<h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
-<p><a href="../platform/kured/">Kured</a> reboots nodes on its own between 01:00 and 05:00
-when an update has been staged, one at a time, and refuses while Ceph or etcd is
-unhealthy. The procedure below is for the cases it does not cover: rebooting
-sooner than the window, or rebooting a node for a reason nothing set a sentinel
-for.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>reboot
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># wait for the node to come back</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>uncordon<span class="w"> </span>&lt;node&gt;
-</span></code></pre></div>
-<p>Between each node, confirm Ceph has recovered before moving on — draining a
-second node while the first is still backfilling can take a placement group
-below its minimum replica count. Ceph is patient; impatient operators are how
-"one node down" becomes "read-only cluster":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status<span class="w">   </span><span class="c1"># HEALTH_OK</span>
-</span></code></pre></div>
-<p>If the rebooted node hosted an OpenBao replica, it came back sealed — unseal it before moving on.</p>
-<h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
-<p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
-a revert commit. To stop the bleeding first, disable auto-sync on the affected
-Application and roll it back:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app&gt;<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"syncPolicy":{"automated":null}}}'</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
-</span></code></pre></div>
-<p>Re-enable auto-sync by restoring <code>syncPolicy.automated</code> once the revert has
-landed on <code>main</code>. Leaving it disabled means the Application silently stops
-tracking Git — and an Application that has quietly stopped tracking Git is a
-time bomb with a three-month fuse, defused only by somebody wondering why their
-change never took effect.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>. Every Application here runs with <code>selfHeal: true</code>, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.</p>
-</div>
-<h2 id="adding-a-node-after-the-initial-build">Adding a node after the initial build<a class="headerlink" href="#adding-a-node-after-the-initial-build" title="Permanent link">&para;</a></h2>
-<p>The bootstrap token generated at provisioning time has a 24 hour TTL, so it has
-long expired on an established cluster. This trips up everyone exactly once.
-Generate a fresh join command on a control-plane node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ssh<span class="w"> </span>core@&lt;control-plane-node&gt;
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>token<span class="w"> </span>create<span class="w"> </span>--print-join-command
-</span></code></pre></div>
-<p>For a new <strong>control-plane</strong> node you also need a current certificate key, which
-expires after two hours:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>upload-certs<span class="w"> </span>--upload-certs
-</span></code></pre></div>
-<p>Add the host to <code>ansible/inventory.yaml</code>, re-run <code>make config</code> and <code>make serve</code>
-so it can PXE boot, then run the printed join command on it. The
-<code>bootstrap-k8s.service</code> unit only fires when <code>/etc/kubernetes/kubelet.conf</code> is
-absent, so it will not interfere with a node that has already joined.</p>
-<h2 id="replacing-a-failed-node">Replacing a failed node<a class="headerlink" href="#replacing-a-failed-node" title="Permanent link">&para;</a></h2>
-<ol>
-<li>
-<p>Remove it from the cluster:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
-</span></code></pre></div>
-</li>
-<li>
-<p>Let Ceph re-replicate. With <code>useAllNodes: true</code> the OSD on that disk is gone
-   for good; check <code>ceph status</code> returns to <code>HEALTH_OK</code> before continuing. This
-   is not a step to rush — Ceph will tell you when it is done, and it is never as
-   fast as you would like.</p>
-</li>
-<li>
-<p>If it was a control-plane node, remove its etcd member. A dead member left in
-   the list still counts toward quorum, which is a delightful way to lose a
-   cluster that is otherwise fine:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>Reprovision the replacement following <a href="#adding-a-node-after-the-initial-build">Adding a node</a>.</p>
-</li>
-</ol>
-<div class="admonition danger">
-<p class="admonition-title">Danger</p>
-<p>On a cluster provisioned before the <a href="control-plane-vip/">Control Plane VIP</a>, <code>odin</code> is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's <code>k8sServiceHost</code>, so losing it breaks node joins and Cilium's API connection on every other node. Check which endpoint your kubeconfig uses before assuming otherwise.</p>
-</div>
-<h2 id="where-to-look-when-something-is-wrong">Where to look when something is wrong<a class="headerlink" href="#where-to-look-when-something-is-wrong" title="Permanent link">&para;</a></h2>
-<p>The table that saves the most time. Resist the urge to start with <code>kubectl
-describe</code> on the thing that looks broken; start here, because the thing that
-looks broken is usually downstream of something duller:</p>
+<h1 id="kubescape">Kubescape<a class="headerlink" href="#kubescape" title="Permanent link">&para;</a></h1>
+<p><a href="https://kubescape.io/">Kubescape</a> is a CNCF project that evaluates the cluster
+against published security frameworks — CIS, NSA-CISA, MITRE ATT&amp;CK — and turns
+the result into metrics. It runs nightly, stores findings in the cluster, and
+exports them to the existing Prometheus for a
+<a href="https://monitoring.infra.k8s.wlkr.ch/d/kubescape-vuln-overview">Grafana dashboard</a>.</p>
+<p>The value is not the first scan. It is the second one, six months later, after a
+chart bump quietly introduced a container running as root and nobody was looking
+at that namespace. Posture is not a state you reach; it is a thing that decays,
+and the only useful measurement of it is a repeated one.</p>
+<h2 id="what-it-scans">What it scans<a class="headerlink" href="#what-it-scans" title="Permanent link">&para;</a></h2>
+<p><code>defaultFrameworks</code> is left empty, and empty means <strong>all of them</strong>. Naming
+frameworks explicitly narrows scheduled scans, and a list pinned to a specific
+benchmark revision goes stale in the worst possible way — it keeps scanning and
+keeps passing, just not against the benchmark you believed you were measuring.</p>
 <table>
 <thead>
 <tr>
-<th>Symptom</th>
-<th>First check</th>
+<th></th>
+<th></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Secrets missing, certificates not renewing</td>
-<td>OpenBao sealed — <code>bao status</code></td>
+<td>Schedule</td>
+<td>Daily, <code>1 2 * * *</code></td>
 </tr>
 <tr>
-<td>Pods pending on a fresh node</td>
-<td>Node still <code>NotReady</code>; check Cilium is running on it</td>
+<td>Frameworks</td>
+<td>All, including CIS, NSA-CISA and MITRE ATT&amp;CK</td>
 </tr>
 <tr>
-<td><code>ExternalSecret</code> not syncing</td>
-<td><a href="../platform/external-secrets/#troubleshooting">External Secrets troubleshooting</a></td>
+<td>Node-level checks</td>
+<td>Yes (<code>nodeScan</code>) — the kube-bench-shaped half of CIS</td>
 </tr>
 <tr>
-<td>PVCs stuck pending</td>
-<td><code>ceph status</code>, then the <a href="../platform/rook-ceph/">Rook dashboard</a></td>
+<td>Results</td>
+<td>Aggregated API: <code>spdx.softwarecomposition.kubescape.io</code></td>
 </tr>
 <tr>
-<td>A hostname stopped resolving to the cluster</td>
-<td>Gateway lost its LoadBalancer IP; check the Cilium L2 pool</td>
+<td>Metrics</td>
+<td><code>kubescape_controls_*</code>, scraped by two ServiceMonitors</td>
 </tr>
 <tr>
-<td>Node not rejoining after reboot</td>
-<td><code>journalctl -u kubelet</code> on the node</td>
+<td>Sent off-cluster</td>
+<td><strong>Nothing</strong></td>
 </tr>
 </tbody>
 </table>
-<p>Alerts are mailed by Alertmanager — see
-<a href="../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a>. The checks above
-are still worth running, because the delivery path itself is not monitored. An
-empty inbox means either that nothing is wrong or that the mail stopped working,
-and those two look identical from here.</p>
+<p>That last row is a configuration choice, not a mode. Kubescape talks to the ARMO
+SaaS backend when <code>server</code>, <code>account</code> and <code>accessKey</code> are set; leaving them unset
+is what keeps findings in the cluster. There is no "offline" switch to forget to
+flip, which is the right way round for a default.</p>
+<h2 id="what-is-deliberately-off">What is deliberately off<a class="headerlink" href="#what-is-deliberately-off" title="Permanent link">&para;</a></h2>
+<p>Kubescape ships as a suite and defaults to most of it enabled. Roughly half is
+turned off here, and — in the spirit of the rest of this documentation — each one
+is a decision with a reason rather than a default nobody examined.</p>
+<h3 id="image-vulnerability-scanning">Image vulnerability scanning<a class="headerlink" href="#image-vulnerability-scanning" title="Permanent link">&para;</a></h3>
+<p><code>vulnerabilityScan</code>, <code>relevancy</code> and <code>nodeSbomGeneration</code> are off because
+<strong>kubevuln cannot schedule on these nodes</strong>. It requests 5Gi of
+<code>ephemeral-storage</code> and limits at 10Gi:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Allocatable ephemeral-storage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Control plane (<code>odin</code>, <code>thor</code>, <code>loki</code>)</td>
+<td>3.6 GB</td>
+</tr>
+<tr>
+<td>Workers (<code>freya</code>, <code>heimdall</code>, <code>valkyrie</code>)</td>
+<td>7.4 GB</td>
+</tr>
+</tbody>
+</table>
+<p>The request alone makes the pod unschedulable on three of six nodes. The deeper
+problem is what that storage <em>is</em>: the root filesystem here is
+<a href="../../architecture/security/#where-the-log-actually-lives">tmpfs</a>, so ephemeral
+storage is RAM. A container image unpacked for scanning is charged to the same
+memory etcd is running in, on a node with 7.7 GB of it.</p>
+<p>Turning it on is a real options trade, not a flag flip — it wants tuned
+<code>kubevuln.resources</code>, a <code>nodeSelector</code> pinning it to the workers, and a lower
+<code>maxImageSize</code>. Worth doing the day <code>/var/lib</code> sits on a disk.</p>
+<h3 id="the-runtime-stack">The runtime stack<a class="headerlink" href="#the-runtime-stack" title="Permanent link">&para;</a></h3>
+<p><code>runtimeObservability</code> and its relatives (<code>networkPolicyService</code>,
+<code>networkEventsStreaming</code>, <code>nodeProfileService</code>, <code>httpDetection</code>,
+<code>seccompProfileService</code>) deploy an eBPF node-agent DaemonSet on all six nodes.
+This is genuinely the most interesting half of Kubescape — it learns what a
+workload normally does and flags when it stops doing that — and it is also the
+most expensive, on nodes whose entire root filesystem is a 3.8 GB tmpfs.</p>
+<p>Off until posture scanning has earned its keep. Enable one capability at a time
+and watch node memory, not all of them at once.</p>
+<h3 id="the-admission-controller">The admission controller<a class="headerlink" href="#the-admission-controller" title="Permanent link">&para;</a></h3>
+<p><code>admissionController</code> installs a validating webhook in front of the API server.
+A posture tool that can refuse writes is a posture tool that can take the cluster
+down when it is itself unhealthy, and a failing webhook fails in the least
+convenient way available: <code>kubectl apply</code> starts returning errors about a
+component most people have forgotten is in the path.</p>
+<p>Nothing here is worth that trade while the findings are still being <em>read</em> rather
+than enforced. Enforcement is a thing to earn.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>autoUpgrading</code> and <code>manageWorkloads</code> are off for GitOps reasons</p>
+<p><code>autoUpgrading</code> upgrades Kubescape's own Helm release from inside the
+cluster — behind ArgoCD's back, and straight into a permanent OutOfSync.
+<code>manageWorkloads</code> lets the operator mutate the workloads it has findings
+about, and grants <code>patch</code> on nodes cluster-wide to do it.</p>
+</div>
+<h2 id="the-dashboard">The dashboard<a class="headerlink" href="#the-dashboard" title="Permanent link">&para;</a></h2>
+<p>The dashboard JSON is upstream's, from
+<a href="https://github.com/kubescape/prometheus-exporter">kubescape/prometheus-exporter</a>,
+unmodified. It carries no datasource of its own, which is what makes it work
+here: panels bind to Grafana's default datasource, and the Loki datasource next
+door explicitly sets <code>isDefault: false</code>, leaving Prometheus holding that role.</p>
+<table>
+<thead>
+<tr>
+<th>Panel</th>
+<th>Metric</th>
+<th>Populated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cluster Controls Vulnerabilities</td>
+<td><code>kubescape_controls_total_cluster_*</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Namespace Controls Vulnerabilities</td>
+<td><code>kubescape_controls_total_namespace_*</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Workload Controls Vulnerabilities</td>
+<td><code>kubescape_controls_total_workload_*</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Cluster Vulnerabilities</td>
+<td><code>kubescape_vulnerabilities_total_cluster_*</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td>Namespace Vulnerabilities</td>
+<td><code>kubescape_vulnerabilities_total_namespace_*</code></td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>The two empty panels are the image-CVE half, disabled above. They are left in
+place rather than edited out: a panel that is empty because a capability is off
+is easier to reason about than a dashboard that silently diverged from upstream,
+and it becomes correct again the moment the capability is enabled.</p>
+<div class="admonition note">
+<p class="admonition-title">Where the dashboard ConfigMap lives</p>
+<p><code>grafana-dashboard.yaml</code> declares its namespace as <code>monitoring</code>, not
+<code>kubescape</code> — the same reason as
+<a href="../logging/#querying">the Loki datasource</a>. The Grafana sidecar only watches
+its own release namespace for <code>grafana_dashboard</code> ConfigMaps.</p>
+</div>
+<h2 id="reading-results-without-grafana">Reading results without Grafana<a class="headerlink" href="#reading-results-without-grafana" title="Permanent link">&para;</a></h2>
+<p>Findings are stored in an aggregated API server, so they are ordinary
+<code>kubectl</code> objects:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># One row per framework, with the pass/fail counts</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>-A
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Per-workload control failures, worst first</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscansummaries<span class="w"> </span>-A
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># The full finding set for one workload</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
+</span></code></pre></div>
+<h2 id="failures-that-are-decisions">Failures that are decisions<a class="headerlink" href="#failures-that-are-decisions" title="Permanent link">&para;</a></h2>
+<p>A first scan on this cluster reports findings that are deliberate, and knowing
+which in advance is the difference between a useful report and a report that
+gets ignored:</p>
+<table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Why it is that way</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>controller-manager</code> and <code>scheduler</code> bind to <code>0.0.0.0</code></td>
+<td>Required for the kube-prometheus-stack ServiceMonitors to reach them — see <a href="../monitoring/">monitoring</a></td>
+</tr>
+<tr>
+<td><code>--audit-log-maxbackup</code> is 2, not 10</td>
+<td>The audit log shares a 3.8 GB tmpfs with etcd; Loki holds the retention instead — see <a href="../../architecture/security/#where-the-log-actually-lives">Audit logging</a></td>
+</tr>
+<tr>
+<td>Four namespaces enforce PSA <code>privileged</code></td>
+<td>Cilium, Rook OSDs, node-exporter and OpenBao each need it, individually — see <a href="../security-policies/">Security Policies</a></td>
+</tr>
+<tr>
+<td>No default-deny egress anywhere</td>
+<td><a href="../security-policies/#scope">Deliberate, and the next step</a></td>
+</tr>
+</tbody>
+</table>
+<p>Kubescape has an exceptions mechanism for exactly this. It is not configured
+here yet, on the grounds that a suppression list written before anyone has read
+a real report is a list of guesses.</p>
+<h2 id="kubescape-and-kube-bench">Kubescape and kube-bench<a class="headerlink" href="#kubescape-and-kube-bench" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/aquasecurity/kube-bench">kube-bench</a> is the reference CIS
+implementation and is worth a one-off run for a second opinion; it maps findings
+to numbered CIS controls (<code>1.2.16</code>, <code>1.3.7</code>) in a way Kubescape does not. Note
+that its newest profile is <code>cis-2.0</code>, covering Kubernetes 1.34–1.35, so on
+v1.37 auto-detection fails and the benchmark has to be pinned:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
+</span></code></pre></div>
+<p>Kubescape is what runs <em>continuously</em>, which is the part that matters. A
+benchmark you run once is a screenshot.</p>
+<h2 id="namespace-security-level">Namespace security level<a class="headerlink" href="#namespace-security-level" title="Permanent link">&para;</a></h2>
+<p><code>kubescape</code> is the only namespace in
+<a href="../security-policies/"><code>pod-security.yaml</code></a> that enforces PSA <code>restricted</code>, and
+it needed no exception to get there: every workload the chart renders already
+runs non-root with <code>RuntimeDefault</code> seccomp, no privilege escalation and <code>ALL</code>
+capabilities dropped.</p>
+<p>That is worth stating because it does not survive enabling the runtime
+capabilities — those add a privileged DaemonSet, and the namespace would have to
+drop to <code>privileged</code> to accommodate it. The cost of that switch is visible here
+rather than discovered afterwards.</p>
+<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubescape/
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>└── grafana-dashboard.yaml   # Upstream dashboard, applied into monitoring/
+</span></code></pre></div>
 
 
 
@@ -1874,7 +2172,7 @@ and those two look identical from here.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../platform/security-policies/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security Policies">
+          <a href="../gateway-api/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Gateway API">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1884,20 +2182,20 @@ and those two look identical from here.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Security Policies
+                Gateway API
               </div>
             </div>
           </a>
         
         
           
-          <a href="./upgrades/" class="md-footer__link md-footer__link--next" aria-label="Next: Updates &amp; Upgrades">
+          <a href="../kured/" class="md-footer__link md-footer__link--next" aria-label="Next: Kured">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Updates & Upgrades
+                Kured
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1940,10 +2238,10 @@ and those two look identical from here.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../assets/javascripts/bundle.6970bfe9.min.js"></script>
+      <script src="../../assets/javascripts/bundle.6970bfe9.min.js"></script>
       
     
   </body>
