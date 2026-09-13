@@ -1828,7 +1828,7 @@ switched off.</p>
 <tbody>
 <tr>
 <td><code>/</code></td>
-<td>ext4 on partition 9, capped at 25 GB</td>
+<td>ext4 on partition 9, capped at 25 GB and grown into it by <code>grow-root.service</code></td>
 </tr>
 <tr>
 <td>Ignition</td>
@@ -1848,6 +1848,10 @@ switched off.</p>
 because its <code>ConditionPathExists=!/etc/kubernetes/kubelet.conf</code> is no longer
 satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
+<div class="admonition note">
+<p class="admonition-title">Why <code>grow-root.service</code> exists</p>
+<p>Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock <code>systemd-growfs-root.service</code> is <code>static</code> and is pulled in by an <code>x-systemd.growfs</code> mount option, which a root mounted from <code>root=LABEL=ROOT</code> on the kernel command line does not carry. Without the unit, a node comes up with a 25 GB ROOT partition holding the image's original ~1.6 GB filesystem, and about 1.2 GB free on the filesystem <code>/var/lib/etcd</code> and <code>/var/lib/rook</code> are both on. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>
 <p>The PXE menu defaults to <code>LOCALBOOT</code> with a five second timeout, so a node that network-boots for any reason still ends up on its own disk. Installing means either choosing <code>install</code> at the console or arming it with <code>make reinstall</code> — see <a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. On UEFI firmware <code>flatcar-install -u</code> writes a real boot entry, so the firmware usually goes straight to disk without consulting the menu at all; set the disk ahead of PXE in the boot order and it never will.</p>
