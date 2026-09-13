@@ -46,21 +46,28 @@ has been armed with `make reinstall`, since the generated config otherwise says
 `DEFAULT localboot`. What it loads is a RAM environment whose only job is to
 write Flatcar to `install_disk` and reboot into it.
 
-There is **one Butane template per host, rendered twice**. `make config`
-writes `ignition-<host>-install.json`, which the PXE environment runs to wipe
-the disk and install, and `ignition-<host>.json`, which `flatcar-install -i`
-embeds into the system being installed, where it runs on first boot to partition
-the disk and lay down `/etc`.
+There are **two templates, because there are two machines**. The RAM
+environment and the node it installs share a disk and nothing else, and
+pretending otherwise is what made every failure in this page's troubleshooting
+possible.
 
-The two files are identical apart from `storage.disks` and
-`storage.filesystems`, which are the only things the two environments need
-different answers for — see [Wiping the disk](#wiping-the-disk). Everything else is separated by
-`ConditionKernelCommandLine`: a PXE boot carries `ignition.config.url` on the
-kernel command line and a disk boot does not, so each unit declares which side
-it belongs on.
+| | renders to | runs in |
+| --- | --- | --- |
+| `butane_installer_config.yaml.j2` | `ignition-<host>-install.json` | the PXE environment |
+| `butane_node_config.yaml.j2` | `ignition-<host>.json` | the installed system, on first boot |
 
-!!! warning "Every unit has to pick a side"
-    That condition is what keeps the two files down to one differing stanza, and nothing enforces it. `bootstrap-k8s.service` is the cautionary one: its other guard is `ConditionPathExists=!/etc/kubernetes/kubelet.conf`, which is satisfied in the PXE environment too — unguarded, it would run `kubeadm` in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and `systemctl status` reporting "Condition check resulted in the unit being skipped" is how you find out.
+The PXE menu points at the first. The installer fetches the second as a plain
+file and hands it to `flatcar-install -i`, which embeds it in the OEM partition
+of the system it writes — so the node's own config is delivered *by* the
+installer without ever being executed in it.
+
+The installer config is deliberately small: an SSH key, `wipe_table: true`, the
+one file to hand onward, and the two `flatcar-install` units. Everything it does
+not contain is downloaded into a RAM disk and discarded ninety seconds later —
+which used to include 144 MiB of sysext images the installer had no use for.
+
+!!! tip "Keep the installer minimal"
+    Anything added to `butane_installer_config.yaml.j2` is paid for on every install of every node, in RAM and in download time, and thrown away. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
 
 ```mermaid
 sequenceDiagram
@@ -88,7 +95,7 @@ rather than one:
 | --- | --- |
 | Ignition `wipe_table` | Destroys the GPT, in the initramfs, before the installer unit runs. Only in `ignition-<host>-install.json` — see [Wiping the disk](#wiping-the-disk) |
 | `blkdiscard` | Returns the whole device to unwritten. Best-effort — SATA without TRIM declines it |
-| `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_config.yaml.j2` |
+| `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_node_config.yaml.j2` |
 
 ### Wiping the disk
 

@@ -23,9 +23,10 @@ generated — never edit anything in there, it will be overwritten by the next
 │   │       ├── download_sysext.yaml
 │   │       └── download_syslinux.yaml
 │   └── templates
-│       ├── butane_config.yaml.j2 # Butane config template (transpiles to Ignition)
+│       ├── butane_installer_config.yaml.j2 # PXE environment: wipe, install, reboot
+│       ├── butane_node_config.yaml.j2      # Installed system: partitions, files, units
 │       ├── kubeadm.yaml.j2
-│       └── pxe_config.j2         # PXE boot menu config
+│       └── pxe_config.j2                   # PXE boot menu config
 ├── boot_server
 │   └── serve.py            # Python script for HTTP & TFTP
 ├── docs                    # Documentation sources (this site)

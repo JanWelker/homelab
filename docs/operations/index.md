@@ -131,7 +131,7 @@ absent, so it will not interfere with a node that has already joined.
 
 ## Repartitioning the nodes
 
-The disk layout lives in `ansible/templates/butane_config.yaml.j2` and is applied
+The disk layout lives in `ansible/templates/butane_node_config.yaml.j2` and is applied
 by Ignition, which runs once — on the first boot after a node is installed.
 Changing a *size* or *order* in it is not an edit you roll out. Neither is
 changing anything else under `ansible/`: the node's Ignition config is embedded

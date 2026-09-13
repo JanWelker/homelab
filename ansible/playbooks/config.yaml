@@ -5,11 +5,12 @@
   gather_facts: false
   vars:
     output_dir: "{{ playbook_dir }}/../../output"
-    ignition_variants:
-      - suffix: ""
-        install_env: false
-      - suffix: "-install"
-        install_env: true
+    # One template per environment, one Ignition config per template.
+    ignition_configs:
+      - template: butane_node_config
+        suffix: ""
+      - template: butane_installer_config
+        suffix: "-install"
   tasks:
     - name: Ensure credentials directory exists
       ansible.builtin.file:
@@ -80,16 +81,12 @@
         state: directory
         mode: "0755"
 
-    # Two configs per host from one template: the installer wipes the table,
-    # the installed system partitions it. See docs/architecture/boot-process.md.
     - name: Generate Butane Configs
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2" # noqa: no-relative-paths
+        src: "{{ playbook_dir }}/../templates/{{ item.template }}.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ item.suffix }}.yaml"
         mode: "0755"
-      vars:
-        install_env: "{{ item.install_env }}"
-      loop: "{{ ignition_variants }}"
+      loop: "{{ ignition_configs }}"
       loop_control:
         label: "{{ inventory_hostname }}{{ item.suffix }}"
 
@@ -99,7 +96,7 @@
           butane --pretty --strict
           {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ item.suffix }}.yaml
           -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ item.suffix }}.json
-      loop: "{{ ignition_variants }}"
+      loop: "{{ ignition_configs }}"
       loop_control:
         label: "{{ inventory_hostname }}{{ item.suffix }}"
       changed_when: true

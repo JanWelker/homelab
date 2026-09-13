@@ -1,0 +1,77 @@
+variant: flatcar
+version: 1.0.0
+# The throwaway RAM environment that writes Flatcar to disk and reboots into
+# it. Everything the node itself needs is in butane_node_config.yaml.j2, which this
+# fetches as a file and hands to flatcar-install -i. Keep it minimal: whatever
+# is added here is downloaded into a RAM disk on every install and discarded
+# ninety seconds later.
+passwd:
+  users:
+    - name: core
+      # A failed install does not reboot, so this is how you get at the journal.
+      ssh_authorized_keys:
+        - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+storage:
+  disks:
+    # Wiped on every install, so the layout a node ends up with never depends
+    # on the one it had. See docs/architecture/boot-process.md#wiping-the-disk.
+    - device: {{ install_disk }}
+      wipe_table: true
+  files:
+    - path: /opt/ignition-final.json
+      contents:
+        source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
+
+systemd:
+  units:
+    # Two units, because the only difference is -u and the only way to decide
+    # is to look at the firmware.
+    - name: flatcar-install.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Flatcar to {{ install_disk }} (BIOS)
+        Requires=network-online.target
+        After=network-online.target
+        ConditionPathExists=!/sys/firmware/efi
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        StandardOutput=journal+console
+        StandardError=journal+console
+        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
+        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
+          -i /opt/ignition-final.json
+        # Only on success -- a failed install stays put, with its journal.
+        ExecStartPost=/usr/bin/systemctl reboot
+
+        [Install]
+        WantedBy=multi-user.target
+
+    - name: flatcar-install-uefi.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Flatcar to {{ install_disk }} (UEFI)
+        Requires=network-online.target
+        After=network-online.target
+        ConditionPathExists=/sys/firmware/efi
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        StandardOutput=journal+console
+        StandardError=journal+console
+        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
+        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
+          -i /opt/ignition-final.json \
+          -u
+        ExecStartPost=/usr/bin/systemctl reboot
+
+        [Install]
+        WantedBy=multi-user.target

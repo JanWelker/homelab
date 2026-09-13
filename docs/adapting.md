@@ -129,7 +129,7 @@ more annoying than a cluster where the seventh node has to be called `node7`.
 
 ## 6. Provisioning access
 
-`ansible/templates/butane_config.yaml.j2` injects
+`ansible/templates/butane_node_config.yaml.j2` injects
 `~/.ssh/id_ed25519.pub` as the authorized key for the `core` user. Point it at
 your own key if you use a different path or algorithm — this is the only way
 into the nodes afterwards, so get it right before the first boot.
