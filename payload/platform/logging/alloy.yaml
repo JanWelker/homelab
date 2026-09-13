@@ -160,6 +160,63 @@ spec:
                 forward_to    = [loki.write.default.receiver]
               }
 
+              // The API server audit log, written only on the three
+              // control-plane nodes. Alloy runs everywhere and local.file_match
+              // simply finds nothing on the workers, so no scheduling
+              // constraint is needed to express "control plane only".
+              //
+              // This is not a convenience copy. The file lives on tmpfs and is
+              // capped at three 100MB files, so shipping it to Loki is the only
+              // thing that gives an audit event a life longer than a reboot --
+              // and an audit log that does not survive the incident is not an
+              // audit log.
+              local.file_match "audit" {
+                path_targets = [{
+                  __path__ = "/var/log/kubernetes/audit/audit.log",
+                  job      = "kubernetes-audit",
+                  node     = sys.env("K8S_NODE_NAME"),
+                }]
+              }
+
+              loki.source.file "audit" {
+                targets    = local.file_match.audit.targets
+                forward_to = [loki.process.audit.receiver]
+              }
+
+              loki.process "audit" {
+                // Each line is one complete audit Event as JSON. Only `level`
+                // and `verb` are lifted to labels: both are small closed sets,
+                // which is the property that makes a label cheap. User and
+                // resource are far more useful to query by and far too many to
+                // label, so they stay in the line for `|= ` and `| json` to
+                // reach.
+                stage.json {
+                  expressions = {
+                    audit_level = "level",
+                    verb        = "verb",
+                    timestamp   = "requestReceivedTimestamp",
+                  }
+                }
+
+                stage.labels {
+                  values = {
+                    audit_level = null,
+                    verb        = null,
+                  }
+                }
+
+                // Without this the event is stamped when Alloy read the file
+                // rather than when the API server handled the request. The gap
+                // is small until the moment it matters, which is precisely when
+                // you are lining an audit trail up against everything else.
+                stage.timestamp {
+                  source = "timestamp"
+                  format = "RFC3339Nano"
+                }
+
+                forward_to = [loki.write.default.receiver]
+              }
+
               loki.write "default" {
                 endpoint {
                   url = "http://loki.logging.svc.cluster.local:3100/loki/api/v1/push"

@@ -111,6 +111,136 @@ now the thing to protect: it holds the material that decrypts etcd. A KMS
 provider would remove the static key, at the cost of a dependency the cluster
 must reach before it can serve Secrets.
 
+## Audit logging
+
+The API server records who did what, to which object, and whether it was
+allowed. Until this was configured it recorded none of it: `--audit-log-path`
+was unset, so no audit log existed at all.
+
+That absence had a second consequence that is easy to miss. Every namespace in
+[`pod-security.yaml`](../platform/security-policies.md) carries an `audit` label
+set to a stricter level than it enforces — and the destination for an `audit`
+finding is the API server audit log. Without one, half of that design was
+writing to nowhere. The `warn` half still reached whoever ran `kubectl apply`;
+the record nobody was watching in real time, which is the half that matters
+afterwards, did not exist.
+
+### The policy decides everything
+
+`--audit-log-path` on its own does nothing. Without `--audit-policy-file` the
+API server declines to open a log, and the failure is silent — no error, no
+file, an audit configuration that looks present in the manifest and produces
+nothing. The policy lives in
+`ansible/templates/butane_config.yaml.j2` and is written by Ignition to
+`/etc/kubernetes/audit/policy.yaml`.
+
+Rules are evaluated top to bottom and **the first match wins**, so the order is
+the design:
+
+| Matched | Level | Why |
+| --- | --- | --- |
+| `/healthz*`, `/livez*`, `/readyz*`, `/version`, `/metrics`, `/openapi*` | `None` | Polled continuously by kubelets, probes and Prometheus; together the majority of requests the cluster serves |
+| Leases, Events | `None` | Renewed every few seconds by every component; would bury everything else |
+| Reads by the control plane and by `system:nodes` | `None` | Not the reads anyone goes looking for — and dropping them is what makes the next row affordable |
+| Secrets, ConfigMaps, TokenReviews | `Metadata` | Reads included: a *read* is the interesting verb, and a write-only policy misses it |
+| `pods/exec`, `pods/attach`, `pods/portforward` | `RequestResponse` | The difference between knowing someone exec'd into a pod and knowing which pod, as which user, running what |
+| Everything else read-only | `None` | |
+| Everything that changes state | `Metadata` | Also the level that carries the Pod Security Admission annotations |
+
+!!! danger "Never raise the Secret rule above `Metadata`"
+    At `Request` or `RequestResponse` the request body is recorded, and for a
+    Secret the body *is* the credential. The audit log would become a second,
+    unencrypted copy of every Secret in the cluster, in a flat file, sitting
+    beside the etcd that was [encrypted at rest](#encryption-at-rest) to prevent
+    precisely that. It is a one-word change and it undoes the section above it.
+
+### Where the log actually lives
+
+The root filesystem on these nodes is **tmpfs** — the audit log is in RAM, on a
+volume shared with etcd and every container log on the node. That constrains
+retention more than any policy decision does:
+
+| Property | Value |
+| --- | --- |
+| Path | `/var/log/kubernetes/audit/audit.log` |
+| `--audit-log-maxsize` | `100` (MB) |
+| `--audit-log-maxbackup` | `2` |
+| `--audit-log-maxage` | `30` (days, and never reached) |
+| Worst-case footprint | ~300 MB of RAM per control-plane node |
+| Durable copy | [Loki](../platform/logging.md), on Ceph |
+
+So the on-node file is a **buffer, not an archive**. Alloy tails it and ships
+every event to Loki within seconds, and Loki is the only place an audit event
+outlives a reboot. An audit log that does not survive the incident is not an
+audit log, and on a tmpfs root that is not a hypothetical.
+
+!!! note "A deliberate CIS deviation"
+    The CIS Kubernetes Benchmark asks for `--audit-log-maxbackup` of 10 or more
+    (check 1.2.18), which at 100 MB each would reserve roughly 1.1 GB of a
+    3.8 GB tmpfs on every control-plane node. Two backups plus Loki retention
+    is the better trade here, and kube-bench will report 1.2.18 as `FAIL`. It is
+    a decision, not an oversight — the distinction this page exists to make.
+    Raise it the day `/var/log` sits on a real disk.
+
+### Reading it
+
+Audit events reach Loki as JSON with `job="kubernetes-audit"`, plus `verb` and
+`audit_level` as labels. Everything else stays in the line, where `| json`
+can reach it:
+
+```logql
+# Who read Secrets, and which ones
+{job="kubernetes-audit"} | json | objectRef_resource="secrets"
+
+# Every exec into a running container
+{job="kubernetes-audit", verb="create"} | json | objectRef_subresource="exec"
+
+# Pod Security Admission violations that were audited but not enforced
+{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
+```
+
+That last query is the one the PSA labels were always meant to feed. It answers
+"what would break if I tightened `enforce` on this namespace" from evidence
+rather than from a dry run, and it answers it for the whole retention window
+rather than for the moment you happened to look.
+
+### Applying it to a running cluster
+
+Changing the templates changes what a **newly provisioned** node gets. A running
+control-plane node keeps the `kube-apiserver.yaml` static pod manifest that
+kubeadm rendered at init time, and nothing rewrites it on its own.
+
+One node at a time, confirming the API server comes back before moving to the
+next:
+
+```bash
+# 1. Regenerate the Ignition configs so a rebuild gets this too
+make config
+
+# 2. Place the policy file
+ssh core@<node> sudo mkdir -p /etc/kubernetes/audit /var/log/kubernetes/audit
+ssh core@<node> sudo chmod 0700 /etc/kubernetes/audit /var/log/kubernetes/audit
+scp output/.../policy.yaml core@<node>:/tmp/policy.yaml
+ssh core@<node> sudo install -m 0600 /tmp/policy.yaml /etc/kubernetes/audit/policy.yaml
+
+# 3. Re-render the API server static pod from the updated config
+ssh core@<node> sudo kubeadm init phase control-plane apiserver \
+  --config /opt/kubeadm-config.yaml
+
+# 4. The kubelet restarts the static pod within seconds
+kubectl -n kube-system get pod kube-apiserver-<node> -w
+```
+
+Then update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive
+the next `kubeadm upgrade` or control-plane join — the ConfigMap is what kubeadm
+reads on those paths, not `/opt/kubeadm-config.yaml`.
+
+!!! warning "Get the policy file there first"
+    An API server started with `--audit-policy-file` pointing at a file that
+    does not exist does not start. On a three-node control plane that is
+    survivable; doing it to all three at once is not. Step 2 before step 3, and
+    one node at a time.
+
 ## Authorization
 
 **ArgoCD AppProjects do not constrain much.** `payload/argocd/argocd-projects.yaml`
@@ -132,7 +262,8 @@ is still unrestricted. See [Security Policies](../platform/security-policies.md)
 carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
 stricter one, so violations are visible without breaking what runs today. This is
 the sane order of operations: measure first, enforce second. Enforcing first is
-how you end up disabling the control entirely at 2am.
+how you end up disabling the control entirely at 2am. The `audit` half of that
+now has a destination — see [Audit logging](#audit-logging).
 
 **Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`).
 Any namespace can attach an `HTTPRoute` to `infra-gateway` and claim a hostname
@@ -177,5 +308,9 @@ Roughly in order of value against effort:
 5. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` that currently sits in `output/credentials/` with no
    rotation.
+6. Give `/var/log` a real disk, then raise `--audit-log-maxbackup` to the 10
+   the [benchmark asks for](#where-the-log-actually-lives). Today the audit log
+   competes with etcd for the same tmpfs, which is the only reason it is set
+   to 2.
 
 See [Known Limitations](limitations.md) for the operational counterparts.

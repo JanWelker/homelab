@@ -29,6 +29,14 @@ storage:
 {% if role == 'control-plane' %}
     - path: /etc/kubernetes/enc
       mode: 0700
+    - path: /etc/kubernetes/audit
+      mode: 0700
+    # The API server writes its audit log here. This is tmpfs like the rest of
+    # the root filesystem, so what lands here is a buffer, not an archive --
+    # Alloy tails it into Loki, which is where the durable copy lives. See
+    # docs/architecture/security.md.
+    - path: /var/log/kubernetes/audit
+      mode: 0700
 {% endif %}
   files:
     - path: /etc/containerd/config.toml
@@ -73,6 +81,90 @@ storage:
                       - name: key1
                         secret: {{ encryption_key }}
                 - identity: {}
+
+    # What the API server records, and at which level. Without a policy file the
+    # audit log is not merely empty -- the API server does not open one at all,
+    # and `--audit-log-path` on its own achieves nothing.
+    #
+    # Rules are evaluated top to bottom and the first match wins, so the order
+    # below is the whole design. `omitStages: RequestReceived` drops the
+    # half of every event that says only "someone asked"; the matching response
+    # stage carries the same information plus the outcome.
+    - path: /etc/kubernetes/audit/policy.yaml
+      mode: 0600
+      contents:
+        inline: |
+          apiVersion: audit.k8s.io/v1
+          kind: Policy
+          omitStages:
+            - RequestReceived
+          rules:
+            # Endpoints polled continuously by kubelets, probes and Prometheus.
+            # None of them carry a decision worth reviewing, and together they
+            # are the majority of requests this cluster serves.
+            - level: None
+              nonResourceURLs:
+                - /healthz*
+                - /livez*
+                - /readyz*
+                - /version
+                - /metrics
+                - /openapi*
+
+            # Leases are renewed every few seconds by every control-plane
+            # component and every kubelet; Events are written by everything.
+            # Both would bury the log in traffic that says nothing happened.
+            - level: None
+              resources:
+                - group: "coordination.k8s.io"
+                  resources: ["leases"]
+                - group: ""
+                  resources: ["events"]
+
+            # The control plane and the kubelets read their way through the API
+            # constantly. Their reads are not the ones anyone goes looking for,
+            # and dropping them here is what keeps the Secret rule below
+            # affordable.
+            - level: None
+              users:
+                - system:apiserver
+                - system:kube-scheduler
+                - system:kube-controller-manager
+              verbs: ["get", "list", "watch"]
+            - level: None
+              userGroups: ["system:nodes"]
+              verbs: ["get", "list", "watch"]
+
+            # Secret access by anything else, reads included -- a read is the
+            # interesting verb here, and it is the one a plain write-only audit
+            # policy misses. Metadata and never higher: at Request or
+            # RequestResponse the audit log becomes a second, unencrypted copy
+            # of every Secret in the cluster, sitting in a flat file next to the
+            # etcd that was carefully encrypted to prevent exactly that.
+            - level: Metadata
+              resources:
+                - group: ""
+                  resources: ["secrets", "configmaps"]
+                - group: "authentication.k8s.io"
+                  resources: ["tokenreviews"]
+
+            # Interactive access to a running container. RequestResponse is the
+            # difference between knowing that someone exec'd into a pod and
+            # knowing which pod, as which user, running what.
+            - level: RequestResponse
+              resources:
+                - group: ""
+                  resources: ["pods/exec", "pods/attach", "pods/portforward"]
+
+            # Everything else that only reads.
+            - level: None
+              verbs: ["get", "list", "watch"]
+
+            # Everything that changes state. Metadata is also the level that
+            # carries the Pod Security Admission annotations, which is what
+            # makes the `audit` half of the PSA labels in
+            # payload/platform/security/pod-security.yaml mean anything.
+            - level: Metadata
 
     # kube-vip holds the API server VIP on whichever control-plane node wins the
     # leader election, so controlPlaneEndpoint does not depend on one machine.
