@@ -1873,12 +1873,7 @@ with it. Changing the partition table above <code>rook-osd</code> is a
 <a href="../../operations/#repartitioning-the-nodes">reinstall</a>, not an edit.</p>
 <div class="admonition note">
 <p class="admonition-title">A rebuild wipes the OSD deliberately</p>
-<p>The installer clears filesystem signatures from every partition before it
-touches the table, and discards the whole device where the hardware supports
-it. That is aimed squarely at the failure below: <code>ceph-volume</code> reads the
-BlueStore <em>signature</em>, not the partition table, so a reinstalled node that
-left the old bytes in place brings an OSD back into a cluster that has never
-heard of it.</p>
+<p>Ignition declares <code>rook-osd</code> with <code>format: none</code> and <code>wipe_filesystem: true</code> — erase what is there, put nothing back, do not mount it. That is aimed squarely at the failure below: <code>ceph-volume</code> reads the BlueStore <em>signature</em>, not the partition table, so a reinstalled node that left the old bytes in place brings an OSD back into a cluster that has never heard of it. The installer also destroys the GPT and discards the whole device where the hardware supports it, but the <code>format: none</code> entry is the one that is guaranteed to run.</p>
 </div>
 <p>"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see <a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a>.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
