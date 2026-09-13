@@ -97,6 +97,24 @@ rather than one:
 | `blkdiscard` | Returns the whole device to unwritten. Best-effort — SATA without TRIM declines it |
 | `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_node_config.yaml.j2` |
 
+### Boot order
+
+The install leaves the firmware's boot order alone. `flatcar-install` can write
+a UEFI boot entry for the disk with `-u`, which is `efibootmgr -c` and puts that
+entry at the front of `BootOrder`; this project does not pass it.
+
+That is deliberate, because the boot order is the one thing the PXE menu cannot
+override. These nodes are set to network boot first and reach their disk through
+`LOCALBOOT`, so the generated menu decides what happens on every boot of every
+node. An install that quietly promoted the disk ahead of PXE would take a node
+out of that arrangement: `make reinstall` would rewrite a menu the firmware had
+stopped reading, and the node would ignore it with no error anywhere.
+
+The cost is that a node has to be able to reach its disk without that entry —
+network boot first with a working `LOCALBOOT`, or the disk ahead of PXE in the
+firmware. A machine with neither installs correctly and then has nothing to
+boot.
+
 ### Wiping the disk
 
 `wipe_table` is the one setting the two environments need opposite answers for,
@@ -194,7 +212,7 @@ data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
     Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock `systemd-growfs-root.service` is `static` and is pulled in by an `x-systemd.growfs` mount option, which a root mounted from `root=LABEL=ROOT` on the kernel command line does not carry. Without the unit, a node comes up with a 50 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.
 
 !!! note "Two boot paths, and the menu picks the safe one"
-    Nothing is chosen at the console. `PROMPT 0` boots whatever `DEFAULT` names and shows no menu, and the template always emits `DEFAULT localboot` — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with `make reinstall`, which rewrites that one line in the generated file; see [Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). On UEFI firmware `flatcar-install -u` writes a real boot entry, so the firmware usually goes straight to disk without reading this file at all; set the disk ahead of PXE in the boot order and it never will. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.
+    Nothing is chosen at the console. `PROMPT 0` boots whatever `DEFAULT` names and shows no menu, and the template always emits `DEFAULT localboot` — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with `make reinstall`, which rewrites that one line in the generated file; see [Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.
 
 ## 4. Post-Installation Bootstrap
 

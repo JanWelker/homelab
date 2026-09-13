@@ -69,8 +69,7 @@ systemd:
         ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
           -b http://{{ boot_server_ip }}:8000 \
           -V {{ flatcar_version }} \
-          -i /opt/ignition-final.json \
-          -u
+          -i /opt/ignition-final.json
         ExecStartPost=/usr/bin/systemctl reboot
 
         [Install]
