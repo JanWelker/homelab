@@ -1825,9 +1825,9 @@ writes <code>ignition-&lt;host&gt;-install.json</code>, which the PXE environmen
 the disk and install, and <code>ignition-&lt;host&gt;.json</code>, which <code>flatcar-install -i</code>
 embeds into the system being installed, where it runs on first boot to partition
 the disk and lay down <code>/etc</code>.</p>
-<p>The two files are identical apart from the disk stanza, and that stanza is the
-only thing the two environments need opposite answers for — see <a href="#wiping-the-disk">Wiping the
-disk</a>. Everything else is separated by
+<p>The two files are identical apart from <code>storage.disks</code> and
+<code>storage.filesystems</code>, which are the only things the two environments need
+different answers for — see <a href="#wiping-the-disk">Wiping the disk</a>. Everything else is separated by
 <code>ConditionKernelCommandLine</code>: a PXE boot carries <code>ignition.config.url</code> on the
 kernel command line and a disk boot does not, so each unit declares which side
 it belongs on.</p>
@@ -1904,6 +1904,14 @@ before.</p>
 <p>The tell that the two values have been collapsed into one is quieter still:
 <code>resize: true</code> on <code>ROOT</code> stops mattering. With the table always wiped there is
 never an existing partition to match, so the flag can never fire.</p>
+<p><code>storage.filesystems</code> follows the same split for the same reason. The installer
+has just wiped the table, so <code>rook-osd</code> does not exist there, and asking Ignition
+to prepare a filesystem on it blocks until it gives up:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">Ignition failed: failed to create filesystems: failed to wait on filesystems devs:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">device unit dev-disk-by\x2dpartlabel-rook\x2dosd.device timeout</span>
+</span></code></pre></div>
+<p>Erasing the previous cluster's BlueStore signature belongs on the installed
+system regardless — that is where the partition is.</p>
 <p>The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
 the raw <code>rook-osd</code> partition, and <code>ceph-volume</code> reads that <em>signature</em> rather
 than the partition table — so a repartition alone can resurrect an OSD on a
