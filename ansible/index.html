@@ -1791,8 +1791,13 @@
 <p>Worth being clear about what Ansible is doing here, because it is not the usual
 job. It never configures a node. It has no <code>hosts: all</code> play that SSHes in and
 converges anything — it generates files on the deployment host, and Ignition
-applies them once at first boot. Ansible is a template engine with an inventory,
-and on an immutable OS that is exactly the right amount of Ansible.</p>
+applies them at boot. Ansible is a template engine with an inventory, and on an
+immutable OS that is exactly the right amount of Ansible.</p>
+<p>Because these nodes
+<a href="../architecture/boot-process/#nothing-is-installed-to-disk">run from RAM</a>,
+"at boot" means <em>every</em> boot rather than only the first. Re-running <code>make config</code>
+and rebooting a node is the whole deployment mechanism for anything under
+<code>ansible/</code>.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ansible/
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)

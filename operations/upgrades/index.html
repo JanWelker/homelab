@@ -1869,7 +1869,11 @@ this is the deliberate path:</p>
 <p class="admonition-title">Note</p>
 <p>A <strong>newly provisioned</strong> node skips all of this — it installs
 <code>kubernetes_version</code> directly and gets the pinned sysupdate config from the
-boot server. Only long-running nodes need step 4.</p>
+boot server.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Every node here is a newly provisioned node</p>
+<p>Step 4 exists because <code>/etc/sysupdate.d/kubernetes.conf</code> is normally written once, at provisioning time. On these nodes it is not: <code>/etc</code> is tmpfs and Ignition re-fetches the file from the boot server on <strong>every</strong> boot, along with the pinned sysext image itself. The reboot in step 5 therefore installs the new version directly, and step 4 only matters if you want sysupdate to run before that reboot rather than after it. The corollary is the one that bites: the boot server has to be running for step 5 at all. See <a href="../../architecture/boot-process/#nothing-is-installed-to-disk">Nothing is installed to disk</a>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

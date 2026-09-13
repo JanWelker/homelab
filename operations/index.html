@@ -1724,6 +1724,19 @@ when an update has been staged, one at a time, and refuses while Ceph or etcd is
 unhealthy. The procedure below is for the cases it does not cover: rebooting
 sooner than the window, or rebooting a node for a reason nothing set a sentinel
 for.</p>
+<div class="admonition danger">
+<p class="admonition-title">Start the boot server first</p>
+<p>There is no operating system on the node's disk. It PXE-boots the Flatcar
+RAM image and fetches its kernel, initrd and Ignition config from
+<code>make serve</code> every time — so a node rebooted while the boot server is down
+does not come back. Run <code>make serve</code> on the deployment host before the
+reboot, and leave it up until the node is <code>Ready</code> again. This applies to
+Kured's unattended reboots too; see
+<a href="../architecture/limitations/#nodes-cannot-boot-without-the-boot-server">Nodes cannot boot without the boot server</a>.</p>
+</div>
+<p>A reboot is also a <strong>reprovision</strong>: the node re-reads its Ignition config, so
+any change made with <code>make config</code> takes effect here, and anything written to
+the node by hand does not survive.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>reboot
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># wait for the node to come back</span>

@@ -1966,7 +1966,7 @@ want to know.</p>
 </tr>
 <tr>
 <td><code>install_disk</code></td>
-<td>Target disk for the Flatcar install (<code>/dev/nvme0n1</code> by default)</td>
+<td>Disk that Ignition partitions for containerd and Rook storage (<code>/dev/nvme0n1</code> by default). Flatcar itself is <strong>not</strong> installed to it — it runs from RAM</td>
 </tr>
 <tr>
 <td><code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code></td>
@@ -2017,7 +2017,11 @@ procedure.</p>
 </li>
 <li>
 <p><strong>Boot Machines</strong>:
-    Power on your bare metal nodes. They will PXE boot, install Flatcar, and reboot.</p>
+    Power on your bare metal nodes. They will PXE boot, run Ignition, and start
+    the kubelet. Nothing is installed to the disk — Flatcar runs from RAM and
+    the nodes fetch everything from the boot server on every boot, including
+    every subsequent one. See
+    <a href="../architecture/boot-process/#nothing-is-installed-to-disk">Nothing is installed to disk</a>.</p>
 <ul>
 <li>Expect the boot server log to show, per node: a TFTP request for the
   bootloader and its <code>01-&lt;mac&gt;</code> menu, then HTTP requests for the kernel,
