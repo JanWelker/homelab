@@ -26,13 +26,9 @@ storage:
       wipe_table: true
 
   files:
-    # Staged into the PXE environment's tmpfs, so this costs RAM for the length
-    # of the install. The image is roughly 700MB against the 3.8GB tmpfs a node
-    # with 8GB gets.
-    - path: /opt/flatcar_production_image.bin.bz2
-      contents:
-        source: http://{{ boot_server_ip }}:8000/flatcar_production_image.bin.bz2
-
+    # The disk image is not staged here. flatcar-install streams it from the
+    # boot server itself, which keeps ~700MB out of the PXE environment's tmpfs
+    # and is what lets it check the signature -- see the units below.
     - path: /opt/ignition-final.json
       contents:
         source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
@@ -44,10 +40,17 @@ systemd:
     # ConditionPathExists on /sys/firmware/efi expresses that; an `if` in a
     # shell script is the same decision with somewhere to hide.
     #
-    # -f rather than -b or -V: the image is already on disk here, and Ansible
-    # verified its SHA512 against the release server's DIGESTS when it
-    # downloaded it. That is the same guarantee the GPG check would give,
-    # one hop earlier and on a machine that is not this one.
+    # -b and -V rather than -f. Handed a local file, flatcar-install skips
+    # signature verification entirely; pointed at a mirror it downloads the
+    # image, downloads the detached signature beside it, and checks both
+    # against Flatcar's signing key before writing a byte. `make download`
+    # serves the <version>/ layout that makes the node's URL resolve.
+    #
+    # Which matters more than it looks. The boot server is unauthenticated HTTP
+    # on a segment this repository already describes as only conditionally
+    # trusted, and this is the one artifact on it that becomes the operating
+    # system. The SHA512 Ansible checks at download time protects the copy on
+    # the deployment host; this protects the copy the node actually writes.
     #
     # blkdiscard returns the whole device to unwritten, which leaves nothing
     # anywhere for anything to recognise. SATA devices without TRIM decline it,
@@ -68,7 +71,8 @@ systemd:
         StandardError=journal+console
         ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
         ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
-          -f /opt/flatcar_production_image.bin.bz2 \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
           -i /opt/ignition-final.json
         # Deliberately only on success. A failed install leaves the node in the
         # PXE environment with a journal and a working SSH key, which is where
@@ -98,7 +102,8 @@ systemd:
         StandardError=journal+console
         ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
         ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
-          -f /opt/flatcar_production_image.bin.bz2 \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
           -i /opt/ignition-final.json \
           -u
         ExecStartPost=/usr/bin/systemctl reboot
