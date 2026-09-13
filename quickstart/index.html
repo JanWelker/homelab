@@ -1993,8 +1993,9 @@ want to know.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>config
 </span></code></pre></div>
 <p><em>Artifacts will be generated in <code>output/http</code> (Ignition) and <code>output/tftp</code>
-(PXE). Note: The install disk is partitioned into 50GB for containerd and the
-remaining space for Rook-Ceph storage.</em></p>
+(PXE). Note: The install disk is partitioned into 50GB for containerd, 40GB
+for the kubelet root directory, 10GB for <code>/var/log</code>, and the remaining space
+for Rook-Ceph storage.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
 into the generated files. Editing the inventory and skipping this step is the
 homelab equivalent of changing the config and forgetting to reload the

@@ -1622,6 +1622,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#repartitioning-the-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repartitioning the nodes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#replacing-a-failed-node" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1757,6 +1768,40 @@ expires after two hours:</p>
 so it can PXE boot, then run the printed join command on it. The
 <code>bootstrap-k8s.service</code> unit only fires when <code>/etc/kubernetes/kubelet.conf</code> is
 absent, so it will not interfere with a node that has already joined.</p>
+<h2 id="repartitioning-the-nodes">Repartitioning the nodes<a class="headerlink" href="#repartitioning-the-nodes" title="Permanent link">&para;</a></h2>
+<p>The disk layout lives in <code>ansible/templates/butane_config.yaml.j2</code> and is applied
+by Ignition, which runs on every boot. Changing a <em>size</em> or <em>order</em> in it is not
+an edit you roll out — it is a rebuild.</p>
+<p><code>rook-osd</code> is the last partition and is deliberately raw: Ceph owns the bytes,
+and there is no filesystem or label inside it that would let anything relocate
+them. Move its start offset by so much as a sector — which is what inserting or
+resizing any partition above it does — and every OSD on every node is gone.</p>
+<div class="admonition danger">
+<p class="admonition-title">The backups are inside the thing being wiped</p>
+<p>Velero and the etcd snapshot CronJob both write to the Ceph object store
+this destroys — see
+<a href="../architecture/limitations/#backups-do-not-leave-the-cluster">Backups do not leave the cluster</a>.
+Copy anything you intend to restore from <strong>off-cluster</strong> before you start.
+This is the failure mode that limitation was written about, arriving in
+person.</p>
+</div>
+<p>The procedure is therefore a full reprovision:</p>
+<ol>
+<li>Copy what matters off the cluster — Velero backups, the latest etcd snapshot,
+   and anything in a PVC that is not reproducible from Git.</li>
+<li>Edit the partition table in <code>ansible/templates/butane_config.yaml.j2</code>.</li>
+<li><code>make config</code> to regenerate the Ignition configs, then <code>make serve</code>.</li>
+<li>Boot every node. Ignition repartitions and reformats, <code>bootstrap-k8s.service</code>
+   runs <code>kubeadm</code> again, and Rook finds six empty <code>rook-osd</code> partitions and
+   builds a new cluster on them.</li>
+<li>Stop the boot server, then follow
+   <a href="../quickstart/">the quickstart</a> from the post-install steps — ArgoCD
+   restores the platform from Git, and OpenBao needs
+   <a href="#after-any-node-reboot-unseal-openbao">unsealing</a>.</li>
+</ol>
+<p>Only the <em>last</em> partition can grow without this. Shrinking <code>rook-osd</code> to make
+room for something else cannot be done in place either, because Ceph has already
+written across the space you would be taking back.</p>
 <h2 id="replacing-a-failed-node">Replacing a failed node<a class="headerlink" href="#replacing-a-failed-node" title="Permanent link">&para;</a></h2>
 <ol>
 <li>

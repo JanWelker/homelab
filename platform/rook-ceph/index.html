@@ -1863,6 +1863,14 @@ dies, which is why it is here. Treat <code>ceph status</code> the way a sysadmin
 the grounds that everything still appears to work.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <p>Each node has a raw disk partition labeled <code>rook-osd</code> (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.</p>
+<p><code>rook-osd</code> is the <strong>last</strong> partition on the disk and takes whatever is left after
+<code>containerd</code> (50GB), <code>kubelet</code> (40GB) and <code>varlog</code> (10GB) — about 138GB per node
+on the 256GB disks here, so roughly 830GB raw and 277GB usable at three
+replicas. It is last for a reason: the partition is raw, so its contents are
+wherever Ceph last wrote them, and inserting anything ahead of it shifts its
+start offset and takes the OSD data with it. Changing the partition table above
+<code>rook-osd</code> is a <a href="../../operations/#repartitioning-the-nodes">reprovision</a>,
+not an edit.</p>
 <p>"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see <a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a>.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
