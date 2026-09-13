@@ -26,12 +26,7 @@ with it. Changing the partition table above `rook-osd` is a
 [reinstall](../operations/index.md#repartitioning-the-nodes), not an edit.
 
 !!! note "A rebuild wipes the OSD deliberately"
-    The installer clears filesystem signatures from every partition before it
-    touches the table, and discards the whole device where the hardware supports
-    it. That is aimed squarely at the failure below: `ceph-volume` reads the
-    BlueStore *signature*, not the partition table, so a reinstalled node that
-    left the old bytes in place brings an OSD back into a cluster that has never
-    heard of it.
+    Ignition declares `rook-osd` with `format: none` and `wipe_filesystem: true` — erase what is there, put nothing back, do not mount it. That is aimed squarely at the failure below: `ceph-volume` reads the BlueStore *signature*, not the partition table, so a reinstalled node that left the old bytes in place brings an OSD back into a cluster that has never heard of it. The installer also destroys the GPT and discards the whole device where the hardware supports it, but the `format: none` entry is the one that is guaranteed to run.
 
 "Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see [No OSDs after reprovisioning](#no-osds-after-reprovisioning).
 
