@@ -189,9 +189,10 @@ for that case.
 
 !!! note "The menu will not do this by accident"
     The PXE entry that installs has to be chosen. The menu's default is
-    `LOCALBOOT`, and on UEFI firmware `flatcar-install -u` writes a boot entry
-    for the disk — so a node that reboots while the boot server happens to be
-    running boots what it already has.
+    `LOCALBOOT`, so a node that reboots while the boot server happens to be
+    running boots what it already has. The install does not touch the
+    firmware's boot order, which means the menu decides on every boot, on
+    every node — see [Boot order](../architecture/boot-process.md#boot-order).
 
 Only the *last* partition can grow without a reinstall. Shrinking `rook-osd` to
 make room for something else cannot be done in place either, because Ceph has
