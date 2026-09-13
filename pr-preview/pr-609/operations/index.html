@@ -1799,12 +1799,22 @@ person.</p>
    and anything in a PVC that is not reproducible from Git.</li>
 <li>Edit whatever needs editing under <code>ansible/</code>.</li>
 <li><code>make config</code> to regenerate both Ignition configs, then <code>make serve</code>.</li>
-<li>At the node's console, pick <strong><code>install</code></strong> from the PXE menu. The installer
-   wipes the disk — every partition signature, the GPT, and a device-level
-   discard where the hardware supports it — runs <code>flatcar-install</code>, and reboots
-   into the freshly installed system, which then runs <code>kubeadm</code>.</li>
-<li>Leave the boot server up until the node is <code>Ready</code>: the sysext images are
-   still fetched from it on that first boot. Then stop it.</li>
+<li>
+<p>Arm the nodes you are rebuilding:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># or `make reinstall` for every host</span>
+</span></code></pre></div>
+<p>That flips <code>DEFAULT localboot</code> to <code>DEFAULT install</code> in
+<code>output/tftp/pxelinux.cfg/01-&lt;mac&gt;</code>. The template is untouched, so the next
+<code>make config</code> puts the safe default back — including over anything armed and
+not used. <code>make reinstall-cancel</code> does the same deliberately. Picking
+<code>install</code> at the console by hand works just as well.
+5. Network-boot the node. The installer wipes the disk — every partition
+   signature, the GPT, and a device-level discard where the hardware supports
+   it — runs <code>flatcar-install</code>, and reboots into the freshly installed system,
+   which then runs <code>kubeadm</code>.
+6. Leave the boot server up until the node is <code>Ready</code>: the sysext images are
+   still fetched from it on that first boot. Then stop it.</p>
+</li>
 </ol>
 <p>One node at a time is safe if you are rebuilding rather than repartitioning —
 etcd keeps quorum and Ceph backfills, exactly as in
@@ -1826,8 +1836,8 @@ already written across the space you would be taking back.</p>
 <ol>
 <li>
 <p>Remove it from the cluster:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
 </li>
 <li>
@@ -1840,12 +1850,12 @@ already written across the space you would be taking back.</p>
 <p>If it was a control-plane node, remove its etcd member. A dead member left in
    the list still counts toward quorum, which is a delightful way to lose a
    cluster that is otherwise fine:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>member<span class="w"> </span>list
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
 </span></code></pre></div>
 </li>
 <li>

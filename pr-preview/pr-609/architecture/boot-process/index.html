@@ -1850,12 +1850,7 @@ satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>
-<p>The PXE menu defaults to <code>LOCALBOOT</code> with a five second timeout, so a node
-that network-boots for any reason still ends up on its own disk. Installing
-requires someone to choose <code>install</code> at the console. On UEFI firmware
-<code>flatcar-install -u</code> writes a real boot entry, so the firmware usually goes
-straight to disk without consulting the menu at all — set the disk ahead of
-PXE in the boot order and it never will.</p>
+<p>The PXE menu defaults to <code>LOCALBOOT</code> with a five second timeout, so a node that network-boots for any reason still ends up on its own disk. Installing means either choosing <code>install</code> at the console or arming it with <code>make reinstall</code> — see <a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. On UEFI firmware <code>flatcar-install -u</code> writes a real boot entry, so the firmware usually goes straight to disk without consulting the menu at all; set the disk ahead of PXE in the boot order and it never will.</p>
 </div>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once Kubeadm has initialized the control plane, the remaining components are
