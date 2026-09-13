@@ -46,12 +46,12 @@ pass "CephCluster is Ready"
 osds="$(kubectl -n "$NAMESPACE" get pods -l app=rook-ceph-osd \
   -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}' 2>/dev/null | grep -c '^Running$' || true)"
 [ "${osds:-0}" -gt 0 ] || fail "no OSD pods running" \
-  "The disks are there but Rook took none of them. On nodes that held a" \
-  "previous Ceph cluster the rook-osd partition still carries its OSD, which" \
-  "Rook will not adopt:" \
+  "The disks are there but Rook took none of them. The usual cause is a" \
+  "rook-osd partition still carrying a previous cluster's OSD, which Rook will" \
+  "not adopt:" \
   "  kubectl -n ${NAMESPACE} logs job/rook-ceph-osd-prepare-<node> | tail" \
-  "See docs/platform/rook-ceph.md#no-osds-after-reprovisioning, then:" \
-  "  make wipe-osd"
+  "The installer wipes the disk, so this should not survive a rebuild. If it" \
+  "has, see docs/platform/rook-ceph.md#no-osds-after-reprovisioning."
 pass "${osds} OSD pod(s) running"
 
 # 3. Ceph's own opinion. HEALTH_WARN is survivable and common on a fresh

@@ -437,9 +437,9 @@ error: unable to upgrade connection: pod openbao-0 does not have a host assigned
 ```
 
 `openbao-0` is `Pending` on an unbound PVC because the cluster has no OSDs to
-provision one from. `make storage-check` says so in one line. The fix is
-`make wipe-osd`, which destroys whatever the old cluster held and asks before
-it does: [Rook-Ceph &rarr; No OSDs after
+provision one from. `make storage-check` says so in one line. The fix is to
+rebuild the node — `make reinstall LIMIT=<node>` and network-boot it, which
+wipes the disk on the way in: [Rook-Ceph &rarr; No OSDs after
 reprovisioning](platform/rook-ceph.md#no-osds-after-reprovisioning).
 
 ## Verifying the result

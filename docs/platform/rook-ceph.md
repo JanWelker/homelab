@@ -164,11 +164,16 @@ and deletes it again. `NAMESPACE` and `CLASS` override where it asks and which
 
 ## No OSDs after reprovisioning
 
-Reinstalling the nodes does not give Ceph empty disks back. Butane creates the
-`rook-osd` partition only when it is absent and deliberately leaves it
-unformatted, so a rebuild onto the same hardware inherits the previous
-cluster's OSDs — and Rook will not touch an OSD that belongs to a cluster it
-does not know:
+This used to be the normal outcome of a rebuild. Butane created the `rook-osd`
+partition only when it was absent and deliberately left it unformatted, so a
+reinstall onto the same hardware inherited the previous cluster's OSDs — and
+Rook will not touch an OSD that belongs to a cluster it does not know.
+
+The [installer wipes the disk](../architecture/boot-process.md#3-install-bootstrap)
+before Flatcar is written, so a rebuilt node now comes back with nothing on it.
+What follows is what the failure looks like if that wipe is ever incomplete —
+`blkdiscard` declined by the hardware *and* something `wipefs` did not catch —
+because the symptom is distinctive and points nowhere near the cause:
 
 ```console
 $ kubectl -n rook-ceph logs job/rook-ceph-osd-prepare-odin | tail -3
@@ -193,36 +198,35 @@ $ kubectl -n openbao describe pod openbao-0 | tail -1
 which in a fresh bootstrap means [quickstart](../quickstart.md) step 11 cannot
 start: `bao operator init` has no pod to exec into.
 
-!!! danger "This destroys the old cluster's data"
-    Wiping the partition is not recoverable, and neither is declining to: once
-    the mons that held the cluster map are gone with the old control plane,
-    those OSDs cannot be re-adopted by anything. Take a backup off the disks
-    first if you need one, then wipe with your eyes open.
+!!! danger "The old cluster's data is already gone"
+    This is not a choice between keeping and losing it. Once the mons that held
+    the cluster map left with the old control plane, those OSDs cannot be
+    re-adopted by anything — the bytes are there and nothing can read them.
+    Take a backup off the disks *before* a rebuild if you need one.
 
-Clear the partition on every node and let the operator try again:
+The fix is to rebuild the node, which wipes the disk as part of the install:
 
 ```bash
-make wipe-osd                    # every host in k8s_nodes
-make wipe-osd LIMIT=odin,thor    # only these
+make reinstall LIMIT=<node>
 ```
 
-It prints the hosts it is about to wipe and waits for you to type `WIPE`.
-There is no flag to skip that, and it refuses to run without a terminal to ask
-at: the partitions do not come back, and neither does what was on them.
+Then network-boot it — see
+[Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). The
+installer clears filesystem signatures from every partition, zaps the GPT, and
+discards the whole device where the hardware supports it, so the `osd-prepare`
+job on the rebuilt node finds a blank partition.
 
-What it runs, per node, is `wipefs -a` followed by a 200 MiB `dd` over
-`/dev/disk/by-partlabel/rook-osd`. `wipefs` removes the signature that made
-Rook skip the device; the `dd` removes the BlueStore label and superblock
-behind it, which is what `ceph-volume raw list` reads. Addressing the partition
-by label rather than by name matters: the control-plane nodes present it as
-`nvme0n1p2` and the worker as `sda2`, and nothing at that path can be the
-`containerd` partition. Ansible runs it with `-m raw` for the same reason
-`kubeconfig.yaml` does — Flatcar ships no `/usr/bin/python3`, so every other
-module fails with `rc=127`.
+If a node cannot be rebuilt right now, the same thing by hand over SSH is
+`wipefs -a` followed by a couple of hundred MiB of `dd` over
+`/dev/disk/by-partlabel/rook-osd`. `wipefs` removes the signature that made Rook
+skip the device; the `dd` removes the BlueStore label and superblock behind it,
+which is what `ceph-volume raw list` reads. Address it by label, not by name —
+the control-plane nodes present it as a different partition number than the
+worker does, and nothing at the label path can be the `containerd` partition.
 
-It then restarts the operator, which recreates the `osd-prepare` jobs. An OSD
-appears per node and the pending PVCs bind on the next provisioning attempt;
-`make storage-check` is the way to confirm that rather than assume it.
+Either way, restart the operator afterwards so it recreates the `osd-prepare`
+jobs. An OSD appears per node and the pending PVCs bind on the next provisioning
+attempt; `make storage-check` is the way to confirm that rather than assume it.
 
 ## Directory Structure
 
