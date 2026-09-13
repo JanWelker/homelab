@@ -31,11 +31,11 @@ spec:
           # you thought. Narrow this when there is a reason to, not by default.
           defaultFrameworks: []
 
-          # Kubescape ships as a suite and defaults to most of it on. What is
-          # enabled here is the configuration-scanning half: the part that
-          # answers "does this cluster match CIS, NSA and MITRE" and feeds the
-          # Grafana dashboard. Every `disable` below has a reason, and the
-          # reasons are in docs/platform/kubescape.md rather than only here.
+          # Kubescape ships as a suite and defaults to most of it on. Nearly all
+          # of it is on here: posture scanning, image CVE scanning, and the eBPF
+          # runtime stack. The four still disabled are disabled for reasons that
+          # are not about capacity, and they are spelled out below and in
+          # docs/platform/kubescape.md.
           capabilities:
             operator: enable
             # Posture scanning against the frameworks, on a schedule.
@@ -50,36 +50,53 @@ spec:
             # one changes when a Renovate PR merges.
             continuousScan: disable
 
-            # Image CVE scanning is off because it cannot schedule here.
-            # kubevuln requests 5Gi of ephemeral-storage and limits at 10Gi,
-            # and node allocatable ephemeral-storage is 3.6GB on the
-            # control-plane nodes and 7.4GB on the workers -- the request alone
-            # makes the pod unschedulable on three of six nodes. Worse, the root
-            # filesystem is tmpfs, so "ephemeral storage" is RAM: an image
-            # unpacked for scanning is charged to the same memory etcd is using.
-            vulnerabilityScan: disable
-            relevancy: disable
-            nodeSbomGeneration: disable
+            # Image CVE scanning. kubevuln requests 5Gi of ephemeral-storage and
+            # limits at 10Gi, which is why this could not be enabled before: the
+            # kubelet root directory was on the tmpfs root, so node allocatable
+            # ephemeral-storage was 3.6GB on the control-plane nodes and the pod
+            # was unschedulable on half the cluster -- and what it did allocate
+            # would have been RAM shared with etcd. /var/lib/kubelet is its own
+            # 40GB partition now, so the request is ordinary and lands anywhere.
+            #
+            # `relevancy` narrows the CVE report to packages actually loaded at
+            # runtime, which is the difference between a list of 400 findings
+            # and a list of the ones reachable in this cluster. It needs the
+            # node-agent below, which is the other half of why both arrive
+            # together.
+            vulnerabilityScan: enable
+            relevancy: enable
+            nodeSbomGeneration: enable
+            # Both are opt-in extras on top: scanning for SBOM files already
+            # inside an image, and emitting VEX documents. Neither changes what
+            # is found, only how much is produced.
             scanEmbeddedSBOMs: disable
             vexGeneration: disable
 
-            # The runtime half is an eBPF node-agent DaemonSet on all six nodes.
-            # It is the most valuable thing here after posture scanning and it
-            # is also the most expensive, on nodes whose entire root filesystem
-            # is a 3.8GB tmpfs. Off until posture scanning has earned its keep.
-            runtimeObservability: disable
-            networkPolicyService: disable
-            networkEventsStreaming: disable
-            runtimeDetection: disable
+            # The eBPF runtime stack: a node-agent DaemonSet that learns what a
+            # workload normally does and reports when it stops doing that. Its
+            # cost is memory -- 180Mi requested, 1400Mi limit, on every node --
+            # which the tmpfs root was already spending on container logs and
+            # the kubelet directory before those moved to disk.
+            runtimeObservability: enable
+            runtimeDetection: enable
+            networkPolicyService: enable
+            networkEventsStreaming: enable
+            nodeProfileService: enable
+            httpDetection: enable
+            seccompProfileService: enable
+
+            # Scans file contents on the node for known malware. A different
+            # kind of expensive from the rest of the runtime stack -- it reads
+            # rather than observes -- and the one capability here with no
+            # obvious question it answers about this cluster.
             malwareDetection: disable
-            nodeProfileService: disable
-            httpDetection: disable
-            seccompProfileService: disable
 
             # A validating webhook in front of the API server. A posture tool
             # that can refuse writes is a posture tool that can take the cluster
             # down when it is unhealthy, and nothing here is worth that trade
             # while the findings are still being read rather than enforced.
+            # Note that this is not a capacity decision and does not change
+            # because the nodes now have disk.
             admissionController: disable
 
             # Would let the operator mutate workloads it has findings about,
@@ -101,6 +118,13 @@ spec:
           # community path, so there is no flag to turn "offline" on.
 
           kubescape:
+            serviceMonitor:
+              enabled: true
+          # The node-agent exposes its own metrics -- eBPF event rates, profile
+          # counts, and how much of its budget it is using. That last one is the
+          # number to watch after enabling the runtime stack, so the scrape goes
+          # on at the same time rather than after the first surprise.
+          nodeAgent:
             serviceMonitor:
               enabled: true
           prometheusExporter:
