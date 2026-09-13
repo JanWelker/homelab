@@ -1707,11 +1707,15 @@ the page you will actually come back to.</p>
 <p>OpenBao seals itself whenever its pods restart, and while it is sealed no
 <code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
 Nothing unseals it for you, so this is a chore rather than a check:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>bao-unseal<span class="w">                      </span><span class="c1"># unseals whatever is sealed</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
 </span></code></pre></div>
-<p>Any pod reporting <code>Sealed: true</code> needs 3 of the 5 key shares, once per pod —
-<a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
+<p><code>make bao-unseal</code> reads the key shares from <code>output/credentials/openbao-init.json</code>,
+checks each replica, and feeds three shares to any that is sealed. It is
+idempotent — on an unsealed cluster it reports that and stops.</p>
+<p>If you have moved the keys into a password manager and deleted that file, which
+is where they belong, it cannot help: each pod then wants 3 of the 5 shares by
+hand. <a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
 has the loop.</p>
 <p>It is worth actually running, every time. A cluster that comes back with OpenBao
 still sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and
