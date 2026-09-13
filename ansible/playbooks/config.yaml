@@ -75,9 +75,6 @@
         state: directory
         mode: "0755"
 
-    # Plain tasks, not handlers: a handler only fires when its notifying task
-    # reports `changed`, so a deleted or armed file in output/ would never be
-    # put back once the template settled.
     - name: Generate Butane Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/butane_config.yaml.j2" # noqa: no-relative-paths
@@ -85,8 +82,6 @@
         mode: "0755"
       register: butane_config
 
-    # butane cannot report its own idempotence, so guard on input changed or
-    # output missing.
     - name: Check for an existing Ignition config
       ansible.builtin.stat:
         path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
@@ -100,7 +95,6 @@
       when: butane_config.changed or not ignition_config.stat.exists
       changed_when: true
 
-    # Runs every time, which is what makes `make config` undo `make reinstall`.
     - name: Generate PXE Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/pxe_config.j2" # noqa: no-relative-paths

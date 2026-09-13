@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-# Answers one question: can Rook-Ceph serve a PersistentVolume right now?
-#
-# Run it after the GitOps handover and before anything that wants a volume -
-# the ArgoCD sync waves do not answer this. A CephCluster reports Ready with
-# mons and mgrs up while having no OSDs to store data on and no CSI driver to
-# hand out volumes, so the apps at later waves start anyway and sit in
-# Pending. This walks the chain from the disks to a bound PVC instead, and
-# names what to fix at the first link that is missing.
-#
-#   make storage-check
-#
-# Environment:
-#   NAMESPACE   Rook's namespace (default rook-ceph)
-#   CLASS       StorageClass to provision from (default rook-ceph-block)
-#   TIMEOUT     Seconds to wait for the scratch PVC to bind (default 120)
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-rook-ceph}"

@@ -19,7 +19,6 @@ bootstrapTokens:
       - signing
       - authentication
 certificateKey: "{{ certificate_key }}"
-# v1beta4 moved this off ClusterConfiguration.
 timeouts:
   controlPlaneComponentHealthCheck: 4m0s
 ---
@@ -27,16 +26,11 @@ apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ control_plane_endpoint }}"
 apiServer:
-  # Secrets are encrypted at rest; identity comes after secretbox so Secrets
-  # written before this stay readable. See docs/architecture/security.md.
   extraArgs:
     - name: encryption-provider-config
       value: /etc/kubernetes/enc/encryption-config.yaml
     - name: encryption-provider-config-automatic-reload
       value: "true"
-    # Without audit-policy-file there is no audit log at all, and the `audit`
-    # level on every PSA label has nowhere to write. Rotation is CIS 1.2.16-19:
-    # eleven 100MB files, ~1.1GB. Alloy ships every event to Loki as well.
     - name: audit-policy-file
       value: /etc/kubernetes/audit/policy.yaml
     - name: audit-log-path
@@ -58,7 +52,6 @@ apiServer:
       mountPath: /etc/kubernetes/audit
       readOnly: true
       pathType: Directory
-    # The one writable host mount, scoped to the audit directory.
     - name: audit-log
       hostPath: /var/log/kubernetes/audit
       mountPath: /var/log/kubernetes/audit
@@ -66,9 +59,6 @@ apiServer:
       pathType: DirectoryOrCreate
 certificatesDir: /etc/kubernetes/pki
 clusterName: kubernetes
-# Not 127.0.0.1: that leaves the kube-prometheus-stack ServiceMonitors down and
-# KubeSchedulerDown / KubeControllerManagerDown firing forever. Both endpoints
-# authenticate.
 controllerManager:
   extraArgs:
     - name: bind-address
@@ -77,7 +67,6 @@ dns: {}
 etcd:
   local:
     dataDir: /var/lib/etcd
-    # /metrics and /health only; client and peer APIs stay on mTLS.
     extraArgs:
       - name: listen-metrics-urls
         value: "http://0.0.0.0:2381"
@@ -95,6 +84,4 @@ scheduler:
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
-# A real serving cert from the cluster CA, so metrics-server does not need
-# --kubelet-insecure-tls. kubelet-csr-approver approves the CSRs.
 serverTLSBootstrap: true

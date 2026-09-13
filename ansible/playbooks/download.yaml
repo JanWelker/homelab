@@ -27,8 +27,6 @@
           file: flatcar_production_pxe.vmlinuz
         - name: initrd
           file: flatcar_production_pxe_image.cpio.gz
-        # Into a version directory because flatcar-install builds its URL as
-        # <base>/<version>/<file> and fetches the .sig beside it.
         - name: disk image
           file: flatcar_production_image.bin.bz2
           dest_dir: "{{ http_dir }}/{{ flatcar_version }}"
@@ -39,9 +37,6 @@
       vars:
         url: "https://github.com/flatcar/sysext-bakery/releases/download"
       loop:
-        # `series` is the major.minor the node's sysupdate config is pinned to.
-        # Derived from the pinned version so inventory.yaml stays the single
-        # place a version is chosen.
         - name: kubernetes
           version: "{{ kubernetes_version }}"
           series: "{{ kubernetes_version.split('.')[:2] | join('.') }}"
