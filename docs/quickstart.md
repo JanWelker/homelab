@@ -132,15 +132,15 @@ The deployment host (the machine running Ansible and the boot server) must be re
     make reinstall
     ```
 
-    The generated PXE menus default to `Boot from local disk`, which is what you
-    want on every boot *except* this one — it is why a reboot later cannot
+    The generated PXE configs default to booting the local disk, which is what
+    you want on every boot *except* this one — it is why a reboot later cannot
     reinstall a node. `make reinstall` flips that to `Install` in
     `output/tftp/pxelinux.cfg/`, for every host or for `LIMIT=<node>`;
     `make reinstall-cancel` puts it back, as does re-running `make config`.
 
-    Then power on your bare metal nodes. (Selecting `Install` from the menu at
-    each console does the same thing, if you would rather not arm anything.)
-    See [Boot & Bootstrap Process](architecture/boot-process.md).
+    Then power on your bare metal nodes. No menu appears and nothing waits for a
+    keypress — each node does whatever it was armed to do, so the whole build is
+    unattended. See [Boot & Bootstrap Process](architecture/boot-process.md).
 
     - The node wipes the disk, writes Flatcar, and reboots into it. From that
       reboot on it is booting from its own disk.
