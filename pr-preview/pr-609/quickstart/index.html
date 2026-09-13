@@ -2306,9 +2306,9 @@ still reports <code>Ready</code>, and the failure surfaces one layer up, at step
 </span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
 </span></code></pre></div>
 <p><code>openbao-0</code> is <code>Pending</code> on an unbound PVC because the cluster has no OSDs to
-provision one from. <code>make storage-check</code> says so in one line. The fix is
-<code>make wipe-osd</code>, which destroys whatever the old cluster held and asks before
-it does: <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after
+provision one from. <code>make storage-check</code> says so in one line. The fix is to
+rebuild the node — <code>make reinstall LIMIT=&lt;node&gt;</code> and network-boot it, which
+wipes the disk on the way in: <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after
 reprovisioning</a>.</p>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
 <p>The five commands that answer "is it actually fine?":</p>

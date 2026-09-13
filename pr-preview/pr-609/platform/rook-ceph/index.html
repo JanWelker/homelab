@@ -2038,11 +2038,15 @@ workload would, waits up to <code>TIMEOUT</code> seconds (120 by default) for it
 and deletes it again. <code>NAMESPACE</code> and <code>CLASS</code> override where it asks and which
 <code>StorageClass</code> it asks for.</p>
 <h2 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h2>
-<p>Reinstalling the nodes does not give Ceph empty disks back. Butane creates the
-<code>rook-osd</code> partition only when it is absent and deliberately leaves it
-unformatted, so a rebuild onto the same hardware inherits the previous
-cluster's OSDs — and Rook will not touch an OSD that belongs to a cluster it
-does not know:</p>
+<p>This used to be the normal outcome of a rebuild. Butane created the <code>rook-osd</code>
+partition only when it was absent and deliberately left it unformatted, so a
+reinstall onto the same hardware inherited the previous cluster's OSDs — and
+Rook will not touch an OSD that belongs to a cluster it does not know.</p>
+<p>The <a href="../../architecture/boot-process/#3-install-bootstrap">installer wipes the disk</a>
+before Flatcar is written, so a rebuilt node now comes back with nothing on it.
+What follows is what the failure looks like if that wipe is ever incomplete —
+<code>blkdiscard</code> declined by the hardware <em>and</em> something <code>wipefs</code> did not catch —
+because the symptom is distinctive and points nowhere near the cause:</p>
 <div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
@@ -2061,31 +2065,30 @@ notice instead is the first workload that wants a volume:</p>
 <p>which in a fresh bootstrap means <a href="../../quickstart/">quickstart</a> step 11 cannot
 start: <code>bao operator init</code> has no pod to exec into.</p>
 <div class="admonition danger">
-<p class="admonition-title">This destroys the old cluster's data</p>
-<p>Wiping the partition is not recoverable, and neither is declining to: once
-the mons that held the cluster map are gone with the old control plane,
-those OSDs cannot be re-adopted by anything. Take a backup off the disks
-first if you need one, then wipe with your eyes open.</p>
+<p class="admonition-title">The old cluster's data is already gone</p>
+<p>This is not a choice between keeping and losing it. Once the mons that held
+the cluster map left with the old control plane, those OSDs cannot be
+re-adopted by anything — the bytes are there and nothing can read them.
+Take a backup off the disks <em>before</em> a rebuild if you need one.</p>
 </div>
-<p>Clear the partition on every node and let the operator try again:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>wipe-osd<span class="w">                    </span><span class="c1"># every host in k8s_nodes</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>make<span class="w"> </span>wipe-osd<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin,thor<span class="w">    </span><span class="c1"># only these</span>
+<p>The fix is to rebuild the node, which wipes the disk as part of the install:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
 </span></code></pre></div>
-<p>It prints the hosts it is about to wipe and waits for you to type <code>WIPE</code>.
-There is no flag to skip that, and it refuses to run without a terminal to ask
-at: the partitions do not come back, and neither does what was on them.</p>
-<p>What it runs, per node, is <code>wipefs -a</code> followed by a 200 MiB <code>dd</code> over
-<code>/dev/disk/by-partlabel/rook-osd</code>. <code>wipefs</code> removes the signature that made
-Rook skip the device; the <code>dd</code> removes the BlueStore label and superblock
-behind it, which is what <code>ceph-volume raw list</code> reads. Addressing the partition
-by label rather than by name matters: the control-plane nodes present it as
-<code>nvme0n1p2</code> and the worker as <code>sda2</code>, and nothing at that path can be the
-<code>containerd</code> partition. Ansible runs it with <code>-m raw</code> for the same reason
-<code>kubeconfig.yaml</code> does — Flatcar ships no <code>/usr/bin/python3</code>, so every other
-module fails with <code>rc=127</code>.</p>
-<p>It then restarts the operator, which recreates the <code>osd-prepare</code> jobs. An OSD
-appears per node and the pending PVCs bind on the next provisioning attempt;
-<code>make storage-check</code> is the way to confirm that rather than assume it.</p>
+<p>Then network-boot it — see
+<a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. The
+installer clears filesystem signatures from every partition, zaps the GPT, and
+discards the whole device where the hardware supports it, so the <code>osd-prepare</code>
+job on the rebuilt node finds a blank partition.</p>
+<p>If a node cannot be rebuilt right now, the same thing by hand over SSH is
+<code>wipefs -a</code> followed by a couple of hundred MiB of <code>dd</code> over
+<code>/dev/disk/by-partlabel/rook-osd</code>. <code>wipefs</code> removes the signature that made Rook
+skip the device; the <code>dd</code> removes the BlueStore label and superblock behind it,
+which is what <code>ceph-volume raw list</code> reads. Address it by label, not by name —
+the control-plane nodes present it as a different partition number than the
+worker does, and nothing at the label path can be the <code>containerd</code> partition.</p>
+<p>Either way, restart the operator afterwards so it recreates the <code>osd-prepare</code>
+jobs. An OSD appears per node and the pending PVCs bind on the next provisioning
+attempt; <code>make storage-check</code> is the way to confirm that rather than assume it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>rook-ceph/             # Distributed Storage
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>├── application.yaml   # ArgoCD Application
