@@ -13,10 +13,11 @@ applies them once, on the first boot after a node is installed. Ansible is a
 template engine with an inventory, and on an immutable OS that is exactly the
 right amount of Ansible.
 
-It generates two Ignition configs per host: the node's own, and a throwaway
-[installer config](../architecture/boot-process.md#3-install-bootstrap) that
-wipes the disk and runs `flatcar-install`. Changing anything under `ansible/`
-therefore takes a rebuild of the affected node, not a reboot.
+It generates one Ignition config per host, and that config does both jobs: the
+PXE environment [runs it to install](../architecture/boot-process.md#3-install-bootstrap),
+and `flatcar-install` embeds the same file into the system it installs. Changing
+anything under `ansible/` therefore takes a rebuild of the affected node, not a
+reboot.
 
 ## Directory Structure
 
@@ -30,10 +31,9 @@ ansible/
 │   ├── reinstall.yaml   # Flips DEFAULT in the generated PXE menus
 │   └── tasks/          # Reusable tasks for downloads
 └── templates/
-    ├── butane_config.yaml.j2  # Template for Butane config (transpiled to Ignition)
-    ├── butane_install.yaml.j2 # Template for the throwaway installer config
-    ├── kubeadm.yaml.j2        # Template for Kubeadm configuration
-    └── pxe_config.j2          # Template for PXE boot menu
+    ├── butane_config.yaml.j2 # Template for Butane config (transpiled to Ignition)
+    ├── kubeadm.yaml.j2       # Template for Kubeadm configuration
+    └── pxe_config.j2         # Template for PXE boot menu
 ```
 
 ## Inventory

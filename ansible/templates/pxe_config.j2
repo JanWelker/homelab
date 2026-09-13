@@ -35,4 +35,4 @@ LABEL install
     MENU LABEL ^Install Flatcar to {{ install_disk }} (ERASES THE DISK)
     KERNEL http://{{ boot_server_ip }}:8000/flatcar_production_pxe.vmlinuz
     INITRD http://{{ boot_server_ip }}:8000/flatcar_production_pxe_image.cpio.gz
-    APPEND flatcar.first_boot=1 ignition.config.url=http://{{ boot_server_ip }}:8000/ignition-install-{{ inventory_hostname }}.json
+    APPEND flatcar.first_boot=1 ignition.config.url=http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json

@@ -286,6 +286,18 @@ storage:
           net.ipv4.ip_forward = 1
 
 
+    # This config, as a file, because that is what `flatcar-install -i` takes.
+    # A config that fetches itself looks odd written down and is the plain
+    # consequence of there being one of them: the installer units below hand
+    # this path to flatcar-install, which embeds it in the OEM partition of the
+    # system being installed.
+    #
+    # It is also written on the installed system, where nothing reads it -- 11KB
+    # for the node to carry a copy of its own provisioning, which is a
+    # reasonable thing to find on a machine you are debugging.
+    - path: /opt/ignition-final.json
+      contents:
+        source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
     - path: /etc/sysupdate.d/kubernetes.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes.conf
@@ -317,6 +329,98 @@ storage:
 
 systemd:
   units:
+    # ------------------------------------------------------------------
+    # Installer. These two run only in the PXE environment, never on the
+    # installed system, and ConditionKernelCommandLine is what tells them apart:
+    # a PXE boot carries `ignition.config.url` on the kernel command line and a
+    # disk boot does not.
+    #
+    # That condition is the price of there being one config instead of two. Any
+    # unit added below has to decide which side of it belongs on, and nothing
+    # enforces that -- `systemctl status` showing "Condition check resulted in
+    # the unit being skipped" is how you find out you got it wrong.
+    # ------------------------------------------------------------------
+    # Two units rather than one, because the only difference between them is
+    # `-u` and the only way to decide is to look at the firmware. A
+    # ConditionPathExists on /sys/firmware/efi expresses that; an `if` in a
+    # shell script is the same decision with somewhere to hide.
+    #
+    # -b and -V rather than -f. Handed a local file, flatcar-install skips
+    # signature verification entirely; pointed at a mirror it downloads the
+    # image, downloads the detached signature beside it, and checks both
+    # against Flatcar's signing key before writing a byte. `make download`
+    # serves the <version>/ layout that makes the node's URL resolve.
+    #
+    # Which matters more than it looks. The boot server is unauthenticated HTTP
+    # on a segment this repository already describes as only conditionally
+    # trusted, and this is the one artifact on it that becomes the operating
+    # system. The SHA512 Ansible checks at download time protects the copy on
+    # the deployment host; this protects the copy the node actually writes.
+    #
+    # blkdiscard returns the whole device to unwritten, which leaves nothing
+    # anywhere for anything to recognise. SATA devices without TRIM decline it,
+    # hence the `-` prefix -- the wipe_table above is what is load-bearing.
+    - name: flatcar-install.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Flatcar to {{ install_disk }} (BIOS)
+        Requires=network-online.target
+        After=network-online.target
+        ConditionKernelCommandLine=ignition.config.url
+        ConditionPathExists=!/sys/firmware/efi
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        StandardOutput=journal+console
+        StandardError=journal+console
+        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
+        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
+          -i /opt/ignition-final.json
+        # Deliberately only on success. A failed install leaves the node in the
+        # PXE environment with a journal and a working SSH key, which is where
+        # you want to be -- rebooting would hand you a machine that PXE-boots
+        # and fails again with the evidence gone.
+        ExecStartPost=/usr/bin/systemctl reboot
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # Identical but for `-u`, which writes an NVRAM boot entry for the disk.
+    # That is what makes "boot from disk" the firmware's own choice rather than
+    # a fallback it reaches after PXE fails.
+    - name: flatcar-install-uefi.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Flatcar to {{ install_disk }} (UEFI)
+        Requires=network-online.target
+        After=network-online.target
+        ConditionKernelCommandLine=ignition.config.url
+        ConditionPathExists=/sys/firmware/efi
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        StandardOutput=journal+console
+        StandardError=journal+console
+        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
+        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
+          -b http://{{ boot_server_ip }}:8000 \
+          -V {{ flatcar_version }} \
+          -i /opt/ignition-final.json \
+          -u
+        ExecStartPost=/usr/bin/systemctl reboot
+
+        [Install]
+        WantedBy=multi-user.target
+
+    # ------------------------------------------------------------------
+    # The installed system. Everything below is skipped in the PXE environment.
+    # ------------------------------------------------------------------
     # Capping ROOT in the disks stanza above is also what stops it growing.
     # Flatcar's stock growth is systemd-growfs-root.service, which is `static`
     # -- it is pulled in by an `x-systemd.growfs` mount option, and the root
@@ -332,6 +436,7 @@ systemd:
       contents: |
         [Unit]
         Description=Grow the root filesystem into its partition
+        ConditionKernelCommandLine=!ignition.config.url
         After=local-fs.target
         Before=kubelet.service bootstrap-k8s.service
 
@@ -350,6 +455,9 @@ systemd:
       dropins:
         - name: 20-kubelet.conf
           contents: |
+            [Unit]
+            ConditionKernelCommandLine=!ignition.config.url
+
             [Service]
             ExecStart=
             ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
@@ -413,6 +521,7 @@ systemd:
         Description=Bootstrap Kubernetes Cluster
         After=network-online.target
         Wants=network-online.target
+        ConditionKernelCommandLine=!ignition.config.url
         ConditionPathExists=!/etc/kubernetes/kubelet.conf
 
         [Service]
