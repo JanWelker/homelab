@@ -311,8 +311,8 @@ class BootHandler(SimpleHTTPRequestHandler):
         host = hosts_by_ip.get(ip)
         if host is None:
             say(ip, 'took the OS image but never asked for an Ignition config, '
-                    'so I cannot tell which node it is -- run make '
-                    'reinstall-cancel before it reboots', level=logging.WARNING)
+                    'so I cannot tell which node it is. To cancel before it '
+                    'reboots, run: make reinstall-cancel', level=logging.WARNING)
         elif switch_to_local_boot(host):
             say(ip, 'OS image delivered -- switching to local boot, so the '
                     'reboot lands on the disk', tint='ok')
@@ -351,12 +351,13 @@ def offer_to_disarm():
     banner(f'STILL ARMED: {", ".join(armed)}',
            'Leaving them armed means the next time any of them powers on it',
            'installs, wipes its disk, and does not ask first. The boot server',
-           'does not have to be running for that -- the menu is already on disk.')
+           'does not have to be running for that -- the menu is already on disk.',
+           '',
+           'To cancel later, run:  make reinstall-cancel')
 
     if not sys.stdin.isatty():
-        say('server', 'not a terminal, so leaving them as they are -- '
-                      'make reinstall-cancel stands them down',
-            level=logging.WARNING)
+        say('server', 'not a terminal, so leaving them armed. To cancel, run: '
+                      'make reinstall-cancel', level=logging.WARNING)
         return
 
     try:
@@ -366,7 +367,7 @@ def offer_to_disarm():
         answer = 'n'
 
     if answer not in ('', 'y', 'yes'):
-        say('server', 'left armed: %s -- make reinstall-cancel stands them down',
+        say('server', 'left armed: %s. To cancel, run: make reinstall-cancel',
             ', '.join(armed), level=logging.WARNING)
         return
 
@@ -395,7 +396,8 @@ def announce_start():
             'partition on it, and the Ceph OSD with them. No data survives, and',
             'nothing asks for confirmation at the console.',
             '',
-            'make reinstall-cancel stands them down.')
+            'To cancel, run:  make reinstall-cancel',
+            '                 make reinstall-cancel LIMIT=<node>  for one')
     else:
         say('server', 'nothing is armed -- every menu says local boot, '
                       'make reinstall arms one')
