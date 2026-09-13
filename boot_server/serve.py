@@ -12,7 +12,6 @@ import re
 import sys
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlparse
 
 import tftpy
 from tftpy.TftpContexts import TftpContextServer
@@ -177,8 +176,10 @@ class BootHandler(SimpleHTTPRequestHandler):
         super().send_response(code, message)
 
     def do_GET(self):
-        relative = unquote(urlparse(self.path).path).lstrip('/')
-        name = os.path.basename(relative) or '/'
+        # translate_path is what confines a request to output/http; going
+        # around it to name the file would let a crafted URL stat anything.
+        served = self.translate_path(self.path)
+        name = '/' if os.path.isdir(served) else os.path.basename(served)
         ip = self.client_address[0]
         named = IGNITION_NAME.match(name)
         if named:
@@ -186,8 +187,7 @@ class BootHandler(SimpleHTTPRequestHandler):
         host = hosts_by_ip.get(ip)
 
         self.status = 200
-        say(host or ip, 'collecting %s',
-            describe(name, os.path.join(HTTP_DIR, relative)))
+        say(host or ip, 'collecting %s', describe(name, served))
         super().do_GET()
 
         if self.status != 200:
