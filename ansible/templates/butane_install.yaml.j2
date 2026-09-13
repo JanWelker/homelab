@@ -1,0 +1,109 @@
+variant: flatcar
+version: 1.0.0
+# Installer config. This is *not* the config the node runs on -- it is a
+# throwaway environment whose only job is to write Flatcar to disk and reboot
+# into it. The real config is ignition-{{ inventory_hostname }}.json, which is
+# embedded into the OEM partition by flatcar-install and read on first boot from
+# disk.
+#
+# Served only to the `install` entry in the PXE menu, which has to be chosen
+# deliberately. The menu's default boots the local disk, so a node that reboots
+# while the boot server happens to be running does not reinstall itself.
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+storage:
+  files:
+    # Staged into the PXE environment's tmpfs, so this costs RAM for the length
+    # of the install. The image is roughly 700MB against the 3.8GB tmpfs a node
+    # with 8GB gets.
+    - path: /opt/flatcar_production_image.bin.bz2
+      contents:
+        source: http://{{ boot_server_ip }}:8000/flatcar_production_image.bin.bz2
+
+    - path: /opt/ignition-final.json
+      contents:
+        source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
+
+    - path: /opt/install.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+
+          DISK="{{ install_disk }}"
+          IMAGE=/opt/flatcar_production_image.bin.bz2
+          CONFIG=/opt/ignition-final.json
+
+          echo "### Wiping ${DISK}"
+
+          # Order matters. Ceph writes BlueStore metadata at the start of the
+          # raw rook-osd partition, and repartitioning alone leaves those bytes
+          # exactly where they were -- `ceph-volume raw list` reads the
+          # signature, not the partition table, so the OSD comes back from the
+          # dead on a cluster that has never heard of it. Clearing each
+          # partition before the table is what prevents that.
+          for part in $(lsblk --list --noheadings --paths --output NAME "${DISK}" | tail -n +2); do
+            echo "  wipefs ${part}"
+            wipefs --all --force "${part}" || true
+          done
+
+          wipefs --all --force "${DISK}" || true
+          sgdisk --zap-all "${DISK}" || true
+
+          # Belt and braces, and on NVMe it is nearly free. A discard returns
+          # the whole device to unwritten, which leaves nothing anywhere for
+          # anything to recognise. SATA devices without TRIM decline; the
+          # wipefs pass above is what is actually load-bearing, so a failure
+          # here is not fatal.
+          blkdiscard --force "${DISK}" || echo "  blkdiscard unsupported, relying on wipefs"
+
+          udevadm settle
+
+          echo "### Installing Flatcar to ${DISK}"
+
+          # -f skips the GPG check that -b/-V would perform. The image was
+          # verified against the release server's SHA512 DIGESTS when Ansible
+          # downloaded it, which is the same guarantee one hop earlier.
+          INSTALL_ARGS=(-d "${DISK}" -f "${IMAGE}" -i "${CONFIG}")
+
+          # A UEFI boot entry is what makes "boot from disk" the firmware's
+          # choice rather than a fallback it reaches after PXE fails. On BIOS
+          # machines there is nothing to create and the disk is already next in
+          # the boot order.
+          if [[ -d /sys/firmware/efi ]] && command -v efibootmgr >/dev/null; then
+            echo "  UEFI detected, will create a boot entry"
+            INSTALL_ARGS+=(-u)
+          fi
+
+          flatcar-install "${INSTALL_ARGS[@]}"
+
+          udevadm settle
+          echo "### Installed. Rebooting into ${DISK}"
+systemd:
+  units:
+    - name: flatcar-install.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Flatcar to {{ install_disk }} and reboot
+        Requires=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        StandardOutput=journal+console
+        StandardError=journal+console
+        ExecStart=/opt/install.sh
+        # Deliberately only on success. A failed install leaves the node in the
+        # PXE environment with a journal and a working SSH key, which is where
+        # you want to be -- rebooting would hand you a machine that PXE-boots
+        # and fails again with the evidence gone.
+        ExecStartPost=/usr/bin/systemctl reboot
+
+        [Install]
+        WantedBy=multi-user.target

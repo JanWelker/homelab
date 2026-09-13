@@ -1,0 +1,26 @@
+---
+# Flips the DEFAULT line in the generated PXE menus so a node reinstalls on its
+# next network boot.
+#
+# The template always writes `DEFAULT localboot`, so a node that network-boots
+# for any reason boots the disk it already has. This edits the generated file in
+# output/ rather than the template, which means `make config` puts the safe
+# default back -- including over anything armed and not used.
+#
+#   make reinstall                   # every host
+#   make reinstall LIMIT=odin        # only this one
+#   make reinstall-cancel            # back to localboot
+- name: Set the PXE boot default
+  hosts: k8s_nodes
+  connection: local
+  gather_facts: false
+  vars:
+    output_dir: "{{ playbook_dir }}/../../output"
+    pxe_default: install
+  tasks:
+    - name: Set DEFAULT in the generated PXE menu
+      ansible.builtin.lineinfile:
+        path: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
+        regexp: '^DEFAULT '
+        line: "DEFAULT {{ pxe_default }}"
+        state: present

@@ -9,14 +9,14 @@ The Ansible playbooks and configuration used to provision the Flatcar cluster.
 Worth being clear about what Ansible is doing here, because it is not the usual
 job. It never configures a node. It has no `hosts: all` play that SSHes in and
 converges anything — it generates files on the deployment host, and Ignition
-applies them at boot. Ansible is a template engine with an inventory, and on an
-immutable OS that is exactly the right amount of Ansible.
+applies them once, on the first boot after a node is installed. Ansible is a
+template engine with an inventory, and on an immutable OS that is exactly the
+right amount of Ansible.
 
-Because these nodes
-[run from RAM](../architecture/boot-process.md#nothing-is-installed-to-disk),
-"at boot" means *every* boot rather than only the first. Re-running `make config`
-and rebooting a node is the whole deployment mechanism for anything under
-`ansible/`.
+It generates two Ignition configs per host: the node's own, and a throwaway
+[installer config](../architecture/boot-process.md#3-install-bootstrap) that
+wipes the disk and runs `flatcar-install`. Changing anything under `ansible/`
+therefore takes a rebuild of the affected node, not a reboot.
 
 ## Directory Structure
 
@@ -27,11 +27,13 @@ ansible/
 │   ├── config.yaml      # Generates Ignition and Kubeadm configurations
 │   ├── download.yaml    # Downloads required artifacts (OS images, binaries)
 │   ├── kubeconfig.yaml  # Retrieves kubeconfig from the control plane
+│   ├── reinstall.yaml   # Flips DEFAULT in the generated PXE menus
 │   └── tasks/          # Reusable tasks for downloads
 └── templates/
-    ├── butane_config.yaml.j2 # Template for Butane config (transpiled to Ignition)
-    ├── kubeadm.yaml.j2       # Template for Kubeadm configuration
-    └── pxe_config.j2         # Template for PXE boot menu
+    ├── butane_config.yaml.j2  # Template for Butane config (transpiled to Ignition)
+    ├── butane_install.yaml.j2 # Template for the throwaway installer config
+    ├── kubeadm.yaml.j2        # Template for Kubeadm configuration
+    └── pxe_config.j2          # Template for PXE boot menu
 ```
 
 ## Inventory

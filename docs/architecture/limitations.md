@@ -131,39 +131,20 @@ Partial network policy is genuinely better than none, but it is worth not
 mistaking it for a boundary. A pod in `authentik` can still talk to a pod in
 `kured` all day long.
 
-## Nodes cannot boot without the boot server
-
-The nodes have no operating system on disk. They PXE-boot the Flatcar RAM image
-and fetch their kernel, initrd and Ignition config from `make serve` on **every**
-boot — see
-[Nothing is installed to disk](boot-process.md#nothing-is-installed-to-disk).
-
-A node that reboots while the boot server is down PXE-boots into nothing, falls
-through to a disk holding no bootloader, and stays there. This is not a
-provisioning-time concern; it applies to every reboot the cluster will ever do:
-
-- [Kured](../platform/kured.md) reboots nodes automatically between 01:00 and
-  05:00 whenever an OS or sysext update is staged.
-- Power loss, a kernel panic, or a hand-run `systemctl reboot` all land in the
-  same place.
-
-The mitigation today is procedural: start the boot server before anything that
-might cause a reboot, and keep it running through the window. That sits
-uncomfortably beside the advice in
-[Security Posture](security.md#provisioning) to stop it when provisioning is
-finished — the boot server hands out join credentials over unauthenticated HTTP,
-so leaving it running is a real exposure and turning it off is a real
-availability risk. There is no configuration that resolves this; moving the boot
-server into something with a life of its own is the actual fix.
-
 ## Provisioning requires the boot server on the same segment
 
 Reprovisioning any node means running `make serve` on a machine on the nodes' L2
-segment, with the external DHCP server pointing at it. There is no way to
-rebuild a node remotely, and the deployment host is not part of the cluster.
+segment, with the external DHCP server pointing at it, and choosing `install`
+from the PXE menu at that node's console. There is no way to rebuild a node
+remotely, and the deployment host is not part of the cluster.
 
-Translation: you cannot fix a dead node from a hotel room. Plan holidays
+Translation: you cannot rebuild a dead node from a hotel room. Plan holidays
 accordingly.
+
+This is now genuinely limited to *re*provisioning. Flatcar is installed to disk,
+so a running node reboots, updates and rejoins with the boot server switched
+off — which is the difference between needing it for a rebuild and needing it
+for a Tuesday.
 
 ## Single-region, single-site, single-rack
 

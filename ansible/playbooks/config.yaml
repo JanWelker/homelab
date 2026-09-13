@@ -87,6 +87,23 @@
         - Transpile Butane to Ignition
         - Generate PXE Config
 
+    # The throwaway config the PXE `install` entry boots into. It wipes the
+    # disk, runs flatcar-install with the config above, and reboots. Generated
+    # unconditionally rather than via a handler: it embeds the URL of the config
+    # above, so it has to exist whether or not that one changed.
+    - name: Generate Installer Butane Config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/butane_install.yaml.j2" # noqa: no-relative-paths
+        dest: "{{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml"
+        mode: "0755"
+
+    - name: Transpile Installer Butane to Ignition
+      ansible.builtin.command:
+        cmd: >-
+          butane --pretty --strict {{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml
+          -o {{ output_dir }}/http/ignition-install-{{ inventory_hostname }}.json
+      changed_when: true
+
   handlers:
     - name: Transpile Butane to Ignition
       ansible.builtin.command:

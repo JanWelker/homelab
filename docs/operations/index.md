@@ -56,18 +56,11 @@ unhealthy. The procedure below is for the cases it does not cover: rebooting
 sooner than the window, or rebooting a node for a reason nothing set a sentinel
 for.
 
-!!! danger "Start the boot server first"
-    There is no operating system on the node's disk. It PXE-boots the Flatcar
-    RAM image and fetches its kernel, initrd and Ignition config from
-    `make serve` every time — so a node rebooted while the boot server is down
-    does not come back. Run `make serve` on the deployment host before the
-    reboot, and leave it up until the node is `Ready` again. This applies to
-    Kured's unattended reboots too; see
-    [Nodes cannot boot without the boot server](../architecture/limitations.md#nodes-cannot-boot-without-the-boot-server).
-
-A reboot is also a **reprovision**: the node re-reads its Ignition config, so
-any change made with `make config` takes effect here, and anything written to
-the node by hand does not survive.
+A reboot is just a reboot. Flatcar is installed to disk, the node boots from it
+without the boot server, and `/etc/kubernetes`, `/var/lib/etcd` and
+`/var/lib/rook` are all still there when it comes back. A change made with
+`make config` is *not* picked up here — that takes a
+[rebuild](#repartitioning-the-nodes).
 
 ```bash
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
@@ -134,13 +127,16 @@ absent, so it will not interfere with a node that has already joined.
 ## Repartitioning the nodes
 
 The disk layout lives in `ansible/templates/butane_config.yaml.j2` and is applied
-by Ignition, which runs on every boot. Changing a *size* or *order* in it is not
-an edit you roll out — it is a rebuild.
+by Ignition, which runs once — on the first boot after a node is installed.
+Changing a *size* or *order* in it is not an edit you roll out. Neither is
+changing anything else under `ansible/`: the node's Ignition config is embedded
+in its OEM partition at install time, so a running node will never see the new
+one.
 
 `rook-osd` is the last partition and is deliberately raw: Ceph owns the bytes,
 and there is no filesystem or label inside it that would let anything relocate
 them. Move its start offset by so much as a sector — which is what inserting or
-resizing any partition above it does — and every OSD on every node is gone.
+resizing any partition above it does — and every OSD on that node is gone.
 
 !!! danger "The backups are inside the thing being wiped"
     Velero and the etcd snapshot CronJob both write to the Ceph object store
@@ -150,23 +146,46 @@ resizing any partition above it does — and every OSD on every node is gone.
     This is the failure mode that limitation was written about, arriving in
     person.
 
-The procedure is therefore a full reprovision:
+The procedure is a reinstall:
 
 1. Copy what matters off the cluster — Velero backups, the latest etcd snapshot,
    and anything in a PVC that is not reproducible from Git.
-2. Edit the partition table in `ansible/templates/butane_config.yaml.j2`.
-3. `make config` to regenerate the Ignition configs, then `make serve`.
-4. Boot every node. Ignition repartitions and reformats, `bootstrap-k8s.service`
-   runs `kubeadm` again, and Rook finds six empty `rook-osd` partitions and
-   builds a new cluster on them.
-5. Stop the boot server, then follow
-   [the quickstart](../quickstart.md) from the post-install steps — ArgoCD
-   restores the platform from Git, and OpenBao needs
-   [unsealing](#after-any-node-reboot-unseal-openbao).
+2. Edit whatever needs editing under `ansible/`.
+3. `make config` to regenerate both Ignition configs, then `make serve`.
+4. Arm the nodes you are rebuilding:
 
-Only the *last* partition can grow without this. Shrinking `rook-osd` to make
-room for something else cannot be done in place either, because Ceph has already
-written across the space you would be taking back.
+    ```bash
+    make reinstall LIMIT=odin   # or `make reinstall` for every host
+    ```
+
+    That flips `DEFAULT localboot` to `DEFAULT install` in
+    `output/tftp/pxelinux.cfg/01-<mac>`. The template is untouched, so the next
+    `make config` puts the safe default back — including over anything armed and
+    not used. `make reinstall-cancel` does the same deliberately. Picking
+    `install` at the console by hand works just as well.
+5. Network-boot the node. The installer wipes the disk — every partition
+   signature, the GPT, and a device-level discard where the hardware supports
+   it — runs `flatcar-install`, and reboots into the freshly installed system,
+   which then runs `kubeadm`.
+6. Leave the boot server up until the node is `Ready`: the sysext images are
+   still fetched from it on that first boot. Then stop it.
+
+One node at a time is safe if you are rebuilding rather than repartitioning —
+etcd keeps quorum and Ceph backfills, exactly as in
+[Replacing a failed node](#replacing-a-failed-node). Repartitioning is different
+only in that it destroys every OSD as it goes, so a rolling rebuild across all
+six nodes eventually destroys all replicas of everything. Step 1 is not optional
+for that case.
+
+!!! note "The menu will not do this by accident"
+    The PXE entry that installs has to be chosen. The menu's default is
+    `LOCALBOOT`, and on UEFI firmware `flatcar-install -u` writes a boot entry
+    for the disk — so a node that reboots while the boot server happens to be
+    running boots what it already has.
+
+Only the *last* partition can grow without a reinstall. Shrinking `rook-osd` to
+make room for something else cannot be done in place either, because Ceph has
+already written across the space you would be taking back.
 
 ## Replacing a failed node
 

@@ -1,9 +1,25 @@
-DEFAULT flatcar
+DEFAULT localboot
 PROMPT 1
 TIMEOUT 50
 
-LABEL flatcar
-    MENU LABEL Flatcar Container Linux
+# The default is the local disk, and that is the whole point of this file.
+# Flatcar is installed to {{ install_disk }}, so normal operation never touches
+# the boot server -- and a node that reboots while the boot server happens to be
+# running boots what it already has rather than reinstalling itself.
+#
+# On UEFI firmware flatcar-install writes a real boot entry (-u), so the
+# firmware usually goes straight to disk without consulting this menu at all.
+# On BIOS the disk is next in the boot order and LOCALBOOT hands over to it.
+LABEL localboot
+    MENU LABEL ^Boot from local disk (default)
+    LOCALBOOT 0
+
+# Chosen deliberately, once, to build or rebuild a node. Wipes
+# {{ install_disk }} completely -- including any previous Ceph OSD -- installs
+# Flatcar, embeds ignition-{{ inventory_hostname }}.json into the OEM partition
+# and reboots into it.
+LABEL install
+    MENU LABEL ^Install Flatcar to {{ install_disk }} (ERASES THE DISK)
     KERNEL http://{{ boot_server_ip }}:8000/flatcar_production_pxe.vmlinuz
     INITRD http://{{ boot_server_ip }}:8000/flatcar_production_pxe_image.cpio.gz
-    APPEND flatcar.first_boot=1 ignition.config.url=http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
+    APPEND flatcar.first_boot=1 ignition.config.url=http://{{ boot_server_ip }}:8000/ignition-install-{{ inventory_hostname }}.json
