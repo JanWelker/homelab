@@ -1994,9 +1994,10 @@ want to know.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>config
 </span></code></pre></div>
 <p><em>Artifacts will be generated in <code>output/http</code> (Ignition) and <code>output/tftp</code>
-(PXE). One Ignition config per host, <code>ignition-&lt;host&gt;.json</code>: the PXE
-environment runs it to install, and <code>flatcar-install</code> embeds the same file
-into the installed system. The
+(PXE). Two Ignition configs per host from one template:
+<code>ignition-&lt;host&gt;-install.json</code>, which the PXE environment runs to wipe the
+disk and install, and <code>ignition-&lt;host&gt;.json</code>, which <code>flatcar-install</code> embeds
+into the installed system. They differ only in the disk stanza. The
 install disk ends up as a 50GB root filesystem and the remaining space as a
 raw partition for Rook-Ceph.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
@@ -2051,7 +2052,7 @@ unattended. See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Pro
   reboot on it is booting from its own disk.</li>
 <li>Expect the boot server log to name each node and walk it through the
   sequence: the bootloader and its <code>01-&lt;mac&gt;</code> menu over TFTP, then the
-  kernel, the initrd, its Ignition config and the OS image over HTTP, then
+  kernel, the initrd, its installer config and the OS image over HTTP, then
   <code>switching to local boot</code> — and after the reboot, the Ignition config
   again plus the sysext images. A node that is still on the bare IP rather
   than its name has not fetched a menu the server recognises.</li>
@@ -2375,7 +2376,11 @@ error message. The trick is to stop staring at the node and start reading the
 </tr>
 <tr>
 <td>Kernel boots, then Ignition fails</td>
-<td>The node couldn't fetch <code>ignition-&lt;host&gt;.json</code> over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist.</td>
+<td>The node couldn't fetch <code>ignition-&lt;host&gt;-install.json</code> over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist.</td>
+</tr>
+<tr>
+<td><code>refusing to wipe active disk</code> on the first boot after an install</td>
+<td>The installer's disk stanza reached the installed system. <code>wipe_table</code> belongs in <code>ignition-&lt;host&gt;-install.json</code> only — see <a href="../architecture/boot-process/#wiping-the-disk">Wiping the disk</a>.</td>
 </tr>
 <tr>
 <td>Node installs but never joins the cluster</td>
