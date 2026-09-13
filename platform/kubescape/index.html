@@ -877,18 +877,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-deliberately-off" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is deliberately off
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What is deliberately off">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#image-vulnerability-scanning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -898,8 +886,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#the-runtime-stack" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -909,20 +897,15 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#the-admission-controller" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#what-is-still-off" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The admission controller
+        What is still off
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1752,18 +1735,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-deliberately-off" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is deliberately off
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What is deliberately off">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#image-vulnerability-scanning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1773,8 +1744,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#the-runtime-stack" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1784,20 +1755,15 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#the-admission-controller" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#what-is-still-off" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The admission controller
+        What is still off
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1922,7 +1888,7 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 </thead>
 <tbody>
 <tr>
-<td>Schedule</td>
+<td>Posture schedule</td>
 <td>Daily, <code>1 2 * * *</code></td>
 </tr>
 <tr>
@@ -1934,12 +1900,20 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 <td>Yes (<code>nodeScan</code>) — the kube-bench-shaped half of CIS</td>
 </tr>
 <tr>
+<td>Image CVEs</td>
+<td>Yes (<code>vulnerabilityScan</code>), narrowed by <code>relevancy</code></td>
+</tr>
+<tr>
+<td>Runtime</td>
+<td>eBPF node-agent DaemonSet on all six nodes</td>
+</tr>
+<tr>
 <td>Results</td>
 <td>Aggregated API: <code>spdx.softwarecomposition.kubescape.io</code></td>
 </tr>
 <tr>
 <td>Metrics</td>
-<td><code>kubescape_controls_*</code>, scraped by two ServiceMonitors</td>
+<td><code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code>, three ServiceMonitors</td>
 </tr>
 <tr>
 <td>Sent off-cluster</td>
@@ -1951,57 +1925,92 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 SaaS backend when <code>server</code>, <code>account</code> and <code>accessKey</code> are set; leaving them unset
 is what keeps findings in the cluster. There is no "offline" switch to forget to
 flip, which is the right way round for a default.</p>
-<h2 id="what-is-deliberately-off">What is deliberately off<a class="headerlink" href="#what-is-deliberately-off" title="Permanent link">&para;</a></h2>
-<p>Kubescape ships as a suite and defaults to most of it enabled. Roughly half is
-turned off here, and — in the spirit of the rest of this documentation — each one
-is a decision with a reason rather than a default nobody examined.</p>
-<h3 id="image-vulnerability-scanning">Image vulnerability scanning<a class="headerlink" href="#image-vulnerability-scanning" title="Permanent link">&para;</a></h3>
-<p><code>vulnerabilityScan</code>, <code>relevancy</code> and <code>nodeSbomGeneration</code> are off because
-<strong>kubevuln cannot schedule on these nodes</strong>. It requests 5Gi of
-<code>ephemeral-storage</code> and limits at 10Gi:</p>
+<h2 id="image-vulnerability-scanning">Image vulnerability scanning<a class="headerlink" href="#image-vulnerability-scanning" title="Permanent link">&para;</a></h2>
+<p><code>kubevuln</code> requests 5Gi of <code>ephemeral-storage</code> and limits at 10Gi, which is why
+this was not enabled when Kubescape first landed. The kubelet root directory was
+part of the tmpfs root, so node allocatable <code>ephemeral-storage</code> was <strong>3.6 GB</strong> on
+the control-plane nodes and <strong>7.4 GB</strong> on the workers — the request alone made
+the pod unschedulable on half the cluster, and what it did allocate would have
+been RAM shared with etcd.</p>
+<p><code>/var/lib/kubelet</code> is
+<a href="../../operations/#repartitioning-the-nodes">its own 40 GB partition</a> now,
+so the request is ordinary and the pod lands anywhere.</p>
+<p><code>relevancy</code> is the setting that makes the output worth reading. Without it a CVE
+report lists every vulnerability in every layer of every image; with it, findings
+are narrowed to packages actually loaded at runtime, which the node-agent
+observes. That is the difference between a list of four hundred findings and a
+list of the ones reachable in this cluster — and it is the other reason CVE
+scanning and the runtime stack arrive together rather than separately.</p>
+<h2 id="the-runtime-stack">The runtime stack<a class="headerlink" href="#the-runtime-stack" title="Permanent link">&para;</a></h2>
+<p><code>runtimeObservability</code> and its relatives deploy an eBPF node-agent DaemonSet on
+all six nodes. It learns what a workload normally does — which syscalls, which
+files, which network peers — and reports when it stops doing that.</p>
 <table>
 <thead>
 <tr>
-<th>Node</th>
-<th>Allocatable ephemeral-storage</th>
+<th>Capability</th>
+<th>What it adds</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Control plane (<code>odin</code>, <code>thor</code>, <code>loki</code>)</td>
-<td>3.6 GB</td>
+<td><code>runtimeObservability</code></td>
+<td>The node-agent itself, and application profiles</td>
 </tr>
 <tr>
-<td>Workers (<code>freya</code>, <code>heimdall</code>, <code>valkyrie</code>)</td>
-<td>7.4 GB</td>
+<td><code>runtimeDetection</code></td>
+<td>Alerts on deviation from a learned profile</td>
+</tr>
+<tr>
+<td><code>networkPolicyService</code></td>
+<td>Generates <code>NetworkPolicy</code> from observed traffic</td>
+</tr>
+<tr>
+<td><code>networkEventsStreaming</code></td>
+<td>Feeds the above with live connection events</td>
+</tr>
+<tr>
+<td><code>nodeProfileService</code></td>
+<td>Per-node rather than per-workload profiles</td>
+</tr>
+<tr>
+<td><code>httpDetection</code></td>
+<td>Application-layer visibility on top of the network events</td>
+</tr>
+<tr>
+<td><code>seccompProfileService</code></td>
+<td>Generates seccomp profiles from observed syscalls</td>
 </tr>
 </tbody>
 </table>
-<p>The request alone makes the pod unschedulable on three of six nodes. The deeper
-problem is what that storage <em>is</em>: the root filesystem here is
-<a href="../../architecture/security/#where-the-log-actually-lives">tmpfs</a>, so ephemeral
-storage is RAM. A container image unpacked for scanning is charged to the same
-memory etcd is running in, on a node with 7.7 GB of it.</p>
-<p>Turning it on is a real options trade, not a flag flip — it wants tuned
-<code>kubevuln.resources</code>, a <code>nodeSelector</code> pinning it to the workers, and a lower
-<code>maxImageSize</code>. Worth doing the day <code>/var/lib</code> sits on a disk.</p>
-<h3 id="the-runtime-stack">The runtime stack<a class="headerlink" href="#the-runtime-stack" title="Permanent link">&para;</a></h3>
-<p><code>runtimeObservability</code> and its relatives (<code>networkPolicyService</code>,
-<code>networkEventsStreaming</code>, <code>nodeProfileService</code>, <code>httpDetection</code>,
-<code>seccompProfileService</code>) deploy an eBPF node-agent DaemonSet on all six nodes.
-This is genuinely the most interesting half of Kubescape — it learns what a
-workload normally does and flags when it stops doing that — and it is also the
-most expensive, on nodes whose entire root filesystem is a 3.8 GB tmpfs.</p>
-<p>Off until posture scanning has earned its keep. Enable one capability at a time
-and watch node memory, not all of them at once.</p>
-<h3 id="the-admission-controller">The admission controller<a class="headerlink" href="#the-admission-controller" title="Permanent link">&para;</a></h3>
-<p><code>admissionController</code> installs a validating webhook in front of the API server.
-A posture tool that can refuse writes is a posture tool that can take the cluster
-down when it is itself unhealthy, and a failing webhook fails in the least
-convenient way available: <code>kubectl apply</code> starts returning errors about a
-component most people have forgotten is in the path.</p>
-<p>Nothing here is worth that trade while the findings are still being <em>read</em> rather
-than enforced. Enforcement is a thing to earn.</p>
+<p>The cost is memory: 180Mi requested and a 1400Mi limit on every node. That is
+affordable now for the same reason CVE scanning is — the container logs and the
+kubelet directory that used to occupy the tmpfs root moved to disk. <code>odin</code> was
+sitting at 85% memory with 813 MB of it tmpfs before that change.</p>
+<div class="admonition tip">
+<p class="admonition-title">Watch the node-agent's own metrics first</p>
+<p><code>nodeAgent.serviceMonitor</code> is enabled alongside, so the agent's event rates
+and budget usage are in Prometheus from the moment it starts. If the runtime
+stack is going to be too expensive for these nodes, that is where it shows
+up — before the OOM killer makes the point less politely.</p>
+</div>
+<h2 id="what-is-still-off">What is still off<a class="headerlink" href="#what-is-still-off" title="Permanent link">&para;</a></h2>
+<p>Four things, and none of them for capacity reasons — so none of them changed
+when the nodes got disk.</p>
+<p><strong><code>malwareDetection</code></strong> scans file contents on the node for known signatures. A
+different kind of expensive from the rest of the runtime stack, because it reads
+rather than observes, and the one capability here without an obvious question it
+answers about this cluster.</p>
+<p><strong><code>admissionController</code></strong> installs a validating webhook in front of the API
+server. A posture tool that can refuse writes is a posture tool that can take the
+cluster down when it is itself unhealthy, and a failing webhook fails in the
+least convenient way available: <code>kubectl apply</code> starts returning errors about a
+component most people have forgotten is in the path. Not worth the trade while
+findings are still being <em>read</em> rather than enforced. Enforcement is a thing to
+earn.</p>
+<p><strong><code>continuousScan</code></strong> re-evaluates posture on every relevant API change rather
+than on the schedule. Useful on a cluster that changes constantly; this one
+changes when a Renovate PR merges.</p>
 <div class="admonition note">
 <p class="admonition-title"><code>autoUpgrading</code> and <code>manageWorkloads</code> are off for GitOps reasons</p>
 <p><code>autoUpgrading</code> upgrades Kubescape's own Helm release from inside the
@@ -2020,41 +2029,35 @@ door explicitly sets <code>isDefault: false</code>, leaving Prometheus holding t
 <tr>
 <th>Panel</th>
 <th>Metric</th>
-<th>Populated</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Cluster Controls Vulnerabilities</td>
 <td><code>kubescape_controls_total_cluster_*</code></td>
-<td>Yes</td>
 </tr>
 <tr>
 <td>Namespace Controls Vulnerabilities</td>
 <td><code>kubescape_controls_total_namespace_*</code></td>
-<td>Yes</td>
 </tr>
 <tr>
 <td>Workload Controls Vulnerabilities</td>
 <td><code>kubescape_controls_total_workload_*</code></td>
-<td>Yes</td>
 </tr>
 <tr>
 <td>Cluster Vulnerabilities</td>
 <td><code>kubescape_vulnerabilities_total_cluster_*</code></td>
-<td>No</td>
 </tr>
 <tr>
 <td>Namespace Vulnerabilities</td>
 <td><code>kubescape_vulnerabilities_total_namespace_*</code></td>
-<td>No</td>
 </tr>
 </tbody>
 </table>
-<p>The two empty panels are the image-CVE half, disabled above. They are left in
-place rather than edited out: a panel that is empty because a capability is off
-is easier to reason about than a dashboard that silently diverged from upstream,
-and it becomes correct again the moment the capability is enabled.</p>
+<p>All five populate. The two <code>kubescape_vulnerabilities_*</code> panels were dark when
+CVE scanning was disabled, and were deliberately left in the dashboard rather
+than edited out — which is the reason they started working on their own rather
+than needing the dashboard rewritten.</p>
 <div class="admonition note">
 <p class="admonition-title">Where the dashboard ConfigMap lives</p>
 <p><code>grafana-dashboard.yaml</code> declares its namespace as <code>monitoring</code>, not
@@ -2091,12 +2094,8 @@ gets ignored:</p>
 <td>Required for the kube-prometheus-stack ServiceMonitors to reach them — see <a href="../monitoring/">monitoring</a></td>
 </tr>
 <tr>
-<td><code>--audit-log-maxbackup</code> is 2, not 10</td>
-<td>The audit log shares a 3.8 GB tmpfs with etcd; Loki holds the retention instead — see <a href="../../architecture/security/#where-the-log-actually-lives">Audit logging</a></td>
-</tr>
-<tr>
-<td>Four namespaces enforce PSA <code>privileged</code></td>
-<td>Cilium, Rook OSDs, node-exporter and OpenBao each need it, individually — see <a href="../security-policies/">Security Policies</a></td>
+<td>Five namespaces enforce PSA <code>privileged</code></td>
+<td>Cilium, Rook OSDs, node-exporter, OpenBao and Kubescape's own node-agent each need it, individually — see <a href="../security-policies/">Security Policies</a></td>
 </tr>
 <tr>
 <td>No default-deny egress anywhere</td>
@@ -2118,15 +2117,23 @@ v1.37 auto-detection fails and the benchmark has to be pinned:</p>
 <p>Kubescape is what runs <em>continuously</em>, which is the part that matters. A
 benchmark you run once is a screenshot.</p>
 <h2 id="namespace-security-level">Namespace security level<a class="headerlink" href="#namespace-security-level" title="Permanent link">&para;</a></h2>
-<p><code>kubescape</code> is the only namespace in
-<a href="../security-policies/"><code>pod-security.yaml</code></a> that enforces PSA <code>restricted</code>, and
-it needed no exception to get there: every workload the chart renders already
-runs non-root with <code>RuntimeDefault</code> seccomp, no privilege escalation and <code>ALL</code>
-capabilities dropped.</p>
-<p>That is worth stating because it does not survive enabling the runtime
-capabilities — those add a privileged DaemonSet, and the namespace would have to
-drop to <code>privileged</code> to accommodate it. The cost of that switch is visible here
-rather than discovered afterwards.</p>
+<p><code>kubescape</code> enforces PSA <code>privileged</code>, and the node-agent is the entire reason.
+Watching syscalls from userspace needs <code>hostPID</code>, <code>runAsUser: 0</code>, hostPath mounts
+of <code>/</code>, <code>/boot</code>, <code>/sys/fs/bpf</code> and <code>/sys/kernel/debug</code>, and seven added
+capabilities — <code>SYS_ADMIN</code>, <code>SYS_PTRACE</code>, <code>NET_ADMIN</code>, <code>SYSLOG</code>, <code>SYS_RESOURCE</code>,
+<code>IPC_LOCK</code>, <code>NET_RAW</code>. No level below <code>privileged</code> admits that, and no amount of
+tuning changes it.</p>
+<p>This namespace briefly enforced <code>restricted</code>, before the runtime stack was
+enabled — the five ordinary Deployments beside the node-agent all still satisfy
+it on their own. PSA is per-namespace, so one DaemonSet sets the level for all
+of them. <code>audit</code> and <code>warn</code> stay at <code>restricted</code> precisely so that the day one of
+those five stops qualifying, it shows up in the
+<a href="../../architecture/security/#audit-logging">audit log</a> rather than becoming
+invisible behind an <code>enforce</code> level that permits everything.</p>
+<p>There is a certain symmetry in the cluster's security scanner being the thing
+that needs the most privilege in it. It is also exactly the sort of finding
+Kubescape will report about itself, which is the correct behaviour and worth not
+suppressing.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubescape/
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
