@@ -46,6 +46,12 @@ TFTP_NOISE = (
 COLUMNS = (13, 8, 15, 17)
 WHO_WIDTH = sum(COLUMNS) + len(COLUMNS) - 1
 
+# Bold yellow for a warning, bold red for an error, and only on a terminal.
+TINTS = {logging.WARNING: '\033[1;33m', logging.ERROR: '\033[1;31m',
+         logging.CRITICAL: '\033[1;31m'}
+RESET = '\033[0m'
+WARNING_MARK = '\u26a0'
+
 logger = logging.getLogger('bootserver')
 hosts_by_ip = {}
 roles_by_host = {}
@@ -63,16 +69,37 @@ class DropKnownTftpNoise(logging.Filter):  # pylint: disable=too-few-public-meth
 
 
 class Console(logging.Formatter):
-    """Timestamp, who it is about, what it is doing."""
+    """Timestamp, who it is about, what it is doing. Anything above INFO in colour."""
+
+    def __init__(self, tint=False):
+        super().__init__()
+        self.tint = tint
 
     def format(self, record):
+        message = record.getMessage()
+        if getattr(record, 'banner', False):
+            return self.paint(record, message)
         who = getattr(record, 'who', None)
         if who is None:
             who = 'tftp' if record.name.startswith('tftpy') else 'server'
-        message = record.getMessage()
         if record.levelno > logging.INFO:
             message = f'{record.levelname.lower()}: {message}'
-        return f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}'
+        return self.paint(
+            record,
+            f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}')
+
+    def paint(self, record, line):
+        """Colour by level, or leave it alone if this is not going to a terminal."""
+        if self.tint and record.levelno in TINTS:
+            return f'{TINTS[record.levelno]}{line}{RESET}'
+        return line
+
+
+def in_colour(stream):
+    """Terminals get colour. Anything redirected to a file or a pipe does not."""
+    if os.environ.get('NO_COLOR') or os.environ.get('TERM') == 'dumb':
+        return False
+    return hasattr(stream, 'isatty') and stream.isatty()
 
 
 def node_role(host):
@@ -109,6 +136,13 @@ def identity(ip):
               node_mac(host) if host else None)
     return ' '.join(f'{value or "-":<{width}}'
                     for value, width in zip(fields, COLUMNS)).rstrip()
+
+
+def banner(headline, *body):
+    """A warning worth the whole width, rather than a line in the node column."""
+    lines = [f'  {WARNING_MARK}  {headline}', ''] + [f'     {line}'.rstrip()
+                                                     for line in body]
+    logger.warning('\n%s\n', '\n'.join(lines), extra={'banner': True})
 
 
 def say(ip, message, *args, level=logging.INFO):
@@ -307,7 +341,13 @@ def announce_start():
     armed = sorted(h for h, p in menus.values() if pxe_default(p) == 'install')
     local = sorted(h for h, p in menus.values() if pxe_default(p) != 'install')
     if armed:
-        say('server', 'armed to install: %s', ', '.join(armed))
+        banner(
+            f'ARMED TO INSTALL: {", ".join(armed)}',
+            'Every disk above is wiped on boot -- the partition table, every',
+            'partition on it, and the Ceph OSD with them. No data survives, and',
+            'nothing asks for confirmation at the console.',
+            '',
+            'make reinstall-cancel stands them down.')
     else:
         say('server', 'nothing is armed -- every menu says local boot, '
                       'make reinstall arms one')
@@ -317,7 +357,7 @@ def announce_start():
 
 if __name__ == '__main__':
     console = logging.StreamHandler()
-    console.setFormatter(Console())
+    console.setFormatter(Console(tint=in_colour(console.stream)))
     console.addFilter(DropKnownTftpNoise())
     logging.basicConfig(level=logging.INFO, handlers=[console])
     logging.getLogger('tftpy').setLevel(logging.WARNING)
