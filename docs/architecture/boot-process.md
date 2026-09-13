@@ -49,20 +49,46 @@ sequenceDiagram
     Node->>Server: 7. HTTP Ignition config
     Note over Node,Server: URL comes from the ignition.config.url kernel parameter
     Server-->>Node: 8. Ignition JSON
-    Node->>Node: 9. Partition disk, install Flatcar, reboot
+    Node->>Node: 9. Partition disk, write /etc, enable units
     Node->>Server: 10. HTTP sysext images
     Server-->>Node: 11. kubernetes, containerd
     Node->>Node: 12. systemd unit runs kubeadm
     Note over Node: Node is NotReady - no CNI yet
 ```
 
-Step 9 is the point of no return: the installer partitions the disk without
-asking twice. Whatever was on that machine before is now a memory. Check
-`install_disk` before you check anything else.
+Step 9 is the point of no return for the *disk*: Ignition repartitions
+`install_disk` without asking twice, and whatever was on that machine before is
+now a memory. Check `install_disk` before you check anything else.
 
 Step 12 leaving the node `NotReady` is correct and expected — there is no CNI
 yet, so the kubelet has nothing to plug pods into. It stays that way until
 `make install-core` lands Cilium.
+
+## Nothing is installed to disk
+
+This is the single most surprising property of these nodes, and it is easy to
+miss because every other PXE guide on the internet ends with `flatcar-install`.
+This one does not call it.
+
+The PXE menu boots `flatcar_production_pxe_image.cpio.gz` — the RAM image — and
+passes `flatcar.first_boot=1` on every boot, not just the first. So:
+
+| | |
+| --- | --- |
+| `/` | **tmpfs.** 3.8 GB on the control-plane nodes, 7.7 GB on `freya` |
+| Ignition | Runs on **every** boot, re-fetching its config from the boot server |
+| `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | In RAM; gone at reboot |
+| Persisted on disk | Only the partitions Ignition creates — and those are reformatted at each boot too |
+
+A reboot is therefore a **reprovision**. `bootstrap-k8s.service` fires because
+its `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is satisfied again, and
+the node re-runs `kubeadm init` or `kubeadm join` from scratch. The cluster
+survives this the same way it survives a node failure: the other two
+control-plane nodes hold etcd quorum, and Rook rebuilds from the `rook-osd`
+partition, which is the one thing Ignition leaves alone.
+
+!!! danger "A node cannot reboot unless the boot server is running"
+    The kernel, the initrd and the Ignition config all come from `make serve`. Without it a rebooting node PXE-boots into nothing, falls through to a disk that holds no bootloader, and stays down — and [Kured](../platform/kured.md) reboots nodes automatically between 01:00 and 05:00. Run `make serve` before anything triggers a reboot, and treat "stop the boot server when provisioning is finished" as advice for the window between builds rather than a steady state. See [Nodes cannot boot without the boot server](limitations.md#nodes-cannot-boot-without-the-boot-server).
 
 ## 4. Post-Installation Bootstrap
 

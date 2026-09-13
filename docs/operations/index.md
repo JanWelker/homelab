@@ -56,6 +56,19 @@ unhealthy. The procedure below is for the cases it does not cover: rebooting
 sooner than the window, or rebooting a node for a reason nothing set a sentinel
 for.
 
+!!! danger "Start the boot server first"
+    There is no operating system on the node's disk. It PXE-boots the Flatcar
+    RAM image and fetches its kernel, initrd and Ignition config from
+    `make serve` every time — so a node rebooted while the boot server is down
+    does not come back. Run `make serve` on the deployment host before the
+    reboot, and leave it up until the node is `Ready` again. This applies to
+    Kured's unattended reboots too; see
+    [Nodes cannot boot without the boot server](../architecture/limitations.md#nodes-cannot-boot-without-the-boot-server).
+
+A reboot is also a **reprovision**: the node re-reads its Ignition config, so
+any change made with `make config` takes effect here, and anything written to
+the node by hand does not survive.
+
 ```bash
 kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
 ssh core@<node> sudo systemctl reboot

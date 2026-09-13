@@ -51,6 +51,9 @@ the only thing keeping those credentials off the network. A `make serve` left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.
 
+!!! warning "That advice is in direct tension with availability"
+    These nodes have no OS on disk — they PXE-boot from the boot server on *every* boot, so a node that restarts while it is stopped does not come back, and [Kured](../platform/kured.md) reboots nodes unattended between 01:00 and 05:00. The honest position is that neither state is correct: running, the boot server hands cluster-join credentials to anything on the segment; stopped, any reboot is fatal. Start it deliberately around anything that might restart a node, and stop it again afterwards. See [Nodes cannot boot without the boot server](limitations.md#nodes-cannot-boot-without-the-boot-server).
+
 `output/credentials/` holds the generated bootstrap token and certificate key in
 plaintext. The directory is `0700` and `output/` is gitignored, but the values
 are reused across `make config` runs — the Ansible `password` lookup reads back
