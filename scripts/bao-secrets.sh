@@ -3,12 +3,23 @@
 #
 #   make bao-secrets
 #
-# Three of the values cannot be generated -- they belong to accounts outside
-# this cluster -- and are read from the environment:
+# Five of the values cannot be generated -- they belong to accounts outside this
+# cluster -- and are prompted for, one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_PASSWORD                                   Alertmanager's mail account
+#
+# Prompting rather than reading the environment is deliberate. A secret
+# containing `#` is truncated at it on a command line, and one containing `!`
+# is mangled by history expansion in an interactive bash -- both silently, and
+# both producing a credential that looks fine in OpenBao and fails to
+# authenticate weeks later. `read -rs` takes the line exactly as typed:
+# `#`, `!`, `$`, backslashes, quotes and spaces all survive.
+#
+# The matching environment variable is still honoured when it is already set,
+# for non-interactive use. Set those with a quoting style that survives the
+# characters in them -- single quotes, or `read -rs` into the variable first.
 #
 # Two IAM users on purpose: cert-manager only ever writes _acme-challenge TXT
 # records, external-dns creates and deletes A records for every hostname. See
@@ -31,23 +42,42 @@ FORCE="${FORCE:-0}"
 bao() { kubectl -n "$NAMESPACE" exec "$POD" -- bao "$@"; }
 bao_in() { kubectl -n "$NAMESPACE" exec -i "$POD" -- bao "$@"; }
 
-missing=()
-for var in CERT_MANAGER_KEY_ID CERT_MANAGER_SECRET_KEY \
-           EXTERNAL_DNS_KEY_ID EXTERNAL_DNS_SECRET_KEY \
-           SMTP_PASSWORD; do
-  [ -n "${!var:-}" ] || missing+=("$var")
-done
+# Reads one value into the named variable: the environment if it is already
+# set, otherwise a hidden prompt. `read -r` is what preserves a backslash;
+# without it, a secret containing one arrives with it silently eaten.
+prompt_secret() {
+  local var="$1" description="$2" value=""
 
-[ "${#missing[@]}" -eq 0 ] || {
-  echo "ERROR: these have to come from outside the cluster and are not set:" >&2
-  printf '         %s\n' "${missing[@]}" >&2
-  echo >&2
-  echo "       export them and re-run, e.g." >&2
-  echo "         CERT_MANAGER_KEY_ID=AKIA... CERT_MANAGER_SECRET_KEY=... \\" >&2
-  echo "         EXTERNAL_DNS_KEY_ID=AKIA... EXTERNAL_DNS_SECRET_KEY=... \\" >&2
-  echo "         SMTP_PASSWORD=... make bao-secrets" >&2
-  exit 1
+  if [ -n "${!var:-}" ]; then
+    printf '  %-24s from the environment\n' "$var"
+    return
+  fi
+
+  [ -t 0 ] || {
+    echo "ERROR: ${var} is not set and there is no terminal to ask at." >&2
+    echo "       Set it in the environment -- in single quotes, so a # or a !" >&2
+    echo "       in the value survives -- or run this from a terminal." >&2
+    exit 1
+  }
+
+  while [ -z "$value" ]; do
+    printf '  %s\n    %s: ' "$description" "$var" >&2
+    read -rs value
+    printf '\n' >&2
+    [ -n "$value" ] || printf '    (empty -- try again)\n' >&2
+  done
+
+  printf '  %-24s read (%d characters)\n' "$var" "${#value}"
+  eval "$var=\$value"
 }
+
+echo "### Credentials that cannot be generated"
+prompt_secret CERT_MANAGER_KEY_ID     "Route53 IAM key for cert-manager (TXT records only)"
+prompt_secret CERT_MANAGER_SECRET_KEY "  ...and its secret access key"
+prompt_secret EXTERNAL_DNS_KEY_ID     "Route53 IAM key for external-dns (A and TXT records)"
+prompt_secret EXTERNAL_DNS_SECRET_KEY "  ...and its secret access key"
+prompt_secret SMTP_PASSWORD           "SMTP password for Alertmanager"
+echo
 
 [ -f "$KEYFILE" ] || {
   echo "ERROR: ${KEYFILE} not found -- run 'make bao-init' first, or log in by hand." >&2

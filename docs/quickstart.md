@@ -321,17 +321,24 @@ The deployment host (the machine running Ansible and the boot server) must be re
         means the data is unrecoverable — there is no support line and no
         recovery flow. See [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap).
 
-    Then populate the four paths the cluster reads. Three values belong to
-    accounts outside the cluster and have to be supplied; everything under
-    `kv/authentik/config`, including the OIDC client credentials ArgoCD and
-    Grafana read back, is generated:
+    Then populate the four paths the cluster reads:
 
     ```bash
-    CERT_MANAGER_KEY_ID=AKIA... CERT_MANAGER_SECRET_KEY=... \
-    EXTERNAL_DNS_KEY_ID=AKIA... EXTERNAL_DNS_SECRET_KEY=... \
-    SMTP_PASSWORD=... \
     make bao-secrets
     ```
+
+    It prompts for the five values that belong to accounts outside the cluster —
+    two Route53 IAM key pairs and the SMTP password — with the input hidden.
+    Everything under `kv/authentik/config`, including the OIDC client
+    credentials ArgoCD and Grafana read back, is generated.
+
+    !!! tip "Paste them at the prompt, not onto a command line"
+        The prompt takes the line exactly as typed. A secret containing `#` put
+        on a command line is truncated at it, and one containing `!` is mangled
+        by history expansion — both silently, producing a credential that looks
+        correct in OpenBao and fails to authenticate later. If you do need this
+        non-interactively, the matching environment variables are honoured when
+        already set; quote them with **single** quotes.
 
     Two Route53 IAM users on purpose: cert-manager only ever writes
     `_acme-challenge` TXT records, external-dns creates and deletes an A record

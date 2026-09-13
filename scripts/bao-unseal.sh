@@ -97,9 +97,15 @@ for pod in $pods; do
   fi
 
   sealed_any=1
+  # The key goes in as an argument, which is what OpenBao itself tells you to
+  # do: `bao operator unseal` with no argument insists on a terminal and
+  # refuses piped input outright ("file descriptor 0 is not a terminal"), and
+  # `-` is taken as a literal key rather than as "read stdin" -- unlike
+  # `bao login -`, which does read stdin. Quoting is what keeps a share
+  # containing #, ! or whitespace intact; nothing here goes through a shell.
   for index in $(seq 0 $((threshold - 1))); do
-    printf '%s' "${keys[$index]}" \
-      | kubectl -n "$NAMESPACE" exec -i "$pod" -- bao operator unseal - >/dev/null
+    kubectl -n "$NAMESPACE" exec "$pod" -- \
+      bao operator unseal "${keys[$index]}" >/dev/null
   done
 
   if [ "$(bao_status "$pod" | json_field sealed)" = "False" ]; then
