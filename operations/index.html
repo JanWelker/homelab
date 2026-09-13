@@ -1810,7 +1810,10 @@ person.</p>
 <p>That flips <code>DEFAULT localboot</code> to <code>DEFAULT install</code> in
 <code>output/tftp/pxelinux.cfg/01-&lt;mac&gt;</code>. The template is untouched, so the next
 <code>make config</code> puts the safe default back — including over anything armed and
-not used. <code>make reinstall-cancel</code> does the same deliberately.</p>
+not used. <code>make reinstall-cancel</code> does the same deliberately, and the boot
+server does it for you once the node has the OS image, which is what keeps
+the reboot at the end of the install from starting a second one: see
+<a href="../boot_server/#switching-back-to-local-boot">Boot Server &rarr; Switching back to local boot</a>.</p>
 <p>Arming is the <em>only</em> way in: the menu shows no prompt, so there is nothing
 to pick at the console and nothing to mistype at three in the morning.
 5. Network-boot the node. The installer wipes the disk — every partition
