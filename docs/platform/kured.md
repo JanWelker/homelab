@@ -13,6 +13,9 @@ In other words, it does at 02:00 what you would otherwise do by hand on a
 Saturday, in the same order, without getting bored on node four and skipping the
 Ceph check.
 
+!!! danger "A reboot here needs the boot server running"
+    These nodes hold no operating system on disk — they PXE-boot the Flatcar RAM image and fetch kernel, initrd and Ignition config from `make serve` on every boot. Kured cordons, drains and reboots a node perfectly well with the boot server down; the node then simply never comes back, and Kured's cluster-wide lock stays held while it waits. The window is 01:00–05:00 in `Europe/Berlin`, so either keep the boot server up through it or expect to be woken by whatever alert fires first. See [Nodes cannot boot without the boot server](../architecture/limitations.md#nodes-cannot-boot-without-the-boot-server).
+
 ## The gap it closes
 
 Three mechanisms update a node. All three stop at the same place — the change

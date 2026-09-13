@@ -68,7 +68,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
     | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. |
     | `mac_address` (per host) | Selects which generated PXE menu a node picks up |
     | `ansible_host` (per host) | The static IP the node is given |
-    | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default) |
+    | `install_disk` | Disk that Ignition partitions for containerd and Rook storage (`/dev/nvme0n1` by default). Flatcar itself is **not** installed to it — it runs from RAM |
     | `kubernetes_version`, `containerd_version`, `flatcar_version` | Artifact versions to download |
 
 3. **Initialize Environment**:
@@ -122,7 +122,11 @@ The deployment host (the machine running Ansible and the boot server) must be re
     procedure.
 
 7. **Boot Machines**:
-    Power on your bare metal nodes. They will PXE boot, install Flatcar, and reboot.
+    Power on your bare metal nodes. They will PXE boot, run Ignition, and start
+    the kubelet. Nothing is installed to the disk — Flatcar runs from RAM and
+    the nodes fetch everything from the boot server on every boot, including
+    every subsequent one. See
+    [Nothing is installed to disk](architecture/boot-process.md#nothing-is-installed-to-disk).
     - Expect the boot server log to show, per node: a TFTP request for the
       bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
       the initrd, `ignition-<host>.json`, and finally the sysext images.
