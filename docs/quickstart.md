@@ -24,7 +24,7 @@ Each node must have:
 - A NIC that supports PXE booting
 - An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`, because hardware is a collection of exceptions wearing a trenchcoat)
 - Sufficient disk space: Flatcar itself, a 125 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. 256 GB leaves about 111 GB for Ceph per node
-- At least 8 GB of RAM: the installer stages the ~700 MB Flatcar image in the PXE environment's tmpfs before writing it
+- At least 4 GB of RAM: the installer runs from a RAM disk, but streams the Flatcar image straight to disk rather than staging it
 
 The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.
 
@@ -145,8 +145,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
       reboot on it is booting from its own disk.
     - Expect the boot server log to show, per node: a TFTP request for the
       bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
-      the initrd, `ignition-install-<host>.json`, the Flatcar disk image, and
-      `ignition-<host>.json` — then, after the reboot, only the sysext images.
+      the initrd, `ignition-install-<host>.json`, `ignition-<host>.json`, and
+      then `<version>/flatcar_production_image.bin.bz2` with its `.sig` — then,
+      after the reboot, only the sysext images.
     - **Leave the boot server running until every node is up.** The sysexts are
       fetched on the first boot from disk. After that nothing needs it.
     - **Note**: The cluster will come up in a `NotReady` state initially because

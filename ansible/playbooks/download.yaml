@@ -27,13 +27,18 @@
           file: flatcar_production_pxe.vmlinuz
         - name: initrd
           file: flatcar_production_pxe_image.cpio.gz
-        # The disk image flatcar-install writes. Fetched here rather than by
-        # the node so that its SHA512 is checked against the release server's
-        # DIGESTS on the deployment host -- flatcar-install skips signature
-        # verification when handed a local file with -f, and this is what
-        # replaces it.
+        # The disk image flatcar-install writes, plus its detached signature.
+        #
+        # Both land in a directory named for the version because that is the
+        # layout flatcar-install expects from a mirror: it builds
+        # <base>/<version>/flatcar_production_image.bin.bz2 and fetches the .sig
+        # beside it. Serving that shape is what lets the node verify the image
+        # against Flatcar's signing key instead of trusting whatever the boot
+        # server hands it.
         - name: disk image
           file: flatcar_production_image.bin.bz2
+          dest_dir: "{{ http_dir }}/{{ flatcar_version }}"
+          signature: true
 
     - name: Download Sysexts
       ansible.builtin.include_tasks: tasks/download_sysext.yaml

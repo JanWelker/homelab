@@ -44,6 +44,15 @@ and everyone solves it the same way: briefly, and with the door open.
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
 | Sysext transfers set `Verify=false` | System extension images are fetched over HTTPS but their signatures are not checked |
 
+The OS image is the exception, and deliberately so. `flatcar-install` is given
+`-b`/`-V` rather than a local file, so the node downloads the image *and* its
+detached signature from the boot server and checks both against Flatcar's
+signing key before writing anything. Serving it over plain HTTP on a segment
+this page calls only conditionally trusted is fine precisely because a
+substituted image fails the signature check. It is the one artifact on that
+server that becomes the operating system, which is why it gets the treatment the
+sysexts still do not.
+
 The practical mitigation is time: `make serve` is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
 after two hours. **Stop the boot server when provisioning is finished** — it is
