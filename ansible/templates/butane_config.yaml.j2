@@ -8,17 +8,60 @@ passwd:
 storage:
   disks:
     - device: {{ install_disk }}
+      # The root filesystem is a tmpfs -- these nodes PXE-boot the Flatcar RAM
+      # image and Ignition runs on every boot. Everything under / is therefore
+      # RAM shared with etcd, and the partitions below exist to keep the
+      # directories that grow off it. They are still wiped on every boot, so the
+      # semantics are unchanged: this moves ephemeral state from RAM to disk, it
+      # does not make it persistent.
+      #
+      # Partition order is load-bearing. rook-osd is raw and unformatted, so its
+      # contents are whatever Ceph last wrote there -- inserting a partition
+      # ahead of it moves its start offset and takes the OSD data with it.
+      # Changing anything above rook-osd means rebuilding every OSD, one node at
+      # a time. See docs/operations/index.md#repartitioning-the-nodes.
       wipe_table: true
       partitions:
         - label: containerd
           number: 1
-          size_mib: 51200  # 50GB for containerd
-        - label: rook-osd
+          size_mib: 51200  # 50GB for container images
+        # Backs the kubelet root directory, which is what the kubelet reports as
+        # node ephemeral-storage. On tmpfs that was ~3.6GB of RAM on the
+        # control-plane nodes -- small enough that a pod requesting a few Gi of
+        # ephemeral-storage could not be scheduled there at all.
+        - label: kubelet
           number: 2
+          size_mib: 40960  # 40GB for pod ephemeral storage and volumes
+        # Container logs, the journal and the API server audit log. All three
+        # were competing with etcd for the same 3.8GB tmpfs.
+        - label: varlog
+          number: 3
+          size_mib: 10240  # 10GB for /var/log
+        - label: rook-osd
+          number: 4
           size_mib: 0      # Use remaining space for Rook OSD
   filesystems:
     - path: /var/lib/containerd
       device: /dev/disk/by-partlabel/containerd
+      format: xfs
+      wipe_filesystem: true
+      with_mount_unit: true
+    # `/` is mounted shared and a mount created beneath it inherits that, which
+    # is what the Ceph CSI driver needs in order to propagate volume mounts back
+    # out of /var/lib/kubelet/pods. Nothing extra is required to arrange it; it
+    # is recorded here because the failure mode if it were ever not true is pods
+    # hanging on mount errors that mention nothing about propagation.
+    - path: /var/lib/kubelet
+      device: /dev/disk/by-partlabel/kubelet
+      format: xfs
+      wipe_filesystem: true
+      with_mount_unit: true
+    # systemd-journal-flush.service is ordered after local-fs.target precisely so
+    # that /var/log can be its own mount: journald writes to /run/log/journal
+    # until the flush and only then moves to the mounted filesystem. Mounting
+    # here does not strand the journal behind the mountpoint.
+    - path: /var/log
+      device: /dev/disk/by-partlabel/varlog
       format: xfs
       wipe_filesystem: true
       with_mount_unit: true

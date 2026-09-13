@@ -118,6 +118,43 @@ so it can PXE boot, then run the printed join command on it. The
 `bootstrap-k8s.service` unit only fires when `/etc/kubernetes/kubelet.conf` is
 absent, so it will not interfere with a node that has already joined.
 
+## Repartitioning the nodes
+
+The disk layout lives in `ansible/templates/butane_config.yaml.j2` and is applied
+by Ignition, which runs on every boot. Changing a *size* or *order* in it is not
+an edit you roll out — it is a rebuild.
+
+`rook-osd` is the last partition and is deliberately raw: Ceph owns the bytes,
+and there is no filesystem or label inside it that would let anything relocate
+them. Move its start offset by so much as a sector — which is what inserting or
+resizing any partition above it does — and every OSD on every node is gone.
+
+!!! danger "The backups are inside the thing being wiped"
+    Velero and the etcd snapshot CronJob both write to the Ceph object store
+    this destroys — see
+    [Backups do not leave the cluster](../architecture/limitations.md#backups-do-not-leave-the-cluster).
+    Copy anything you intend to restore from **off-cluster** before you start.
+    This is the failure mode that limitation was written about, arriving in
+    person.
+
+The procedure is therefore a full reprovision:
+
+1. Copy what matters off the cluster — Velero backups, the latest etcd snapshot,
+   and anything in a PVC that is not reproducible from Git.
+2. Edit the partition table in `ansible/templates/butane_config.yaml.j2`.
+3. `make config` to regenerate the Ignition configs, then `make serve`.
+4. Boot every node. Ignition repartitions and reformats, `bootstrap-k8s.service`
+   runs `kubeadm` again, and Rook finds six empty `rook-osd` partitions and
+   builds a new cluster on them.
+5. Stop the boot server, then follow
+   [the quickstart](../quickstart.md) from the post-install steps — ArgoCD
+   restores the platform from Git, and OpenBao needs
+   [unsealing](#after-any-node-reboot-unseal-openbao).
+
+Only the *last* partition can grow without this. Shrinking `rook-osd` to make
+room for something else cannot be done in place either, because Ceph has already
+written across the space you would be taking back.
+
 ## Replacing a failed node
 
 1. Remove it from the cluster:
