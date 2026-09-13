@@ -46,10 +46,12 @@ apiServer:
     # means the `audit` level on every Pod Security Admission label has nowhere
     # to write.
     #
-    # The rotation numbers are sized for a root filesystem that is tmpfs: at
-    # most three files of 100MB, so roughly 300MB of RAM in the worst case.
-    # Retention beyond that is Loki's job -- Alloy tails this file and ships it
-    # to a Ceph-backed store that survives the reboot this one does not.
+    # /var/log is now its own 10GB partition rather than part of the tmpfs root,
+    # so the rotation numbers are the ones CIS asks for: eleven files of 100MB
+    # is ~1.1GB of disk, which was the whole objection to maxbackup=10 when that
+    # space was RAM shared with etcd. Alloy still ships every event to Loki --
+    # the partition is wiped on each boot like the rest, so the Ceph-backed copy
+    # is still the one that outlives a reboot.
     - name: audit-policy-file
       value: /etc/kubernetes/audit/policy.yaml
     - name: audit-log-path
@@ -57,7 +59,7 @@ apiServer:
     - name: audit-log-maxage
       value: "30"
     - name: audit-log-maxbackup
-      value: "2"
+      value: "10"
     - name: audit-log-maxsize
       value: "100"
   extraVolumes:

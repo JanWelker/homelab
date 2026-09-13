@@ -94,8 +94,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     *Artifacts will be generated in `output/http` (Ignition) and `output/tftp`
-    (PXE). Note: The install disk is partitioned into 50GB for containerd and the
-    remaining space for Rook-Ceph storage.*
+    (PXE). Note: The install disk is partitioned into 50GB for containerd, 40GB
+    for the kubelet root directory, 10GB for `/var/log`, and the remaining space
+    for Rook-Ceph storage.*
 
     Re-run this after **any** change to `inventory.yaml` — the values are baked
     into the generated files. Editing the inventory and skipping this step is the

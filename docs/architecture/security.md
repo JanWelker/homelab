@@ -156,31 +156,34 @@ the design:
 
 ### Where the log actually lives
 
-The root filesystem on these nodes is **tmpfs** — the audit log is in RAM, on a
-volume shared with etcd and every container log on the node. That constrains
-retention more than any policy decision does:
+`/var/log` is its own 10 GB partition, so the audit log is written to disk
+rather than to the tmpfs root that holds etcd. That is what makes the CIS
+rotation numbers affordable:
 
 | Property | Value |
 | --- | --- |
 | Path | `/var/log/kubernetes/audit/audit.log` |
+| Filesystem | `varlog` partition, XFS, 10 GB |
 | `--audit-log-maxsize` | `100` (MB) |
-| `--audit-log-maxbackup` | `2` |
-| `--audit-log-maxage` | `30` (days, and never reached) |
-| Worst-case footprint | ~300 MB of RAM per control-plane node |
+| `--audit-log-maxbackup` | `10` |
+| `--audit-log-maxage` | `30` (days) |
+| Worst-case footprint | ~1.1 GB of disk per control-plane node |
 | Durable copy | [Loki](../platform/logging.md), on Ceph |
 
-So the on-node file is a **buffer, not an archive**. Alloy tails it and ships
-every event to Loki within seconds, and Loki is the only place an audit event
-outlives a reboot. An audit log that does not survive the incident is not an
-audit log, and on a tmpfs root that is not a hypothetical.
+The partition is still **wiped on every boot**, like every other filesystem
+these nodes mount — moving `/var/log` off tmpfs bought space, not persistence.
+So the on-node file remains a **buffer, not an archive**: Alloy tails it and
+ships every event to Loki within seconds, and Loki is the only place an audit
+event outlives a reboot. An audit log that does not survive the incident is not
+an audit log, and on nodes that reprovision themselves at every boot that is not
+a hypothetical.
 
-!!! note "A deliberate CIS deviation"
-    The CIS Kubernetes Benchmark asks for `--audit-log-maxbackup` of 10 or more
-    (check 1.2.18), which at 100 MB each would reserve roughly 1.1 GB of a
-    3.8 GB tmpfs on every control-plane node. Two backups plus Loki retention
-    is the better trade here, and kube-bench will report 1.2.18 as `FAIL`. It is
-    a decision, not an oversight — the distinction this page exists to make.
-    Raise it the day `/var/log` sits on a real disk.
+!!! note "This used to be a CIS deviation"
+    `--audit-log-maxbackup` was `2` when `/var/log` was part of the 3.8 GB tmpfs
+    root, because ten 100 MB files would have reserved 1.1 GB of the RAM etcd
+    was running in. The [`varlog` partition](../operations/index.md#repartitioning-the-nodes)
+    removed the objection, and check 1.2.18 now passes along with 1.2.16,
+    1.2.17 and 1.2.19.
 
 ### Reading it
 
@@ -308,9 +311,11 @@ Roughly in order of value against effort:
 5. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` that currently sits in `output/credentials/` with no
    rotation.
-6. Give `/var/log` a real disk, then raise `--audit-log-maxbackup` to the 10
-   the [benchmark asks for](#where-the-log-actually-lives). Today the audit log
-   competes with etcd for the same tmpfs, which is the only reason it is set
-   to 2.
+6. Persist `/var/lib/etcd`. It is the one directory left on the tmpfs root that
+   would genuinely rather be on a disk, and it is deliberately still there:
+   persisting etcd without also persisting `/etc/kubernetes` produces a node
+   that re-runs `kubeadm init` against a non-empty data directory, which fails
+   in a considerably more interesting way than losing the data does. That is a
+   change to the boot model, not to the partition table.
 
 See [Known Limitations](limitations.md) for the operational counterparts.
