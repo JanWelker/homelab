@@ -166,8 +166,10 @@ The procedure is a reinstall:
     That flips `DEFAULT localboot` to `DEFAULT install` in
     `output/tftp/pxelinux.cfg/01-<mac>`. The template is untouched, so the next
     `make config` puts the safe default back — including over anything armed and
-    not used. `make reinstall-cancel` does the same deliberately. Picking
-    `install` at the console by hand works just as well.
+    not used. `make reinstall-cancel` does the same deliberately.
+
+    Arming is the *only* way in: the menu shows no prompt, so there is nothing
+    to pick at the console and nothing to mistype at three in the morning.
 5. Network-boot the node. The installer wipes the disk — every partition
    signature, the GPT, and a device-level discard where the hardware supports
    it — runs `flatcar-install`, and reboots into the freshly installed system,
