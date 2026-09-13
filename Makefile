@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd
+.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check wipe-osd reinstall reinstall-cancel
 
 # Bootstrap component versions are not pinned here. Each one is read out of the
 # ArgoCD Application that owns the component after the GitOps handover, so the
@@ -130,6 +130,15 @@ storage-check:
 # still holds the previous cluster's OSD. Destroys data; asks first.
 wipe-osd:
 	scripts/wipe-osd.sh
+
+# Flips DEFAULT in the generated PXE menus so a node reinstalls on its next
+# network boot. The template always writes `DEFAULT localboot`; this edits
+# output/, so `make config` puts the safe default back.
+reinstall:
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml $(if $(LIMIT),--limit "$(LIMIT)")
+
+reinstall-cancel:
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml -e pxe_default=localboot $(if $(LIMIT),--limit "$(LIMIT)")
 
 clean:
 	rm -rf output/*

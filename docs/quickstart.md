@@ -126,14 +126,21 @@ The deployment host (the machine running Ansible and the boot server) must be re
     arrive in order is the single most useful debugging tool in this entire
     procedure.
 
-7. **Boot Machines and choose `install`**:
-    Power on your bare metal nodes. Each stops at a PXE menu with a five second
-    timeout. **Select `Install Flatcar to <disk>`** — the default is
-    `Boot from local disk`, which is what you want on every boot *except* this
-    one.
+7. **Arm the install, then boot the machines**:
 
-    That deliberate step is the whole reason a reboot later cannot reinstall a
-    node. See [Boot & Bootstrap Process](architecture/boot-process.md).
+    ```bash
+    make reinstall
+    ```
+
+    The generated PXE menus default to `Boot from local disk`, which is what you
+    want on every boot *except* this one — it is why a reboot later cannot
+    reinstall a node. `make reinstall` flips that to `Install` in
+    `output/tftp/pxelinux.cfg/`, for every host or for `LIMIT=<node>`;
+    `make reinstall-cancel` puts it back, as does re-running `make config`.
+
+    Then power on your bare metal nodes. (Selecting `Install` from the menu at
+    each console does the same thing, if you would rather not arm anything.)
+    See [Boot & Bootstrap Process](architecture/boot-process.md).
 
     - The node wipes the disk, writes Flatcar, and reboots into it. From that
       reboot on it is booting from its own disk.

@@ -99,12 +99,7 @@ satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
 
 !!! note "Two boot paths, and the menu picks the safe one"
-    The PXE menu defaults to `LOCALBOOT` with a five second timeout, so a node
-    that network-boots for any reason still ends up on its own disk. Installing
-    requires someone to choose `install` at the console. On UEFI firmware
-    `flatcar-install -u` writes a real boot entry, so the firmware usually goes
-    straight to disk without consulting the menu at all — set the disk ahead of
-    PXE in the boot order and it never will.
+    The PXE menu defaults to `LOCALBOOT` with a five second timeout, so a node that network-boots for any reason still ends up on its own disk. Installing means either choosing `install` at the console or arming it with `make reinstall` — see [Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). On UEFI firmware `flatcar-install -u` writes a real boot entry, so the firmware usually goes straight to disk without consulting the menu at all; set the disk ahead of PXE in the boot order and it never will.
 
 ## 4. Post-Installation Bootstrap
 

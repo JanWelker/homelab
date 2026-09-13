@@ -27,11 +27,13 @@ ansible/
 │   ├── config.yaml      # Generates Ignition and Kubeadm configurations
 │   ├── download.yaml    # Downloads required artifacts (OS images, binaries)
 │   ├── kubeconfig.yaml  # Retrieves kubeconfig from the control plane
+│   ├── reinstall.yaml   # Flips DEFAULT in the generated PXE menus
 │   └── tasks/          # Reusable tasks for downloads
 └── templates/
-    ├── butane_config.yaml.j2 # Template for Butane config (transpiled to Ignition)
-    ├── kubeadm.yaml.j2       # Template for Kubeadm configuration
-    └── pxe_config.j2         # Template for PXE boot menu
+    ├── butane_config.yaml.j2  # Template for Butane config (transpiled to Ignition)
+    ├── butane_install.yaml.j2 # Template for the throwaway installer config
+    ├── kubeadm.yaml.j2        # Template for Kubeadm configuration
+    └── pxe_config.j2          # Template for PXE boot menu
 ```
 
 ## Inventory

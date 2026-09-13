@@ -152,11 +152,22 @@ The procedure is a reinstall:
    and anything in a PVC that is not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
 3. `make config` to regenerate both Ignition configs, then `make serve`.
-4. At the node's console, pick **`install`** from the PXE menu. The installer
-   wipes the disk — every partition signature, the GPT, and a device-level
-   discard where the hardware supports it — runs `flatcar-install`, and reboots
-   into the freshly installed system, which then runs `kubeadm`.
-5. Leave the boot server up until the node is `Ready`: the sysext images are
+4. Arm the nodes you are rebuilding:
+
+    ```bash
+    make reinstall LIMIT=odin   # or `make reinstall` for every host
+    ```
+
+    That flips `DEFAULT localboot` to `DEFAULT install` in
+    `output/tftp/pxelinux.cfg/01-<mac>`. The template is untouched, so the next
+    `make config` puts the safe default back — including over anything armed and
+    not used. `make reinstall-cancel` does the same deliberately. Picking
+    `install` at the console by hand works just as well.
+5. Network-boot the node. The installer wipes the disk — every partition
+   signature, the GPT, and a device-level discard where the hardware supports
+   it — runs `flatcar-install`, and reboots into the freshly installed system,
+   which then runs `kubeadm`.
+6. Leave the boot server up until the node is `Ready`: the sysext images are
    still fetched from it on that first boot. Then stop it.
 
 One node at a time is safe if you are rebuilding rather than repartitioning —
