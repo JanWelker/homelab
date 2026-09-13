@@ -24,7 +24,7 @@ Each namespace carries three labels, and the split between them is the point:
 | Label | Set to | Effect |
 | --- | --- | --- |
 | `enforce` | The level the namespace demonstrably needs | Rejects pods that violate it |
-| `audit` | Stricter | Records violations in the API server audit log |
+| `audit` | Stricter | Records violations in the [API server audit log](../architecture/security.md#audit-logging) |
 | `warn` | Stricter | Warns whoever applies the manifest |
 
 Enforcement is set to what already works, so **nothing running breaks**, while
@@ -62,6 +62,18 @@ kubectl label --dry-run=server --overwrite ns cert-manager \
 
 That reports every pod in the namespace that would be rejected, without
 changing anything.
+
+It only sees what is running *right now*, though — a CronJob that fires nightly
+and violates `restricted` is invisible to a dry run at three in the afternoon.
+The `audit` label covers that gap by recording violations continuously, and
+those records are queryable in Grafana over the full Loki retention window:
+
+```logql
+{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
+```
+
+Use the dry run to check the common case and the audit log to catch the rest.
+Between them, tightening `enforce` stops being a guess.
 
 ## Network policies
 

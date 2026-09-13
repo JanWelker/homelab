@@ -26,6 +26,7 @@ currently misbehaving.
 | --- | --- | --- |
 | Container logs | `/var/log/pods/<ns>_<pod>_<uid>/<container>/*.log` | `namespace`, `pod`, `container`, `node`, `app` |
 | Node journal | `/var/log/journal` | `unit`, `node`, `job="systemd-journal"` |
+| API server audit log | `/var/log/kubernetes/audit/audit.log` | `verb`, `audit_level`, `node`, `job="kubernetes-audit"` |
 
 The journal matters more here than it would elsewhere. On Flatcar, `kubelet`,
 `containerd`, `systemd-sysupdate` and `update-engine` log to journald and
@@ -38,6 +39,15 @@ Each Alloy pod discovers **only pods on its own node**, via a
 watch every pod in the cluster and discard all but its own — six times the API
 server load for identical output. Log collectors are famously good at costing
 more than the thing they observe; this is one of the cheap ways to avoid that.
+
+The audit log is a different case again, and the only source here where Loki is
+not a convenience. It exists only on the three control-plane nodes, it is JSON
+rather than text, and it sits on a tmpfs capped at three 100MB files — so the
+copy in Loki is the one that outlives a reboot. See
+[Audit logging](../architecture/security.md#audit-logging) for what is recorded
+and why the local file is kept deliberately small. Alloy runs on all six nodes
+and `local.file_match` simply finds nothing on the workers, which is a cheaper
+way to say "control plane only" than any scheduling constraint.
 
 Container logs pass through `stage.cri {}`. containerd writes
 `<timestamp> <stream> <flags> <message>`; without that stage the timestamp and
@@ -84,7 +94,13 @@ choose **Loki** as the datasource and query by label:
 {namespace="rook-ceph"} |= "error"
 {unit="kubelet.service", node="odin"}
 {namespace="openbao"} |= "sealed"
+{job="kubernetes-audit"} | json | objectRef_resource="secrets"
 ```
+
+Audit events keep only `verb` and `audit_level` as labels. Both are small closed
+sets, which is what makes a label cheap; user and resource are far more useful
+to query by and far too numerous to label, so they stay in the line where
+`| json` can reach them.
 
 !!! note "Where the datasource lives"
     `grafana-datasource.yaml` declares its namespace as `monitoring`, not
