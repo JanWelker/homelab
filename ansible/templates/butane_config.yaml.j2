@@ -14,9 +14,13 @@ storage:
       #
       # ROOT is partition 9 and normally grows to fill whatever is left of the
       # disk, which would leave nothing for anything below. Capping it here is
-      # what makes room, and it has to happen in the initramfs -- before the
-      # root filesystem is mounted and grown into the partition. The filesystem
-      # follows the partition, so it comes up at 25GB rather than being shrunk.
+      # what makes room.
+      #
+      # The filesystem does *not* follow the partition on its own. Taking
+      # partition 9 over here is exactly what stops Flatcar's first-boot growth
+      # from happening, so ROOT ends up a 25GB partition holding the image's
+      # original ~1.6GB filesystem. grow-root.service below is what closes that
+      # gap; the two have to be changed together.
       #
       # Partition order is load-bearing. rook-osd is raw and unformatted, so its
       # contents are whatever Ceph last wrote there -- inserting a partition
@@ -332,6 +336,34 @@ storage:
 
 systemd:
   units:
+    # Capping ROOT in the disks stanza above is also what stops it growing.
+    # Flatcar's stock growth is systemd-growfs-root.service, which is `static`
+    # -- it is pulled in by an `x-systemd.growfs` mount option, and the root
+    # here is mounted from `root=LABEL=ROOT` on the kernel command line, which
+    # carries no such option. Ignition resizes the partition and nothing
+    # resizes the filesystem, so a node comes up with a 25GB ROOT partition
+    # holding the image's original ~1.6GB filesystem.
+    #
+    # That leaves about 1.2GB free on the filesystem /var/lib/etcd and
+    # /var/lib/rook both live on, which is not a cosmetic problem.
+    - name: grow-root.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Grow the root filesystem into its partition
+        After=local-fs.target
+        Before=kubelet.service bootstrap-k8s.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        # The same binary the stock unit runs, and a no-op once the filesystem
+        # already fills the partition -- so this is safe on every later boot.
+        ExecStart=/usr/lib/systemd/systemd-growfs /
+        TimeoutSec=infinity
+
+        [Install]
+        WantedBy=multi-user.target
     - name: kubelet.service
       enabled: true
       dropins:
