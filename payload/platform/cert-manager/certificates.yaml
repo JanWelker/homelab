@@ -1,10 +1,21 @@
 ---
+# Sync wave 3. A Certificate is only issuable once its ClusterIssuer is Ready,
+# and Argo will not start a wave until the one before it is healthy.
+#
+# Left at the default wave these went first: Argo orders custom resources
+# alphabetically, so Certificate landed ahead of ClusterIssuer, which landed
+# ahead of the ExternalSecret holding the credentials both of them need. The
+# sync then stopped and waited for certificates that could not be issued until
+# two resources behind them in the queue had been applied.
+
 # ArgoCD Server TLS Certificate (specific cert for ArgoCD namespace)
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: argocd-server-tls
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   secretName: argocd-server-tls
   privateKey:
@@ -23,6 +34,8 @@ kind: Certificate
 metadata:
   name: apps-gateway-tls
   namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   secretName: apps-gateway-tls
   privateKey:
@@ -42,6 +55,8 @@ kind: Certificate
 metadata:
   name: infra-gateway-tls
   namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   secretName: infra-gateway-tls
   privateKey:
