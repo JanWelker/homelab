@@ -6,6 +6,7 @@ switches a node's PXE menu back to local boot once it has the OS image -- so the
 reboot at the end of an install boots the disk instead of the installer again.
 """
 
+import json
 import logging
 import os
 import re
@@ -22,16 +23,43 @@ BIND_IP = '10.9.200.222'
 
 HTTP_DIR = os.path.join(os.getcwd(), 'output', 'http')
 TFTP_DIR = os.path.join(os.getcwd(), 'output', 'tftp')
-PXE_DIR = os.path.join(TFTP_DIR, 'pxelinux.cfg')
+MENU_SUBDIR = 'pxelinux.cfg'
+PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
 
 OS_IMAGE = 'flatcar_production_image.bin.bz2'
 MENU_NAME = re.compile(r'^01-[0-9a-f]{2}(?:-[0-9a-f]{2}){5}$', re.IGNORECASE)
 MENU_HOST = re.compile(r'ignition-([^/\s]+)\.json')
 IGNITION_NAME = re.compile(r'^ignition-(.+)\.json$')
 
+# What a PXE client does on the way in that tftpy reports as a failure.
+TFTP_NOISE = (
+    # UEFI firmware asks for TFTP options, is refused, aborts and retries
+    # without them. RFC 2347 errorcode 8 is that handshake, not a failure.
+    re.compile(r'errorcode[ :=]+8\b'),
+    # PXELINUX works down a search list -- client UUID, then 01-<mac>, then
+    # the IP in hex, then 'default' -- so misses are how it finds the menu.
+    # announce_tftp reports the one miss that matters, and says what to do.
+    re.compile(r'File not found: .*[/\\]' + MENU_SUBDIR + r'[/\\]'),
+)
+
+# role, name, address, MAC -- the width the identity column is padded to.
+COLUMNS = (13, 8, 15, 17)
+WHO_WIDTH = sum(COLUMNS) + len(COLUMNS) - 1
+
 logger = logging.getLogger('bootserver')
 hosts_by_ip = {}
+roles_by_host = {}
 menu_lock = threading.Lock()
+
+
+class DropKnownTftpNoise(logging.Filter):  # pylint: disable=too-few-public-methods
+    """Keep tftpy's warnings and errors, minus the ones every PXE boot causes."""
+
+    def filter(self, record):
+        if not record.name.startswith('tftpy'):
+            return True
+        message = record.getMessage()
+        return not any(noise.search(message) for noise in TFTP_NOISE)
 
 
 class Console(logging.Formatter):
@@ -44,11 +72,48 @@ class Console(logging.Formatter):
         message = record.getMessage()
         if record.levelno > logging.INFO:
             message = f'{record.levelname.lower()}: {message}'
-        return f'{self.formatTime(record, "%H:%M:%S")}  {who:<12}  {message}'
+        return f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}'
 
 
-def say(who, message, *args, level=logging.INFO):
-    """Log a line attributed to a node, or to the server itself."""
+def node_role(host):
+    """control-plane or worker, read out of the config generated for that host."""
+    if host not in roles_by_host:
+        role = None
+        try:
+            with open(os.path.join(HTTP_DIR, f'ignition-{host}.json'),
+                      encoding='utf-8') as config:
+                units = json.load(config).get('systemd', {}).get('units', [])
+            unit = next(u for u in units if u['name'] == 'bootstrap-k8s.service')
+            contents = unit.get('contents', '')
+            role = ('control-plane'
+                    if 'kubeadm init' in contents or '--control-plane' in contents
+                    else 'worker')
+        except (OSError, ValueError, KeyError, StopIteration):
+            pass
+        roles_by_host[host] = role
+    return roles_by_host[host]
+
+
+def node_mac(host):
+    """The MAC the node's menu is named after, colon-separated as the inventory has it."""
+    for name, (menu_host, _) in pxe_menus().items():
+        if menu_host == host:
+            return name[len('01-'):].replace('-', ':')
+    return None
+
+
+def identity(ip):
+    """The who column: role, name, address and MAC, as far as they are known."""
+    host = hosts_by_ip.get(ip)
+    fields = (node_role(host) if host else None, host, ip,
+              node_mac(host) if host else None)
+    return ' '.join(f'{value or "-":<{width}}'
+                    for value, width in zip(fields, COLUMNS)).rstrip()
+
+
+def say(ip, message, *args, level=logging.INFO):
+    """Log a line against whoever made the request, or against the server itself."""
+    who = ip if ip == 'server' else identity(ip)
     logger.log(level, message, *args, extra={'who': who})
 
 
@@ -119,26 +184,30 @@ class NarratingContext(TftpContextServer):  # pylint: disable=too-few-public-met
 
     def start(self, buffer):
         """Handle the request as tftpy would, then say which node asked for what."""
-        super().start(buffer)
-        if self.file_to_transfer:
-            announce_tftp(self.host, os.path.basename(self.file_to_transfer))
+        try:
+            super().start(buffer)
+        finally:
+            # A missing file raises, and that request is the one worth naming.
+            if self.file_to_transfer:
+                announce_tftp(self.host, self.file_to_transfer)
 
 
-def announce_tftp(ip, name):
+def announce_tftp(ip, requested):
     """Narrate a TFTP request, and remember which node the client IP belongs to."""
+    name = os.path.basename(requested)
     menu = pxe_menus().get(name)
     if menu:
         host, path = menu
         hosts_by_ip[ip] = host
         if pxe_default(path) == 'install':
-            say(host, 'collecting its boot menu -- armed, so it will install')
+            say(ip, 'collecting its boot menu -- armed, so it will install')
         else:
-            say(host, 'collecting its boot menu -- booting from its local disk')
+            say(ip, 'collecting its boot menu -- booting from its local disk')
     elif MENU_NAME.match(name):
         say(ip, 'asked for %s -- no generated menu has that MAC, check '
                 'mac_address in inventory.yaml', name, level=logging.WARNING)
-    else:
-        say(hosts_by_ip.get(ip, ip), 'collecting the bootloader (%s)', name)
+    elif os.path.basename(os.path.dirname(requested)) != MENU_SUBDIR:
+        say(ip, 'collecting the bootloader (%s)', name)
 
 
 def describe(name, path):
@@ -184,27 +253,27 @@ class BootHandler(SimpleHTTPRequestHandler):
         named = IGNITION_NAME.match(name)
         if named:
             hosts_by_ip[ip] = named.group(1)
-        host = hosts_by_ip.get(ip)
 
         self.status = 200
-        say(host or ip, 'collecting %s', describe(name, served))
+        say(ip, 'collecting %s', describe(name, served))
         super().do_GET()
 
         if self.status != 200:
-            say(host or ip, '%s is not in output/http -- run make artifacts',
+            say(ip, '%s is not in output/http -- run make artifacts',
                 name, level=logging.WARNING)
         elif name == OS_IMAGE:
-            self.disarm(host, ip)
+            self.disarm(ip)
 
-    def disarm(self, host, ip):
+    def disarm(self, ip):
         """The node has the image and is about to reboot: send it to its disk."""
+        host = hosts_by_ip.get(ip)
         if host is None:
             say(ip, 'took the OS image but never asked for an Ignition config, '
                     'so I cannot tell which node it is -- run make '
                     'reinstall-cancel before it reboots', level=logging.WARNING)
         elif switch_to_local_boot(host):
-            say(host, 'OS image delivered -- switching to local boot, so the '
-                      'reboot lands on the disk')
+            say(ip, 'OS image delivered -- switching to local boot, so the '
+                    'reboot lands on the disk')
 
 
 def run_http():
@@ -249,6 +318,7 @@ def announce_start():
 if __name__ == '__main__':
     console = logging.StreamHandler()
     console.setFormatter(Console())
+    console.addFilter(DropKnownTftpNoise())
     logging.basicConfig(level=logging.INFO, handlers=[console])
     logging.getLogger('tftpy').setLevel(logging.WARNING)
 
