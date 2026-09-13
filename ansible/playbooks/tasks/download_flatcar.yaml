@@ -9,9 +9,6 @@
   ansible.builtin.set_fact:
     artifact_checksum: "{{ artifact_digests.content | regex_search('(?s)# SHA512 HASH\\n([a-f0-9]+)', '\\1') | first }}"
 
-# Most artifacts sit at the top of output/http. The disk image is the exception:
-# flatcar-install builds its URL as <base>/<version>/<file>, so serving it to a
-# node means putting it in a directory named for the version.
 - name: "Ensure the destination directory exists for {{ item.name | capitalize }}"
   ansible.builtin.file:
     path: "{{ item.dest_dir | default(http_dir) }}"
@@ -25,9 +22,7 @@
     checksum: "sha512:{{ artifact_checksum }}"
     mode: "0644"
 
-# The detached signature, for the artifacts flatcar-install verifies itself. It
-# has no DIGESTS of its own and needs none: it *is* the verification, and it is
-# only useful against the matching image.
+# No DIGESTS of its own: the signature is the verification.
 - name: "Download the signature for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
     url: "{{ url }}/{{ item.file }}.sig"

@@ -8,36 +8,13 @@ passwd:
 storage:
   disks:
     - device: {{ install_disk }}
-      # Flatcar is installed to this disk, so partitions 1-9 belong to the OS
-      # and are not ours to define. `wipe_table` must stay false: setting it
-      # would erase the install this config is running from.
-      #
-      # ROOT is partition 9 and normally grows to fill whatever is left of the
-      # disk, which would leave nothing for anything below. Capping it here is
-      # what makes room.
-      #
-      # The filesystem does *not* follow the partition on its own. Taking
-      # partition 9 over here is exactly what stops Flatcar's first-boot growth
-      # from happening, so ROOT ends up a 125GB partition holding the image's
-      # original ~1.6GB filesystem. grow-root.service below is what closes that
-      # gap; the two have to be changed together.
-      #
-      # Partition order is load-bearing. rook-osd is raw and unformatted, so its
-      # contents are whatever Ceph last wrote there -- inserting a partition
-      # ahead of it moves its start offset and takes the OSD data with it.
-      # Changing anything above rook-osd means reinstalling, one node at a time.
-      # See docs/operations/index.md#repartitioning-the-nodes.
+      # Partitions 1-9 are Flatcar's. wipe_table must stay false -- true erases
+      # the install this config runs from. Capping ROOT stops Flatcar growing
+      # it; grow-root.service below grows the filesystem, so the two change
+      # together. rook-osd stays last: moving its offset destroys the OSD.
       wipe_table: false
       partitions:
-        # Everything the node writes: /etc, /var/lib/etcd, /var/lib/rook,
-        # /var/lib/containerd, /var/lib/kubelet, /var/log, and the sysext images
-        # under /opt/extensions.
-        #
-        # `/usr` is the read-only half of Flatcar -- a verity-checked btrfs
-        # image on its own partition -- and it is the only read-only half. The
-        # root partition is ordinary read-write ext4, so none of the above needs
-        # a partition of its own to be writable. They had one when the root was
-        # a tmpfs and every byte was RAM; on disk that reason is gone.
+        # Everything the node writes. Only /usr is read-only on Flatcar.
         - label: ROOT
           number: 9
           size_mib: 128000  # 125GB, capped so rook-osd gets the rest
@@ -46,19 +23,9 @@ storage:
           number: 10
           size_mib: 0       # Use remaining space for Rook OSD
   filesystems:
-    # rook-osd is the one thing that still cannot be a directory on the root
-    # filesystem: Ceph wants the raw block device and declines anything carrying
-    # a filesystem. `format: none` with `wipe_filesystem` is how Ignition
-    # expresses exactly that: erase what is there, put nothing back, do not
-    # mount it.
-    #
-    # Which matters because the partition is new but the bytes under it are not.
-    # A rebuilt node inherits whatever the previous cluster's OSD wrote at that
-    # offset, and `ceph-volume` reads the BlueStore signature rather than the
-    # partition table, so Rook finds an OSD belonging to a cluster that no
-    # longer exists and refuses to adopt it -- leaving the node with no storage
-    # and the CephCluster reporting Ready. See
-    # docs/platform/rook-ceph.md#no-osds-after-reprovisioning.
+    # Ceph wants a raw device. format: none + wipe_filesystem erases the
+    # previous cluster's BlueStore signature, which ceph-volume reads instead of
+    # the partition table. See docs/platform/rook-ceph.md.
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
       wipe_filesystem: true
@@ -70,10 +37,7 @@ storage:
       mode: 0700
     - path: /etc/kubernetes/audit
       mode: 0700
-    # The API server writes its audit log here, on the varlog partition, where
-    # it now survives a reboot. Alloy still tails it into Loki -- that is what
-    # makes it queryable next to everything else and what keeps a copy when the
-    # node itself is the thing that failed. See docs/architecture/security.md.
+    # Alloy tails this into Loki. See docs/architecture/security.md.
     - path: /var/log/kubernetes/audit
       mode: 0700
 {% endif %}
@@ -81,9 +45,7 @@ storage:
     - path: /etc/containerd/config.toml
       mode: 0644
       contents:
-        # Config version 3 with the io.containerd.cri.v1.runtime plugin path is
-        # the containerd 2.x form. Version 2 is still auto-converted, but the
-        # conversion is the deprecated path and goes away in containerd 3.
+        # Version 3 is the containerd 2.x form; 2 is deprecated.
         inline: |
           version = 3
           [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
@@ -101,10 +63,8 @@ storage:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
 {% if role == 'control-plane' %}
-    # Key material for API server Secret encryption at rest. Generated once by
-    # `make config` into output/credentials/encryption_key and reused on every
-    # run, so all control-plane nodes share one key -- they must, or a Secret
-    # written through one API server is unreadable through another.
+    # Every control-plane node needs the same key, or a Secret written through
+    # one API server is unreadable through another.
     - path: /etc/kubernetes/enc/encryption-config.yaml
       mode: 0600
       contents:
@@ -121,14 +81,8 @@ storage:
                         secret: {{ encryption_key }}
                 - identity: {}
 
-    # What the API server records, and at which level. Without a policy file the
-    # audit log is not merely empty -- the API server does not open one at all,
-    # and `--audit-log-path` on its own achieves nothing.
-    #
-    # Rules are evaluated top to bottom and the first match wins, so the order
-    # below is the whole design. `omitStages: RequestReceived` drops the
-    # half of every event that says only "someone asked"; the matching response
-    # stage carries the same information plus the outcome.
+    # Without this file the API server opens no audit log at all. Rules match
+    # top to bottom, first match wins, so the order is the design.
     - path: /etc/kubernetes/audit/policy.yaml
       mode: 0600
       contents:
@@ -138,9 +92,6 @@ storage:
           omitStages:
             - RequestReceived
           rules:
-            # Endpoints polled continuously by kubelets, probes and Prometheus.
-            # None of them carry a decision worth reviewing, and together they
-            # are the majority of requests this cluster serves.
             - level: None
               nonResourceURLs:
                 - /healthz*
@@ -150,9 +101,7 @@ storage:
                 - /metrics
                 - /openapi*
 
-            # Leases are renewed every few seconds by every control-plane
-            # component and every kubelet; Events are written by everything.
-            # Both would bury the log in traffic that says nothing happened.
+            # Renewed or written constantly by everything; would bury the log.
             - level: None
               resources:
                 - group: "coordination.k8s.io"
@@ -160,10 +109,7 @@ storage:
                 - group: ""
                   resources: ["events"]
 
-            # The control plane and the kubelets read their way through the API
-            # constantly. Their reads are not the ones anyone goes looking for,
-            # and dropping them here is what keeps the Secret rule below
-            # affordable.
+            # Dropping these reads is what makes the Secret rule below affordable.
             - level: None
               users:
                 - system:apiserver
@@ -174,12 +120,8 @@ storage:
               userGroups: ["system:nodes"]
               verbs: ["get", "list", "watch"]
 
-            # Secret access by anything else, reads included -- a read is the
-            # interesting verb here, and it is the one a plain write-only audit
-            # policy misses. Metadata and never higher: at Request or
-            # RequestResponse the audit log becomes a second, unencrypted copy
-            # of every Secret in the cluster, sitting in a flat file next to the
-            # etcd that was carefully encrypted to prevent exactly that.
+            # Reads included -- that is the interesting verb. Never above
+            # Metadata: at Request the logged body IS the Secret.
             - level: Metadata
               resources:
                 - group: ""
@@ -187,28 +129,22 @@ storage:
                 - group: "authentication.k8s.io"
                   resources: ["tokenreviews"]
 
-            # Interactive access to a running container. RequestResponse is the
-            # difference between knowing that someone exec'd into a pod and
-            # knowing which pod, as which user, running what.
+            # Which pod, as which user, running what.
             - level: RequestResponse
               resources:
                 - group: ""
                   resources: ["pods/exec", "pods/attach", "pods/portforward"]
 
-            # Everything else that only reads.
             - level: None
               verbs: ["get", "list", "watch"]
 
-            # Everything that changes state. Metadata is also the level that
-            # carries the Pod Security Admission annotations, which is what
-            # makes the `audit` half of the PSA labels in
-            # payload/platform/security/pod-security.yaml mean anything.
+            # Everything that changes state. Also the level that carries the Pod
+            # Security Admission annotations.
             - level: Metadata
 
-    # kube-vip holds the API server VIP on whichever control-plane node wins the
-    # leader election, so controlPlaneEndpoint does not depend on one machine.
-    # Placed here rather than applied later: it has to be running before kubeadm
-    # writes the endpoint into the cluster certificates.
+    # Holds the API server VIP, so controlPlaneEndpoint does not depend on one
+    # machine. Written here because it must run before kubeadm writes the
+    # endpoint into the cluster certificates.
     - path: /etc/kubernetes/manifests/kube-vip.yaml
       mode: 0644
       contents:
@@ -248,8 +184,7 @@ storage:
                     value: "3"
                   - name: vip_retryperiod
                     value: "1"
-                  # Cilium owns LoadBalancer services via L2 announcements.
-                  # kube-vip must not also claim them.
+                  # Cilium owns LoadBalancer services; kube-vip must not.
                   - name: svc_enable
                     value: "false"
                 securityContext:
@@ -286,15 +221,8 @@ storage:
           net.ipv4.ip_forward = 1
 
 
-    # This config, as a file, because that is what `flatcar-install -i` takes.
-    # A config that fetches itself looks odd written down and is the plain
-    # consequence of there being one of them: the installer units below hand
-    # this path to flatcar-install, which embeds it in the OEM partition of the
-    # system being installed.
-    #
-    # It is also written on the installed system, where nothing reads it -- 11KB
-    # for the node to carry a copy of its own provisioning, which is a
-    # reasonable thing to find on a machine you are debugging.
+    # This config, as a file, because flatcar-install -i takes a path. Written
+    # on the installed system too, where nothing reads it.
     - path: /opt/ignition-final.json
       contents:
         source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
@@ -329,37 +257,13 @@ storage:
 
 systemd:
   units:
-    # ------------------------------------------------------------------
-    # Installer. These two run only in the PXE environment, never on the
-    # installed system, and ConditionKernelCommandLine is what tells them apart:
-    # a PXE boot carries `ignition.config.url` on the kernel command line and a
-    # disk boot does not.
+    # One config serves both the installer and the installed system.
+    # ConditionKernelCommandLine separates them: a PXE boot carries
+    # ignition.config.url, a disk boot does not. Every unit here must pick a
+    # side -- nothing enforces it, and getting it wrong fails silently.
     #
-    # That condition is the price of there being one config instead of two. Any
-    # unit added below has to decide which side of it belongs on, and nothing
-    # enforces that -- `systemctl status` showing "Condition check resulted in
-    # the unit being skipped" is how you find out you got it wrong.
-    # ------------------------------------------------------------------
-    # Two units rather than one, because the only difference between them is
-    # `-u` and the only way to decide is to look at the firmware. A
-    # ConditionPathExists on /sys/firmware/efi expresses that; an `if` in a
-    # shell script is the same decision with somewhere to hide.
-    #
-    # -b and -V rather than -f. Handed a local file, flatcar-install skips
-    # signature verification entirely; pointed at a mirror it downloads the
-    # image, downloads the detached signature beside it, and checks both
-    # against Flatcar's signing key before writing a byte. `make download`
-    # serves the <version>/ layout that makes the node's URL resolve.
-    #
-    # Which matters more than it looks. The boot server is unauthenticated HTTP
-    # on a segment this repository already describes as only conditionally
-    # trusted, and this is the one artifact on it that becomes the operating
-    # system. The SHA512 Ansible checks at download time protects the copy on
-    # the deployment host; this protects the copy the node actually writes.
-    #
-    # blkdiscard returns the whole device to unwritten, which leaves nothing
-    # anywhere for anything to recognise. SATA devices without TRIM decline it,
-    # hence the `-` prefix -- the wipe_table above is what is load-bearing.
+    # -b/-V rather than -f, because -f skips signature verification. The node
+    # checks the image against Flatcar's key before writing it.
     - name: flatcar-install.service
       enabled: true
       contents: |
@@ -380,18 +284,13 @@ systemd:
           -b http://{{ boot_server_ip }}:8000 \
           -V {{ flatcar_version }} \
           -i /opt/ignition-final.json
-        # Deliberately only on success. A failed install leaves the node in the
-        # PXE environment with a journal and a working SSH key, which is where
-        # you want to be -- rebooting would hand you a machine that PXE-boots
-        # and fails again with the evidence gone.
+        # Only on success -- a failed install stays put, with its journal.
         ExecStartPost=/usr/bin/systemctl reboot
 
         [Install]
         WantedBy=multi-user.target
 
-    # Identical but for `-u`, which writes an NVRAM boot entry for the disk.
-    # That is what makes "boot from disk" the firmware's own choice rather than
-    # a fallback it reaches after PXE fails.
+    # Identical but for -u, which writes an NVRAM boot entry for the disk.
     - name: flatcar-install-uefi.service
       enabled: true
       contents: |
@@ -418,19 +317,9 @@ systemd:
         [Install]
         WantedBy=multi-user.target
 
-    # ------------------------------------------------------------------
-    # The installed system. Everything below is skipped in the PXE environment.
-    # ------------------------------------------------------------------
-    # Capping ROOT in the disks stanza above is also what stops it growing.
-    # Flatcar's stock growth is systemd-growfs-root.service, which is `static`
-    # -- it is pulled in by an `x-systemd.growfs` mount option, and the root
-    # here is mounted from `root=LABEL=ROOT` on the kernel command line, which
-    # carries no such option. Ignition resizes the partition and nothing
-    # resizes the filesystem, so a node comes up with a 25GB ROOT partition
-    # holding the image's original ~1.6GB filesystem.
-    #
-    # That leaves about 1.2GB free on the filesystem /var/lib/etcd and
-    # /var/lib/rook both live on, which is not a cosmetic problem.
+    # Flatcar's own systemd-growfs-root.service is static and pulled in by an
+    # x-systemd.growfs mount option this root does not have, so without this the
+    # filesystem stays at the image's ~1.6GB inside a 125GB partition.
     - name: grow-root.service
       enabled: true
       contents: |
@@ -443,8 +332,7 @@ systemd:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        # The same binary the stock unit runs, and a no-op once the filesystem
-        # already fills the partition -- so this is safe on every later boot.
+        # No-op once the filesystem already fills the partition.
         ExecStart=/usr/lib/systemd/systemd-growfs /
         TimeoutSec=infinity
 
@@ -488,11 +376,9 @@ systemd:
             Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
     - name: locksmithd.service
       mask: true
-    # locksmithd is masked because Kured coordinates reboots instead, draining
-    # the node first. update-engine stages an OS update but does not write a
-    # sentinel anywhere, so translate its status into the same
-    # /run/reboot-required marker the sysupdate drop-ins above already use.
-    # /run is tmpfs, so the marker clears itself on reboot.
+    # locksmithd is masked because Kured drains before rebooting. update-engine
+    # stages an update without writing a sentinel, so translate its status into
+    # the /run/reboot-required marker Kured watches.
     - name: flatcar-reboot-sentinel.service
       contents: |
         [Unit]
@@ -528,10 +414,8 @@ systemd:
         Type=oneshot
         {% if role == 'control-plane' %}
         {% if inventory_hostname == groups['control_plane'][0] %}
-        # Since Kubernetes 1.29 admin.conf is not usable until init completes, so
-        # kube-vip is pointed at super-admin.conf for the duration and moved back
-        # afterwards. Only the hostPath changes; the in-container path stays
-        # /etc/kubernetes/admin.conf.
+        # admin.conf is unusable until init completes (1.29+), so kube-vip reads
+        # super-admin.conf for the duration. Only the hostPath changes.
         ExecStartPre=/usr/bin/sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
