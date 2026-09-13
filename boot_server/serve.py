@@ -51,8 +51,7 @@ COLUMNS = (13, 8, 15, 17)
 WHO_WIDTH = sum(COLUMNS) + len(COLUMNS) - 1
 
 # Bold yellow for a warning, bold red for an error, and only on a terminal.
-TINTS = {logging.WARNING: '\033[1;33m', logging.ERROR: '\033[1;31m',
-         logging.CRITICAL: '\033[1;31m'}
+COLOURS = {'ok': '\033[1;32m', 'warn': '\033[1;33m', 'error': '\033[1;31m'}
 RESET = '\033[0m'
 WARNING_MARK = '\u26a0'
 
@@ -93,10 +92,11 @@ class Console(logging.Formatter):
             f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}')
 
     def paint(self, record, line):
-        """Colour by level, or leave it alone if this is not going to a terminal."""
-        if self.tint and record.levelno in TINTS:
-            return f'{TINTS[record.levelno]}{line}{RESET}'
-        return line
+        """Colour the line, or leave it alone if this is not going to a terminal."""
+        colour = COLOURS.get(getattr(record, 'tint', None))
+        if colour is None and record.levelno >= logging.WARNING:
+            colour = COLOURS['error' if record.levelno >= logging.ERROR else 'warn']
+        return f'{colour}{line}{RESET}' if self.tint and colour else line
 
 
 def in_colour(stream):
@@ -142,17 +142,18 @@ def identity(ip):
                     for value, width in zip(fields, COLUMNS)).rstrip()
 
 
-def banner(headline, *body):
-    """A warning worth the whole width, rather than a line in the node column."""
+def banner(headline, *body, tint='warn'):
+    """A message worth the whole width, rather than a line in the node column."""
     lines = [f'  {WARNING_MARK}  {headline}', ''] + [f'     {line}'.rstrip()
                                                      for line in body]
-    logger.warning('\n%s\n', '\n'.join(lines), extra={'banner': True})
+    logger.warning('\n%s\n', '\n'.join(lines),
+                   extra={'banner': True, 'tint': tint})
 
 
-def say(ip, message, *args, level=logging.INFO):
+def say(ip, message, *args, level=logging.INFO, tint=None):
     """Log a line against whoever made the request, or against the server itself."""
     who = ip if ip == 'server' else identity(ip)
-    logger.log(level, message, *args, extra={'who': who})
+    logger.log(level, message, *args, extra={'who': who, 'tint': tint})
 
 
 def human_size(path):
@@ -238,7 +239,8 @@ def announce_tftp(ip, requested):
         host, path = menu
         hosts_by_ip[ip] = host
         if pxe_default(path) == 'install':
-            say(ip, 'collecting its boot menu -- armed, so it will install')
+            say(ip, 'collecting its boot menu -- armed, so it will install',
+                tint='warn')
         else:
             say(ip, 'collecting its boot menu -- booting from its local disk')
     elif MENU_NAME.match(name):
@@ -313,7 +315,7 @@ class BootHandler(SimpleHTTPRequestHandler):
                     'reinstall-cancel before it reboots', level=logging.WARNING)
         elif switch_to_local_boot(host):
             say(ip, 'OS image delivered -- switching to local boot, so the '
-                    'reboot lands on the disk')
+                    'reboot lands on the disk', tint='ok')
 
 
 def run_http():
@@ -331,6 +333,46 @@ def run_tftp():
     os.makedirs(TFTP_DIR, exist_ok=True)
     sys.modules['tftpy.TftpServer'].TftpContextServer = NarratingContext
     tftpy.TftpServer(TFTP_DIR).listen(BIND_IP, TFTP_PORT)
+
+
+def armed_hosts():
+    """Every host whose generated menu will install on its next boot."""
+    return sorted(h for h, path in pxe_menus().values()
+                  if pxe_default(path) == 'install')
+
+
+def offer_to_disarm():
+    """On the way out, an armed menu stays armed. Say so, and offer to fix it."""
+    armed = armed_hosts()
+    if not armed:
+        say('server', 'nothing is left armed', tint='ok')
+        return
+
+    banner(f'STILL ARMED: {", ".join(armed)}',
+           'Leaving them armed means the next time any of them powers on it',
+           'installs, wipes its disk, and does not ask first. The boot server',
+           'does not have to be running for that -- the menu is already on disk.')
+
+    if not sys.stdin.isatty():
+        say('server', 'not a terminal, so leaving them as they are -- '
+                      'make reinstall-cancel stands them down',
+            level=logging.WARNING)
+        return
+
+    try:
+        answer = input(f'  Disarm {len(armed)} node(s) now? [Y/n] ').strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        answer = 'n'
+
+    if answer not in ('', 'y', 'yes'):
+        say('server', 'left armed: %s -- make reinstall-cancel stands them down',
+            ', '.join(armed), level=logging.WARNING)
+        return
+
+    for host in armed:
+        if switch_to_local_boot(host):
+            say('server', '%s switched to local boot', host, tint='ok')
 
 
 def announce_start():
@@ -375,8 +417,15 @@ if __name__ == '__main__':
 
     try:
         run_tftp()
+    except KeyboardInterrupt:
+        # Ctrl-C is how this is meant to end, so it should not look like a crash.
+        print()
+        say('server', 'stopping')
+        offer_to_disarm()
     except PermissionError:
         say('server', 'cannot bind port %s -- make serve needs sudo',
             TFTP_PORT, level=logging.ERROR)
+        sys.exit(1)
     except Exception as error:  # pylint: disable=broad-exception-caught
         say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
+        sys.exit(1)
