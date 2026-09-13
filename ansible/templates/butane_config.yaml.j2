@@ -8,39 +8,50 @@ passwd:
 storage:
   disks:
     - device: {{ install_disk }}
-      # The root filesystem is a tmpfs -- these nodes PXE-boot the Flatcar RAM
-      # image and Ignition runs on every boot. Everything under / is therefore
-      # RAM shared with etcd, and the partitions below exist to keep the
-      # directories that grow off it. They are still wiped on every boot, so the
-      # semantics are unchanged: this moves ephemeral state from RAM to disk, it
-      # does not make it persistent.
+      # Flatcar is installed to this disk, so partitions 1-9 belong to the OS
+      # and are not ours to define. `wipe_table` must stay false: setting it
+      # would erase the install this config is running from.
+      #
+      # ROOT is partition 9 and normally grows to fill whatever is left of the
+      # disk, which would leave nothing for anything below. Capping it here is
+      # what makes room, and it has to happen in the initramfs -- before the
+      # root filesystem is mounted and grown into the partition. The filesystem
+      # follows the partition, so it comes up at 25GB rather than being shrunk.
       #
       # Partition order is load-bearing. rook-osd is raw and unformatted, so its
       # contents are whatever Ceph last wrote there -- inserting a partition
       # ahead of it moves its start offset and takes the OSD data with it.
-      # Changing anything above rook-osd means rebuilding every OSD, one node at
-      # a time. See docs/operations/index.md#repartitioning-the-nodes.
-      wipe_table: true
+      # Changing anything above rook-osd means reinstalling, one node at a time.
+      # See docs/operations/index.md#repartitioning-the-nodes.
+      wipe_table: false
       partitions:
+        # /, and with it /etc, /var/lib/etcd, /var/lib/rook and the sysext
+        # images under /opt/extensions. All of which now survive a reboot.
+        - label: ROOT
+          number: 9
+          size_mib: 25600  # 25GB, capped so the partitions below fit
+          resize: true
         - label: containerd
-          number: 1
+          number: 10
           size_mib: 51200  # 50GB for container images
         # Backs the kubelet root directory, which is what the kubelet reports as
-        # node ephemeral-storage. On tmpfs that was ~3.6GB of RAM on the
-        # control-plane nodes -- small enough that a pod requesting a few Gi of
-        # ephemeral-storage could not be scheduled there at all.
+        # node ephemeral-storage. This is why image CVE scanning can schedule:
+        # on the tmpfs root it was ~3.6GB of RAM on the control-plane nodes.
         - label: kubelet
-          number: 2
+          number: 11
           size_mib: 40960  # 40GB for pod ephemeral storage and volumes
-        # Container logs, the journal and the API server audit log. All three
-        # were competing with etcd for the same 3.8GB tmpfs.
+        # Container logs, the journal and the API server audit log.
         - label: varlog
-          number: 3
+          number: 12
           size_mib: 10240  # 10GB for /var/log
         - label: rook-osd
-          number: 4
+          number: 13
           size_mib: 0      # Use remaining space for Rook OSD
   filesystems:
+    # `wipe_filesystem` applies the one time Ignition runs, on the first boot
+    # after the install. It is not a recurring wipe: on an installed node
+    # Ignition does not run again, so everything below survives every
+    # subsequent reboot.
     - path: /var/lib/containerd
       device: /dev/disk/by-partlabel/containerd
       format: xfs
@@ -74,10 +85,10 @@ storage:
       mode: 0700
     - path: /etc/kubernetes/audit
       mode: 0700
-    # The API server writes its audit log here. This is tmpfs like the rest of
-    # the root filesystem, so what lands here is a buffer, not an archive --
-    # Alloy tails it into Loki, which is where the durable copy lives. See
-    # docs/architecture/security.md.
+    # The API server writes its audit log here, on the varlog partition, where
+    # it now survives a reboot. Alloy still tails it into Loki -- that is what
+    # makes it queryable next to everything else and what keeps a copy when the
+    # node itself is the thing that failed. See docs/architecture/security.md.
     - path: /var/log/kubernetes/audit
       mode: 0700
 {% endif %}

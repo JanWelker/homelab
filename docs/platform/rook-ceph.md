@@ -17,13 +17,21 @@ the grounds that everything still appears to work.
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
 
 `rook-osd` is the **last** partition on the disk and takes whatever is left after
-`containerd` (50GB), `kubelet` (40GB) and `varlog` (10GB) — about 138GB per node
-on the 256GB disks here, so roughly 830GB raw and 277GB usable at three
-replicas. It is last for a reason: the partition is raw, so its contents are
-wherever Ceph last wrote them, and inserting anything ahead of it shifts its
-start offset and takes the OSD data with it. Changing the partition table above
-`rook-osd` is a [reprovision](../operations/index.md#repartitioning-the-nodes),
-not an edit.
+Flatcar's own partitions, the 25GB root, `containerd` (50GB), `kubelet` (40GB)
+and `varlog` (10GB) — about 111GB per node on the 256GB disks here, so roughly
+650GB raw and 220GB usable at three replicas. It is last for a reason: the
+partition is raw, so its contents are wherever Ceph last wrote them, and
+inserting anything ahead of it shifts its start offset and takes the OSD data
+with it. Changing the partition table above `rook-osd` is a
+[reinstall](../operations/index.md#repartitioning-the-nodes), not an edit.
+
+!!! note "A rebuild wipes the OSD deliberately"
+    The installer clears filesystem signatures from every partition before it
+    touches the table, and discards the whole device where the hardware supports
+    it. That is aimed squarely at the failure below: `ceph-volume` reads the
+    BlueStore *signature*, not the partition table, so a reinstalled node that
+    left the old bytes in place brings an OSD back into a cluster that has never
+    heard of it.
 
 "Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see [No OSDs after reprovisioning](#no-osds-after-reprovisioning).
 

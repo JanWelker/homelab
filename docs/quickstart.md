@@ -23,7 +23,8 @@ Each node must have:
 
 - A NIC that supports PXE booting
 - An NVMe drive (or adjust `install_disk` in `inventory.yaml` — one node uses `/dev/sda`, because hardware is a collection of exceptions wearing a trenchcoat)
-- Sufficient disk space: 50 GB reserved for containerd, remainder used by Rook-Ceph as OSD storage
+- Sufficient disk space: Flatcar itself plus a 25 GB root, 50 GB for containerd, 40 GB for the kubelet, 10 GB for `/var/log`, and the remainder used by Rook-Ceph as OSD storage. 256 GB leaves about 111 GB for Ceph per node
+- At least 8 GB of RAM: the installer stages the ~700 MB Flatcar image in the PXE environment's tmpfs before writing it
 
 The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.
 
@@ -68,7 +69,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
     | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. |
     | `mac_address` (per host) | Selects which generated PXE menu a node picks up |
     | `ansible_host` (per host) | The static IP the node is given |
-    | `install_disk` | Disk that Ignition partitions for containerd and Rook storage (`/dev/nvme0n1` by default). Flatcar itself is **not** installed to it — it runs from RAM |
+    | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default). **Wiped completely** — partitions, GPT and a device-level discard — before the install |
     | `kubernetes_version`, `containerd_version`, `flatcar_version` | Artifact versions to download |
 
 3. **Initialize Environment**:
@@ -94,9 +95,12 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     *Artifacts will be generated in `output/http` (Ignition) and `output/tftp`
-    (PXE). Note: The install disk is partitioned into 50GB for containerd, 40GB
-    for the kubelet root directory, 10GB for `/var/log`, and the remaining space
-    for Rook-Ceph storage.*
+    (PXE). Two Ignition configs are written per host: `ignition-<host>.json`,
+    which is embedded into the installed system, and `ignition-install-<host>.json`,
+    the throwaway installer that wipes the disk and runs `flatcar-install`. The
+    install disk ends up as a 25GB root, 50GB for containerd, 40GB for the
+    kubelet root directory, 10GB for `/var/log`, and the remaining space for
+    Rook-Ceph storage.*
 
     Re-run this after **any** change to `inventory.yaml` — the values are baked
     into the generated files. Editing the inventory and skipping this step is the
@@ -122,18 +126,32 @@ The deployment host (the machine running Ansible and the boot server) must be re
     arrive in order is the single most useful debugging tool in this entire
     procedure.
 
-7. **Boot Machines**:
-    Power on your bare metal nodes. They will PXE boot, run Ignition, and start
-    the kubelet. Nothing is installed to the disk — Flatcar runs from RAM and
-    the nodes fetch everything from the boot server on every boot, including
-    every subsequent one. See
-    [Nothing is installed to disk](architecture/boot-process.md#nothing-is-installed-to-disk).
+7. **Boot Machines and choose `install`**:
+    Power on your bare metal nodes. Each stops at a PXE menu with a five second
+    timeout. **Select `Install Flatcar to <disk>`** — the default is
+    `Boot from local disk`, which is what you want on every boot *except* this
+    one.
+
+    That deliberate step is the whole reason a reboot later cannot reinstall a
+    node. See [Boot & Bootstrap Process](architecture/boot-process.md).
+
+    - The node wipes the disk, writes Flatcar, and reboots into it. From that
+      reboot on it is booting from its own disk.
     - Expect the boot server log to show, per node: a TFTP request for the
       bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
-      the initrd, `ignition-<host>.json`, and finally the sysext images.
+      the initrd, `ignition-install-<host>.json`, the Flatcar disk image, and
+      `ignition-<host>.json` — then, after the reboot, only the sysext images.
+    - **Leave the boot server running until every node is up.** The sysexts are
+      fetched on the first boot from disk. After that nothing needs it.
     - **Note**: The cluster will come up in a `NotReady` state initially because
       no CNI is installed. This is correct. Do not fix it yet.
     - If a node stalls, see [Troubleshooting PXE boot](#troubleshooting-pxe-boot).
+
+    !!! tip "Watching an install"
+        `flatcar-install.service` logs to the console, so a monitor on the node
+        shows the wipe and the write. Over SSH, `journalctl -u flatcar-install -f`
+        as `core@<node>` does the same. A failed install deliberately does *not*
+        reboot — the node stays in the PXE environment with the journal intact.
 
 8. **Retrieve Kubeconfig**:
     Once the control plane node responds to SSH (or is pingable), retrieve the
@@ -391,12 +409,20 @@ make taint
 
 ## Reprovisioned nodes
 
-Reinstalling the nodes does not hand Ceph empty disks back. Butane creates the
-`rook-osd` partition only when it is missing and leaves it unformatted, so a
-rebuild onto the same hardware inherits the previous cluster's OSDs — and Rook
-will not adopt an OSD belonging to a cluster it does not know. There are no
-`rook-ceph-osd` pods, the `CephCluster` still reports `Ready`, and the failure
-surfaces one layer up, at step 11:
+A rebuild onto the same hardware used to inherit the previous cluster's OSDs.
+Butane created the `rook-osd` partition only when it was missing and left it
+unformatted, so the old BlueStore signature survived — and Rook will not adopt
+an OSD belonging to a cluster it does not know.
+
+The installer now wipes the disk before `flatcar-install` runs: filesystem
+signatures off every partition, the GPT zapped, and a device-level discard where
+the hardware supports it. So picking `install` from the PXE menu does hand Ceph
+an empty disk back.
+
+Worth keeping the symptom in mind anyway, because it is what you would see if
+that wipe ever failed — or on hardware where `blkdiscard` is declined *and*
+`wipefs` missed something. There are no `rook-ceph-osd` pods, the `CephCluster`
+still reports `Ready`, and the failure surfaces one layer up, at step 11:
 
 ```console
 $ kubectl -n openbao exec -it openbao-0 -- bao operator init

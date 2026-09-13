@@ -51,8 +51,8 @@ the only thing keeping those credentials off the network. A `make serve` left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.
 
-!!! warning "That advice is in direct tension with availability"
-    These nodes have no OS on disk — they PXE-boot from the boot server on *every* boot, so a node that restarts while it is stopped does not come back, and [Kured](../platform/kured.md) reboots nodes unattended between 01:00 and 05:00. The honest position is that neither state is correct: running, the boot server hands cluster-join credentials to anything on the segment; stopped, any reboot is fatal. Start it deliberately around anything that might restart a node, and stop it again afterwards. See [Nodes cannot boot without the boot server](limitations.md#nodes-cannot-boot-without-the-boot-server).
+!!! note "Stopping it is now free"
+    Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server switched off — the exposure above exists only during a build. That was not true when the nodes ran from RAM and PXE-booted on every restart, which made "stop the boot server" and "let Kured reboot a node at 02:00" mutually exclusive instructions. See [Boot & Bootstrap Process](boot-process.md#every-boot-after-the-first).
 
 `output/credentials/` holds the generated bootstrap token and certificate key in
 plaintext. The directory is `0700` and `output/` is gitignored, but the values
@@ -173,18 +173,17 @@ rotation numbers affordable:
 | Worst-case footprint | ~1.1 GB of disk per control-plane node |
 | Durable copy | [Loki](../platform/logging.md), on Ceph |
 
-The partition is still **wiped on every boot**, like every other filesystem
-these nodes mount — moving `/var/log` off tmpfs bought space, not persistence.
-So the on-node file remains a **buffer, not an archive**: Alloy tails it and
-ships every event to Loki within seconds, and Loki is the only place an audit
-event outlives a reboot. An audit log that does not survive the incident is not
-an audit log, and on nodes that reprovision themselves at every boot that is not
-a hypothetical.
+The partition is formatted once, on the first boot after a node is installed,
+and persists from then on — so the audit log now survives a reboot on its own.
+Alloy still tails it into Loki, and that is still where the copy that matters
+lives: an audit log stored only on the node is unavailable in precisely the
+situation where the node is what failed, and unqueryable next to everything
+else in the meantime.
 
 !!! note "This used to be a CIS deviation"
-    `--audit-log-maxbackup` was `2` when `/var/log` was part of the 3.8 GB tmpfs
-    root, because ten 100 MB files would have reserved 1.1 GB of the RAM etcd
-    was running in. The [`varlog` partition](../operations/index.md#repartitioning-the-nodes)
+    `--audit-log-maxbackup` was `2` when `/var/log` was part of the tmpfs root
+    the nodes ran from, because ten 100 MB files would have reserved 1.1 GB of
+    the RAM etcd was running in. The [`varlog` partition](../operations/index.md#repartitioning-the-nodes)
     removed the objection, and check 1.2.18 now passes along with 1.2.16,
     1.2.17 and 1.2.19.
 
@@ -314,11 +313,10 @@ Roughly in order of value against effort:
 5. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` that currently sits in `output/credentials/` with no
    rotation.
-6. Persist `/var/lib/etcd`. It is the one directory left on the tmpfs root that
-   would genuinely rather be on a disk, and it is deliberately still there:
-   persisting etcd without also persisting `/etc/kubernetes` produces a node
-   that re-runs `kubeadm init` against a non-empty data directory, which fails
-   in a considerably more interesting way than losing the data does. That is a
-   change to the boot model, not to the partition table.
+6. Get the backups out of the cluster. Velero and the etcd snapshots write to
+   the Ceph object store they are backing up — see
+   [Backups do not leave the cluster](limitations.md#backups-do-not-leave-the-cluster).
+   With etcd now persisting across reboots there is more worth losing than
+   there used to be.
 
 See [Known Limitations](limitations.md) for the operational counterparts.

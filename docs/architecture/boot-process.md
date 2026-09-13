@@ -41,54 +41,70 @@ without a word of complaint.
 
 ## 3. Install & Bootstrap
 
+PXE does not boot the node; it boots the **installer**. The `install` entry in
+the menu has to be chosen deliberately — the default is the local disk — and
+what it loads is a throwaway RAM environment whose only job is to write Flatcar
+to `install_disk` and reboot into it.
+
 ```mermaid
 sequenceDiagram
     participant Node
     participant Server as Boot Server
 
-    Node->>Server: 7. HTTP Ignition config
-    Note over Node,Server: URL comes from the ignition.config.url kernel parameter
-    Server-->>Node: 8. Ignition JSON
-    Node->>Node: 9. Partition disk, write /etc, enable units
-    Node->>Server: 10. HTTP sysext images
-    Server-->>Node: 11. kubernetes, containerd
-    Node->>Node: 12. systemd unit runs kubeadm
+    Node->>Server: 7. HTTP installer Ignition config
+    Note over Node,Server: Only when `install` is chosen from the menu
+    Server-->>Node: 8. ignition-install-<host>.json
+    Node->>Server: 9. HTTP Flatcar disk image + final Ignition
+    Node->>Node: 10. Wipe disk, flatcar-install, reboot
+    Note over Node: Now booting from disk, not the network
+    Node->>Node: 11. Ignition partitions and writes /etc
+    Node->>Server: 12. HTTP sysext images
+    Server-->>Node: 13. kubernetes, containerd
+    Node->>Node: 14. systemd unit runs kubeadm
     Note over Node: Node is NotReady - no CNI yet
 ```
 
-Step 9 is the point of no return for the *disk*: Ignition repartitions
-`install_disk` without asking twice, and whatever was on that machine before is
-now a memory. Check `install_disk` before you check anything else.
+Step 10 is the point of no return, and it is thorough on purpose. The installer
+wipes filesystem signatures from every existing partition, zaps the GPT, and
+discards the whole device where the hardware supports it. That last part is
+about Ceph specifically: BlueStore metadata lives at the start of the raw
+`rook-osd` partition, and `ceph-volume` reads the *signature*, not the partition
+table — so a repartition alone can resurrect an OSD on a cluster that has never
+heard of it. Check `install_disk` before you check anything else.
 
-Step 12 leaving the node `NotReady` is correct and expected — there is no CNI
+Step 11 runs from disk, not from the network. Ignition is embedded in the OEM
+partition by `flatcar-install -i`, so the node no longer depends on the boot
+server for its config — only for the sysext images in step 12, and only on this
+first boot.
+
+Step 14 leaving the node `NotReady` is correct and expected — there is no CNI
 yet, so the kubelet has nothing to plug pods into. It stays that way until
 `make install-core` lands Cilium.
 
-## Nothing is installed to disk
+## Every boot after the first
 
-This is the single most surprising property of these nodes, and it is easy to
-miss because every other PXE guide on the internet ends with `flatcar-install`.
-This one does not call it.
-
-The PXE menu boots `flatcar_production_pxe_image.cpio.gz` — the RAM image — and
-passes `flatcar.first_boot=1` on every boot, not just the first. So:
+The node boots from its own disk. The boot server can be, and should be,
+switched off.
 
 | | |
 | --- | --- |
-| `/` | **tmpfs.** 3.8 GB on the control-plane nodes, 7.7 GB on `freya` |
-| Ignition | Runs on **every** boot, re-fetching its config from the boot server |
-| `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | In RAM; gone at reboot |
-| Persisted on disk | Only the partitions Ignition creates — and those are reformatted at each boot too |
+| `/` | ext4 on partition 9, capped at 25 GB |
+| Ignition | Runs **once**, on the first boot after the install |
+| `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
+| `containerd`, `kubelet`, `varlog`, `rook-osd` | Partitions 10–13, formatted once and then persistent |
 
-A reboot is therefore a **reprovision**. `bootstrap-k8s.service` fires because
-its `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is satisfied again, and
-the node re-runs `kubeadm init` or `kubeadm join` from scratch. The cluster
-survives this the same way it survives a node failure: the other two
-control-plane nodes hold etcd quorum, and Rook rebuilds from the `rook-osd`
-partition, which is the one thing Ignition leaves alone.
+A reboot is therefore just a reboot. `bootstrap-k8s.service` does *not* fire,
+because its `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer
+satisfied — the file is still there from last time. etcd comes back with its
+data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
 
-!!! danger "A node cannot reboot unless the boot server is running"
-    The kernel, the initrd and the Ignition config all come from `make serve`. Without it a rebooting node PXE-boots into nothing, falls through to a disk that holds no bootloader, and stays down — and [Kured](../platform/kured.md) reboots nodes automatically between 01:00 and 05:00. Run `make serve` before anything triggers a reboot, and treat "stop the boot server when provisioning is finished" as advice for the window between builds rather than a steady state. See [Nodes cannot boot without the boot server](limitations.md#nodes-cannot-boot-without-the-boot-server).
+!!! note "Two boot paths, and the menu picks the safe one"
+    The PXE menu defaults to `LOCALBOOT` with a five second timeout, so a node
+    that network-boots for any reason still ends up on its own disk. Installing
+    requires someone to choose `install` at the console. On UEFI firmware
+    `flatcar-install -u` writes a real boot entry, so the firmware usually goes
+    straight to disk without consulting the menu at all — set the disk ahead of
+    PXE in the boot order and it never will.
 
 ## 4. Post-Installation Bootstrap
 

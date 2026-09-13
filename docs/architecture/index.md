@@ -33,18 +33,15 @@ Flatcar downloads OS updates in the background into an A/B partition pair, so a 
 
 **Butane** is a human-friendly YAML format that compiles down to Ignition JSON. In this project, Ansible generates Butane configs from Jinja2 templates, then transpiles them to Ignition JSON which the boot server serves over HTTP.
 
-Ignition runs in the initramfs, before the real root is mounted. It is not a
-configuration management system and it will not converge anything: it applies
-its config once per run and stops.
+Ignition runs *once*, in the initramfs, before the real root is mounted. It is
+not a configuration management system and it will not converge anything on the
+second boot. If you change a template, the node has to be reprovisioned to care.
 
-!!! note "Here it runs on *every* boot"
-    Ignition is normally a first-boot system, and that is what the paragraph
-    above describes on a machine with Flatcar installed to disk. These nodes do
-    not have that — they PXE-boot the RAM image with `flatcar.first_boot=1`
-    hardcoded in the menu, so Ignition re-fetches its config and applies it from
-    scratch at every boot. A node picks up a changed template by rebooting, not
-    by being rebuilt. See
-    [Nothing is installed to disk](boot-process.md#nothing-is-installed-to-disk).
+Here, "reprovisioned" means choosing `install` from the PXE menu, which wipes the
+disk and installs Flatcar again — see
+[Boot & Bootstrap Process](boot-process.md). The Ignition config is embedded into
+the OEM partition at install time, so a node reads it from its own disk rather
+than from the network.
 
 ### Systemd Sysexts
 
