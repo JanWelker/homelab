@@ -1794,10 +1794,11 @@ converges anything — it generates files on the deployment host, and Ignition
 applies them once, on the first boot after a node is installed. Ansible is a
 template engine with an inventory, and on an immutable OS that is exactly the
 right amount of Ansible.</p>
-<p>It generates two Ignition configs per host: the node's own, and a throwaway
-<a href="../architecture/boot-process/#3-install-bootstrap">installer config</a> that
-wipes the disk and runs <code>flatcar-install</code>. Changing anything under <code>ansible/</code>
-therefore takes a rebuild of the affected node, not a reboot.</p>
+<p>It generates one Ignition config per host, and that config does both jobs: the
+PXE environment <a href="../architecture/boot-process/#3-install-bootstrap">runs it to install</a>,
+and <code>flatcar-install</code> embeds the same file into the system it installs. Changing
+anything under <code>ansible/</code> therefore takes a rebuild of the affected node, not a
+reboot.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ansible/
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
@@ -1808,10 +1809,9 @@ therefore takes a rebuild of the affected node, not a reboot.</p>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── reinstall.yaml   # Flips DEFAULT in the generated PXE menus
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   └── tasks/          # Reusable tasks for downloads
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>└── templates/
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ├── butane_config.yaml.j2  # Template for Butane config (transpiled to Ignition)
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ├── butane_install.yaml.j2 # Template for the throwaway installer config
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    ├── kubeadm.yaml.j2        # Template for Kubeadm configuration
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    └── pxe_config.j2          # Template for PXE boot menu
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    ├── butane_config.yaml.j2 # Template for Butane config (transpiled to Ignition)
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    ├── kubeadm.yaml.j2       # Template for Kubeadm configuration
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    └── pxe_config.j2         # Template for PXE boot menu
 </span></code></pre></div>
 <h2 id="inventory">Inventory<a class="headerlink" href="#inventory" title="Permanent link">&para;</a></h2>
 <p>The <code>inventory.yaml</code> file defines the cluster layout, and it is the single

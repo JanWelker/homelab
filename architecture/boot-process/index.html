@@ -1784,16 +1784,27 @@ without a word of complaint.</p>
 <h2 id="3-install-bootstrap">3. Install &amp; Bootstrap<a class="headerlink" href="#3-install-bootstrap" title="Permanent link">&para;</a></h2>
 <p>PXE does not boot the node; it boots the <strong>installer</strong> — and only when the node
 has been armed with <code>make reinstall</code>, since the generated config otherwise says
-<code>DEFAULT localboot</code>. What it loads is a throwaway RAM environment whose only job
-is to write Flatcar to <code>install_disk</code> and reboot into it.</p>
+<code>DEFAULT localboot</code>. What it loads is a RAM environment whose only job is to
+write Flatcar to <code>install_disk</code> and reboot into it.</p>
+<p>There is <strong>one Ignition config per host</strong>, and it does both jobs. The PXE
+environment runs it to install; <code>flatcar-install -i</code> embeds the same file into
+the system being installed, where it runs again on first boot to partition the
+disk and lay down <code>/etc</code>. What separates the two is
+<code>ConditionKernelCommandLine</code>: a PXE boot carries <code>ignition.config.url</code> on the
+kernel command line and a disk boot does not, so each unit declares which side
+it belongs on.</p>
+<div class="admonition warning">
+<p class="admonition-title">Every unit has to pick a side</p>
+<p>That condition is the price of one config rather than two, and nothing enforces it. <code>bootstrap-k8s.service</code> is the cautionary one: its other guard is <code>ConditionPathExists=!/etc/kubernetes/kubelet.conf</code>, which is satisfied in the PXE environment too — unguarded, it would run <code>kubeadm</code> in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and <code>systemctl status</code> reporting "Condition check resulted in the unit being skipped" is how you find out.</p>
+</div>
 <pre class="mermaid"><code>sequenceDiagram
     participant Node
     participant Server as Boot Server
 
-    Node-&gt;&gt;Server: 7. HTTP installer Ignition config
+    Node-&gt;&gt;Server: 7. HTTP Ignition config
     Note over Node,Server: Only when armed with make reinstall
-    Server--&gt;&gt;Node: 8. ignition-install-&lt;host&gt;.json
-    Node-&gt;&gt;Server: 9. HTTP Flatcar disk image + final Ignition
+    Server--&gt;&gt;Node: 8. ignition-&lt;host&gt;.json
+    Node-&gt;&gt;Server: 9. HTTP Flatcar image + signature
     Node-&gt;&gt;Node: 10. Wipe disk, flatcar-install, reboot
     Note over Node: Now booting from disk, not the network
     Node-&gt;&gt;Node: 11. Ignition partitions and writes /etc

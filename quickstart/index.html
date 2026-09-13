@@ -1994,9 +1994,9 @@ want to know.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>config
 </span></code></pre></div>
 <p><em>Artifacts will be generated in <code>output/http</code> (Ignition) and <code>output/tftp</code>
-(PXE). Two Ignition configs are written per host: <code>ignition-&lt;host&gt;.json</code>,
-which is embedded into the installed system, and <code>ignition-install-&lt;host&gt;.json</code>,
-the throwaway installer that wipes the disk and runs <code>flatcar-install</code>. The
+(PXE). One Ignition config per host, <code>ignition-&lt;host&gt;.json</code>: the PXE
+environment runs it to install, and <code>flatcar-install</code> embeds the same file
+into the installed system. The
 install disk ends up as a 125GB root filesystem and the remaining space as a
 raw partition for Rook-Ceph.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
@@ -2035,9 +2035,9 @@ unattended. See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Pro
   reboot on it is booting from its own disk.</li>
 <li>Expect the boot server log to show, per node: a TFTP request for the
   bootloader and its <code>01-&lt;mac&gt;</code> menu, then HTTP requests for the kernel,
-  the initrd, <code>ignition-install-&lt;host&gt;.json</code>, <code>ignition-&lt;host&gt;.json</code>, and
-  then <code>&lt;version&gt;/flatcar_production_image.bin.bz2</code> with its <code>.sig</code> — then,
-  after the reboot, only the sysext images.</li>
+  the initrd, <code>ignition-&lt;host&gt;.json</code>, and then
+  <code>&lt;version&gt;/flatcar_production_image.bin.bz2</code> with its <code>.sig</code> — then, after
+  the reboot, <code>ignition-&lt;host&gt;.json</code> again plus the sysext images.</li>
 <li><strong>Leave the boot server running until every node is up.</strong> The sysexts are
   fetched on the first boot from disk. After that nothing needs it.</li>
 <li><strong>Note</strong>: The cluster will come up in a <code>NotReady</code> state initially because
