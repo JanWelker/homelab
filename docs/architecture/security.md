@@ -95,7 +95,7 @@ Two consequences worth knowing:
 The API server is configured with an `EncryptionConfiguration` that encrypts
 `secrets` with `secretbox` before they reach etcd
 (`ansible/templates/kubeadm.yaml.j2`, and the key file in
-`ansible/templates/butane_config.yaml.j2`). Without it a Secret sits in the etcd
+`ansible/templates/butane_node_config.yaml.j2`). Without it a Secret sits in the etcd
 data directory as plaintext, so an etcd backup, a stolen disk, or read access to
 `/var/lib/etcd` yields every credential the cluster holds. `strings` on an
 unencrypted etcd file is a memorable demonstration, and one worth doing exactly
@@ -143,7 +143,7 @@ afterwards, did not exist.
 API server declines to open a log, and the failure is silent — no error, no
 file, an audit configuration that looks present in the manifest and produces
 nothing. The policy lives in
-`ansible/templates/butane_config.yaml.j2` and is written by Ignition to
+`ansible/templates/butane_node_config.yaml.j2` and is written by Ignition to
 `/etc/kubernetes/audit/policy.yaml`.
 
 Rules are evaluated top to bottom and **the first match wins**, so the order is

@@ -44,7 +44,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
 
 ### Other requirements
 
-- **SSH Key**: An Ed25519 key at `~/.ssh/id_ed25519.pub` (or edit `ansible/templates/butane_config.yaml.j2` to use a different path/key)
+- **SSH Key**: An Ed25519 key at `~/.ssh/id_ed25519.pub` (or edit `ansible/templates/butane_node_config.yaml.j2` and `butane_installer_config.yaml.j2` to use a different path/key)
 - **External DHCP Server**: Must point PXE clients at the deployment host:
   - Option 66 (`next-server`): IP of the machine running `make serve`
   - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
@@ -95,10 +95,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     *Artifacts will be generated in `output/http` (Ignition) and `output/tftp`
-    (PXE). Two Ignition configs per host from one template:
+    (PXE). Two Ignition configs per host, from two templates:
     `ignition-<host>-install.json`, which the PXE environment runs to wipe the
     disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds
-    into the installed system. They differ only in how they treat the disk. The
+    into the installed system. The installer one is deliberately tiny. The
     install disk ends up as a 50GB root filesystem and the remaining space as a
     raw partition for Rook-Ceph.*
 

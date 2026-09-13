@@ -7,17 +7,9 @@ passwd:
         - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 storage:
   disks:
-{% if install_env | default(false) %}
-    # The installer wipes and defines nothing: flatcar-install writes the image
-    # over whatever is here, and starting from a blank table is what stops a
-    # rebuild inheriting the last install's offsets. The partitions below are
-    # the installed system's job, against Flatcar's own table.
-    - device: {{ install_disk }}
-      wipe_table: true
-{% else %}
-    # wipe_table must stay false here: this config runs on the disk it would be
-    # wiping, and taking the table out from under a booted system takes
-    # partitions 1-7 with it.
+    # wipe_table stays false: this runs on the disk it would be wiping, and
+    # Ignition refuses anyway. The installer does the wiping --
+    # see docs/architecture/boot-process.md#wiping-the-disk.
     - device: {{ install_disk }}
       wipe_table: false
       partitions:
@@ -29,15 +21,12 @@ storage:
         - label: rook-osd
           number: 10
           size_mib: 0
-  # Inside the else: the installer just wiped the table, so this partition does
-  # not exist there and Ignition would block waiting for a device that cannot
-  # appear. Erasing the previous cluster's BlueStore signature belongs on the
-  # installed system anyway, where the partition is.
   filesystems:
+    # Erases the previous cluster's BlueStore signature, which ceph-volume
+    # reads instead of the partition table. See docs/platform/rook-ceph.md.
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
       wipe_filesystem: true
-{% endif %}
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755
@@ -248,64 +237,11 @@ storage:
 
 systemd:
   units:
-    - name: flatcar-install.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Install Flatcar to {{ install_disk }} (BIOS)
-        Requires=network-online.target
-        After=network-online.target
-        ConditionKernelCommandLine=ignition.config.url
-        ConditionPathExists=!/sys/firmware/efi
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        StandardOutput=journal+console
-        StandardError=journal+console
-        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
-        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
-          -b http://{{ boot_server_ip }}:8000 \
-          -V {{ flatcar_version }} \
-          -i /opt/ignition-final.json
-        # Only on success -- a failed install stays put, with its journal.
-        ExecStartPost=/usr/bin/systemctl reboot
-
-        [Install]
-        WantedBy=multi-user.target
-
-    - name: flatcar-install-uefi.service
-      enabled: true
-      contents: |
-        [Unit]
-        Description=Install Flatcar to {{ install_disk }} (UEFI)
-        Requires=network-online.target
-        After=network-online.target
-        ConditionKernelCommandLine=ignition.config.url
-        ConditionPathExists=/sys/firmware/efi
-
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        StandardOutput=journal+console
-        StandardError=journal+console
-        ExecStartPre=-/usr/bin/blkdiscard --force {{ install_disk }}
-        ExecStart=/usr/bin/flatcar-install -d {{ install_disk }} \
-          -b http://{{ boot_server_ip }}:8000 \
-          -V {{ flatcar_version }} \
-          -i /opt/ignition-final.json \
-          -u
-        ExecStartPost=/usr/bin/systemctl reboot
-
-        [Install]
-        WantedBy=multi-user.target
-
     - name: grow-root.service
       enabled: true
       contents: |
         [Unit]
         Description=Grow the root filesystem into its partition
-        ConditionKernelCommandLine=!ignition.config.url
         After=local-fs.target
         Before=kubelet.service bootstrap-k8s.service
 
@@ -324,7 +260,6 @@ systemd:
         - name: 20-kubelet.conf
           contents: |
             [Unit]
-            ConditionKernelCommandLine=!ignition.config.url
 
             [Service]
             ExecStart=
@@ -384,7 +319,6 @@ systemd:
         Description=Bootstrap Kubernetes Cluster
         After=network-online.target
         Wants=network-online.target
-        ConditionKernelCommandLine=!ignition.config.url
         ConditionPathExists=!/etc/kubernetes/kubelet.conf
 
         [Service]
