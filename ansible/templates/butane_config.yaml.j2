@@ -7,8 +7,19 @@ passwd:
         - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 storage:
   disks:
+{% if install_env | default(false) %}
+    # The installer wipes and defines nothing: flatcar-install writes the image
+    # over whatever is here, and starting from a blank table is what stops a
+    # rebuild inheriting the last install's offsets. The partitions below are
+    # the installed system's job, against Flatcar's own table.
     - device: {{ install_disk }}
       wipe_table: true
+{% else %}
+    # wipe_table must stay false here: this config runs on the disk it would be
+    # wiping, and taking the table out from under a booted system takes
+    # partitions 1-7 with it.
+    - device: {{ install_disk }}
+      wipe_table: false
       partitions:
         # Everything the node writes. Only /usr is read-only on Flatcar.
         - label: ROOT
@@ -18,6 +29,7 @@ storage:
         - label: rook-osd
           number: 10
           size_mib: 0
+{% endif %}
   filesystems:
     - device: /dev/disk/by-partlabel/rook-osd
       format: none

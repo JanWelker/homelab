@@ -28,8 +28,12 @@ PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
 
 OS_IMAGE = 'flatcar_production_image.bin.bz2'
 MENU_NAME = re.compile(r'^01-[0-9a-f]{2}(?:-[0-9a-f]{2}){5}$', re.IGNORECASE)
-MENU_HOST = re.compile(r'ignition-([^/\s]+)\.json')
-IGNITION_NAME = re.compile(r'^ignition-(.+)\.json$')
+INSTALL_SUFFIX = '-install'
+# The menu points at the installer config and the installed system reads the
+# other one. Both name the host; non-greedy so the suffix is not read as part
+# of it. See docs/architecture/boot-process.md#wiping-the-disk.
+IGNITION_NAME = re.compile(r'^ignition-(.+?)(?:' + INSTALL_SUFFIX + r')?\.json$')
+MENU_HOST = re.compile(r'ignition-([^/\s]+?)(?:' + INSTALL_SUFFIX + r')?\.json')
 
 # What a PXE client does on the way in that tftpy reports as a failure.
 TFTP_NOISE = (
@@ -252,6 +256,8 @@ def describe(name, path):
     if name == OS_IMAGE:
         return f'the OS image{size} -- this is the long one'
     if IGNITION_NAME.match(name):
+        if name.endswith(f'{INSTALL_SUFFIX}.json'):
+            return 'its installer config'
         return 'its Ignition config'
     phrases = {
         '.vmlinuz': 'the kernel',
