@@ -166,6 +166,17 @@ bao kv put kv/cert-manager/route53 \
   secret-access-key="..."
 ```
 
+!!! warning "`#` and `!` on a command line"
+    Double quotes are not enough. A value containing `#` is fine inside them, but one containing `!` is expanded by an interactive bash's history *before* the quotes are considered, and an unquoted `#` truncates the rest of the line. Either is silent, and stores a credential that looks plausible and does not work. Use **single** quotes — or avoid the command line entirely.
+
+Avoiding it means writing the secret as JSON and handing `bao` the file, which
+is what `make bao-secrets` does. `@` is parsed before anything is sent, so a
+missing file fails loudly rather than storing half a secret:
+
+```bash
+bao kv put -mount=kv cert-manager/route53 @/tmp/secret.json
+```
+
 ### Reading a secret
 
 ```bash
