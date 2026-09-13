@@ -43,18 +43,29 @@ without a word of complaint.
 
 PXE does not boot the node; it boots the **installer** — and only when the node
 has been armed with `make reinstall`, since the generated config otherwise says
-`DEFAULT localboot`. What it loads is a throwaway RAM environment whose only job
-is to write Flatcar to `install_disk` and reboot into it.
+`DEFAULT localboot`. What it loads is a RAM environment whose only job is to
+write Flatcar to `install_disk` and reboot into it.
+
+There is **one Ignition config per host**, and it does both jobs. The PXE
+environment runs it to install; `flatcar-install -i` embeds the same file into
+the system being installed, where it runs again on first boot to partition the
+disk and lay down `/etc`. What separates the two is
+`ConditionKernelCommandLine`: a PXE boot carries `ignition.config.url` on the
+kernel command line and a disk boot does not, so each unit declares which side
+it belongs on.
+
+!!! warning "Every unit has to pick a side"
+    That condition is the price of one config rather than two, and nothing enforces it. `bootstrap-k8s.service` is the cautionary one: its other guard is `ConditionPathExists=!/etc/kubernetes/kubelet.conf`, which is satisfied in the PXE environment too — unguarded, it would run `kubeadm` in a RAM disk while the install was still writing. A unit added without thinking about this fails quietly, and `systemctl status` reporting "Condition check resulted in the unit being skipped" is how you find out.
 
 ```mermaid
 sequenceDiagram
     participant Node
     participant Server as Boot Server
 
-    Node->>Server: 7. HTTP installer Ignition config
+    Node->>Server: 7. HTTP Ignition config
     Note over Node,Server: Only when armed with make reinstall
-    Server-->>Node: 8. ignition-install-<host>.json
-    Node->>Server: 9. HTTP Flatcar disk image + final Ignition
+    Server-->>Node: 8. ignition-<host>.json
+    Node->>Server: 9. HTTP Flatcar image + signature
     Node->>Node: 10. Wipe disk, flatcar-install, reboot
     Note over Node: Now booting from disk, not the network
     Node->>Node: 11. Ignition partitions and writes /etc

@@ -95,9 +95,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     *Artifacts will be generated in `output/http` (Ignition) and `output/tftp`
-    (PXE). Two Ignition configs are written per host: `ignition-<host>.json`,
-    which is embedded into the installed system, and `ignition-install-<host>.json`,
-    the throwaway installer that wipes the disk and runs `flatcar-install`. The
+    (PXE). One Ignition config per host, `ignition-<host>.json`: the PXE
+    environment runs it to install, and `flatcar-install` embeds the same file
+    into the installed system. The
     install disk ends up as a 125GB root filesystem and the remaining space as a
     raw partition for Rook-Ceph.*
 
@@ -145,9 +145,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
       reboot on it is booting from its own disk.
     - Expect the boot server log to show, per node: a TFTP request for the
       bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
-      the initrd, `ignition-install-<host>.json`, `ignition-<host>.json`, and
-      then `<version>/flatcar_production_image.bin.bz2` with its `.sig` — then,
-      after the reboot, only the sysext images.
+      the initrd, `ignition-<host>.json`, and then
+      `<version>/flatcar_production_image.bin.bz2` with its `.sig` — then, after
+      the reboot, `ignition-<host>.json` again plus the sysext images.
     - **Leave the boot server running until every node is up.** The sysexts are
       fetched on the first boot from disk. After that nothing needs it.
     - **Note**: The cluster will come up in a `NotReady` state initially because

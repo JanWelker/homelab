@@ -92,41 +92,21 @@
         mode: "0755"
       register: butane_config
 
-    # The throwaway config the PXE `install` entry boots into. It wipes the
-    # disk, runs flatcar-install with the config above, and reboots.
-    - name: Generate Installer Butane Config
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/butane_install.yaml.j2" # noqa: no-relative-paths
-        dest: "{{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml"
-        mode: "0755"
-      register: butane_install_config
-
     # butane is a command, so it cannot report its own idempotence. Transpiling
     # only when the input moved or the output is missing keeps `make config`
     # honest about what it changed, without letting a missing Ignition config
     # survive the run.
-    - name: Check for existing Ignition configs
+    - name: Check for an existing Ignition config
       ansible.builtin.stat:
-        path: "{{ item }}"
-      register: ignition_configs
-      loop:
-        - "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
-        - "{{ output_dir }}/http/ignition-install-{{ inventory_hostname }}.json"
+        path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
+      register: ignition_config
 
     - name: Transpile Butane to Ignition
       ansible.builtin.command:
         cmd: >-
           butane --pretty --strict {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}.yaml
           -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}.json
-      when: butane_config.changed or not ignition_configs.results[0].stat.exists
-      changed_when: true
-
-    - name: Transpile Installer Butane to Ignition
-      ansible.builtin.command:
-        cmd: >-
-          butane --pretty --strict {{ output_dir }}/tmp/butane/butane-install-{{ inventory_hostname }}.yaml
-          -o {{ output_dir }}/http/ignition-install-{{ inventory_hostname }}.json
-      when: butane_install_config.changed or not ignition_configs.results[1].stat.exists
+      when: butane_config.changed or not ignition_config.stat.exists
       changed_when: true
 
     # A plain template, so it is idempotent on its own and costs nothing to run
