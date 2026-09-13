@@ -1739,6 +1739,11 @@ its supported replacement and the one to reach for now.</p>
 <td><code>/var/log/journal</code></td>
 <td><code>unit</code>, <code>node</code>, <code>job="systemd-journal"</code></td>
 </tr>
+<tr>
+<td>API server audit log</td>
+<td><code>/var/log/kubernetes/audit/audit.log</code></td>
+<td><code>verb</code>, <code>audit_level</code>, <code>node</code>, <code>job="kubernetes-audit"</code></td>
+</tr>
 </tbody>
 </table>
 <p>The journal matters more here than it would elsewhere. On Flatcar, <code>kubelet</code>,
@@ -1751,6 +1756,14 @@ convenient, and occasionally the moment it is not available at all.</p>
 watch every pod in the cluster and discard all but its own — six times the API
 server load for identical output. Log collectors are famously good at costing
 more than the thing they observe; this is one of the cheap ways to avoid that.</p>
+<p>The audit log is a different case again, and the only source here where Loki is
+not a convenience. It exists only on the three control-plane nodes, it is JSON
+rather than text, and it sits on a tmpfs capped at three 100MB files — so the
+copy in Loki is the one that outlives a reboot. See
+<a href="../../architecture/security/#audit-logging">Audit logging</a> for what is recorded
+and why the local file is kept deliberately small. Alloy runs on all six nodes
+and <code>local.file_match</code> simply finds nothing on the workers, which is a cheaper
+way to say "control plane only" than any scheduling constraint.</p>
 <p>Container logs pass through <code>stage.cri {}</code>. containerd writes
 <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
 stream end up inside the log line and Loki stamps everything at ingest time —
@@ -1810,7 +1823,12 @@ choose <strong>Loki</strong> as the datasource and query by label:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="rook-ceph"} |= "error"
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{unit="kubelet.service", node="odin"}
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>{namespace="openbao"} |= "sealed"
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
 </span></code></pre></div>
+<p>Audit events keep only <code>verb</code> and <code>audit_level</code> as labels. Both are small closed
+sets, which is what makes a label cheap; user and resource are far more useful
+to query by and far too numerous to label, so they stay in the line where
+<code>| json</code> can reach them.</p>
 <div class="admonition note">
 <p class="admonition-title">Where the datasource lives</p>
 <p><code>grafana-datasource.yaml</code> declares its namespace as <code>monitoring</code>, not

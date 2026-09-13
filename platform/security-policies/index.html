@@ -1823,7 +1823,7 @@ default. That is the fact this section exists to address.</p>
 <tr>
 <td><code>audit</code></td>
 <td>Stricter</td>
-<td>Records violations in the API server audit log</td>
+<td>Records violations in the <a href="../../architecture/security/#audit-logging">API server audit log</a></td>
 </tr>
 <tr>
 <td><code>warn</code></td>
@@ -1899,6 +1899,14 @@ worth leaving available to a sleepy Tuesday.</p>
 </span></code></pre></div>
 <p>That reports every pod in the namespace that would be rejected, without
 changing anything.</p>
+<p>It only sees what is running <em>right now</em>, though — a CronJob that fires nightly
+and violates <code>restricted</code> is invisible to a dry run at three in the afternoon.
+The <code>audit</code> label covers that gap by recording violations continuously, and
+those records are queryable in Grafana over the full Loki retention window:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
+</span></code></pre></div>
+<p>Use the dry run to check the common case and the audit log to catch the rest.
+Between them, tightening <code>enforce</code> stops being a guess.</p>
 <h2 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h2>
 <p>Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
 anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
@@ -1935,20 +1943,20 @@ one that is taken here.</p>
 <p>One namespace at a time, watching Hubble between each. Rolling out network
 policy everywhere at once is how people end up reverting the whole thing at
 midnight and never trying again:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
 </span></code></pre></div>
 <p>If something legitimate is being dropped, Cilium can put a single endpoint into
 audit mode — policy decisions are logged but not enforced — which is the
 fastest way to find a missing rule without an outage:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>security/
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml        # ArgoCD Application, prune disabled
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── pod-security.yaml       # Namespace objects with PSA labels
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>└── network-policies.yaml   # Default-deny ingress, four namespaces
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>security/
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml        # ArgoCD Application, prune disabled
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── pod-security.yaml       # Namespace objects with PSA labels
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>└── network-policies.yaml   # Default-deny ingress, four namespaces
 </span></code></pre></div>
 
 
