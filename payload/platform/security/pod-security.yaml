@@ -98,3 +98,20 @@ metadata:
     pod-security.kubernetes.io/warn: restricted
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubescape
+  labels:
+    # The only namespace here that enforces `restricted`, and it did not need a
+    # single exception to get there: every workload the chart renders already
+    # runs non-root with RuntimeDefault seccomp, no privilege escalation and
+    # ALL capabilities dropped. Enabling the runtime eBPF capabilities would
+    # add a privileged DaemonSet and this would have to drop to `privileged` --
+    # which is a cost worth seeing stated before anyone enables them.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false

@@ -1,0 +1,123 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubescape
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # After kube-prometheus-stack (wave 1), whose ServiceMonitor CRD the two
+    # scrape targets below need, and after Rook (wave -1) for the PVC.
+    argocd.argoproj.io/sync-wave: "2"
+    # yamllint disable-line rule:line-length
+    link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch/d/kubescape-vuln-overview
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://kubescape.github.io/helm-charts
+      chart: kubescape-operator
+      targetRevision: 1.40.4
+      helm:
+        valuesObject:
+          # The chart refuses to guess, and the name shows up on every finding.
+          clusterName: homelab
+
+          # Left empty deliberately: empty means *every* posture framework,
+          # which is the set that includes CIS. Naming frameworks explicitly
+          # narrows scheduled scans, and a list pinned to `cis-v1.10.0` goes
+          # stale silently -- it keeps scanning, just not against the benchmark
+          # you thought. Narrow this when there is a reason to, not by default.
+          defaultFrameworks: []
+
+          # Kubescape ships as a suite and defaults to most of it on. What is
+          # enabled here is the configuration-scanning half: the part that
+          # answers "does this cluster match CIS, NSA and MITRE" and feeds the
+          # Grafana dashboard. Every `disable` below has a reason, and the
+          # reasons are in docs/platform/kubescape.md rather than only here.
+          capabilities:
+            operator: enable
+            # Posture scanning against the frameworks, on a schedule.
+            configurationScan: enable
+            # Host-level checks -- the kube-bench-shaped half of CIS.
+            nodeScan: enable
+            # Exports scan results as metrics for Prometheus to scrape.
+            prometheusExporter: enable
+
+            # Re-evaluates posture on every relevant API change rather than on
+            # the schedule. Useful on a cluster that changes constantly; this
+            # one changes when a Renovate PR merges.
+            continuousScan: disable
+
+            # Image CVE scanning is off because it cannot schedule here.
+            # kubevuln requests 5Gi of ephemeral-storage and limits at 10Gi,
+            # and node allocatable ephemeral-storage is 3.6GB on the
+            # control-plane nodes and 7.4GB on the workers -- the request alone
+            # makes the pod unschedulable on three of six nodes. Worse, the root
+            # filesystem is tmpfs, so "ephemeral storage" is RAM: an image
+            # unpacked for scanning is charged to the same memory etcd is using.
+            vulnerabilityScan: disable
+            relevancy: disable
+            nodeSbomGeneration: disable
+            scanEmbeddedSBOMs: disable
+            vexGeneration: disable
+
+            # The runtime half is an eBPF node-agent DaemonSet on all six nodes.
+            # It is the most valuable thing here after posture scanning and it
+            # is also the most expensive, on nodes whose entire root filesystem
+            # is a 3.8GB tmpfs. Off until posture scanning has earned its keep.
+            runtimeObservability: disable
+            networkPolicyService: disable
+            networkEventsStreaming: disable
+            runtimeDetection: disable
+            malwareDetection: disable
+            nodeProfileService: disable
+            httpDetection: disable
+            seccompProfileService: disable
+
+            # A validating webhook in front of the API server. A posture tool
+            # that can refuse writes is a posture tool that can take the cluster
+            # down when it is unhealthy, and nothing here is worth that trade
+            # while the findings are still being read rather than enforced.
+            admissionController: disable
+
+            # Would let the operator mutate workloads it has findings about,
+            # and grants patch on nodes cluster-wide to do it.
+            manageWorkloads: disable
+            syncSBOM: disable
+            # Upgrades its own Helm release, behind ArgoCD's back.
+            autoUpgrading: disable
+
+          # Scan results live in an aggregated API server backed by this PVC.
+          # "-" would pick the default StorageClass; naming it is the same
+          # choice every other component here makes.
+          persistence:
+            storageClass: rook-ceph-block
+
+          # Nothing is sent anywhere. `server`, `account` and `accessKey` are
+          # the ARMO SaaS backend and are deliberately unset -- posture findings
+          # for this cluster stay in it. Leaving them blank is what selects the
+          # community path, so there is no flag to turn "offline" on.
+
+          kubescape:
+            serviceMonitor:
+              enabled: true
+          prometheusExporter:
+            serviceMonitor:
+              enabled: true
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/kubescape
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubescape
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
