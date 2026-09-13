@@ -64,13 +64,22 @@ sequenceDiagram
     Note over Node: Node is NotReady - no CNI yet
 ```
 
-Step 10 is the point of no return, and it is thorough on purpose. The installer
-wipes filesystem signatures from every existing partition, zaps the GPT, and
-discards the whole device where the hardware supports it. That last part is
-about Ceph specifically: BlueStore metadata lives at the start of the raw
-`rook-osd` partition, and `ceph-volume` reads the *signature*, not the partition
-table — so a repartition alone can resurrect an OSD on a cluster that has never
-heard of it. Check `install_disk` before you check anything else.
+Step 10 is the point of no return, and the wipe is deliberately in three parts
+rather than one:
+
+| | |
+| --- | --- |
+| Ignition `wipe_table` | Destroys the GPT, in the initramfs, before the installer unit runs |
+| `blkdiscard` | Returns the whole device to unwritten. Best-effort — SATA without TRIM declines it |
+| `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_config.yaml.j2` |
+
+The third is about Ceph specifically. BlueStore metadata lives at the start of
+the raw `rook-osd` partition, and `ceph-volume` reads that *signature* rather
+than the partition table — so a repartition alone can resurrect an OSD on a
+cluster that has never heard of it. The partition is new; the bytes under it are
+not, which is why the erase belongs where the partition is created.
+
+Check `install_disk` before you check anything else.
 
 Step 11 runs from disk, not from the network. Ignition is embedded in the OEM
 partition by `flatcar-install -i`, so the node no longer depends on the boot
