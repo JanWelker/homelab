@@ -80,7 +80,21 @@ storage:
       format: xfs
       wipe_filesystem: true
       with_mount_unit: true
-    # rook-osd partition left unformatted for Rook-Ceph to use as raw block device
+    # rook-osd is left unformatted -- Ceph wants the raw block device and
+    # declines anything carrying a filesystem. `format: none` with
+    # `wipe_filesystem` is how Ignition expresses exactly that: erase what is
+    # there, put nothing back, do not mount it.
+    #
+    # Which matters because the partition is new but the bytes under it are not.
+    # A rebuilt node inherits whatever the previous cluster's OSD wrote at that
+    # offset, and `ceph-volume` reads the BlueStore signature rather than the
+    # partition table, so Rook finds an OSD belonging to a cluster that no
+    # longer exists and refuses to adopt it -- leaving the node with no storage
+    # and the CephCluster reporting Ready. See
+    # docs/platform/rook-ceph.md#no-osds-after-reprovisioning.
+    - device: /dev/disk/by-partlabel/rook-osd
+      format: none
+      wipe_filesystem: true
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755
