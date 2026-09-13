@@ -18,7 +18,7 @@ storage:
       #
       # The filesystem does *not* follow the partition on its own. Taking
       # partition 9 over here is exactly what stops Flatcar's first-boot growth
-      # from happening, so ROOT ends up a 25GB partition holding the image's
+      # from happening, so ROOT ends up a 125GB partition holding the image's
       # original ~1.6GB filesystem. grow-root.service below is what closes that
       # gap; the two have to be changed together.
       #
@@ -29,61 +29,28 @@ storage:
       # See docs/operations/index.md#repartitioning-the-nodes.
       wipe_table: false
       partitions:
-        # /, and with it /etc, /var/lib/etcd, /var/lib/rook and the sysext
-        # images under /opt/extensions. All of which now survive a reboot.
+        # Everything the node writes: /etc, /var/lib/etcd, /var/lib/rook,
+        # /var/lib/containerd, /var/lib/kubelet, /var/log, and the sysext images
+        # under /opt/extensions.
+        #
+        # `/usr` is the read-only half of Flatcar -- a verity-checked btrfs
+        # image on its own partition -- and it is the only read-only half. The
+        # root partition is ordinary read-write ext4, so none of the above needs
+        # a partition of its own to be writable. They had one when the root was
+        # a tmpfs and every byte was RAM; on disk that reason is gone.
         - label: ROOT
           number: 9
-          size_mib: 25600  # 25GB, capped so the partitions below fit
+          size_mib: 128000  # 125GB, capped so rook-osd gets the rest
           resize: true
-        - label: containerd
-          number: 10
-          size_mib: 51200  # 50GB for container images
-        # Backs the kubelet root directory, which is what the kubelet reports as
-        # node ephemeral-storage. This is why image CVE scanning can schedule:
-        # on the tmpfs root it was ~3.6GB of RAM on the control-plane nodes.
-        - label: kubelet
-          number: 11
-          size_mib: 40960  # 40GB for pod ephemeral storage and volumes
-        # Container logs, the journal and the API server audit log.
-        - label: varlog
-          number: 12
-          size_mib: 10240  # 10GB for /var/log
         - label: rook-osd
-          number: 13
-          size_mib: 0      # Use remaining space for Rook OSD
+          number: 10
+          size_mib: 0       # Use remaining space for Rook OSD
   filesystems:
-    # `wipe_filesystem` applies the one time Ignition runs, on the first boot
-    # after the install. It is not a recurring wipe: on an installed node
-    # Ignition does not run again, so everything below survives every
-    # subsequent reboot.
-    - path: /var/lib/containerd
-      device: /dev/disk/by-partlabel/containerd
-      format: xfs
-      wipe_filesystem: true
-      with_mount_unit: true
-    # `/` is mounted shared and a mount created beneath it inherits that, which
-    # is what the Ceph CSI driver needs in order to propagate volume mounts back
-    # out of /var/lib/kubelet/pods. Nothing extra is required to arrange it; it
-    # is recorded here because the failure mode if it were ever not true is pods
-    # hanging on mount errors that mention nothing about propagation.
-    - path: /var/lib/kubelet
-      device: /dev/disk/by-partlabel/kubelet
-      format: xfs
-      wipe_filesystem: true
-      with_mount_unit: true
-    # systemd-journal-flush.service is ordered after local-fs.target precisely so
-    # that /var/log can be its own mount: journald writes to /run/log/journal
-    # until the flush and only then moves to the mounted filesystem. Mounting
-    # here does not strand the journal behind the mountpoint.
-    - path: /var/log
-      device: /dev/disk/by-partlabel/varlog
-      format: xfs
-      wipe_filesystem: true
-      with_mount_unit: true
-    # rook-osd is left unformatted -- Ceph wants the raw block device and
-    # declines anything carrying a filesystem. `format: none` with
-    # `wipe_filesystem` is how Ignition expresses exactly that: erase what is
-    # there, put nothing back, do not mount it.
+    # rook-osd is the one thing that still cannot be a directory on the root
+    # filesystem: Ceph wants the raw block device and declines anything carrying
+    # a filesystem. `format: none` with `wipe_filesystem` is how Ignition
+    # expresses exactly that: erase what is there, put nothing back, do not
+    # mount it.
     #
     # Which matters because the partition is new but the bytes under it are not.
     # A rebuilt node inherits whatever the previous cluster's OSD wrote at that

@@ -159,22 +159,22 @@ the design:
 
 ### Where the log actually lives
 
-`/var/log` is its own 10 GB partition, so the audit log is written to disk
-rather than to the tmpfs root that holds etcd. That is what makes the CIS
-rotation numbers affordable:
+The audit log is written to the root filesystem, which on an installed node is
+125 GB of ext4 rather than the tmpfs the nodes used to run from. That is what
+makes the CIS rotation numbers affordable:
 
 | Property | Value |
 | --- | --- |
 | Path | `/var/log/kubernetes/audit/audit.log` |
-| Filesystem | `varlog` partition, XFS, 10 GB |
+| Filesystem | root, ext4, 125 GB |
 | `--audit-log-maxsize` | `100` (MB) |
 | `--audit-log-maxbackup` | `10` |
 | `--audit-log-maxage` | `30` (days) |
 | Worst-case footprint | ~1.1 GB of disk per control-plane node |
 | Durable copy | [Loki](../platform/logging.md), on Ceph |
 
-The partition is formatted once, on the first boot after a node is installed,
-and persists from then on — so the audit log now survives a reboot on its own.
+The filesystem is written once, on the install, and persists from then on — so
+the audit log now survives a reboot on its own.
 Alloy still tails it into Loki, and that is still where the copy that matters
 lives: an audit log stored only on the node is unavailable in precisely the
 situation where the node is what failed, and unqueryable next to everything
@@ -183,7 +183,7 @@ else in the meantime.
 !!! note "This used to be a CIS deviation"
     `--audit-log-maxbackup` was `2` when `/var/log` was part of the tmpfs root
     the nodes ran from, because ten 100 MB files would have reserved 1.1 GB of
-    the RAM etcd was running in. The [`varlog` partition](../operations/index.md#repartitioning-the-nodes)
+    the RAM etcd was running in. [Installing to disk](../operations/index.md#repartitioning-the-nodes)
     removed the objection, and check 1.2.18 now passes along with 1.2.16,
     1.2.17 and 1.2.19.
 
