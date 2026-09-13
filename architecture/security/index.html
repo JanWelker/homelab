@@ -1990,9 +1990,9 @@ after two hours. <strong>Stop the boot server when provisioning is finished</str
 the only thing keeping those credentials off the network. A <code>make serve</code> left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.</p>
-<div class="admonition warning">
-<p class="admonition-title">That advice is in direct tension with availability</p>
-<p>These nodes have no OS on disk — they PXE-boot from the boot server on <em>every</em> boot, so a node that restarts while it is stopped does not come back, and <a href="../../platform/kured/">Kured</a> reboots nodes unattended between 01:00 and 05:00. The honest position is that neither state is correct: running, the boot server hands cluster-join credentials to anything on the segment; stopped, any reboot is fatal. Start it deliberately around anything that might restart a node, and stop it again afterwards. See <a href="../limitations/#nodes-cannot-boot-without-the-boot-server">Nodes cannot boot without the boot server</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Stopping it is now free</p>
+<p>Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server switched off — the exposure above exists only during a build. That was not true when the nodes ran from RAM and PXE-booted on every restart, which made "stop the boot server" and "let Kured reboot a node at 02:00" mutually exclusive instructions. See <a href="../boot-process/#every-boot-after-the-first">Boot &amp; Bootstrap Process</a>.</p>
 </div>
 <p><code>output/credentials/</code> holds the generated bootstrap token and certificate key in
 plaintext. The directory is <code>0700</code> and <code>output/</code> is gitignored, but the values
@@ -2180,18 +2180,17 @@ rotation numbers affordable:</p>
 </tr>
 </tbody>
 </table>
-<p>The partition is still <strong>wiped on every boot</strong>, like every other filesystem
-these nodes mount — moving <code>/var/log</code> off tmpfs bought space, not persistence.
-So the on-node file remains a <strong>buffer, not an archive</strong>: Alloy tails it and
-ships every event to Loki within seconds, and Loki is the only place an audit
-event outlives a reboot. An audit log that does not survive the incident is not
-an audit log, and on nodes that reprovision themselves at every boot that is not
-a hypothetical.</p>
+<p>The partition is formatted once, on the first boot after a node is installed,
+and persists from then on — so the audit log now survives a reboot on its own.
+Alloy still tails it into Loki, and that is still where the copy that matters
+lives: an audit log stored only on the node is unavailable in precisely the
+situation where the node is what failed, and unqueryable next to everything
+else in the meantime.</p>
 <div class="admonition note">
 <p class="admonition-title">This used to be a CIS deviation</p>
-<p><code>--audit-log-maxbackup</code> was <code>2</code> when <code>/var/log</code> was part of the 3.8 GB tmpfs
-root, because ten 100 MB files would have reserved 1.1 GB of the RAM etcd
-was running in. The <a href="../../operations/#repartitioning-the-nodes"><code>varlog</code> partition</a>
+<p><code>--audit-log-maxbackup</code> was <code>2</code> when <code>/var/log</code> was part of the tmpfs root
+the nodes ran from, because ten 100 MB files would have reserved 1.1 GB of
+the RAM etcd was running in. The <a href="../../operations/#repartitioning-the-nodes"><code>varlog</code> partition</a>
 removed the objection, and check 1.2.18 now passes along with 1.2.16,
 1.2.17 and 1.2.19.</p>
 </div>
@@ -2329,12 +2328,11 @@ dependencies in an auth stack are only funny from a distance.</p>
 <li>Move etcd encryption to a KMS provider, removing the static
    <code>encryption_key</code> that currently sits in <code>output/credentials/</code> with no
    rotation.</li>
-<li>Persist <code>/var/lib/etcd</code>. It is the one directory left on the tmpfs root that
-   would genuinely rather be on a disk, and it is deliberately still there:
-   persisting etcd without also persisting <code>/etc/kubernetes</code> produces a node
-   that re-runs <code>kubeadm init</code> against a non-empty data directory, which fails
-   in a considerably more interesting way than losing the data does. That is a
-   change to the boot model, not to the partition table.</li>
+<li>Get the backups out of the cluster. Velero and the etcd snapshots write to
+   the Ceph object store they are backing up — see
+   <a href="../limitations/#backups-do-not-leave-the-cluster">Backups do not leave the cluster</a>.
+   With etcd now persisting across reboots there is more worth losing than
+   there used to be.</li>
 </ol>
 <p>See <a href="../limitations/">Known Limitations</a> for the operational counterparts.</p>
 

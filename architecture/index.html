@@ -1739,19 +1739,14 @@ impossible rather than merely discouraged.</p>
 <h3 id="ignition-butane">Ignition &amp; Butane<a class="headerlink" href="#ignition-butane" title="Permanent link">&para;</a></h3>
 <p><strong>Ignition</strong> is Flatcar's first-boot provisioning system. It reads a JSON config on first boot and applies it: creates users, writes files, partitions disks, enables systemd units, etc.</p>
 <p><strong>Butane</strong> is a human-friendly YAML format that compiles down to Ignition JSON. In this project, Ansible generates Butane configs from Jinja2 templates, then transpiles them to Ignition JSON which the boot server serves over HTTP.</p>
-<p>Ignition runs in the initramfs, before the real root is mounted. It is not a
-configuration management system and it will not converge anything: it applies
-its config once per run and stops.</p>
-<div class="admonition note">
-<p class="admonition-title">Here it runs on <em>every</em> boot</p>
-<p>Ignition is normally a first-boot system, and that is what the paragraph
-above describes on a machine with Flatcar installed to disk. These nodes do
-not have that — they PXE-boot the RAM image with <code>flatcar.first_boot=1</code>
-hardcoded in the menu, so Ignition re-fetches its config and applies it from
-scratch at every boot. A node picks up a changed template by rebooting, not
-by being rebuilt. See
-<a href="boot-process/#nothing-is-installed-to-disk">Nothing is installed to disk</a>.</p>
-</div>
+<p>Ignition runs <em>once</em>, in the initramfs, before the real root is mounted. It is
+not a configuration management system and it will not converge anything on the
+second boot. If you change a template, the node has to be reprovisioned to care.</p>
+<p>Here, "reprovisioned" means choosing <code>install</code> from the PXE menu, which wipes the
+disk and installs Flatcar again — see
+<a href="boot-process/">Boot &amp; Bootstrap Process</a>. The Ignition config is embedded into
+the OEM partition at install time, so a node reads it from its own disk rather
+than from the network.</p>
 <h3 id="systemd-sysexts">Systemd Sysexts<a class="headerlink" href="#systemd-sysexts" title="Permanent link">&para;</a></h3>
 <p>Because Flatcar's root filesystem is read-only, software like <code>kubernetes</code> and <code>containerd</code> is delivered as <strong>system extensions</strong> (sysexts) — read-only overlay images that extend <code>/usr</code> at boot time via <code>systemd-sysupdate</code>. The nodes download these from the HTTP boot server on first boot.</p>
 <p>This is where "immutable OS" stops being an abstract virtue and starts being a

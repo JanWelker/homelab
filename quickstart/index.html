@@ -1871,7 +1871,8 @@ want to know.</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>, because hardware is a collection of exceptions wearing a trenchcoat)</li>
-<li>Sufficient disk space: 50 GB reserved for containerd, remainder used by Rook-Ceph as OSD storage</li>
+<li>Sufficient disk space: Flatcar itself plus a 25 GB root, 50 GB for containerd, 40 GB for the kubelet, 10 GB for <code>/var/log</code>, and the remainder used by Rook-Ceph as OSD storage. 256 GB leaves about 111 GB for Ceph per node</li>
+<li>At least 8 GB of RAM: the installer stages the ~700 MB Flatcar image in the PXE environment's tmpfs before writing it</li>
 </ul>
 <p>The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
@@ -1966,7 +1967,7 @@ want to know.</p>
 </tr>
 <tr>
 <td><code>install_disk</code></td>
-<td>Disk that Ignition partitions for containerd and Rook storage (<code>/dev/nvme0n1</code> by default). Flatcar itself is <strong>not</strong> installed to it — it runs from RAM</td>
+<td>Target disk for the Flatcar install (<code>/dev/nvme0n1</code> by default). <strong>Wiped completely</strong> — partitions, GPT and a device-level discard — before the install</td>
 </tr>
 <tr>
 <td><code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code></td>
@@ -1993,9 +1994,12 @@ want to know.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>config
 </span></code></pre></div>
 <p><em>Artifacts will be generated in <code>output/http</code> (Ignition) and <code>output/tftp</code>
-(PXE). Note: The install disk is partitioned into 50GB for containerd, 40GB
-for the kubelet root directory, 10GB for <code>/var/log</code>, and the remaining space
-for Rook-Ceph storage.</em></p>
+(PXE). Two Ignition configs are written per host: <code>ignition-&lt;host&gt;.json</code>,
+which is embedded into the installed system, and <code>ignition-install-&lt;host&gt;.json</code>,
+the throwaway installer that wipes the disk and runs <code>flatcar-install</code>. The
+install disk ends up as a 25GB root, 50GB for containerd, 40GB for the
+kubelet root directory, 10GB for <code>/var/log</code>, and the remaining space for
+Rook-Ceph storage.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
 into the generated files. Editing the inventory and skipping this step is the
 homelab equivalent of changing the config and forgetting to reload the
@@ -2016,40 +2020,57 @@ arrive in order is the single most useful debugging tool in this entire
 procedure.</p>
 </li>
 <li>
-<p><strong>Boot Machines</strong>:
-    Power on your bare metal nodes. They will PXE boot, run Ignition, and start
-    the kubelet. Nothing is installed to the disk — Flatcar runs from RAM and
-    the nodes fetch everything from the boot server on every boot, including
-    every subsequent one. See
-    <a href="../architecture/boot-process/#nothing-is-installed-to-disk">Nothing is installed to disk</a>.</p>
+<p><strong>Arm the install, then boot the machines</strong>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall
+</span></code></pre></div>
+<p>The generated PXE menus default to <code>Boot from local disk</code>, which is what you
+want on every boot <em>except</em> this one — it is why a reboot later cannot
+reinstall a node. <code>make reinstall</code> flips that to <code>Install</code> in
+<code>output/tftp/pxelinux.cfg/</code>, for every host or for <code>LIMIT=&lt;node&gt;</code>;
+<code>make reinstall-cancel</code> puts it back, as does re-running <code>make config</code>.</p>
+<p>Then power on your bare metal nodes. (Selecting <code>Install</code> from the menu at
+each console does the same thing, if you would rather not arm anything.)
+See <a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
 <ul>
+<li>The node wipes the disk, writes Flatcar, and reboots into it. From that
+  reboot on it is booting from its own disk.</li>
 <li>Expect the boot server log to show, per node: a TFTP request for the
   bootloader and its <code>01-&lt;mac&gt;</code> menu, then HTTP requests for the kernel,
-  the initrd, <code>ignition-&lt;host&gt;.json</code>, and finally the sysext images.</li>
+  the initrd, <code>ignition-install-&lt;host&gt;.json</code>, the Flatcar disk image, and
+  <code>ignition-&lt;host&gt;.json</code> — then, after the reboot, only the sysext images.</li>
+<li><strong>Leave the boot server running until every node is up.</strong> The sysexts are
+  fetched on the first boot from disk. After that nothing needs it.</li>
 <li><strong>Note</strong>: The cluster will come up in a <code>NotReady</code> state initially because
   no CNI is installed. This is correct. Do not fix it yet.</li>
 <li>If a node stalls, see <a href="#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</li>
 </ul>
+<div class="admonition tip">
+<p class="admonition-title">Watching an install</p>
+<p><code>flatcar-install.service</code> logs to the console, so a monitor on the node
+shows the wipe and the write. Over SSH, <code>journalctl -u flatcar-install -f</code>
+as <code>core@&lt;node&gt;</code> does the same. A failed install deliberately does <em>not</em>
+reboot — the node stays in the PXE environment with the journal intact.</p>
+</div>
 </li>
 <li>
 <p><strong>Retrieve Kubeconfig</strong>:
     Once the control plane node responds to SSH (or is pingable), retrieve the
     admin kubeconfig:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>kubeconfig
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 <p>Verify the cluster answers. <code>NotReady</code> is expected at this point:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/output/kubeconfig"</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/output/kubeconfig"</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
 </span></code></pre></div>
 <p><em>Optional: Install to local machine (will not overwrite existing config):</em></p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kube
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>cp<span class="w"> </span>-n<span class="w"> </span>output/kubeconfig<span class="w"> </span>~/.kube/config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kube
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>cp<span class="w"> </span>-n<span class="w"> </span>output/kubeconfig<span class="w"> </span>~/.kube/config
 </span></code></pre></div>
 </li>
 <li>
 <p><strong>Install Core Components</strong> (CRITICAL):
     With <code>output/kubeconfig</code> in place (<code>kubeadm</code> likely finished):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>install-core
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>install-core
 </span></code></pre></div>
 <ul>
 <li>Installs the Gateway API and Prometheus operator CRDs, then <strong>Cilium</strong>
@@ -2067,8 +2088,8 @@ procedure.</p>
 <p>This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the <code>Makefile</code> reads each version out of the ArgoCD <code>Application</code> that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while <code>monitoring.coreos.com/v1</code> is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See <a href="../platform/monitoring/#crds">Monitoring</a>.</p>
 </div>
 <p>Nodes should reach <code>Ready</code> once Cilium is up:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                  </span><span class="c1"># all Ready</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                  </span><span class="c1"># all Ready</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2076,7 +2097,7 @@ procedure.</p>
 <ul>
 <li>
 <p><strong>Deploy ArgoCD</strong>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>install-argo
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>make<span class="w"> </span>install-argo
 </span></code></pre></div>
 <p>There is no way into the UI yet, and that is expected. The local
 admin account is disabled in <code>payload/argocd/values.yaml</code>, so the
@@ -2088,18 +2109,18 @@ with <code>kubectl</code> instead.</p>
 as you need it. The password is generated the first time the server
 starts with the account enabled, so the restart is what creates the
 Secret:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/argocd-server
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span></code></pre></div>
 <p>The Gateway and DNS for <code>argo.infra.k8s.wlkr.ch</code> don't work yet, so
 reach it by port-forward and log in as <code>admin</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="c1"># http://localhost:8080</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="c1"># http://localhost:8080</span>
 </span></code></pre></div>
 <p>Set <code>admin.enabled</code> back to <code>"false"</code> once Authentik can log you in.
 It is the same escape hatch you will reach for on the day SSO is down,
@@ -2108,7 +2129,7 @@ documented at
 </li>
 <li>
 <p><strong>Bootstrap GitOps</strong> (App-of-Apps):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>make<span class="w"> </span>bootstrap-apps
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
 <p><em>This applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects and then
 the parent applications (platform, gitops) which enable ArgoCD to
@@ -2120,14 +2141,14 @@ same bootstrap-by-hand handover as <code>make install-core</code>.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
 from the repository rather than from you. Watch the platform sync.
 Applications appear in <a href="../platform/#usage">sync-wave order</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
 </span></code></pre></div>
 <p>The <code>Certificate</code> resources stay un-Ready until step 11 — that is
 expected, since their Route53 credentials don't exist yet.</p>
 </li>
 <li>
 <p><strong>Gate on storage</strong> before trusting the workloads that need it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>make<span class="w"> </span>storage-check
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>The sync waves put Rook ahead of everything that mounts a volume, which
 is not the same as Rook being able to serve one: a <code>CephCluster</code> reports
@@ -2147,8 +2168,8 @@ ready?</a>.</p>
     <a href="../platform/external-secrets/">ExternalSecrets</a>. Until it is initialised,
     unsealed and populated, none of those Secrets exist, so cert-manager issues
     no certificates and the pods that mount one never start:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>Warning  Failed  12s (x7 over 72s)  kubelet  Error: secret "route53-credentials" not found
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>Warning  Failed   2s (x7 over 69s)  kubelet  Error: secret "authentik-secrets" not found
+<div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>Warning  Failed  12s (x7 over 72s)  kubelet  Error: secret "route53-credentials" not found
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>Warning  Failed   2s (x7 over 69s)  kubelet  Error: secret "authentik-secrets" not found
 </span></code></pre></div>
 <p>That is expected until this step is done; the pods recover on their own once
 the Secrets materialise. Follow
@@ -2161,31 +2182,31 @@ the Secrets materialise. Follow
 <p>Store every path the cluster reads. Each <code>ExternalSecret</code> in <code>payload/</code>
    carries the <code>bao kv put</code> that feeds it in a header comment; the four
    paths are:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># cert-manager: writes _acme-challenge TXT records only</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_ACCESS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_SECRET_ACCESS_KEY</span><span class="s2">"</span>
-</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>
-</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="c1"># external-dns: creates and deletes A and TXT records, so a separate</span>
-</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="c1"># IAM user on purpose -- see payload/platform/external-dns/route53-credentials.yaml</span>
-</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/external-dns/route53<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-9"><a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$EXTERNAL_DNS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-10"><a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$EXTERNAL_DNS_SECRET_KEY</span><span class="s2">"</span>
-</span><span id="__span-18-11"><a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>
-</span><span id="__span-18-12"><a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a><span class="c1"># Authentik, plus the OIDC client credentials ArgoCD and Grafana read</span>
-</span><span id="__span-18-13"><a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="c1"># back from this same path</span>
-</span><span id="__span-18-14"><a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/authentik/config<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-15"><a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a><span class="w">  </span>secret-key<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-16"><a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="w">  </span>postgres-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-17"><a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="w">  </span>bootstrap-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-18"><a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a><span class="w">  </span>bootstrap-token<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-19"><a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a><span class="w">  </span>argocd-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-20"><a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a><span class="w">  </span>argocd-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-21"><a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a><span class="w">  </span>grafana-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-18-22"><a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a><span class="w">  </span>grafana-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span>
-</span><span id="__span-18-23"><a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>
-</span><span id="__span-18-24"><a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a><span class="c1"># Alertmanager's SMTP password</span>
-</span><span id="__span-18-25"><a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/smtp<span class="w"> </span><span class="nv">password</span><span class="o">=</span><span class="s2">"</span><span class="nv">$SMTP_PASSWORD</span><span class="s2">"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># cert-manager: writes _acme-challenge TXT records only</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_ACCESS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$AWS_SECRET_ACCESS_KEY</span><span class="s2">"</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="c1"># external-dns: creates and deletes A and TXT records, so a separate</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="c1"># IAM user on purpose -- see payload/platform/external-dns/route53-credentials.yaml</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/external-dns/route53<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"</span><span class="nv">$EXTERNAL_DNS_KEY_ID</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"</span><span class="nv">$EXTERNAL_DNS_SECRET_KEY</span><span class="s2">"</span>
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="c1"># Authentik, plus the OIDC client credentials ArgoCD and Grafana read</span>
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="c1"># back from this same path</span>
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/authentik/config<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="w">  </span>secret-key<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="w">  </span>postgres-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="w">  </span>bootstrap-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-18"><a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="w">  </span>bootstrap-token<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-19"><a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a><span class="w">  </span>argocd-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-20"><a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a><span class="w">  </span>argocd-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-21"><a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a><span class="w">  </span>grafana-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-22"><a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a><span class="w">  </span>grafana-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span>
+</span><span id="__span-19-23"><a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>
+</span><span id="__span-19-24"><a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a><span class="c1"># Alertmanager's SMTP password</span>
+</span><span id="__span-19-25"><a id="__codelineno-19-25" name="__codelineno-19-25" href="#__codelineno-19-25"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/smtp<span class="w"> </span><span class="nv">password</span><span class="o">=</span><span class="s2">"</span><span class="nv">$SMTP_PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
 </li>
 </ol>
@@ -2199,7 +2220,7 @@ and Grafana UIs.</p>
     There is no sign-up, and no user to be created: Authentik ships the built-in
     <code>akadmin</code> account, and its password is the <code>bootstrap-password</code> step 11
     generated and never showed you. Read it back out of OpenBao:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>kv/authentik/config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>kv/authentik/config
 </span></code></pre></div>
 <p>Log in at
 <a href="https://auth.infra.k8s.wlkr.ch">auth.infra.k8s.wlkr.ch</a> as <code>akadmin</code>, then
@@ -2251,7 +2272,7 @@ the account falls back to after a rebuild.</p>
 worker nodes, so the control-plane taint stays in place. If you are instead
 running everything on one node, remove the taint before step 9 so workloads can
 schedule:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>make<span class="w"> </span>untaint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>
 <p>Before, not after, because step 9 does not survive the taint. Cilium does: the
 agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
@@ -2266,30 +2287,36 @@ waits on them.</p>
 node being <code>NotReady</code> until Cilium lands does not matter — this is an API call
 against the node object, not something that has to schedule.</p>
 <p>Re-apply it when you later add worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>taint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
 <h2 id="reprovisioned-nodes">Reprovisioned nodes<a class="headerlink" href="#reprovisioned-nodes" title="Permanent link">&para;</a></h2>
-<p>Reinstalling the nodes does not hand Ceph empty disks back. Butane creates the
-<code>rook-osd</code> partition only when it is missing and leaves it unformatted, so a
-rebuild onto the same hardware inherits the previous cluster's OSDs — and Rook
-will not adopt an OSD belonging to a cluster it does not know. There are no
-<code>rook-ceph-osd</code> pods, the <code>CephCluster</code> still reports <code>Ready</code>, and the failure
-surfaces one layer up, at step 11:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
+<p>A rebuild onto the same hardware used to inherit the previous cluster's OSDs.
+Butane created the <code>rook-osd</code> partition only when it was missing and left it
+unformatted, so the old BlueStore signature survived — and Rook will not adopt
+an OSD belonging to a cluster it does not know.</p>
+<p>The installer now wipes the disk before <code>flatcar-install</code> runs: filesystem
+signatures off every partition, the GPT zapped, and a device-level discard where
+the hardware supports it. So picking <code>install</code> from the PXE menu does hand Ceph
+an empty disk back.</p>
+<p>Worth keeping the symptom in mind anyway, because it is what you would see if
+that wipe ever failed — or on hardware where <code>blkdiscard</code> is declined <em>and</em>
+<code>wipefs</code> missed something. There are no <code>rook-ceph-osd</code> pods, the <code>CephCluster</code>
+still reports <code>Ready</code>, and the failure surfaces one layer up, at step 11:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
 </span></code></pre></div>
 <p><code>openbao-0</code> is <code>Pending</code> on an unbound PVC because the cluster has no OSDs to
-provision one from. <code>make storage-check</code> says so in one line. The fix is
-<code>make wipe-osd</code>, which destroys whatever the old cluster held and asks before
-it does: <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after
+provision one from. <code>make storage-check</code> says so in one line. The fix is to
+rebuild the node — <code>make reinstall LIMIT=&lt;node&gt;</code> and network-boot it, which
+wipes the disk on the way in: <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after
 reprovisioning</a>.</p>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
 <p>The five commands that answer "is it actually fine?":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
-</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
-</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
-</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
-</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
 </span></code></pre></div>
 <p>The last one earns its place: the <code>cephcluster</code> line above is the one that
 lies, reporting <code>Ready</code> on a cluster with no OSDs and no CSI driver.</p>
