@@ -120,10 +120,24 @@ The deployment host (the machine running Ansible and the boot server) must be re
     ```
 
     Leave this running for the whole of step 7 — it serves every artifact the
-    nodes fetch. It logs each TFTP and HTTP request, which is the best signal
-    that a node is progressing. Keep the window visible: watching those requests
-    arrive in order is the single most useful debugging tool in this entire
-    procedure.
+    nodes fetch. Keep the window visible: it names each node and narrates one
+    line per request, which is the single most useful debugging tool in this
+    entire procedure.
+
+    ```console
+    20:33:04  server        armed to install: odin, thor
+    20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie
+    20:34:17  odin          collecting its boot menu -- armed, so it will install
+    20:34:21  odin          collecting the initrd (391.2 MB)
+    20:34:48  odin          collecting its Ignition config
+    20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one
+    20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk
+    ```
+
+    The first two lines are worth reading before you touch a power button: they
+    are the boot server telling you what each node is about to do. A node listed
+    under *booting from disk* will not install, however many times you reboot it.
+    See [Boot Server](boot_server/index.md).
 
 7. **Arm the install, then boot the machines**:
 
@@ -137,17 +151,24 @@ The deployment host (the machine running Ansible and the boot server) must be re
     `output/tftp/pxelinux.cfg/`, for every host or for `LIMIT=<node>`;
     `make reinstall-cancel` puts it back, as does re-running `make config`.
 
+    You do not have to disarm it yourself. The boot server rewrites the menu
+    back to local boot the moment it has finished handing that node the OS
+    image, so the reboot at the end of the install lands on the disk rather than
+    on the installer again — see
+    [Boot Server &rarr; Switching back to local boot](boot_server/index.md#switching-back-to-local-boot).
+
     Then power on your bare metal nodes. No menu appears and nothing waits for a
     keypress — each node does whatever it was armed to do, so the whole build is
     unattended. See [Boot & Bootstrap Process](architecture/boot-process.md).
 
     - The node wipes the disk, writes Flatcar, and reboots into it. From that
       reboot on it is booting from its own disk.
-    - Expect the boot server log to show, per node: a TFTP request for the
-      bootloader and its `01-<mac>` menu, then HTTP requests for the kernel,
-      the initrd, `ignition-<host>.json`, and then
-      `<version>/flatcar_production_image.bin.bz2` with its `.sig` — then, after
-      the reboot, `ignition-<host>.json` again plus the sysext images.
+    - Expect the boot server log to name each node and walk it through the
+      sequence: the bootloader and its `01-<mac>` menu over TFTP, then the
+      kernel, the initrd, its Ignition config and the OS image over HTTP, then
+      `switching to local boot` — and after the reboot, the Ignition config
+      again plus the sysext images. A node that is still on the bare IP rather
+      than its name has not fetched a menu the server recognises.
     - **Leave the boot server running until every node is up.** The sysexts are
       fetched on the first boot from disk. After that nothing needs it.
     - **Note**: The cluster will come up in a `NotReady` state initially because
@@ -478,10 +499,11 @@ error message. The trick is to stop staring at the node and start reading the
 
 | Symptom | Likely cause |
 | --- | --- |
-| Node never requests anything; no log output at all | DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware. |
+| Nothing after the startup lines; the node never appears | DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware. |
 | `PXE-E32: TFTP open timeout` | `make serve` isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall. |
 | Bootloader loads, then "Could not find kernel image" or a hang at the menu | `boot_server_ip` in `inventory.yaml` is wrong. It is baked into the menu's kernel/initrd URLs. Fix it, re-run `make config`, and reboot the node. |
-| TFTP requests arrive but no `01-<mac>` file is served | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. Compare against `ls output/tftp/pxelinux.cfg/`. |
+| `no generated menu has that MAC` in the boot server log | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. The log prints the MAC the node actually asked for; put that in the inventory and re-run `make config`. |
+| `collecting its boot menu -- booting from its local disk` | The node is not armed. `make reinstall LIMIT=<node>` and boot it again. Expected after an install: the boot server disarms a node once it has the OS image. |
 | Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
 | Node installs but never joins the cluster | Sysext download failed, or the kubeadm systemd unit errored. SSH in as `core` and check `journalctl -u kubeadm`. |
 

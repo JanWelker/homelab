@@ -166,7 +166,10 @@ The procedure is a reinstall:
     That flips `DEFAULT localboot` to `DEFAULT install` in
     `output/tftp/pxelinux.cfg/01-<mac>`. The template is untouched, so the next
     `make config` puts the safe default back — including over anything armed and
-    not used. `make reinstall-cancel` does the same deliberately.
+    not used. `make reinstall-cancel` does the same deliberately, and the boot
+    server does it for you once the node has the OS image, which is what keeps
+    the reboot at the end of the install from starting a second one: see
+    [Boot Server &rarr; Switching back to local boot](../boot_server/index.md#switching-back-to-local-boot).
 
     Arming is the *only* way in: the menu shows no prompt, so there is nothing
     to pick at the console and nothing to mistype at three in the morning.
