@@ -88,7 +88,7 @@ switched off.
 
 | | |
 | --- | --- |
-| `/` | ext4 on partition 9, capped at 25 GB |
+| `/` | ext4 on partition 9, capped at 25 GB and grown into it by `grow-root.service` |
 | Ignition | Runs **once**, on the first boot after the install |
 | `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
 | `containerd`, `kubelet`, `varlog`, `rook-osd` | Partitions 10–13, formatted once and then persistent |
@@ -97,6 +97,9 @@ A reboot is therefore just a reboot. `bootstrap-k8s.service` does *not* fire,
 because its `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer
 satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
+
+!!! note "Why `grow-root.service` exists"
+    Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock `systemd-growfs-root.service` is `static` and is pulled in by an `x-systemd.growfs` mount option, which a root mounted from `root=LABEL=ROOT` on the kernel command line does not carry. Without the unit, a node comes up with a 25 GB ROOT partition holding the image's original ~1.6 GB filesystem, and about 1.2 GB free on the filesystem `/var/lib/etcd` and `/var/lib/rook` are both on. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.
 
 !!! note "Two boot paths, and the menu picks the safe one"
     The PXE menu defaults to `LOCALBOOT` with a five second timeout, so a node that network-boots for any reason still ends up on its own disk. Installing means either choosing `install` at the console or arming it with `make reinstall` — see [Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). On UEFI firmware `flatcar-install -u` writes a real boot entry, so the firmware usually goes straight to disk without consulting the menu at all; set the disk ahead of PXE in the boot order and it never will.
