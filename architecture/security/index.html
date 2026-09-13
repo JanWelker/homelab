@@ -2139,9 +2139,9 @@ beside the etcd that was <a href="#encryption-at-rest">encrypted at rest</a> to 
 precisely that. It is a one-word change and it undoes the section above it.</p>
 </div>
 <h3 id="where-the-log-actually-lives">Where the log actually lives<a class="headerlink" href="#where-the-log-actually-lives" title="Permanent link">&para;</a></h3>
-<p><code>/var/log</code> is its own 10 GB partition, so the audit log is written to disk
-rather than to the tmpfs root that holds etcd. That is what makes the CIS
-rotation numbers affordable:</p>
+<p>The audit log is written to the root filesystem, which on an installed node is
+125 GB of ext4 rather than the tmpfs the nodes used to run from. That is what
+makes the CIS rotation numbers affordable:</p>
 <table>
 <thead>
 <tr>
@@ -2156,7 +2156,7 @@ rotation numbers affordable:</p>
 </tr>
 <tr>
 <td>Filesystem</td>
-<td><code>varlog</code> partition, XFS, 10 GB</td>
+<td>root, ext4, 125 GB</td>
 </tr>
 <tr>
 <td><code>--audit-log-maxsize</code></td>
@@ -2180,8 +2180,8 @@ rotation numbers affordable:</p>
 </tr>
 </tbody>
 </table>
-<p>The partition is formatted once, on the first boot after a node is installed,
-and persists from then on — so the audit log now survives a reboot on its own.
+<p>The filesystem is written once, on the install, and persists from then on — so
+the audit log now survives a reboot on its own.
 Alloy still tails it into Loki, and that is still where the copy that matters
 lives: an audit log stored only on the node is unavailable in precisely the
 situation where the node is what failed, and unqueryable next to everything
@@ -2190,7 +2190,7 @@ else in the meantime.</p>
 <p class="admonition-title">This used to be a CIS deviation</p>
 <p><code>--audit-log-maxbackup</code> was <code>2</code> when <code>/var/log</code> was part of the tmpfs root
 the nodes ran from, because ten 100 MB files would have reserved 1.1 GB of
-the RAM etcd was running in. The <a href="../../operations/#repartitioning-the-nodes"><code>varlog</code> partition</a>
+the RAM etcd was running in. <a href="../../operations/#repartitioning-the-nodes">Installing to disk</a>
 removed the objection, and check 1.2.18 now passes along with 1.2.16,
 1.2.17 and 1.2.19.</p>
 </div>

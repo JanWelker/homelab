@@ -1932,9 +1932,9 @@ part of the tmpfs root, so node allocatable <code>ephemeral-storage</code> was <
 the control-plane nodes and <strong>7.4 GB</strong> on the workers — the request alone made
 the pod unschedulable on half the cluster, and what it did allocate would have
 been RAM shared with etcd.</p>
-<p><code>/var/lib/kubelet</code> is
-<a href="../../operations/#repartitioning-the-nodes">its own 40 GB partition</a> now,
-so the request is ordinary and the pod lands anywhere.</p>
+<p><code>/var/lib/kubelet</code> is a directory on a
+<a href="../../operations/#repartitioning-the-nodes">125 GB root filesystem</a> now, so
+the request is ordinary and the pod lands anywhere.</p>
 <p><code>relevancy</code> is the setting that makes the output worth reading. Without it a CVE
 report lists every vulnerability in every layer of every image; with it, findings
 are narrowed to packages actually loaded at runtime, which the node-agent

@@ -1787,21 +1787,16 @@ server load for identical output. Log collectors are famously good at costing
 more than the thing they observe; this is one of the cheap ways to avoid that.</p>
 <p>The audit log is a different case again. It exists only on the three
 control-plane nodes and it is JSON rather than text, so it gets its own pipeline.
-It lives on the <code>varlog</code> partition and survives a reboot there — collecting it
-is still what makes it queryable next to everything else, and what keeps a copy
+It lives on the root filesystem and survives a reboot there — collecting it is
+still what makes it queryable next to everything else, and what keeps a copy
 when the node itself is the thing that failed. See
 <a href="../../architecture/security/#audit-logging">Audit logging</a> for what is recorded
 and at which level. Alloy runs on all six nodes and <code>local.file_match</code> simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.</p>
-<div class="admonition note">
-<p class="admonition-title"><code>/var/log</code> is a partition, not the root filesystem</p>
 <p>All three sources Alloy reads — <code>/var/log/pods</code>, <code>/var/log/journal</code> and
-<code>/var/log/kubernetes/audit</code> — sit on a dedicated 10GB XFS partition rather
-than on the 25GB root. That keeps log volume off the filesystem etcd is on,
-and it is why the audit log can keep the ten rotations CIS asks for. The
-chart mount is unchanged: one <code>varlog: true</code> still covers all three.</p>
-</div>
+<code>/var/log/kubernetes/audit</code> — are directories on the 125GB root filesystem, so
+one <code>varlog: true</code> mount in the chart covers all three.</p>
 <p>Container logs pass through <code>stage.cri {}</code>. containerd writes
 <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
 stream end up inside the log line and Loki stamps everything at ingest time —
