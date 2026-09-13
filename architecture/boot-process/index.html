@@ -1869,7 +1869,7 @@ switched off.</p>
 <tbody>
 <tr>
 <td><code>/</code></td>
-<td>ext4 on partition 9, capped at 125 GB and grown into it by <code>grow-root.service</code></td>
+<td>ext4 on partition 9, capped at 50 GB and grown into it by <code>grow-root.service</code></td>
 </tr>
 <tr>
 <td>Ignition</td>
@@ -1891,7 +1891,7 @@ satisfied — the file is still there from last time. etcd comes back with its
 data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
 <div class="admonition note">
 <p class="admonition-title">Why <code>grow-root.service</code> exists</p>
-<p>Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock <code>systemd-growfs-root.service</code> is <code>static</code> and is pulled in by an <code>x-systemd.growfs</code> mount option, which a root mounted from <code>root=LABEL=ROOT</code> on the kernel command line does not carry. Without the unit, a node comes up with a 125 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.</p>
+<p>Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock <code>systemd-growfs-root.service</code> is <code>static</code> and is pulled in by an <code>x-systemd.growfs</code> mount option, which a root mounted from <code>root=LABEL=ROOT</code> on the kernel command line does not carry. Without the unit, a node comes up with a 50 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>

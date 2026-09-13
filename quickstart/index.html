@@ -1871,7 +1871,7 @@ want to know.</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive (or adjust <code>install_disk</code> in <code>inventory.yaml</code> — one node uses <code>/dev/sda</code>, because hardware is a collection of exceptions wearing a trenchcoat)</li>
-<li>Sufficient disk space: Flatcar itself, a 125 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. 256 GB leaves about 111 GB for Ceph per node</li>
+<li>Sufficient disk space: Flatcar itself, a 50 GB root filesystem holding everything the node writes, and the remainder used by Rook-Ceph as OSD storage. A 240 GB disk leaves about 167 GB for Ceph per node</li>
 <li>At least 4 GB of RAM: the installer runs from a RAM disk, but streams the Flatcar image straight to disk rather than staging it</li>
 </ul>
 <p>The deployment host (the machine running Ansible and the boot server) must be reachable from the nodes on the same L2 network segment.</p>
@@ -1997,7 +1997,7 @@ want to know.</p>
 (PXE). One Ignition config per host, <code>ignition-&lt;host&gt;.json</code>: the PXE
 environment runs it to install, and <code>flatcar-install</code> embeds the same file
 into the installed system. The
-install disk ends up as a 125GB root filesystem and the remaining space as a
+install disk ends up as a 50GB root filesystem and the remaining space as a
 raw partition for Rook-Ceph.</em></p>
 <p>Re-run this after <strong>any</strong> change to <code>inventory.yaml</code> — the values are baked
 into the generated files. Editing the inventory and skipping this step is the

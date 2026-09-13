@@ -1795,7 +1795,7 @@ and at which level. Alloy runs on all six nodes and <code>local.file_match</code
 finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.</p>
 <p>All three sources Alloy reads — <code>/var/log/pods</code>, <code>/var/log/journal</code> and
-<code>/var/log/kubernetes/audit</code> — are directories on the 125GB root filesystem, so
+<code>/var/log/kubernetes/audit</code> — are directories on the 50GB root filesystem, so
 one <code>varlog: true</code> mount in the chart covers all three.</p>
 <p>Container logs pass through <code>stage.cri {}</code>. containerd writes
 <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
