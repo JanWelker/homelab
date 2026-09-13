@@ -479,6 +479,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#boot-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Boot order
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#wiping-the-disk" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1720,6 +1731,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#boot-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Boot order
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#wiping-the-disk" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1897,6 +1919,20 @@ rather than one:</p>
 </tr>
 </tbody>
 </table>
+<h3 id="boot-order">Boot order<a class="headerlink" href="#boot-order" title="Permanent link">&para;</a></h3>
+<p>The install leaves the firmware's boot order alone. <code>flatcar-install</code> can write
+a UEFI boot entry for the disk with <code>-u</code>, which is <code>efibootmgr -c</code> and puts that
+entry at the front of <code>BootOrder</code>; this project does not pass it.</p>
+<p>That is deliberate, because the boot order is the one thing the PXE menu cannot
+override. These nodes are set to network boot first and reach their disk through
+<code>LOCALBOOT</code>, so the generated menu decides what happens on every boot of every
+node. An install that quietly promoted the disk ahead of PXE would take a node
+out of that arrangement: <code>make reinstall</code> would rewrite a menu the firmware had
+stopped reading, and the node would ignore it with no error anywhere.</p>
+<p>The cost is that a node has to be able to reach its disk without that entry —
+network boot first with a working <code>LOCALBOOT</code>, or the disk ahead of PXE in the
+firmware. A machine with neither installs correctly and then has nothing to
+boot.</p>
 <h3 id="wiping-the-disk">Wiping the disk<a class="headerlink" href="#wiping-the-disk" title="Permanent link">&para;</a></h3>
 <p><code>wipe_table</code> is the one setting the two environments need opposite answers for,
 and it is why there are two files rather than one.</p>
@@ -1992,7 +2028,7 @@ data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>
-<p>Nothing is chosen at the console. <code>PROMPT 0</code> boots whatever <code>DEFAULT</code> names and shows no menu, and the template always emits <code>DEFAULT localboot</code> — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with <code>make reinstall</code>, which rewrites that one line in the generated file; see <a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. On UEFI firmware <code>flatcar-install -u</code> writes a real boot entry, so the firmware usually goes straight to disk without reading this file at all; set the disk ahead of PXE in the boot order and it never will. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.</p>
+<p>Nothing is chosen at the console. <code>PROMPT 0</code> boots whatever <code>DEFAULT</code> names and shows no menu, and the template always emits <code>DEFAULT localboot</code> — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with <code>make reinstall</code>, which rewrites that one line in the generated file; see <a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.</p>
 </div>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once Kubeadm has initialized the control plane, the remaining components are

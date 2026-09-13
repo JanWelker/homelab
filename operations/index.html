@@ -1833,9 +1833,10 @@ for that case.</p>
 <div class="admonition note">
 <p class="admonition-title">The menu will not do this by accident</p>
 <p>The PXE entry that installs has to be chosen. The menu's default is
-<code>LOCALBOOT</code>, and on UEFI firmware <code>flatcar-install -u</code> writes a boot entry
-for the disk — so a node that reboots while the boot server happens to be
-running boots what it already has.</p>
+<code>LOCALBOOT</code>, so a node that reboots while the boot server happens to be
+running boots what it already has. The install does not touch the
+firmware's boot order, which means the menu decides on every boot, on
+every node — see <a href="../architecture/boot-process/#boot-order">Boot order</a>.</p>
 </div>
 <p>Only the <em>last</em> partition can grow without a reinstall. Shrinking <code>rook-osd</code> to
 make room for something else cannot be done in place either, because Ceph has
