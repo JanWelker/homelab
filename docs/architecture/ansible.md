@@ -101,7 +101,7 @@ Rewrites `DEFAULT` in the generated PXE menus — `install` to arm a node,
 two directions, and both take `LIMIT=<host>` to act on one node. It touches only
 `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe
 default from the template regardless. See
-[Boot Server &rarr; Switching back to local boot](../boot_server/index.md#switching-back-to-local-boot).
+[Boot Server &rarr; Switching back to local boot](boot-server.md#switching-back-to-local-boot).
 
 ### `kubeconfig.yaml`
 

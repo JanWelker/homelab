@@ -138,7 +138,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
     The first two lines are worth reading before you touch a power button: they
     are the boot server telling you what each node is about to do. A node listed
     under *booting from disk* will not install, however many times you reboot it.
-    See [Boot Server](boot_server/index.md).
+    See [Boot Server](architecture/boot-server.md).
 
 7. **Arm the install, then boot the machines**:
 
@@ -156,7 +156,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
     back to local boot the moment it has finished handing that node the OS
     image, so the reboot at the end of the install lands on the disk rather than
     on the installer again — see
-    [Boot Server &rarr; Switching back to local boot](boot_server/index.md#switching-back-to-local-boot).
+    [Boot Server &rarr; Switching back to local boot](architecture/boot-server.md#switching-back-to-local-boot).
 
     Then power on your bare metal nodes. No menu appears and nothing waits for a
     keypress — each node does whatever it was armed to do, so the whole build is
@@ -516,5 +516,5 @@ never a broken image — it is `boot_server_ip`, pointing at an address that was
 correct on some other network, on some other day.
 
 The boot server serves `output/tftp` over TFTP and `output/http` over HTTP —
-see [Boot Server](boot_server/index.md). If a file is missing from those
+see [Boot Server](architecture/boot-server.md). If a file is missing from those
 directories, re-run `make artifacts`.

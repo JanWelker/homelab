@@ -28,7 +28,7 @@ When something is broken at midnight, being able to `journalctl -u kubelet` is
 worth a great deal.
 
 The cost is that Flatcar's read-only `/usr` forces everything unusual into
-[sysexts](index.md#systemd-sysexts) — including Kubernetes and containerd
+[sysexts](../concepts.md#systemd-sysexts) — including Kubernetes and containerd
 themselves — which is the source of the update behaviour described in
 [Updates & Upgrades](../operations/upgrades.md).
 

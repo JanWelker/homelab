@@ -45,7 +45,7 @@ ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
 
 ## Kubernetes and containerd
 
-These are delivered as [systemd sysexts](../architecture/index.md#systemd-sysexts).
+These are delivered as [systemd sysexts](../concepts.md#systemd-sysexts).
 `systemd-sysupdate.timer` is enabled, and the drop-ins run an update for both
 extensions on every fire. When a new image is fetched, the unit touches
 `/run/reboot-required` — a marker file that, with `locksmithd` masked, nothing
