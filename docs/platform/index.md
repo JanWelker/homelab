@@ -15,30 +15,29 @@ for not having those.
 
 ## Components
 
-- **[authentik](authentik.md)**: Single sign-on for every platform UI.
-- **backup**: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
-  see [Backups & Recovery](../operations/backups.md).
-- **[cert-manager](cert-manager.md)**: TLS certificate automation.
-- **[cilium](cilium.md)**: CNI and Gateway API. Enforces the policies in
-  [security policies](security-policies.md).
-- **[external-dns](external-dns.md)**: Publishes Route53 records from HTTPRoutes.
-- **[external-secrets](external-secrets.md)**: Bridges OpenBao to native K8s Secrets.
-- **[gateway-api](gateway-api.md)**: Gateway API resources (Gateways, HTTPRoutes).
-- **kubelet-csr-approver**: Approves `kubelet-serving` certificate requests
-  against the inventory, so kubelet TLS is verified rather than skipped — see
-  [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it).
-- **[kubescape](kubescape.md)**: Scans the cluster against CIS, NSA and MITRE
-  nightly and exports the findings to Grafana.
-- **[kured](kured.md)**: Drains and reboots nodes to apply staged OS, Kubernetes
-  and containerd updates.
-- **[logging](logging.md)**: Loki and Grafana Alloy, for container and node logs.
-- **[metrics-server](metrics-server.md)**: The `metrics.k8s.io` resource metrics
-  API, behind `kubectl top` and every HPA.
-- **[monitoring](monitoring.md)**: Observability stack (Prometheus, Grafana).
-- **[openbao](openbao.md)**: Cluster-wide secret store.
-- **[rook-ceph](rook-ceph.md)**: Distributed storage.
-- **[security policies](security-policies.md)**: Pod Security Admission levels and
-  default-deny ingress policies.
+Alphabetical, with the namespace it lands in and the sync wave it lands at.
+The [wave ordering](#usage) below explains why those numbers are what they are.
+
+<!-- markdownlint-disable MD013 -->
+| Component | Namespace | Wave | What it does |
+| --- | --- | --- | --- |
+| [authentik](authentik.md) | `authentik` | `2` | Single sign-on for every platform UI |
+| backup | `backup` | `1` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
+| [cert-manager](cert-manager.md) | `cert-manager` | `-5` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
+| [cilium](cilium.md) | `kube-system` | `-1` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
+| [external-dns](external-dns.md) | `external-dns` | `2` | Publishes Route53 records from HTTPRoutes |
+| [external-secrets](external-secrets.md) | `external-secrets` | `-6` | Bridges OpenBao to native Kubernetes Secrets |
+| [gateway-api](gateway-api.md) | `gateway-system` | `-4` | The two Gateways and the HTTP-to-HTTPS redirect |
+| kubelet-csr-approver | `kubelet-csr-approver` | `1` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
+| [kubescape](kubescape.md) | `kubescape` | `2` | Nightly CIS, NSA and MITRE posture scans, exported to Grafana |
+| [kured](kured.md) | `kured` | `2` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
+| [logging](logging.md) | `logging` | `1` | Loki and Grafana Alloy, for container, journal and audit logs |
+| [metrics-server](metrics-server.md) | `kube-system` | `2` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
+| [monitoring](monitoring.md) | `monitoring` | `1` | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
+| [openbao](openbao.md) | `openbao` | `0` | Cluster-wide secret store |
+| [rook-ceph](rook-ceph.md) | `rook-ceph` | `-3` to `0` | Replicated block storage and an S3 object store |
+| [security policies](security-policies.md) | `kube-system` | `3` | Pod Security Admission levels and default-deny ingress policies |
+<!-- markdownlint-enable MD013 -->
 
 ## Traffic Flow
 

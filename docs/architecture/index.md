@@ -9,12 +9,65 @@ Linux and Kubeadm. No cloud provider, no managed control plane, no friendly
 button labelled "create cluster" — just six machines, a network, and a
 deployment host that talks them into existence.
 
-## Before you read this
-
 This page assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
 GitOps are. If any of those is new, [Core Concepts](../concepts.md) covers all
-five in one page — the five ideas this cluster is built on, and what each one
-costs.
+five in one page.
+
+## What is in this section
+
+<div class="grid cards" markdown>
+
+- **[Boot & Bootstrap Process](boot-process.md)**
+
+    ---
+
+    One node from power-on to `kubectl get nodes`, arrow by arrow. The page to
+    read when an install stalls, because it turns "it hangs" into "which arrow
+    did not happen?"
+
+- **[Boot Server](boot-server.md)** · **[Ansible](ansible.md)**
+
+    ---
+
+    The two halves of the deployment host: the Python script that serves TFTP
+    and HTTP to a booting node, and the playbooks that generate everything it
+    serves.
+
+- **[GitOps Strategy](gitops.md)**
+
+    ---
+
+    App-of-Apps, and the sync waves that make a fresh bootstrap converge instead
+    of deadlocking on a CRD that does not exist yet.
+
+- **[Design Decisions](decisions.md)**
+
+    ---
+
+    Seven choices, each stated as *X, not Y*, each with the cost it carries.
+    Read this before proposing a simpler alternative — it is probably in here.
+
+- **[Security Posture](security.md)**
+
+    ---
+
+    The trust boundary this cluster assumes, what is deliberately not enforced,
+    and the audit logging that records the rest.
+
+- **[Known Limitations](limitations.md)**
+
+    ---
+
+    What it does not do, written down so it is findable before it is discovered.
+
+- **[Repository Layout](directory-structure.md)**
+
+    ---
+
+    Which of the four top-level directories to be in, and which one never to
+    edit by hand.
+
+</div>
 
 ## Components
 
