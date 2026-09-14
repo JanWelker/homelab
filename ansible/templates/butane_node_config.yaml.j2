@@ -33,6 +33,8 @@ storage:
 {% if role == 'control-plane' %}
     - path: /etc/kubernetes/enc
       mode: 0700
+    - path: /etc/kubernetes/auth
+      mode: 0700
     - path: /etc/kubernetes/audit
       mode: 0700
     # Alloy tails this into Loki. See docs/architecture/security.md.
@@ -75,6 +77,29 @@ storage:
                       - name: key1
                         secret: {{ encryption_key }}
                 - identity: {}
+
+    - path: /etc/kubernetes/auth/authentication-config.yaml
+      mode: 0600
+      contents:
+        inline: |
+          apiVersion: apiserver.config.k8s.io/v1beta1
+          kind: AuthenticationConfiguration
+          # Anonymous requests are allowed to exactly these three paths and
+          # rejected everywhere else. The three are what kubeadm's static pod
+          # liveness, readiness and startup probes call; denying them outright
+          # is what makes --anonymous-auth=false restart the API server on
+          # every control-plane node.
+          #
+          # /version is deliberately not here. system:public-info-viewer binds
+          # system:anonymous to it by default, which C-0262 flags -- but that
+          # is a RoleBinding, and with anonymous authentication narrowed to the
+          # list below the binding has nothing to act on.
+          anonymous:
+            enabled: true
+            conditions:
+              - path: /healthz
+              - path: /livez
+              - path: /readyz
 
     - path: /etc/kubernetes/audit/policy.yaml
       mode: 0600

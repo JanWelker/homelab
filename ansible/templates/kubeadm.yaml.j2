@@ -46,6 +46,20 @@ apiServer:
     # works rather than an argument that it should.
     - name: kubelet-certificate-authority
       value: /etc/kubernetes/pki/ca.crt
+    # NEEDS WORK -- this is the one that breaks the cluster if it is wrong.
+    #
+    # The obvious fix for CIS is --anonymous-auth=false. That restarts the API
+    # server on every control-plane node, forever: kubeadm's static pod probes
+    # hit /livez and /readyz unauthenticated, anonymous denial makes them 401,
+    # the kubelet reads that as a failed probe and kills the container.
+    #
+    # An AuthenticationConfiguration is the supported way to say "anonymous for
+    # the health endpoints, nothing else". The file replaces --anonymous-auth
+    # rather than complementing it -- setting both is rejected -- which is why
+    # that flag does not appear here. The file itself is written by
+    # butane_node_config.yaml.j2 and mounted through extraVolumes below.
+    - name: authentication-config
+      value: /etc/kubernetes/auth/authentication-config.yaml
     # spec.externalIPs on a Service lets whoever can create it hijack traffic to
     # an arbitrary address on every node -- there is no ownership check on the
     # address at all. Nothing here uses the field: LoadBalancer addresses come
@@ -84,6 +98,11 @@ apiServer:
     - name: encryption-config
       hostPath: /etc/kubernetes/enc
       mountPath: /etc/kubernetes/enc
+      readOnly: true
+      pathType: Directory
+    - name: authentication-config
+      hostPath: /etc/kubernetes/auth
+      mountPath: /etc/kubernetes/auth
       readOnly: true
       pathType: Directory
     - name: audit-policy
