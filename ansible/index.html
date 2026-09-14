@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/logo.png">
-      <meta name="generator" content="zensical-0.0.59">
+      <meta name="generator" content="zensical-0.0.62">
     
     
       
@@ -32,7 +32,7 @@
       
         
       
-      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
@@ -1612,6 +1612,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#reinstallyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>reinstall.yaml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#kubeconfigyaml" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1740,6 +1751,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#reinstallyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>reinstall.yaml</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#kubeconfigyaml" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1816,40 +1838,100 @@ under <code>ansible/</code> therefore takes a rebuild of the affected node, not 
 <h2 id="inventory">Inventory<a class="headerlink" href="#inventory" title="Permanent link">&para;</a></h2>
 <p>The <code>inventory.yaml</code> file defines the cluster layout, and it is the single
 source of truth for everything about these machines. Every generated artifact
-comes from it, which is why any edit has to be followed by <code>make config</code> — the
-values are baked into the output, not read at boot.</p>
-<ul>
-<li><strong>Global Variables</strong>: Flattened variables like versions (<code>kubernetes_version</code>,
-  <code>flatcar_version</code>) and network settings.</li>
-<li><strong>Groups</strong>:</li>
-<li><code>control_plane</code>: Master nodes.</li>
-<li><code>workers</code>: Worker nodes.</li>
-<li><strong>Host Variables</strong>:</li>
-<li><code>mac_address</code>: Required for PXE boot configuration (configures specific
-    menu for each MAC).</li>
-<li><code>ansible_host</code>: The static IP assigned to the node.</li>
-</ul>
+comes from it, and the values are baked into the output rather than read at
+boot.</p>
+<div class="admonition warning">
+<p class="admonition-title">Every edit needs a regeneration, and some need two</p>
+<p><code>make config</code> re-renders the Ignition configs and PXE menus from the inventory. The four version variables are consumed by <code>download.yaml</code> instead, so changing one needs <code>make download</code> as well — <code>make artifacts</code> runs both. An edit followed by neither changes nothing at all, silently.</p>
+</div>
+<p><strong>Global variables</strong> sit under <code>all.vars</code>: the four artifact versions
+(<code>flatcar_version</code>, <code>kubernetes_version</code>, <code>containerd_version</code>,
+<code>syslinux_version</code>) plus <code>flatcar_channel</code>, <code>kube_vip_version</code>,
+<code>boot_server_ip</code>, <code>control_plane_vip</code>, <code>control_plane_vip_interface</code>,
+<code>install_disk</code>, <code>pod_subnet</code> and <code>service_subnet</code>.</p>
+<p><strong>Groups</strong> nest one level deeper than they first appear:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>k8s_nodes</code></td>
+<td>The parent of both role groups, and what every playbook actually targets. Carries <code>ansible_user</code>, the Python interpreter path and the SSH options</td>
+</tr>
+<tr>
+<td><code>control_plane</code></td>
+<td><code>role: control-plane</code></td>
+</tr>
+<tr>
+<td><code>workers</code></td>
+<td><code>role: worker</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Host variables</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ansible_host</code></td>
+<td>The static IP the node is given</td>
+</tr>
+<tr>
+<td><code>mac_address</code></td>
+<td>Selects which generated PXE menu the node picks up</td>
+</tr>
+<tr>
+<td><code>install_disk</code></td>
+<td>Overrides the global default for one host, as <code>freya</code> does</td>
+</tr>
+</tbody>
+</table>
 <h2 id="playbooks">Playbooks<a class="headerlink" href="#playbooks" title="Permanent link">&para;</a></h2>
 <h3 id="configyaml"><code>config.yaml</code><a class="headerlink" href="#configyaml" title="Permanent link">&para;</a></h3>
 <p>Generates all necessary configuration files for booting and bootstrapping the
 nodes.</p>
 <ul>
-<li>Generates credentials (bootstrap token, certificate key, etcd encryption key).</li>
-<li>Creates Ignition configs (via Butane) for each host.</li>
-<li>Creates PXE boot menus for each host based on MAC address.</li>
-<li>Outputs to <code>output/http</code> and <code>output/tftp</code>.</li>
+<li>Generates credentials (bootstrap token, certificate key, etcd encryption key)
+    into <code>output/credentials/</code>, mode <code>0700</code>.</li>
+<li>Creates Ignition configs (via Butane) for each host, into <code>output/http</code>.</li>
+<li>Creates PXE boot menus for each host based on MAC address, into
+    <code>output/tftp/pxelinux.cfg/</code>.</li>
+<li>Renders the kubeadm config into <code>output/tmp/</code> as well, purely so it can be
+    read. The copy that runs is the one inlined into the Ignition config.</li>
 </ul>
 <h3 id="downloadyaml"><code>download.yaml</code><a class="headerlink" href="#downloadyaml" title="Permanent link">&para;</a></h3>
 <p>Downloads external artifacts required for provisioning.</p>
 <ul>
-<li>Flatcar Kernel and Initrd.</li>
+<li>Flatcar kernel and initrd.</li>
+<li>The Flatcar OS image and its detached signature — by some distance the largest
+    artifact, and the one the boot server narrates as "this is the long one".</li>
 <li>Systemd Sysext images (Kubernetes, Containerd), plus their sysupdate configs,
     rewritten to pin the major.minor from <code>inventory.yaml</code>.</li>
 <li>Syslinux bootloader files.</li>
 </ul>
+<h3 id="reinstallyaml"><code>reinstall.yaml</code><a class="headerlink" href="#reinstallyaml" title="Permanent link">&para;</a></h3>
+<p>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm a node,
+<code>localboot</code> to disarm it. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the
+two directions, and both take <code>LIMIT=&lt;host&gt;</code> to act on one node. It touches only
+<code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe
+default from the template regardless. See
+<a href="../boot_server/#switching-back-to-local-boot">Boot Server &rarr; Switching back to local boot</a>.</p>
 <h3 id="kubeconfigyaml"><code>kubeconfig.yaml</code><a class="headerlink" href="#kubeconfigyaml" title="Permanent link">&para;</a></h3>
-<p>Retrieves the admin <code>kubeconfig</code> file from the first available control plane
-node after the cluster is bootstrapped.</p>
+<p>Retrieves the admin <code>kubeconfig</code> over SSH once the cluster is bootstrapped and
+writes it to <code>output/kubeconfig</code>, mode <code>0600</code>.</p>
+<p>It targets <code>control_plane[0]</code> specifically — the first control-plane host in the
+inventory, with no fallback. If that node is down the playbook fails even though
+the other API servers are answering; copy <code>/etc/kubernetes/admin.conf</code> off any
+of them by hand in that case.</p>
 <p>Keep a copy of the result somewhere off the cluster. It is the credential you
 will want on the day the web UIs are unreachable, and it lives in <code>output/</code>,
 which is gitignored and therefore exactly as durable as the laptop it is on.</p>
@@ -1943,10 +2025,14 @@ which is gitignored and therefore exactly as durable as the laptop it is on.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../assets/javascripts/bundle.6970bfe9.min.js"></script>
+      <script src="../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>

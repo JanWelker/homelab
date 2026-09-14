@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo.png">
-      <meta name="generator" content="zensical-0.0.59">
+      <meta name="generator" content="zensical-0.0.62">
     
     
       
@@ -34,7 +34,7 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.5da3a30f.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
@@ -1896,6 +1896,11 @@ switched off permanently, which is the real risk here.</p>
 <td>Adds <code>IPC_LOCK</code> to keep the root key out of swap — not on baseline's capability allow-list</td>
 </tr>
 <tr>
+<td><code>kubescape</code></td>
+<td><code>privileged</code></td>
+<td>The eBPF node-agent needs <code>hostPID</code>, hostPath mounts of <code>/</code> and <code>/sys</code>, and seven added capabilities — see <a href="../kubescape/#namespace-security-level">Kubescape &rarr; Namespace security level</a></td>
+</tr>
+<tr>
 <td><code>cert-manager</code></td>
 <td><code>baseline</code></td>
 <td>—</td>
@@ -1914,7 +1919,7 @@ switched off permanently, which is the real risk here.</p>
 </table>
 <div class="admonition note">
 <p class="admonition-title"><code>privileged</code> here means 'not yet reduced', not 'unexamined'</p>
-<p>Each of the four has a specific reason above. <code>audit</code> and <code>warn</code> are still set to <code>baseline</code> or <code>restricted</code> on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.</p>
+<p>Each of the five has a specific reason above. <code>audit</code> and <code>warn</code> are still set to <code>baseline</code> or <code>restricted</code> on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.</p>
 </div>
 <p>Namespace objects are owned by this Application so the labels stay declarative
 rather than being applied once by <code>CreateNamespace=true</code> and then drifting.
@@ -2093,10 +2098,14 @@ fastest way to find a missing rule without an outage:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.6970bfe9.min.js"></script>
+      <script src="../../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>

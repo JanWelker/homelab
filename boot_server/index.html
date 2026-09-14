@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/logo.png">
-      <meta name="generator" content="zensical-0.0.59">
+      <meta name="generator" content="zensical-0.0.62">
     
     
       
@@ -34,7 +34,7 @@
       
         
       
-      <link rel="stylesheet" href="../assets/stylesheets/modern/main.5da3a30f.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
@@ -1586,6 +1586,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Switching back to local boot">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-the-way-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        On the way out
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1653,14 +1670,27 @@ software.</p>
 <p>The server is started via the Makefile:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>serve
 </span></code></pre></div>
-<p>This requires <code>sudo</code> privileges to bind to the privileged port 69 (TFTP).</p>
+<p>This requires <code>sudo</code> privileges to bind to the privileged port 69 (TFTP), and it
+has to be run from the repository root — <code>serve.py</code> resolves both document roots
+relative to the working directory.</p>
+<div class="admonition danger">
+<p class="admonition-title"><code>serve.py</code> holds its own copy of the boot server address</p>
+<p><code>BIND_IP</code> at the top of <code>boot_server/serve.py</code> is a second, independent copy of <code>boot_server_ip</code> from <code>ansible/inventory.yaml</code>, and nothing keeps the two in step. The TFTP server binds it explicitly, so on a network where it is wrong <code>make serve</code> either fails to bind or answers nobody, while the PXE menus point somewhere else entirely — change both, or you will debug the symptom in <a href="../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a> and find nothing wrong with the thing you edited.</p>
+</div>
+<p>Note also that only TFTP binds that address. The HTTP server listens on every
+interface the host has, which is worth knowing when reading the exposure warning
+below: the segment is the limit for the bootloader, not for the Ignition configs.</p>
 <p>Leave it in the foreground where you can see it. The request log is the best
 diagnostic tool in the whole provisioning process — you can watch a node
 progress through the boot sequence one file at a time, and the file it <em>stops</em>
 at tells you exactly what is wrong. See
 <a href="../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</p>
 <p>It opens by saying what it is serving and which nodes are armed, then narrates
-one line per request, against the node that made it:</p>
+one line per request, against the node that made it. If any node is armed, that
+opening is a boxed warning naming every disk about to be wiped, with the two
+cancel commands underneath it — <code>make reinstall-cancel</code>, and the <code>LIMIT=&lt;node&gt;</code>
+form for one. If no menus exist at all it says so and names <code>make config</code>, which
+is the first thing a new user hits.</p>
 <div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">20:33:04  server        http on 10.9.200.222:8000 from output/http</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">20:33:04  server        tftp on 10.9.200.222:69 from output/tftp</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">20:33:04  server        armed to install: odin, thor</span>
@@ -1692,6 +1722,19 @@ the disk and reboot; that is the moment the menu is rewritten to
 <code>DEFAULT localboot</code>. It is the same one-line edit <code>make reinstall-cancel</code>
 makes, and re-running <code>make config</code> regenerates the file from the template
 either way.</p>
+<p>A node that never fetched an Ignition config cannot be identified by name, so
+the server cannot disarm it either; it says so and tells you to run
+<code>make reinstall-cancel</code> yourself.</p>
+<h3 id="on-the-way-out">On the way out<a class="headerlink" href="#on-the-way-out" title="Permanent link">&para;</a></h3>
+<p>Arming survives the boot server. The menu is a file on disk, so a node left
+armed installs the next time it powers on whether or not anything is serving.</p>
+<p><code>Ctrl-C</code> therefore checks. If anything is still armed it prints what, explains
+that the menu does not need the boot server to fire, and offers to disarm:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">  Disarm 2 node(s) now? [Y/n]</span>
+</span></code></pre></div>
+<p>Enter accepts. Anything else leaves them armed and repeats the cancel command.
+When stdin is not a terminal — a CI run, a <code>nohup</code> — it cannot ask, so it warns
+and leaves them armed.</p>
 <div class="admonition warning">
 <p class="admonition-title">It disarms on delivery, not on success</p>
 <p>The boot server sees an HTTP transfer complete; it cannot see whether <code>flatcar-install</code> then wrote the disk. An install that fails <em>after</em> the download leaves a node that is disarmed and has no working disk. That is loud rather than subtle — <code>flatcar-install.service</code> deliberately does not reboot on failure, so the node sits in the PXE environment with its journal — but the fix is <code>make reinstall LIMIT=&lt;node&gt;</code> before you power cycle it, not just a reboot.</p>
@@ -1838,10 +1881,14 @@ anything in this script.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../assets/javascripts/bundle.6970bfe9.min.js"></script>
+      <script src="../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>

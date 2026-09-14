@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../assets/images/logo.png">
-      <meta name="generator" content="zensical-0.0.59">
+      <meta name="generator" content="zensical-0.0.62">
     
     
       
@@ -34,7 +34,7 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.5da3a30f.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
@@ -2151,15 +2151,16 @@ control plane, then restarting kubelet — see the
 verified, encrypted brick. Details in
 <a href="../../platform/openbao/#backups">OpenBao &rarr; Backups</a>.</p>
 <h2 id="ceph-volumes">Ceph volumes<a class="headerlink" href="#ceph-volumes" title="Permanent link">&para;</a></h2>
-<p>There is no volume backup. Rook-Ceph replicates across OSDs, which protects
-against a disk or node failure but not against deletion, corruption, or a bad
-<code>prune</code>. Every Application here runs with <code>prune: true</code>, so removing a
-<code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
-<p><a href="#velero">Velero</a> now covers this: PVCs are snapshotted nightly and the data is
-moved into the object store, so a deleted PVC is recoverable. What is still open
-is off-cluster replication — see
-<a href="#what-is-not-covered">What is not covered</a>. RBD mirroring to a
-second cluster would close it.</p>
+<p>Volume data is covered by <a href="#velero">Velero</a>: PVCs are snapshotted nightly and
+the data is moved into the object store, so a deleted PVC is recoverable.</p>
+<p>Ceph's own replication is not a backup and should not be mistaken for one. It
+spreads each block across OSDs, which protects against a disk or a node failing
+and against nothing else — not deletion, not corruption, not a bad <code>prune</code>. That
+last one is not hypothetical: every Application here runs with <code>prune: true</code>, so
+removing a <code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
+<p>What is still open is off-cluster replication — see
+<a href="#what-is-not-covered">What is not covered</a>. RBD mirroring to a second cluster
+would close it.</p>
 <h2 id="rebuilding-from-scratch">Rebuilding from scratch<a class="headerlink" href="#rebuilding-from-scratch" title="Permanent link">&para;</a></h2>
 <p>What you need, in order:</p>
 <ol>
@@ -2282,10 +2283,14 @@ once ArgoCD points at the repository and OpenBao is unsealed.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.6970bfe9.min.js"></script>
+      <script src="../../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>
