@@ -16,9 +16,16 @@
 # talks to, and getting that wrong takes out the component rather than merely
 # exposing it. Egress is the next step, not this one.
 #
-# Namespaces belonging to components that arrive in other changes -- logging,
-# backup, authentik, kured, metrics-server -- are not covered here and still
-# allow all ingress.
+# Still uncovered, and each for its own reason. kube-system holds Cilium itself,
+# the static control-plane pods and kube-vip: a default-deny there is enforced by
+# the component being restricted, which is not a thing to get wrong. rook-ceph
+# has mons, OSDs and CSI plugins with a wide and partly host-level traffic
+# matrix, and wants Ceph health as its verification signal rather than a guess.
+# backup has a node-agent doing volume backups through the CSI plugins and a
+# host-network CronJob reading etcd. kubescape's node-agent talks to both the
+# operator and the aggregated storage API server, and getting it wrong disables
+# posture scanning silently. argocd and authentik already carry NetworkPolicies
+# from their own charts.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -111,3 +118,90 @@ spec:
         - host
         - remote-node
         - ingress
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: external-dns
+spec:
+  description: >-
+    Default-deny ingress for external-dns. It is a pure client -- it reads
+    HTTPRoutes from the API server and writes records to Route53 -- and the
+    only thing that connects *to* it is Prometheus, on the metrics port its
+    ServiceMonitor scrapes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: kubelet-csr-approver
+spec:
+  description: >-
+    Default-deny ingress for kubelet-csr-approver. Two replicas that watch
+    CertificateSigningRequests and lease-elect between themselves through the
+    API server rather than directly, so nothing needs to reach them except
+    Prometheus and the kubelet's probes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: kured
+spec:
+  description: >-
+    Default-deny ingress for kured. The DaemonSet talks outward -- to the API
+    server for the lock annotation and to Prometheus to ask whether rebooting is
+    safe -- and serves only its own metrics endpoint.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: logging
+spec:
+  description: >-
+    Default-deny ingress for the logging stack. Alloy pushes to Loki and Loki's
+    memberlist gossips, both within the namespace; from outside it, Grafana
+    queries http://loki.logging.svc.cluster.local:3100 and Prometheus scrapes
+    Alloy. Both of those live in monitoring.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
