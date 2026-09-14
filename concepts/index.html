@@ -6,40 +6,40 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Setting up the repository for development, the checks that run, and what to do before opening a pull request.">
+        <meta name="description" content="The five ideas this cluster is built on — immutable OS, first-boot provisioning, system extensions, network boot, and GitOps — and what each one costs you.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/development/contributing/">
+        <link rel="canonical" href="https://janwelker.github.io/homelab/concepts/">
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="./..">
       
       
-        <link rel="next" href="../add-workload/">
+        <link rel="next" href="../quickstart/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/logo.png">
+      <link rel="icon" href="../assets/images/logo.png">
       <meta name="generator" content="zensical-0.0.62">
     
     
       
-        <title>Contributing - Homelab Documentation</title>
+        <title>Core Concepts - Homelab Documentation</title>
       
     
     
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.ce62732f.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.812a03bb.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
       
       
 
@@ -52,11 +52,11 @@
       
     
     
-      <link rel="stylesheet" href="../../stylesheets/fonts.css">
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing" class="md-skip">
+        <a href="#core-concepts" class="md-skip">
           Skip to content
         </a>
       
@@ -97,9 +97,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="./.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              Core Concepts
             
           </span>
         </div>
@@ -194,7 +194,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="./.." class="md-tabs__link">
         
   
   Home
@@ -208,6 +208,8 @@
   
   
   
+    
+  
   
     
       
@@ -222,8 +224,8 @@
     
     
     
-      <li class="md-tabs__item">
-        <a href="../../concepts/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="././" class="md-tabs__link">
           
   
   Get Started
@@ -267,7 +269,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../architecture/" class="md-tabs__link">
+        <a href="../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -323,7 +325,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../platform/" class="md-tabs__link">
+        <a href="../platform/" class="md-tabs__link">
           
   
   Platform
@@ -357,7 +359,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../operations/" class="md-tabs__link">
+        <a href="../operations/" class="md-tabs__link">
           
   
   Operations
@@ -372,8 +374,6 @@
   
   
   
-    
-  
   
     
       
@@ -394,8 +394,8 @@
     
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
           
   
   Development
@@ -434,9 +434,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="./.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     Homelab Documentation
@@ -463,7 +463,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="./.." class="md-nav__link">
         
   
   
@@ -486,6 +486,8 @@
       
   
   
+    
+  
   
   
     
@@ -501,23 +503,23 @@
     
     
       
+        
+        
+      
       
     
     
       
-        
-        
-      
     
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
-  
-  
-  
-  
-    <a href="../../concepts/" class="md-nav__link">
-      
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
   
   
   <span class="md-ellipsis">
@@ -530,12 +532,204 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Get Started
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
       
-        <span class="md-nav__icon md-icon"></span>
       
-    </a>
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Core Concepts
+
+    
+  </span>
+  
   
 
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Core Concepts
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#flatcar-container-linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Flatcar Container Linux
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ignition-and-butane" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Ignition and Butane
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systemd-sysexts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Systemd sysexts
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pxe-boot" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        PXE boot
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gitops" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        GitOps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quickstart
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adapting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adapt It to Your Cluster
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -589,7 +783,7 @@
   
   
   
-    <a href="../../architecture/" class="md-nav__link">
+    <a href="../architecture/" class="md-nav__link">
       
   
   
@@ -674,7 +868,7 @@
   
   
   
-    <a href="../../platform/" class="md-nav__link">
+    <a href="../platform/" class="md-nav__link">
       
   
   
@@ -737,7 +931,7 @@
   
   
   
-    <a href="../../operations/" class="md-nav__link">
+    <a href="../operations/" class="md-nav__link">
       
   
   
@@ -766,8 +960,6 @@
       
   
   
-    
-  
   
   
     
@@ -789,24 +981,23 @@
     
     
       
-        
-        
-      
       
     
     
       
+        
+        
+      
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
-              
+  
+  
+  
+  
+    <a href="../development/" class="md-nav__link">
+      
   
   
   <span class="md-ellipsis">
@@ -819,261 +1010,12 @@
   
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-  Development
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
       
+        <span class="md-nav__icon md-icon"></span>
       
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Contributing
-
-    
-  </span>
-  
+    </a>
   
 
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Contributing
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#one-time-setup" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        One-time setup
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#running-the-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Running the checks
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#branches-and-commits" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Branches and commits
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-manifests-under-payload" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing manifests under <code>payload/</code>
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing documentation
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#review" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Review
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-assisted-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Agent-assisted changes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../add-workload/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../maintenance/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Maintenance
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
       
     </li>
   
@@ -1120,10 +1062,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#one-time-setup" class="md-nav__link">
+  <a href="#flatcar-container-linux" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        One-time setup
+        Flatcar Container Linux
       </span>
     </span>
   </a>
@@ -1131,10 +1073,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-checks" class="md-nav__link">
+  <a href="#ignition-and-butane" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running the checks
+        Ignition and Butane
       </span>
     </span>
   </a>
@@ -1142,10 +1084,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#branches-and-commits" class="md-nav__link">
+  <a href="#systemd-sysexts" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Branches and commits
+        Systemd sysexts
       </span>
     </span>
   </a>
@@ -1153,10 +1095,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#changing-manifests-under-payload" class="md-nav__link">
+  <a href="#pxe-boot" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Changing manifests under <code>payload/</code>
+        PXE boot
       </span>
     </span>
   </a>
@@ -1164,32 +1106,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#changing-documentation" class="md-nav__link">
+  <a href="#gitops" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Changing documentation
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#review" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Review
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#agent-assisted-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Agent-assisted changes
+        GitOps
       </span>
     </span>
   </a>
@@ -1221,7 +1141,7 @@
   
   
     <li class="md-path__item">
-      <a href="../.." class="md-path__link">
+      <a href="./.." class="md-path__link">
         
   
   <span class="md-ellipsis">
@@ -1241,12 +1161,6 @@
     
       
         
-          
-        
-      
-        
-      
-        
       
         
       
@@ -1257,11 +1171,11 @@
     
     
       <li class="md-path__item">
-        <a href="../" class="md-path__link">
+        <a href="././" class="md-path__link">
           
   
   <span class="md-ellipsis">
-    Development
+    Get Started
   </span>
 
         </a>
@@ -1278,7 +1192,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/development/contributing.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/concepts.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1287,76 +1201,129 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/development/contributing.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/concepts.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h1>
-<p>Changes here reach real hardware. Not immediately, and not dangerously, but a
-merge to <code>main</code> is a deployment — there is no staging cluster between your
-branch and six machines in a rack. The checks below exist to make that
-comfortable rather than exciting.</p>
-<h2 id="one-time-setup">One-time setup<a class="headerlink" href="#one-time-setup" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>sync<span class="w">                 </span><span class="c1"># virtualenv and dependencies, including dev tools</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install
-</span></code></pre></div>
-<p>Installing the hooks matters: the same linters run in CI, and every one of them
-is faster to satisfy locally than in a PR. Three round trips through GitHub
-Actions to fix trailing whitespace is a rite of passage you only need once.</p>
-<h2 id="running-the-checks">Running the checks<a class="headerlink" href="#running-the-checks" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files<span class="w">       </span><span class="c1"># ansible-lint, markdownlint, pylint, yamllint</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w"> </span>--clean<span class="w"> </span>--strict<span class="w">  </span><span class="c1"># docs; strict fails on broken links</span>
-</span></code></pre></div>
-<p><code>--strict</code> is what CI uses, so a local build that passes is a docs build that
-passes. A page that is not registered in <code>nav</code> in <code>zensical.toml</code> fails here —
-which is deliberate, because an unlinked page is a page nobody will ever read.</p>
-<h2 id="branches-and-commits">Branches and commits<a class="headerlink" href="#branches-and-commits" title="Permanent link">&para;</a></h2>
-<p>Branch names are prefixed by area: <code>docs/</code>, <code>feat/</code>, <code>fix/</code>, <code>chore/</code>.</p>
-<p>Commit messages follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a>,
-matching the existing history:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docs: explain the stack choices and collect the known limitations
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>fix(bootstrap): repoint the install targets at the files that exist
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>chore(deps): update helm release kube-prometheus-stack to v89
-</span></code></pre></div>
-<p>Write the body to explain <em>why</em>, not what — the diff already says what. Six
-months from now, <code>git log</code> is the only place the reasoning survives, and "fix
-bug" helps nobody, least of all you.</p>
-<h2 id="changing-manifests-under-payload">Changing manifests under <code>payload/</code><a class="headerlink" href="#changing-manifests-under-payload" title="Permanent link">&para;</a></h2>
-<p>Everything under <code>payload/</code> is applied by ArgoCD, so a mistake there reaches the
-cluster on merge, automatically, with <code>selfHeal</code> making sure it stays there. Two
-checks before pushing, both of which take seconds:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Valid YAML and valid Kubernetes objects, without touching the cluster</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-f<span class="w"> </span>payload/platform/&lt;component&gt;/
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># What a Helm-sourced Application will actually render</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>helm<span class="w"> </span>template<span class="w"> </span>&lt;name&gt;<span class="w"> </span>&lt;repo&gt;/&lt;chart&gt;<span class="w"> </span>--version<span class="w"> </span>&lt;targetRevision&gt;<span class="w"> </span>-f<span class="w"> </span>&lt;values&gt;
-</span></code></pre></div>
-<p>Opening the PR adds a third: the <code>argo-diff-preview</code> workflow comments the
-rendered ArgoCD manifest diff between <code>main</code> and your branch. Read it. A
-three-line Helm values change routinely renders as two hundred lines of
-different Kubernetes objects, and the diff is the only place that shows up
-before the cluster finds out.</p>
+<h1 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h1>
+<p>Five ideas carry this whole cluster. None of them is Kubernetes; Kubernetes is
+the ordinary part. What makes this project unusual is <em>how the machines
+underneath it come to exist and stay current</em>, and once these five click, the
+rest of this site stops reading like a list of unrelated tools.</p>
+<p>Read this before the <a href="../quickstart/">Quickstart</a> if any of the names in the
+table are new. Skip it if none of them are.</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>What it is</th>
+<th>What it costs you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#flatcar-container-linux">Flatcar Container Linux</a></td>
+<td>An immutable OS with a read-only <code>/usr</code> and A/B partition updates</td>
+<td>No <code>apt install</code>. Anything unusual has to arrive another way</td>
+</tr>
+<tr>
+<td><a href="#ignition-and-butane">Ignition &amp; Butane</a></td>
+<td>First-boot provisioning from a JSON config</td>
+<td>It runs <em>once</em>. Changing a template means rebuilding the node</td>
+</tr>
+<tr>
+<td><a href="#systemd-sysexts">Systemd sysexts</a></td>
+<td>Read-only images that extend <code>/usr</code> at boot</td>
+<td>Upgrading Kubernetes means swapping an image and rebooting</td>
+</tr>
+<tr>
+<td><a href="#pxe-boot">PXE boot</a></td>
+<td>Booting a machine off the network instead of its disk</td>
+<td>Needs a DHCP server you control and a host on the same segment</td>
+</tr>
+<tr>
+<td><a href="#gitops">GitOps</a></td>
+<td>Git is the desired state; a controller reconciles to it</td>
+<td>If it is not committed, it does not exist</td>
+</tr>
+</tbody>
+</table>
+<h2 id="flatcar-container-linux">Flatcar Container Linux<a class="headerlink" href="#flatcar-container-linux" title="Permanent link">&para;</a></h2>
+<p><a href="https://www.flatcar.org/">Flatcar</a> is an immutable, minimal Linux distribution
+designed for running containers. The root filesystem is read-only — you cannot
+install packages or modify system files at runtime — which forces all
+configuration to happen declaratively, at first boot, through Ignition.</p>
+<p>That constraint is the entire point. Anyone who has inherited a fleet of
+"identical" servers knows they are identical the way siblings are: broadly
+similar, differing in ways nobody wrote down, and each carrying one undocumented
+fix applied at 3am by someone who has since left. A read-only <code>/usr</code> makes that
+impossible rather than merely discouraged.</p>
+<p>Updates are downloaded in the background onto the passive half of an A/B
+partition pair, so a bad one can be rolled back and nothing changes until the
+machine restarts. <strong>Nothing here reboots itself</strong>: this project masks
+<code>locksmithd</code>, the daemon that would normally coordinate that, and hands the job
+to <a href="../platform/kured/">Kured</a>, which drains the node first. See
+<a href="../operations/upgrades/">Updates &amp; Upgrades</a>.</p>
+<h2 id="ignition-and-butane">Ignition and Butane<a class="headerlink" href="#ignition-and-butane" title="Permanent link">&para;</a></h2>
+<p><strong>Ignition</strong> is Flatcar's first-boot provisioning system. It reads a JSON config
+and applies it: creates users, writes files, partitions disks, enables systemd
+units.</p>
+<p><strong>Butane</strong> is the human-writable YAML that compiles to that JSON. Ansible
+renders Butane from Jinja2 templates on the deployment host and transpiles it;
+the boot server serves the result.</p>
 <div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Do not hand-edit version numbers. <code>targetRevision</code> in the manifests and the versions in <code>ansible/inventory.yaml</code> are owned by Renovate — see <a href="../maintenance/">Maintenance</a>. Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. There is no exception: the <code>Makefile</code> installs the pre-ArgoCD components from the same <code>targetRevision</code> values rather than pinning its own.</p>
+<p class="admonition-title">Ignition runs once, in the initramfs, before the real root is mounted</p>
+<p>It is not a configuration management system and it converges nothing on the second boot. Change a template and the node has to be <em>reprovisioned</em> to care — which here means arming it with <code>make reinstall</code> and network-booting it, wiping the disk on the way in. The config is embedded into the OEM partition at install time, so an installed node reads it from its own disk rather than from the network.</p>
 </div>
-<h2 id="changing-documentation">Changing documentation<a class="headerlink" href="#changing-documentation" title="Permanent link">&para;</a></h2>
-<p>See <a href="../documentation/">Documentation System</a> for the build, the conventions, and
-the two markdownlint rules that most often bite (<code>MD046</code> on multi-paragraph
-admonitions, <code>MD007</code> on nested list indentation).</p>
-<h2 id="review">Review<a class="headerlink" href="#review" title="Permanent link">&para;</a></h2>
-<p><code>.github/CODEOWNERS</code> assigns every path to the repository owner, so all pull
-requests need that review before merging. On a single-maintainer homelab this is
-mostly a speed bump against your own 23:00 enthusiasm, which is exactly the
-enthusiasm most in need of a speed bump. Renovate PRs for patch and minor
-updates automerge, whatever the component; majors always wait for a human.</p>
-<h2 id="agent-assisted-changes">Agent-assisted changes<a class="headerlink" href="#agent-assisted-changes" title="Permanent link">&para;</a></h2>
-<p><code>.agent/rules/general-rules.md</code> holds the standing rules for AI coding agents
-working in this repository — GitOps only, docs in <code>docs/</code>, and no hand-edited
-version numbers. Keep it in sync when those conventions change.</p>
+<h2 id="systemd-sysexts">Systemd sysexts<a class="headerlink" href="#systemd-sysexts" title="Permanent link">&para;</a></h2>
+<p>Because <code>/usr</code> is read-only, software the base image does not ship — <code>kubernetes</code>
+and <code>containerd</code>, in this cluster — arrives as <strong>system extensions</strong>: read-only
+squashfs images overlaid onto <code>/usr</code> at boot, managed by <code>systemd-sysupdate</code>.
+Nodes fetch them from the HTTP boot server on their first boot from disk.</p>
+<p>This is where "immutable OS" stops being an abstract virtue and becomes a thing
+you have to reason about. Upgrading Kubernetes on these nodes is not
+<code>apt upgrade</code>; it is swapping an image and rebooting. See
+<a href="../operations/upgrades/">Updates &amp; Upgrades</a> for how that plays out, including
+why a minor version bump is a deliberate act rather than something that happens
+overnight.</p>
+<h2 id="pxe-boot">PXE boot<a class="headerlink" href="#pxe-boot" title="Permanent link">&para;</a></h2>
+<p><strong>PXE</strong> (Preboot Execution Environment) lets a machine boot from the network
+instead of a local disk. The NIC asks DHCP where to go, fetches a bootloader
+over TFTP, and the bootloader fetches everything else. In this project:</p>
+<ol>
+<li>An external DHCP server hands out the boot server's IP and a syslinux filename.</li>
+<li>TFTP serves the syslinux bootloader and a per-MAC boot menu.</li>
+<li>Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition
+   config URL as a kernel parameter.</li>
+</ol>
+<p>PXE is a protocol from 1998 that runs over UDP with no error correction worth
+the name, which is why everything larger than the bootloader moves to HTTP as
+fast as possible. Respect it; it has outlived most of the things designed to
+replace it.</p>
+<p>The full sequence, arrow by arrow, is in
+<a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
+<h2 id="gitops">GitOps<a class="headerlink" href="#gitops" title="Permanent link">&para;</a></h2>
+<p>Everything the cluster runs is described in this repository under <code>payload/</code>,
+and <a href="https://argo-cd.readthedocs.io/">ArgoCD</a> continuously reconciles the
+cluster to match. The rule is absolute: if it is not in Git, it is not in the
+cluster — and if you put it in the cluster anyway, <code>selfHeal</code> removes it while
+you are still admiring your work.</p>
+<p>Two terms recur throughout this site:</p>
+<ul>
+<li><strong>App-of-Apps</strong> — one ArgoCD <code>Application</code> whose job is to create other
+  <code>Application</code>s, so a single <code>kubectl apply</code> bootstraps the whole tree.</li>
+<li><strong>Sync wave</strong> — an integer annotation that orders deployment. Lower goes
+  first. It is how a fresh cluster installs CRDs before the operators that need
+  them, rather than deadlocking. The full ordering is in
+  <a href="../platform/#usage">Platform</a>.</li>
+</ul>
+<p>Sync waves answer the question every GitOps newcomer eventually asks: <em>why did
+my perfectly correct manifest fail on a fresh cluster and work on an existing
+one?</em> On a running cluster, everything it depends on already exists. On a fresh
+one, ordering is the whole game. See <a href="../architecture/gitops/">GitOps Strategy</a>.</p>
 
 
 
@@ -1397,7 +1364,7 @@ version numbers. Keep it in sync when those conventions change.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Development">
+          <a href="./.." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1407,20 +1374,20 @@ version numbers. Keep it in sync when those conventions change.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Development
+                Home
               </div>
             </div>
           </a>
         
         
           
-          <a href="../add-workload/" class="md-footer__link md-footer__link--next" aria-label="Next: Adding a Workload">
+          <a href="../quickstart/" class="md-footer__link md-footer__link--next" aria-label="Next: Quickstart">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Adding a Workload
+                Quickstart
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1467,10 +1434,10 @@ version numbers. Keep it in sync when those conventions change.</p>
       
         
         
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
+      <script src="../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>
