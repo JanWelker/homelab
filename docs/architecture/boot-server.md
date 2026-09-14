@@ -25,12 +25,24 @@ This requires `sudo` privileges to bind to the privileged port 69 (TFTP), and it
 has to be run from the repository root — `serve.py` resolves both document roots
 relative to the working directory.
 
-!!! danger "`serve.py` holds its own copy of the boot server address"
-    `BIND_IP` at the top of `boot_server/serve.py` is a second, independent copy of `boot_server_ip` from `ansible/inventory.yaml`, and nothing keeps the two in step. The TFTP server binds it explicitly, so on a network where it is wrong `make serve` either fails to bind or answers nobody, while the PXE menus point somewhere else entirely — change both, or you will debug the symptom in [Troubleshooting PXE boot](../quickstart.md#troubleshooting-pxe-boot) and find nothing wrong with the thing you edited.
+It binds the address it reads from `boot_server_ip` in
+`ansible/inventory.yaml` — the same value `make config` baked into every kernel,
+initrd and Ignition URL in the generated menus. There is one copy of that
+address, so a server that starts is a server listening where the nodes are
+asking.
 
-Note also that only TFTP binds that address. The HTTP server listens on every
-interface the host has, which is worth knowing when reading the exposure warning
-below: the segment is the limit for the bootloader, not for the Ignition configs.
+If the machine holds no such interface it says so and names the variable rather
+than failing with a bind error about an address you would then have to trace:
+
+```console
+error: no interface on this machine holds 10.9.200.222 -- that is
+boot_server_ip in ansible/inventory.yaml, and the address every generated PXE
+menu points at. Fix it there and re-run make config
+```
+
+Only TFTP binds that address. The HTTP server listens on every interface the
+host has, which is worth knowing when reading the exposure warning below: the
+segment is the limit for the bootloader, not for the Ignition configs.
 
 Leave it in the foreground where you can see it. The request log is the best
 diagnostic tool in the whole provisioning process — you can watch a node

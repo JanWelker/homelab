@@ -6,6 +6,7 @@ switches a node's PXE menu back to local boot once it has the OS image -- so the
 reboot at the end of an install boots the disk instead of the installer again.
 """
 
+import errno
 import json
 import logging
 import os
@@ -15,16 +16,18 @@ import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import tftpy
+import yaml
 from tftpy.TftpContexts import TftpContextServer
 
 TFTP_PORT = 69
 HTTP_PORT = 8000
-BIND_IP = '10.9.200.222'
 
 HTTP_DIR = os.path.join(os.getcwd(), 'output', 'http')
 TFTP_DIR = os.path.join(os.getcwd(), 'output', 'tftp')
+INVENTORY = os.path.join(os.getcwd(), 'ansible', 'inventory.yaml')
 MENU_SUBDIR = 'pxelinux.cfg'
 PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
+
 
 OS_IMAGE = 'flatcar_production_image.bin.bz2'
 MENU_NAME = re.compile(r'^01-[0-9a-f]{2}(?:-[0-9a-f]{2}){5}$', re.IGNORECASE)
@@ -54,6 +57,30 @@ WHO_WIDTH = sum(COLUMNS) + len(COLUMNS) - 1
 COLOURS = {'ok': '\033[1;32m', 'warn': '\033[1;33m', 'error': '\033[1;31m'}
 RESET = '\033[0m'
 WARNING_MARK = '\u26a0'
+
+def _boot_server_ip():
+    """The address to answer on, read from the inventory that generated the menus.
+
+    Every kernel, initrd and Ignition URL under output/tftp was rendered from
+    boot_server_ip, so that value is the only address a node ever asks at. A
+    second copy kept here would be one more thing to change on a new network,
+    and the symptom of forgetting is a server answering where nobody is asking.
+    """
+    try:
+        with open(INVENTORY, encoding='utf-8') as handle:
+            inventory = yaml.safe_load(handle) or {}
+    except FileNotFoundError:
+        sys.exit(f'{INVENTORY} not found -- run make serve from the repository root')
+    except yaml.YAMLError as error:
+        sys.exit(f'{INVENTORY} is not valid YAML: {error}')
+
+    address = (inventory.get('all', {}).get('vars', {}) or {}).get('boot_server_ip')
+    if not address:
+        sys.exit(f'boot_server_ip is not set under all.vars in {INVENTORY}')
+    return str(address)
+
+
+BIND_IP = _boot_server_ip()
 
 logger = logging.getLogger('bootserver')
 hosts_by_ip = {}
@@ -427,6 +454,16 @@ if __name__ == '__main__':
     except PermissionError:
         say('server', 'cannot bind port %s -- make serve needs sudo',
             TFTP_PORT, level=logging.ERROR)
+        sys.exit(1)
+    except OSError as error:
+        if error.errno == errno.EADDRNOTAVAIL:
+            say('server', 'no interface on this machine holds %s -- that is '
+                          'boot_server_ip in ansible/inventory.yaml, and the '
+                          'address every generated PXE menu points at. Fix it '
+                          'there and re-run make config',
+                BIND_IP, level=logging.ERROR)
+        else:
+            say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
         sys.exit(1)
     except Exception as error:  # pylint: disable=broad-exception-caught
         say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
