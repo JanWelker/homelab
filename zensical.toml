@@ -101,23 +101,37 @@ features = [
   "toc.follow",
 ]
 
-# Palette toggle for light mode
+# Three palettes, and the order matters: the first is the default for anyone
+# who has never touched the toggle, so it is the one that follows the browser.
+# With only the light and dark entries the toggle cycles between them forever,
+# which means one click opts out of "match my system" permanently and offers no
+# way back -- and nothing re-reads the media query while the page is open.
+
+# Follows the operating system. Resolved from prefers-color-scheme at load.
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Following your system theme -- switch to light"
+
+# Pinned light.
 [[project.theme.palette]]
 media = "(prefers-color-scheme: light)"
 scheme = "default"
 primary = "custom"
 accent = "custom"
 toggle.icon = "lucide/sun"
-toggle.name = "Switch to dark mode"
+toggle.name = "Pinned to light -- switch to dark"
 
-# Palette toggle for dark mode
+# Pinned dark.
 [[project.theme.palette]]
 media = "(prefers-color-scheme: dark)"
 scheme = "slate"
 primary = "custom"
 accent = "custom"
 toggle.icon = "lucide/moon"
-toggle.name = "Switch to light mode"
+toggle.name = "Pinned to dark -- follow your system theme"
 
 [project.validation]
 invalid_links = true
