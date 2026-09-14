@@ -28,10 +28,13 @@
 # Everything under kv/authentik/config is generated here, including the OIDC
 # client credentials ArgoCD and Grafana read back from the same path.
 #
-# Existing paths are left alone. Rewriting kv/authentik/config on a running
-# cluster rotates Authentik's Postgres password out from under its database,
-# which is a considerably worse afternoon than it sounds. FORCE=1 overwrites
-# anyway, and asks first.
+# Each path that already exists is named, and overwriting it is asked about one
+# path at a time -- so a single rotated Route53 key does not mean retyping the
+# other four secrets, and does not put kv/authentik/config anywhere near the
+# blast radius. Rewriting that one rotates Authentik's Postgres password out
+# from under its database, so it asks for a typed confirmation rather than a
+# keystroke -- and keeps asking even under FORCE=1, which answers yes to the
+# other three for non-interactive use.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openbao}"
@@ -41,6 +44,130 @@ FORCE="${FORCE:-0}"
 
 bao() { kubectl -n "$NAMESPACE" exec "$POD" -- bao "$@"; }
 bao_in() { kubectl -n "$NAMESPACE" exec -i "$POD" -- bao "$@"; }
+
+# --- Preflight -------------------------------------------------------------
+#
+# Logging in has to happen before anything is prompted for, because which
+# credentials are needed depends on which paths already exist, and that cannot
+# be known without reading OpenBao first.
+
+[ -f "$KEYFILE" ] || {
+  echo "ERROR: ${KEYFILE} not found -- run 'make bao-init' first, or log in by hand." >&2
+  exit 1
+}
+
+sealed="$(kubectl -n "$NAMESPACE" exec "$POD" -- bao status -format=json 2>/dev/null \
+  | uv run python -c 'import json,sys; print(json.load(sys.stdin).get("sealed",""))' 2>/dev/null || true)"
+[ "$sealed" = "False" ] || {
+  echo "ERROR: ${POD} is sealed. Run 'make bao-unseal' first." >&2
+  exit 1
+}
+
+root_token="$(uv run python -c '
+import json, sys
+with open(sys.argv[1]) as handle:
+    print(json.load(handle)["root_token"])
+' "$KEYFILE")"
+
+printf '%s' "$root_token" | bao_in login - >/dev/null
+cleanup() {
+  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token"' >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+exists() {
+  bao kv get -mount=kv "$1" >/dev/null 2>&1
+}
+
+# --- Decide what to write --------------------------------------------------
+#
+# Sets the named variable to 1 (write) or 0 (skip). A path that does not exist
+# yet is always written: there is nothing to lose and this is what makes a
+# first run on a fresh cluster need no answers at all.
+#
+# `danger` marks a path whose contents other live components authenticate
+# against, where a rewrite is an outage rather than an inconvenience. Those ask
+# for a typed word, because y is far too easy to hit by reflex.
+decide() {
+  local var="$1" path="$2" danger="${3:-}" reply=""
+
+  if ! exists "$path"; then
+    printf '  %-24s does not exist, will be written\n' "kv/${path}"
+    eval "$var=1"
+    return
+  fi
+
+  # A danger path is gated even under FORCE=1. Rotating a Route53 key with
+  # FORCE=1 is a reasonable thing to want; taking Authentik down as a side
+  # effect of it is not, and an env var set once in a shell is far too quiet a
+  # way to authorise that. Without a terminal it is left alone rather than
+  # failing, so automation still gets the other three.
+  if [ -n "$danger" ]; then
+    if [ ! -t 0 ]; then
+      printf '  %-24s exists, left alone -- needs a terminal to confirm\n' "kv/${path}"
+      eval "$var=0"
+      return
+    fi
+    printf '\n  kv/%s already exists.\n\n%s\n' "$path" "$danger"
+    printf '  Type OVERWRITE to rewrite it, anything else to keep it: '
+    read -r reply || reply=""
+    if [ "$reply" = "OVERWRITE" ]; then
+      printf '  %-24s will be overwritten\n\n' "kv/${path}"
+      eval "$var=1"
+    else
+      printf '  %-24s left alone\n\n' "kv/${path}"
+      eval "$var=0"
+    fi
+    return
+  fi
+
+  if [ "$FORCE" = "1" ]; then
+    printf '  %-24s exists, FORCE=1 will overwrite\n' "kv/${path}"
+    eval "$var=1"
+    return
+  fi
+
+  if [ ! -t 0 ]; then
+    printf '  %-24s exists, left alone (no terminal to ask at)\n' "kv/${path}"
+    eval "$var=0"
+    return
+  fi
+
+  printf '  kv/%-21s exists. Overwrite? [y/N]: ' "$path"
+  read -r reply || reply=""
+  case "$reply" in
+    y | Y | yes | YES)
+      printf '  %-24s will be overwritten\n' "kv/${path}"
+      eval "$var=1"
+      ;;
+    *)
+      printf '  %-24s left alone\n' "kv/${path}"
+      eval "$var=0"
+      ;;
+  esac
+}
+
+AUTHENTIK_DANGER="  Rewriting it rotates Authentik's Postgres password while Postgres is
+  still using the old one, and invalidates the OIDC client secrets ArgoCD
+  and Grafana authenticate with. On a running cluster that is an outage."
+
+echo "### Existing paths"
+decide WRITE_CERT_MANAGER cert-manager/route53
+decide WRITE_EXTERNAL_DNS external-dns/route53
+decide WRITE_AUTHENTIK    authentik/config "$AUTHENTIK_DANGER"
+decide WRITE_MONITORING   monitoring/smtp
+echo
+
+if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
+  && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ]; then
+  echo "Nothing to write -- every path exists and none was chosen for overwrite."
+  exit 0
+fi
+
+# --- Collect the credentials that will actually be used --------------------
+#
+# Only for the paths chosen above. Answering four prompts to rotate one key is
+# how a hurried operator ends up pasting the wrong secret into the right path.
 
 # Reads one value into the named variable: the environment if it is already
 # set, otherwise a hidden prompt. `read -r` is what preserves a backslash;
@@ -72,40 +199,20 @@ prompt_secret() {
 }
 
 echo "### Credentials that cannot be generated"
-prompt_secret CERT_MANAGER_KEY_ID     "Route53 IAM key for cert-manager (TXT records only)"
-prompt_secret CERT_MANAGER_SECRET_KEY "  ...and its secret access key"
-prompt_secret EXTERNAL_DNS_KEY_ID     "Route53 IAM key for external-dns (A and TXT records)"
-prompt_secret EXTERNAL_DNS_SECRET_KEY "  ...and its secret access key"
-prompt_secret SMTP_PASSWORD           "SMTP password for Alertmanager"
+if [ "$WRITE_CERT_MANAGER" = "1" ]; then
+  prompt_secret CERT_MANAGER_KEY_ID     "Route53 IAM key for cert-manager (TXT records only)"
+  prompt_secret CERT_MANAGER_SECRET_KEY "  ...and its secret access key"
+fi
+if [ "$WRITE_EXTERNAL_DNS" = "1" ]; then
+  prompt_secret EXTERNAL_DNS_KEY_ID     "Route53 IAM key for external-dns (A and TXT records)"
+  prompt_secret EXTERNAL_DNS_SECRET_KEY "  ...and its secret access key"
+fi
+if [ "$WRITE_MONITORING" = "1" ]; then
+  prompt_secret SMTP_PASSWORD           "SMTP password for Alertmanager"
+fi
 echo
 
-[ -f "$KEYFILE" ] || {
-  echo "ERROR: ${KEYFILE} not found -- run 'make bao-init' first, or log in by hand." >&2
-  exit 1
-}
-
-sealed="$(kubectl -n "$NAMESPACE" exec "$POD" -- bao status -format=json 2>/dev/null \
-  | uv run python -c 'import json,sys; print(json.load(sys.stdin).get("sealed",""))' 2>/dev/null || true)"
-[ "$sealed" = "False" ] || {
-  echo "ERROR: ${POD} is sealed. Run 'make bao-unseal' first." >&2
-  exit 1
-}
-
-root_token="$(uv run python -c '
-import json, sys
-with open(sys.argv[1]) as handle:
-    print(json.load(handle)["root_token"])
-' "$KEYFILE")"
-
-printf '%s' "$root_token" | bao_in login - >/dev/null
-cleanup() {
-  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token"' >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-
-exists() {
-  bao kv get -mount=kv "$1" >/dev/null 2>&1 && echo yes || echo no
-}
+# --- Write -----------------------------------------------------------------
 
 # Values reach the pod as JSON on stdin rather than as arguments, so they stay
 # out of both this shell's history and the pod's process list.
@@ -119,10 +226,6 @@ exists() {
 put() {
   local path="$1" json
   shift
-  if [ "$(exists "$path")" = "yes" ] && [ "$FORCE" != "1" ]; then
-    printf '  %-24s exists, left alone\n' "kv/${path}"
-    return
-  fi
   json="$(uv run python -c '
 import json, sys
 print(json.dumps(dict(pair.split("=", 1) for pair in sys.argv[1:])))
@@ -131,50 +234,52 @@ print(json.dumps(dict(pair.split("=", 1) for pair in sys.argv[1:])))
   printf '  %-24s written\n' "kv/${path}"
 }
 
-if [ "$FORCE" = "1" ]; then
-  cat <<EOF
-
-FORCE=1 overwrites paths that already exist.
-
-Rewriting kv/authentik/config rotates Authentik's Postgres password while
-Postgres is still using the old one, and invalidates the OIDC client secrets
-ArgoCD and Grafana authenticate with. On a running cluster that is an outage.
-
-EOF
-  [ -t 0 ] || { echo "ERROR: refusing to overwrite without a terminal to confirm at" >&2; exit 1; }
-  printf 'Type OVERWRITE to continue: '
-  read -r reply
-  [ "$reply" = "OVERWRITE" ] || { echo "Aborted."; exit 1; }
-  echo
-fi
-
 rand_b64() { openssl rand -base64 "$1" | tr -d '\n'; }
 rand_hex() { openssl rand -hex "$1"; }
 
-put cert-manager/route53 \
-  "access-key-id=${CERT_MANAGER_KEY_ID}" \
-  "secret-access-key=${CERT_MANAGER_SECRET_KEY}"
+if [ "$WRITE_CERT_MANAGER" = "1" ]; then
+  put cert-manager/route53 \
+    "access-key-id=${CERT_MANAGER_KEY_ID}" \
+    "secret-access-key=${CERT_MANAGER_SECRET_KEY}"
+fi
 
-put external-dns/route53 \
-  "access-key-id=${EXTERNAL_DNS_KEY_ID}" \
-  "secret-access-key=${EXTERNAL_DNS_SECRET_KEY}"
+if [ "$WRITE_EXTERNAL_DNS" = "1" ]; then
+  put external-dns/route53 \
+    "access-key-id=${EXTERNAL_DNS_KEY_ID}" \
+    "secret-access-key=${EXTERNAL_DNS_SECRET_KEY}"
+fi
 
-put authentik/config \
-  "secret-key=$(rand_b64 60)" \
-  "postgres-password=$(rand_b64 32)" \
-  "bootstrap-password=$(rand_b64 24)" \
-  "bootstrap-token=$(rand_hex 32)" \
-  "argocd-client-id=$(rand_hex 16)" \
-  "argocd-client-secret=$(rand_b64 48)" \
-  "grafana-client-id=$(rand_hex 16)" \
-  "grafana-client-secret=$(rand_b64 48)"
+if [ "$WRITE_AUTHENTIK" = "1" ]; then
+  put authentik/config \
+    "secret-key=$(rand_b64 60)" \
+    "postgres-password=$(rand_b64 32)" \
+    "bootstrap-password=$(rand_b64 24)" \
+    "bootstrap-token=$(rand_hex 32)" \
+    "argocd-client-id=$(rand_hex 16)" \
+    "argocd-client-secret=$(rand_b64 48)" \
+    "grafana-client-id=$(rand_hex 16)" \
+    "grafana-client-secret=$(rand_b64 48)"
+fi
 
-put monitoring/smtp \
-  "password=${SMTP_PASSWORD}"
+if [ "$WRITE_MONITORING" = "1" ]; then
+  put monitoring/smtp \
+    "password=${SMTP_PASSWORD}"
+fi
 
 cat <<'EOF'
 
-Done. External Secrets refreshes on its own; to watch it land:
+Done. External Secrets refreshes hourly on its own. A path that was just
+rewritten is not live until it does, and cert-manager or Authentik will go on
+failing with the old value until then -- so to push it through now:
+
+  kubectl annotate externalsecret <name> -n <namespace> \
+    force-sync="$(date +%s)" --overwrite
+
+Then confirm the Secret actually changed before chasing anything downstream.
+The hash moves when the contents do, and shows nothing secret:
+
+  kubectl get secret <name> -n <namespace> \
+    -o jsonpath='{.metadata.annotations.reconcile\.external-secrets\.io/data-hash}{"\n"}'
 
   kubectl get externalsecret -A
   kubectl get clustersecretstore openbao -o jsonpath='{.status.conditions}'
