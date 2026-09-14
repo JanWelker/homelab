@@ -187,16 +187,18 @@ verified, encrypted brick. Details in
 
 ## Ceph volumes
 
-There is no volume backup. Rook-Ceph replicates across OSDs, which protects
-against a disk or node failure but not against deletion, corruption, or a bad
-`prune`. Every Application here runs with `prune: true`, so removing a
-`PersistentVolumeClaim` from Git deletes the volume.
+Volume data is covered by [Velero](#velero): PVCs are snapshotted nightly and
+the data is moved into the object store, so a deleted PVC is recoverable.
 
-[Velero](#velero) now covers this: PVCs are snapshotted nightly and the data is
-moved into the object store, so a deleted PVC is recoverable. What is still open
-is off-cluster replication — see
-[What is not covered](#what-is-not-covered). RBD mirroring to a
-second cluster would close it.
+Ceph's own replication is not a backup and should not be mistaken for one. It
+spreads each block across OSDs, which protects against a disk or a node failing
+and against nothing else — not deletion, not corruption, not a bad `prune`. That
+last one is not hypothetical: every Application here runs with `prune: true`, so
+removing a `PersistentVolumeClaim` from Git deletes the volume.
+
+What is still open is off-cluster replication — see
+[What is not covered](#what-is-not-covered). RBD mirroring to a second cluster
+would close it.
 
 ## Rebuilding from scratch
 
