@@ -17,6 +17,16 @@ nowhere in the repository, and removing one would leave a record pointing at
 nothing, forever, until somebody audits the zone and cannot work out what
 `old-thing.k8s.wlkr.ch` was.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `external-dns` |
+| Sync wave | `2` |
+| Depends on | [External Secrets](external-secrets.md) for its Route53 credential, [Gateway API](gateway-api.md) for the HTTPRoutes it reads |
+| If it is down | New hostnames get no DNS record. Existing records are left alone, so nothing already working breaks |
+| Health check | `kubectl -n external-dns logs deploy/external-dns --tail=50` |
+
 ## How it decides what to publish
 
 | Setting | Value | Why |

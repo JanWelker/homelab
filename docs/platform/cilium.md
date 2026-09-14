@@ -13,6 +13,17 @@ Four components' worth of responsibility in one DaemonSet. That consolidation is
 the whole argument for it on bare metal — and also the reason a broken Cilium is
 never a small problem.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `kube-system` |
+| Sync wave | `-1`, after the Gateway API CRDs it renders against |
+| Depends on | Gateway API CRDs (`-10`), and a `k8sServiceHost` that answers |
+| If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
+| Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
+| UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
+
 ## Components
 
 - **kube-proxy replacement**: `kubeProxyReplacement: true`. Service routing

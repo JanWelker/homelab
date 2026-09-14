@@ -11,6 +11,16 @@ code that knows what a Vault token is. Applications keep reading environment
 variables like it is 2014, and the interesting work happens somewhere they never
 have to think about.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `external-secrets` |
+| Sync wave | `-6`, the very first thing after the Gateway API CRDs — see [why](index.md#usage) |
+| Depends on | [OpenBao](openbao.md) at runtime, though not to be installed |
+| If it is down | Secrets already materialised keep working. Nothing rotates, and nothing new resolves |
+| Health check | `kubectl get clustersecretstore openbao` &rarr; `Valid` |
+
 ## Components
 
 | Resource              | Scope        | Purpose                                                |

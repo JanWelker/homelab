@@ -8,6 +8,16 @@ The [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) replaces the trad
 
 The practical improvement over Ingress is the split in ownership: the cluster owns the `Gateway` — addresses, certificates, ports — and each app owns its own `HTTPRoute`. No more twelve-annotation Ingress manifests that only work on the controller they were written for.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `gateway-system` for the Application, `kube-system` for the Gateways themselves |
+| Sync wave | `-10` for the CRDs, `-4` for the Gateways |
+| Depends on | [Cilium](cilium.md) to implement it, [cert-manager](cert-manager.md) for the wildcard certificates |
+| If it is down | Nothing reaches any hostname. Running pods keep running and nothing outside the cluster can talk to them |
+| Health check | `kubectl -n kube-system get gateway` &rarr; both `PROGRAMMED=True` with an address |
+
 ## Gateways
 
 Two Gateways are defined in `kube-system`, each with a dedicated IP from the Cilium L2 pool:

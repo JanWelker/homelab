@@ -28,6 +28,17 @@ data to anyone who could reach the hostname. Hubble is the one that should make
 you sit up: it is a live map of every connection in the cluster, served without
 so much as a password prompt.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `authentik` |
+| Sync wave | `2` |
+| Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
+| If it is down | Every platform UI. ArgoCD, Grafana, Hubble, Prometheus, Alertmanager and the Rook dashboard all lose their only login — see [When Authentik is down](#when-authentik-is-down) |
+| Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |
+| UI | `auth.infra.k8s.wlkr.ch` |
+
 ## Two integration styles
 
 **OIDC**, for applications that can do it themselves. ArgoCD and Grafana each

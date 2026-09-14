@@ -20,6 +20,16 @@ currently misbehaving.
     deprecated in early 2025 and reached **end of life in March 2026**. Alloy is
     its supported replacement and the one to reach for now.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `logging` |
+| Sync wave | `1` parent, `2` Loki, `3` Alloy — the collector last, so it has somewhere to ship |
+| Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
+| If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/security.md#audit-logging) loses its durable copy |
+| Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
+
 ## What is collected
 
 | Source | Where it comes from | Labels |

@@ -16,6 +16,16 @@ Ceph check.
 !!! note "This needed the boot server once, and no longer does"
     Kured reboots nodes unattended between 01:00 and 05:00. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless `make serve` happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is [installed to disk](../architecture/boot-process.md#every-boot-after-the-first) now, so the reboot is ordinary and the boot server stays off.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `kured` |
+| Sync wave | `2` |
+| Depends on | [Monitoring](monitoring.md) for the alerts it gates on |
+| If it is down | Nothing visible, which is the problem. Staged OS and sysext updates simply never get applied, silently, for as long as nobody looks |
+| Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |
+
 ## The gap it closes
 
 Three mechanisms update a node. All three stop at the same place — the change

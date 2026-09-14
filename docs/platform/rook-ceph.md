@@ -12,6 +12,17 @@ dies, which is why it is here. Treat `ceph status` the way a sysadmin treats
 `dmesg`: check it more often than seems necessary, and never ignore a `WARN` on
 the grounds that everything still appears to work.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `rook-ceph` |
+| Sync wave | `-3` Application, `-2` operator, `-1` cluster, `0` CSI driver |
+| Depends on | A raw `rook-osd` partition on every node, written at install time |
+| If it is down | Every pod with a volume. `openbao` first, and the secret store going with it is what turns a storage problem into a cluster problem |
+| Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
+| UI | `rook.infra.k8s.wlkr.ch` |
+
 ## How It Works
 
 Each node has a raw disk partition labeled `rook-osd` (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.
