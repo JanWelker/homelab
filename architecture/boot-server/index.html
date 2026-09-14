@@ -1434,13 +1434,20 @@ software.</p>
 <p>This requires <code>sudo</code> privileges to bind to the privileged port 69 (TFTP), and it
 has to be run from the repository root — <code>serve.py</code> resolves both document roots
 relative to the working directory.</p>
-<div class="admonition danger">
-<p class="admonition-title"><code>serve.py</code> holds its own copy of the boot server address</p>
-<p><code>BIND_IP</code> at the top of <code>boot_server/serve.py</code> is a second, independent copy of <code>boot_server_ip</code> from <code>ansible/inventory.yaml</code>, and nothing keeps the two in step. The TFTP server binds it explicitly, so on a network where it is wrong <code>make serve</code> either fails to bind or answers nobody, while the PXE menus point somewhere else entirely — change both, or you will debug the symptom in <a href="../../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a> and find nothing wrong with the thing you edited.</p>
-</div>
-<p>Note also that only TFTP binds that address. The HTTP server listens on every
-interface the host has, which is worth knowing when reading the exposure warning
-below: the segment is the limit for the bootloader, not for the Ignition configs.</p>
+<p>It binds the address it reads from <code>boot_server_ip</code> in
+<code>ansible/inventory.yaml</code> — the same value <code>make config</code> baked into every kernel,
+initrd and Ignition URL in the generated menus. There is one copy of that
+address, so a server that starts is a server listening where the nodes are
+asking.</p>
+<p>If the machine holds no such interface it says so and names the variable rather
+than failing with a bind error about an address you would then have to trace:</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">error: no interface on this machine holds 10.9.200.222 -- that is</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">boot_server_ip in ansible/inventory.yaml, and the address every generated PXE</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">menu points at. Fix it there and re-run make config</span>
+</span></code></pre></div>
+<p>Only TFTP binds that address. The HTTP server listens on every interface the
+host has, which is worth knowing when reading the exposure warning below: the
+segment is the limit for the bootloader, not for the Ignition configs.</p>
 <p>Leave it in the foreground where you can see it. The request log is the best
 diagnostic tool in the whole provisioning process — you can watch a node
 progress through the boot sequence one file at a time, and the file it <em>stops</em>
@@ -1452,18 +1459,18 @@ opening is a boxed warning naming every disk about to be wiped, with the two
 cancel commands underneath it — <code>make reinstall-cancel</code>, and the <code>LIMIT=&lt;node&gt;</code>
 form for one. If no menus exist at all it says so and names <code>make config</code>, which
 is the first thing a new user hits.</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">20:33:04  server        http on 10.9.200.222:8000 from output/http</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">20:33:04  server        tftp on 10.9.200.222:69 from output/tftp</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">20:33:04  server        armed to install: odin, thor</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="go">20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="go">20:34:17  odin          collecting the bootloader (lpxelinux.0)</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="go">20:34:17  odin          collecting its boot menu -- armed, so it will install</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="go">20:34:19  odin          collecting the kernel</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="go">20:34:21  odin          collecting the initrd (391.2 MB)</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="go">20:34:48  odin          collecting its Ignition config</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="go">20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="go">20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="go">20:38:40  odin          collecting the kubernetes sysext (61.4 MB)</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">20:33:04  server        http on 10.9.200.222:8000 from output/http</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">20:33:04  server        tftp on 10.9.200.222:69 from output/tftp</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">20:33:04  server        armed to install: odin, thor</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="go">20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">20:34:17  odin          collecting the bootloader (lpxelinux.0)</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="go">20:34:17  odin          collecting its boot menu -- armed, so it will install</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">20:34:19  odin          collecting the kernel</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">20:34:21  odin          collecting the initrd (391.2 MB)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">20:34:48  odin          collecting its Ignition config</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="go">20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="go">20:38:40  odin          collecting the kubernetes sysext (61.4 MB)</span>
 </span></code></pre></div>
 <p>Two things make that possible, and both are worth knowing about when a line
 comes out wrong. The node is identified by MAC from the <code>01-&lt;mac&gt;</code> menu it
@@ -1491,7 +1498,7 @@ the server cannot disarm it either; it says so and tells you to run
 armed installs the next time it powers on whether or not anything is serving.</p>
 <p><code>Ctrl-C</code> therefore checks. If anything is still armed it prints what, explains
 that the menu does not need the boot server to fire, and offers to disarm:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="go">  Disarm 2 node(s) now? [Y/n]</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">  Disarm 2 node(s) now? [Y/n]</span>
 </span></code></pre></div>
 <p>Enter accepts. Anything else leaves them armed and repeats the cancel command.
 When stdin is not a terminal — a CI run, a <code>nohup</code> — it cannot ask, so it warns
