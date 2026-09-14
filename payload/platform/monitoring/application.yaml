@@ -99,6 +99,14 @@ spec:
               retention: 10d
 
           alertmanager:
+            # Alertmanager has no RoleBinding or ClusterRoleBinding anywhere in
+            # the cluster -- the operator is what talks to the API, not the
+            # Alertmanager pod -- so the projected token buys it nothing and
+            # costs a working credential sitting in a pod reachable from the
+            # Gateway.
+            serviceAccount:
+              automountServiceAccountToken: false
+
             alertmanagerSpec:
               storage:
                 volumeClaimTemplate:
