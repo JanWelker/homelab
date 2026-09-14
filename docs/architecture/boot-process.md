@@ -180,7 +180,7 @@ Between steps 9 and 10 the boot server rewrites that node's menu back to
 generated files never disarm it, so on firmware that network boots first the
 reboot in step 10 would read the same armed menu and start the install over.
 See [Boot Server &rarr; Switching back to local
-boot](../boot_server/index.md#switching-back-to-local-boot).
+boot](boot-server.md#switching-back-to-local-boot).
 
 Step 11 runs from disk, not from the network. Ignition is embedded in the OEM
 partition by `flatcar-install -i`, so the node no longer depends on the boot

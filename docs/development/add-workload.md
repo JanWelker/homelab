@@ -146,12 +146,12 @@ git push
 
 Not optional, and not busywork. An undocumented workload is one you will
 rediscover in eighteen months by reading YAML and guessing. Add a page at
-`docs/workloads/my-app.md` and register it in `zensical.toml` under the
-Workloads `nav` section:
+`docs/workloads/my-app.md` and register it in `zensical.toml`. There is no
+Workloads section in the `nav` yet — the first workload creates it, after
+Platform and before Operations:
 
 ```toml
   { "Workloads" = [
-    { "Overview" = "workloads/index.md" },
     { "My App" = "workloads/my-app.md" },
   ] },
 ```

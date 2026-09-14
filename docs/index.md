@@ -70,12 +70,6 @@ Running the cluster once it is up: health checks,
 [what is and is not backed up](operations/backups.md) — the last of which is the
 only page here that will ever matter on your worst day.
 
-### [Workloads](workloads/index.md)
-
-The user-facing applications. Currently a quiet section, which is the natural
-state of a homelab that has just finished rebuilding its platform for the third
-time.
-
 ### [Development](development/index.md)
 
 - [Contributing](development/contributing.md): Setup, checks, and conventions for
@@ -89,6 +83,6 @@ time.
 
 ### Machine Provisioning
 
-- [Boot Server](boot_server/index.md): The PXE boot server that serves Flatcar
+- [Boot Server](architecture/boot-server.md): The PXE boot server that serves Flatcar
   and Ignition to bare metal nodes.
-- [Ansible](ansible/index.md): Configuration management details.
+- [Ansible](architecture/ansible.md): Configuration management details.
