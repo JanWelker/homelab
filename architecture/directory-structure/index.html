@@ -1305,9 +1305,35 @@ generated — never edit anything in there, it will be overwritten by the next
 </span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>└── README.md
 </span></code></pre></div>
 <div class="admonition danger">
-<p class="admonition-title"><code>make clean</code> is <code>rm -rf output/*</code>, and that includes the credentials</p>
-<p>"Generated" does not mean "regenerable". Everything under <code>output/credentials/</code> is generated <em>once</em> and then read back on subsequent runs — the bootstrap token, the certificate key, and the etcd encryption key that decrypts every Secret in the cluster. Delete them and <code>make config</code> writes new ones, which is exactly what you do not want against a cluster that is already running on the old ones. Back that directory up before you reach for <code>clean</code>.</p>
+<p class="admonition-title"><code>output/</code> is generated; <code>output/credentials/</code> is not regenerable</p>
+<p>Everything under <code>output/credentials/</code> is generated <em>once</em> and read back on every later run: the kubeadm token, the certificate key, the etcd encryption key that decrypts every Secret in the cluster, and the five OpenBao unseal keys. <code>make config</code> writes <strong>new</strong> values for any that are missing, which a cluster already running on the old ones will not accept. Losing all five unseal keys loses every secret the cluster holds, permanently.</p>
 </div>
+<p><code>make clean</code> empties the whole of <code>output/</code>, so it prints that inventory and
+asks before it does anything; it refuses outright when it is not attached to a
+terminal. <code>make clean-artifacts</code> removes only the regenerable half — <code>http/</code>,
+<code>tftp/</code> and <code>tmp/</code> — and is the one to reach for when you just want a fresh
+download.</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Removes</th>
+<th>Keeps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make clean-artifacts</code></td>
+<td><code>output/http</code>, <code>output/tftp</code>, <code>output/tmp</code></td>
+<td><code>output/credentials/</code>, <code>output/kubeconfig</code></td>
+</tr>
+<tr>
+<td><code>make clean</code></td>
+<td>everything under <code>output/</code></td>
+<td>nothing — it asks first</td>
+</tr>
+</tbody>
+</table>
 <p>A useful mental split: <code>ansible/</code> and <code>boot_server/</code> only matter while a node is
 being built. <code>payload/</code> matters every day after that. If you are debugging a
 running cluster and find yourself in <code>ansible/</code>, you are probably in the wrong
