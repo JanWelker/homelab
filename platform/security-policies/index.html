@@ -1129,6 +1129,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pod-security-admission" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1402,6 +1413,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pod-security-admission" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1615,6 +1637,41 @@ policy.</p>
 The pattern used here — measure first, enforce second, one namespace at a time —
 is unglamorous and is the only approach that survives contact with a running
 cluster.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>kube-system</code> for the Application; it owns Namespace objects across the cluster</td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>3</code>, last, so it labels namespaces that already exist</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../cilium/">Cilium</a> to enforce the network policies</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nothing at the time. The labels and policies are already applied; what stops is them being corrected if something changes them</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl get ns -L pod-security.kubernetes.io/enforce</code></td>
+</tr>
+<tr>
+<td>Pruning</td>
+<td><strong>Disabled.</strong> This Application owns Namespaces, and pruning one deletes everything inside it</td>
+</tr>
+</tbody>
+</table>
 <h2 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h2>
 <p>PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
 not opt in runs at the default <code>privileged</code> level — which enforces nothing at

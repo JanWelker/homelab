@@ -1102,6 +1102,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-scans" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1423,6 +1434,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-it-scans" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1660,6 +1682,41 @@ exports them to the existing Prometheus for a
 chart bump quietly introduced a container running as root and nobody was looking
 at that namespace. Posture is not a state you reach; it is a thing that decays,
 and the only useful measurement of it is a repeated one.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>kubescape</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>2</code></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../monitoring/">Monitoring</a> for the Prometheus it exports to</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nothing. This is the one component whose outage costs you only the next nightly scan</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl get configurationscansummaries -A</code></td>
+</tr>
+<tr>
+<td>UI</td>
+<td>A Grafana dashboard, not a UI of its own</td>
+</tr>
+</tbody>
+</table>
 <h2 id="what-it-scans">What it scans<a class="headerlink" href="#what-it-scans" title="Permanent link">&para;</a></h2>
 <p><code>defaultFrameworks</code> is left empty, and empty means <strong>all of them</strong>. Naming
 frameworks explicitly narrows scheduled scans, and a list pinned to a specific

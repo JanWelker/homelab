@@ -1021,6 +1021,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-is-collected" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1357,6 +1368,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-is-collected" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1534,6 +1556,37 @@ currently misbehaving.</p>
 deprecated in early 2025 and reached <strong>end of life in March 2026</strong>. Alloy is
 its supported replacement and the one to reach for now.</p>
 </div>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>logging</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>1</code> parent, <code>2</code> Loki, <code>3</code> Alloy — the collector last, so it has somewhere to ship</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../rook-ceph/">Rook-Ceph</a> object storage for chunks, <a href="../monitoring/">Monitoring</a> for the Grafana that queries it</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/security/#audit-logging">audit log</a> loses its durable copy</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n logging get pods</code>, then a <code>{job="kubernetes-audit"}</code> query in Grafana</td>
+</tr>
+</tbody>
+</table>
 <h2 id="what-is-collected">What is collected<a class="headerlink" href="#what-is-collected" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

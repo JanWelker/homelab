@@ -886,6 +886,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1418,6 +1429,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1647,6 +1669,41 @@ longest memory. It is also the one that will still have your data after a node
 dies, which is why it is here. Treat <code>ceph status</code> the way a sysadmin treats
 <code>dmesg</code>: check it more often than seems necessary, and never ignore a <code>WARN</code> on
 the grounds that everything still appears to work.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>rook-ceph</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>-3</code> Application, <code>-2</code> operator, <code>-1</code> cluster, <code>0</code> CSI driver</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td>A raw <code>rook-osd</code> partition on every node, written at install time</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Every pod with a volume. <code>openbao</code> first, and the secret store going with it is what turns a storage problem into a cluster problem</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>make storage-check</code> — it binds a real PVC, which <code>ceph status</code> alone does not prove</td>
+</tr>
+<tr>
+<td>UI</td>
+<td><code>rook.infra.k8s.wlkr.ch</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <p>Each node has a raw disk partition labeled <code>rook-osd</code> (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.</p>
 <p><code>rook-osd</code> is the <strong>last</strong> partition on the disk and takes whatever is left after

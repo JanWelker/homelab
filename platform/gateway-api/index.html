@@ -805,6 +805,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#gateways" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1346,6 +1357,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#gateways" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1499,6 +1521,37 @@
 <h1 id="gateway-api">Gateway API<a class="headerlink" href="#gateway-api" title="Permanent link">&para;</a></h1>
 <p>The <a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a> replaces the traditional Ingress resource. It is implemented by Cilium, which handles both load balancing and TLS termination.</p>
 <p>The practical improvement over Ingress is the split in ownership: the cluster owns the <code>Gateway</code> — addresses, certificates, ports — and each app owns its own <code>HTTPRoute</code>. No more twelve-annotation Ingress manifests that only work on the controller they were written for.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>gateway-system</code> for the Application, <code>kube-system</code> for the Gateways themselves</td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>-10</code> for the CRDs, <code>-4</code> for the Gateways</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../cilium/">Cilium</a> to implement it, <a href="../cert-manager/">cert-manager</a> for the wildcard certificates</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nothing reaches any hostname. Running pods keep running and nothing outside the cluster can talk to them</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n kube-system get gateway</code> &rarr; both <code>PROGRAMMED=True</code> with an address</td>
+</tr>
+</tbody>
+</table>
 <h2 id="gateways">Gateways<a class="headerlink" href="#gateways" title="Permanent link">&para;</a></h2>
 <p>Two Gateways are defined in <code>kube-system</code>, each with a dedicated IP from the Cilium L2 pool:</p>
 <table>

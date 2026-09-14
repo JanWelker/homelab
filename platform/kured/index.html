@@ -1075,6 +1075,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-gap-it-closes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1385,6 +1396,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-gap-it-closes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1586,6 +1608,37 @@ Ceph check.</p>
 <p class="admonition-title">This needed the boot server once, and no longer does</p>
 <p>Kured reboots nodes unattended between 01:00 and 05:00. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless <code>make serve</code> happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is <a href="../../architecture/boot-process/#every-boot-after-the-first">installed to disk</a> now, so the reboot is ordinary and the boot server stays off.</p>
 </div>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>kured</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>2</code></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../monitoring/">Monitoring</a> for the alerts it gates on</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nothing visible, which is the problem. Staged OS and sysext updates simply never get applied, silently, for as long as nobody looks</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="the-gap-it-closes">The gap it closes<a class="headerlink" href="#the-gap-it-closes" title="Permanent link">&para;</a></h2>
 <p>Three mechanisms update a node. All three stop at the same place — the change
 lands on disk, and only a reboot applies it:</p>

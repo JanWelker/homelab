@@ -1466,7 +1466,6 @@ for not having those.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <p>Alphabetical, with the namespace it lands in and the sync wave it lands at.
 The <a href="#usage">wave ordering</a> below explains why those numbers are what they are.</p>
-<!-- markdownlint-disable MD013 -->
 <table>
 <thead>
 <tr>
@@ -1575,8 +1574,6 @@ The <a href="#usage">wave ordering</a> below explains why those numbers are what
 </tr>
 </tbody>
 </table>
-<!-- markdownlint-enable MD013 -->
-
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     Client([Client]) --&gt; LB[Cilium LoadBalancer]
@@ -1594,7 +1591,6 @@ does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Servic
 In that order — the answer is usually the first one.</p>
 <h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
 <p>HTTPRoutes are co-located with their respective apps:</p>
-<!-- markdownlint-disable MD013 -->
 <table>
 <thead>
 <tr>
@@ -1651,8 +1647,6 @@ In that order — the answer is usually the first one.</p>
 </tr>
 </tbody>
 </table>
-<!-- markdownlint-enable MD013 -->
-
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="bootstrap-before-argocd">Bootstrap (before ArgoCD)<a class="headerlink" href="#bootstrap-before-argocd" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>install-core<span class="w">  </span><span class="c1"># Gateway API + Prometheus operator CRDs, Cilium, cert-manager</span>
@@ -1660,7 +1654,6 @@ In that order — the answer is usually the first one.</p>
 </span></code></pre></div>
 <h3 id="gitops-after-argocd">GitOps (after ArgoCD)<a class="headerlink" href="#gitops-after-argocd" title="Permanent link">&para;</a></h3>
 <p>Two parent ArgoCD Applications manage the cluster:</p>
-<!-- markdownlint-disable MD013 -->
 <table>
 <thead>
 <tr>
@@ -1682,8 +1675,6 @@ In that order — the answer is usually the first one.</p>
 </tr>
 </tbody>
 </table>
-<!-- markdownlint-enable MD013 -->
-
 <p>A third parent, <code>workloads</code>, is added back alongside the first workload. See
 <a href="../development/add-workload/">Adding a Workload</a>.</p>
 <p>Excluded from sync:</p>
@@ -1695,7 +1686,6 @@ In that order — the answer is usually the first one.</p>
 <p>Sync wave ordering. This is the dependency graph made explicit, and it is the
 reason a fresh bootstrap converges rather than deadlocking on a CRD that does
 not exist yet:</p>
-<!-- markdownlint-disable MD013 -->
 <table>
 <thead>
 <tr>
@@ -1762,8 +1752,6 @@ not exist yet:</p>
 </tr>
 </tbody>
 </table>
-<!-- markdownlint-enable MD013 -->
-
 <p>Waves <code>1</code> through <code>3</code> are where a component and its own children separate:
 <code>logging</code> is the parent Application at <code>1</code>, and it brings Loki at <code>2</code> and Alloy
 at <code>3</code>, in that order because a collector with nowhere to ship is just a

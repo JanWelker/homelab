@@ -859,6 +859,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-it-decides-what-to-publish" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1368,6 +1379,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#how-it-decides-what-to-publish" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1552,6 +1574,37 @@ gets forgotten. Adding a workload would mean remembering a step that lives
 nowhere in the repository, and removing one would leave a record pointing at
 nothing, forever, until somebody audits the zone and cannot work out what
 <code>old-thing.k8s.wlkr.ch</code> was.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>external-dns</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>2</code></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../external-secrets/">External Secrets</a> for its Route53 credential, <a href="../gateway-api/">Gateway API</a> for the HTTPRoutes it reads</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>New hostnames get no DNS record. Existing records are left alone, so nothing already working breaks</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n external-dns logs deploy/external-dns --tail=50</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="how-it-decides-what-to-publish">How it decides what to publish<a class="headerlink" href="#how-it-decides-what-to-publish" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

@@ -913,6 +913,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1496,6 +1507,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1809,6 +1831,41 @@ sealed and unsealed — before you need to.</p>
     App[App Pod] --&gt;|env / volume| KSecret
 
     style Bao fill:#e1f5ff,stroke:#0288d1</code></pre>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>openbao</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>0</code>, after networking, storage and certificates exist</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../rook-ceph/">Rook-Ceph</a> for its Raft volumes</td>
+</tr>
+<tr>
+<td>If it is down — or merely sealed</td>
+<td>No <code>ExternalSecret</code> resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks entirely healthy from the outside</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n openbao exec openbao-0 -- bao status</code> &rarr; <code>Sealed: false</code> on all three</td>
+</tr>
+<tr>
+<td>UI</td>
+<td><code>vault.infra.k8s.wlkr.ch</code> — the one platform UI <em>not</em> behind Authentik, deliberately</td>
+</tr>
+</tbody>
+</table>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1835,10 +1892,6 @@ sealed and unsealed — before you need to.</p>
 <td>Disabled inside the cluster — TLS terminates at the Gateway</td>
 </tr>
 <tr>
-<td>UI</td>
-<td><code>https://vault.infra.k8s.wlkr.ch</code></td>
-</tr>
-<tr>
 <td>In-cluster service</td>
 <td><code>http://openbao.openbao.svc.cluster.local:8200</code></td>
 </tr>
@@ -1850,7 +1903,7 @@ sealed and unsealed — before you need to.</p>
 </table>
 <p>The chart is the official upstream <a href="https://github.com/openbao/openbao-helm"><code>openbao/openbao-helm</code></a>, pinned in <code>application.yaml</code>.</p>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<p>OpenBao is sync-wave <code>0</code> — it starts after cert-manager (<code>-5</code>), Cilium (<code>-1</code>), and the Rook-Ceph cluster (<code>-1</code>). ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
+<p>ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
 <p>Two commands do all of it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bao-init<span class="w">      </span><span class="c1"># initialise, unseal, configure the engine and ESO's auth</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>bao-secrets<span class="w">   </span><span class="c1"># populate the four paths the cluster reads</span>

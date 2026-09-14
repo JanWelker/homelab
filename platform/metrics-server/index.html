@@ -1048,6 +1048,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verifying-the-kubelet-instead-of-trusting-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1363,6 +1374,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verifying-the-kubelet-instead-of-trusting-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1546,6 +1568,37 @@ resource metrics API is a separate, aggregated Kubernetes API that core
 controllers read directly. They are different consumers of the same
 underlying kubelet data.</p>
 </div>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>kube-system</code>; kubelet-csr-approver in <code>kubelet-csr-approver</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>2</code>; kubelet-csr-approver at <code>1</code>, because the CSRs have to be approved first</td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td>kubelet-csr-approver, or the kubelet certificates it verifies are never issued</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td><code>kubectl top</code> and every HPA. Nothing else notices</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl top nodes</code> &rarr; a row per node</td>
+</tr>
+</tbody>
+</table>
 <h2 id="verifying-the-kubelet-instead-of-trusting-it">Verifying the kubelet instead of trusting it<a class="headerlink" href="#verifying-the-kubelet-instead-of-trusting-it" title="Permanent link">&para;</a></h2>
 <p>metrics-server scrapes each kubelet over TLS. By default a kubelet serves a
 <strong>self-signed</strong> certificate it generates itself, which metrics-server cannot

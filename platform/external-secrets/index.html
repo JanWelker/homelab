@@ -940,6 +940,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1468,6 +1479,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1746,6 +1768,37 @@
 code that knows what a Vault token is. Applications keep reading environment
 variables like it is 2014, and the interesting work happens somewhere they never
 have to think about.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>external-secrets</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>-6</code>, the very first thing after the Gateway API CRDs — see <a href="../#usage">why</a></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../openbao/">OpenBao</a> at runtime, though not to be installed</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Secrets already materialised keep working. Nothing rotates, and nothing new resolves</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl get clustersecretstore openbao</code> &rarr; <code>Valid</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

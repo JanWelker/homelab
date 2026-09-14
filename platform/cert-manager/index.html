@@ -832,6 +832,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1368,6 +1379,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1546,6 +1568,37 @@
 RFC1918 addresses that Let's Encrypt cannot reach. Nothing on the public internet
 can complete an HTTP challenge against <code>10.9.2.248</code>. Proving control of the DNS
 zone works from anywhere, and it is also the only way to get a wildcard.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Namespace</td>
+<td><code>cert-manager</code>; the certificates it issues land in <code>kube-system</code></td>
+</tr>
+<tr>
+<td>Sync wave</td>
+<td><code>-5</code>; the ClusterIssuers at <code>2</code> and the Certificates at <code>3</code></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../external-secrets/">External Secrets</a> for the Route53 credential, so transitively on <a href="../openbao/">OpenBao</a></td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl get certificate -A</code> &rarr; all <code>READY=True</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>ClusterIssuers</strong>: Both staging (testing) and production issuers using DNS-01 via Route53.</li>
