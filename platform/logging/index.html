@@ -262,6 +262,8 @@
       
         
       
+        
+      
     
     
     
@@ -556,6 +558,8 @@
       
         
           
+        
+      
         
       
         
@@ -1587,7 +1591,7 @@ its supported replacement and the one to reach for now.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/security/#audit-logging">audit log</a> loses its durable copy</td>
+<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/audit-logging/">audit log</a> loses its durable copy</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -1637,7 +1641,7 @@ control-plane nodes and it is JSON rather than text, so it gets its own pipeline
 It lives on the root filesystem and survives a reboot there — collecting it is
 still what makes it queryable next to everything else, and what keeps a copy
 when the node itself is the thing that failed. See
-<a href="../../architecture/security/#audit-logging">Audit logging</a> for what is recorded
+<a href="../../architecture/audit-logging/">Audit logging</a> for what is recorded
 and at which level. Alloy runs on all six nodes and <code>local.file_match</code> simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.</p>
