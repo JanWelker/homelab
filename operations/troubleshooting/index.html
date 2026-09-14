@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Cilium as the CNI, providing Gateway API, WireGuard encryption, L2 announcements, and Hubble observability.">
+        <meta name="description" content="Where to look first when something is wrong, and how to roll back a sync that made it worse.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/cilium/">
+        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/troubleshooting/">
       
       
         <link rel="prev" href="../">
       
       
-        <link rel="next" href="../gateway-api/">
+        <link rel="next" href="../nodes/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Cilium - Homelab Documentation</title>
+        <title>Troubleshooting - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#cilium" class="md-skip">
+        <a href="#troubleshooting" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cilium
+              Troubleshooting
             
           </span>
         </div>
@@ -282,8 +282,6 @@
   
   
   
-    
-  
   
     
       
@@ -308,6 +306,46 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../platform/" class="md-tabs__link">
+          
+  
+  Platform
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+      
+        
+          
         
       
         
@@ -326,44 +364,6 @@
     
       <li class="md-tabs__item md-tabs__item--active">
         <a href="../" class="md-tabs__link">
-          
-  
-  Platform
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../operations/" class="md-tabs__link">
           
   
   Operations
@@ -622,8 +622,6 @@
       
   
   
-    
-  
   
   
     
@@ -649,560 +647,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-        
-        
-      
-      
-    
-    
-      
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Platform
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-  Platform
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Cilium
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Cilium
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#at-a-glance" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        At a glance
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Components
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-one-setting-that-will-ruin-your-day" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        The one setting that will ruin your day
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../gateway-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Gateway API
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cert-manager/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  cert-manager
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../external-dns/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  External DNS
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../rook-ceph/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Rook-Ceph
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../openbao/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  OpenBao
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../external-secrets/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  External Secrets
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../authentik/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Authentik
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../monitoring/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Monitoring
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../logging/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Logging
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../metrics-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Metrics Server
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../kured/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kured
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../kubescape/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kubescape
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../security-policies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Security Policies
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
         
       
         
@@ -1234,14 +678,14 @@
   
   
   
-    <a href="../../operations/" class="md-nav__link">
+    <a href="../../platform/" class="md-nav__link">
       
   
   
   <span class="md-ellipsis">
     
   
-  Operations
+  Platform
 
     
   </span>
@@ -1254,6 +698,297 @@
     </a>
   
 
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Operations
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-look-first" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where to look first
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rolling-back-a-bad-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rolling back a bad sync
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Updates & Upgrades
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups & Recovery
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../control-plane-vip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1365,10 +1100,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#at-a-glance" class="md-nav__link">
+  <a href="#where-to-look-first" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        At a glance
+        Where to look first
       </span>
     </span>
   </a>
@@ -1376,32 +1111,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#rolling-back-a-bad-sync" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-one-setting-that-will-ruin-your-day" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        The one setting that will ruin your day
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
+        Rolling back a bad sync
       </span>
     </span>
   </a>
@@ -1466,24 +1179,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -1493,7 +1188,7 @@
           
   
   <span class="md-ellipsis">
-    Platform
+    Operations
   </span>
 
         </a>
@@ -1510,7 +1205,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/cilium.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/operations/troubleshooting.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -1519,95 +1214,81 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/cilium.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/operations/troubleshooting.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="cilium">Cilium<a class="headerlink" href="#cilium" title="Permanent link">&para;</a></h1>
-<p>Cilium is the CNI, and on this cluster it is considerably more than that. It
-replaces <code>kube-proxy</code>, terminates ingress traffic through Gateway API, hands out
-LoadBalancer addresses on a network with no cloud load balancer, encrypts
-node-to-node traffic, and shows you what is actually talking to what.</p>
-<p>Four components' worth of responsibility in one DaemonSet. That consolidation is
-the whole argument for it on bare metal — and also the reason a broken Cilium is
-never a small problem.</p>
-<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
+<p>Start here, not with <code>kubectl describe</code> on the thing that looks broken. The
+thing that looks broken is usually downstream of something duller, and this
+section is ordered by how often the duller thing turns out to be the answer.</p>
+<h2 id="where-to-look-first">Where to look first<a class="headerlink" href="#where-to-look-first" title="Permanent link">&para;</a></h2>
+<p>The table that saves the most time:</p>
 <table>
 <thead>
 <tr>
-<th></th>
-<th></th>
+<th>Symptom</th>
+<th>First check</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Namespace</td>
-<td><code>kube-system</code></td>
+<td>Secrets missing, certificates not renewing</td>
+<td>OpenBao sealed — <code>bao status</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>-1</code>, after the Gateway API CRDs it renders against</td>
+<td>Pods pending on a fresh node</td>
+<td>Node still <code>NotReady</code>; check Cilium is running on it</td>
 </tr>
 <tr>
-<td>Depends on</td>
-<td>Gateway API CRDs (<code>-10</code>), and a <code>k8sServiceHost</code> that answers</td>
+<td><code>ExternalSecret</code> not syncing</td>
+<td><a href="../../platform/external-secrets/#troubleshooting">External Secrets troubleshooting</a></td>
 </tr>
 <tr>
-<td>If it is down</td>
-<td>Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses</td>
+<td>PVCs stuck pending</td>
+<td><code>ceph status</code>, then the <a href="../../platform/rook-ceph/">Rook dashboard</a></td>
 </tr>
 <tr>
-<td>Health check</td>
-<td><code>kubectl -n kube-system exec ds/cilium -- cilium status --brief</code></td>
+<td>A hostname stopped resolving to the cluster</td>
+<td>Gateway lost its LoadBalancer IP; check the Cilium L2 pool</td>
 </tr>
 <tr>
-<td>UI</td>
-<td><code>hubble.infra.k8s.wlkr.ch</code> (Hubble)</td>
+<td>Node not rejoining after reboot</td>
+<td><code>journalctl -u kubelet</code> on the node</td>
 </tr>
 </tbody>
 </table>
-<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
+<p>Two other symptom tables exist, for the phases this one does not cover:</p>
 <ul>
-<li><strong>kube-proxy replacement</strong>: <code>kubeProxyReplacement: true</code>. Service routing
-  happens in eBPF rather than iptables or IPVS, which is why <code>make install-core</code>
-  deletes <code>kube-proxy</code> outright.</li>
-<li><strong>Gateway API</strong>: Replaces a traditional Ingress controller — see
-  <a href="../gateway-api/">Gateway API</a>.</li>
-<li><strong>LoadBalancer Pools</strong>: <code>10.9.2.249</code> (apps) and <code>10.9.2.248</code> (infra),
-  announced over L2 ARP so the rest of the LAN can find them.</li>
-<li><strong>WireGuard encryption</strong>: <code>encryption.type: wireguard</code>, transparently, between
-  nodes.</li>
-<li><strong>Hubble</strong>: Observability with metrics and UI at <code>hubble.infra.k8s.wlkr.ch</code>,
-  behind the <a href="../authentik/">Authentik</a> proxy outpost.</li>
+<li>A node that will not install, or hangs at a blinking cursor:
+  <a href="../../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</li>
+<li>A node that installs but comes up with no OSD:
+  <a href="../../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after reprovisioning</a>.</li>
 </ul>
-<h2 id="the-one-setting-that-will-ruin-your-day">The one setting that will ruin your day<a class="headerlink" href="#the-one-setting-that-will-ruin-your-day" title="Permanent link">&para;</a></h2>
-<p><code>k8sServiceHost</code> in <code>values.yaml</code> is a literal IP address, because with
-<code>kube-proxy</code> gone Cilium cannot reach the API server through a Service. It has to
-be told where the control plane lives.</p>
-<p>Point it at an address that does not answer and every Cilium pod loses the API
-server at once. Cluster networking goes with it, including whatever you were
-using to fix the problem. This is the single most effective way to take the
-whole cluster down from one line of YAML, so treat changes to it with the
-respect they deserve — the ordering is spelled out in
-<a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
-<div class="admonition tip">
-<p class="admonition-title">Hubble earns its keep during a network policy rollout</p>
-<p><code>hubble observe --verdict DROPPED --follow</code> answers the question every default-deny policy raises — <em>what did I just break?</em> — in seconds rather than in an hour of guessing. See <a href="../security-policies/#rolling-this-out-safely">Security Policies</a>.</p>
-</div>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cilium/                # CNI + Gateway API Controller
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── application.yaml   # ArgoCD Application (Helm chart)
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── values.yaml        # Helm values
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── lb-pools.yaml      # CiliumLoadBalancerIPPool + L2 Policy
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── httproute.yaml     # Hubble UI route
+<p>Alerts are mailed by Alertmanager — see
+<a href="../../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a>. The checks above
+are still worth running, because the delivery path itself is not monitored. An
+empty inbox means either that nothing is wrong or that the mail stopped working,
+and those two look identical from here.</p>
+<h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
+<p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
+a revert commit. To stop the bleeding first, disable auto-sync on the affected
+Application and roll it back:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app&gt;<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"syncPolicy":{"automated":null}}}'</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
 </span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Cilium is installed twice, sort of</p>
-<p><code>make install-core</code> installs it by Helm, because it has to exist before ArgoCD does, and ArgoCD then adopts it. There is only one number: the <code>Makefile</code> reads <code>targetRevision</code> straight out of <code>application.yaml</code> instead of keeping a pin of its own, so a rebuilt cluster cannot quietly land on a different Cilium than the one it replaced.</p>
+<p>Re-enable auto-sync by restoring <code>syncPolicy.automated</code> once the revert has
+landed on <code>main</code>. Leaving it disabled means the Application silently stops
+tracking Git — and an Application that has quietly stopped tracking Git is a
+time bomb with a three-month fuse, defused only by somebody wondering why their
+change never took effect.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>. Every Application here runs with <code>selfHeal: true</code>, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.</p>
 </div>
 
 
@@ -1649,7 +1330,7 @@ respect they deserve — the ordering is spelled out in
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Platform">
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Operations">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1659,20 +1340,20 @@ respect they deserve — the ordering is spelled out in
                 Previous
               </span>
               <div class="md-ellipsis">
-                Platform
+                Operations
               </div>
             </div>
           </a>
         
         
           
-          <a href="../gateway-api/" class="md-footer__link md-footer__link--next" aria-label="Next: Gateway API">
+          <a href="../nodes/" class="md-footer__link md-footer__link--next" aria-label="Next: Node Lifecycle">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Gateway API
+                Node Lifecycle
               </div>
             </div>
             <div class="md-footer__button md-icon">

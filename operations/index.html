@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Running the cluster day to day: health checks, rebooting nodes, and recovering from the failures that actually happen.">
+        <meta name="description" content="Running the cluster day to day: the routine health check, and where the runbooks for everything else live.">
       
       
       
@@ -16,7 +16,7 @@
         <link rel="prev" href="../platform/security-policies/">
       
       
-        <link rel="next" href="./upgrades/">
+        <link rel="next" href="./troubleshooting/">
       
       
         
@@ -346,6 +346,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -720,6 +724,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -773,6 +781,60 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -969,87 +1031,21 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#what-is-in-this-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is in this section
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#routine-health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Routine health check
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#after-any-node-reboot-unseal-openbao" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        After any node reboot: unseal OpenBao
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rebooting-a-node" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Rebooting a node
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rolling-back-a-bad-sync" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Rolling back a bad sync
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-a-node-after-the-initial-build" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adding a node after the initial build
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repartitioning-the-nodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Repartitioning the nodes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#replacing-a-failed-node" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Replacing a failed node
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-look-when-something-is-wrong" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Where to look when something is wrong
       </span>
     </span>
   </a>
@@ -1110,6 +1106,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1153,16 +1153,78 @@
 
 
 <h1 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h1>
-<p>Everything on this page assumes a cluster that is already up. For first
+<p>Everything in this section assumes a cluster that is already up. For first
 provisioning see the <a href="../quickstart/">Quickstart</a>.</p>
 <p>Building a cluster is a weekend. Operating one is the rest of your life. This is
-the page you will actually come back to.</p>
+the section you will actually come back to.</p>
+<h2 id="what-is-in-this-section">What is in this section<a class="headerlink" href="#what-is-in-this-section" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
+<ul>
+<li>
+<p><strong><a href="troubleshooting/">Troubleshooting</a></strong></p>
+<hr />
+<p>The symptom-to-first-check table, and how to roll back a sync that made
+things worse. Start here when something is wrong.</p>
+</li>
+<li>
+<p><strong><a href="nodes/">Node Lifecycle</a></strong></p>
+<hr />
+<p>Rebooting, adding, replacing and rebuilding a node — including the two gates
+people skip: waiting for Ceph, and unsealing OpenBao afterwards.</p>
+</li>
+<li>
+<p><strong><a href="upgrades/">Updates &amp; Upgrades</a></strong></p>
+<hr />
+<p>The three mechanisms that update a node, why none of them finishes on its
+own, and how to move a minor version deliberately.</p>
+</li>
+<li>
+<p><strong><a href="backups/">Backups &amp; Recovery</a></strong></p>
+<hr />
+<p>What is backed up, what is not, and the fact worth knowing before you need
+it: every automated backup lands inside the cluster it is backing up.</p>
+</li>
+<li>
+<p><strong><a href="control-plane-vip/">Control Plane VIP</a></strong></p>
+<hr />
+<p>How the API server address survives losing the node that answers it, and how
+to migrate a cluster that was built without it.</p>
+</li>
+</ul>
+</div>
 <h2 id="routine-health-check">Routine health check<a class="headerlink" href="#routine-health-check" title="Permanent link">&para;</a></h2>
-<p>Four commands, thirty seconds, run them when you walk past the rack:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status
+<p>Four commands, thirty seconds, run them when you walk past the rack. The second
+column is what you are actually looking for, because three of the four will
+happily print something reassuring while being wrong:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Healthy looks like</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kubectl get nodes</code></td>
+<td>Every node <code>Ready</code></td>
+</tr>
+<tr>
+<td><code>kubectl -n argocd get applications</code></td>
+<td>Every Application <code>Synced</code> <em>and</em> <code>Healthy</code></td>
+</tr>
+<tr>
+<td><code>kubectl get certificate -A</code></td>
+<td>Every certificate <code>READY=True</code></td>
+</tr>
+<tr>
+<td><code>kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status</code></td>
+<td><code>HEALTH_OK</code>, and an OSD count matching your node count</td>
+</tr>
+</tbody>
+</table>
+<p>A fifth is worth adding after anything restarted, because it is the one failure
+that looks like health:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
 </span></code></pre></div>
 <p>The Rook toolbox pod is enabled, so <code>ceph status</code>, <code>ceph osd tree</code> and
 <code>ceph health detail</code> are available without installing anything.</p>
@@ -1170,221 +1232,6 @@ the page you will actually come back to.</p>
 <p class="admonition-title">Note</p>
 <p>Ceph metrics <strong>are</strong> scraped — <code>monitoring.enabled</code> is <code>true</code> in the <code>CephCluster</code> spec, and <code>createPrometheusRules</code> ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running <code>ceph status</code>. Run it anyway: it is the fastest way to see <em>why</em>, and it is what <a href="../platform/kured/">Kured</a> is really asking about before it reboots anything. See <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
 </div>
-<h2 id="after-any-node-reboot-unseal-openbao">After any node reboot: unseal OpenBao<a class="headerlink" href="#after-any-node-reboot-unseal-openbao" title="Permanent link">&para;</a></h2>
-<p>OpenBao seals itself whenever its pods restart, and while it is sealed no
-<code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
-Nothing unseals it for you, so this is a chore rather than a check:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>bao-unseal<span class="w">                      </span><span class="c1"># unseals whatever is sealed</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
-</span></code></pre></div>
-<p><code>make bao-unseal</code> reads the key shares from <code>output/credentials/openbao-init.json</code>,
-checks each replica, and feeds three shares to any that is sealed. It is
-idempotent — on an unsealed cluster it reports that and stops.</p>
-<p>If you have moved the keys into a password manager and deleted that file, which
-is where they belong, it cannot help: each pod then wants 3 of the 5 shares by
-hand. <a href="../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
-has the loop.</p>
-<p>It is worth actually running, every time. A cluster that comes back with OpenBao
-still sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and
-the consequence surfaces sixty days later when a certificate expires on a
-Sunday, with nothing connecting it to the reboot that caused it. See
-<a href="../architecture/limitations/#openbao-needs-an-operator-to-unseal-it">the limitation this creates</a>.</p>
-<h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
-<p><a href="../platform/kured/">Kured</a> reboots nodes on its own between 01:00 and 05:00
-when an update has been staged, one at a time, and refuses while Ceph or etcd is
-unhealthy. The procedure below is for the cases it does not cover: rebooting
-sooner than the window, or rebooting a node for a reason nothing set a sentinel
-for.</p>
-<p>A reboot is just a reboot. Flatcar is installed to disk, the node boots from it
-without the boot server, and <code>/etc/kubernetes</code>, <code>/var/lib/etcd</code> and
-<code>/var/lib/rook</code> are all still there when it comes back. A change made with
-<code>make config</code> is <em>not</em> picked up here — that takes a
-<a href="#repartitioning-the-nodes">rebuild</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>reboot
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># wait for the node to come back</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>uncordon<span class="w"> </span>&lt;node&gt;
-</span></code></pre></div>
-<p>Between each node, confirm Ceph has recovered before moving on — draining a
-second node while the first is still backfilling can take a placement group
-below its minimum replica count. Ceph is patient; impatient operators are how
-"one node down" becomes "read-only cluster":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/rook-ceph-tools<span class="w"> </span>--<span class="w"> </span>ceph<span class="w"> </span>status<span class="w">   </span><span class="c1"># HEALTH_OK</span>
-</span></code></pre></div>
-<p>If the rebooted node hosted an OpenBao replica, it came back sealed — unseal it before moving on.</p>
-<h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
-<p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
-a revert commit. To stop the bleeding first, disable auto-sync on the affected
-Application and roll it back:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>application<span class="w"> </span>&lt;app&gt;<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"syncPolicy":{"automated":null}}}'</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
-</span></code></pre></div>
-<p>Re-enable auto-sync by restoring <code>syncPolicy.automated</code> once the revert has
-landed on <code>main</code>. Leaving it disabled means the Application silently stops
-tracking Git — and an Application that has quietly stopped tracking Git is a
-time bomb with a three-month fuse, defused only by somebody wondering why their
-change never took effect.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>. Every Application here runs with <code>selfHeal: true</code>, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.</p>
-</div>
-<h2 id="adding-a-node-after-the-initial-build">Adding a node after the initial build<a class="headerlink" href="#adding-a-node-after-the-initial-build" title="Permanent link">&para;</a></h2>
-<p>The bootstrap token generated at provisioning time has a 24 hour TTL, so it has
-long expired on an established cluster. This trips up everyone exactly once.
-Generate a fresh join command on a control-plane node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>ssh<span class="w"> </span>core@&lt;control-plane-node&gt;
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>token<span class="w"> </span>create<span class="w"> </span>--print-join-command
-</span></code></pre></div>
-<p>For a new <strong>control-plane</strong> node you also need a current certificate key, which
-expires after two hours:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>upload-certs<span class="w"> </span>--upload-certs
-</span></code></pre></div>
-<p>Add the host to <code>ansible/inventory.yaml</code>, re-run <code>make config</code> and <code>make serve</code>
-so it can PXE boot, then run the printed join command on it. The
-<code>bootstrap-k8s.service</code> unit only fires when <code>/etc/kubernetes/kubelet.conf</code> is
-absent, so it will not interfere with a node that has already joined.</p>
-<h2 id="repartitioning-the-nodes">Repartitioning the nodes<a class="headerlink" href="#repartitioning-the-nodes" title="Permanent link">&para;</a></h2>
-<p>The disk layout lives in <code>ansible/templates/butane_node_config.yaml.j2</code> and is applied
-by Ignition, which runs once — on the first boot after a node is installed.
-Changing a <em>size</em> or <em>order</em> in it is not an edit you roll out. Neither is
-changing anything else under <code>ansible/</code>: the node's Ignition config is embedded
-in its OEM partition at install time, so a running node will never see the new
-one.</p>
-<p><code>rook-osd</code> is the last partition and is deliberately raw: Ceph owns the bytes,
-and there is no filesystem or label inside it that would let anything relocate
-them. Move its start offset by so much as a sector — which is what inserting or
-resizing any partition above it does — and every OSD on that node is gone.</p>
-<div class="admonition danger">
-<p class="admonition-title">The backups are inside the thing being wiped</p>
-<p>Velero and the etcd snapshot CronJob both write to the Ceph object store
-this destroys — see
-<a href="../architecture/limitations/#backups-do-not-leave-the-cluster">Backups do not leave the cluster</a>.
-Copy anything you intend to restore from <strong>off-cluster</strong> before you start.
-This is the failure mode that limitation was written about, arriving in
-person.</p>
-</div>
-<p>The procedure is a reinstall:</p>
-<ol>
-<li>Copy what matters off the cluster — Velero backups, the latest etcd snapshot,
-   and anything in a PVC that is not reproducible from Git.</li>
-<li>Edit whatever needs editing under <code>ansible/</code>.</li>
-<li><code>make config</code> to regenerate both Ignition configs, then <code>make serve</code>.</li>
-<li>
-<p>Arm the nodes you are rebuilding:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># or `make reinstall` for every host</span>
-</span></code></pre></div>
-<p>That flips <code>DEFAULT localboot</code> to <code>DEFAULT install</code> in
-<code>output/tftp/pxelinux.cfg/01-&lt;mac&gt;</code>. The template is untouched, so the next
-<code>make config</code> puts the safe default back — including over anything armed and
-not used. <code>make reinstall-cancel</code> does the same deliberately, and the boot
-server does it for you once the node has the OS image, which is what keeps
-the reboot at the end of the install from starting a second one: see
-<a href="../architecture/boot-server/#switching-back-to-local-boot">Boot Server &rarr; Switching back to local boot</a>.</p>
-<p>Arming is the <em>only</em> way in: the menu shows no prompt, so there is nothing
-to pick at the console and nothing to mistype at three in the morning.
-5. Network-boot the node. The installer wipes the disk — every partition
-   signature, the GPT, and a device-level discard where the hardware supports
-   it — runs <code>flatcar-install</code>, and reboots into the freshly installed system,
-   which then runs <code>kubeadm</code>.
-6. Leave the boot server up until the node is <code>Ready</code>: the sysext images are
-   still fetched from it on that first boot. Then stop it.</p>
-</li>
-</ol>
-<p>One node at a time is safe if you are rebuilding rather than repartitioning —
-etcd keeps quorum and Ceph backfills, exactly as in
-<a href="#replacing-a-failed-node">Replacing a failed node</a>. Repartitioning is different
-only in that it destroys every OSD as it goes, so a rolling rebuild across all
-six nodes eventually destroys all replicas of everything. Step 1 is not optional
-for that case.</p>
-<div class="admonition note">
-<p class="admonition-title">The menu will not do this by accident</p>
-<p>The PXE entry that installs has to be chosen. The menu's default is
-<code>LOCALBOOT</code>, so a node that reboots while the boot server happens to be
-running boots what it already has. The install does not touch the
-firmware's boot order, which means the menu decides on every boot, on
-every node — see <a href="../architecture/boot-process/#boot-order">Boot order</a>.</p>
-</div>
-<p>Only the <em>last</em> partition can grow without a reinstall. Shrinking <code>rook-osd</code> to
-make room for something else cannot be done in place either, because Ceph has
-already written across the space you would be taking back.</p>
-<h2 id="replacing-a-failed-node">Replacing a failed node<a class="headerlink" href="#replacing-a-failed-node" title="Permanent link">&para;</a></h2>
-<ol>
-<li>
-<p>Remove it from the cluster:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
-</span></code></pre></div>
-</li>
-<li>
-<p>Let Ceph re-replicate. With <code>useAllNodes: true</code> the OSD on that disk is gone
-   for good; check <code>ceph status</code> returns to <code>HEALTH_OK</code> before continuing. This
-   is not a step to rush — Ceph will tell you when it is done, and it is never as
-   fast as you would like.</p>
-</li>
-<li>
-<p>If it was a control-plane node, remove its etcd member. A dead member left in
-   the list still counts toward quorum, which is a delightful way to lose a
-   cluster that is otherwise fine:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>Reprovision the replacement following <a href="#adding-a-node-after-the-initial-build">Adding a node</a>.</p>
-</li>
-</ol>
-<div class="admonition danger">
-<p class="admonition-title">Danger</p>
-<p>On a cluster provisioned before the <a href="control-plane-vip/">Control Plane VIP</a>, <code>odin</code> is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's <code>k8sServiceHost</code>, so losing it breaks node joins and Cilium's API connection on every other node. Check which endpoint your kubeconfig uses before assuming otherwise.</p>
-</div>
-<h2 id="where-to-look-when-something-is-wrong">Where to look when something is wrong<a class="headerlink" href="#where-to-look-when-something-is-wrong" title="Permanent link">&para;</a></h2>
-<p>The table that saves the most time. Resist the urge to start with <code>kubectl
-describe</code> on the thing that looks broken; start here, because the thing that
-looks broken is usually downstream of something duller:</p>
-<table>
-<thead>
-<tr>
-<th>Symptom</th>
-<th>First check</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Secrets missing, certificates not renewing</td>
-<td>OpenBao sealed — <code>bao status</code></td>
-</tr>
-<tr>
-<td>Pods pending on a fresh node</td>
-<td>Node still <code>NotReady</code>; check Cilium is running on it</td>
-</tr>
-<tr>
-<td><code>ExternalSecret</code> not syncing</td>
-<td><a href="../platform/external-secrets/#troubleshooting">External Secrets troubleshooting</a></td>
-</tr>
-<tr>
-<td>PVCs stuck pending</td>
-<td><code>ceph status</code>, then the <a href="../platform/rook-ceph/">Rook dashboard</a></td>
-</tr>
-<tr>
-<td>A hostname stopped resolving to the cluster</td>
-<td>Gateway lost its LoadBalancer IP; check the Cilium L2 pool</td>
-</tr>
-<tr>
-<td>Node not rejoining after reboot</td>
-<td><code>journalctl -u kubelet</code> on the node</td>
-</tr>
-</tbody>
-</table>
-<p>Alerts are mailed by Alertmanager — see
-<a href="../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a>. The checks above
-are still worth running, because the delivery path itself is not monitored. An
-empty inbox means either that nothing is wrong or that the mail stopped working,
-and those two look identical from here.</p>
 
 
 
@@ -1442,13 +1289,13 @@ and those two look identical from here.</p>
         
         
           
-          <a href="./upgrades/" class="md-footer__link md-footer__link--next" aria-label="Next: Updates &amp; Upgrades">
+          <a href="./troubleshooting/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Updates & Upgrades
+                Troubleshooting
               </div>
             </div>
             <div class="md-footer__button md-icon">

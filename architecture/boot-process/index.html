@@ -354,6 +354,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1084,6 +1088,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1640,7 +1648,7 @@ data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>
-<p>Nothing is chosen at the console. <code>PROMPT 0</code> boots whatever <code>DEFAULT</code> names and shows no menu, and the template always emits <code>DEFAULT localboot</code> — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with <code>make reinstall</code>, which rewrites that one line in the generated file; see <a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.</p>
+<p>Nothing is chosen at the console. <code>PROMPT 0</code> boots whatever <code>DEFAULT</code> names and shows no menu, and the template always emits <code>DEFAULT localboot</code> — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with <code>make reinstall</code>, which rewrites that one line in the generated file; see <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Repartitioning the nodes</a>. Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.</p>
 </div>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once Kubeadm has initialized the control plane, the remaining components are

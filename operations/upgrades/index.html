@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://janwelker.github.io/homelab/operations/upgrades/">
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../nodes/">
       
       
         <link rel="next" href="../backups/">
@@ -346,6 +346,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -720,6 +724,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -773,6 +781,60 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1191,6 +1253,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1256,7 +1322,7 @@ drop-ins below already use, and the file a reboot coordinator watches.</p>
 it, and uncordons it, one node at a time inside a nightly window and only while
 Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
 do when you do not want to wait for the window — see
-<a href="../#rebooting-a-node">Rebooting a node</a>.</p>
+<a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
 <p><code>locksmithd</code> is masked rather than merely disabled, incidentally, because a
 service that reboots a storage node without draining it first is not a feature,
 it is a scheduled outage with good manners.</p>
@@ -1324,7 +1390,7 @@ this is the deliberate path:</p>
 <li>
 <p>Reboot nodes to pick up the new sysext. Kured does this on its own once
    sysupdate sets the sentinel, one node at a time; to move faster, follow
-   <a href="../#rebooting-a-node">Rebooting a node</a> instead.</p>
+   <a href="../nodes/#rebooting-a-node">Rebooting a node</a> instead.</p>
 </li>
 <li>On a control-plane node, run <code>kubeadm upgrade</code> as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
@@ -1401,7 +1467,7 @@ scratch lands where the cluster already is.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Operations">
+          <a href="../nodes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Node Lifecycle">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1411,7 +1477,7 @@ scratch lands where the cluster already is.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Operations
+                Node Lifecycle
               </div>
             </div>
           </a>

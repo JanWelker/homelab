@@ -354,6 +354,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1279,6 +1283,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1712,7 +1720,7 @@ here, so roughly 1.1TB raw and 365GB usable at three replicas across six nodes. 
 partition is raw, so its contents are wherever Ceph last wrote them, and
 inserting anything ahead of it shifts its start offset and takes the OSD data
 with it. Changing the partition table above <code>rook-osd</code> is a
-<a href="../../operations/#repartitioning-the-nodes">reinstall</a>, not an edit.</p>
+<a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">reinstall</a>, not an edit.</p>
 <div class="admonition note">
 <p class="admonition-title">A rebuild wipes the OSD deliberately</p>
 <p>Ignition declares <code>rook-osd</code> with <code>format: none</code> and <code>wipe_filesystem: true</code> — erase what is there, put nothing back, do not mount it. That is aimed squarely at the failure below: <code>ceph-volume</code> reads the BlueStore <em>signature</em>, not the partition table, so a reinstalled node that left the old bytes in place brings an OSD back into a cluster that has never heard of it. The installer also destroys the GPT and discards the whole device where the hardware supports it, but the <code>format: none</code> entry is the one that is guaranteed to run.</p>
@@ -1912,7 +1920,7 @@ Take a backup off the disks <em>before</em> a rebuild if you need one.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
 </span></code></pre></div>
 <p>Then network-boot it — see
-<a href="../../operations/#repartitioning-the-nodes">Repartitioning the nodes</a>. The
+<a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Repartitioning the nodes</a>. The
 installer clears filesystem signatures from every partition, zaps the GPT, and
 discards the whole device where the hardware supports it, so the <code>osd-prepare</code>
 job on the rebuilt node finds a blank partition.</p>
