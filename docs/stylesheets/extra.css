@@ -36,3 +36,12 @@
   /* Links: 9.8:1 on slate */
   --md-typeset-a-color: #8cbde6;
 }
+
+/* Reference tables written with an empty header row -- "| | |" in Markdown --
+   use the first column as the label, so there is nothing to put in a header.
+   Markdown still emits an empty <thead>, which renders as a blank strip above
+   the first row. Hide it, but only when every header cell is genuinely empty,
+   so ordinary tables keep their headers. */
+.md-typeset table:not([class]) thead:not(:has(th:not(:empty))) {
+  display: none;
+}
