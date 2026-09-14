@@ -33,9 +33,19 @@ spec:
           grafana:
             enabled: true
 
+            # NEEDS WORK. Grafana's own container peaked at 680Mi, which is
+            # high for a dashboard renderer at this scale and wants explaining
+            # before it is capped -- a limit set under whatever is actually
+            # holding that memory turns a slow dashboard into a restart loop.
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
             # The dashboard and datasource sidecars, which peaked at 89Mi and
-            # 92Mi. Grafana's own container is not capped here -- see the note
-            # further down.
+            # 92Mi.
             sidecar:
               resources:
                 requests:
@@ -93,6 +103,18 @@ spec:
 
           prometheus:
             prometheusSpec:
+              # NEEDS WORK. Measured peak 1501Mi over 23h with no Renovate batch
+              # and no Ceph rebuild in it. Prometheus grows with active series
+              # and with retention -- 10d here, of which the cluster has so far
+              # produced one -- so the observed peak is close to a lower bound.
+              # OOMKilling Prometheus also blinds kured, which reads it before
+              # rebooting a node.
+              resources:
+                requests:
+                  cpu: 250m
+                  memory: 1536Mi
+                limits:
+                  memory: 4Gi
               ruleSelector: {}
               ruleNamespaceSelector: {}
               serviceMonitorSelector: {}
@@ -246,12 +268,6 @@ spec:
 
           # Memory limits sized from measured peak working set at roughly 2.5x.
           #
-          # Prometheus and Grafana are deliberately absent. Prometheus peaked at
-          # 1501Mi and grows with series count and retention; Grafana peaked at
-          # 680Mi, which is high enough for a dashboard renderer that it wants
-          # explaining before it is capped. Neither can be sized from 23h of
-          # steady state, and OOMKilling the thing that tells you the cluster is
-          # unhealthy is the specific failure worth avoiding. Tracked separately.
           prometheusOperator:
             resources:
               requests:
