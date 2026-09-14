@@ -39,12 +39,13 @@ switched off permanently, which is the real risk here.
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap — not on baseline's capability allow-list |
+| `kubescape` | `privileged` | The eBPF node-agent needs `hostPID`, hostPath mounts of `/` and `/sys`, and seven added capabilities — see [Kubescape &rarr; Namespace security level](kubescape.md#namespace-security-level) |
 | `cert-manager` | `baseline` | — |
 | `external-secrets` | `baseline` | — |
 | `argocd` | `baseline` | — |
 
 !!! note "`privileged` here means 'not yet reduced', not 'unexamined'"
-    Each of the four has a specific reason above. `audit` and `warn` are still set to `baseline` or `restricted` on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.
+    Each of the five has a specific reason above. `audit` and `warn` are still set to `baseline` or `restricted` on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.
 
 Namespace objects are owned by this Application so the labels stay declarative
 rather than being applied once by `CreateNamespace=true` and then drifting.

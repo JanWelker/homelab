@@ -21,7 +21,16 @@ The server is started via the Makefile:
 make serve
 ```
 
-This requires `sudo` privileges to bind to the privileged port 69 (TFTP).
+This requires `sudo` privileges to bind to the privileged port 69 (TFTP), and it
+has to be run from the repository root — `serve.py` resolves both document roots
+relative to the working directory.
+
+!!! danger "`serve.py` holds its own copy of the boot server address"
+    `BIND_IP` at the top of `boot_server/serve.py` is a second, independent copy of `boot_server_ip` from `ansible/inventory.yaml`, and nothing keeps the two in step. The TFTP server binds it explicitly, so on a network where it is wrong `make serve` either fails to bind or answers nobody, while the PXE menus point somewhere else entirely — change both, or you will debug the symptom in [Troubleshooting PXE boot](../quickstart.md#troubleshooting-pxe-boot) and find nothing wrong with the thing you edited.
+
+Note also that only TFTP binds that address. The HTTP server listens on every
+interface the host has, which is worth knowing when reading the exposure warning
+below: the segment is the limit for the bootloader, not for the Ignition configs.
 
 Leave it in the foreground where you can see it. The request log is the best
 diagnostic tool in the whole provisioning process — you can watch a node
@@ -30,7 +39,11 @@ at tells you exactly what is wrong. See
 [Troubleshooting PXE boot](../quickstart.md#troubleshooting-pxe-boot).
 
 It opens by saying what it is serving and which nodes are armed, then narrates
-one line per request, against the node that made it:
+one line per request, against the node that made it. If any node is armed, that
+opening is a boxed warning naming every disk about to be wiped, with the two
+cancel commands underneath it — `make reinstall-cancel`, and the `LIMIT=<node>`
+form for one. If no menus exist at all it says so and names `make config`, which
+is the first thing a new user hits.
 
 ```console
 20:33:04  server        http on 10.9.200.222:8000 from output/http
@@ -68,6 +81,26 @@ the disk and reboot; that is the moment the menu is rewritten to
 `DEFAULT localboot`. It is the same one-line edit `make reinstall-cancel`
 makes, and re-running `make config` regenerates the file from the template
 either way.
+
+A node that never fetched an Ignition config cannot be identified by name, so
+the server cannot disarm it either; it says so and tells you to run
+`make reinstall-cancel` yourself.
+
+### On the way out
+
+Arming survives the boot server. The menu is a file on disk, so a node left
+armed installs the next time it powers on whether or not anything is serving.
+
+`Ctrl-C` therefore checks. If anything is still armed it prints what, explains
+that the menu does not need the boot server to fire, and offers to disarm:
+
+```console
+  Disarm 2 node(s) now? [Y/n]
+```
+
+Enter accepts. Anything else leaves them armed and repeats the cancel command.
+When stdin is not a terminal — a CI run, a `nohup` — it cannot ask, so it warns
+and leaves them armed.
 
 !!! warning "It disarms on delivery, not on success"
     The boot server sees an HTTP transfer complete; it cannot see whether `flatcar-install` then wrote the disk. An install that fails *after* the download leaves a node that is disarmed and has no working disk. That is loud rather than subtle — `flatcar-install.service` deliberately does not reboot on failure, so the node sits in the PXE environment with its journal — but the fix is `make reinstall LIMIT=<node>` before you power cycle it, not just a reboot.

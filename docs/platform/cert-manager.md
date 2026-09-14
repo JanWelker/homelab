@@ -48,6 +48,9 @@ The IAM user needs at minimum:
 !!! note
     Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. This is the dependency that catches people after every power cut: sealed OpenBao means no Route53 credentials, which means no renewals, which means an expired certificate roughly two months later with no obvious connection to the outage that caused it. For the very first bootstrap, see the [Quickstart](../quickstart.md) which walks through the order.
 
+!!! note "cert-manager is installed twice, sort of"
+    `make install-cert-manager` — which `make install-core` calls — installs the chart and the ClusterIssuers by Helm before ArgoCD exists, and ArgoCD then adopts them. As with Cilium, there is only one pin: the `Makefile` reads `targetRevision` out of `application.yaml` rather than keeping a version of its own. On a single tainted node this is the target that hangs; see [Single-node clusters](../quickstart.md#single-node-clusters).
+
 ## Issuers
 
 | Issuer | Purpose |
