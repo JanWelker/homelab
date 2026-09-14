@@ -27,6 +27,20 @@ spec:
         deploymentMode: SingleBinary
 
         loki:
+          # The chart already runs Loki as 10001 with a read-only root and no
+          # capabilities. seccomp is the one piece missing, and pod level is
+          # where it belongs: it covers the rules sidecar beside Loki as well.
+          # Note this is loki.podSecurityContext and not
+          # singleBinary.podSecurityContext -- the latter does not exist, so
+          # setting it there is silently inert.
+          podSecurityContext:
+            fsGroup: 10001
+            fsGroupChangePolicy: OnRootMismatch
+            runAsGroup: 10001
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
           auth_enabled: false
           commonConfig:
             replication_factor: 1

@@ -27,6 +27,17 @@ spec:
         controller:
           enabled: true
           replicaCount: 2
+          # The chart already drops ALL and runs non-root with a read-only
+          # root; these are the two it leaves out.
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           resources:
             requests:
               cpu: 10m

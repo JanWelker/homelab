@@ -55,6 +55,12 @@ spec:
             capabilities:
               drop:
                 - ALL
+            # runAsUser 0 above is load-bearing and stays. seccomp is
+            # orthogonal to it: RuntimeDefault constrains which syscalls root
+            # can make, which is worth having precisely because this one is
+            # root.
+            seccompProfile:
+              type: RuntimeDefault
 
           resources:
             requests:

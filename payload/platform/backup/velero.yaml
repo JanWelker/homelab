@@ -77,6 +77,20 @@ spec:
           defaultSnapshotMoveData: true
           uploaderType: kopia
 
+        # runAsNonRoot is deliberately absent. The velero-plugin-for-aws
+        # initContainer copies itself into /target, and whether that works as a
+        # non-root user depends on the image's own USER rather than on anything
+        # set here -- worth confirming on a real backup before asserting it.
+        # The other three cost nothing and are safe.
+        podSecurityContext:
+          seccompProfile:
+            type: RuntimeDefault
+        containerSecurityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
         snapshotsEnabled: true
         # Required by the data mover: the node agent is what actually reads the
         # snapshot and streams it to object storage.
