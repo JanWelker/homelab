@@ -1,4 +1,4 @@
-.PHONY: download config serve clean kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
+.PHONY: download config serve clean clean-artifacts kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
 
 chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
 CILIUM_VERSION       := $(call chart_version,payload/platform/cilium/application.yaml)
@@ -121,4 +121,42 @@ reinstall-cancel:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml -e pxe_default=localboot $(if $(LIMIT),--limit "$(LIMIT)")
 
 clean:
-	rm -rf output/*
+	@printf '%s\n' \
+	  '' \
+	  '  make clean deletes everything under output/, including credentials that' \
+	  '  are generated once and never regenerated identically:' \
+	  '' \
+	  '    output/credentials/openbao-init.json  the 5 OpenBao unseal keys and root' \
+	  '                                          token. Without these every secret' \
+	  '                                          the cluster holds is unrecoverable.' \
+	  '    output/credentials/encryption_key     decrypts the Secrets in etcd.' \
+	  '    output/credentials/certificate_key    joins control-plane nodes.' \
+	  '    output/credentials/kubeadm_token_*    joins worker nodes.' \
+	  '    output/kubeconfig                     admin credential for the cluster.' \
+	  '' \
+	  '  make config writes NEW values for those, which a cluster already running' \
+	  '  on the old ones will not accept.' \
+	  '' \
+	  '  Regenerable, and the only part worth cleaning:' \
+	  '' \
+	  '    output/http/   Flatcar image, kernel, initrd, sysexts   make download' \
+	  '    output/tftp/   bootloader and PXE menus                 make config' \
+	  '    output/tmp/    scratch space                            make config' \
+	  '' \
+	  '  Copy output/credentials/ somewhere safe first, or run make clean-artifacts' \
+	  '  to remove only the regenerable half.' \
+	  ''
+	@if [ ! -t 0 ]; then \
+	  echo "  not a terminal -- re-run interactively, or use make clean-artifacts"; \
+	  exit 1; \
+	fi; \
+	printf '  Delete output/credentials/ and everything else under output/? [y/N] '; \
+	read -r reply; \
+	case "$$reply" in \
+	  [yY]|[yY][eE][sS]) rm -rf output/*; echo "  output/ emptied.";; \
+	  *) echo "  cancelled -- nothing deleted.";; \
+	esac
+
+clean-artifacts:
+	rm -rf output/http output/tftp output/tmp
+	@echo "Downloaded and generated artifacts removed. output/credentials/ kept."
