@@ -63,8 +63,19 @@ generated — never edit anything in there, it will be overwritten by the next
 └── README.md
 ```
 
-!!! danger "`make clean` is `rm -rf output/*`, and that includes the credentials"
-    "Generated" does not mean "regenerable". Everything under `output/credentials/` is generated *once* and then read back on subsequent runs — the bootstrap token, the certificate key, and the etcd encryption key that decrypts every Secret in the cluster. Delete them and `make config` writes new ones, which is exactly what you do not want against a cluster that is already running on the old ones. Back that directory up before you reach for `clean`.
+!!! danger "`output/` is generated; `output/credentials/` is not regenerable"
+    Everything under `output/credentials/` is generated *once* and read back on every later run: the kubeadm token, the certificate key, the etcd encryption key that decrypts every Secret in the cluster, and the five OpenBao unseal keys. `make config` writes **new** values for any that are missing, which a cluster already running on the old ones will not accept. Losing all five unseal keys loses every secret the cluster holds, permanently.
+
+`make clean` empties the whole of `output/`, so it prints that inventory and
+asks before it does anything; it refuses outright when it is not attached to a
+terminal. `make clean-artifacts` removes only the regenerable half — `http/`,
+`tftp/` and `tmp/` — and is the one to reach for when you just want a fresh
+download.
+
+| Target | Removes | Keeps |
+| --- | --- | --- |
+| `make clean-artifacts` | `output/http`, `output/tftp`, `output/tmp` | `output/credentials/`, `output/kubeconfig` |
+| `make clean` | everything under `output/` | nothing — it asks first |
 
 A useful mental split: `ansible/` and `boot_server/` only matter while a node is
 being built. `payload/` matters every day after that. If you are debugging a
