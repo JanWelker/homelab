@@ -8,8 +8,15 @@ name: Preview Documentation
       - "reopened"
       - "synchronize"
       - "closed"
+    # Matches docs.yaml. This job runs the only `zensical build --strict` a
+    # pull request gets, so anything that can break the build belongs here --
+    # a theme or nav change in zensical.toml breaks it exactly as readily as a
+    # broken link in a page, and used to reach main with no build at all.
     paths:
       - "docs/**"
+      - "overrides/**"
+      - "zensical.toml"
+      - ".github/workflows/preview.yaml"
 
 permissions:
   contents: read
