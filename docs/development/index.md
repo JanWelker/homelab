@@ -7,14 +7,37 @@ description: "How to work on this repository — writing documentation, adding w
 How to work on this repository — and, more to the point, how to change it
 without surprising the cluster.
 
-- **[Contributing](contributing.md)**: Repository setup, the checks that run,
-    commit conventions, and validating a `payload/` change before you push.
-- **[Documentation System](documentation.md)**: How this site is built with
-    Zensical and published to GitHub Pages, and how to preview it locally.
-- **[Maintenance](maintenance.md)**: The CI workflows that lint the repository
-    and the Renovate configuration that keeps dependencies current.
-- **[Adding a Workload](add-workload.md)**: Deploying a new application to the
-    cluster, from the ArgoCD Application through to documenting it.
+<div class="grid cards" markdown>
+
+- **[Contributing](contributing.md)**
+
+    ---
+
+    Repository setup, the checks that run, commit conventions, and how to
+    validate a `payload/` change before you push it at real hardware.
+
+- **[Adding a Workload](add-workload.md)**
+
+    ---
+
+    Deploying a new application, from the ArgoCD Application through to the
+    documentation page the build will fail without.
+
+- **[Documentation System](documentation.md)**
+
+    ---
+
+    How this site is built with Zensical and published, how to preview it
+    locally, and the two markdownlint rules that will catch you.
+
+- **[Maintenance](maintenance.md)**
+
+    ---
+
+    The CI workflows that lint the repository, and what Renovate is and is not
+    allowed to merge on its own.
+
+</div>
 
 ## Conventions
 
