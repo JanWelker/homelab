@@ -1464,32 +1464,119 @@ bare metal does not come with the thing a cloud provider would have handed you. 
 storage API, no identity provider, no backup service. This section is the bill
 for not having those.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong><a href="authentik/">authentik</a></strong>: Single sign-on for every platform UI.</li>
-<li><strong>backup</strong>: Velero, the CSI snapshot controller and an etcd snapshot CronJob —
-  see <a href="../operations/backups/">Backups &amp; Recovery</a>.</li>
-<li><strong><a href="cert-manager/">cert-manager</a></strong>: TLS certificate automation.</li>
-<li><strong><a href="cilium/">cilium</a></strong>: CNI and Gateway API. Enforces the policies in
-  <a href="security-policies/">security policies</a>.</li>
-<li><strong><a href="external-dns/">external-dns</a></strong>: Publishes Route53 records from HTTPRoutes.</li>
-<li><strong><a href="external-secrets/">external-secrets</a></strong>: Bridges OpenBao to native K8s Secrets.</li>
-<li><strong><a href="gateway-api/">gateway-api</a></strong>: Gateway API resources (Gateways, HTTPRoutes).</li>
-<li><strong>kubelet-csr-approver</strong>: Approves <code>kubelet-serving</code> certificate requests
-  against the inventory, so kubelet TLS is verified rather than skipped — see
-  <a href="metrics-server/#verifying-the-kubelet-instead-of-trusting-it">Metrics Server</a>.</li>
-<li><strong><a href="kubescape/">kubescape</a></strong>: Scans the cluster against CIS, NSA and MITRE
-  nightly and exports the findings to Grafana.</li>
-<li><strong><a href="kured/">kured</a></strong>: Drains and reboots nodes to apply staged OS, Kubernetes
-  and containerd updates.</li>
-<li><strong><a href="logging/">logging</a></strong>: Loki and Grafana Alloy, for container and node logs.</li>
-<li><strong><a href="metrics-server/">metrics-server</a></strong>: The <code>metrics.k8s.io</code> resource metrics
-  API, behind <code>kubectl top</code> and every HPA.</li>
-<li><strong><a href="monitoring/">monitoring</a></strong>: Observability stack (Prometheus, Grafana).</li>
-<li><strong><a href="openbao/">openbao</a></strong>: Cluster-wide secret store.</li>
-<li><strong><a href="rook-ceph/">rook-ceph</a></strong>: Distributed storage.</li>
-<li><strong><a href="security-policies/">security policies</a></strong>: Pod Security Admission levels and
-  default-deny ingress policies.</li>
-</ul>
+<p>Alphabetical, with the namespace it lands in and the sync wave it lands at.
+The <a href="#usage">wave ordering</a> below explains why those numbers are what they are.</p>
+<!-- markdownlint-disable MD013 -->
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Namespace</th>
+<th>Wave</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="authentik/">authentik</a></td>
+<td><code>authentik</code></td>
+<td><code>2</code></td>
+<td>Single sign-on for every platform UI</td>
+</tr>
+<tr>
+<td>backup</td>
+<td><code>backup</code></td>
+<td><code>1</code></td>
+<td>Velero, the CSI snapshot controller and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
+</tr>
+<tr>
+<td><a href="cert-manager/">cert-manager</a></td>
+<td><code>cert-manager</code></td>
+<td><code>-5</code></td>
+<td>Let's Encrypt wildcards over a Route53 DNS-01 challenge</td>
+</tr>
+<tr>
+<td><a href="cilium/">cilium</a></td>
+<td><code>kube-system</code></td>
+<td><code>-1</code></td>
+<td>CNI, <code>kube-proxy</code> replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble</td>
+</tr>
+<tr>
+<td><a href="external-dns/">external-dns</a></td>
+<td><code>external-dns</code></td>
+<td><code>2</code></td>
+<td>Publishes Route53 records from HTTPRoutes</td>
+</tr>
+<tr>
+<td><a href="external-secrets/">external-secrets</a></td>
+<td><code>external-secrets</code></td>
+<td><code>-6</code></td>
+<td>Bridges OpenBao to native Kubernetes Secrets</td>
+</tr>
+<tr>
+<td><a href="gateway-api/">gateway-api</a></td>
+<td><code>gateway-system</code></td>
+<td><code>-4</code></td>
+<td>The two Gateways and the HTTP-to-HTTPS redirect</td>
+</tr>
+<tr>
+<td>kubelet-csr-approver</td>
+<td><code>kubelet-csr-approver</code></td>
+<td><code>1</code></td>
+<td>Approves <code>kubelet-serving</code> CSRs against the inventory — see <a href="metrics-server/#verifying-the-kubelet-instead-of-trusting-it">Metrics Server</a></td>
+</tr>
+<tr>
+<td><a href="kubescape/">kubescape</a></td>
+<td><code>kubescape</code></td>
+<td><code>2</code></td>
+<td>Nightly CIS, NSA and MITRE posture scans, exported to Grafana</td>
+</tr>
+<tr>
+<td><a href="kured/">kured</a></td>
+<td><code>kured</code></td>
+<td><code>2</code></td>
+<td>Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates</td>
+</tr>
+<tr>
+<td><a href="logging/">logging</a></td>
+<td><code>logging</code></td>
+<td><code>1</code></td>
+<td>Loki and Grafana Alloy, for container, journal and audit logs</td>
+</tr>
+<tr>
+<td><a href="metrics-server/">metrics-server</a></td>
+<td><code>kube-system</code></td>
+<td><code>2</code></td>
+<td>The <code>metrics.k8s.io</code> API behind <code>kubectl top</code> and every HPA</td>
+</tr>
+<tr>
+<td><a href="monitoring/">monitoring</a></td>
+<td><code>monitoring</code></td>
+<td><code>1</code></td>
+<td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics</td>
+</tr>
+<tr>
+<td><a href="openbao/">openbao</a></td>
+<td><code>openbao</code></td>
+<td><code>0</code></td>
+<td>Cluster-wide secret store</td>
+</tr>
+<tr>
+<td><a href="rook-ceph/">rook-ceph</a></td>
+<td><code>rook-ceph</code></td>
+<td><code>-3</code> to <code>0</code></td>
+<td>Replicated block storage and an S3 object store</td>
+</tr>
+<tr>
+<td><a href="security-policies/">security policies</a></td>
+<td><code>kube-system</code></td>
+<td><code>3</code></td>
+<td>Pod Security Admission levels and default-deny ingress policies</td>
+</tr>
+</tbody>
+</table>
+<!-- markdownlint-enable MD013 -->
+
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     Client([Client]) --&gt; LB[Cilium LoadBalancer]

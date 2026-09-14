@@ -1104,10 +1104,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#before-you-read-this" class="md-nav__link">
+  <a href="#what-is-in-this-section" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Before you read this
+        What is in this section
       </span>
     </span>
   </a>
@@ -1286,11 +1286,57 @@
 Linux and Kubeadm. No cloud provider, no managed control plane, no friendly
 button labelled "create cluster" — just six machines, a network, and a
 deployment host that talks them into existence.</p>
-<h2 id="before-you-read-this">Before you read this<a class="headerlink" href="#before-you-read-this" title="Permanent link">&para;</a></h2>
 <p>This page assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
 GitOps are. If any of those is new, <a href="../concepts/">Core Concepts</a> covers all
-five in one page — the five ideas this cluster is built on, and what each one
-costs.</p>
+five in one page.</p>
+<h2 id="what-is-in-this-section">What is in this section<a class="headerlink" href="#what-is-in-this-section" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
+<ul>
+<li>
+<p><strong><a href="boot-process/">Boot &amp; Bootstrap Process</a></strong></p>
+<hr />
+<p>One node from power-on to <code>kubectl get nodes</code>, arrow by arrow. The page to
+read when an install stalls, because it turns "it hangs" into "which arrow
+did not happen?"</p>
+</li>
+<li>
+<p><strong><a href="boot-server/">Boot Server</a></strong> · <strong><a href="ansible/">Ansible</a></strong></p>
+<hr />
+<p>The two halves of the deployment host: the Python script that serves TFTP
+and HTTP to a booting node, and the playbooks that generate everything it
+serves.</p>
+</li>
+<li>
+<p><strong><a href="gitops/">GitOps Strategy</a></strong></p>
+<hr />
+<p>App-of-Apps, and the sync waves that make a fresh bootstrap converge instead
+of deadlocking on a CRD that does not exist yet.</p>
+</li>
+<li>
+<p><strong><a href="decisions/">Design Decisions</a></strong></p>
+<hr />
+<p>Seven choices, each stated as <em>X, not Y</em>, each with the cost it carries.
+Read this before proposing a simpler alternative — it is probably in here.</p>
+</li>
+<li>
+<p><strong><a href="security/">Security Posture</a></strong></p>
+<hr />
+<p>The trust boundary this cluster assumes, what is deliberately not enforced,
+and the audit logging that records the rest.</p>
+</li>
+<li>
+<p><strong><a href="limitations/">Known Limitations</a></strong></p>
+<hr />
+<p>What it does not do, written down so it is findable before it is discovered.</p>
+</li>
+<li>
+<p><strong><a href="directory-structure/">Repository Layout</a></strong></p>
+<hr />
+<p>Which of the four top-level directories to be in, and which one never to
+edit by hand.</p>
+</li>
+</ul>
+</div>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <h3 id="1-deployment-host-local-machine">1. Deployment Host (Local Machine)<a class="headerlink" href="#1-deployment-host-local-machine" title="Permanent link">&para;</a></h3>
 <p>The machine where this project is executed. Notably <strong>not</strong> part of the cluster —
