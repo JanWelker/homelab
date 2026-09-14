@@ -205,3 +205,52 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+---
+# NEEDS WORK -- neither of the two policies below has been proved against a run
+# of the thing it protects. Both are the same ingress-only shape as the ones
+# above; what is unproved is whether that shape is sufficient here, and both
+# fail quietly rather than loudly if it is not.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: backup
+spec:
+  description: >-
+    Default-deny ingress for Velero. Prometheus scrapes velero:8085 and the
+    node's probes reach the pods; the node-agent and the snapshot controller
+    talk outward to the CSI plugins and to Ceph RGW rather than being connected
+    to.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: kubescape
+spec:
+  description: >-
+    Default-deny ingress for kubescape. The operator, node-agent, kubevuln and
+    storage all talk to each other inside the namespace; the API server reaches
+    the storage Service to serve the aggregated kubescape.io and
+    hostdata.kubescape.cloud APIs, which arrives as host rather than as a pod.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
