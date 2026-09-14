@@ -35,7 +35,7 @@ Each namespace carries three labels, and the split between them is the point:
 | Label | Set to | Effect |
 | --- | --- | --- |
 | `enforce` | The level the namespace demonstrably needs | Rejects pods that violate it |
-| `audit` | Stricter | Records violations in the [API server audit log](../architecture/security.md#audit-logging) |
+| `audit` | Stricter | Records violations in the [API server audit log](../architecture/audit-logging.md) |
 | `warn` | Stricter | Warns whoever applies the manifest |
 
 Enforcement is set to what already works, so **nothing running breaks**, while
