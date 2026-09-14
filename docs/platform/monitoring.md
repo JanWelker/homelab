@@ -8,6 +8,17 @@ Full observability stack based on [kube-prometheus-stack](https://github.com/pro
 
 One chart, five components, and roughly a hundred alerting rules you did not write and should read at least once. The default rule set is genuinely good; the default *routing* is not, which is what most of this page is about.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `monitoring` |
+| Sync wave | `1`; its CRDs arrive earlier, with `make install-core` |
+| Depends on | [Rook-Ceph](rook-ceph.md) for Prometheus and Grafana volumes, [Authentik](authentik.md) for the Grafana login |
+| If it is down | No alerts and no metrics — and [Kured](kured.md) loses the alert gate it checks before rebooting a node |
+| Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
+| UI | `monitoring.infra.k8s.wlkr.ch` (Grafana), `prometheus.` and `alertmanager.` |
+
 ## Components
 
 - **Prometheus**: Metrics collection and storage with 10-day retention.

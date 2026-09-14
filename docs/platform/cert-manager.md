@@ -11,6 +11,16 @@ RFC1918 addresses that Let's Encrypt cannot reach. Nothing on the public interne
 can complete an HTTP challenge against `10.9.2.248`. Proving control of the DNS
 zone works from anywhere, and it is also the only way to get a wildcard.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `cert-manager`; the certificates it issues land in `kube-system` |
+| Sync wave | `-5`; the ClusterIssuers at `2` and the Certificates at `3` |
+| Depends on | [External Secrets](external-secrets.md) for the Route53 credential, so transitively on [OpenBao](openbao.md) |
+| If it is down | Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later |
+| Health check | `kubectl get certificate -A` &rarr; all `READY=True` |
+
 ## Components
 
 - **ClusterIssuers**: Both staging (testing) and production issuers using DNS-01 via Route53.

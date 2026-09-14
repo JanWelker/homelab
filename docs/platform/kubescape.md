@@ -15,6 +15,17 @@ chart bump quietly introduced a container running as root and nobody was looking
 at that namespace. Posture is not a state you reach; it is a thing that decays,
 and the only useful measurement of it is a repeated one.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `kubescape` |
+| Sync wave | `2` |
+| Depends on | [Monitoring](monitoring.md) for the Prometheus it exports to |
+| If it is down | Nothing. This is the one component whose outage costs you only the next nightly scan |
+| Health check | `kubectl get configurationscansummaries -A` |
+| UI | A Grafana dashboard, not a UI of its own |
+
 ## What it scans
 
 `defaultFrameworks` is left empty, and empty means **all of them**. Naming

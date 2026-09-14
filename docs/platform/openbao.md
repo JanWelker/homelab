@@ -21,6 +21,17 @@ flowchart LR
     style Bao fill:#e1f5ff,stroke:#0288d1
 ```
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `openbao` |
+| Sync wave | `0`, after networking, storage and certificates exist |
+| Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes |
+| If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks entirely healthy from the outside |
+| Health check | `kubectl -n openbao exec openbao-0 -- bao status` &rarr; `Sealed: false` on all three |
+| UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |
+
 ## Architecture
 
 | Property           | Value                                                       |
@@ -29,7 +40,6 @@ flowchart LR
 | Storage backend    | Integrated Raft (`/openbao/data`, Ceph PVC per replica)     |
 | Audit storage      | Enabled, separate PVC on `rook-ceph-block`                  |
 | TLS                | Disabled inside the cluster — TLS terminates at the Gateway |
-| UI                 | `https://vault.infra.k8s.wlkr.ch`                           |
 | In-cluster service | `http://openbao.openbao.svc.cluster.local:8200`             |
 | Seal               | Shamir — 5 key shares, threshold 3, unsealed by hand        |
 
@@ -37,7 +47,7 @@ The chart is the official upstream [`openbao/openbao-helm`](https://github.com/o
 
 ## Bootstrap
 
-OpenBao is sync-wave `0` — it starts after cert-manager (`-5`), Cilium (`-1`), and the Rook-Ceph cluster (`-1`). ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
+ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
 
 Two commands do all of it:
 

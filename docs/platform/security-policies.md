@@ -12,6 +12,17 @@ The pattern used here — measure first, enforce second, one namespace at a time
 is unglamorous and is the only approach that survives contact with a running
 cluster.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `kube-system` for the Application; it owns Namespace objects across the cluster |
+| Sync wave | `3`, last, so it labels namespaces that already exist |
+| Depends on | [Cilium](cilium.md) to enforce the network policies |
+| If it is down | Nothing at the time. The labels and policies are already applied; what stops is them being corrected if something changes them |
+| Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce` |
+| Pruning | **Disabled.** This Application owns Namespaces, and pruning one deletes everything inside it |
+
 ## Pod Security Admission
 
 PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does

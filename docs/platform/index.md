@@ -18,7 +18,6 @@ for not having those.
 Alphabetical, with the namespace it lands in and the sync wave it lands at.
 The [wave ordering](#usage) below explains why those numbers are what they are.
 
-<!-- markdownlint-disable MD013 -->
 | Component | Namespace | Wave | What it does |
 | --- | --- | --- | --- |
 | [authentik](authentik.md) | `authentik` | `2` | Single sign-on for every platform UI |
@@ -37,7 +36,6 @@ The [wave ordering](#usage) below explains why those numbers are what they are.
 | [openbao](openbao.md) | `openbao` | `0` | Cluster-wide secret store |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | `-3` to `0` | Replicated block storage and an S3 object store |
 | [security policies](security-policies.md) | `kube-system` | `3` | Pod Security Admission levels and default-deny ingress policies |
-<!-- markdownlint-enable MD013 -->
 
 ## Traffic Flow
 
@@ -63,7 +61,6 @@ In that order — the answer is usually the first one.
 
 HTTPRoutes are co-located with their respective apps:
 
-<!-- markdownlint-disable MD013 -->
 | Service        | URL                              | HTTPRoute Location                           |
 |----------------|----------------------------------|----------------------------------------------|
 | ArgoCD         | `argo.infra.k8s.wlkr.ch`         | `payload/argocd/httproute.yaml`              |
@@ -75,7 +72,6 @@ HTTPRoutes are co-located with their respective apps:
 | OpenBao UI     | `vault.infra.k8s.wlkr.ch`        | `payload/platform/openbao/httproute.yaml`    |
 | Rook Dashboard | `rook.infra.k8s.wlkr.ch`         | `payload/platform/rook-ceph/httproute.yaml`  |
 | Apps           | `<app>.k8s.wlkr.ch`              | `payload/workloads/<app>/httproute.yaml`     |
-<!-- markdownlint-enable MD013 -->
 
 ## Usage
 
@@ -90,12 +86,10 @@ make install-argo  # ArgoCD
 
 Two parent ArgoCD Applications manage the cluster:
 
-<!-- markdownlint-disable MD013 -->
 | Application     | Role                            | Path                                |
 |-----------------|---------------------------------|-------------------------------------|
 | Platform Parent | Core platform components        | `payload/root.yaml` (App: platform) |
 | GitOps          | ArgoCD's own config + HTTPRoute | `payload/argocd/`                   |
-<!-- markdownlint-enable MD013 -->
 
 A third parent, `workloads`, is added back alongside the first workload. See
 [Adding a Workload](../development/add-workload.md).
@@ -110,7 +104,6 @@ Sync wave ordering. This is the dependency graph made explicit, and it is the
 reason a fresh bootstrap converges rather than deadlocking on a CRD that does
 not exist yet:
 
-<!-- markdownlint-disable MD013 -->
 | Wave | Applications | Other resources in the wave |
 | --- | --- | --- |
 | `-10` | `gateway-api-crds` | |
@@ -124,7 +117,6 @@ not exist yet:
 | `1` | `kube-prometheus-stack`, `logging`, `kubelet-csr-approver`, `backup` | the `route53-credentials` ExternalSecret |
 | `2` | `authentik`, `external-dns`, `kubescape`, `kured`, `loki`, `metrics-server`, `snapshot-controller` | both Let's Encrypt `ClusterIssuer`s |
 | `3` | `alloy`, `velero`, `security` | the gateway `Certificate`s, the `VolumeSnapshotClass` |
-<!-- markdownlint-enable MD013 -->
 
 Waves `1` through `3` are where a component and its own children separate:
 `logging` is the parent Application at `1`, and it brings Loki at `2` and Alloy

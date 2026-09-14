@@ -20,6 +20,16 @@ events, and no clue, just a dash where a number should be.
     controllers read directly. They are different consumers of the same
     underlying kubelet data.
 
+## At a glance
+
+| | |
+| --- | --- |
+| Namespace | `kube-system`; kubelet-csr-approver in `kubelet-csr-approver` |
+| Sync wave | `2`; kubelet-csr-approver at `1`, because the CSRs have to be approved first |
+| Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued |
+| If it is down | `kubectl top` and every HPA. Nothing else notices |
+| Health check | `kubectl top nodes` &rarr; a row per node |
+
 ## Verifying the kubelet instead of trusting it
 
 metrics-server scrapes each kubelet over TLS. By default a kubelet serves a
