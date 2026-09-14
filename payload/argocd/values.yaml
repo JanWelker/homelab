@@ -42,12 +42,23 @@ redis-ha:
 # not compressible and a limit there is what stops one workload taking a node
 # down.
 #
-# The application-controller is deliberately absent. It peaked at 1639Mi and
-# grows with the number of managed resources, which 23h of steady state is not
-# enough to size -- see the tracking issue.
+# The application-controller below is the exception to that confidence: its
+# figure is marked NEEDS WORK and is the reason this branch is a draft.
 
 controller:
   replicas: 1
+  # NEEDS WORK -- do not merge on the strength of the number alone.
+  # Measured peak 1639Mi over a 23h window with no Renovate batch and no Ceph
+  # rebuild in it. The application-controller's working set scales with the
+  # number of managed resources and with how much reconciliation is in flight,
+  # so its quiet-day peak is not its peak. 4Gi is 2.5x of a figure that is
+  # itself an underestimate.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      memory: 4Gi
 
 server:
   replicas: 3
