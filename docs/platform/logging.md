@@ -27,7 +27,7 @@ currently misbehaving.
 | Namespace | `logging` |
 | Sync wave | `1` parent, `2` Loki, `3` Alloy — the collector last, so it has somewhere to ship |
 | Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
-| If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/security.md#audit-logging) loses its durable copy |
+| If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
 
 ## What is collected
@@ -55,7 +55,7 @@ control-plane nodes and it is JSON rather than text, so it gets its own pipeline
 It lives on the root filesystem and survives a reboot there — collecting it is
 still what makes it queryable next to everything else, and what keeps a copy
 when the node itself is the thing that failed. See
-[Audit logging](../architecture/security.md#audit-logging) for what is recorded
+[Audit logging](../architecture/audit-logging.md) for what is recorded
 and at which level. Alloy runs on all six nodes and `local.file_match` simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
 than any scheduling constraint.

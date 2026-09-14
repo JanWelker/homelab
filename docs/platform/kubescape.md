@@ -212,7 +212,7 @@ enabled — the five ordinary Deployments beside the node-agent all still satisf
 it on their own. PSA is per-namespace, so one DaemonSet sets the level for all
 of them. `audit` and `warn` stay at `restricted` precisely so that the day one of
 those five stops qualifying, it shows up in the
-[audit log](../architecture/security.md#audit-logging) rather than becoming
+[audit log](../architecture/audit-logging.md) rather than becoming
 invisible behind an `enforce` level that permits everything.
 
 There is a certain symmetry in the cluster's security scanner being the thing
