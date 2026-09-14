@@ -59,7 +59,7 @@ the pod unschedulable on half the cluster, and what it did allocate would have
 been RAM shared with etcd.
 
 `/var/lib/kubelet` is a directory on a
-[125 GB root filesystem](../operations/index.md#repartitioning-the-nodes) now, so
+[125 GB root filesystem](../operations/nodes.md#rebuilding-or-repartitioning-a-node) now, so
 the request is ordinary and the pod lands anywhere.
 
 `relevancy` is the setting that makes the output worth reading. Without it a CVE

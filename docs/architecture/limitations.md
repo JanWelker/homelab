@@ -55,7 +55,7 @@ back, and the secrets do not, because nobody has typed in the keys yet. See
 The failure is quiet, which is the part that bites. A cluster with OpenBao
 sealed looks entirely healthy, and the consequence surfaces sixty days later
 when a certificate expires. Checking `bao status` after every reboot is the
-[routine](../operations/index.md#after-any-node-reboot-unseal-openbao) that
+[routine](../operations/nodes.md#after-any-node-reboot-unseal-openbao) that
 catches it.
 
 An auto-unseal seal — a cloud KMS, or a transit seal against a second OpenBao —

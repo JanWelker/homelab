@@ -108,7 +108,7 @@ KubeNodeNotReady, KubeAPIDown
 ```
 
 This is the automated form of the "confirm Ceph has recovered before moving on"
-step in [Rebooting a node](../operations/index.md#rebooting-a-node): rebooting a
+step in [Rebooting a node](../operations/nodes.md#rebooting-a-node): rebooting a
 second node while a placement group is still backfilling can take it below its
 minimum replica count. Which is to say — this list is what stands between a
 routine patch night and an unplanned lesson in Ceph recovery.

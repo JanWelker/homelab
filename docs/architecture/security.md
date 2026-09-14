@@ -192,7 +192,7 @@ else in the meantime.
 !!! note "This used to be a CIS deviation"
     `--audit-log-maxbackup` was `2` when `/var/log` was part of the tmpfs root
     the nodes ran from, because ten 100 MB files would have reserved 1.1 GB of
-    the RAM etcd was running in. [Installing to disk](../operations/index.md#repartitioning-the-nodes)
+    the RAM etcd was running in. [Installing to disk](../operations/nodes.md#rebuilding-or-repartitioning-a-node)
     removed the objection, and check 1.2.18 now passes along with 1.2.16,
     1.2.17 and 1.2.19.
 
