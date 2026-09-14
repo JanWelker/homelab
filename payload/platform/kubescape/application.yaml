@@ -127,6 +127,26 @@ spec:
           nodeAgent:
             serviceMonitor:
               enabled: true
+            # The DaemonSet ran on three of six nodes. Control-plane nodes are
+            # tainted NoSchedule and the chart ships no toleration, so the host
+            # scanner only ever collected from freya, heimdall and valkyrie --
+            # and every CIS host control (PKI file permissions, kubelet config
+            # ownership, CNI file ownership) was answering about workers while
+            # reporting "3 failed" as though that were the whole cluster.
+            #
+            # The control-plane nodes are the ones holding apiserver.key, sa.key
+            # and the etcd certificates. They were the unscanned half.
+            #
+            # Scoped to nodeAgent rather than customScheduling: the latter is
+            # global and would also let kubescape, kubevuln, operator and
+            # storage schedule onto the control plane, which is load those nodes
+            # do not need. The chart honours this key even though values.yaml
+            # does not document it -- see templates/node-agent/_node-agent.tpl,
+            # where nodeAgent.tolerations takes precedence over the global.
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
           prometheusExporter:
             serviceMonitor:
               enabled: true
