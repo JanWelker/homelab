@@ -33,7 +33,7 @@ here, so roughly 1.1TB raw and 365GB usable at three replicas across six nodes. 
 partition is raw, so its contents are wherever Ceph last wrote them, and
 inserting anything ahead of it shifts its start offset and takes the OSD data
 with it. Changing the partition table above `rook-osd` is a
-[reinstall](../operations/index.md#repartitioning-the-nodes), not an edit.
+[reinstall](../operations/nodes.md#rebuilding-or-repartitioning-a-node), not an edit.
 
 !!! note "A rebuild wipes the OSD deliberately"
     Ignition declares `rook-osd` with `format: none` and `wipe_filesystem: true` — erase what is there, put nothing back, do not mount it. That is aimed squarely at the failure below: `ceph-volume` reads the BlueStore *signature*, not the partition table, so a reinstalled node that left the old bytes in place brings an OSD back into a cluster that has never heard of it. The installer also destroys the GPT and discards the whole device where the hardware supports it, but the `format: none` entry is the one that is guaranteed to run.
@@ -216,7 +216,7 @@ make reinstall LIMIT=<node>
 ```
 
 Then network-boot it — see
-[Repartitioning the nodes](../operations/index.md#repartitioning-the-nodes). The
+[Repartitioning the nodes](../operations/nodes.md#rebuilding-or-repartitioning-a-node). The
 installer clears filesystem signatures from every partition, zaps the GPT, and
 discards the whole device where the hardware supports it, so the `osd-prepare`
 job on the rebuilt node finds a blank partition.

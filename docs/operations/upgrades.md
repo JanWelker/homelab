@@ -31,7 +31,7 @@ drop-ins below already use, and the file a reboot coordinator watches.
 it, and uncordons it, one node at a time inside a nightly window and only while
 Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
 do when you do not want to wait for the window — see
-[Rebooting a node](index.md#rebooting-a-node).
+[Rebooting a node](nodes.md#rebooting-a-node).
 
 `locksmithd` is masked rather than merely disabled, incidentally, because a
 service that reboots a storage node without draining it first is not a feature,
@@ -117,7 +117,7 @@ this is the deliberate path:
 
 5. Reboot nodes to pick up the new sysext. Kured does this on its own once
    sysupdate sets the sentinel, one node at a time; to move faster, follow
-   [Rebooting a node](index.md#rebooting-a-node) instead.
+   [Rebooting a node](nodes.md#rebooting-a-node) instead.
 6. On a control-plane node, run `kubeadm upgrade` as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
    steps kubeadm needs for control-plane components. Swapping binaries and

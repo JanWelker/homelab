@@ -142,6 +142,6 @@ kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'; echo
 ```
 
 To test failover, reboot the leader per
-[Rebooting a node](index.md#rebooting-a-node) and confirm `kubectl` keeps
+[Rebooting a node](nodes.md#rebooting-a-node) and confirm `kubectl` keeps
 working after a few seconds. Do this once, deliberately, on a quiet afternoon.
 Untested failover is not failover; it is a hypothesis.
