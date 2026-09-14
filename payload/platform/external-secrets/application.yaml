@@ -29,14 +29,29 @@ spec:
           serviceMonitor:
             enabled: true
             interval: 30s
+          # The webhook and cert-controller had no limits while the controller
+          # above did. Sized from measured peak working set at roughly 2.5x:
+          # webhook 33Mi, cert-controller 73Mi.
           webhook:
             serviceMonitor:
               enabled: true
               interval: 30s
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
           certController:
             serviceMonitor:
               enabled: true
               interval: 30s
+            resources:
+              requests:
+                cpu: 10m
+                memory: 80Mi
+              limits:
+                memory: 192Mi
           resources:
             requests:
               cpu: 10m

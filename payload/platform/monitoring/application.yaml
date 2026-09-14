@@ -33,6 +33,17 @@ spec:
           grafana:
             enabled: true
 
+            # The dashboard and datasource sidecars, which peaked at 89Mi and
+            # 92Mi. Grafana's own container is not capped here -- see the note
+            # further down.
+            sidecar:
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 112Mi
+                limits:
+                  memory: 256Mi
+
             # Single sign-on against Authentik. Grafana previously used the
             # chart's generated admin password -- a shared credential nobody
             # rotates, documented as "read it out of the Secret".
@@ -100,6 +111,12 @@ spec:
 
           alertmanager:
             alertmanagerSpec:
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 40Mi
+                limits:
+                  memory: 128Mi
               storage:
                 volumeClaimTemplate:
                   spec:
@@ -226,6 +243,46 @@ spec:
 
           kubeStateMetrics:
             enabled: true
+
+          # Memory limits sized from measured peak working set at roughly 2.5x.
+          #
+          # Prometheus and Grafana are deliberately absent. Prometheus peaked at
+          # 1501Mi and grows with series count and retention; Grafana peaked at
+          # 680Mi, which is high enough for a dashboard renderer that it wants
+          # explaining before it is capped. Neither can be sized from 23h of
+          # steady state, and OOMKilling the thing that tells you the cluster is
+          # unhealthy is the specific failure worth avoiding. Tracked separately.
+          prometheusOperator:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 80Mi
+              limits:
+                memory: 192Mi
+            # Sidecar next to both the Prometheus and Alertmanager pods.
+            prometheusConfigReloader:
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+
+          kube-state-metrics:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 56Mi
+              limits:
+                memory: 128Mi
+
+          prometheus-node-exporter:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/monitoring

@@ -129,6 +129,17 @@ spec:
             memory: 256Mi
           limits:
             memory: 1Gi
+
+        # The velero container above had a limit; the node-agent DaemonSet
+        # beside it did not. Sized from a measured 37Mi peak -- it is idle
+        # except during a backup, so the headroom here is deliberately wide.
+        nodeAgent:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 48Mi
+            limits:
+              memory: 256Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: backup

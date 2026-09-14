@@ -22,12 +22,32 @@ prometheus:
   serviceMonitor:
     enabled: true
 
+# Memory limits sized from measured peak working set at roughly 2.5x. The
+# cilium-agent DaemonSet is deliberately left without one: it peaked at 337Mi,
+# it is the one process on the node whose death takes pod networking with it,
+# and 23h of steady state is not enough to size something on that critical path.
+# Tracked separately.
+
 operator:
   replicas: 1
   prometheus:
     enabled: true
     serviceMonitor:
       enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 112Mi
+    limits:
+      memory: 256Mi
+
+envoy:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 48Mi
+    limits:
+      memory: 128Mi
 
 # Gateway API (replaces Ingress controller)
 gatewayAPI:
@@ -57,6 +77,26 @@ hubble:
       - http
   relay:
     enabled: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
   ui:
     enabled: true
     # Ingress removed - using Gateway API HTTPRoute instead
+    backend:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+    frontend:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi

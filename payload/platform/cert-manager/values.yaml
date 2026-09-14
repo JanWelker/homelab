@@ -15,3 +15,29 @@ prometheus:
   enabled: true
   servicemonitor:
     enabled: true
+
+# Sized from measured peak working set at roughly 2.5x: controller 84Mi,
+# cainjector 89Mi, webhook 24Mi. CPU requests but no CPU limits, matching the
+# pattern the rest of the platform uses.
+resources:
+  requests:
+    cpu: 10m
+    memory: 96Mi
+  limits:
+    memory: 256Mi
+
+cainjector:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 96Mi
+    limits:
+      memory: 256Mi
+
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 128Mi

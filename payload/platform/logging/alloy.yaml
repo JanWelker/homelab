@@ -63,6 +63,17 @@ spec:
             limits:
               memory: 512Mi
 
+        # The config-reloader sidecar had no limit while alloy itself did. It
+        # peaked at 12Mi; this is the floor used across the platform rather than
+        # a measured figure.
+        configReloader:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+
           configMap:
             content: |-
               logging {
