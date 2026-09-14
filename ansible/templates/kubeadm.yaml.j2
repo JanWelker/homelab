@@ -85,3 +85,22 @@ apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
 serverTLSBootstrap: true
+# Stop the kubelet rewriting the host's kernel parameters behind your back. With
+# this false -- the default -- it silently sets vm.overcommit_memory,
+# kernel.panic, kernel.panic_on_oops and vm.panic_on_oom at startup. With it
+# true it sets nothing and refuses to start if they are not already right.
+#
+# That inversion is the whole point and also the hazard: it moves responsibility
+# for those four values onto the node image. They are set in
+# /etc/sysctl.d/k8s.conf by butane_node_config.yaml.j2, and the two changes have
+# to travel together. Without the sysctl drop-in a fresh node comes up at the
+# kernel's own defaults -- overcommit_memory 0, panic 0 -- the kubelet finds
+# them wrong and exits, and the node never joins. That failure would not show up
+# on merge either, only at the next `make reinstall`.
+protectKernelDefaults: true
+# Nothing capped PIDs per pod, so one pod could exhaust the node's PID space and
+# take the kubelet and every other pod on that node with it. The dramatic
+# version is a fork bomb; the realistic one is a process that stops reaping its
+# children. 4096 is well above anything running here and well below the node's
+# kernel.pid_max.
+podPidsLimit: 4096
