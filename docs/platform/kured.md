@@ -9,12 +9,12 @@ been staging. It watches every node for a sentinel file, and when it finds one:
 takes a cluster-wide lock, cordons the node, drains it, reboots it, waits for it
 to come back, and uncordons it.
 
-In other words, it does at 02:00 what you would otherwise do by hand on a
+In other words, it does unattended what you would otherwise do by hand on a
 Saturday, in the same order, without getting bored on node four and skipping the
 Ceph check.
 
 !!! note "This needed the boot server once, and no longer does"
-    Kured reboots nodes unattended between 01:00 and 05:00. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless `make serve` happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is [installed to disk](../architecture/boot-process.md#every-boot-after-the-first) now, so the reboot is ordinary and the boot server stays off.
+    Kured reboots nodes unattended, whenever an update stages. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless `make serve` happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is [installed to disk](../architecture/boot-process.md#every-boot-after-the-first) now, so the reboot is ordinary and the boot server stays off.
 
 ## At a glance
 
@@ -51,9 +51,9 @@ for.
 ## The reboot cycle
 
 One pass through the loop, from a staged update to a node serving pods again.
-Kured evaluates the window, the sentinel, the alerts and the lock in that order,
-so a node that is not allowed to reboot never contends for the lock. Every dead
-end below just means waiting for the next 30-minute check:
+Kured evaluates the sentinel, the alerts and the lock in that order, so a node
+that is not allowed to reboot never contends for the lock. Every dead end below
+just means waiting for the next 30-minute check:
 
 ```mermaid
 flowchart TD
@@ -63,8 +63,8 @@ flowchart TD
 
     SEN["/run/reboot-required<br/>sentinel, on tmpfs"] --> TICK{"Kured checks<br/>every 30m"}
 
-    TICK -->|"outside 01:00-05:00"| SLEEP["Nothing happens until<br/>the window opens"]
-    TICK -->|"in window,<br/>sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API"}
+    TICK -->|"no sentinel"| SLEEP["Nothing to do until<br/>an update stages one"]
+    TICK -->|"sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API"}
     ALERT -->|"yes"| HELD["Reboot deferred while<br/>the cluster is unhealthy"]
     ALERT -->|"no"| LOCK{"Cluster lock free?"}
     LOCK -->|"another node<br/>is rebooting"| TAINT["Taint PreferNoSchedule,<br/>wait for the lock"]
@@ -84,7 +84,7 @@ reads the file and acts on it.
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Window | 01:00–05:00, `Europe/Berlin` | Reboots happen while nobody is using the cluster |
+| Window | None | Kured acts as soon as it sees a sentinel. The guards below are what make that safe, not the clock |
 | Check period | 30m | |
 | Concurrency | 1 | One node down at a time, never two |
 | `lockReleaseDelay` | 10m | Breathing room between nodes for Ceph to backfill |

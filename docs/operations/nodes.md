@@ -13,11 +13,10 @@ for Ceph, move on — and the waiting is the part people skip.
 
 ## Rebooting a node
 
-[Kured](../platform/kured.md) reboots nodes on its own between 01:00 and 05:00
-when an update has been staged, one at a time, and refuses while Ceph or etcd is
-unhealthy. The procedure below is for the cases it does not cover: rebooting
-sooner than the window, or rebooting a node for a reason nothing set a sentinel
-for.
+[Kured](../platform/kured.md) reboots nodes on its own once an update has been
+staged, one at a time, and refuses while Ceph or etcd is unhealthy. The procedure
+below is for the cases it does not cover: rebooting a node ahead of its next
+30-minute check, or rebooting one for a reason nothing set a sentinel for.
 
 A reboot is just a reboot. Flatcar is installed to disk, the node boots from it
 without the boot server, and `/etc/kubernetes`, `/var/lib/etcd` and

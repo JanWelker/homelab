@@ -28,9 +28,9 @@ first. In its place, a `flatcar-reboot-sentinel.timer` polls
 drop-ins below already use, and the file a reboot coordinator watches.
 
 [Kured](../platform/kured.md) consumes that marker: it drains the node, reboots
-it, and uncordons it, one node at a time inside a nightly window and only while
-Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
-do when you do not want to wait for the window — see
+it, and uncordons it, one node at a time and only while Ceph and etcd are
+healthy. Rebooting by hand is still available, and is what to do when you do not
+want to wait for its next 30-minute check — see
 [Rebooting a node](nodes.md#rebooting-a-node).
 
 `locksmithd` is masked rather than merely disabled, incidentally, because a
@@ -75,8 +75,8 @@ variant for it.
 The alternative sysext-bakery offers is a *floating* `MatchPattern`
 (`kubernetes-@v-%a.raw`). A node on that one tracks whatever upstream publishes
 as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
-to — and it will do so overnight, without asking, on whichever node happens to
-check first.
+to — and it will do so without asking, on whichever node happens to check
+first.
 
 The pinning happens in
 `ansible/playbooks/tasks/download_sysext.yaml`, which asserts that the rewrite
