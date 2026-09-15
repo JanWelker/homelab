@@ -87,7 +87,7 @@ Inspect what is currently staged on a node:
 
 ```bash
 ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'
-cat /etc/sysupdate.d/kubernetes.conf   # confirm the MatchPattern is pinned
+cat /etc/sysupdate.kubernetes.d/kubernetes.conf   # confirm the MatchPattern is pinned
 ```
 
 ## Upgrading a minor version deliberately
@@ -106,12 +106,12 @@ this is the deliberate path:
    Ignition configs, and regenerates the sysupdate configs with the new pinned
    `MatchPattern`.
 4. Serve the new sysupdate config to the running nodes. They read it from
-   `/etc/sysupdate.d/kubernetes.conf`, which was written at provisioning time,
+   `/etc/sysupdate.kubernetes.d/kubernetes.conf`, which was written at provisioning time,
    so a node that is not being reprovisioned needs the file replaced:
 
     ```bash
     scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
-    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.d/kubernetes.conf
+    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.kubernetes.d/kubernetes.conf
     ssh core@<node> sudo systemctl start systemd-sysupdate
     ```
 
@@ -130,7 +130,7 @@ this is the deliberate path:
     boot server.
 
 !!! note "Step 5 does not need the boot server"
-    Flatcar is installed to disk, so a node reboots from its own bootloader with `make serve` switched off. Step 4 is genuinely required for the same reason it always was: `/etc/sysupdate.d/kubernetes.conf` was written once at install time and nothing rewrites it. See [Every boot after the first](../architecture/boot-process.md#every-boot-after-the-first).
+    Flatcar is installed to disk, so a node reboots from its own bootloader with `make serve` switched off. Step 4 is genuinely required for the same reason it always was: `/etc/sysupdate.kubernetes.d/kubernetes.conf` was written once at install time and nothing rewrites it. See [Every boot after the first](../architecture/boot-process.md#every-boot-after-the-first).
 
 !!! note
     Renovate keeps `kubernetes_version`, `containerd_version`, `flatcar_version`

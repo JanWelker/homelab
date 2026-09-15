@@ -224,18 +224,21 @@ storage:
     - path: /opt/ignition-final.json
       contents:
         source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
-    - path: /etc/sysupdate.d/kubernetes.conf
+    - path: /etc/sysupdate.kubernetes.d/kubernetes.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes.conf
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
-    - path: /etc/sysupdate.d/containerd.conf
+    - path: /etc/sysupdate.containerd.d/containerd.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/containerd.conf
     - path: /opt/extensions/containerd/containerd-{{ containerd_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/containerd-{{ containerd_version }}-x86-64.raw
+    # Stays in the unsuffixed directory on purpose. That is the default
+    # component, which the unit's own ExecStart acts on; this no-op transfer is
+    # what keeps that run from failing.
     - path: /etc/sysupdate.d/noop.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/noop.conf
@@ -284,6 +287,13 @@ systemd:
             ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
     - name: systemd-sysupdate.timer
       enabled: true
+    # Flatcar ships a vendor symlink in timers.target.wants, so this timer runs
+    # even though its preset is "disabled". Left alone it reboots the node on
+    # its own schedule, behind Kured's back and without a drain -- and it fails
+    # every run anyway, because it acts on the default component, which holds
+    # nothing but noop.conf.
+    - name: systemd-sysupdate-reboot.timer
+      mask: true
     - name: systemd-sysupdate.service
       dropins:
         - name: containerd.conf
