@@ -27,6 +27,45 @@ kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ control_plane_endpoint }}"
 apiServer:
   extraArgs:
+    # Verify the kubelet's serving certificate instead of trusting whatever
+    # answers on port 10250. Without this the API server accepts any certificate
+    # for exec, logs, attach and port-forward, so anything able to intercept
+    # that connection can impersonate a kubelet -- and those are exactly the
+    # calls carrying command output and log contents.
+    #
+    # Most clusters cannot turn this on, because the kubelet self-signs by
+    # default and no CA can verify it. This one can: serverTLSBootstrap below
+    # makes the kubelet request a real certificate from the cluster CA, and
+    # kubelet-csr-approver approves those CSRs against a node-name regex and the
+    # 10.9.2.0/24 prefix. The result is signed by CN=kubernetes with the node's
+    # InternalIP in its SANs, which is the address
+    # --kubelet-preferred-address-types=InternalIP makes the API server dial.
+    #
+    # metrics-server already does the same verification against the same
+    # certificates and has been healthy, which is the practical proof this
+    # works rather than an argument that it should.
+    - name: kubelet-certificate-authority
+      value: /etc/kubernetes/pki/ca.crt
+    # spec.externalIPs on a Service lets whoever can create it hijack traffic to
+    # an arbitrary address on every node -- there is no ownership check on the
+    # address at all. Nothing here uses the field: LoadBalancer addresses come
+    # from Cilium's LB pools, and `kubectl get svc -A` finds zero Services with
+    # externalIPs set. This makes that a rule rather than a fact.
+    #
+    # NodeRestriction is kubeadm's default and has to be repeated: naming the
+    # flag replaces the default list rather than adding to it.
+    - name: enable-admission-plugins
+      value: NodeRestriction,DenyServiceExternalIPs
+    # Go's defaults still include CBC and 3DES suites. Restricted to AEAD
+    # constructions on ECDHE, which every client here speaks -- kubectl, the
+    # controllers and the kubelets are all Go. TLS 1.3 negotiates its own suites
+    # and ignores this list; the floor below is what stops a downgrade to 1.0
+    # or 1.1.
+    - name: tls-cipher-suites
+      # yamllint disable-line rule:line-length
+      value: "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+    - name: tls-min-version
+      value: VersionTLS12
     - name: encryption-provider-config
       value: /etc/kubernetes/enc/encryption-config.yaml
     - name: encryption-provider-config-automatic-reload
