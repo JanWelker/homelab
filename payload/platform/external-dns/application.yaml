@@ -56,19 +56,27 @@ spec:
           # that, sync would be a way to lose hand-made records.
           policy: sync
 
+          # Credentials come from a file rather than the environment. The
+          # Secret is the same one ESO already renders from OpenBao; it now
+          # carries an INI `credentials` key alongside the two original ones,
+          # and only that key is projected into the pod.
           env:
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: route53-credentials
-                  key: access-key-id
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: route53-credentials
-                  key: secret-access-key
+            - name: AWS_SHARED_CREDENTIALS_FILE
+              value: /aws/credentials
             - name: AWS_REGION
               value: eu-central-1
+
+          extraVolumes:
+            - name: aws-credentials
+              secret:
+                secretName: route53-credentials
+                items:
+                  - key: credentials
+                    path: credentials
+          extraVolumeMounts:
+            - name: aws-credentials
+              mountPath: /aws
+              readOnly: true
 
           serviceMonitor:
             enabled: true
