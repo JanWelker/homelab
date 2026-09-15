@@ -32,12 +32,28 @@ spec:
             # reason to keep the other thirty-odd: dropping ALL and adding back
             # exactly IPC_LOCK is the same privilege with a far smaller surface.
             #
-            # The pod already runs as uid 100, so runAsNonRoot only writes down
-            # what is already true and stops it silently ceasing to be true.
+            # runAsUser/runAsGroup/fsGroup are not decoration here. The chart's
+            # securityContext.pod is an if/else, not a merge: setting it at all
+            # replaces the default block, which is where uid 100 came from. Set
+            # runAsNonRoot on its own and the pod keeps the assertion while
+            # losing the uid that made it true -- and since the image's USER is
+            # the name `openbao` rather than a number, the kubelet cannot prove
+            # non-root and refuses to start the container at all:
+            #
+            #   container has runAsNonRoot and image has non-numeric user
+            #   (openbao), cannot verify user is non-root
+            #
+            # Only bites on pod recreation, so it stayed invisible until a node
+            # reboot rescheduled one. These are the chart's own defaults
+            # (server.uid 100, server.gid 1000), restated because overriding the
+            # block means owning all of it.
             statefulSet:
               securityContext:
                 pod:
                   runAsNonRoot: true
+                  runAsUser: 100
+                  runAsGroup: 1000
+                  fsGroup: 1000
                   seccompProfile:
                     type: RuntimeDefault
                 container:
