@@ -2231,12 +2231,12 @@
 been staging. It watches every node for a sentinel file, and when it finds one:
 takes a cluster-wide lock, cordons the node, drains it, reboots it, waits for it
 to come back, and uncordons it.</p>
-<p>In other words, it does at 02:00 what you would otherwise do by hand on a
+<p>In other words, it does unattended what you would otherwise do by hand on a
 Saturday, in the same order, without getting bored on node four and skipping the
 Ceph check.</p>
 <div class="admonition note">
 <p class="admonition-title">This needed the boot server once, and no longer does</p>
-<p>Kured reboots nodes unattended between 01:00 and 05:00. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless <code>make serve</code> happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is <a href="../../architecture/boot-process/#every-boot-after-the-first">installed to disk</a> now, so the reboot is ordinary and the boot server stays off.</p>
+<p>Kured reboots nodes unattended, whenever an update stages. While the nodes ran from RAM and PXE-booted every time, that meant a drained, rebooted node never came back unless <code>make serve</code> happened to be running — and Kured's cluster-wide lock stayed held while it waited. Flatcar is <a href="../../architecture/boot-process/#every-boot-after-the-first">installed to disk</a> now, so the reboot is ordinary and the boot server stays off.</p>
 </div>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
@@ -2309,9 +2309,9 @@ that cannot go stale because the thing that clears it is the thing it is waiting
 for.</p>
 <h2 id="the-reboot-cycle">The reboot cycle<a class="headerlink" href="#the-reboot-cycle" title="Permanent link">&para;</a></h2>
 <p>One pass through the loop, from a staged update to a node serving pods again.
-Kured evaluates the window, the sentinel, the alerts and the lock in that order,
-so a node that is not allowed to reboot never contends for the lock. Every dead
-end below just means waiting for the next 30-minute check:</p>
+Kured evaluates the sentinel, the alerts and the lock in that order, so a node
+that is not allowed to reboot never contends for the lock. Every dead end below
+just means waiting for the next 30-minute check:</p>
 <pre class="mermaid"><code>flowchart TD
     OS["update-engine&lt;br/&gt;OS image on the passive partition"] --&gt; SEN
     KUBE["systemd-sysupdate&lt;br/&gt;kubernetes sysext"] --&gt; SEN
@@ -2319,8 +2319,8 @@ end below just means waiting for the next 30-minute check:</p>
 
     SEN["/run/reboot-required&lt;br/&gt;sentinel, on tmpfs"] --&gt; TICK{"Kured checks&lt;br/&gt;every 30m"}
 
-    TICK --&gt;|"outside 01:00-05:00"| SLEEP["Nothing happens until&lt;br/&gt;the window opens"]
-    TICK --&gt;|"in window,&lt;br/&gt;sentinel present"| ALERT{"Blocking alert firing?&lt;br/&gt;Ceph, etcd, node, API"}
+    TICK --&gt;|"no sentinel"| SLEEP["Nothing to do until&lt;br/&gt;an update stages one"]
+    TICK --&gt;|"sentinel present"| ALERT{"Blocking alert firing?&lt;br/&gt;Ceph, etcd, node, API"}
     ALERT --&gt;|"yes"| HELD["Reboot deferred while&lt;br/&gt;the cluster is unhealthy"]
     ALERT --&gt;|"no"| LOCK{"Cluster lock free?"}
     LOCK --&gt;|"another node&lt;br/&gt;is rebooting"| TAINT["Taint PreferNoSchedule,&lt;br/&gt;wait for the lock"]
@@ -2345,8 +2345,8 @@ reads the file and acts on it.</p>
 <tbody>
 <tr>
 <td>Window</td>
-<td>01:00–05:00, <code>Europe/Berlin</code></td>
-<td>Reboots happen while nobody is using the cluster</td>
+<td>None</td>
+<td>Kured acts as soon as it sees a sentinel. The guards below are what make that safe, not the clock</td>
 </tr>
 <tr>
 <td>Check period</td>

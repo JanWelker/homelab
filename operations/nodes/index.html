@@ -2161,11 +2161,10 @@ for Ceph, move on — and the waiting is the part people skip.</p>
 <p><a href="#rebooting-a-node">Rebooting</a> and <a href="#adding-a-node">adding</a> are safe and routine. <a href="#replacing-a-failed-node">Replacing</a> destroys one node's OSD. <a href="#rebuilding-or-repartitioning-a-node">Rebuilding</a> destroys the disk it runs against, and doing it to every node in turn destroys every replica of everything. Read the danger block in that section before you start it.</p>
 </div>
 <h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
-<p><a href="../../platform/kured/">Kured</a> reboots nodes on its own between 01:00 and 05:00
-when an update has been staged, one at a time, and refuses while Ceph or etcd is
-unhealthy. The procedure below is for the cases it does not cover: rebooting
-sooner than the window, or rebooting a node for a reason nothing set a sentinel
-for.</p>
+<p><a href="../../platform/kured/">Kured</a> reboots nodes on its own once an update has been
+staged, one at a time, and refuses while Ceph or etcd is unhealthy. The procedure
+below is for the cases it does not cover: rebooting a node ahead of its next
+30-minute check, or rebooting one for a reason nothing set a sentinel for.</p>
 <p>A reboot is just a reboot. Flatcar is installed to disk, the node boots from it
 without the boot server, and <code>/etc/kubernetes</code>, <code>/var/lib/etcd</code> and
 <code>/var/lib/rook</code> are all still there when it comes back. A change made with

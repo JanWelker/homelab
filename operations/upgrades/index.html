@@ -2184,9 +2184,9 @@ first. In its place, a <code>flatcar-reboot-sentinel.timer</code> polls
 <code>/run/reboot-required</code> once an update is staged — the same marker the sysupdate
 drop-ins below already use, and the file a reboot coordinator watches.</p>
 <p><a href="../../platform/kured/">Kured</a> consumes that marker: it drains the node, reboots
-it, and uncordons it, one node at a time inside a nightly window and only while
-Ceph and etcd are healthy. Rebooting by hand is still available, and is what to
-do when you do not want to wait for the window — see
+it, and uncordons it, one node at a time and only while Ceph and etcd are
+healthy. Rebooting by hand is still available, and is what to do when you do not
+want to wait for its next 30-minute check — see
 <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
 <p><code>locksmithd</code> is masked rather than merely disabled, incidentally, because a
 service that reboots a storage node without draining it first is not a feature,
@@ -2219,8 +2219,8 @@ variant for it.</p>
 <p>The alternative sysext-bakery offers is a <em>floating</em> <code>MatchPattern</code>
 (<code>kubernetes-@v-%a.raw</code>). A node on that one tracks whatever upstream publishes
 as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
-to — and it will do so overnight, without asking, on whichever node happens to
-check first.</p>
+to — and it will do so without asking, on whichever node happens to check
+first.</p>
 <p>The pinning happens in
 <code>ansible/playbooks/tasks/download_sysext.yaml</code>, which asserts that the rewrite
 landed. If sysext-bakery ever changes the format, <code>make download</code> fails rather
