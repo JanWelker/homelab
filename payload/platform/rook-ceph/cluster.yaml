@@ -56,6 +56,22 @@ spec:
                 keyType: aes256k
                 keyRotationPolicy: KeyGeneration
                 keyGeneration: 2
+              # The same rotation for everything else that holds a cephx key.
+              # Not for its own sake -- no warning names these -- but because
+              # removing `aes` from the monmap cipher list is only safe once
+              # nothing is still authenticating with an aes key, and for the mon
+              # keys that is otherwise unknowable: Ceph reports a cipher for
+              # client entities only, `ceph auth ls` does not print one, and the
+              # key blobs do not decode differently. Rotating to a known type
+              # replaces the guess with a fact.
+              daemon:
+                keyType: aes256k
+                keyRotationPolicy: KeyGeneration
+                keyGeneration: 2
+              rbdMirrorPeer:
+                keyType: aes256k
+                keyRotationPolicy: KeyGeneration
+                keyGeneration: 2
 
           # HA: 3 mons, 2 mgrs
           mon:
