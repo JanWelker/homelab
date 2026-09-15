@@ -109,7 +109,9 @@ spec:
   description: >-
     Default-deny ingress for the monitoring stack. Grafana is reached through
     the Gateway; Prometheus and Alertmanager are reached by each other and by
-    Grafana within the namespace.
+    Grafana within the namespace. Kured is the one caller from outside it: it
+    queries Prometheus before every reboot and blocks when the query fails, so
+    without this rule no node ever reboots.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -118,6 +120,13 @@ spec:
         - host
         - remote-node
         - ingress
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kured
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
