@@ -101,9 +101,8 @@ Sysupdate configs are pinned to the Kubernetes and containerd major.minor in
 `ansible/inventory.yaml`, so a node picks up patch releases inside its series
 and cannot stage a minor kubeadm refuses to skip to. See
 [Nodes are pinned to a minor series](../operations/upgrades.md#nodes-are-pinned-to-a-minor-series).
-[Kured](../platform/kured.md) then drains and reboots one node at a time
-between 01:00 and 05:00 to apply what has been staged, and refuses while Ceph
-or etcd is unhealthy.
+[Kured](../platform/kured.md) then drains and reboots one node at a time to
+apply what has been staged, and refuses while Ceph or etcd is unhealthy.
 
 Two things follow that are worth knowing:
 

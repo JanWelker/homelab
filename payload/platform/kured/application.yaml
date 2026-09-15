@@ -30,10 +30,14 @@ spec:
           rebootCommand: /bin/systemctl reboot
 
           period: 30m
-          # Reboots happen at night, in this timezone, one node at a time.
-          timeZone: Europe/Berlin
-          startTime: "01:00"
-          endTime: "05:00"
+          # No reboot window. Omitting startTime/endTime makes the chart drop
+          # the flags entirely, which leaves kured on its own defaults -- 0:00
+          # to 23:59:59, every day -- so a node reboots as soon as kured sees
+          # the sentinel rather than waiting for the small hours. timeZone went
+          # with them; it existed only to interpret that window.
+          #
+          # The guards below are what make this safe to do at any hour: one node
+          # at a time, a delay between them, and the alert check.
           concurrency: 1
 
           # Ten minutes between nodes. Rebooting a second node while Ceph is
