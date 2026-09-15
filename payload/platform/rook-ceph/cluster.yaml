@@ -52,10 +52,25 @@ spec:
           # actually rotates them.
           security:
             cephx:
+              # Back to aes, and staying there. aes256k is a userspace-only
+              # cipher: krbd takes the key into the kernel keyring, the kernel
+              # ceph client does not implement aes256k, and every rbd map fails
+              # with "failed to add secret 'client.csi-rbd-node.N' to kernel"
+              # / "map failed: (22) Invalid argument". Nothing with an RBD
+              # volume can start, on any node, rebooted or not.
+              #
+              # This is not a rotation that went wrong -- aes256k cannot work
+              # for CSI while volumes are mapped with krbd. Changing it would
+              # mean moving RBD to the userspace rbd-nbd mounter first, which
+              # is a real trade (its own failure modes, and it is not the
+              # default for good reasons), not a config tweak.
+              #
+              # Generation 3 because rotation only triggers on an increase; it
+              # cannot go back to 2.
               csi:
-                keyType: aes256k
+                keyType: aes
                 keyRotationPolicy: KeyGeneration
-                keyGeneration: 2
+                keyGeneration: 3
               # The same rotation for everything else that holds a cephx key.
               # Not for its own sake -- no warning names these -- but because
               # removing `aes` from the monmap cipher list is only safe once
