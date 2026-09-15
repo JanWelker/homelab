@@ -20,6 +20,17 @@ redis-ha:
       limits:
         memory: 128Mi
   haproxy:
+    # Three replicas, hard anti-affinity per hostname, and only three
+    # schedulable nodes -- the control plane is tainted. The chart default
+    # strategy surges to a fourth pod before retiring any of the three, and that
+    # fourth pod has nowhere to land, so any change to this pod template wedges
+    # the rollout until the progress deadline gives up. Retire first, then
+    # replace: the node is free by the time the new pod needs it.
+    deploymentStrategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
     resources:
       requests:
         cpu: 25m
