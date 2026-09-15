@@ -94,6 +94,16 @@ spec:
             limits:
               memory: 2Gi
 
+        # The rules sidecar next to Loki had no limit while Loki itself did.
+        # Measured peak 72Mi.
+        sidecar:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 88Mi
+            limits:
+              memory: 192Mi
+
         # A homelab does not need memcached in front of a Loki this size, and
         # the two caches would add four more pods.
         chunksCache:

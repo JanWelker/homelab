@@ -88,6 +88,16 @@ spec:
                 enabled: true
                 storageClass: rook-ceph-block
                 size: 8Gi
+              # authentik-server and -worker beside this both had limits; the
+              # database did not. Sized from a measured 281Mi peak. Postgres
+              # memory is bounded by shared_buffers and work_mem rather than by
+              # load, so this is steadier than the number suggests.
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 320Mi
+                limits:
+                  memory: 704Mi
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/authentik

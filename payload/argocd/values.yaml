@@ -5,6 +5,46 @@ global:
 # Enable HA
 redis-ha:
   enabled: true
+  redis:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 48Mi
+      limits:
+        memory: 128Mi
+  sentinel:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+  haproxy:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+      limits:
+        memory: 320Mi
+  splitBrainDetection:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+# Memory limits below are sized from measured peak working set over the cluster's
+# full Prometheus history, at roughly 2.5x. Requests are set at about the
+# observed steady state. CPU requests but no CPU limits, which is the same
+# pattern kured, external-dns, kubelet-csr-approver and metrics-server already
+# use: a CPU limit throttles at the quota even on an idle node, while memory is
+# not compressible and a limit there is what stops one workload taking a node
+# down.
+#
+# The application-controller is deliberately absent. It peaked at 1639Mi and
+# grows with the number of managed resources, which 23h of steady state is not
+# enough to size -- see the tracking issue.
 
 controller:
   replicas: 1
@@ -13,12 +53,46 @@ server:
   replicas: 3
   extraArgs:
     - --insecure
+  resources:
+    requests:
+      cpu: 25m
+      memory: 96Mi
+    limits:
+      memory: 256Mi
 
 repoServer:
   replicas: 3
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
 
 applicationSet:
   replicas: 2
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 192Mi
+
+dex:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 48Mi
+    limits:
+      memory: 128Mi
+
+notifications:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
 
 configs:
   cm:
