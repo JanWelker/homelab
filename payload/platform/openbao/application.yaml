@@ -26,6 +26,27 @@ spec:
             enabled: false
 
           server:
+            # OpenBao keeps the root key out of swap with mlock, which needs
+            # IPC_LOCK -- that capability is the reason this namespace enforces
+            # `privileged` in pod-security.yaml. Needing one capability is not a
+            # reason to keep the other thirty-odd: dropping ALL and adding back
+            # exactly IPC_LOCK is the same privilege with a far smaller surface.
+            #
+            # The pod already runs as uid 100, so runAsNonRoot only writes down
+            # what is already true and stops it silently ceasing to be true.
+            statefulSet:
+              securityContext:
+                pod:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+                container:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                    add:
+                      - IPC_LOCK
             image:
               # The chart prepends server.image.registry, which already
               # defaults to quay.io -- spelling it here too asks the kubelet
