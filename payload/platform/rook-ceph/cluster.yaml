@@ -40,6 +40,23 @@ spec:
             enabled: true
           dataDirHostPath: /var/lib/rook
 
+          # Ceph 20 (tentacle) warns about the legacy `aes` cephx cipher. The
+          # daemon keys already came up on aes256k; the four Ceph-CSI entities
+          # did not, which is the whole of AUTH_INSECURE_CLIENT_KEY_TYPE and why
+          # this app reads Degraded while the data is entirely healthy.
+          #
+          # keyType alone would not move them. Per the CRD, changing it never
+          # initiates rotation while the policy is Disabled -- it would only
+          # apply to keys created from scratch, leaving the existing four on
+          # aes. KeyGeneration plus a generation above the current one is what
+          # actually rotates them.
+          security:
+            cephx:
+              csi:
+                keyType: aes256k
+                keyRotationPolicy: KeyGeneration
+                keyGeneration: 2
+
           # HA: 3 mons, 2 mgrs
           mon:
             count: 3
