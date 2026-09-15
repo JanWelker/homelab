@@ -77,6 +77,16 @@ spec:
           defaultSnapshotMoveData: true
           uploaderType: kopia
 
+          # Explicitly empty. The chart ships a placeholder entry with a null
+          # name and provider, renders it into a VolumeSnapshotLocation called
+          # "default", and the CRD schema rejects it -- which failed every sync
+          # of this app. Helm replaces lists rather than merging them, so an
+          # empty one overrides the placeholder and the template renders
+          # nothing. Backups here go through CSI and the data mover, which use a
+          # VolumeSnapshotClass; a VolumeSnapshotLocation belongs to the legacy
+          # per-provider snapshotter plugins and nothing reads it.
+          volumeSnapshotLocation: []
+
         # runAsNonRoot is deliberately absent. The velero-plugin-for-aws
         # initContainer copies itself into /target, and whether that works as a
         # non-root user depends on the image's own USER rather than on anything
