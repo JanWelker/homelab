@@ -2227,7 +2227,7 @@ landed. If sysext-bakery ever changes the format, <code>make download</code> fai
 than quietly handing the nodes a floating config.</p>
 <p>Inspect what is currently staged on a node:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
 </span></code></pre></div>
 <h2 id="upgrading-a-minor-version-deliberately">Upgrading a minor version deliberately<a class="headerlink" href="#upgrading-a-minor-version-deliberately" title="Permanent link">&para;</a></h2>
 <p>Changing <code>kubernetes_version</code> to a new minor changes what the nodes track, so
@@ -2245,10 +2245,10 @@ this is the deliberate path:</p>
    <code>MatchPattern</code>.</li>
 <li>
 <p>Serve the new sysupdate config to the running nodes. They read it from
-   <code>/etc/sysupdate.d/kubernetes.conf</code>, which was written at provisioning time,
+   <code>/etc/sysupdate.kubernetes.d/kubernetes.conf</code>, which was written at provisioning time,
    so a node that is not being reprovisioned needs the file replaced:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.d/kubernetes.conf
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
 </span></code></pre></div>
 </li>
@@ -2271,7 +2271,7 @@ boot server.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Step 5 does not need the boot server</p>
-<p>Flatcar is installed to disk, so a node reboots from its own bootloader with <code>make serve</code> switched off. Step 4 is genuinely required for the same reason it always was: <code>/etc/sysupdate.d/kubernetes.conf</code> was written once at install time and nothing rewrites it. See <a href="../../architecture/boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
+<p>Flatcar is installed to disk, so a node reboots from its own bootloader with <code>make serve</code> switched off. Step 4 is genuinely required for the same reason it always was: <code>/etc/sysupdate.kubernetes.d/kubernetes.conf</code> was written once at install time and nothing rewrites it. See <a href="../../architecture/boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
