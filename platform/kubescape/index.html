@@ -2476,7 +2476,7 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 </tr>
 <tr>
 <td>Metrics</td>
-<td><code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code> from the prometheus-exporter; node-agent runtime metrics</td>
+<td><code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code> from the prometheus-exporter, per workload as well as per namespace; node-agent runtime metrics</td>
 </tr>
 <tr>
 <td>Sent off-cluster</td>
@@ -2627,63 +2627,92 @@ the node-agent's own <code>/metrics</code> listener on port 8080, replacing an O
 that is not configured. Without it, the node-agent ServiceMonitor scrapes a port
 nothing listens on.</p>
 <h2 id="the-dashboard">The dashboard<a class="headerlink" href="#the-dashboard" title="Permanent link">&para;</a></h2>
-<p>The dashboard JSON is upstream's, from
-<a href="https://github.com/kubescape/prometheus-exporter">kubescape/prometheus-exporter</a>,
-unmodified. It carries no datasource of its own, which is what makes it work
-here: panels bind to Grafana's default datasource, and the Loki datasource next
-door explicitly sets <code>isDefault: false</code>, leaving Prometheus holding that role.</p>
+<p>The dashboard is written for this cluster, not vendored. The upstream one from
+<a href="https://github.com/kubescape/prometheus-exporter">kubescape/prometheus-exporter</a>
+answered "how many" and nothing after it, and on this cluster it did not manage
+that either:</p>
+<ul>
+<li><strong>Every namespace panel showed one series, <code>kubescape</code>.</strong> The exporter sets a
+  <code>namespace</code> label, and Prometheus renames a target's clashing label to
+  <code>exported_namespace</code> unless the scrape sets <code>honorLabels</code>. The chart's
+  ServiceMonitor has no such option, so the queries group by
+  <code>exported_namespace</code> instead.</li>
+<li><strong>It charted whole-image CVE counts only.</strong> The exporter also publishes
+  <code>kubescape_vulnerabilities_relevant_*</code>, narrowed by <code>relevancy</code> to packages
+  the node-agent saw loaded, and those are the numbers worth acting on: 67
+  critical against 261 when this was written.</li>
+<li><strong>It stopped at the namespace.</strong> Per-workload series need
+  <code>prometheusExporter.enableWorkloadMetrics</code>, which the chart leaves off.</li>
+</ul>
 <table>
 <thead>
 <tr>
-<th>Panel</th>
-<th>Metric</th>
+<th>Section</th>
+<th>What it answers</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Cluster Controls Vulnerabilities</td>
-<td><code>kubescape_controls_total_cluster_*</code></td>
+<td>Top row</td>
+<td>Critical and high CVEs, loaded and whole-image; critical and high control failures</td>
 </tr>
 <tr>
-<td>Namespace Controls Vulnerabilities</td>
-<td><code>kubescape_controls_total_namespace_*</code></td>
+<td>Image CVEs</td>
+<td>Which containers to fix first — a table sorted by critical CVEs in loaded packages, whole-image counts beside them — and a trend per namespace</td>
 </tr>
 <tr>
-<td>Workload Controls Vulnerabilities</td>
-<td><code>kubescape_controls_total_workload_*</code></td>
+<td>Configuration controls</td>
+<td>Which workloads fail which severities, and a trend per namespace</td>
 </tr>
 <tr>
-<td>Cluster Vulnerabilities</td>
-<td><code>kubescape_vulnerabilities_total_cluster_*</code></td>
-</tr>
-<tr>
-<td>Namespace Vulnerabilities</td>
-<td><code>kubescape_vulnerabilities_total_namespace_*</code></td>
+<td>Details</td>
+<td>The <code>kubectl</code> commands below, for going from a table row to the findings</td>
 </tr>
 </tbody>
 </table>
-<p>Only the two <code>kubescape_vulnerabilities_*</code> panels populate. The controls panels
-stayed at zero while the scanner could not complete a scan (see
-<a href="#the-scanner-image-is-pinned-ahead-of-the-chart">above</a>), and the workload panel
-needs <code>prometheusExporter.enableWorkloadMetrics</code>, which is off.</p>
-<div class="admonition note">
-<p class="admonition-title">Why it is vendored</p>
-<p>The kubescape-operator chart renders no dashboard, unlike Cilium's or
-OpenBao's, so the JSON is copied here. It lives in <code>kubescape</code>, next to the
-component; Grafana's dashboard sidecar watches every namespace.</p>
-</div>
+<p>A <code>namespace</code> variable filters every panel. The trends are the part that pays
+off later: a step after a sync is a regression a chart or image bump brought in.</p>
+<p>Two things the counts cannot tell you:</p>
+<ul>
+<li><strong>"Loaded" reads 0 until the node-agent has profiled a container</strong>, and a
+  zero from that is indistinguishable from a clean container. A row with a high
+  whole-image count and zero loaded is more often not yet profiled than safe;
+  the summary's <code>vulnerabilitiesRef.relevant.name</code> is empty in that case.</li>
+<li><strong>The CVE IDs are not in Prometheus.</strong> One series per CVE per container would
+  be thousands of series for a table better read with <code>kubectl</code>.</li>
+</ul>
+<p>The panels take their datasource from a <code>datasource</code> variable restricted to
+Prometheus, so the Loki datasource's <code>isDefault: false</code> no longer matters to it.
+The chart renders no dashboard of its own; the ConfigMap lives in <code>kubescape</code>,
+next to the component, and Grafana's dashboard sidecar watches every namespace.</p>
 <h2 id="reading-results-without-grafana">Reading results without Grafana<a class="headerlink" href="#reading-results-without-grafana" title="Permanent link">&para;</a></h2>
 <p>Findings are stored in an aggregated API server, so they are ordinary
-<code>kubectl</code> objects:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># One row per framework, with the pass/fail counts</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>-A
+<code>kubectl</code> objects. <code>kubectl get</code> on a list of them prints names only — the
+aggregated API leaves <code>spec</code> out of list responses — so fetch objects one at a
+time to see counts.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Failed controls per namespace (cluster-scoped, named after the namespace)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>authentik<span class="w"> </span>-o<span class="w"> </span>yaml
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Per-workload control failures, worst first</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscansummaries<span class="w"> </span>-A
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># The full finding set for one workload</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># The full finding set for one workload</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>-l<span class="w"> </span>kubescape.io/workload-name<span class="o">=</span>&lt;workload&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
 </span></code></pre></div>
+<p>CVEs take two hops. The per-container summary, named
+<code>&lt;kind&gt;-&lt;workload&gt;-&lt;container&gt;</code>, points at two manifests in the <code>kubescape</code>
+namespace: <code>all</code>, named after the image, and <code>relevant</code>, named after the
+workload instance and holding only loaded packages.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">NS</span><span class="o">=</span>argocd<span class="p">;</span><span class="w"> </span><span class="nv">SUMMARY</span><span class="o">=</span>deployment-argocd-server-server
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">REF</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifestsummaries<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NS</span><span class="w"> </span><span class="nv">$SUMMARY</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.vulnerabilitiesRef.relevant.name}'</span><span class="k">)</span><span class="w">   </span><span class="c1"># .all.name for the whole image</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifests<span class="w"> </span>-n<span class="w"> </span>kubescape<span class="w"> </span><span class="s2">"</span><span class="nv">$REF</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="s1">  .spec.payload.matches[]</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="s1">  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="s1">  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="s1">     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="s1">  | @tsv'</span>
+</span></code></pre></div>
+<p>A <code>fix.state</code> of <code>fixed</code> means a newer package exists; with upstream images
+that almost always means waiting for, or bumping to, a newer chart.</p>
 <h2 id="failures-that-are-decisions">Failures that are decisions<a class="headerlink" href="#failures-that-are-decisions" title="Permanent link">&para;</a></h2>
 <p>A first scan on this cluster reports findings that are deliberate, and knowing
 which in advance is the difference between a useful report and a report that
@@ -2719,7 +2748,7 @@ implementation and is worth a one-off run for a second opinion; it maps findings
 to numbered CIS controls (<code>1.2.16</code>, <code>1.3.7</code>) in a way Kubescape does not. Note
 that its newest profile is <code>cis-2.0</code>, covering Kubernetes 1.34–1.35, so on
 v1.37 auto-detection fails and the benchmark has to be pinned:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
 </span></code></pre></div>
 <p>Kubescape is what runs <em>continuously</em>, which is the part that matters. A
 benchmark you run once is a screenshot.</p>
@@ -2742,9 +2771,9 @@ that needs the most privilege in it. It is also exactly the sort of finding
 Kubescape will report about itself, which is the correct behaviour and worth not
 suppressing.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubescape/
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>└── grafana-dashboard.yaml   # Upstream dashboard (the chart ships none)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubescape/
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
 </span></code></pre></div>
 
 
