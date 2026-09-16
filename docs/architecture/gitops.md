@@ -17,7 +17,10 @@ commands that exist only in one person's shell history.
 
 A hierarchical Application structure manages dependencies and logical grouping.
 One `kubectl apply` of `payload/root.yaml` bootstraps everything else; from
-there the repository discovers itself.
+there the repository discovers itself. That apply happens once: `gitops`
+creates a `root` Application (`payload/argocd/root-application.yaml`) that syncs
+`root.yaml`, so later edits to the parent Applications arrive through ArgoCD like
+any other change.
 
 ```mermaid
 flowchart LR
@@ -36,6 +39,8 @@ flowchart LR
 
     subgraph "Managed by gitops"
         GO --> |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
+        GO --> RT[root]
+        RT -. "syncs root.yaml" .-> RA
     end
 ```
 
