@@ -1,0 +1,203 @@
+---
+# The control-plane VIP, run as a DaemonSet on the control-plane nodes.
+#
+# Why this is safe as a DaemonSet when the usual advice is a static pod: the
+# static-pod advice exists because a kubelet that reaches the API through the
+# VIP cannot fetch the pod that would bring the VIP up. Here the control-plane
+# kubelets talk to their own node's API server (/etc/kubernetes/kubelet.conf
+# names 10.9.2.x, not the VIP), so after a full power loss they still get this
+# pod from etcd and start it. Only the workers wait for the VIP.
+#
+# Adoption. Ignition still writes the static pod, because kubeadm init needs the
+# VIP before any of this exists. The `adopt` init container removes that
+# manifest and waits for the static kube-vip to exit before this one starts:
+#
+#   - Both use the node name as their leader-election identity. Running side by
+#     side, each would see the other's lease as its own and renew it, and the
+#     one that exits last-but-one would remove the VIP from under the other.
+#   - Both bind :2112 on the host network. That listener disappearing is how
+#     the init container knows the static process is gone.
+#
+# On a node that never had the static pod, or after a restart, the manifest is
+# already absent and the init container is a no-op.
+#
+# The first sync creates all three pods at once, so the VIP drops for as long as
+# it takes a pod to start -- a few seconds, since `pull` has fetched the image
+# before anything is removed. Updates afterwards roll one node at a time, and
+# ReleaseOnCancel hands the lease over as soon as the leader exits.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kube-vip
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-vip
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # No surge: old and new pod would fight over :2112 and the lease identity
+      # for the same reasons the static pod has to go first.
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-vip
+    spec:
+      serviceAccountName: kube-vip
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        # Everything: this must keep running on a control-plane node that is
+        # NotReady or under pressure, since those are exactly the moments the
+        # VIP has to move.
+        - operator: Exists
+      # Enough for the lease to be released before the process is killed.
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: pull
+          # Does nothing except make the kubelet pull the kube-vip image before
+          # `adopt` removes the static pod, so the gap between the old process
+          # exiting and the new one starting does not include a registry round
+          # trip. Keep this image in step with the kube-vip container below.
+          # renovate: datasource=docker depName=ghcr.io/kube-vip/kube-vip
+          image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
+          args:
+            - version
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+        - name: adopt
+          # renovate: datasource=docker depName=busybox
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              manifest=/manifests/kube-vip.yaml
+              if [ ! -e "$manifest" ]; then
+                echo "no static kube-vip manifest, nothing to adopt"
+                exit 0
+              fi
+              rm -f "$manifest"
+              echo "removed $manifest, waiting for the static kube-vip to exit"
+              # The kubelet rescans the manifest directory every 20s by default.
+              # Two minutes without :2112 closing means something else holds
+              # the port; failing makes that visible as a stuck Init instead of
+              # starting a second kube-vip beside it.
+              i=0
+              while netstat -ltn | grep -q ':2112 '; do
+                i=$((i + 1))
+                if [ "$i" -ge 120 ]; then
+                  echo ":2112 still bound after 120s" >&2
+                  exit 1
+                fi
+                sleep 1
+              done
+              echo "static kube-vip has exited"
+          securityContext:
+            # Root to unlink a file in a root-owned host directory, nothing more.
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # The directory rather than the file: a hostPath mounted as a single
+            # file is a bind mount, and a bind-mounted file cannot be removed.
+            # Only this init container gets it; the long-running container does
+            # not.
+            - name: static-manifests
+              mountPath: /manifests
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              memory: 32Mi
+      containers:
+        - name: kube-vip
+          # renovate: datasource=docker depName=ghcr.io/kube-vip/kube-vip
+          image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
+          args:
+            - manager
+          env:
+            # Same settings as the static pod in
+            # ansible/templates/butane_node_config.yaml.j2. Keep the two in
+            # step: the static pod is what a freshly provisioned node runs until
+            # this adopts it.
+            - name: address
+              value: "10.9.2.10"
+            - name: port
+              value: "6443"
+            - name: vip_interface
+              value: eno1
+            - name: vip_subnet
+              value: "32"
+            - name: vip_arp
+              value: "true"
+            - name: cp_enable
+              value: "true"
+            - name: cp_namespace
+              value: kube-system
+            - name: vip_leaderelection
+              value: "true"
+            # The default, spelled out: it is the Lease the static pods hold
+            # and the one rbac.yaml grants. A different name would let a static
+            # pod and this DaemonSet both believe they lead.
+            - name: vip_leasename
+              value: plndr-cp-lock
+            - name: vip_leaseduration
+              value: "5"
+            - name: vip_renewdeadline
+              value: "3"
+            - name: vip_retryperiod
+              value: "1"
+            # Cilium owns LoadBalancer services; kube-vip must not.
+            - name: svc_enable
+              value: "false"
+            - name: vip_nodename
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # With no admin.conf mounted, kube-vip falls back to the in-cluster
+            # config, which dials KUBERNETES_SERVICE_HOST -- normally the
+            # ClusterIP. That address only works once Cilium is up, and Cilium
+            # in turn wants the API. Pointing it at this node's own API server
+            # breaks the loop; the node IP is in the apiserver certificate's
+            # SANs. Container env takes precedence over the kubelet's injected
+            # service variables.
+            - name: KUBERNETES_SERVICE_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: KUBERNETES_SERVICE_PORT
+              value: "6443"
+          # Identical to the static pod rather than tightened. The first sync
+          # replaces all three static pods at once, so this is the one place
+          # where an untested hardening takes the VIP down everywhere.
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+                - SYS_TIME
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: static-manifests
+          hostPath:
+            path: /etc/kubernetes/manifests
+            type: Directory
