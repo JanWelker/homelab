@@ -130,6 +130,14 @@ spec:
               mgr/dashboard/GRAFANA_API_URL: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
               mgr/dashboard/GRAFANA_API_SSL_VERIFY: "false"
               # yamllint enable rule:line-length
+            mon:
+              # The cluster log defaults to debug and the mons copy it to
+              # stderr, so every `mon_status` from Rook's mon probes and every
+              # two-second pgmap from the mgr became a [DBG] line: 15k of the
+              # mons' 20k lines per half hour in Loki. The mon applies this
+              # level before writing to stderr; warnings and errors in the
+              # cluster log are unaffected.
+              mon_cluster_log_level: info
 
           # Block device storage (partition created by Ignition)
           storage:
