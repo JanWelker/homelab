@@ -1,21 +1,5 @@
 ---
-# The Kubescape posture dashboard.
-#
-# Vendored because the kubescape-operator chart ships no dashboard of its own.
-# It lives next to Kubescape: Grafana's dashboard sidecar watches every
-# namespace.
-#
-# The JSON is upstream's, from kubescape/prometheus-exporter, unmodified. It
-# carries no datasource of its own, which is what makes it work here -- the
-# panels bind to Grafana's default datasource, and the Loki datasource next door
-# explicitly sets `isDefault: false`, leaving Prometheus holding that role.
-#
-# Two of its five panels query `kubescape_vulnerabilities_*` and will stay
-# empty: those come from image CVE scanning, which application.yaml disables
-# because kubevuln cannot schedule on these nodes. The three
-# `kubescape_controls_*` panels -- cluster, namespace and workload control
-# failures by severity -- are the posture half, and those are the ones this
-# component exists for.
+# Upstream dashboard, unmodified; see docs/platform/kubescape.md
 apiVersion: v1
 kind: ConfigMap
 metadata:

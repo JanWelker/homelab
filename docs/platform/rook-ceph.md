@@ -69,19 +69,112 @@ warnings, and the rest).
     retries until kube-prometheus-stack has landed. On an existing cluster the
     CRD is already there and this never comes up.
 
+The Ceph dashboard's links to Prometheus and Grafana are set through
+`cephClusterSpec.cephConfig` (`mgr/dashboard/PROMETHEUS_API_HOST` and friends)
+rather than by running `ceph dashboard set-prometheus-api-host` from a Job. Those
+commands only write keys into the mon config store, which the operator can do
+directly, and it reapplies them on every reconcile.
+
+### Cluster log level
+
+`mon_cluster_log_level` is `info`. The Ceph default is `debug`, and the mons copy
+the cluster log to stderr, so every `mon_status` from Rook's mon probes and every
+two-second pgmap from the mgr became a `[DBG]` line — about 15k of the mons' 20k
+lines per half hour in [Loki](logging.md). The mon applies the level before
+writing to stderr; warnings and errors in the cluster log are unaffected.
+
+## CSI driver
+
+Up to Rook v1.19 the operator chart's `csi` values deployed the RBD provisioner
+and node plugin directly. From v1.20 that job belongs to the
+ceph-csi-operator, installed as a subchart, which deploys nothing until an
+`OperatorConfig` and a `Driver` CR tell it what to run. Neither chart ships
+them — upstream keeps them in `deploy/examples/operator.yaml` — so they live in
+`csi-driver.yaml`. Without them no provisioner is registered for
+`rook-ceph.rbd.csi.ceph.com` and every PVC against `rook-ceph-block` stays
+`Pending` on `ExternalProvisioning`.
+
+!!! warning "`csi` values on the operator chart do nothing"
+    Helm accepts values a chart no longer reads without complaint. Driver
+    settings go in `csi-driver.yaml`, not under `csi` in `operator.yaml`.
+
+- **Sync wave `0`** with `SkipDryRunOnMissingResource`: the CRs need the
+  ceph-csi-operator's CRDs, which arrive with the operator chart at `-2`.
+- **Image set**: `OperatorConfig` points at the `ConfigMap` the chart renders,
+  so a chart bump moves every sidecar and the cephcsi image together and the
+  csi-operator's own image defaults never apply.
+- **Driver name**: not free to choose. Rook derives the provisioner from its
+  namespace, and it has to match the `provisioner` of the StorageClasses in
+  `cluster.yaml`. CephFS is not enabled, so RBD is the only driver.
+
+### ServiceAccounts and RBAC
+
+The ceph-csi-operator does not create its pods' ServiceAccounts either, and no
+chart renders them. Without `csi-rbac.yaml` the driver's Deployment and
+DaemonSet exist but create no pods:
+
+```text
+Error creating: pods "rook-ceph.rbd.csi.ceph.com-nodeplugin-" is forbidden:
+error looking up service account rook-ceph/rbd-nodeplugin-sa: not found
+```
+
+The names are fixed: the operator derives them from
+`CSI_SERVICE_ACCOUNT_PREFIX`, which the rook-ceph chart sets to the empty
+string, so they are exactly `rbd-ctrlplugin-sa` and `rbd-nodeplugin-sa`.
+
+The file is a vendored copy of the RBD half of the ceph-csi-operator's
+`deploy/multifile/csi-rbac.yaml`, at the version the rook-ceph chart pulls in
+(v1.0.4 at the time of writing). Renovate does not see it. To refresh it:
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/ceph/ceph-csi-operator/vX.Y.Z/deploy/multifile/csi-rbac.yaml \
+  | sed -e 's/ceph-csi-operator-system/rook-ceph/' -e 's/ceph-csi-operator-//'
+```
+
+then keep only the rbd documents, re-indent the sequences for yamllint, and
+prefix the cluster-scoped names so they read as ours. CephFS, NFS and NVMe-oF
+are not enabled, so their accounts are left out rather than carried dormant.
+
+## cephx keys stay on aes
+
+Ceph 20 (tentacle) warns about the legacy `aes` cephx cipher, and every key here
+is deliberately on it. That is a constraint, not a preference.
+
+`aes256k` is userspace-only. krbd puts the cephx key in the kernel keyring, and
+the kernel ceph client does not implement `aes256k`. Moving the CSI keys to it
+made every `rbd map` fail with `failed to add secret ... to kernel` /
+`map failed: (22) Invalid argument`, so nothing with an RBD volume could start
+on any node — while Ceph accepted the keys and reported the rotation a success.
+The daemon keys never touch the kernel and could use `aes256k`, but two ciphers
+in one cluster force the mons to accept both, which is its own warning
+(`AUTH_EMERGENCY_CIPHERS_SET`) and buys no security. One cipher everywhere, and
+it has to be the one krbd can read.
+
+| Setting | Why |
+| --- | --- |
+| `keyType: aes` | krbd cannot use anything else |
+| `keyRotationPolicy: KeyGeneration` | Changing `keyType` alone never rotates existing keys while the policy is `Disabled` |
+| `keyGeneration: 3` | Rotation only triggers on an increase, so a generation can never be lowered to undo one |
+| `healthCheck.muteHealthWarning` | The `AUTH_*` warnings would otherwise keep the Application `Degraded` while the data is healthy |
+
+The mutes are temporary: remove them once the keys can leave `aes`. Getting
+there means moving RBD to the userspace `rbd-nbd` mounter first, which is a
+genuine trade with its own failure modes rather than a config edit.
+
 ## Object storage
 
 A `CephObjectStore` provides an S3-compatible endpoint inside the cluster,
-served by two RGW instances. It exists so that backups and log chunks have
-somewhere to live that is not a PVC on the same block pool they are meant to
-protect. Same cluster, different pool — half a step, but a real one.
+served by two RGW instances, so an RGW restart during a node reboot does not
+stall a backup or drop log ingestion. It exists so that backups and log chunks
+have somewhere to live that is not a PVC on the same block pool they are meant
+to protect. Same cluster, different pool — half a step, but a real one.
 
 | Property | Value |
 | --- | --- |
 | Store | `object-store` |
 | StorageClass | `ceph-bucket` |
 | Metadata pool | Replicated, size 3 |
-| Data pool | Erasure coded 2+1 — 1.5x overhead rather than 3x |
+| Data pool | Erasure coded 2+1 — 1.5x overhead rather than 3x, safe at `failureDomain: host` with six nodes |
 | Reclaim policy | `Retain`, so deleting a claim cannot delete the bucket |
 | Endpoint | `http://rook-ceph-rgw-object-store.rook-ceph.svc` |
 
@@ -240,6 +333,8 @@ rook-ceph/             # Distributed Storage
 ├── application.yaml   # ArgoCD Application
 ├── operator.yaml      # Rook-Ceph operator
 ├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
+├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
 ├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
 └── httproute.yaml     # Rook dashboard route
 ```

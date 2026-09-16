@@ -90,8 +90,34 @@ Three tags do the work:
 - `!Env` reads an environment variable, which is how client secrets get in
   without being written to Git.
 
+The worker discovers every `.yaml` key in the ConfigMap and applies it.
+
+!!! warning "OAuth2 providers must name their grant types"
+    Authentik 2026.x restricts which OAuth2 grants a provider serves, and
+    `grant_types` defaults to an empty list. A provider that omits it serves
+    none, and the authorize endpoint turns every login away with
+    `invalid_request: The request is otherwise malformed`. The field looks
+    optional; it is not.
+
 !!! warning "The outpost entry replaces its provider list"
     The `authentik_outposts.outpost` entry sets `providers` wholesale rather than appending. Every proxied application must be listed there — adding a fifth and forgetting this line silently unassigns the other four, which means four dashboards quietly stop being protected rather than loudly breaking. Failing open is the worst failure mode a security control can have.
+
+## Chart values
+
+- **`authentik.web.base_url`.** Authentik cannot reliably infer the URL it is
+  reached on, and builds e-mail links and outpost redirects from it. Unset,
+  every admin page shows "The base URL has not been configured" and the worker
+  logs the same on every reconcile. The UI stores it on the tenant in the
+  database; setting it in the chart backfills it, so a rebuilt cluster needs no
+  click.
+- **`metrics.enabled` and `metrics.serviceMonitor.enabled`.** The first creates
+  the metrics Service, and the chart renders the ServiceMonitor only when both
+  are set. The ServiceMonitor switch alone produces neither object, silently.
+  The worker is scraped too: tasks, outpost state and blueprint runs are
+  measured there, not on the server.
+- **Postgres resources.** Sized from a measured 281Mi peak. Postgres memory is
+  bounded by `shared_buffers` and `work_mem` rather than by load, so it is
+  steadier than the number suggests.
 
 ## Client secrets are generated up front
 

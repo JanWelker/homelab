@@ -26,27 +26,7 @@ spec:
             enabled: false
 
           server:
-            # OpenBao keeps the root key out of swap with mlock, which needs
-            # IPC_LOCK -- that capability is the reason this namespace enforces
-            # `privileged` in pod-security.yaml. Needing one capability is not a
-            # reason to keep the other thirty-odd: dropping ALL and adding back
-            # exactly IPC_LOCK is the same privilege with a far smaller surface.
-            #
-            # runAsUser/runAsGroup/fsGroup are not decoration here. The chart's
-            # securityContext.pod is an if/else, not a merge: setting it at all
-            # replaces the default block, which is where uid 100 came from. Set
-            # runAsNonRoot on its own and the pod keeps the assertion while
-            # losing the uid that made it true -- and since the image's USER is
-            # the name `openbao` rather than a number, the kubelet cannot prove
-            # non-root and refuses to start the container at all:
-            #
-            #   container has runAsNonRoot and image has non-numeric user
-            #   (openbao), cannot verify user is non-root
-            #
-            # Only bites on pod recreation, so it stayed invisible until a node
-            # reboot rescheduled one. These are the chart's own defaults
-            # (server.uid 100, server.gid 1000), restated because overriding the
-            # block means owning all of it.
+            # Keep uid/gid: this block replaces the chart's. See openbao docs.
             statefulSet:
               securityContext:
                 pod:
@@ -64,9 +44,7 @@ spec:
                     add:
                       - IPC_LOCK
             image:
-              # The chart prepends server.image.registry, which already
-              # defaults to quay.io -- spelling it here too asks the kubelet
-              # for quay.io/quay.io/openbao/openbao.
+              # No registry prefix: the chart already prepends quay.io.
               repository: openbao/openbao
               # renovate: datasource=github-releases depName=openbao/openbao extractVersion=^v(?<version>.+)$
               tag: 2.6.2
@@ -84,11 +62,7 @@ spec:
                     address = "[::]:8200"
                     cluster_address = "[::]:8201"
 
-                    # /v1/sys/metrics otherwise wants a token, and the
-                    # ServiceMonitor has none, so the target sits at 403. The
-                    # metrics carry counts and timings, not paths or secrets;
-                    # they are readable by whatever can reach 8200, which is
-                    # the namespace policy's callers plus the Gateway.
+                    # The ServiceMonitor has no token to present.
                     telemetry {
                       unauthenticated_metrics_access = true
                     }
@@ -97,14 +71,7 @@ spec:
                   storage "raft" {
                     path = "/openbao/data"
 
-                    # Every replica lists all three, itself included -- a node
-                    # skips its own address. Without these, a follower comes up
-                    # as its own uninitialised cluster and stays there: it
-                    # reports "Vault is not initialized" and refuses unseal
-                    # keys, because `bao operator init` initialises the leader's
-                    # raft cluster, not the pod. Kubernetes service
-                    # registration does not join anything; it only labels pods
-                    # active and standby.
+                    # Required: without them followers never join the cluster.
                     retry_join {
                       leader_api_addr = "http://openbao-0.openbao-internal:8200"
                     }
@@ -120,12 +87,7 @@ spec:
 
                   service_registration "kubernetes" {}
 
-                  # No seal stanza, so the seal is Shamir: OpenBao seals on
-                  # every pod restart and stays sealed until an operator
-                  # supplies 3 of the 5 key shares. While it is sealed no
-                  # ExternalSecret resolves, so cert-manager cannot renew
-                  # certificates -- a node reboot needs a human afterwards.
-                  # See docs/platform/openbao.md.
+                  # No seal stanza: Shamir, manual unseal after every restart.
 
                   telemetry {
                     prometheus_retention_time = "30s"
@@ -146,7 +108,6 @@ spec:
               name: openbao
             readinessProbe:
               enabled: true
-              # Allow unsealed nodes to be marked Ready (standby is healthy in HA)
               path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
             resources:
               requests:
@@ -166,8 +127,6 @@ spec:
               interval: 30s
             prometheusRules:
               enabled: true
-            # OpenBao's upstream dashboard (grafana.com 23725), rendered by the
-            # chart into this namespace.
             grafanaDashboard:
               enabled: true
 

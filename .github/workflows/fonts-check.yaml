@@ -27,10 +27,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # Renovate bumps the pins in scripts/update-fonts.sh but cannot rewrite
-      # the woff2 binaries under docs/assets/fonts, so a font PR arrives with
-      # the pin ahead of the files it names. This re-downloads both pinned
-      # releases and diffs them against what is committed, which is the only
-      # thing standing between that PR and an automerge.
+      # Renovate bumps pins, not woff2 files; see docs/development/maintenance.md
       - name: Check vendored fonts match the pinned releases
         run: make fonts-check

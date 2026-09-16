@@ -1,15 +1,5 @@
 ---
-# Syncs payload/root.yaml, the parent Applications (platform, gitops). The
-# Makefile applies root.yaml once at bootstrap; without this, every later edit
-# to it would need another `kubectl apply`. It lives here rather than in
-# root.yaml so the already-running `gitops` Application creates it -- defining
-# it inside the file it syncs would need that same manual apply to exist at all.
-#
-# Two deliberate omissions. No prune: dropping a parent from root.yaml would
-# delete that Application, and its resources finalizer would take every
-# component beneath it along. Removing a parent stays a deliberate, manual step.
-# And no resources finalizer here: deleting `root` must not cascade into
-# `platform` and `gitops`.
+# No prune and no finalizer, deliberately; see docs/architecture/gitops.md
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

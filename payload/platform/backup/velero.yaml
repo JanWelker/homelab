@@ -17,14 +17,9 @@ spec:
     targetRevision: 12.2.0
     helm:
       valuesObject:
-        # Nothing backed up anything. The cluster is reconstructible from Git
-        # plus the OpenBao unseal keys; everything written into it -- PVC
-        # contents, Grafana dashboards, OpenBao's own Raft data -- was not.
         initContainers:
           - name: velero-plugin-for-aws
-            # v1.14.x pairs with Velero v1.18.x, which is this chart's
-            # appVersion. The chart's own commented example still shows
-            # v1.13.1, which is the v1.17 line.
+            # Plugin minor must match the chart's Velero appVersion
             # renovate: datasource=docker depName=velero/velero-plugin-for-aws
             image: velero/velero-plugin-for-aws:v1.14.2@sha256:0751144c1c8e52d52c48717fbd13ad5a3061e612ae4d7ad744a946cd5b139d1a
             imagePullPolicy: IfNotPresent
@@ -32,10 +27,7 @@ spec:
               - mountPath: /target
                 name: plugins
 
-        # No `cloud` credentials file. The AWS plugin uses the AWS SDK, which
-        # picks the keys up from the environment -- and the environment is fed
-        # straight from the Secret Rook writes for the ObjectBucketClaim, so
-        # the credentials are never rendered into a file or into Git.
+        # Keys come from the bucket claim's Secret via extraEnvVars below
         credentials:
           useSecret: false
 
@@ -59,39 +51,19 @@ spec:
               default: true
               config:
                 region: eu-central-1
-                # RGW addresses buckets by path and serves plain HTTP inside
-                # the cluster.
                 s3ForcePathStyle: "true"
                 s3Url: http://rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
-                # Required against Ceph RGW. The plugin's aws-sdk-go-v2 sends
-                # a trailing checksum that RGW rejects with
-                # XAmzContentSHA256Mismatch, so every upload fails. Empty
-                # disables it; the plugin README lists Ceph S3 explicitly.
+                # Required: RGW rejects the SDK's trailing checksum otherwise
                 checksumAlgorithm: ""
 
-          # CSI snapshots on their own would leave the only copy of the data
-          # inside the same Ceph cluster the backup is supposed to survive.
-          # The data mover copies the snapshot out into the object store and
-          # then throws the snapshot away.
           features: EnableCSI
           defaultSnapshotMoveData: true
           uploaderType: kopia
 
-          # Explicitly empty. The chart ships a placeholder entry with a null
-          # name and provider, renders it into a VolumeSnapshotLocation called
-          # "default", and the CRD schema rejects it -- which failed every sync
-          # of this app. Helm replaces lists rather than merging them, so an
-          # empty one overrides the placeholder and the template renders
-          # nothing. Backups here go through CSI and the data mover, which use a
-          # VolumeSnapshotClass; a VolumeSnapshotLocation belongs to the legacy
-          # per-provider snapshotter plugins and nothing reads it.
+          # Must stay empty: the chart's placeholder entry fails the CRD schema
           volumeSnapshotLocation: []
 
-        # runAsNonRoot is deliberately absent. The velero-plugin-for-aws
-        # initContainer copies itself into /target, and whether that works as a
-        # non-root user depends on the image's own USER rather than on anything
-        # set here -- worth confirming on a real backup before asserting it.
-        # The other three cost nothing and are safe.
+        # No runAsNonRoot: unverified for the plugin initContainer's copy
         podSecurityContext:
           seccompProfile:
             type: RuntimeDefault
@@ -102,8 +74,6 @@ spec:
               - ALL
 
         snapshotsEnabled: true
-        # Required by the data mover: the node agent is what actually reads the
-        # snapshot and streams it to object storage.
         deployNodeAgent: true
 
         metrics:
@@ -129,8 +99,6 @@ spec:
                   message: Velero backup {{ $labels.schedule }} has failed.
 
         schedules:
-          # Everything, nightly. Small enough a cluster that selecting
-          # namespaces would be more maintenance than it saves.
           daily:
             disabled: false
             schedule: "0 2 * * *"
@@ -141,7 +109,6 @@ spec:
               includedNamespaces:
                 - "*"
               excludedNamespaces:
-                # Reconstructed from Git on the next sync, and large.
                 - kube-system
               excludedResources:
                 - events
@@ -154,9 +121,6 @@ spec:
           limits:
             memory: 1Gi
 
-        # The velero container above had a limit; the node-agent DaemonSet
-        # beside it did not. Sized from a measured 37Mi peak -- it is idle
-        # except during a backup, so the headroom here is deliberately wide.
         nodeAgent:
           resources:
             requests:

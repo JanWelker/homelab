@@ -1,10 +1,5 @@
 ---
-# Grafana's OIDC client credentials. Grafana reads these as environment
-# variables (`envFromSecret`), so the keys have to be named exactly as Grafana
-# expects rather than in this repository's usual style.
-#
-# Same OpenBao path Authentik's blueprint reads, so the client is defined once
-# and both sides pick it up.
+# Keys are Grafana env var names; the OpenBao path is shared with Authentik.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:

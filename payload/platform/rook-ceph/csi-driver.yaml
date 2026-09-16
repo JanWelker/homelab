@@ -1,17 +1,5 @@
 ---
-# The RBD CSI driver, which the chart no longer deploys on its own.
-#
-# Up to rook-ceph v1.19 the operator chart's `csi` values built the provisioner
-# Deployment and the plugin DaemonSet directly. v1.20 hands that job to the
-# ceph-csi-operator, installed as a subchart (`csi.installCsiOperator`, default
-# true), which deploys nothing until an OperatorConfig and a Driver CR tell it
-# what to run. The chart ships neither -- upstream keeps them in
-# `deploy/examples/operator.yaml`, for the admin to apply -- so without this
-# file there is no provisioner registered for `rook-ceph.rbd.csi.ceph.com` and
-# every PVC against `rook-ceph-block` stays Pending with ExternalProvisioning.
-#
-# Both CRs need the operator's CRDs, which arrive with the chart at sync-wave
-# -2, hence wave 0 and the skipped dry run on the first pass.
+# The chart does not deploy these since v1.20; see docs/platform/rook-ceph.md
 apiVersion: csi.ceph.io/v1
 kind: OperatorConfig
 metadata:
@@ -22,9 +10,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   driverSpecDefaults:
-    # Pins every sidecar and the cephcsi image to the ConfigMap the chart
-    # renders, so a chart bump moves them together and the csi-operator's own
-    # image defaults never apply.
+    # Chart-rendered image set, so a chart bump moves all CSI images together
     imageSet:
       name: rook-csi-operator-image-set-configmap
     log:
@@ -42,9 +28,7 @@ spec:
       deploymentStrategy:
         type: Recreate
 ---
-# CephFS is not enabled, so only the RBD driver exists. The name is not free:
-# Rook derives the provisioner from its own namespace, and it has to match the
-# `provisioner` the StorageClasses in cluster.yaml name.
+# Name must match the provisioner in cluster.yaml's StorageClasses
 apiVersion: csi.ceph.io/v1
 kind: Driver
 metadata:

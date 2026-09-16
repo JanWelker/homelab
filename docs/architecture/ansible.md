@@ -52,6 +52,11 @@ boot.
 `boot_server_ip`, `control_plane_vip`, `control_plane_vip_interface`,
 `install_disk`, `pod_subnet` and `service_subnet`.
 
+`kube_vip_version` only sets the bootstrap static pod that gives `kubeadm init`
+a VIP. Once ArgoCD syncs, `payload/platform/kube-vip/` takes over, and its image
+is what runs; upgrade it there — see
+[Control Plane VIP](../operations/control-plane-vip.md).
+
 **Groups** nest one level deeper than they first appear:
 
 | Group | Holds |
@@ -76,7 +81,10 @@ Generates all necessary configuration files for booting and bootstrapping the
 nodes.
 
 - Generates credentials (bootstrap token, certificate key, etcd encryption key)
-    into `output/credentials/`, mode `0700`.
+    into `output/credentials/`, mode `0700`. Re-running is safe: the `password`
+    lookup reads an existing file back instead of generating a new value, so
+    the 32-byte encryption key every control-plane node shares stays the one
+    etcd's Secrets were encrypted with.
 - Creates Ignition configs (via Butane) for each host, into `output/http`.
 - Creates PXE boot menus for each host based on MAC address, into
     `output/tftp/pxelinux.cfg/`.

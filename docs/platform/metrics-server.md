@@ -89,6 +89,18 @@ check the controller's logs before widening either.
 !!! warning "Adding a node means editing the regex"
     A node whose name is not in `providerRegex` will have its CSR denied, keep its self-signed certificate, and go silently missing from `kubectl top` — the node is fine, the cluster is fine, and one row is simply absent from a table nobody reads carefully. Add it to the regex at the same time you add it to the inventory; the regex lives in `payload/platform/kubelet-csr-approver/application.yaml`.
 
+## Chart values
+
+The kubelet flags are set by overriding the chart's `defaultArgs` rather than
+appending through `args`. The default list already sets
+`--kubelet-preferred-address-types`, and passing a flag twice leaves the winner
+up to parsing order. That flag is `InternalIP`, because node hostnames do not
+resolve here.
+
+metrics-server runs two replicas spread across nodes, with a
+PodDisruptionBudget of `minAvailable: 1`, so a node reboot does not take the
+resource metrics API down with it.
+
 ## Directory Structure
 
 ```text

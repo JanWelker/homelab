@@ -1,31 +1,5 @@
 ---
-# Pod-to-pod traffic was unrestricted across every namespace: anything that got
-# a foothold in one pod could reach OpenBao's API, the Ceph mons and the
-# Kubernetes API alike.
-#
-# These are CiliumNetworkPolicies rather than plain NetworkPolicies for one
-# specific reason. With Cilium's Gateway API implementation the request reaching
-# a backend pod comes from the per-node Envoy, and kubelet's liveness and
-# readiness probes come from the node itself. Neither has a pod identity a
-# standard NetworkPolicy can name, so a plain default-deny silently kills health
-# probes and all ingress. Cilium's `fromEntities` can name them: `ingress` for
-# Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
-#
-# Scope is deliberately ingress-only. A default-deny on egress additionally
-# needs rules for DNS, the API server, and every external endpoint a component
-# talks to, and getting that wrong takes out the component rather than merely
-# exposing it. Egress is the next step, not this one.
-#
-# Still uncovered, and each for its own reason. kube-system holds Cilium itself,
-# the static control-plane pods and kube-vip: a default-deny there is enforced by
-# the component being restricted, which is not a thing to get wrong. rook-ceph
-# has mons, OSDs and CSI plugins with a wide and partly host-level traffic
-# matrix, and wants Ceph health as its verification signal rather than a guess.
-# backup has a node-agent doing volume backups through the CSI plugins and a
-# host-network CronJob reading etcd. kubescape's node-agent talks to both the
-# operator and the aggregated storage API server, and getting it wrong disables
-# posture scanning silently. argocd and authentik already carry NetworkPolicies
-# from their own charts.
+# Cilium, not NetworkPolicy: must admit probes and Gateway (Envoy) traffic.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

@@ -1,13 +1,5 @@
 ---
-# Bucket for Loki's chunks and ruler data, provisioned from the CephObjectStore
-# by the `ceph-bucket` StorageClass.
-#
-# bucketName rather than generateBucketName: a generated name carries a random
-# suffix, which would have to be read back out of the ConfigMap and fed into
-# Loki's config at runtime. A fixed name keeps the storage config static.
-#
-# Rook writes the credentials into a Secret of the same name, which Loki reads
-# as environment variables -- see application.yaml.
+# Fixed name keeps Loki's storage config static, see docs/platform/logging.md
 apiVersion: objectbucket.io/v1alpha1
 kind: ObjectBucketClaim
 metadata:

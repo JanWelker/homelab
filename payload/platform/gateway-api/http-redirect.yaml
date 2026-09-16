@@ -1,26 +1,5 @@
 ---
-# The HTTP to HTTPS redirect for each Gateway.
-#
-# Both routes match every hostname, which is what makes them catch-alls -- and
-# also what makes them lose. Gateway API resolves two routes matching the same
-# request by hostname specificity first, so a route naming
-# `auth.infra.k8s.wlkr.ch` beats one naming nothing. An application route that
-# does not say which listener it wants attaches to *both*, wins port 80 on
-# specificity, and is served in cleartext; the redirect below never runs.
-#
-# That is not hypothetical -- it is what this cluster did until the app routes
-# were pinned. Authentik served its login form over plain HTTP on port 80,
-# silently, for as long as the routes were unpinned. Nothing reports it,
-# because every route is Accepted and the redirect looks correctly configured.
-#
-# So every application route pins `sectionName: https` on its parentRef, which
-# leaves the HTTP listener with only these two attached. Adding a route without
-# that line reintroduces the hole. The check is cheap:
-#
-#   kubectl get gateway infra-gateway -n kube-system \
-#     -o jsonpath='{range .status.listeners[*]}{.name}={.attachedRoutes}{"\n"}{end}'
-#
-# The HTTP listener should show exactly 1.
+# App routes must pin sectionName: https; see docs/platform/gateway-api.md
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

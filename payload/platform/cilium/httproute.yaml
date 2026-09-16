@@ -26,11 +26,7 @@ spec:
               - name: Referrer-Policy
                 value: "strict-origin-when-cross-origin"
       backendRefs:
-        # Hubble has no authentication of its own, so this points at the
-        # Authentik embedded outpost rather than at hubble-ui. The outpost
-        # authenticates and then proxies to hubble-ui internally; the
-        # cross-namespace reference is permitted by the ReferenceGrant in
-        # payload/platform/authentik/referencegrant.yaml.
+        # Authentik outpost, not hubble-ui: Hubble has no auth of its own.
         - name: authentik-server
           namespace: authentik
           port: 80

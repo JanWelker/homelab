@@ -1,10 +1,4 @@
 ---
-# Sync wave 2, between the ExternalSecret that writes route53-credentials and
-# the Certificates that need an issuer to be Ready. Applied alongside that
-# ExternalSecret instead, both issuers come up Ready=False InvalidSolver --
-# "failed to get secret route53-credentials" -- and stay there until something
-# resyncs them.
-
 # Let's Encrypt Staging ClusterIssuer (for testing)
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -19,7 +13,6 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-staging
     solvers:
-      # DNS-01 solver for all domains via Route53
       - dns01:
           route53:
             region: eu-central-1
@@ -44,7 +37,6 @@ spec:
     privateKeySecretRef:
       name: letsencrypt-prod
     solvers:
-      # DNS-01 solver for all domains via Route53
       - dns01:
           route53:
             region: eu-central-1

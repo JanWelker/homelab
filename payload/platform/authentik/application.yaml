@@ -18,29 +18,15 @@ spec:
       targetRevision: 2026.8.2
       helm:
         valuesObject:
-          # Every platform UI had its own login, or none at all: ArgoCD a local
-          # admin account, Grafana a chart-generated password, the Rook
-          # dashboard its own Ceph credentials, and Hubble nothing whatsoever
-          # while publishing cluster-wide network flow data to anyone who could
-          # reach the hostname.
           global:
             envFrom:
-              # AUTHENTIK_SECRET_KEY, the Postgres password, the bootstrap
-              # credentials and the OIDC client secrets, all from OpenBao.
-              # Referenced as !Env from the blueprints below.
+              # From secrets.yaml; the blueprints read it via !Env.
               - secretRef:
                   name: authentik-secrets
 
           authentik:
             log_level: info
 
-            # Authentik needs to be told the URL it is reached on: it has no
-            # reliable way to infer one, and it builds e-mail links and outpost
-            # redirects from it. Unset, every admin page carries a "The base URL
-            # has not been configured" banner and the worker logs the same on
-            # every reconcile. The setting lives on the tenant, where the UI
-            # writes it into the database; this is the config source that
-            # backfills it instead, so a rebuilt cluster does not need the click.
             web:
               base_url: https://auth.infra.k8s.wlkr.ch
             error_reporting:
@@ -56,10 +42,7 @@ spec:
 
           server:
             replicas: 2
-            # `metrics.enabled` is what creates the metrics Service, and the
-            # chart only renders the ServiceMonitor when both are set. With
-            # just the ServiceMonitor switch, as this had, neither object
-            # exists and nothing says so.
+            # Both switches needed: serviceMonitor alone renders nothing.
             metrics:
               enabled: true
               serviceMonitor:
@@ -73,8 +56,6 @@ spec:
 
           worker:
             replicas: 1
-            # Tasks, outpost state and blueprint runs are measured here, not on
-            # the server.
             metrics:
               enabled: true
               serviceMonitor:
@@ -99,10 +80,6 @@ spec:
                 enabled: true
                 storageClass: rook-ceph-block
                 size: 8Gi
-              # authentik-server and -worker beside this both had limits; the
-              # database did not. Sized from a measured 281Mi peak. Postgres
-              # memory is bounded by shared_buffers and work_mem rather than by
-              # load, so this is steadier than the number suggests.
               resources:
                 requests:
                   cpu: 50m

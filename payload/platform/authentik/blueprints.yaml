@@ -1,11 +1,5 @@
 ---
-# Authentik configuration as code. The worker discovers every `.yaml` key in
-# this ConfigMap and applies it, so providers and applications are declared
-# here rather than clicked together in the UI and lost on the next rebuild.
-#
-# `!Find` resolves objects authentik ships by default; `!KeyOf` references an
-# entry by its `id` earlier in the same blueprint; `!Env` reads a variable from
-# the authentik-secrets Secret mounted on the pods.
+# Authentik blueprints; see docs/platform/authentik.md
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -26,11 +20,7 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
-          # Authentik 2026.x restricts which OAuth2 grants a provider will
-          # serve, and the field defaults to an empty list -- a provider that
-          # does not name them serves none, and the authorize endpoint turns
-          # every login away with `invalid_request: The request is otherwise
-          # malformed`. Not optional; only looks it.
+          # Required: an empty list serves no grants and rejects every login.
           grant_types:
             - authorization_code
             - refresh_token
@@ -68,7 +58,7 @@ data:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           client_type: confidential
-          # See the note on the ArgoCD provider above.
+          # Required; see the ArgoCD provider above.
           grant_types:
             - authorization_code
             - refresh_token
@@ -96,10 +86,6 @@ data:
     metadata:
       name: homelab-proxied-dashboards
     entries:
-      # These four have no usable authentication of their own. Hubble has none
-      # at all, and published cluster-wide network flow data to anyone who
-      # could reach the hostname. Prometheus and Alertmanager have none either,
-      # which is why they were not exposed before this.
       - model: authentik_providers_proxy.proxyprovider
         state: present
         id: hubble-provider
@@ -184,9 +170,7 @@ data:
           provider: !KeyOf alertmanager-provider
           meta_launch_url: https://alertmanager.infra.k8s.wlkr.ch
 
-      # Assigning the providers to the built-in outpost is what actually makes
-      # it serve those hostnames. This replaces the outpost's provider list
-      # rather than adding to it, so every proxied application must be listed.
+      # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
         identifiers:

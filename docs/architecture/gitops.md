@@ -22,6 +22,17 @@ creates a `root` Application (`payload/argocd/root-application.yaml`) that syncs
 `root.yaml`, so later edits to the parent Applications arrive through ArgoCD like
 any other change.
 
+`root` is defined in `payload/argocd/` rather than in `root.yaml` because the
+already-running `gitops` Application can create it there; defining it inside
+the file it syncs would need the same manual apply to exist at all. It omits
+two things on purpose:
+
+- **No prune.** Dropping a parent from `root.yaml` would delete that
+  Application, and its resources finalizer would take every component beneath
+  it along. Removing a parent stays a deliberate, manual step.
+- **No resources finalizer.** Deleting `root` must not cascade into `platform`
+  and `gitops`.
+
 ```mermaid
 flowchart LR
     subgraph "Bootstrap (Manual)"
@@ -95,3 +106,41 @@ flowchart TB
 ```
 
 The full wave-by-wave listing is in [Platform &rarr; Usage](../platform/index.md#usage).
+
+### A missing CRD is a deadlock, not a delay
+
+A custom resource whose CRD does not exist yet does not merely fail and retry.
+ArgoCD marks the task `SyncFailed`, leaves the operation `Running` while it
+waits on the rest of the wave to become healthy, and starts no new sync until
+that one finishes. When the resource it could not apply is the credential the
+wave is waiting for, nothing ever moves again.
+
+That is why `external-secrets` sits at wave `-6`: ahead of every Application
+that ships an `ExternalSecret`, the earliest of which is cert-manager at `-5`.
+`SkipDryRunOnMissingResource=true` on each `ExternalSecret` covers the first
+sync of a fresh cluster, where the CRDs have not landed yet.
+
+## ArgoCD's own configuration
+
+`payload/argocd/values.yaml` holds the chart values. The parts that are not
+self-explanatory:
+
+| Setting | Why |
+| --- | --- |
+| `redis-ha.haproxy` `maxSurge: 0` | Three replicas with hard per-host anti-affinity and only three schedulable nodes. The default strategy surges a fourth pod with nowhere to land, wedging every rollout until the progress deadline gives up. Retiring first frees the node |
+| Memory limits, no CPU limits | Limits are about 2.5x the measured peak working set; requests are about steady state. A CPU limit throttles even on an idle node, while memory is not compressible, so only memory is capped |
+| `controller` has no resources | The application-controller peaked at 1639Mi and grows with the number of managed resources; a day of steady state is not enough to size it |
+| `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
+| `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the [break-glass path](../platform/authentik.md#when-authentik-is-down) |
+| `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
+
+The OIDC client ID and secret come from `kv/authentik/config`, the same OpenBao
+path Authentik's blueprint reads, so neither side is copied out of a UI after a
+rebuild. `argocd-cm` refers to them as `$argocd-oidc:client-id`; ArgoCD resolves
+a `$name:key` reference only against a Secret labelled
+`app.kubernetes.io/part-of: argocd`, which the `ExternalSecret` template sets.
+
+The Grafana dashboard in `argocd-dashboard.yaml` is upstream's
+`examples/dashboard.json`, unmodified, at the Argo CD version the chart deploys.
+The chart renders none, so it is vendored — and Renovate does not see it: re-copy
+it when Argo CD moves a minor version.

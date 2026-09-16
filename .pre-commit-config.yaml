@@ -19,8 +19,7 @@ repos:
     hooks:
       - id: pylint
         files: ^boot_server/.*\.py$
-        # Pylint runs in an isolated environment. Verification might fail if deps aren't there.
-        # Adding a basic check.
+        # The hook's isolated env lacks the project's dependencies.
         args: ["--disable=import-error"]
 
   - repo: https://github.com/adrienverge/yamllint

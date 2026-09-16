@@ -18,10 +18,7 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        # The CSI driver itself is configured in csi-driver.yaml: v1.20 moved
-        # every setting that used to live under `csi` here into the
-        # ceph-csi-operator's OperatorConfig and Driver CRs, and Helm accepts
-        # values a chart no longer reads without a word of complaint.
+        # `csi` values are silently ignored since v1.20: use csi-driver.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: rook-ceph

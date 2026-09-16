@@ -6,13 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # Ahead of every Application that ships an ExternalSecret, and cert-manager
-    # at -5 is the earliest of those. A CustomResource whose CRD does not exist
-    # yet does not merely fail and retry: ArgoCD marks the task SyncFailed,
-    # leaves the operation Running while it waits on the rest of the wave to
-    # become healthy, and starts no new sync until that one finishes. When the
-    # resource it could not apply is the credential the wave is waiting for,
-    # that is a deadlock, not a delay. See docs/architecture/gitops.md.
+    # Must precede every ExternalSecret consumer; see docs/architecture/gitops.md
     argocd.argoproj.io/sync-wave: "-6"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -29,12 +23,8 @@ spec:
           serviceMonitor:
             enabled: true
             interval: 30s
-          # The chart's dashboard, rendered into this namespace.
           grafanaDashboard:
             enabled: true
-          # The webhook and cert-controller had no limits while the controller
-          # above did. Sized from measured peak working set at roughly 2.5x:
-          # webhook 33Mi, cert-controller 73Mi.
           webhook:
             serviceMonitor:
               enabled: true
@@ -45,18 +35,7 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
-            # Leave the ServiceAccount token mounted. The webhook has no
-            # RoleBinding or ClusterRoleBinding, which makes it look like it
-            # never talks to the API server -- but it builds an in-cluster
-            # client at startup regardless, and without the token it exits
-            # before serving anything:
-            #
-            #   unable to load in-cluster config: open
-            #   /var/run/secrets/kubernetes.io/serviceaccount/token: no such
-            #   file or directory
-            #
-            # Only bites on pod recreation, so the pod from before the change
-            # kept admission working and hid the crashloop behind it.
+            # Keep the SA token mounted: the webhook exits without it.
           certController:
             serviceMonitor:
               enabled: true

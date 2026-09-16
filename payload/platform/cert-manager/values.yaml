@@ -2,23 +2,18 @@
 crds:
   enabled: true
 
-# Enable Gateway API support
 config:
   apiVersion: controller.config.cert-manager.io/v1alpha1
   kind: ControllerConfiguration
   enableGatewayAPI: true
 
-# The chart renders the ServiceMonitor unconditionally, so this depends on
-# `make install-cilium` having landed the Prometheus operator CRDs first --
-# kube-prometheus-stack itself arrives sync-waves later.
+# Needs the Prometheus operator CRDs that `make install-cilium` installs.
 prometheus:
   enabled: true
   servicemonitor:
     enabled: true
 
-# Sized from measured peak working set at roughly 2.5x: controller 84Mi,
-# cainjector 89Mi, webhook 24Mi. CPU requests but no CPU limits, matching the
-# pattern the rest of the platform uses.
+# ~2.5x measured peak; see docs/platform/cert-manager.md
 resources:
   requests:
     cpu: 10m

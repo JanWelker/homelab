@@ -74,7 +74,11 @@ So the chart's `config` is off (`alertmanagerSpec.useExistingSecret`), and
 `alertmanager-config.yaml` renders the complete `alertmanager.yaml` with ESO
 into the Secret named by `alertmanagerSpec.configSecret`. Routes, receivers and
 inhibit rules are still written out in that file's template, so they stay
-reviewable; only the three values below are filled in from OpenBao.
+reviewable; only the three values below are filled in from OpenBao. The inhibit
+rules are the chart's defaults, repeated: a supplied config replaces the whole
+document, so nothing is inherited. Each templated value goes through `toJson`,
+which makes it a quoted YAML string — a password containing `:`, `#` or a quote
+cannot break the rendered file.
 
 | Key in `kv/monitoring/smtp` | Used as |
 | --- | --- |
@@ -132,6 +136,13 @@ that are always red is how a team learns to ignore red, so this is worth fixing
 rather than silencing. The
 `bind-address` and `listen-metrics-urls` arguments in
 `ansible/templates/kubeadm.yaml.j2` are what make these targets real.
+
+The scheduler and controller-manager serve metrics over HTTPS with a
+self-signed certificate for the node address, so their ServiceMonitors set
+`insecureSkipVerify` — the scrape still authenticates with the ServiceAccount
+token. etcd's metrics listener on port 2381 is plain HTTP and serves only
+`/metrics` and `/health`; the client and peer APIs stay on their mTLS
+listeners.
 
 !!! note
     A cluster provisioned before that change keeps the old flags — they are
@@ -217,6 +228,32 @@ built in the UI lives in one PVC and nowhere else — it is not in Git, Velero i
 its only copy, and it will not follow you to a rebuilt cluster. Every
 organisation has exactly one irreplaceable dashboard that someone made in the UI
 four years ago, and nobody knows how to recreate it.
+
+## Resources and rollout
+
+Memory limits are sized at roughly 2.5 times the measured peak working set.
+The Grafana sidecars peaked at 89Mi and 92Mi; the operator, its config
+reloader, kube-state-metrics, node-exporter and Alertmanager each have their
+own limits in `application.yaml`.
+
+Prometheus and Grafana are deliberately uncapped. Prometheus peaked at 1501Mi
+and grows with series count and retention; Grafana peaked at 680Mi, which is
+high enough for a dashboard renderer that it wants explaining before it is
+capped. Neither can be sized from a day of steady state, and OOMKilling the
+thing that tells you the cluster is unhealthy is the specific failure worth
+avoiding.
+
+Grafana uses the `Recreate` deployment strategy. Its dashboard PVC is
+ReadWriteOnce, and under the chart's default `RollingUpdate` the new pod waits
+for a volume the old pod releases only once the new one is Ready — a rollout
+parks at `FailedAttachVolume: Volume is already used by pod(s)` until someone
+deletes a pod by hand. A few seconds of downtime is the price of a
+single-replica, single-volume Grafana.
+
+Alertmanager does not mount a ServiceAccount token
+(`automountServiceAccountToken: false`). No RoleBinding or ClusterRoleBinding
+names it — the operator talks to the API, not Alertmanager — so the token would
+buy nothing and leave a working credential in a pod reachable from the Gateway.
 
 ## Directory Structure
 

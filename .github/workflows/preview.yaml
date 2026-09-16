@@ -8,10 +8,7 @@ name: Preview Documentation
       - "reopened"
       - "synchronize"
       - "closed"
-    # Matches docs.yaml. This job runs the only `zensical build --strict` a
-    # pull request gets, so anything that can break the build belongs here --
-    # a theme or nav change in zensical.toml breaks it exactly as readily as a
-    # broken link in a page, and used to reach main with no build at all.
+    # Keep in step with docs.yaml: this is the only strict build a PR gets.
     paths:
       - "docs/**"
       - "overrides/**"
@@ -27,8 +24,7 @@ concurrency:
 
 jobs:
   preview:
-    # Fork PRs run without write access, so the deploy would fail rather than
-    # leak the token. Skip them instead.
+    # Fork PRs have no write access, so the deploy would fail.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
@@ -44,8 +40,6 @@ jobs:
         with:
           version: "0.12.15"
 
-      # The theme resolves its own links relative to the page, so a build made
-      # for the site root also works from the preview subdirectory.
       - name: Build site
         if: github.event.action != 'closed'
         run: |

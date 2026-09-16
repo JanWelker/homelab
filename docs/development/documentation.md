@@ -19,9 +19,12 @@ it, which is a mistake people make once.
     holds the handful of theme templates this project replaces.
 2. **Build**: On push to `main`, the `docs.yaml` workflow runs
     `zensical build --clean --strict`, producing a static site in `site/`.
-3. **Upload**: The build output is uploaded as a GitHub Pages artifact.
-4. **Deploy**: `actions/deploy-pages` publishes the artifact to
-    <https://janwelker.github.io/homelab/>.
+3. **Deploy**: The workflow drops a `.nojekyll` marker into `site/` and pushes
+    it to the `gh-pages` branch, which GitHub Pages serves at
+    <https://janwelker.github.io/homelab/>. Without the marker Pages runs the
+    branch through Jekyll, which silently drops any path Jekyll considers
+    private. The deploy cleans the branch but excludes `pr-preview/`, so it
+    leaves the open pull-request previews in place.
 
 No container image, registry, or cluster is involved — the docs stay available
 independently of the homelab. Someone else's uptime problem, for once.
@@ -36,10 +39,22 @@ sequenceDiagram
     Dev->>Git: Push Changes (docs/**, zensical.toml)
     Git->>GA: Trigger "Publish Documentation"
     GA->>GA: zensical build --clean --strict
-    GA->>GA: Upload Pages artifact
-    GA->>Pages: Deploy artifact
+    GA->>Pages: Push site/ to gh-pages
     Pages-->>Dev: janwelker.github.io/homelab
 ```
+
+## Pull request previews
+
+`preview.yaml` builds every pull request that touches `docs/`, `overrides/` or
+`zensical.toml` and publishes it under `pr-preview/` on the same `gh-pages`
+branch; closing the PR removes it. Its path filter has to match `docs.yaml`,
+because this is the only `--strict` build a pull request gets: a nav or theme
+change in `zensical.toml` breaks the build as readily as a broken link, and
+without that path it would reach `main` unbuilt. The same build works from the
+preview subdirectory because the theme resolves its links relative to the page.
+
+PRs from forks are skipped. They run without write access, so the deploy would
+only fail.
 
 ## Working locally
 
@@ -69,6 +84,9 @@ uv run zensical build   # one-off build into site/
     indented one as a code block, so a multi-paragraph `!!!` admonition trips
     `MD046`. Keep admonition bodies to a single paragraph. This one will catch
     you, probably today.
+- Inline HTML is limited to `<div>` (`MD033` in `.markdownlint-cli2.yaml`):
+    the card grids on the hub pages need a wrapping `<div class="grid cards">`,
+    and the theme has no Markdown syntax for them.
 - Theme templates are overridden by dropping a same-named file under
     `overrides/` (wired up via `theme.custom_dir`). Currently only
     `partials/source.html`, which drops the repository-facts API call that 404s

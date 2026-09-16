@@ -2,7 +2,6 @@
 global:
   domain: argo.infra.k8s.wlkr.ch
 
-# Enable HA
 redis-ha:
   enabled: true
   redis:
@@ -20,12 +19,7 @@ redis-ha:
       limits:
         memory: 128Mi
   haproxy:
-    # Three replicas, hard anti-affinity per hostname, and only three
-    # schedulable nodes -- the control plane is tainted. The chart default
-    # strategy surges to a fourth pod before retiring any of the three, and that
-    # fourth pod has nowhere to land, so any change to this pod template wedges
-    # the rollout until the progress deadline gives up. Retire first, then
-    # replace: the node is free by the time the new pod needs it.
+    # maxSurge 0: 3 pods, hard anti-affinity, 3 nodes; see gitops docs.
     deploymentStrategy:
       type: RollingUpdate
       rollingUpdate:
@@ -45,25 +39,7 @@ redis-ha:
       limits:
         memory: 128Mi
 
-# Memory limits below are sized from measured peak working set over the cluster's
-# full Prometheus history, at roughly 2.5x. Requests are set at about the
-# observed steady state. CPU requests but no CPU limits, which is the same
-# pattern kured, external-dns, kubelet-csr-approver and metrics-server already
-# use: a CPU limit throttles at the quota even on an idle node, while memory is
-# not compressible and a limit there is what stops one workload taking a node
-# down.
-#
-# The application-controller is deliberately absent. It peaked at 1639Mi and
-# grows with the number of managed resources, which 23h of steady state is not
-# enough to size -- see the tracking issue.
-
-# Metrics for the four components the upstream dashboard (argocd-dashboard.yaml)
-# reads. `metrics.enabled` creates the <component>-metrics Service, whose name
-# is the `job` label that dashboard filters on; the ServiceMonitor is rendered
-# only while the monitoring.coreos.com CRDs exist, so `make install-argo`
-# before kube-prometheus-stack still renders cleanly and ArgoCD's own sync adds
-# them once the CRDs are there. The chart's NetworkPolicies already admit the
-# metrics ports from any namespace.
+# controller has no resources yet: it grows with managed resources.
 controller:
   replicas: 1
   metrics:
@@ -132,19 +108,9 @@ configs:
   cm:
     url: https://argo.infra.k8s.wlkr.ch
 
-    # The local admin account is disabled. With SSO in front of ArgoCD, leaving
-    # it enabled would leave a shared password as a way around it, with no
-    # audit trail and no way to revoke one person's access.
-    #
-    # It is the break-glass path if Authentik is unreachable:
-    #   kubectl -n argocd patch cm argocd-cm --type merge \
-    #     -p '{"data":{"admin.enabled":"true"}}'
-    # See docs/platform/authentik.md.
+    # Break-glass if Authentik is down: see docs/platform/authentik.md
     admin.enabled: "false"
 
-    # Client ID and secret come from the same OpenBao path Authentik's
-    # blueprint reads, so neither side has to be copied out of a UI.
-    # `$name:key` resolves against a Secret labelled part-of: argocd.
     oidc.config: |
       name: Authentik
       issuer: https://auth.infra.k8s.wlkr.ch/application/o/argocd/
@@ -179,10 +145,8 @@ configs:
           - /spec/rules/0/matches
 
   rbac:
-    # Nothing by default: an authenticated user with no matching group gets no
-    # access rather than read-only-everything.
+    # No access without a matching group, not read-only-everything.
     policy.default: ""
-    # Authentik group -> ArgoCD role.
     policy.csv: |
       g, argocd-admins, role:admin
       g, argocd-viewers, role:readonly
