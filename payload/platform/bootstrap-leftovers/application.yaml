@@ -1,0 +1,37 @@
+---
+# Temporary. Adopts objects that bootstrap left behind so ArgoCD can delete
+# them; nothing on a running cluster is removed with kubectl. The follow-up PR
+# deletes this whole directory: `platform` prunes this Application, and its
+# resources finalizer deletes everything listed in leftovers.yaml.
+#
+# Removing only leftovers.yaml would not work. Automated sync refuses to prune
+# an Application down to zero resources (allowEmpty defaults to false).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bootstrap-leftovers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/bootstrap-leftovers
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # Server-side apply, so the ConfigMap and Secrets below can be adopted
+      # from metadata alone: fields this manifest does not set stay owned by
+      # kubeadm and Helm and are left untouched until the objects are deleted.
+      - ServerSideApply=true

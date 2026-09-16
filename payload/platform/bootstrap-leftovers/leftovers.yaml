@@ -1,0 +1,80 @@
+---
+# kube-proxy addon debris. kubeadm init deployed the addon because skipPhases
+# was misplaced in kubeadm.yaml.j2 (fixed in #706); the Makefile deleted only
+# the DaemonSet. Nothing runs as this ServiceAccount -- Cilium replaces
+# kube-proxy. Role and bindings match the live objects exactly, since roleRef is
+# immutable and a mismatch would fail the sync.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["kube-proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-proxy
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kube-proxy
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:bootstrappers:kubeadm:default-node-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeadm:node-proxier
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:node-proxier
+subjects:
+  - kind: ServiceAccount
+    name: kube-proxy
+    namespace: kube-system
+---
+# Helm release records from the Makefile's `helm upgrade --install`. ArgoCD has
+# managed these three releases since, rendering the charts itself, so the
+# records only describe what bootstrap installed. The release contents are left
+# out on purpose: they are Helm's to hold until deletion, not the repository's.
+apiVersion: v1
+kind: Secret
+type: helm.sh/release.v1
+metadata:
+  name: sh.helm.release.v1.argocd.v1
+  namespace: argocd
+---
+apiVersion: v1
+kind: Secret
+type: helm.sh/release.v1
+metadata:
+  name: sh.helm.release.v1.cert-manager.v1
+  namespace: cert-manager
+---
+apiVersion: v1
+kind: Secret
+type: helm.sh/release.v1
+metadata:
+  name: sh.helm.release.v1.cilium.v1
+  namespace: kube-system
