@@ -1,0 +1,50 @@
+# Grafana's break-glass admin account (see docs/platform/authentik.md).
+#
+# Without an existing Secret the chart generates a random admin password on
+# every render. ArgoCD then always sees the chart's Secret as OutOfSync, and
+# the Deployment's `checksum/secret` annotation changes with it, so every sync
+# restarts Grafana.
+#
+# The password lives in OpenBao at:
+#
+#   kv/monitoring/grafana-admin
+#
+# Store it with:
+#
+#   bao kv put kv/monitoring/grafana-admin \
+#     password="$(openssl rand -base64 24 | tr -d '\n')"
+#
+# Grafana only reads GF_SECURITY_ADMIN_PASSWORD when it creates its database.
+# The dashboard PVC already has one, so changing the value here does not change
+# the password Grafana checks. To make the two agree, run:
+#
+#   kubectl -n monitoring exec deploy/kube-prometheus-stack-grafana -c grafana -- \
+#     grafana cli admin reset-admin-password "$PASSWORD"
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+  annotations:
+    # Grafana reads this Secret through secretKeyRef, so the pod cannot start
+    # without it. Same sync-wave race as alertmanager-smtp.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao
+    kind: ClusterSecretStore
+  target:
+    name: grafana-admin
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      data:
+        admin-user: admin
+        admin-password: "{{ .password }}"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: monitoring/grafana-admin
+        property: password
