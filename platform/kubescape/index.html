@@ -2386,7 +2386,7 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 </tr>
 <tr>
 <td>Metrics</td>
-<td><code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code>, three ServiceMonitors</td>
+<td><code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code> from the prometheus-exporter; node-agent runtime metrics</td>
 </tr>
 <tr>
 <td>Sent off-cluster</td>
@@ -2462,7 +2462,9 @@ kubelet directory that used to occupy the tmpfs root moved to disk. <code>odin</
 sitting at 85% memory with 813 MB of it tmpfs before that change.</p>
 <div class="admonition tip">
 <p class="admonition-title">Watch the node-agent's own metrics first</p>
-<p><code>nodeAgent.serviceMonitor</code> is enabled alongside, so the agent's event rates
+<p><code>nodeAgent.serviceMonitor</code> and <code>nodeAgent.config.prometheusExporter</code> are
+enabled alongside — the second is what makes the agent listen on its
+metrics port at all — so the agent's event rates
 and budget usage are in Prometheus from the moment it starts. If the runtime
 stack is going to be too expensive for these nodes, that is where it shows
 up — before the OOM killer makes the point less politely.</p>
