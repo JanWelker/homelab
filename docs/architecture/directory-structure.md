@@ -48,6 +48,7 @@ generated — never edit anything in there, it will be overwritten by the next
 │   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
 │   │   ├── application.yaml     # ArgoCD self-management Application
 │   │   ├── argocd-projects.yaml # AppProject grouping (see Security Posture)
+│   │   ├── root-application.yaml # Syncs root.yaml after bootstrap
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD

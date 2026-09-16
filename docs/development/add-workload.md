@@ -49,8 +49,8 @@ spec:
       selfHeal: true
 ```
 
-`payload/root.yaml` is applied manually, so run `make bootstrap-apps` (or
-`kubectl apply -f payload/root.yaml`) once after adding it.
+The `root` Application (`payload/argocd/root-application.yaml`) syncs
+`payload/root.yaml`, so merging the change is enough — no `kubectl apply`.
 
 ## Step 2: Create the App Directory
 
