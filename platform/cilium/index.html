@@ -2204,7 +2204,9 @@ never a small problem.</p>
 <li><strong>WireGuard encryption</strong>: <code>encryption.type: wireguard</code>, transparently, between
   nodes.</li>
 <li><strong>Hubble</strong>: Observability with metrics and UI at <code>hubble.infra.k8s.wlkr.ch</code>,
-  behind the <a href="../authentik/">Authentik</a> proxy outpost.</li>
+  behind the <a href="../authentik/">Authentik</a> proxy outpost. The flow metrics carry
+  source and destination namespace, which the chart's Hubble dashboards in
+  Grafana filter on; see <a href="../monitoring/#dashboards">Monitoring</a>.</li>
 </ul>
 <h2 id="the-one-setting-that-will-ruin-your-day">The one setting that will ruin your day<a class="headerlink" href="#the-one-setting-that-will-ruin-your-day" title="Permanent link">&para;</a></h2>
 <p><code>k8sServiceHost</code> in <code>values.yaml</code> is a literal IP address, because with

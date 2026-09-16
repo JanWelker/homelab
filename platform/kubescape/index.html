@@ -2532,11 +2532,10 @@ CVE scanning was disabled, and were deliberately left in the dashboard rather
 than edited out — which is the reason they started working on their own rather
 than needing the dashboard rewritten.</p>
 <div class="admonition note">
-<p class="admonition-title">Where the dashboard ConfigMap lives</p>
-<p><code>grafana-dashboard.yaml</code> declares its namespace as <code>monitoring</code>, not
-<code>kubescape</code> — the same reason as
-<a href="../logging/#querying">the Loki datasource</a>. The Grafana sidecar only watches
-its own release namespace for <code>grafana_dashboard</code> ConfigMaps.</p>
+<p class="admonition-title">Why it is vendored</p>
+<p>The kubescape-operator chart renders no dashboard, unlike Cilium's or
+OpenBao's, so the JSON is copied here. It lives in <code>kubescape</code>, next to the
+component; Grafana's dashboard sidecar watches every namespace.</p>
 </div>
 <h2 id="reading-results-without-grafana">Reading results without Grafana<a class="headerlink" href="#reading-results-without-grafana" title="Permanent link">&para;</a></h2>
 <p>Findings are stored in an aggregated API server, so they are ordinary
@@ -2610,7 +2609,7 @@ suppressing.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubescape/
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>└── grafana-dashboard.yaml   # Upstream dashboard, applied into monitoring/
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>└── grafana-dashboard.yaml   # Upstream dashboard (the chart ships none)
 </span></code></pre></div>
 
 

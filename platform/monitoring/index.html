@@ -1462,6 +1462,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#adding-a-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2187,6 +2198,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#adding-a-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2527,11 +2549,47 @@ password Grafana checks. Reset it to match:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
+<h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
+<p>Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
+brings its own, from upstream. Where the chart can render one, the chart does;
+only charts without a dashboard get a vendored copy.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Dashboards</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../cilium/">Cilium</a></td>
+<td>Cilium Metrics, Cilium Operator, four Hubble dashboards</td>
+<td>Chart: <code>dashboards</code>, <code>operator.dashboards</code>, <code>hubble.metrics.dashboards</code></td>
+</tr>
+<tr>
+<td><a href="../openbao/">OpenBao</a></td>
+<td>OpenBao</td>
+<td>Chart: <code>serverTelemetry.grafanaDashboard</code></td>
+</tr>
+<tr>
+<td><a href="../external-secrets/">External Secrets</a></td>
+<td>External Secrets Operator</td>
+<td>Chart: <code>grafanaDashboard</code></td>
+</tr>
+<tr>
+<td><a href="../kubescape/">Kubescape</a></td>
+<td>Kubescape Vulnerabilities Overview</td>
+<td>Vendored: <code>kubescape/grafana-dashboard.yaml</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="adding-a-dashboard">Adding a Dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h2>
 <p>Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be added:</p>
 <ul>
 <li><strong>Via the UI</strong>: Changes persist across restarts because of the PVC.</li>
-<li><strong>Via ConfigMap</strong>: Add a ConfigMap with the label <code>grafana_dashboard: "1"</code> to the <code>monitoring</code> namespace and it will be auto-imported.</li>
+<li><strong>Via ConfigMap</strong>: Add a ConfigMap with the label <code>grafana_dashboard: "1"</code> next to the component it describes. The sidecar watches every namespace (<code>sidecar.dashboards.searchNamespace: ALL</code>) and imports it.</li>
+<li><strong>Via the component's chart</strong>: Many charts can render that ConfigMap themselves. Prefer it over a vendored copy, since it follows the chart's version.</li>
 </ul>
 <p>Prefer the ConfigMap for anything you would be annoyed to lose. A dashboard
 built in the UI lives in one PVC and nowhere else — it is not in Git, Velero is
