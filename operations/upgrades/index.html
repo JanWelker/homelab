@@ -2263,11 +2263,13 @@ this is the deliberate path:</p>
    steps kubeadm needs for control-plane components. Swapping binaries and
    calling it an upgrade is exactly the kind of thing that works on five nodes
    and then does not work on the sixth.</p>
-<p>Before running it, confirm kubeadm still knows kube-proxy is off. The
-upgrade reads the stored <code>kubeadm-config</code>, not the template, and with
-<code>disabled: true</code> missing it redeploys <code>kube-proxy</code> beside Cilium:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>cm<span class="w"> </span>kubeadm-config<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.ClusterConfiguration}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A1<span class="w"> </span><span class="s1">'^proxy:'</span>
+<p>Always pass <code>--skip-phases addon/kube-proxy</code>. A cluster built before
+<code>proxy.disabled</code> was set in <code>kubeadm.yaml.j2</code> still has <code>proxy: {}</code> in its
+stored <code>kubeadm-config</code>, which is what the upgrade reads. Without the flag
+it redeploys <code>kube-proxy</code> beside Cilium, and <code>upgrade apply</code> never writes
+a skipped phase back, so the flag is needed every time. On a cluster built
+since, the flag is redundant and harmless:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy
 </span></code></pre></div>
 </li>
 </ol>
