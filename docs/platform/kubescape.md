@@ -49,6 +49,25 @@ SaaS backend when `server`, `account` and `accessKey` are set; leaving them unse
 is what keeps findings in the cluster. There is no "offline" switch to forget to
 flip, which is the right way round for a default.
 
+### The scanner image is pinned ahead of the chart
+
+`kubescape.image.tag` overrides the chart's scanner image. Chart 1.40.4 ships
+`kubescape` v4.0.13, and on v4.0.13 a scan of everything never runs: the
+request lists every framework followed by every control, and the policy
+download routes the whole batch by the kind of its first entry. Each control ID
+is then fetched as a framework, and the nightly scan dies on the first one with
+`framework 'C-0214' not found`. No `ConfigurationScanSummary` was ever written,
+so every `kubescape_controls_*` series sat at zero — which reads like a clean
+bill of health rather than a broken scanner.
+
+v4.0.14 fixes the routing
+([kubescape#3768](https://github.com/kubescape/kubescape/pull/3768)). Setting
+`defaultFrameworks` would also avoid the bug, but only by pinning the list the
+section above argues against. Renovate tracks the tag through its
+`# renovate:` comment; remove the override once a chart release defaults to
+v4.0.14 or later, or it will keep the scanner on whatever it last bumped to
+regardless of what the chart was tested with.
+
 ## Image vulnerability scanning
 
 `kubevuln` requests 5Gi of `ephemeral-storage` and limits at 10Gi, which is why
@@ -147,7 +166,8 @@ changes when a Renovate PR merges.
 There is deliberately no `kubescape.serviceMonitor`. Its endpoint,
 `/v1/metrics`, is not a metrics page but a trigger: every scrape runs a full
 posture scan (every 200 s at the chart's interval) and answers with the result.
-Here those scans failed and the target sat at HTTP 500. The
+Here those scans failed on the [v4.0.13 bug](#the-scanner-image-is-pinned-ahead-of-the-chart)
+and the target sat at HTTP 500. The
 `kubescape_controls_*` and `kubescape_vulnerabilities_*` series come from the
 separate prometheus-exporter instead, which reports the stored results of the
 scheduled scans.
@@ -174,10 +194,10 @@ door explicitly sets `isDefault: false`, leaving Prometheus holding that role.
 | Cluster Vulnerabilities | `kubescape_vulnerabilities_total_cluster_*` |
 | Namespace Vulnerabilities | `kubescape_vulnerabilities_total_namespace_*` |
 
-All five populate. The two `kubescape_vulnerabilities_*` panels were dark when
-CVE scanning was disabled, and were deliberately left in the dashboard rather
-than edited out — which is the reason they started working on their own rather
-than needing the dashboard rewritten.
+Only the two `kubescape_vulnerabilities_*` panels populate. The controls panels
+stayed at zero while the scanner could not complete a scan (see
+[above](#the-scanner-image-is-pinned-ahead-of-the-chart)), and the workload panel
+needs `prometheusExporter.enableWorkloadMetrics`, which is off.
 
 !!! note "Why it is vendored"
     The kubescape-operator chart renders no dashboard, unlike Cilium's or
