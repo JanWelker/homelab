@@ -174,7 +174,8 @@ kubectl -n monitoring exec deploy/kube-prometheus-stack-grafana -c grafana -- \
 
 Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
 brings its own, from upstream. Where the chart can render one, the chart does;
-only charts without a dashboard get a vendored copy.
+only charts without a dashboard get a vendored copy. Renovate does not update
+vendored copies; the header of each file names the upstream tag it came from.
 
 | Component | Dashboards | Source |
 | --- | --- | --- |
@@ -182,6 +183,8 @@ only charts without a dashboard get a vendored copy.
 | [OpenBao](openbao.md) | OpenBao | Chart: `serverTelemetry.grafanaDashboard` |
 | [External Secrets](external-secrets.md) | External Secrets Operator | Chart: `grafanaDashboard` |
 | [Kubescape](kubescape.md) | Kubescape Vulnerabilities Overview | Vendored: `kubescape/grafana-dashboard.yaml` |
+| [Rook-Ceph](rook-ceph.md) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored from Rook: `rook-ceph/grafana-dashboards.yaml` |
+| [Alloy](logging.md) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored from the Alloy mixin: `logging/grafana-dashboards.yaml` |
 
 ## Adding a Dashboard
 
