@@ -165,13 +165,20 @@ spec:
                   source_labels = ["__journal__hostname"]
                   target_label  = "node"
                 }
+                // Set here rather than through the source's `labels`: the
+                // tailer overwrites `job` with the component ID
+                // (loki.source.journal.node) after applying `labels`, and only
+                // the relabel rules run after that.
+                rule {
+                  target_label = "job"
+                  replacement  = "systemd-journal"
+                }
               }
 
               loki.source.journal "node" {
                 path          = "/var/log/journal"
                 max_age       = "12h"
                 relabel_rules = discovery.relabel.journal.rules
-                labels        = { job = "systemd-journal" }
                 forward_to    = [loki.write.default.receiver]
               }
 
