@@ -117,9 +117,14 @@ spec:
           # for this cluster stay in it. Leaving them blank is what selects the
           # community path, so there is no flag to turn "offline" on.
 
-          kubescape:
-            serviceMonitor:
-              enabled: true
+          # No `kubescape.serviceMonitor`. Its endpoint, /v1/metrics, is not a
+          # metrics page but a trigger: every scrape runs a full posture scan
+          # (every 200s by the chart's interval) and answers with the result.
+          # Here each of those scans failed and the target sat at HTTP 500.
+          # The kubescape_controls_* and kubescape_vulnerabilities_* series the
+          # dashboard reads come from the prometheus-exporter below, which
+          # reports the stored results of the scheduled scans instead.
+
           # The node-agent exposes its own metrics -- eBPF event rates, profile
           # counts, and how much of its budget it is using. That last one is the
           # number to watch after enabling the runtime stack, so the scrape goes
@@ -127,6 +132,14 @@ spec:
           nodeAgent:
             serviceMonitor:
               enabled: true
+            # The ServiceMonitor alone scrapes a port nothing listens on:
+            # config.prometheusExporter is what starts the node-agent's
+            # /metrics listener on 8080. Unrelated to
+            # capabilities.prometheusExporter, which is the separate exporter
+            # Deployment. It replaces an OTLP metric push, and none is
+            # configured.
+            config:
+              prometheusExporter: enable
             # The DaemonSet ran on three of six nodes. Control-plane nodes are
             # tainted NoSchedule and the chart ships no toleration, so the host
             # scanner only ever collected from freya, heimdall and valkyrie --

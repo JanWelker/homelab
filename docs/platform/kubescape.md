@@ -41,7 +41,7 @@ keeps passing, just not against the benchmark you believed you were measuring.
 | Image CVEs | Yes (`vulnerabilityScan`), narrowed by `relevancy` |
 | Runtime | eBPF node-agent DaemonSet on all six nodes |
 | Results | Aggregated API: `spdx.softwarecomposition.kubescape.io` |
-| Metrics | `kubescape_controls_*` and `kubescape_vulnerabilities_*`, three ServiceMonitors |
+| Metrics | `kubescape_controls_*` and `kubescape_vulnerabilities_*` from the prometheus-exporter; node-agent runtime metrics |
 | Sent off-cluster | **Nothing** |
 
 That last row is a configuration choice, not a mode. Kubescape talks to the ARMO
@@ -91,7 +91,9 @@ kubelet directory that used to occupy the tmpfs root moved to disk. `odin` was
 sitting at 85% memory with 813 MB of it tmpfs before that change.
 
 !!! tip "Watch the node-agent's own metrics first"
-    `nodeAgent.serviceMonitor` is enabled alongside, so the agent's event rates
+    `nodeAgent.serviceMonitor` and `nodeAgent.config.prometheusExporter` are
+    enabled alongside — the second is what makes the agent listen on its
+    metrics port at all — so the agent's event rates
     and budget usage are in Prometheus from the moment it starts. If the runtime
     stack is going to be too expensive for these nodes, that is where it shows
     up — before the OOM killer makes the point less politely.
