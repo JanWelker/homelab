@@ -58,6 +58,7 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
+      sectionName: https
   hostnames:
     - "my-app.k8s.wlkr.ch"
   rules:
@@ -89,6 +90,16 @@ sentence.
 
 The policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus
 `route53:ListHostedZones` and `route53:ListResourceRecordSets`.
+
+The key reaches the pod as a file, not as environment variables. The AWS SDK
+reads either, but the environment puts both halves of a key that can repoint
+every hostname into `kubectl describe pod`, into crash dumps, and into every
+child process. A file is readable only by something already inside the
+container. The `ExternalSecret` templates an INI `credentials` key, which is
+the only key mounted at `/aws` (`AWS_SHARED_CREDENTIALS_FILE`), so the file
+exists nowhere but the Secret and the pod. The original `access-key-id` and
+`secret-access-key` keys stay in the Secret beside it: dropping them would
+rewrite it out from under anything still reading them.
 
 ## Checking it works
 

@@ -39,8 +39,7 @@ jobs:
           uv sync --locked --all-extras --dev
           uv run zensical build --clean --strict
 
-      # Pages serves this branch through Jekyll unless told otherwise, which
-      # would drop any path Jekyll considers private.
+      # Otherwise Pages runs Jekyll, which drops paths it considers private.
       - name: Disable Jekyll
         run: touch site/.nojekyll
 

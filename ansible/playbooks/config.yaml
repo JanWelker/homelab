@@ -36,8 +36,7 @@
       run_once: true # noqa: run-once
       delegate_to: localhost
 
-    # 32 bytes, base64, shared by every control-plane node. The password lookup
-    # reads an existing file back, so re-running this does not invalidate etcd.
+    # The lookup re-reads the existing file, so re-running keeps etcd readable.
     - name: Generate Secrets Encryption Key
       ansible.builtin.set_fact:
         encryption_key: >-

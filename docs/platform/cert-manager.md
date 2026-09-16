@@ -26,6 +26,41 @@ zone works from anywhere, and it is also the only way to get a wildcard.
 - **ClusterIssuers**: Both staging (testing) and production issuers using DNS-01 via Route53.
 - **Certificates**: Wildcard TLS certs for `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`, stored as Secrets in `kube-system` and referenced by the Gateways. Two certificates cover every hostname this cluster will ever serve, which is a pleasant place to be.
 
+## Sync order
+
+The Application's own resources go in three sync waves, because each one cannot
+work until the one before it exists:
+
+| Wave | Resource | Needs |
+| --- | --- | --- |
+| `1` | `ExternalSecret` `route53-credentials` | OpenBao, through ESO |
+| `2` | `letsencrypt-staging`, `letsencrypt-prod` | The `route53-credentials` Secret |
+| `3` | The three `Certificate`s | A `Ready` ClusterIssuer |
+
+Left in one wave, ArgoCD orders custom resources alphabetically — `Certificate`,
+then `ClusterIssuer`, then `ExternalSecret`, exactly backwards. The sync then
+waits on certificates that cannot issue until two resources behind them in the
+queue are applied. An issuer applied alongside the `ExternalSecret` fares no
+better: it comes up `Ready=False` with `InvalidSolver` ("failed to get secret
+route53-credentials") and stays there until something resyncs it.
+
+The Application also sets a sync `retry`. Without one, a failed apply ends the
+operation where it fell and nothing picks it up again — and a single flake at
+the front of the chain, such as the external-secrets admission webhook being
+unreachable on a cluster whose CNI has only just come up, leaves every issuer
+and certificate behind it unmade.
+
+## Resources
+
+Requests and limits are sized at roughly 2.5x the measured peak working set:
+controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
+limited, like the rest of the platform.
+
+The chart renders its `ServiceMonitor` unconditionally, so it cannot sync until
+the Prometheus operator CRDs exist. `make install-cilium` installs them during
+bootstrap; kube-prometheus-stack, which owns them, arrives several sync waves
+later.
+
 ## AWS Credentials Setup
 
 The DNS-01 solver needs AWS credentials with Route53 permissions. The `route53-credentials` Secret is materialised from [OpenBao](openbao.md) via an [ExternalSecret](external-secrets.md).

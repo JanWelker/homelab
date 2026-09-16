@@ -47,6 +47,7 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
+      sectionName: https
   hostnames:
     - "my-app.k8s.wlkr.ch"
   rules:
@@ -61,6 +62,18 @@ That is the entire procedure. [external-dns](external-dns.md) notices the
 hostname and creates the Route53 record; the wildcard certificate already covers
 the name. Two things that used to be manual steps, and used to be the two steps
 everyone forgot.
+
+!!! danger "Always set `sectionName: https`"
+    A route that does not name a listener attaches to both, and on port 80 it beats the redirect. The two redirect routes in `http-redirect.yaml` match every hostname, and Gateway API resolves competing routes by hostname specificity first, so a route naming `auth.infra.k8s.wlkr.ch` wins over one naming nothing — and serves the app in cleartext. Nothing reports it: every route is `Accepted` and the redirect looks correctly configured. This cluster served Authentik's login form over plain HTTP that way until the routes were pinned.
+
+Check that the HTTP listener carries only the redirect:
+
+```bash
+kubectl get gateway infra-gateway -n kube-system \
+  -o jsonpath='{range .status.listeners[*]}{.name}={.attachedRoutes}{"\n"}{end}'
+```
+
+`http` should show exactly `1`; do the same for `apps-gateway`.
 
 !!! warning "Nothing stops two apps claiming the same hostname"
     Both Gateways admit routes from every namespace, so a stray `HTTPRoute` in an unrelated namespace can attach itself to `infra-gateway` and claim a name. Whoever wins is not something you want to determine experimentally — see [Security Posture](../architecture/security.md#authorization).

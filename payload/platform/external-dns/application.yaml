@@ -17,49 +17,27 @@ spec:
       targetRevision: 1.22.0
       helm:
         valuesObject:
-          # Every hostname on this cluster needed a Route53 record created by
-          # hand, while cert-manager was already automating the certificate for
-          # the same name through the same zone. Adding a workload meant
-          # remembering a step that lives nowhere in the repository.
           provider:
             name: aws
 
-          # HTTPRoutes are the only thing that publishes a hostname here;
-          # Ingress is not used at all, and Services are reached through a
-          # Gateway rather than directly. external-dns resolves the address
-          # from the route's parent Gateway.
           sources:
             - gateway-httproute
 
           domainFilters:
             - k8s.wlkr.ch
 
-          # k8s.wlkr.ch is not a hosted zone of its own -- the records live in
-          # the wlkr.ch zone, whose SOA answers for the whole subtree. Without
-          # this flag external-dns only considers zones whose name the domain
-          # filter covers, finds none, and reports "no changes for the matching
-          # hosted zones" on every pass while quietly holding the endpoints it
-          # built. The filter still applies: the zone is wlkr.ch, the records
-          # it will write are the ones under k8s.wlkr.ch.
+          # k8s.wlkr.ch has no zone of its own; its records live in wlkr.ch.
           extraArgs:
             - --aws-zone-match-parent
 
-          # TXT registry with an owner ID: external-dns will only modify or
-          # delete records it created and marked as its own. Records made by
-          # hand in the same zone are invisible to it.
           registry: txt
           txtOwnerId: homelab-k8s
           txtPrefix: "_externaldns."
 
-          # sync rather than upsert-only, so deleting an HTTPRoute also removes
-          # its record. Safe because of the ownership registry above -- without
-          # that, sync would be a way to lose hand-made records.
+          # Only safe with the TXT ownership registry above.
           policy: sync
 
-          # Credentials come from a file rather than the environment. The
-          # Secret is the same one ESO already renders from OpenBao; it now
-          # carries an INI `credentials` key alongside the two original ones,
-          # and only that key is projected into the pod.
+          # A credentials file, not env vars; see docs/platform/external-dns.md
           env:
             - name: AWS_SHARED_CREDENTIALS_FILE
               value: /aws/credentials

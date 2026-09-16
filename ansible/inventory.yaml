@@ -12,9 +12,7 @@ all:
     flatcar_channel: stable
     flatcar_version: "4757.2.0"
     syslinux_version: "6.03"
-    # Bootstrap only: the static pod Ignition writes so kubeadm init has a VIP.
-    # Once ArgoCD syncs, payload/platform/kube-vip/ takes over and its image is
-    # what actually runs; upgrade it there.
+    # Bootstrap only; the running image is pinned in payload/platform/kube-vip/
     kube_vip_version: "v1.2.4"
     kubernetes_version: "v1.37.0"
     containerd_version: "2.1.9"

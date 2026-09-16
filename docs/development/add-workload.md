@@ -122,6 +122,7 @@ spec:
   parentRefs:
     - name: apps-gateway
       namespace: kube-system
+      sectionName: https
   hostnames:
     - "my-app.k8s.wlkr.ch"
   rules:
