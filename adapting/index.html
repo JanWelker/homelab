@@ -2366,6 +2366,14 @@ and adjust the credential path in OpenBao accordingly.</p>
 <li><code>devices</code> — the interface prefix Cilium binds to, <code>"en+"</code> by default. Linux
   hosts are usually <code>"en+"</code> or <code>"eth+"</code>; check <code>ip link</code> on a provisioned node.</li>
 </ul>
+<p>And <code>payload/platform/kube-vip/daemonset.yaml</code>, which takes over from the
+bootstrap static pod once ArgoCD syncs and cannot read the inventory:</p>
+<ul>
+<li><code>address</code> — the same value as <code>control_plane_vip</code>.</li>
+<li><code>vip_interface</code> — the same value as <code>control_plane_vip_interface</code>.</li>
+</ul>
+<p>A mismatch here does not fail at provisioning. It fails on the first sync, when
+the DaemonSet removes the static pods and starts advertising somewhere else.</p>
 <p>A note on naming your nodes: pick a theme with more members than you currently
 have machines. Norse gods scale further than you would think, and nothing is
 more annoying than a cluster where the seventh node has to be called <code>node7</code>.</p>
@@ -2393,6 +2401,7 @@ merely instructive.</p>
 <li>[ ] ACME email and DNS-01 provider match your setup</li>
 <li>[ ] <code>inventory.yaml</code> describes your nodes, with the right <code>boot_server_ip</code></li>
 <li>[ ] <code>control_plane_vip</code> is free, and <code>control_plane_vip_interface</code> matches the NIC</li>
+<li>[ ] <code>address</code> and <code>vip_interface</code> in the kube-vip DaemonSet match those two</li>
 <li>[ ] <code>k8sServiceHost</code> and <code>devices</code> match your control plane and NICs. On a new
       build, point <code>k8sServiceHost</code> at <code>control_plane_vip</code> once the VIP answers —
       see <a href="../operations/control-plane-vip/">Control Plane VIP</a></li>

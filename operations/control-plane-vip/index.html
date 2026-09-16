@@ -1712,6 +1712,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#adoption-by-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adoption by ArgoCD
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choosing-the-address" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2026,6 +2037,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#adoption-by-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adoption by ArgoCD
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#choosing-the-address" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2215,12 +2237,12 @@ hostname".</p>
 <td><code>control_plane_vip</code>, <code>control_plane_vip_interface</code> in <code>ansible/inventory.yaml</code></td>
 </tr>
 <tr>
-<td>kube-vip version</td>
-<td><code>kube_vip_version</code>, tracked by Renovate in the <code>Core Infrastructure</code> group</td>
+<td>Bootstrap static pod</td>
+<td>Written by Ignition to <code>/etc/kubernetes/manifests/kube-vip.yaml</code> on control-plane nodes only, at <code>kube_vip_version</code></td>
 </tr>
 <tr>
-<td>Static pod manifest</td>
-<td>Written by Ignition to <code>/etc/kubernetes/manifests/kube-vip.yaml</code> on control-plane nodes only</td>
+<td>Running kube-vip</td>
+<td>DaemonSet in <code>payload/platform/kube-vip/</code>, synced by ArgoCD; its image is tracked by Renovate</td>
 </tr>
 <tr>
 <td>Cluster endpoint</td>
@@ -2240,6 +2262,40 @@ weirdness that eats an entire evening.</p>
 <p>The manifest is placed by Ignition rather than applied afterwards because it has
 to be running before <code>kubeadm init</code> writes the endpoint into the cluster's
 certificates. Chicken, egg, static pod.</p>
+<h2 id="adoption-by-argocd">Adoption by ArgoCD<a class="headerlink" href="#adoption-by-argocd" title="Permanent link">&para;</a></h2>
+<p>A static pod only changes when someone rewrites the file on the node, which in
+practice means reinstalling it. So the static pod is only the bootstrap: once
+ArgoCD syncs <code>payload/platform/kube-vip/</code>, a DaemonSet on the control-plane
+nodes takes over, and upgrading kube-vip is a merged PR like any other chart.</p>
+<p>On each node, the DaemonSet's <code>adopt</code> init container deletes
+<code>/etc/kubernetes/manifests/kube-vip.yaml</code> and waits for the static kube-vip to
+release <code>:2112</code> before the new one starts. Both use the node name as their
+leader-election identity and the same <code>plndr-cp-lock</code> Lease, so the two must
+never run side by side on one node. Where the file is already gone, the init
+container does nothing.</p>
+<p>A DaemonSet is usually the wrong home for the VIP, because a kubelet that
+reaches the API through the VIP cannot fetch the pod that would bring it up.
+That does not apply here: the control-plane kubelets use their own node's API
+server (check <code>server:</code> in <code>/etc/kubernetes/kubelet.conf</code>), so they still start
+kube-vip after a full power loss. kube-vip itself talks to the node's API server
+too, not to the <code>kubernetes</code> Service, which would need Cilium first.</p>
+<p>What that changes:</p>
+<ul>
+<li><code>kube_vip_version</code> in the inventory is the bootstrap version only. Bump
+  the image in <code>daemonset.yaml</code> to upgrade a running cluster.</li>
+<li>The first sync replaces all three static pods at once, so the VIP drops for a
+  few seconds. Later updates roll one node at a time.</li>
+<li>The VIP settings live in two places, the inventory and <code>daemonset.yaml</code>. Keep
+  them in step.</li>
+<li>kube-vip no longer uses <code>admin.conf</code>. Its <code>kube-vip</code> ServiceAccount may only
+  get and update its own Lease.</li>
+<li>The Application does not prune, and its objects carry <code>Delete=false</code>: removing
+  them takes the API away from the workers and from every kubeconfig.</li>
+</ul>
+<div class="admonition danger">
+<p class="admonition-title">If the DaemonSet pods do not come up</p>
+<p>The static manifests are already gone, so nothing holds the VIP. As long as Cilium's <code>k8sServiceHost</code> names a node rather than the VIP, Cilium and ArgoCD keep working. Point <code>kubectl</code> at a node with <code>--server https://10.9.2.1:6443</code>, read <code>kubectl -n kube-system logs ds/kube-vip -c kube-vip</code>, and fix the DaemonSet in Git. If that cannot wait, write <code>/etc/kubernetes/manifests/kube-vip.yaml</code> back onto one control-plane node from <code>ansible/templates/butane_node_config.yaml.j2</code>. That holds while the broken pod merely restarts, since init containers do not rerun then; if the pod is deleted or recreated, <code>adopt</code> removes the file again.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Since Kubernetes 1.29, <code>admin.conf</code> is not usable until <code>kubeadm init</code>
@@ -2322,8 +2378,8 @@ because several of the steps below can leave you unable to open a new one.</p>
 </div>
 <h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># which node currently holds the VIP</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>lease<span class="w"> </span>kube-vip<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.holderIdentity}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">name</span><span class="o">=</span>kube-vip<span class="w"> </span>-o<span class="w"> </span>wide
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>lease<span class="w"> </span>plndr-cp-lock<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.holderIdentity}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kube-vip<span class="w"> </span>-o<span class="w"> </span>wide
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># the endpoint your kubeconfig actually uses</span>
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>kubectl<span class="w"> </span>config<span class="w"> </span>view<span class="w"> </span>--minify<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.clusters[0].cluster.server}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>

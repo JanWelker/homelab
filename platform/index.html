@@ -2149,6 +2149,12 @@ The <a href="#usage">wave ordering</a> below explains why those numbers are what
 <td>The two Gateways and the HTTP-to-HTTPS redirect</td>
 </tr>
 <tr>
+<td>kube-vip</td>
+<td><code>kube-system</code></td>
+<td><code>-1</code></td>
+<td>Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see <a href="../operations/control-plane-vip/">Control Plane VIP</a></td>
+</tr>
+<tr>
 <td>kubelet-csr-approver</td>
 <td><code>kubelet-csr-approver</code></td>
 <td><code>1</code></td>
@@ -2357,7 +2363,7 @@ not exist yet:</p>
 </tr>
 <tr>
 <td><code>-1</code></td>
-<td><code>cilium</code>, <code>rook-ceph-cluster</code></td>
+<td><code>cilium</code>, <code>kube-vip</code>, <code>rook-ceph-cluster</code></td>
 <td></td>
 </tr>
 <tr>
