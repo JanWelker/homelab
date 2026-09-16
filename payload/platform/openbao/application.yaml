@@ -83,6 +83,15 @@ spec:
                     tls_disable = 1
                     address = "[::]:8200"
                     cluster_address = "[::]:8201"
+
+                    # /v1/sys/metrics otherwise wants a token, and the
+                    # ServiceMonitor has none, so the target sits at 403. The
+                    # metrics carry counts and timings, not paths or secrets;
+                    # they are readable by whatever can reach 8200, which is
+                    # the namespace policy's callers plus the Gateway.
+                    telemetry {
+                      unauthenticated_metrics_access = true
+                    }
                   }
 
                   storage "raft" {
