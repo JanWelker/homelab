@@ -41,7 +41,7 @@ keeps passing, just not against the benchmark you believed you were measuring.
 | Image CVEs | Yes (`vulnerabilityScan`), narrowed by `relevancy` |
 | Runtime | eBPF node-agent DaemonSet on all six nodes |
 | Results | Aggregated API: `spdx.softwarecomposition.kubescape.io`, backed by a `rook-ceph-block` PVC |
-| Metrics | `kubescape_controls_*` and `kubescape_vulnerabilities_*` from the prometheus-exporter; node-agent runtime metrics |
+| Metrics | `kubescape_controls_*` and `kubescape_vulnerabilities_*` from the prometheus-exporter, per workload as well as per namespace; node-agent runtime metrics |
 | Sent off-cluster | **Nothing** |
 
 That last row is a configuration choice, not a mode. Kubescape talks to the ARMO
@@ -180,45 +180,82 @@ nothing listens on.
 
 ## The dashboard
 
-The dashboard JSON is upstream's, from
-[kubescape/prometheus-exporter](https://github.com/kubescape/prometheus-exporter),
-unmodified. It carries no datasource of its own, which is what makes it work
-here: panels bind to Grafana's default datasource, and the Loki datasource next
-door explicitly sets `isDefault: false`, leaving Prometheus holding that role.
+The dashboard is written for this cluster, not vendored. The upstream one from
+[kubescape/prometheus-exporter](https://github.com/kubescape/prometheus-exporter)
+answered "how many" and nothing after it, and on this cluster it did not manage
+that either:
 
-| Panel | Metric |
+- **Every namespace panel showed one series, `kubescape`.** The exporter sets a
+  `namespace` label, and Prometheus renames a target's clashing label to
+  `exported_namespace` unless the scrape sets `honorLabels`. The chart's
+  ServiceMonitor has no such option, so the queries group by
+  `exported_namespace` instead.
+- **It charted whole-image CVE counts only.** The exporter also publishes
+  `kubescape_vulnerabilities_relevant_*`, narrowed by `relevancy` to packages
+  the node-agent saw loaded, and those are the numbers worth acting on: 67
+  critical against 261 when this was written.
+- **It stopped at the namespace.** Per-workload series need
+  `prometheusExporter.enableWorkloadMetrics`, which the chart leaves off.
+
+| Section | What it answers |
 | --- | --- |
-| Cluster Controls Vulnerabilities | `kubescape_controls_total_cluster_*` |
-| Namespace Controls Vulnerabilities | `kubescape_controls_total_namespace_*` |
-| Workload Controls Vulnerabilities | `kubescape_controls_total_workload_*` |
-| Cluster Vulnerabilities | `kubescape_vulnerabilities_total_cluster_*` |
-| Namespace Vulnerabilities | `kubescape_vulnerabilities_total_namespace_*` |
+| Top row | Critical and high CVEs, loaded and whole-image; critical and high control failures |
+| Image CVEs | Which containers to fix first — a table sorted by critical CVEs in loaded packages, whole-image counts beside them — and a trend per namespace |
+| Configuration controls | Which workloads fail which severities, and a trend per namespace |
+| Details | The `kubectl` commands below, for going from a table row to the findings |
 
-Only the two `kubescape_vulnerabilities_*` panels populate. The controls panels
-stayed at zero while the scanner could not complete a scan (see
-[above](#the-scanner-image-is-pinned-ahead-of-the-chart)), and the workload panel
-needs `prometheusExporter.enableWorkloadMetrics`, which is off.
+A `namespace` variable filters every panel. The trends are the part that pays
+off later: a step after a sync is a regression a chart or image bump brought in.
 
-!!! note "Why it is vendored"
-    The kubescape-operator chart renders no dashboard, unlike Cilium's or
-    OpenBao's, so the JSON is copied here. It lives in `kubescape`, next to the
-    component; Grafana's dashboard sidecar watches every namespace.
+Two things the counts cannot tell you:
+
+- **"Loaded" reads 0 until the node-agent has profiled a container**, and a
+  zero from that is indistinguishable from a clean container. A row with a high
+  whole-image count and zero loaded is more often not yet profiled than safe;
+  the summary's `vulnerabilitiesRef.relevant.name` is empty in that case.
+- **The CVE IDs are not in Prometheus.** One series per CVE per container would
+  be thousands of series for a table better read with `kubectl`.
+
+The panels take their datasource from a `datasource` variable restricted to
+Prometheus, so the Loki datasource's `isDefault: false` no longer matters to it.
+The chart renders no dashboard of its own; the ConfigMap lives in `kubescape`,
+next to the component, and Grafana's dashboard sidecar watches every namespace.
 
 ## Reading results without Grafana
 
 Findings are stored in an aggregated API server, so they are ordinary
-`kubectl` objects:
+`kubectl` objects. `kubectl get` on a list of them prints names only — the
+aggregated API leaves `spec` out of list responses — so fetch objects one at a
+time to see counts.
 
 ```bash
-# One row per framework, with the pass/fail counts
-kubectl get configurationscansummaries -A
-
-# Per-workload control failures, worst first
-kubectl get workloadconfigurationscansummaries -A
+# Failed controls per namespace (cluster-scoped, named after the namespace)
+kubectl get configurationscansummaries authentik -o yaml
 
 # The full finding set for one workload
-kubectl get workloadconfigurationscans -n <namespace> <name> -o yaml
+kubectl get workloadconfigurationscans -n <namespace> \
+  -l kubescape.io/workload-name=<workload> -o yaml
 ```
+
+CVEs take two hops. The per-container summary, named
+`<kind>-<workload>-<container>`, points at two manifests in the `kubescape`
+namespace: `all`, named after the image, and `relevant`, named after the
+workload instance and holding only loaded packages.
+
+```bash
+NS=argocd; SUMMARY=deployment-argocd-server-server
+REF=$(kubectl get vulnerabilitymanifestsummaries -n $NS $SUMMARY \
+  -o jsonpath='{.spec.vulnerabilitiesRef.relevant.name}')   # .all.name for the whole image
+kubectl get vulnerabilitymanifests -n kubescape "$REF" -o json | jq -r '
+  .spec.payload.matches[]
+  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")
+  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,
+     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]
+  | @tsv'
+```
+
+A `fix.state` of `fixed` means a newer package exists; with upstream images
+that almost always means waiting for, or bumping to, a newer chart.
 
 ## Failures that are decisions
 
@@ -278,5 +315,5 @@ suppressing.
 ```text
 kubescape/
 ├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-└── grafana-dashboard.yaml   # Upstream dashboard (the chart ships none)
+└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
 ```
