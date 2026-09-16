@@ -2526,6 +2526,9 @@ baked into the static pod manifests in <code>/etc/kubernetes/manifests/</code>. 
 those nodes are reprovisioned or the manifests edited, expect those three
 targets to be down.</p>
 </div>
+<p>kube-proxy is not scraped at all (<code>kubeProxy.enabled: false</code>): Cilium replaces
+it, so there is nothing to scrape, and leaving the chart's default on keeps
+<code>KubeProxyDown</code> firing forever.</p>
 <h2 id="accessing-grafana">Accessing Grafana<a class="headerlink" href="#accessing-grafana" title="Permanent link">&para;</a></h2>
 <p>Grafana is exposed via the <code>infra-gateway</code> at <code>monitoring.infra.k8s.wlkr.ch</code>,
 behind <a href="../authentik/">Authentik</a>. There is no login form: <code>disable_login_form</code>
