@@ -2536,7 +2536,7 @@ sealed and unsealed — before you need to.</p>
 <p>ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
 <p>Two commands do all of it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bao-init<span class="w">      </span><span class="c1"># initialise, unseal, configure the engine and ESO's auth</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>bao-secrets<span class="w">   </span><span class="c1"># populate the four paths the cluster reads</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>bao-secrets<span class="w">   </span><span class="c1"># populate the five paths the cluster reads</span>
 </span></code></pre></div>
 <p>The rest of this section is what those do, in the order they do it — worth
 reading once, because the failure modes are much easier to recognise if you
@@ -2608,10 +2608,11 @@ afterwards:</p>
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>├── external-dns/
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>│   └── route53            # access-key-id, secret-access-key
 </span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>├── monitoring/
-</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>│   └── smtp               # password
-</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>│   ├── grafana-admin      # password
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>│   └── smtp               # password
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>└── &lt;workload&gt;/&lt;purpose&gt;   # one leaf per secret
 </span></code></pre></div>
-<p>Four paths, six <a href="../external-secrets/">ExternalSecrets</a>: <code>authentik/config</code> is
+<p>Five paths, seven <a href="../external-secrets/">ExternalSecrets</a>: <code>authentik/config</code> is
 read by three of them, because generating the OIDC client credentials up front
 is what keeps both sides of each integration declarative. The two <code>route53</code>
 leaves are deliberately separate and meant to be separate IAM users --
