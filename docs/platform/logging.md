@@ -29,6 +29,7 @@ currently misbehaving.
 | Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
 | If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
+| Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; Alloy's dashboards are listed under [Monitoring](monitoring.md#dashboards) |
 
 ## What is collected
 
