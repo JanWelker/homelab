@@ -57,11 +57,26 @@ redis-ha:
 # grows with the number of managed resources, which 23h of steady state is not
 # enough to size -- see the tracking issue.
 
+# Metrics for the four components the upstream dashboard (argocd-dashboard.yaml)
+# reads. `metrics.enabled` creates the <component>-metrics Service, whose name
+# is the `job` label that dashboard filters on; the ServiceMonitor is rendered
+# only while the monitoring.coreos.com CRDs exist, so `make install-argo`
+# before kube-prometheus-stack still renders cleanly and ArgoCD's own sync adds
+# them once the CRDs are there. The chart's NetworkPolicies already admit the
+# metrics ports from any namespace.
 controller:
   replicas: 1
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 
 server:
   replicas: 3
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
   extraArgs:
     - --insecure
   resources:
@@ -73,6 +88,10 @@ server:
 
 repoServer:
   replicas: 3
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
   resources:
     requests:
       cpu: 50m
@@ -82,6 +101,10 @@ repoServer:
 
 applicationSet:
   replicas: 2
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
   resources:
     requests:
       cpu: 10m

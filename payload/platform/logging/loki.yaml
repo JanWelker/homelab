@@ -140,6 +140,11 @@ spec:
           enabled: false
 
         monitoring:
+          # Loki's own metrics: ingestion, queries, the compactor and the RGW
+          # object store calls. The chart relabels `job` to logging/loki and
+          # sets `cluster` to the release name.
+          serviceMonitor:
+            enabled: true
           selfMonitoring:
             enabled: false
             grafanaAgent:
