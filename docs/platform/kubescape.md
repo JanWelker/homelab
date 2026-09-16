@@ -21,7 +21,7 @@ and the only useful measurement of it is a repeated one.
 | --- | --- |
 | Namespace | `kubescape` |
 | Sync wave | `2` |
-| Depends on | [Monitoring](monitoring.md) for the Prometheus it exports to |
+| Depends on | [Monitoring](monitoring.md) for the Prometheus it exports to and its ServiceMonitor CRD; [Rook-Ceph](rook-ceph.md) for the results PVC |
 | If it is down | Nothing. This is the one component whose outage costs you only the next nightly scan |
 | Health check | `kubectl get configurationscansummaries -A` |
 | UI | A Grafana dashboard, not a UI of its own |
@@ -40,7 +40,7 @@ keeps passing, just not against the benchmark you believed you were measuring.
 | Node-level checks | Yes (`nodeScan`) — the kube-bench-shaped half of CIS |
 | Image CVEs | Yes (`vulnerabilityScan`), narrowed by `relevancy` |
 | Runtime | eBPF node-agent DaemonSet on all six nodes |
-| Results | Aggregated API: `spdx.softwarecomposition.kubescape.io` |
+| Results | Aggregated API: `spdx.softwarecomposition.kubescape.io`, backed by a `rook-ceph-block` PVC |
 | Metrics | `kubescape_controls_*` and `kubescape_vulnerabilities_*` from the prometheus-exporter; node-agent runtime metrics |
 | Sent off-cluster | **Nothing** |
 
@@ -90,6 +90,22 @@ affordable now for the same reason CVE scanning is — the container logs and th
 kubelet directory that used to occupy the tmpfs root moved to disk. `odin` was
 sitting at 85% memory with 813 MB of it tmpfs before that change.
 
+### On the control plane too
+
+The node-agent DaemonSet carries a toleration for
+`node-role.kubernetes.io/control-plane`. The chart ships none, and without it the
+agent ran on three of six nodes: the host scanner only ever collected from the
+workers, and every CIS host control — PKI file permissions, kubelet config
+ownership, CNI file ownership — reported a failure count as though that were the
+whole cluster. The control-plane nodes hold `apiserver.key`, `sa.key` and the
+etcd certificates; they were the unscanned half.
+
+The toleration is set on `nodeAgent.tolerations`, not `customScheduling`. The
+latter is global and would also let `kubescape`, `kubevuln`, the operator and
+storage schedule onto the control plane, which is load those nodes do not need.
+`values.yaml` does not document the per-component key, but the chart honours it:
+in `templates/node-agent/_node-agent.tpl` it takes precedence over the global.
+
 !!! tip "Watch the node-agent's own metrics first"
     `nodeAgent.serviceMonitor` and `nodeAgent.config.prometheusExporter` are
     enabled alongside — the second is what makes the agent listen on its
@@ -125,6 +141,22 @@ changes when a Renovate PR merges.
     cluster — behind ArgoCD's back, and straight into a permanent OutOfSync.
     `manageWorkloads` lets the operator mutate the workloads it has findings
     about, and grants `patch` on nodes cluster-wide to do it.
+
+## Metrics
+
+There is deliberately no `kubescape.serviceMonitor`. Its endpoint,
+`/v1/metrics`, is not a metrics page but a trigger: every scrape runs a full
+posture scan (every 200 s at the chart's interval) and answers with the result.
+Here those scans failed and the target sat at HTTP 500. The
+`kubescape_controls_*` and `kubescape_vulnerabilities_*` series come from the
+separate prometheus-exporter instead, which reports the stored results of the
+scheduled scans.
+
+`capabilities.prometheusExporter` and `nodeAgent.config.prometheusExporter` are
+unrelated despite the name. The first deploys that exporter; the second starts
+the node-agent's own `/metrics` listener on port 8080, replacing an OTLP push
+that is not configured. Without it, the node-agent ServiceMonitor scrapes a port
+nothing listens on.
 
 ## The dashboard
 

@@ -6,8 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # After kube-prometheus-stack (wave 1), whose ServiceMonitor CRD the two
-    # scrape targets below need, and after Rook (wave -1) for the PVC.
+    # After kube-prometheus-stack (ServiceMonitor CRD) and Rook (PVC).
     argocd.argoproj.io/sync-wave: "2"
     # yamllint disable-line rule:line-length
     link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch/d/kubescape-vuln-overview
@@ -21,62 +20,25 @@ spec:
       targetRevision: 1.40.4
       helm:
         valuesObject:
-          # The chart refuses to guess, and the name shows up on every finding.
           clusterName: homelab
 
-          # Left empty deliberately: empty means *every* posture framework,
-          # which is the set that includes CIS. Naming frameworks explicitly
-          # narrows scheduled scans, and a list pinned to `cis-v1.10.0` goes
-          # stale silently -- it keeps scanning, just not against the benchmark
-          # you thought. Narrow this when there is a reason to, not by default.
+          # Empty means every framework, CIS included. Do not pin a list.
           defaultFrameworks: []
 
-          # Kubescape ships as a suite and defaults to most of it on. Nearly all
-          # of it is on here: posture scanning, image CVE scanning, and the eBPF
-          # runtime stack. The four still disabled are disabled for reasons that
-          # are not about capacity, and they are spelled out below and in
-          # docs/platform/kubescape.md.
           capabilities:
             operator: enable
-            # Posture scanning against the frameworks, on a schedule.
             configurationScan: enable
-            # Host-level checks -- the kube-bench-shaped half of CIS.
             nodeScan: enable
-            # Exports scan results as metrics for Prometheus to scrape.
             prometheusExporter: enable
-
-            # Re-evaluates posture on every relevant API change rather than on
-            # the schedule. Useful on a cluster that changes constantly; this
-            # one changes when a Renovate PR merges.
             continuousScan: disable
 
-            # Image CVE scanning. kubevuln requests 5Gi of ephemeral-storage and
-            # limits at 10Gi, which is why this could not be enabled before: the
-            # kubelet root directory was on the tmpfs root, so node allocatable
-            # ephemeral-storage was 3.6GB on the control-plane nodes and the pod
-            # was unschedulable on half the cluster -- and what it did allocate
-            # would have been RAM shared with etcd. /var/lib/kubelet is its own
-            # 40GB partition now, so the request is ordinary and lands anywhere.
-            #
-            # `relevancy` narrows the CVE report to packages actually loaded at
-            # runtime, which is the difference between a list of 400 findings
-            # and a list of the ones reachable in this cluster. It needs the
-            # node-agent below, which is the other half of why both arrive
-            # together.
+            # relevancy needs the node-agent (runtimeObservability) below.
             vulnerabilityScan: enable
             relevancy: enable
             nodeSbomGeneration: enable
-            # Both are opt-in extras on top: scanning for SBOM files already
-            # inside an image, and emitting VEX documents. Neither changes what
-            # is found, only how much is produced.
             scanEmbeddedSBOMs: disable
             vexGeneration: disable
 
-            # The eBPF runtime stack: a node-agent DaemonSet that learns what a
-            # workload normally does and reports when it stops doing that. Its
-            # cost is memory -- 180Mi requested, 1400Mi limit, on every node --
-            # which the tmpfs root was already spending on container logs and
-            # the kubelet directory before those moved to disk.
             runtimeObservability: enable
             runtimeDetection: enable
             networkPolicyService: enable
@@ -85,77 +47,28 @@ spec:
             httpDetection: enable
             seccompProfileService: enable
 
-            # Scans file contents on the node for known malware. A different
-            # kind of expensive from the rest of the runtime stack -- it reads
-            # rather than observes -- and the one capability here with no
-            # obvious question it answers about this cluster.
             malwareDetection: disable
 
-            # A validating webhook in front of the API server. A posture tool
-            # that can refuse writes is a posture tool that can take the cluster
-            # down when it is unhealthy, and nothing here is worth that trade
-            # while the findings are still being read rather than enforced.
-            # Note that this is not a capacity decision and does not change
-            # because the nodes now have disk.
+            # Off by design: an unhealthy webhook blocks API writes.
             admissionController: disable
 
-            # Would let the operator mutate workloads it has findings about,
-            # and grants patch on nodes cluster-wide to do it.
+            # Would grant patch on nodes cluster-wide.
             manageWorkloads: disable
             syncSBOM: disable
             # Upgrades its own Helm release, behind ArgoCD's back.
             autoUpgrading: disable
 
-          # Scan results live in an aggregated API server backed by this PVC.
-          # "-" would pick the default StorageClass; naming it is the same
-          # choice every other component here makes.
           persistence:
             storageClass: rook-ceph-block
 
-          # Nothing is sent anywhere. `server`, `account` and `accessKey` are
-          # the ARMO SaaS backend and are deliberately unset -- posture findings
-          # for this cluster stay in it. Leaving them blank is what selects the
-          # community path, so there is no flag to turn "offline" on.
-
-          # No `kubescape.serviceMonitor`. Its endpoint, /v1/metrics, is not a
-          # metrics page but a trigger: every scrape runs a full posture scan
-          # (every 200s by the chart's interval) and answers with the result.
-          # Here each of those scans failed and the target sat at HTTP 500.
-          # The kubescape_controls_* and kubescape_vulnerabilities_* series the
-          # dashboard reads come from the prometheus-exporter below, which
-          # reports the stored results of the scheduled scans instead.
-
-          # The node-agent exposes its own metrics -- eBPF event rates, profile
-          # counts, and how much of its budget it is using. That last one is the
-          # number to watch after enabling the runtime stack, so the scrape goes
-          # on at the same time rather than after the first surprise.
+          # No kubescape.serviceMonitor: its scrape runs a full scan (HTTP 500).
           nodeAgent:
             serviceMonitor:
               enabled: true
-            # The ServiceMonitor alone scrapes a port nothing listens on:
-            # config.prometheusExporter is what starts the node-agent's
-            # /metrics listener on 8080. Unrelated to
-            # capabilities.prometheusExporter, which is the separate exporter
-            # Deployment. It replaces an OTLP metric push, and none is
-            # configured.
+            # Starts the node-agent's /metrics listener; not capabilities.*.
             config:
               prometheusExporter: enable
-            # The DaemonSet ran on three of six nodes. Control-plane nodes are
-            # tainted NoSchedule and the chart ships no toleration, so the host
-            # scanner only ever collected from freya, heimdall and valkyrie --
-            # and every CIS host control (PKI file permissions, kubelet config
-            # ownership, CNI file ownership) was answering about workers while
-            # reporting "3 failed" as though that were the whole cluster.
-            #
-            # The control-plane nodes are the ones holding apiserver.key, sa.key
-            # and the etcd certificates. They were the unscanned half.
-            #
-            # Scoped to nodeAgent rather than customScheduling: the latter is
-            # global and would also let kubescape, kubevuln, operator and
-            # storage schedule onto the control plane, which is load those nodes
-            # do not need. The chart honours this key even though values.yaml
-            # does not document it -- see templates/node-agent/_node-agent.tpl,
-            # where nodeAgent.tolerations takes precedence over the global.
+            # Also scan control-plane nodes; see docs/platform/kubescape.md
             tolerations:
               - key: node-role.kubernetes.io/control-plane
                 operator: Exists

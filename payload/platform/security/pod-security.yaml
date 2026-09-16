@@ -1,25 +1,10 @@
 ---
-# Pod Security Admission has been the built-in replacement for PodSecurityPolicy
-# since 1.25, and nothing here opted into it -- every namespace ran at the
-# default `privileged`, which enforces nothing at all.
-#
-# Each namespace is labelled with the level it demonstrably needs to *enforce*,
-# and with `restricted` for warn and audit regardless. That combination is the
-# point: enforcement never breaks a running workload, while `warn` surfaces
-# violations to whoever applies a manifest and `audit` records them in the API
-# server audit log. Tightening enforcement later is then an informed change
-# rather than a guess.
-#
-# These Namespace objects are also what ArgoCD's `CreateNamespace=true` would
-# otherwise create unlabelled. Owning them here keeps the labels declarative.
-# They are never pruned -- see application.yaml.
+# enforce: what the namespace needs; audit/warn: stricter. Never pruned.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: kube-system
   labels:
-    # Genuinely privileged: kube-proxy is gone but Cilium, kube-vip and every
-    # control-plane component live here with host networking and host paths.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: baseline
     pod-security.kubernetes.io/warn: baseline
@@ -31,8 +16,6 @@ kind: Namespace
 metadata:
   name: rook-ceph
   labels:
-    # OSDs need raw block devices and host paths; there is no lower level that
-    # works.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: baseline
     pod-security.kubernetes.io/warn: baseline
@@ -44,8 +27,6 @@ kind: Namespace
 metadata:
   name: monitoring
   labels:
-    # node-exporter is a host-networked DaemonSet reading /proc and /sys from
-    # the host, which baseline forbids outright.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
@@ -57,8 +38,6 @@ kind: Namespace
 metadata:
   name: openbao
   labels:
-    # OpenBao adds IPC_LOCK to keep the root key out of swap. That capability
-    # is not on baseline's allow-list, so baseline would reject the pod.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: baseline
     pod-security.kubernetes.io/warn: baseline
@@ -103,17 +82,6 @@ kind: Namespace
 metadata:
   name: kubescape
   labels:
-    # This enforced `restricted` until the eBPF runtime stack was enabled, and
-    # the node-agent DaemonSet is what costs it: hostPID, runAsUser 0, hostPath
-    # mounts of /, /boot, /sys/fs/bpf and /sys/kernel/debug, and SYS_ADMIN,
-    # SYS_PTRACE, NET_ADMIN, SYSLOG, SYS_RESOURCE, IPC_LOCK and NET_RAW. That is
-    # what watching syscalls from userspace costs, and no level below
-    # `privileged` admits it.
-    #
-    # PSA is per-namespace, so one DaemonSet sets the level for the five
-    # ordinary Deployments beside it -- every one of which still satisfies
-    # `restricted` on its own. Keeping audit and warn there is what stops that
-    # from silently stopping being true.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted

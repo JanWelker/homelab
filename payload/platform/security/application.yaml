@@ -6,7 +6,6 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # After the namespaces exist, before it matters what runs in them.
     argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -23,9 +22,7 @@ spec:
     namespace: kube-system
   syncPolicy:
     automated:
-      # Deliberately no pruning. This Application owns Namespace objects, and a
-      # prune of a Namespace deletes everything inside it. Removing a policy
-      # here means deleting it by hand, which is the right amount of friction.
+      # Never prune: this Application owns Namespaces (and all they contain).
       prune: false
       selfHeal: true
     syncOptions:
