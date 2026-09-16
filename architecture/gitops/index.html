@@ -2105,7 +2105,10 @@ commands that exist only in one person's shell history.</p>
 <h2 id="app-of-apps-pattern">App-of-Apps Pattern<a class="headerlink" href="#app-of-apps-pattern" title="Permanent link">&para;</a></h2>
 <p>A hierarchical Application structure manages dependencies and logical grouping.
 One <code>kubectl apply</code> of <code>payload/root.yaml</code> bootstraps everything else; from
-there the repository discovers itself.</p>
+there the repository discovers itself. That apply happens once: <code>gitops</code>
+creates a <code>root</code> Application (<code>payload/argocd/root-application.yaml</code>) that syncs
+<code>root.yaml</code>, so later edits to the parent Applications arrive through ArgoCD like
+any other change.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (Manual)"
         RA[root.yaml]
@@ -2122,6 +2125,8 @@ there the repository discovers itself.</p>
 
     subgraph "Managed by gitops"
         GO --&gt; |"payload/argocd/*"| ARGO[ArgoCD Self-Management]
+        GO --&gt; RT[root]
+        RT -. "syncs root.yaml" .-&gt; RA
     end</code></pre>
 <p>Yes, ArgoCD manages ArgoCD. It is exactly as recursive as it sounds, and it
 works fine until the day you sync a broken ArgoCD config with ArgoCD. Keep

@@ -2256,8 +2256,8 @@ already defined in <code>payload/argocd/argocd-projects.yaml</code>):</p>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">      </span><span class="nt">prune</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">      </span><span class="nt">selfHeal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span></code></pre></div>
-<p><code>payload/root.yaml</code> is applied manually, so run <code>make bootstrap-apps</code> (or
-<code>kubectl apply -f payload/root.yaml</code>) once after adding it.</p>
+<p>The <code>root</code> Application (<code>payload/argocd/root-application.yaml</code>) syncs
+<code>payload/root.yaml</code>, so merging the change is enough — no <code>kubectl apply</code>.</p>
 <h2 id="step-2-create-the-app-directory">Step 2: Create the App Directory<a class="headerlink" href="#step-2-create-the-app-directory" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>payload/workloads/my-app
 </span></code></pre></div>
