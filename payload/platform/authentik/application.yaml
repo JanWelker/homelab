@@ -56,7 +56,12 @@ spec:
 
           server:
             replicas: 2
+            # `metrics.enabled` is what creates the metrics Service, and the
+            # chart only renders the ServiceMonitor when both are set. With
+            # just the ServiceMonitor switch, as this had, neither object
+            # exists and nothing says so.
             metrics:
+              enabled: true
               serviceMonitor:
                 enabled: true
             resources:
@@ -68,6 +73,12 @@ spec:
 
           worker:
             replicas: 1
+            # Tasks, outpost state and blueprint runs are measured here, not on
+            # the server.
+            metrics:
+              enabled: true
+              serviceMonitor:
+                enabled: true
             resources:
               requests:
                 cpu: 100m
