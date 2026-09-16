@@ -45,7 +45,7 @@ with it. Changing the partition table above `rook-osd` is a
 - **StorageClass**: `rook-ceph-block` is set as the cluster default. Any `PersistentVolumeClaim` without an explicit `storageClassName` will use it.
 - **StorageClass**: `ceph-bucket` provisions S3 buckets from the object store — see [Object storage](#object-storage).
 - **Dashboard**: Ceph management UI at [https://rook.infra.k8s.wlkr.ch](https://rook.infra.k8s.wlkr.ch).
-- **Metrics**: the Ceph mgr `prometheus` module is enabled and the operator maintains a `ServiceMonitor`, so cluster health reaches Prometheus.
+- **Metrics**: the Ceph mgr `prometheus` module is enabled and the operator maintains a `ServiceMonitor`, so cluster health reaches Prometheus. Rook's Ceph dashboards are in Grafana — see [Monitoring](monitoring.md#dashboards).
 
 ## Monitoring
 
@@ -240,5 +240,6 @@ rook-ceph/             # Distributed Storage
 ├── application.yaml   # ArgoCD Application
 ├── operator.yaml      # Rook-Ceph operator
 ├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
 └── httproute.yaml     # Rook dashboard route
 ```

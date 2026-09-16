@@ -132,5 +132,6 @@ logging/
 ├── loki.yaml                 # ArgoCD Application (Helm: grafana/loki)
 ├── alloy.yaml                # ArgoCD Application (Helm: grafana/alloy)
 ├── bucket.yaml               # ObjectBucketClaim for Loki's chunks
+├── grafana-dashboards.yaml   # Alloy mixin dashboards, vendored
 └── grafana-datasource.yaml   # Loki datasource, applied into monitoring/
 ```
