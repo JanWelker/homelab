@@ -2471,6 +2471,15 @@ test alert and confirm it arrives:</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
 </span></code></pre></div>
 <h2 id="what-is-scraped">What is scraped<a class="headerlink" href="#what-is-scraped" title="Permanent link">&para;</a></h2>
+<p>Every <code>ServiceMonitor</code>, <code>PodMonitor</code> and <code>PrometheusRule</code> in every namespace.
+That takes the five <code>*SelectorNilUsesHelmValues: false</code> settings in
+<code>application.yaml</code>, not the empty selectors they replaced: the chart treats
+<code>serviceMonitorSelector: {}</code> as unset and renders
+<code>release: kube-prometheus-stack</code> in its place, which quietly limits Prometheus
+to this chart's own targets. Check the rendered result, not the values:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus<span class="w"> </span>kube-prometheus-stack-prometheus<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.serviceMonitorSelector}'</span><span class="w">   </span><span class="c1"># should print {}</span>
+</span></code></pre></div>
 <p>Ceph reaches Prometheus once <code>monitoring.enabled</code> is <code>true</code> on the
 <code>CephCluster</code> — that switch lives in <a href="../rook-ceph/">Rook-Ceph</a> rather than here.</p>
 <p>kube-scheduler, kube-controller-manager and etcd are scraped too, but only
@@ -2537,8 +2546,8 @@ sync restarts Grafana.</p>
 <p>Grafana reads the password only when it creates its database, and the database
 lives on the PVC. Changing the value in OpenBao later does not change the
 password Grafana checks. Reset it to match:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
 <h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
 <p>Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
@@ -2604,12 +2613,12 @@ its only copy, and it will not follow you to a rebuilt cluster. Every
 organisation has exactly one irreplaceable dashboard that someone made in the UI
 four years ago, and nobody knows how to recreate it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>monitoring/                  # Observability Stack
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>└── httproute.yaml           # Grafana route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>monitoring/                  # Observability Stack
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── httproute.yaml           # Grafana route
 </span></code></pre></div>
 
 
