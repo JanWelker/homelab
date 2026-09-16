@@ -126,6 +126,10 @@ rather than silencing. The
     those nodes are reprovisioned or the manifests edited, expect those three
     targets to be down.
 
+kube-proxy is not scraped at all (`kubeProxy.enabled: false`): Cilium replaces
+it, so there is nothing to scrape, and leaving the chart's default on keeps
+`KubeProxyDown` firing forever.
+
 ## Accessing Grafana
 
 Grafana is exposed via the `infra-gateway` at `monitoring.infra.k8s.wlkr.ch`,
