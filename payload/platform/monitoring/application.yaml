@@ -48,6 +48,13 @@ spec:
             # chart's generated admin password -- a shared credential nobody
             # rotates, documented as "read it out of the Secret".
             envFromSecret: grafana-oidc
+
+            # The break-glass admin account, from OpenBao via grafana-admin.yaml.
+            # Leaving this unset makes the chart generate a new password on
+            # every render, which keeps the app OutOfSync and restarts Grafana
+            # on every sync.
+            admin:
+              existingSecret: grafana-admin
             grafana.ini:
               server:
                 root_url: https://monitoring.infra.k8s.wlkr.ch

@@ -136,7 +136,27 @@ Grafana and a rebuilt Authentik still agree with each other. See
 [Authentik &rarr; Client secrets are generated up front](authentik.md#client-secrets-are-generated-up-front).
 
 !!! note "The admin account still exists"
-    Disabling the login form hides it, it does not remove it. The local admin remains reachable through the API, which is the break-glass path for when Authentik is down — see [When Authentik is down](authentik.md#when-authentik-is-down). Do not set `grafana.adminPassword` in `application.yaml` to make that easier; it would commit a credential to Git for a path that already works without one.
+    Disabling the login form hides it, it does not remove it. The local admin remains reachable through the API, which is the break-glass path for when Authentik is down — see [When Authentik is down](authentik.md#when-authentik-is-down). Do not set `grafana.adminPassword` in `application.yaml` to make that easier; it would commit a credential to Git.
+
+### The admin password
+
+The admin password lives in OpenBao at `kv/monitoring/grafana-admin` and reaches
+Grafana through the `grafana-admin` Secret, rendered by `grafana-admin.yaml` and
+named in `grafana.admin.existingSecret`. `make bao-secrets` generates it.
+
+Leaving `existingSecret` unset is not harmless. The chart then generates a new
+random password on every render, so ArgoCD always sees its Secret as OutOfSync,
+and the `checksum/secret` annotation on the Deployment changes with it: every
+sync restarts Grafana.
+
+Grafana reads the password only when it creates its database, and the database
+lives on the PVC. Changing the value in OpenBao later does not change the
+password Grafana checks. Reset it to match:
+
+```bash
+kubectl -n monitoring exec deploy/kube-prometheus-stack-grafana -c grafana -- \
+  grafana cli admin reset-admin-password "$PASSWORD"
+```
 
 ## Adding a Dashboard
 
@@ -156,6 +176,8 @@ four years ago, and nobody knows how to recreate it.
 ```text
 monitoring/                  # Observability Stack
 ├── application.yaml         # kube-prometheus-stack (Helm chart)
+├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
+├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
 ├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
 └── httproute.yaml           # Grafana route
 ```

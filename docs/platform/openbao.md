@@ -53,7 +53,7 @@ Two commands do all of it:
 
 ```bash
 make bao-init      # initialise, unseal, configure the engine and ESO's auth
-make bao-secrets   # populate the four paths the cluster reads
+make bao-secrets   # populate the five paths the cluster reads
 ```
 
 The rest of this section is what those do, in the order they do it — worth
@@ -150,11 +150,12 @@ kv/
 ├── external-dns/
 │   └── route53            # access-key-id, secret-access-key
 ├── monitoring/
+│   ├── grafana-admin      # password
 │   └── smtp               # password
 └── <workload>/<purpose>   # one leaf per secret
 ```
 
-Four paths, six [ExternalSecrets](external-secrets.md): `authentik/config` is
+Five paths, seven [ExternalSecrets](external-secrets.md): `authentik/config` is
 read by three of them, because generating the OIDC client credentials up front
 is what keeps both sides of each integration declarative. The two `route53`
 leaves are deliberately separate and meant to be separate IAM users --
