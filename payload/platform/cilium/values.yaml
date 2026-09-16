@@ -6,33 +6,20 @@ ipam:
 devices: "en+"
 
 kubeProxyReplacement: true
-# With kube-proxy replaced, Cilium cannot reach the API through a Service and
-# needs a literal address. This is still the first control-plane node: switch it
-# to the kube-vip VIP (control_plane_vip in ansible/inventory.yaml) only once
-# that VIP is actually answering, or every Cilium pod loses the API server.
-# See docs/operations/control-plane-vip.md.
+# Only change once the new address answers; see docs/platform/cilium.md.
 k8sServiceHost: 10.9.2.1
 k8sServicePort: 6443
 
-# The chart aborts the whole render when monitoring.coreos.com/v1 is missing, so
-# these two depend on `make install-cilium` having landed the Prometheus
-# operator CRDs first -- kube-prometheus-stack itself arrives sync-waves later.
+# Needs the Prometheus operator CRDs from `make install-cilium` to render.
 prometheus:
   enabled: true
   serviceMonitor:
     enabled: true
 
-# The chart's own agent dashboard, as a `grafana_dashboard` ConfigMap in
-# kube-system. Grafana's sidecar watches every namespace for those.
 dashboards:
   enabled: true
 
-# Memory limits sized from measured peak working set at roughly 2.5x. The
-# cilium-agent DaemonSet is deliberately left without one: it peaked at 337Mi,
-# it is the one process on the node whose death takes pod networking with it,
-# and 23h of steady state is not enough to size something on that critical path.
-# Tracked separately.
-
+# cilium-agent has no memory limit on purpose; see docs/platform/cilium.md.
 operator:
   replicas: 1
   prometheus:
@@ -56,7 +43,6 @@ envoy:
     limits:
       memory: 128Mi
 
-# Gateway API (replaces Ingress controller)
 gatewayAPI:
   enabled: true
 
@@ -74,15 +60,7 @@ encryption:
 hubble:
   enabled: true
   metrics:
-    # Source and destination namespace on the flow-level metrics, because the
-    # chart's per-namespace Hubble dashboards filter on exactly those labels
-    # and show nothing without them. Namespace rather than workload or IP
-    # keeps the series count to the square of the namespace count. HTTP adds
-    # workloads for the L7 dashboard; it only has data for traffic Cilium
-    # proxies at L7, which here is the Gateway.
-    #
-    # The agent reads this at startup: a change lands as nodes reboot or
-    # Cilium upgrades, not on sync.
+    # Dashboards need these labels. Applies at agent restart, not on sync.
     enabled:
       - dns:labelsContext=source_namespace,destination_namespace
       - drop:labelsContext=source_namespace,destination_namespace
@@ -91,8 +69,6 @@ hubble:
       - port-distribution
       - icmp:labelsContext=source_namespace,destination_namespace
       - httpV2:labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction
-    # The metrics above were exported on every node and read by nothing: the
-    # hubble-metrics Service existed without a ServiceMonitor pointing at it.
     serviceMonitor:
       enabled: true
     dashboards:
@@ -107,7 +83,6 @@ hubble:
         memory: 128Mi
   ui:
     enabled: true
-    # Ingress removed - using Gateway API HTTPRoute instead
     backend:
       resources:
         requests:

@@ -19,7 +19,7 @@ never a small problem.
 | --- | --- |
 | Namespace | `kube-system` |
 | Sync wave | `-1`, after the Gateway API CRDs it renders against |
-| Depends on | Gateway API CRDs (`-10`), and a `k8sServiceHost` that answers |
+| Depends on | Gateway API CRDs (`-10`), the Prometheus operator CRDs from `make install-cilium`, and a `k8sServiceHost` that answers |
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
 | UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
@@ -37,9 +37,30 @@ never a small problem.
 - **WireGuard encryption**: `encryption.type: wireguard`, transparently, between
   nodes.
 - **Hubble**: Observability with metrics and UI at `hubble.infra.k8s.wlkr.ch`,
-  behind the [Authentik](authentik.md) proxy outpost. The flow metrics carry
-  source and destination namespace, which the chart's Hubble dashboards in
-  Grafana filter on; see [Monitoring](monitoring.md#dashboards).
+  behind the [Authentik](authentik.md) proxy outpost, because Hubble has no
+  authentication of its own. The HTTPRoute points at the outpost, which proxies
+  to hubble-ui; a ReferenceGrant in `payload/platform/authentik/` permits the
+  cross-namespace reference.
+
+## Hubble metrics
+
+The flow-level metrics carry source and destination namespace, which the
+chart's Hubble dashboards in Grafana filter on and show nothing without; see
+[Monitoring](monitoring.md#dashboards). Namespace rather than workload or IP
+keeps the series count to the square of the namespace count. The HTTP metric
+adds workloads for the L7 dashboard, but only has data for traffic Cilium
+proxies at L7, which here is the Gateway.
+
+The agent reads this list at startup, so a change lands as nodes reboot or
+Cilium upgrades, not when ArgoCD syncs.
+
+## Resource limits
+
+The operator, Envoy, Hubble Relay and Hubble UI have memory limits sized at
+roughly 2.5x their measured peak working set. The `cilium-agent` DaemonSet is
+deliberately left without one: it peaked at 337Mi, it is the one process on the
+node whose death takes pod networking with it, and a day of steady state is not
+enough to size something on that critical path.
 
 ## The one setting that will ruin your day
 

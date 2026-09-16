@@ -84,13 +84,14 @@ reads the file and acts on it.
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Window | None | Kured acts as soon as it sees a sentinel. The guards below are what make that safe, not the clock |
+| Window | None | Kured acts as soon as it sees a sentinel. Leaving `startTime`/`endTime` unset makes the chart drop the flags, so Kured uses its all-day default. The guards below are what make that safe, not the clock |
 | Check period | 30m | |
 | Concurrency | 1 | One node down at a time, never two |
 | `lockReleaseDelay` | 10m | Breathing room between nodes for Ceph to backfill |
 | `drainTimeout` | 15m | |
 | `forceReboot` | `false` | A node that will not drain is a node worth looking at, not a node worth rebooting anyway |
 | `preferNoScheduleTaint` | `weave.works/kured-node-reboot` | A node pending reboot stops attracting pods about to be evicted again |
+| `annotateNodes` | `true` | `kubectl get node -o yaml` shows why a node is cordoned |
 
 ### Asking Prometheus first
 

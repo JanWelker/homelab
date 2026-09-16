@@ -1,9 +1,5 @@
 ---
-# kube-vip holds the control-plane VIP that the workers' kubelets and every
-# kubeconfig point at. It has to exist before `kubeadm init`, so Ignition
-# bootstraps it as a static pod; this Application adopts it once the cluster is
-# up, so upgrading it is a merged PR rather than a reinstall. The handover is
-# described in daemonset.yaml and docs/operations/control-plane-vip.md.
+# Adopts the Ignition static pod; see docs/operations/control-plane-vip.md.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -11,8 +7,6 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # Alongside Cilium: nothing else depends on it being adopted early, but it
-    # is already running, so there is no reason to wait.
     argocd.argoproj.io/sync-wave: "-1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -29,11 +23,7 @@ spec:
     namespace: kube-system
   syncPolicy:
     automated:
-      # Deliberately no pruning. By the time this has synced once, the static
-      # pods are gone and these objects are the only thing answering on the
-      # VIP; a prune takes the API away from the workers and from every
-      # kubeconfig. Each object also carries Delete=false, so deleting the
-      # Application does not cascade either.
+      # Never prune: these objects are the only thing holding the API VIP.
       prune: false
       selfHeal: true
     syncOptions:

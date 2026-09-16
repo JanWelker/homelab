@@ -55,12 +55,34 @@ leader-election identity and the same `plndr-cp-lock` Lease, so the two must
 never run side by side on one node. Where the file is already gone, the init
 container does nothing.
 
+A few details keep that handover short and safe:
+
+- A `pull` init container runs first and only makes the kubelet fetch the
+  kube-vip image, so the gap between the old process exiting and the new one
+  starting does not include a registry round trip. Keep its image in step with
+  the main container.
+- `adopt` mounts `/etc/kubernetes/manifests` as a directory, because a hostPath
+  mounted as a single file is a bind mount and cannot be removed. It gives up
+  after 120 seconds of `:2112` still being bound (the kubelet rescans manifests
+  every 20 seconds), leaving a visible stuck `Init` rather than a second
+  kube-vip beside something else holding the port.
+- The rollout uses `maxUnavailable: 1` with no surge, for the same reason: an
+  old and a new pod would fight over `:2112` and the lease identity.
+- The pod tolerates every taint, since a NotReady or pressured control-plane
+  node is exactly when the VIP has to move.
+- Its capabilities are identical to the static pod's rather than tightened. The
+  first sync replaces all three static pods at once, so an untested hardening
+  there takes the VIP down everywhere.
+
 A DaemonSet is usually the wrong home for the VIP, because a kubelet that
 reaches the API through the VIP cannot fetch the pod that would bring it up.
 That does not apply here: the control-plane kubelets use their own node's API
 server (check `server:` in `/etc/kubernetes/kubelet.conf`), so they still start
 kube-vip after a full power loss. kube-vip itself talks to the node's API server
-too, not to the `kubernetes` Service, which would need Cilium first.
+too, not to the `kubernetes` Service, which would need Cilium first: the
+DaemonSet sets `KUBERNETES_SERVICE_HOST` to the host IP (which is in the API
+server certificate's SANs), and container env wins over the variables the
+kubelet injects.
 
 What that changes:
 
