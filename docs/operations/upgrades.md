@@ -124,13 +124,15 @@ this is the deliberate path:
    calling it an upgrade is exactly the kind of thing that works on five nodes
    and then does not work on the sixth.
 
-    Before running it, confirm kubeadm still knows kube-proxy is off. The
-    upgrade reads the stored `kubeadm-config`, not the template, and with
-    `disabled: true` missing it redeploys `kube-proxy` beside Cilium:
+    Always pass `--skip-phases addon/kube-proxy`. A cluster built before
+    `proxy.disabled` was set in `kubeadm.yaml.j2` still has `proxy: {}` in its
+    stored `kubeadm-config`, which is what the upgrade reads. Without the flag
+    it redeploys `kube-proxy` beside Cilium, and `upgrade apply` never writes
+    a skipped phase back, so the flag is needed every time. On a cluster built
+    since, the flag is redundant and harmless:
 
     ```bash
-    kubectl -n kube-system get cm kubeadm-config \
-      -o jsonpath='{.data.ClusterConfiguration}' | grep -A1 '^proxy:'
+    sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy
     ```
 
 !!! note
