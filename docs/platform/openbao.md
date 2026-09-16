@@ -151,7 +151,7 @@ kv/
 │   └── route53            # access-key-id, secret-access-key
 ├── monitoring/
 │   ├── grafana-admin      # password
-│   └── smtp               # password
+│   └── smtp               # username, password, to
 └── <workload>/<purpose>   # one leaf per secret
 ```
 

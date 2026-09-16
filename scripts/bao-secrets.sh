@@ -3,12 +3,17 @@
 #
 #   make bao-secrets
 #
-# Five of the values cannot be generated -- they belong to accounts outside this
+# Seven of the values cannot be generated -- they belong to accounts outside this
 # cluster -- and are prompted for, one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
-#   SMTP_PASSWORD                                   Alertmanager's mail account
+#   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
+#   SMTP_TO                                         where alert mail is delivered
+#
+# The two addresses are not secrets in the credential sense, but they are kept
+# out of the repository, so they live here with the password. See
+# payload/platform/monitoring/alertmanager-config.yaml.
 #
 # Prompting rather than reading the environment is deliberate. A secret
 # containing `#` is truncated at it on a command line, and one containing `!`
@@ -211,7 +216,9 @@ if [ "$WRITE_EXTERNAL_DNS" = "1" ]; then
   prompt_secret EXTERNAL_DNS_SECRET_KEY "  ...and its secret access key"
 fi
 if [ "$WRITE_MONITORING" = "1" ]; then
-  prompt_secret SMTP_PASSWORD           "SMTP password for Alertmanager"
+  prompt_secret SMTP_USERNAME           "SMTP login for Alertmanager, also the sender address"
+  prompt_secret SMTP_PASSWORD           "  ...and its password"
+  prompt_secret SMTP_TO                 "Address alerts are delivered to"
 fi
 echo
 
@@ -266,7 +273,9 @@ fi
 
 if [ "$WRITE_MONITORING" = "1" ]; then
   put monitoring/smtp \
-    "password=${SMTP_PASSWORD}"
+    "username=${SMTP_USERNAME}" \
+    "password=${SMTP_PASSWORD}" \
+    "to=${SMTP_TO}"
 fi
 
 # Grafana reads this only when it creates its database, so rewriting it on a

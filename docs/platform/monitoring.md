@@ -49,9 +49,9 @@ false confidence. So the route and receiver below are set explicitly.
 
 | Property | Value |
 | --- | --- |
-| Receiver | `email`, to `jan@wlkr.ch` |
-| Smarthost | `smtp.wlkr.ch:587`, STARTTLS |
-| Password | `kv/monitoring/smtp` in OpenBao, mounted as a file |
+| Receiver | `email`, to the address in `kv/monitoring/smtp` |
+| Smarthost | `smtp.mailbox.org:465`, implicit TLS |
+| Login, sender, password | `kv/monitoring/smtp` in OpenBao; the sender is the login |
 | Grouping | By `alertname` and `namespace` |
 | Repeat | 12h, or 3h for `severity = critical` |
 | Resolved | Sent — a "back to normal" mail follows the alert |
@@ -62,23 +62,36 @@ recipient to filter the sender — and a filtered alert sender is how outages ge
 missed. Alert fatigue is not a personal failing, it is a design outcome, and the
 design is under your control.
 
-### Why only the password is a secret
+### Why the whole config comes from OpenBao
 
-Alertmanager supports `smtp_auth_password_file` but has no equivalent for the
-username, so the smarthost, from address and username stay in
-`application.yaml`. None of them is sensitive. The password is rendered from
-OpenBao by `smtp-credentials.yaml` and mounted at
-`/etc/alertmanager/secrets/alertmanager-smtp/password` through
-`alertmanagerSpec.secrets`.
+Only the password is a credential, but the login and the recipient are email
+addresses, and those are not published in this repository. Alertmanager can
+read the password from a file (`smtp_auth_password_file`) and nothing else:
+there is no file form for the username, `from` or `to`. A config rendered by the
+chart would have to spell them out.
 
-Set it before expecting mail:
+So the chart's `config` is off (`alertmanagerSpec.useExistingSecret`), and
+`alertmanager-config.yaml` renders the complete `alertmanager.yaml` with ESO
+into the Secret named by `alertmanagerSpec.configSecret`. Routes, receivers and
+inhibit rules are still written out in that file's template, so they stay
+reviewable; only the three values below are filled in from OpenBao.
+
+| Key in `kv/monitoring/smtp` | Used as |
+| --- | --- |
+| `username` | `smtp_auth_username` and `smtp_from` — mailbox.org refuses a sender the login does not own |
+| `password` | `smtp_auth_password`, the account or an app password |
+| `to` | The `email` receiver's recipient |
+
+`make bao-secrets` prompts for all three. By hand:
 
 ```bash
-bao kv put kv/monitoring/smtp password="$SMTP_PASSWORD"
+bao kv put kv/monitoring/smtp username=... password=... to=...
 ```
 
-For a different mail provider, the three values in `global:` are the only ones
-to change.
+Port 465 is implicit TLS, which Alertmanager selects from the port number;
+`smtp_require_tls` only applies to STARTTLS and stays on so a move back to 587
+cannot fall to plaintext. For a different mail provider, change
+`smtp_smarthost` in the template and the three values in OpenBao.
 
 ### Checking it works
 
@@ -208,6 +221,6 @@ monitoring/                  # Observability Stack
 ├── application.yaml         # kube-prometheus-stack (Helm chart)
 ├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
 ├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
-├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
+├── alertmanager-config.yaml # ExternalSecret: the whole Alertmanager config
 └── httproute.yaml           # Grafana route
 ```

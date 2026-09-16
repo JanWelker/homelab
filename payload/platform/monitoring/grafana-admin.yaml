@@ -27,7 +27,7 @@ metadata:
   namespace: monitoring
   annotations:
     # Grafana reads this Secret through secretKeyRef, so the pod cannot start
-    # without it. Same sync-wave race as alertmanager-smtp.
+    # without it. Same sync-wave race as alertmanager-config.
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   refreshInterval: 1h
