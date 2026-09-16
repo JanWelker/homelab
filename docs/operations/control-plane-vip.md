@@ -26,8 +26,8 @@ hostname".
 | Piece | Where |
 | --- | --- |
 | VIP address and interface | `control_plane_vip`, `control_plane_vip_interface` in `ansible/inventory.yaml` |
-| kube-vip version | `kube_vip_version`, tracked by Renovate in the `Core Infrastructure` group |
-| Static pod manifest | Written by Ignition to `/etc/kubernetes/manifests/kube-vip.yaml` on control-plane nodes only |
+| Bootstrap static pod | Written by Ignition to `/etc/kubernetes/manifests/kube-vip.yaml` on control-plane nodes only, at `kube_vip_version` |
+| Running kube-vip | DaemonSet in `payload/platform/kube-vip/`, synced by ArgoCD; its image is tracked by Renovate |
 | Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join` command |
 | Cilium's API address | `k8sServiceHost` in `payload/platform/cilium/values.yaml` |
 
@@ -40,6 +40,43 @@ weirdness that eats an entire evening.
 The manifest is placed by Ignition rather than applied afterwards because it has
 to be running before `kubeadm init` writes the endpoint into the cluster's
 certificates. Chicken, egg, static pod.
+
+## Adoption by ArgoCD
+
+A static pod only changes when someone rewrites the file on the node, which in
+practice means reinstalling it. So the static pod is only the bootstrap: once
+ArgoCD syncs `payload/platform/kube-vip/`, a DaemonSet on the control-plane
+nodes takes over, and upgrading kube-vip is a merged PR like any other chart.
+
+On each node, the DaemonSet's `adopt` init container deletes
+`/etc/kubernetes/manifests/kube-vip.yaml` and waits for the static kube-vip to
+release `:2112` before the new one starts. Both use the node name as their
+leader-election identity and the same `plndr-cp-lock` Lease, so the two must
+never run side by side on one node. Where the file is already gone, the init
+container does nothing.
+
+A DaemonSet is usually the wrong home for the VIP, because a kubelet that
+reaches the API through the VIP cannot fetch the pod that would bring it up.
+That does not apply here: the control-plane kubelets use their own node's API
+server (check `server:` in `/etc/kubernetes/kubelet.conf`), so they still start
+kube-vip after a full power loss. kube-vip itself talks to the node's API server
+too, not to the `kubernetes` Service, which would need Cilium first.
+
+What that changes:
+
+- `kube_vip_version` in the inventory is the bootstrap version only. Bump
+  the image in `daemonset.yaml` to upgrade a running cluster.
+- The first sync replaces all three static pods at once, so the VIP drops for a
+  few seconds. Later updates roll one node at a time.
+- The VIP settings live in two places, the inventory and `daemonset.yaml`. Keep
+  them in step.
+- kube-vip no longer uses `admin.conf`. Its `kube-vip` ServiceAccount may only
+  get and update its own Lease.
+- The Application does not prune, and its objects carry `Delete=false`: removing
+  them takes the API away from the workers and from every kubeconfig.
+
+!!! danger "If the DaemonSet pods do not come up"
+    The static manifests are already gone, so nothing holds the VIP. As long as Cilium's `k8sServiceHost` names a node rather than the VIP, Cilium and ArgoCD keep working. Point `kubectl` at a node with `--server https://10.9.2.1:6443`, read `kubectl -n kube-system logs ds/kube-vip -c kube-vip`, and fix the DaemonSet in Git. If that cannot wait, write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2`. That holds while the broken pod merely restarts, since init containers do not rerun then; if the pod is deleted or recreated, `adopt` removes the file again.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init`
@@ -134,8 +171,8 @@ because several of the steps below can leave you unable to open a new one.
 
 ```bash
 # which node currently holds the VIP
-kubectl -n kube-system get lease kube-vip -o jsonpath='{.spec.holderIdentity}'; echo
-kubectl -n kube-system get pods -l name=kube-vip -o wide
+kubectl -n kube-system get lease plndr-cp-lock -o jsonpath='{.spec.holderIdentity}'; echo
+kubectl -n kube-system get pods -l app.kubernetes.io/name=kube-vip -o wide
 
 # the endpoint your kubeconfig actually uses
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'; echo

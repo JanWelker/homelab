@@ -18,9 +18,8 @@ kind: Namespace
 metadata:
   name: kube-system
   labels:
-    # Genuinely privileged: kube-proxy is gone but Cilium, the kube-vip static
-    # pod and every control-plane component live here with host networking and
-    # host paths.
+    # Genuinely privileged: kube-proxy is gone but Cilium, kube-vip and every
+    # control-plane component live here with host networking and host paths.
     pod-security.kubernetes.io/enforce: privileged
     pod-security.kubernetes.io/audit: baseline
     pod-security.kubernetes.io/warn: baseline

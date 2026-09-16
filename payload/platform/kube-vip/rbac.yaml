@@ -1,0 +1,52 @@
+---
+# The static pod authenticated with /etc/kubernetes/admin.conf, which is
+# cluster-admin. With the Service LoadBalancer half disabled (svc_enable=false)
+# and node labelling off, all kube-vip does with the API in this configuration is
+# leader election on one Lease, so that is all it gets.
+#
+# Upstream's rbac.yaml grants far more (services, endpoints, endpointslices,
+# node updates) because it covers every mode. None of those code paths run here.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+# The one workload here that does call the API, so the token stays.
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+rules:
+  # client-go's LeaseLock creates the Lease on first run and gets/updates it on
+  # every renew. `create` cannot be narrowed by resourceNames, which is why it
+  # is a separate rule.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    resourceNames: ["plndr-cp-lock"]
+    verbs: ["get", "update"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-options: Delete=false
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kube-vip
+subjects:
+  - kind: ServiceAccount
+    name: kube-vip
+    namespace: kube-system

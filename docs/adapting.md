@@ -123,6 +123,15 @@ Then update `payload/platform/cilium/values.yaml`:
 - `devices` — the interface prefix Cilium binds to, `"en+"` by default. Linux
   hosts are usually `"en+"` or `"eth+"`; check `ip link` on a provisioned node.
 
+And `payload/platform/kube-vip/daemonset.yaml`, which takes over from the
+bootstrap static pod once ArgoCD syncs and cannot read the inventory:
+
+- `address` — the same value as `control_plane_vip`.
+- `vip_interface` — the same value as `control_plane_vip_interface`.
+
+A mismatch here does not fail at provisioning. It fails on the first sync, when
+the DaemonSet removes the static pods and starts advertising somewhere else.
+
 A note on naming your nodes: pick a theme with more members than you currently
 have machines. Norse gods scale further than you would think, and nothing is
 more annoying than a cluster where the seventh node has to be called `node7`.
@@ -157,6 +166,7 @@ Before `make config`:
 - [ ] ACME email and DNS-01 provider match your setup
 - [ ] `inventory.yaml` describes your nodes, with the right `boot_server_ip`
 - [ ] `control_plane_vip` is free, and `control_plane_vip_interface` matches the NIC
+- [ ] `address` and `vip_interface` in the kube-vip DaemonSet match those two
 - [ ] `k8sServiceHost` and `devices` match your control plane and NICs. On a new
       build, point `k8sServiceHost` at `control_plane_vip` once the VIP answers —
       see [Control Plane VIP](operations/control-plane-vip.md)

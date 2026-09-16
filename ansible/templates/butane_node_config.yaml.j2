@@ -127,6 +127,9 @@ storage:
               verbs: ["get", "list", "watch"]
             - level: Metadata
 
+    # Bootstrap copy. kubeadm init needs the VIP before ArgoCD exists; the
+    # DaemonSet in payload/platform/kube-vip/ removes this file when it adopts
+    # the node. Keep the env below in step with that DaemonSet.
     - path: /etc/kubernetes/manifests/kube-vip.yaml
       mode: 0644
       contents:

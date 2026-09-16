@@ -46,7 +46,7 @@ switched off permanently, which is the real risk here.
 
 | Namespace | Enforce | Why not stricter |
 | --- | --- | --- |
-| `kube-system` | `privileged` | Cilium, the kube-vip static pod and the control plane all use host networking and host paths |
+| `kube-system` | `privileged` | Cilium, kube-vip and the control plane all use host networking and host paths |
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap — not on baseline's capability allow-list |

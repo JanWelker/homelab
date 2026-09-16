@@ -27,6 +27,7 @@ The [wave ordering](#usage) below explains why those numbers are what they are.
 | [external-dns](external-dns.md) | `external-dns` | `2` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](external-secrets.md) | `external-secrets` | `-6` | Bridges OpenBao to native Kubernetes Secrets |
 | [gateway-api](gateway-api.md) | `gateway-system` | `-4` | The two Gateways and the HTTP-to-HTTPS redirect |
+| kube-vip | `kube-system` | `-1` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
 | kubelet-csr-approver | `kubelet-csr-approver` | `1` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
 | [kubescape](kubescape.md) | `kubescape` | `2` | Nightly CIS, NSA and MITRE posture scans, exported to Grafana |
 | [kured](kured.md) | `kured` | `2` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
@@ -112,7 +113,7 @@ not exist yet:
 | `-4` | `gateway-api` | |
 | `-3` | `rook-ceph` | |
 | `-2` | `rook-ceph-operator` | |
-| `-1` | `cilium`, `rook-ceph-cluster` | |
+| `-1` | `cilium`, `kube-vip`, `rook-ceph-cluster` | |
 | `0` | `openbao` | Ceph CSI `OperatorConfig` and `Driver` |
 | `1` | `kube-prometheus-stack`, `logging`, `kubelet-csr-approver`, `backup` | the `route53-credentials` ExternalSecret |
 | `2` | `authentik`, `external-dns`, `kubescape`, `kured`, `loki`, `metrics-server`, `snapshot-controller` | both Let's Encrypt `ClusterIssuer`s |
