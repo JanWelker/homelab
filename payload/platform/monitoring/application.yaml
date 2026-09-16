@@ -43,6 +43,15 @@ spec:
                   memory: 112Mi
                 limits:
                   memory: 256Mi
+              # Dashboards are picked up from `grafana_dashboard` ConfigMaps in
+              # every namespace, so a dashboard ships with the component it
+              # describes -- including the ones charts render into their own
+              # namespace. This is already kube-prometheus-stack's default;
+              # it is spelled out because other docs once assumed the
+              # opposite. The datasource sidecar has no such setting here and
+              # does watch only `monitoring`, see logging/grafana-datasource.yaml.
+              dashboards:
+                searchNamespace: ALL
 
             # Single sign-on against Authentik. Grafana previously used the
             # chart's generated admin password -- a shared credential nobody

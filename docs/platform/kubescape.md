@@ -145,11 +145,10 @@ CVE scanning was disabled, and were deliberately left in the dashboard rather
 than edited out — which is the reason they started working on their own rather
 than needing the dashboard rewritten.
 
-!!! note "Where the dashboard ConfigMap lives"
-    `grafana-dashboard.yaml` declares its namespace as `monitoring`, not
-    `kubescape` — the same reason as
-    [the Loki datasource](logging.md#querying). The Grafana sidecar only watches
-    its own release namespace for `grafana_dashboard` ConfigMaps.
+!!! note "Why it is vendored"
+    The kubescape-operator chart renders no dashboard, unlike Cilium's or
+    OpenBao's, so the JSON is copied here. It lives in `kubescape`, next to the
+    component; Grafana's dashboard sidecar watches every namespace.
 
 ## Reading results without Grafana
 
@@ -225,5 +224,5 @@ suppressing.
 ```text
 kubescape/
 ├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-└── grafana-dashboard.yaml   # Upstream dashboard, applied into monitoring/
+└── grafana-dashboard.yaml   # Upstream dashboard (the chart ships none)
 ```

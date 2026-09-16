@@ -37,7 +37,9 @@ never a small problem.
 - **WireGuard encryption**: `encryption.type: wireguard`, transparently, between
   nodes.
 - **Hubble**: Observability with metrics and UI at `hubble.infra.k8s.wlkr.ch`,
-  behind the [Authentik](authentik.md) proxy outpost.
+  behind the [Authentik](authentik.md) proxy outpost. The flow metrics carry
+  source and destination namespace, which the chart's Hubble dashboards in
+  Grafana filter on; see [Monitoring](monitoring.md#dashboards).
 
 ## The one setting that will ruin your day
 

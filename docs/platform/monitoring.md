@@ -170,12 +170,26 @@ kubectl -n monitoring exec deploy/kube-prometheus-stack-grafana -c grafana -- \
   grafana cli admin reset-admin-password "$PASSWORD"
 ```
 
+## Dashboards
+
+Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
+brings its own, from upstream. Where the chart can render one, the chart does;
+only charts without a dashboard get a vendored copy.
+
+| Component | Dashboards | Source |
+| --- | --- | --- |
+| [Cilium](cilium.md) | Cilium Metrics, Cilium Operator, four Hubble dashboards | Chart: `dashboards`, `operator.dashboards`, `hubble.metrics.dashboards` |
+| [OpenBao](openbao.md) | OpenBao | Chart: `serverTelemetry.grafanaDashboard` |
+| [External Secrets](external-secrets.md) | External Secrets Operator | Chart: `grafanaDashboard` |
+| [Kubescape](kubescape.md) | Kubescape Vulnerabilities Overview | Vendored: `kubescape/grafana-dashboard.yaml` |
+
 ## Adding a Dashboard
 
 Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be added:
 
 - **Via the UI**: Changes persist across restarts because of the PVC.
-- **Via ConfigMap**: Add a ConfigMap with the label `grafana_dashboard: "1"` to the `monitoring` namespace and it will be auto-imported.
+- **Via ConfigMap**: Add a ConfigMap with the label `grafana_dashboard: "1"` next to the component it describes. The sidecar watches every namespace (`sidecar.dashboards.searchNamespace: ALL`) and imports it.
+- **Via the component's chart**: Many charts can render that ConfigMap themselves. Prefer it over a vendored copy, since it follows the chart's version.
 
 Prefer the ConfigMap for anything you would be annoyed to lose. A dashboard
 built in the UI lives in one PVC and nowhere else — it is not in Git, Velero is
