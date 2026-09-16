@@ -213,7 +213,6 @@ The deployment host (the machine running Ansible and the boot server) must be re
 
     - Installs the Gateway API and Prometheus operator CRDs, then **Cilium**
       (CNI, Ingress, L2 Announcements) via Helm.
-    - **Removes** `kube-proxy` to resolve IPVS conflicts.
     - Installs **cert-manager** (for ACME TLS) and the Let's Encrypt
       ClusterIssuers.
 

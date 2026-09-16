@@ -48,7 +48,6 @@ install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	$(call require,MONITORING_VERSION,payload/platform/monitoring/application.yaml)
-	-kubectl -n kube-system delete ds kube-proxy 2>/dev/null || true
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
 	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
 	helm repo add cilium https://helm.cilium.io/

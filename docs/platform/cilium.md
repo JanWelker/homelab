@@ -27,8 +27,9 @@ never a small problem.
 ## Components
 
 - **kube-proxy replacement**: `kubeProxyReplacement: true`. Service routing
-  happens in eBPF rather than iptables or IPVS, which is why `make install-core`
-  deletes `kube-proxy` outright.
+  happens in eBPF rather than iptables or IPVS, which is why kubeadm never
+  deploys `kube-proxy`: `proxy.disabled` in `ansible/templates/kubeadm.yaml.j2`
+  keeps it out at init and on every `kubeadm upgrade apply`.
 - **Gateway API**: Replaces a traditional Ingress controller — see
   [Gateway API](gateway-api.md).
 - **LoadBalancer Pools**: `10.9.2.249` (apps) and `10.9.2.248` (infra),
