@@ -95,6 +95,18 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 
 ## What is scraped
 
+Every `ServiceMonitor`, `PodMonitor` and `PrometheusRule` in every namespace.
+That takes the five `*SelectorNilUsesHelmValues: false` settings in
+`application.yaml`, not the empty selectors they replaced: the chart treats
+`serviceMonitorSelector: {}` as unset and renders
+`release: kube-prometheus-stack` in its place, which quietly limits Prometheus
+to this chart's own targets. Check the rendered result, not the values:
+
+```bash
+kubectl -n monitoring get prometheus kube-prometheus-stack-prometheus \
+  -o jsonpath='{.spec.serviceMonitorSelector}'   # should print {}
+```
+
 Ceph reaches Prometheus once `monitoring.enabled` is `true` on the
 `CephCluster` — that switch lives in [Rook-Ceph](rook-ceph.md) rather than here.
 

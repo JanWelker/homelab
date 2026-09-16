@@ -100,12 +100,22 @@ spec:
 
           prometheus:
             prometheusSpec:
-              ruleSelector: {}
-              ruleNamespaceSelector: {}
-              serviceMonitorSelector: {}
-              serviceMonitorNamespaceSelector: {}
-              podMonitorSelector: {}
-              podMonitorNamespaceSelector: {}
+              # Select every ServiceMonitor, PodMonitor, Probe, ScrapeConfig and
+              # PrometheusRule in every namespace, not only this release's.
+              #
+              # An empty `serviceMonitorSelector: {}` does not say that. The
+              # chart tests the selector for truthiness, an empty map is falsy,
+              # and it falls through to `*NilUsesHelmValues` -- true by default
+              # -- which renders `release: kube-prometheus-stack`. For as long
+              # as the selectors were written that way, Prometheus scraped this
+              # chart's own targets and nothing else: no Cilium, Ceph, OpenBao,
+              # Kubescape or Alloy metrics, and no Ceph or Velero alert rules,
+              # while every ServiceMonitor for them existed and looked fine.
+              ruleSelectorNilUsesHelmValues: false
+              serviceMonitorSelectorNilUsesHelmValues: false
+              podMonitorSelectorNilUsesHelmValues: false
+              probeSelectorNilUsesHelmValues: false
+              scrapeConfigSelectorNilUsesHelmValues: false
               storageSpec:
                 volumeClaimTemplate:
                   spec:
