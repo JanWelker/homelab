@@ -40,6 +40,20 @@ spec:
             enabled: true
           dataDirHostPath: /var/lib/rook
 
+          # Temporary. The cephx keys have to stay on `aes` (see cephx below),
+          # and Ceph 20 reports that with these codes, which keeps the app
+          # Degraded. Rook runs `ceph health mute` for each one. Remove them
+          # once the keys can leave `aes`.
+          healthCheck:
+            muteHealthWarning:
+              AUTH_EMERGENCY_CIPHERS_SET: {policy: mute}
+              AUTH_INSECURE_CLIENT_KEY_TYPE: {policy: mute}
+              AUTH_INSECURE_KEYS_ALLOWED: {policy: mute}
+              AUTH_INSECURE_KEYS_CREATABLE: {policy: mute}
+              AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE: {policy: mute}
+              AUTH_INSECURE_SERVICE_KEY_TYPE: {policy: mute}
+              AUTH_INSECURE_SERVICE_TICKETS: {policy: mute}
+
           # Ceph 20 (tentacle) warns about the legacy `aes` cephx cipher. The
           # daemon keys already came up on aes256k; the four Ceph-CSI entities
           # did not, which is the whole of AUTH_INSECURE_CLIENT_KEY_TYPE and why
