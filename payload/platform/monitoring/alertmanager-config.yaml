@@ -1,0 +1,128 @@
+---
+# Alertmanager's whole configuration, rendered from OpenBao.
+#
+# The mail account's username, the sender and the recipient are addresses, and
+# they are not published in this repository. Alertmanager can read only the SMTP
+# password from a file -- there is no `_file` form for the username, `from` or
+# `to` -- so a mounted Secret next to a chart-rendered config cannot keep them
+# out of Git. Instead ESO renders the complete alertmanager.yaml into the
+# Secret named by `alertmanagerSpec.configSecret`, and the chart's own `config`
+# is off (`useExistingSecret`).
+#
+# Everything that is not an address or a credential is still spelled out here,
+# in the template below, so routing stays reviewable.
+#
+# The values live in OpenBao at kv/monitoring/smtp:
+#
+#   username   the mail account login, also used as the sender
+#   password   its password (or an app password)
+#   to         where alerts are delivered
+#
+# `make bao-secrets` prompts for all three. By hand:
+#
+#   bao kv put kv/monitoring/smtp username=... password=... to=...
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+  annotations:
+    # Alertmanager needs this Secret to start. It is created by ESO at
+    # sync-wave 1, the same wave as this Application, so on a fresh bootstrap
+    # the first attempt can lose the race and ArgoCD retries.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao
+    kind: ClusterSecretStore
+  target:
+    name: alertmanager-config
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      data:
+        # Every templated value goes through toJson, which makes it a quoted
+        # YAML string: a password containing `:`, `#` or a quote cannot break
+        # the document.
+        alertmanager.yaml: |
+          global:
+            resolve_timeout: 5m
+            # mailbox.org on 465 is implicit TLS (SSL/TLS), not STARTTLS, and
+            # Alertmanager switches to it by port number alone.
+            # smtp_require_tls only governs STARTTLS and is skipped on that
+            # path; it stays true so a move back to 587 cannot fall to
+            # plaintext. The sender is the login: mailbox.org refuses a From
+            # address the authenticated account does not own.
+            smtp_smarthost: "smtp.mailbox.org:465"
+            smtp_from: {{ .username | toJson }}
+            smtp_auth_username: {{ .username | toJson }}
+            smtp_auth_password: {{ .password | toJson }}
+            smtp_require_tls: true
+
+          # The chart's defaults: supplying a config replaces the whole
+          # document, so they are repeated rather than inherited.
+          inhibit_rules:
+            - source_matchers:
+                - severity = critical
+              target_matchers:
+                - severity =~ warning|info
+              equal:
+                - namespace
+                - alertname
+            - source_matchers:
+                - severity = warning
+              target_matchers:
+                - severity = info
+              equal:
+                - namespace
+                - alertname
+            - source_matchers:
+                - alertname = InfoInhibitor
+              target_matchers:
+                - severity = info
+              equal:
+                - namespace
+            - target_matchers:
+                - alertname = InfoInhibitor
+
+          route:
+            group_by: ["alertname", "namespace"]
+            group_wait: 30s
+            group_interval: 5m
+            repeat_interval: 12h
+            receiver: email
+            routes:
+              # Watchdog fires constantly by design -- it is the alert that
+              # proves the pipeline works. Mailing it every 12 hours would
+              # train the recipient to ignore the sender.
+              - receiver: "null"
+                matchers:
+                  - alertname = "Watchdog"
+              # Critical repeats four times as often, on the assumption that a
+              # mail nobody acted on should come back sooner.
+              - receiver: email
+                matchers:
+                  - severity = "critical"
+                repeat_interval: 3h
+
+          receivers:
+            - name: "null"
+            - name: email
+              email_configs:
+                - to: {{ .to | toJson }}
+                  send_resolved: true
+  data:
+    - secretKey: username
+      remoteRef:
+        key: monitoring/smtp
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: monitoring/smtp
+        property: password
+    - secretKey: to
+      remoteRef:
+        key: monitoring/smtp
+        property: to

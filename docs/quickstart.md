@@ -348,8 +348,9 @@ The deployment host (the machine running Ansible and the boot server) must be re
     make bao-secrets
     ```
 
-    It prompts for the five values that belong to accounts outside the cluster —
-    two Route53 IAM key pairs and the SMTP password — with the input hidden.
+    It prompts for the seven values that belong to accounts outside the cluster —
+    two Route53 IAM key pairs, and the SMTP login, password and alert recipient —
+    with the input hidden.
     Everything under `kv/authentik/config`, including the OIDC client
     credentials ArgoCD and Grafana read back, is generated, and so is Grafana's
     break-glass admin password under `kv/monitoring/grafana-admin`.
