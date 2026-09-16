@@ -1575,6 +1575,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-serviceaccount-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Default ServiceAccount tokens
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2132,6 +2143,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#default-serviceaccount-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Default ServiceAccount tokens
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2261,8 +2283,8 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Two cluster-wide controls: Pod Security Admission, and default-deny network
-policy.</p>
+<p>Three cluster-wide controls: Pod Security Admission, default-deny network
+policy, and no API token on the <code>default</code> ServiceAccount.</p>
 <p>Both are the kind of thing that is easy to turn on and hard to turn on <em>safely</em>.
 The pattern used here — measure first, enforce second, one namespace at a time —
 is unglamorous and is the only approach that survives contact with a running
@@ -2436,16 +2458,90 @@ application is fine and the kubelet is the one being blocked. Cilium's
 <code>fromEntities</code> names these directly: <code>ingress</code> for Envoy-proxied traffic,
 <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
-<p>Ingress only, in four namespaces: <code>openbao</code>, <code>cert-manager</code>,
-<code>external-secrets</code>, <code>monitoring</code>.</p>
+<p>Ingress only, in eight namespaces:</p>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Who may connect from outside it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>openbao</code></td>
+<td>The Gateway (UI), Prometheus and ESO, on <code>8200</code></td>
+</tr>
+<tr>
+<td><code>cert-manager</code></td>
+<td>Prometheus; the webhook is called by the API server from the node</td>
+</tr>
+<tr>
+<td><code>external-secrets</code></td>
+<td>Prometheus; the webhook is called by the API server from the node</td>
+</tr>
+<tr>
+<td><code>monitoring</code></td>
+<td>The Gateway (Grafana), and kured on <code>9090</code></td>
+</tr>
+<tr>
+<td><code>external-dns</code></td>
+<td>Prometheus</td>
+</tr>
+<tr>
+<td><code>kubelet-csr-approver</code></td>
+<td>Prometheus</td>
+</tr>
+<tr>
+<td><code>kured</code></td>
+<td>Prometheus</td>
+</tr>
+<tr>
+<td><code>logging</code></td>
+<td>Prometheus and Grafana, both in <code>monitoring</code></td>
+</tr>
+</tbody>
+</table>
+<p>Every policy also admits traffic from within the namespace and from <code>host</code> and
+<code>remote-node</code> for probes. The <code>monitoring</code> rule for kured is easy to miss and
+costly to lose: kured queries Prometheus before every reboot and blocks when the
+query fails, so without it no node ever reboots.</p>
 <p>Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
 exposed. And you will get it wrong at least twice, because nobody has a complete
 list of what their components phone home to. It is the next step to take, not
 one that is taken here.</p>
-<p>The remaining namespaces — <code>logging</code>, <code>backup</code>, <code>authentik</code>, <code>kured</code>,
-<code>metrics-server</code> — are <strong>not</strong> covered and allow all ingress.</p>
+<p>The rest are <strong>not</strong> covered and allow all ingress, each for its own reason:</p>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Why not yet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kube-system</code></td>
+<td>Holds Cilium itself, the static control-plane pods and kube-vip; a default-deny there is enforced by the component being restricted</td>
+</tr>
+<tr>
+<td><code>rook-ceph</code></td>
+<td>Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix, and want Ceph health as the verification signal rather than a guess</td>
+</tr>
+<tr>
+<td><code>backup</code></td>
+<td>A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd</td>
+</tr>
+<tr>
+<td><code>kubescape</code></td>
+<td>The node-agent talks to both the operator and the aggregated storage API server, and getting it wrong disables posture scanning silently</td>
+</tr>
+<tr>
+<td><code>argocd</code>, <code>authentik</code></td>
+<td>Already carry <code>NetworkPolicy</code> objects from their own charts</td>
+</tr>
+</tbody>
+</table>
 <h3 id="rolling-this-out-safely">Rolling this out safely<a class="headerlink" href="#rolling-this-out-safely" title="Permanent link">&para;</a></h3>
 <p>One namespace at a time, watching Hubble between each. Rolling out network
 policy everywhere at once is how people end up reverting the whole thing at
@@ -2459,11 +2555,42 @@ fastest way to find a missing rule without an outage:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
+<h2 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h2>
+<p>Every pod that does not opt out gets a projected API token mounted at
+<code>/var/run/secrets/kubernetes.io/serviceaccount/token</code>. For a workload that never
+calls the API server, that is a credential handed to a process with no use for
+it — and the first thing anything with code execution in the container picks up.</p>
+<p>The <code>default</code> ServiceAccount is the worst case. Kubernetes creates one in every
+namespace, nothing configures it, and a pod that names no <code>serviceAccountName</code>
+silently lands on it. A workload reaching the API through <code>default</code> is already a
+misconfiguration, so <code>default-serviceaccounts.yaml</code> sets
+<code>automountServiceAccountToken: false</code> on it everywhere with nothing to preserve.
+That includes namespaces with no workloads at all (<code>default</code>, <code>kube-public</code>,
+<code>kube-node-lease</code>, <code>gateway-system</code>, <code>cilium-secrets</code>): a mountable token in an
+empty namespace stops being harmless the day something is deployed there.</p>
+<p>Two namespaces are left out, because something really runs on their <code>default</code>
+SA:</p>
+<ul>
+<li><strong><code>kube-system</code>.</strong> etcd, the API server, controller-manager and scheduler run
+  there. They authenticate with client certificates from kubeconfigs on the
+  node, so removing the token would very likely be fine — and "very likely
+  fine" is not the standard for the control plane.</li>
+<li><strong><code>authentik</code>.</strong> <code>authentik-server</code> sets no <code>serviceAccountName</code>, while
+  <code>authentik-worker</code> beside it uses the <code>authentik</code> SA. That asymmetry is an
+  upstream chart default, to be fixed at the source rather than worked around.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Not retroactive</p>
+<p>The token mount is decided at admission, so existing pods keep theirs until
+they are recreated. That makes the change safe to roll out, and also means a
+Kubescape scan will not agree it is fixed until things restart.</p>
+</div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>security/
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml        # ArgoCD Application, prune disabled
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── pod-security.yaml       # Namespace objects with PSA labels
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>└── network-policies.yaml   # Default-deny ingress, four namespaces
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml              # ArgoCD Application, prune disabled
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── pod-security.yaml             # Namespace objects with PSA labels
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── network-policies.yaml         # Default-deny ingress, eight namespaces
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>└── default-serviceaccounts.yaml  # No token automount on `default` SAs
 </span></code></pre></div>
 
 

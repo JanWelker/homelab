@@ -1289,6 +1289,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chart-values-that-are-not-what-they-look-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values that are not what they look like
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2156,6 +2173,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chart-values-that-are-not-what-they-look-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values that are not what they look like
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2532,6 +2566,28 @@ sealed and unsealed — before you need to.</p>
 </tbody>
 </table>
 <p>The chart is the official upstream <a href="https://github.com/openbao/openbao-helm"><code>openbao/openbao-helm</code></a>, pinned in <code>application.yaml</code>.</p>
+<h3 id="chart-values-that-are-not-what-they-look-like">Chart values that are not what they look like<a class="headerlink" href="#chart-values-that-are-not-what-they-look-like" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Pod security context.</strong> OpenBao keeps the root key out of swap with
+  <code>mlock</code>, which needs <code>IPC_LOCK</code> — the reason the namespace enforces
+  <code>privileged</code>. The container still drops <code>ALL</code> and adds back only
+  <code>IPC_LOCK</code>. The chart's <code>securityContext.pod</code> is an if/else, not a merge:
+  setting it replaces the default block, so <code>runAsUser: 100</code>,
+  <code>runAsGroup: 1000</code> and <code>fsGroup: 1000</code> (the chart's own defaults) are
+  restated. Drop them and keep only <code>runAsNonRoot</code>, and the kubelet refuses to
+  start the container, because the image's <code>USER</code> is the name <code>openbao</code>
+  rather than a number and cannot be proven non-root. It only shows on pod
+  recreation, typically after a node reboot.</li>
+<li><strong>Image repository.</strong> The chart prepends <code>server.image.registry</code>, which
+  defaults to <code>quay.io</code>; the repository is therefore <code>openbao/openbao</code>, not
+  <code>quay.io/openbao/openbao</code>.</li>
+<li><strong>Unauthenticated metrics.</strong> <code>/v1/sys/metrics</code> otherwise wants a token, and
+  the ServiceMonitor has none, so the target would sit at 403. The metrics carry
+  counts and timings, not paths or secrets, and are readable only by what can
+  reach port 8200 — the namespace policy's callers plus the Gateway.</li>
+<li><strong>Dashboard.</strong> <code>serverTelemetry.grafanaDashboard</code> renders OpenBao's upstream
+  dashboard (grafana.com 23725) into the namespace.</li>
+</ul>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
 <p>ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
 <p>Two commands do all of it:</p>

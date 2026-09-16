@@ -2257,6 +2257,10 @@ boot.</p>
 <code>syslinux_version</code>) plus <code>flatcar_channel</code>, <code>kube_vip_version</code>,
 <code>boot_server_ip</code>, <code>control_plane_vip</code>, <code>control_plane_vip_interface</code>,
 <code>install_disk</code>, <code>pod_subnet</code> and <code>service_subnet</code>.</p>
+<p><code>kube_vip_version</code> only sets the bootstrap static pod that gives <code>kubeadm init</code>
+a VIP. Once ArgoCD syncs, <code>payload/platform/kube-vip/</code> takes over, and its image
+is what runs; upgrade it there — see
+<a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
 <p><strong>Groups</strong> nest one level deeper than they first appear:</p>
 <table>
 <thead>
@@ -2309,7 +2313,10 @@ boot.</p>
 nodes.</p>
 <ul>
 <li>Generates credentials (bootstrap token, certificate key, etcd encryption key)
-    into <code>output/credentials/</code>, mode <code>0700</code>.</li>
+    into <code>output/credentials/</code>, mode <code>0700</code>. Re-running is safe: the <code>password</code>
+    lookup reads an existing file back instead of generating a new value, so
+    the 32-byte encryption key every control-plane node shares stays the one
+    etcd's Secrets were encrypted with.</li>
 <li>Creates Ignition configs (via Butane) for each host, into <code>output/http</code>.</li>
 <li>Creates PXE boot menus for each host based on MAC address, into
     <code>output/tftp/pxelinux.cfg/</code>.</li>

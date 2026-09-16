@@ -2346,7 +2346,7 @@ reads the file and acts on it.</p>
 <tr>
 <td>Window</td>
 <td>None</td>
-<td>Kured acts as soon as it sees a sentinel. The guards below are what make that safe, not the clock</td>
+<td>Kured acts as soon as it sees a sentinel. Leaving <code>startTime</code>/<code>endTime</code> unset makes the chart drop the flags, so Kured uses its all-day default. The guards below are what make that safe, not the clock</td>
 </tr>
 <tr>
 <td>Check period</td>
@@ -2377,6 +2377,11 @@ reads the file and acts on it.</p>
 <td><code>preferNoScheduleTaint</code></td>
 <td><code>weave.works/kured-node-reboot</code></td>
 <td>A node pending reboot stops attracting pods about to be evicted again</td>
+</tr>
+<tr>
+<td><code>annotateNodes</code></td>
+<td><code>true</code></td>
+<td><code>kubectl get node -o yaml</code> shows why a node is cordoned</td>
 </tr>
 </tbody>
 </table>

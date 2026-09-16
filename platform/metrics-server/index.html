@@ -1455,6 +1455,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2054,6 +2065,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2298,6 +2320,15 @@ check the controller's logs before widening either.</p>
 <p class="admonition-title">Adding a node means editing the regex</p>
 <p>A node whose name is not in <code>providerRegex</code> will have its CSR denied, keep its self-signed certificate, and go silently missing from <code>kubectl top</code> — the node is fine, the cluster is fine, and one row is simply absent from a table nobody reads carefully. Add it to the regex at the same time you add it to the inventory; the regex lives in <code>payload/platform/kubelet-csr-approver/application.yaml</code>.</p>
 </div>
+<h2 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h2>
+<p>The kubelet flags are set by overriding the chart's <code>defaultArgs</code> rather than
+appending through <code>args</code>. The default list already sets
+<code>--kubelet-preferred-address-types</code>, and passing a flag twice leaves the winner
+up to parsing order. That flag is <code>InternalIP</code>, because node hostnames do not
+resolve here.</p>
+<p>metrics-server runs two replicas spread across nodes, with a
+PodDisruptionBudget of <code>minAvailable: 1</code>, so a node reboot does not take the
+resource metrics API down with it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>metrics-server/
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>└── application.yaml         # ArgoCD Application (Helm: metrics-server)

@@ -894,6 +894,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Deployment Waves">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-missing-crd-is-a-deadlock-not-a-delay" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A missing CRD is a deadlock, not a delay
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#argocds-own-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ArgoCD's own configuration
+      </span>
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -1984,6 +2012,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Deployment Waves">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-missing-crd-is-a-deadlock-not-a-delay" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A missing CRD is a deadlock, not a delay
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#argocds-own-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ArgoCD's own configuration
+      </span>
+    </span>
+  </a>
+  
 </li>
       
     </ul>
@@ -2109,6 +2165,17 @@ there the repository discovers itself. That apply happens once: <code>gitops</co
 creates a <code>root</code> Application (<code>payload/argocd/root-application.yaml</code>) that syncs
 <code>root.yaml</code>, so later edits to the parent Applications arrive through ArgoCD like
 any other change.</p>
+<p><code>root</code> is defined in <code>payload/argocd/</code> rather than in <code>root.yaml</code> because the
+already-running <code>gitops</code> Application can create it there; defining it inside
+the file it syncs would need the same manual apply to exist at all. It omits
+two things on purpose:</p>
+<ul>
+<li><strong>No prune.</strong> Dropping a parent from <code>root.yaml</code> would delete that
+  Application, and its resources finalizer would take every component beneath
+  it along. Removing a parent stays a deliberate, manual step.</li>
+<li><strong>No resources finalizer.</strong> Deleting <code>root</code> must not cascade into <code>platform</code>
+  and <code>gitops</code>.</li>
+</ul>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (Manual)"
         RA[root.yaml]
@@ -2172,6 +2239,62 @@ game.</p>
     CL --&gt; AR
     AR --&gt; MON</code></pre>
 <p>The full wave-by-wave listing is in <a href="../../platform/#usage">Platform &rarr; Usage</a>.</p>
+<h3 id="a-missing-crd-is-a-deadlock-not-a-delay">A missing CRD is a deadlock, not a delay<a class="headerlink" href="#a-missing-crd-is-a-deadlock-not-a-delay" title="Permanent link">&para;</a></h3>
+<p>A custom resource whose CRD does not exist yet does not merely fail and retry.
+ArgoCD marks the task <code>SyncFailed</code>, leaves the operation <code>Running</code> while it
+waits on the rest of the wave to become healthy, and starts no new sync until
+that one finishes. When the resource it could not apply is the credential the
+wave is waiting for, nothing ever moves again.</p>
+<p>That is why <code>external-secrets</code> sits at wave <code>-6</code>: ahead of every Application
+that ships an <code>ExternalSecret</code>, the earliest of which is cert-manager at <code>-5</code>.
+<code>SkipDryRunOnMissingResource=true</code> on each <code>ExternalSecret</code> covers the first
+sync of a fresh cluster, where the CRDs have not landed yet.</p>
+<h2 id="argocds-own-configuration">ArgoCD's own configuration<a class="headerlink" href="#argocds-own-configuration" title="Permanent link">&para;</a></h2>
+<p><code>payload/argocd/values.yaml</code> holds the chart values. The parts that are not
+self-explanatory:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>redis-ha.haproxy</code> <code>maxSurge: 0</code></td>
+<td>Three replicas with hard per-host anti-affinity and only three schedulable nodes. The default strategy surges a fourth pod with nowhere to land, wedging every rollout until the progress deadline gives up. Retiring first frees the node</td>
+</tr>
+<tr>
+<td>Memory limits, no CPU limits</td>
+<td>Limits are about 2.5x the measured peak working set; requests are about steady state. A CPU limit throttles even on an idle node, while memory is not compressible, so only memory is capped</td>
+</tr>
+<tr>
+<td><code>controller</code> has no resources</td>
+<td>The application-controller peaked at 1639Mi and grows with the number of managed resources; a day of steady state is not enough to size it</td>
+</tr>
+<tr>
+<td><code>metrics.enabled</code> on four components</td>
+<td>Creates the <code>&lt;component&gt;-metrics</code> Services whose names are the <code>job</code> label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so <code>make install-argo</code> still works first</td>
+</tr>
+<tr>
+<td><code>admin.enabled: "false"</code></td>
+<td>With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the <a href="../../platform/authentik/#when-authentik-is-down">break-glass path</a></td>
+</tr>
+<tr>
+<td><code>policy.default: ""</code></td>
+<td>An authenticated user with no matching Authentik group gets no access, not read-only-everything</td>
+</tr>
+</tbody>
+</table>
+<p>The OIDC client ID and secret come from <code>kv/authentik/config</code>, the same OpenBao
+path Authentik's blueprint reads, so neither side is copied out of a UI after a
+rebuild. <code>argocd-cm</code> refers to them as <code>$argocd-oidc:client-id</code>; ArgoCD resolves
+a <code>$name:key</code> reference only against a Secret labelled
+<code>app.kubernetes.io/part-of: argocd</code>, which the <code>ExternalSecret</code> template sets.</p>
+<p>The Grafana dashboard in <code>argocd-dashboard.yaml</code> is upstream's
+<code>examples/dashboard.json</code>, unmodified, at the Argo CD version the chart deploys.
+The chart renders none, so it is vendored — and Renovate does not see it: re-copy
+it when Argo CD moves a minor version.</p>
 
 
 

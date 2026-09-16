@@ -1397,6 +1397,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What is collected">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-alloy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running Alloy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1415,6 +1432,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Querying
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
       </span>
     </span>
   </a>
@@ -2017,6 +2045,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What is collected">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-alloy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Running Alloy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2035,6 +2080,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Querying
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
       </span>
     </span>
   </a>
@@ -2266,7 +2322,10 @@ when the node itself is the thing that failed. See
 <a href="../../architecture/audit-logging/">Audit logging</a> for what is recorded
 and at which level. Alloy runs on all six nodes and <code>local.file_match</code> simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
-than any scheduling constraint.</p>
+than any scheduling constraint. It does need a toleration for the
+control-plane <code>NoSchedule</code> taint, though: without one Alloy runs on the workers
+alone, and neither the audit log nor the control-plane kubelets' journals reach
+Loki.</p>
 <p>All three sources Alloy reads — <code>/var/log/pods</code>, <code>/var/log/journal</code> and
 <code>/var/log/kubernetes/audit</code> — are directories on the 50GB root filesystem, so
 one <code>varlog: true</code> mount in the chart covers all three.</p>
@@ -2274,7 +2333,23 @@ one <code>varlog: true</code> mount in the chart covers all three.</p>
 <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
 stream end up inside the log line and Loki stamps everything at ingest time —
 which quietly destroys the one property you actually needed, namely being able
-to line logs up against the incident.</p>
+to line logs up against the incident. Audit events get the same treatment from
+<code>stage.timestamp</code>, which stamps each one with its <code>requestReceivedTimestamp</code>
+rather than the moment Alloy read the file.</p>
+<p>The journal's <code>job="systemd-journal"</code> label is set by a relabel rule, not the
+source's <code>labels</code> argument. <code>loki.source.journal</code> overwrites <code>job</code> with its
+component ID after applying <code>labels</code>, and only the relabel rules run after that.</p>
+<h3 id="running-alloy">Running Alloy<a class="headerlink" href="#running-alloy" title="Permanent link">&para;</a></h3>
+<p>Alloy runs as root (<code>runAsUser: 0</code>). The log files are root-owned with
+restrictive modes, and a non-root Alloy does not fail — it silently collects
+nothing. Everything else is locked down around that: a read-only root
+filesystem, no capabilities, no privilege escalation, and the <code>RuntimeDefault</code>
+seccomp profile, which is worth having precisely because the process is root.</p>
+<p>The read-only root has one side effect. Alloy writes its data directory to
+<code>storagePath</code>, which the chart defaults to <code>/tmp/alloy</code>, and every pod would die
+at startup with <code>mkdir /tmp/alloy: read-only file system</code>. An <code>emptyDir</code> mounted
+at <code>/tmp</code> restores what the chart assumes. It holds file-tailing positions and
+does not survive a restart — nor would the container layer it replaces.</p>
 <h2 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h2>
 <p>Loki runs as a single binary and keeps chunks in the
 <a href="../rook-ceph/#object-storage">Ceph object store</a> rather than on a PVC.</p>
@@ -2323,6 +2398,14 @@ set.</p>
 <p><code>chunksCache</code> and <code>resultsCache</code> are off. They are memcached deployments and
 would add four pods in front of a Loki this size — caching infrastructure larger
 than the thing it caches is a decision best left to people with more logs.</p>
+<p>The chart already runs Loki as UID 10001 with a read-only root and no
+capabilities; <code>loki.podSecurityContext</code> adds the <code>RuntimeDefault</code> seccomp
+profile at pod level, which covers the rules sidecar too. It has to be that key:
+<code>singleBinary.podSecurityContext</code> does not exist, so setting it there is
+silently inert.</p>
+<p>The sidecars have limits of their own: Loki's rules sidecar (measured
+peak 72Mi, limit 192Mi) and Alloy's config reloader (peak 12Mi, given the
+platform's 128Mi floor rather than a measured figure).</p>
 <h2 id="querying">Querying<a class="headerlink" href="#querying" title="Permanent link">&para;</a></h2>
 <p>The Loki datasource is registered with Grafana automatically. In Grafana,
 choose <strong>Loki</strong> as the datasource and query by label:</p>
@@ -2343,6 +2426,17 @@ release namespace for <code>grafana_datasource</code> ConfigMaps, so one placed 
 Loki would never be picked up. It is defined with the component it
 describes and applied where Grafana can see it.</p>
 </div>
+<h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
+<p><code>grafana-dashboards.yaml</code> carries three dashboards from the Alloy mixin
+(<code>operations/alloy-mixin/rendered/dashboards/</code> in grafana/alloy), unmodified, at
+the Alloy version the chart deploys. The chart renders none, hence the vendored
+copy — and Renovate does not see it, so re-copy them when Alloy moves a minor
+version.</p>
+<p>The mixin's other dashboards are left out on purpose. Clustering, OpenTelemetry
+and Prometheus remote-write are features this Alloy does not use, and "Logs
+Overview" reads Alloy's own logs by a <code>job</code> label this pipeline never sets. The
+<code>cluster</code> variable on the remaining three has nothing to list, since no scrape
+sets a <code>cluster</code> label; its empty value matches series without one.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>logging/
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── application.yaml          # Directory Application (wraps the rest)

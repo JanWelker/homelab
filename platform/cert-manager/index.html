@@ -1211,6 +1211,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sync-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sync order
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#aws-credentials-setup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2031,6 +2053,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sync-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sync order
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Resources
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#aws-credentials-setup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2234,6 +2278,54 @@ zone works from anywhere, and it is also the only way to get a wildcard.</p>
 <li><strong>ClusterIssuers</strong>: Both staging (testing) and production issuers using DNS-01 via Route53.</li>
 <li><strong>Certificates</strong>: Wildcard TLS certs for <code>*.k8s.wlkr.ch</code> and <code>*.infra.k8s.wlkr.ch</code>, stored as Secrets in <code>kube-system</code> and referenced by the Gateways. Two certificates cover every hostname this cluster will ever serve, which is a pleasant place to be.</li>
 </ul>
+<h2 id="sync-order">Sync order<a class="headerlink" href="#sync-order" title="Permanent link">&para;</a></h2>
+<p>The Application's own resources go in three sync waves, because each one cannot
+work until the one before it exists:</p>
+<table>
+<thead>
+<tr>
+<th>Wave</th>
+<th>Resource</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td><code>ExternalSecret</code> <code>route53-credentials</code></td>
+<td>OpenBao, through ESO</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td><code>letsencrypt-staging</code>, <code>letsencrypt-prod</code></td>
+<td>The <code>route53-credentials</code> Secret</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>The three <code>Certificate</code>s</td>
+<td>A <code>Ready</code> ClusterIssuer</td>
+</tr>
+</tbody>
+</table>
+<p>Left in one wave, ArgoCD orders custom resources alphabetically — <code>Certificate</code>,
+then <code>ClusterIssuer</code>, then <code>ExternalSecret</code>, exactly backwards. The sync then
+waits on certificates that cannot issue until two resources behind them in the
+queue are applied. An issuer applied alongside the <code>ExternalSecret</code> fares no
+better: it comes up <code>Ready=False</code> with <code>InvalidSolver</code> ("failed to get secret
+route53-credentials") and stays there until something resyncs it.</p>
+<p>The Application also sets a sync <code>retry</code>. Without one, a failed apply ends the
+operation where it fell and nothing picks it up again — and a single flake at
+the front of the chain, such as the external-secrets admission webhook being
+unreachable on a cluster whose CNI has only just come up, leaves every issuer
+and certificate behind it unmade.</p>
+<h2 id="resources">Resources<a class="headerlink" href="#resources" title="Permanent link">&para;</a></h2>
+<p>Requests and limits are sized at roughly 2.5x the measured peak working set:
+controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
+limited, like the rest of the platform.</p>
+<p>The chart renders its <code>ServiceMonitor</code> unconditionally, so it cannot sync until
+the Prometheus operator CRDs exist. <code>make install-cilium</code> installs them during
+bootstrap; kube-prometheus-stack, which owns them, arrives several sync waves
+later.</p>
 <h2 id="aws-credentials-setup">AWS Credentials Setup<a class="headerlink" href="#aws-credentials-setup" title="Permanent link">&para;</a></h2>
 <p>The DNS-01 solver needs AWS credentials with Route53 permissions. The <code>route53-credentials</code> Secret is materialised from <a href="../openbao/">OpenBao</a> via an <a href="../external-secrets/">ExternalSecret</a>.</p>
 <p>Store the credentials in OpenBao once OpenBao and ESO are up:</p>

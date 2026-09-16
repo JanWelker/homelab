@@ -1500,6 +1500,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The runtime stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-the-control-plane-too" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        On the control plane too
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1507,6 +1524,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         What is still off
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metrics
       </span>
     </span>
   </a>
@@ -2105,6 +2133,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The runtime stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on-the-control-plane-too" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        On the control plane too
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2112,6 +2157,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         What is still off
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metrics
       </span>
     </span>
   </a>
@@ -2331,7 +2387,7 @@ and the only useful measurement of it is a repeated one.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td><a href="../monitoring/">Monitoring</a> for the Prometheus it exports to</td>
+<td><a href="../monitoring/">Monitoring</a> for the Prometheus it exports to and its ServiceMonitor CRD; <a href="../rook-ceph/">Rook-Ceph</a> for the results PVC</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2382,7 +2438,7 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 </tr>
 <tr>
 <td>Results</td>
-<td>Aggregated API: <code>spdx.softwarecomposition.kubescape.io</code></td>
+<td>Aggregated API: <code>spdx.softwarecomposition.kubescape.io</code>, backed by a <code>rook-ceph-block</code> PVC</td>
 </tr>
 <tr>
 <td>Metrics</td>
@@ -2460,6 +2516,19 @@ files, which network peers — and reports when it stops doing that.</p>
 affordable now for the same reason CVE scanning is — the container logs and the
 kubelet directory that used to occupy the tmpfs root moved to disk. <code>odin</code> was
 sitting at 85% memory with 813 MB of it tmpfs before that change.</p>
+<h3 id="on-the-control-plane-too">On the control plane too<a class="headerlink" href="#on-the-control-plane-too" title="Permanent link">&para;</a></h3>
+<p>The node-agent DaemonSet carries a toleration for
+<code>node-role.kubernetes.io/control-plane</code>. The chart ships none, and without it the
+agent ran on three of six nodes: the host scanner only ever collected from the
+workers, and every CIS host control — PKI file permissions, kubelet config
+ownership, CNI file ownership — reported a failure count as though that were the
+whole cluster. The control-plane nodes hold <code>apiserver.key</code>, <code>sa.key</code> and the
+etcd certificates; they were the unscanned half.</p>
+<p>The toleration is set on <code>nodeAgent.tolerations</code>, not <code>customScheduling</code>. The
+latter is global and would also let <code>kubescape</code>, <code>kubevuln</code>, the operator and
+storage schedule onto the control plane, which is load those nodes do not need.
+<code>values.yaml</code> does not document the per-component key, but the chart honours it:
+in <code>templates/node-agent/_node-agent.tpl</code> it takes precedence over the global.</p>
 <div class="admonition tip">
 <p class="admonition-title">Watch the node-agent's own metrics first</p>
 <p><code>nodeAgent.serviceMonitor</code> and <code>nodeAgent.config.prometheusExporter</code> are
@@ -2493,6 +2562,19 @@ cluster — behind ArgoCD's back, and straight into a permanent OutOfSync.
 <code>manageWorkloads</code> lets the operator mutate the workloads it has findings
 about, and grants <code>patch</code> on nodes cluster-wide to do it.</p>
 </div>
+<h2 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h2>
+<p>There is deliberately no <code>kubescape.serviceMonitor</code>. Its endpoint,
+<code>/v1/metrics</code>, is not a metrics page but a trigger: every scrape runs a full
+posture scan (every 200 s at the chart's interval) and answers with the result.
+Here those scans failed and the target sat at HTTP 500. The
+<code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code> series come from the
+separate prometheus-exporter instead, which reports the stored results of the
+scheduled scans.</p>
+<p><code>capabilities.prometheusExporter</code> and <code>nodeAgent.config.prometheusExporter</code> are
+unrelated despite the name. The first deploys that exporter; the second starts
+the node-agent's own <code>/metrics</code> listener on port 8080, replacing an OTLP push
+that is not configured. Without it, the node-agent ServiceMonitor scrapes a port
+nothing listens on.</p>
 <h2 id="the-dashboard">The dashboard<a class="headerlink" href="#the-dashboard" title="Permanent link">&para;</a></h2>
 <p>The dashboard JSON is upstream's, from
 <a href="https://github.com/kubescape/prometheus-exporter">kubescape/prometheus-exporter</a>,

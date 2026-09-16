@@ -1730,6 +1730,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#other-settings-worth-knowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Other settings worth knowing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-plumbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Snapshot plumbing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#using-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2143,6 +2165,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#other-settings-worth-knowing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Other settings worth knowing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#snapshot-plumbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Snapshot plumbing
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#using-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2462,6 +2506,39 @@ thing it is carrying.</p>
 </span></code></pre></div>
 <p>Plugin <code>v1.14.x</code> pairs with Velero <code>v1.18.x</code>, this chart's appVersion. The
 chart's commented example still shows <code>v1.13.1</code>, which is the v1.17 line.</p>
+<h3 id="other-settings-worth-knowing">Other settings worth knowing<a class="headerlink" href="#other-settings-worth-knowing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>No credentials file.</strong> <code>credentials.useSecret</code> is <code>false</code>: the AWS plugin
+  reads its keys from the environment, and <code>extraEnvVars</code> feeds that straight
+  from the <code>Secret</code> Rook writes for the <code>velero-bucket</code> claim. The keys are
+  never rendered into a file or into Git.</li>
+<li><strong><code>volumeSnapshotLocation: []</code> must stay empty.</strong> The chart ships a
+  placeholder entry with a null name and provider, renders it as a
+  <code>VolumeSnapshotLocation</code> called <code>default</code>, and the CRD schema rejects it,
+  failing every sync. Helm replaces lists rather than merging them, so the empty
+  list removes it. Nothing here needs one: CSI and the data mover use a
+  <code>VolumeSnapshotClass</code>, and a <code>VolumeSnapshotLocation</code> belongs to the legacy
+  per-provider snapshotter plugins.</li>
+<li><strong>No <code>runAsNonRoot</code>.</strong> The plugin initContainer copies itself into
+  <code>/target</code>, and whether that works as non-root depends on the image's own
+  <code>USER</code>. Confirm it on a real backup before adding it; the seccomp profile,
+  <code>allowPrivilegeEscalation: false</code> and dropped capabilities are set.</li>
+<li><strong>Node agent sizing.</strong> Its limits come from a measured 37Mi peak. It is idle
+  except during a backup, so the headroom is deliberately wide.</li>
+</ul>
+<h3 id="snapshot-plumbing">Snapshot plumbing<a class="headerlink" href="#snapshot-plumbing" title="Permanent link">&para;</a></h3>
+<p>kubeadm does not install the CSI snapshot controller and neither does Rook.
+Without it the <code>VolumeSnapshot</code> CRDs are absent and the RBD driver advertises
+snapshot support nothing can invoke. <code>snapshot-controller.yaml</code> installs the
+controller and its CRDs at sync-wave <code>2</code>, ahead of Velero at <code>3</code>.</p>
+<p>The <code>VolumeSnapshotClass</code> for <code>rook-ceph-block</code> is at wave <code>3</code> for the same
+reason, and that one is load-bearing. At the default wave it was applied before
+its CRD existed and failed with <code>no matches for kind VolumeSnapshotClass</code>.
+<code>SkipDryRunOnMissingResource</code> does not help there, since it is the apply that
+fails, not the dry run — and the failed sync meant the snapshot-controller and
+velero Applications queued behind it were never created at all.</p>
+<p>Its <code>deletionPolicy</code> is <code>Delete</code>: the snapshot is only an intermediate step, and
+the durable copy is the one the data mover writes into the object store.</p>
 <h3 id="using-it">Using it<a class="headerlink" href="#using-it" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backupstoragelocation<span class="w">     </span><span class="c1"># should be Available</span>
@@ -2521,6 +2598,17 @@ redundancy until the day you need the one you skipped.</p>
 <p>It was removed in etcd 3.6. The verification step uses <code>etcdutl</code>, which
 ships in the same image.</p>
 </div>
+<p>The snapshots go to their own bucket rather than Velero's because they are
+recovered by entirely different means. Two details of the job are easy to undo
+by accident:</p>
+<ul>
+<li><code>dnsPolicy: ClusterFirstWithHostNet</code> — with <code>hostNetwork</code> the default policy
+  uses the node's <code>resolv.conf</code>, which cannot resolve the RGW Service the upload
+  needs.</li>
+<li>The upload writes an AWS CLI config file with <code>addressing_style = path</code>. RGW
+  addresses buckets by path, the CLI defaults to virtual-host style, and there
+  is no environment variable for it.</li>
+</ul>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-backup
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/&lt;most-recent-job&gt;<span class="w"> </span>-c<span class="w"> </span>upload
 </span></code></pre></div>

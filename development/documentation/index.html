@@ -1871,6 +1871,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pull-request-previews" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pull request previews
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#working-locally" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1980,6 +1991,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Workflow
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pull-request-previews" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pull request previews
       </span>
     </span>
   </a>
@@ -2120,9 +2142,12 @@ it, which is a mistake people make once.</p>
     holds the handful of theme templates this project replaces.</li>
 <li><strong>Build</strong>: On push to <code>main</code>, the <code>docs.yaml</code> workflow runs
     <code>zensical build --clean --strict</code>, producing a static site in <code>site/</code>.</li>
-<li><strong>Upload</strong>: The build output is uploaded as a GitHub Pages artifact.</li>
-<li><strong>Deploy</strong>: <code>actions/deploy-pages</code> publishes the artifact to
-    <a href="https://janwelker.github.io/homelab/">https://janwelker.github.io/homelab/</a>.</li>
+<li><strong>Deploy</strong>: The workflow drops a <code>.nojekyll</code> marker into <code>site/</code> and pushes
+    it to the <code>gh-pages</code> branch, which GitHub Pages serves at
+    <a href="https://janwelker.github.io/homelab/">https://janwelker.github.io/homelab/</a>. Without the marker Pages runs the
+    branch through Jekyll, which silently drops any path Jekyll considers
+    private. The deploy cleans the branch but excludes <code>pr-preview/</code>, so it
+    leaves the open pull-request previews in place.</li>
 </ol>
 <p>No container image, registry, or cluster is involved — the docs stay available
 independently of the homelab. Someone else's uptime problem, for once.</p>
@@ -2135,9 +2160,18 @@ independently of the homelab. Someone else's uptime problem, for once.</p>
     Dev-&gt;&gt;Git: Push Changes (docs/**, zensical.toml)
     Git-&gt;&gt;GA: Trigger "Publish Documentation"
     GA-&gt;&gt;GA: zensical build --clean --strict
-    GA-&gt;&gt;GA: Upload Pages artifact
-    GA-&gt;&gt;Pages: Deploy artifact
+    GA-&gt;&gt;Pages: Push site/ to gh-pages
     Pages--&gt;&gt;Dev: janwelker.github.io/homelab</code></pre>
+<h2 id="pull-request-previews">Pull request previews<a class="headerlink" href="#pull-request-previews" title="Permanent link">&para;</a></h2>
+<p><code>preview.yaml</code> builds every pull request that touches <code>docs/</code>, <code>overrides/</code> or
+<code>zensical.toml</code> and publishes it under <code>pr-preview/</code> on the same <code>gh-pages</code>
+branch; closing the PR removes it. Its path filter has to match <code>docs.yaml</code>,
+because this is the only <code>--strict</code> build a pull request gets: a nav or theme
+change in <code>zensical.toml</code> breaks the build as readily as a broken link, and
+without that path it would reach <code>main</code> unbuilt. The same build works from the
+preview subdirectory because the theme resolves its links relative to the page.</p>
+<p>PRs from forks are skipped. They run without write access, so the deploy would
+only fail.</p>
 <h2 id="working-locally">Working locally<a class="headerlink" href="#working-locally" title="Permanent link">&para;</a></h2>
 <p>Zensical is declared in the <code>dev</code> dependency group of <code>pyproject.toml</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>sync<span class="w"> </span>--dev
@@ -2161,6 +2195,9 @@ independently of the homelab. Someone else's uptime problem, for once.</p>
     indented one as a code block, so a multi-paragraph <code>!!!</code> admonition trips
     <code>MD046</code>. Keep admonition bodies to a single paragraph. This one will catch
     you, probably today.</li>
+<li>Inline HTML is limited to <code>&lt;div&gt;</code> (<code>MD033</code> in <code>.markdownlint-cli2.yaml</code>):
+    the card grids on the hub pages need a wrapping <code>&lt;div class="grid cards"&gt;</code>,
+    and the theme has no Markdown syntax for them.</li>
 <li>Theme templates are overridden by dropping a same-named file under
     <code>overrides/</code> (wired up via <code>theme.custom_dir</code>). Currently only
     <code>partials/source.html</code>, which drops the repository-facts API call that 404s

@@ -2273,12 +2273,34 @@ release <code>:2112</code> before the new one starts. Both use the node name as 
 leader-election identity and the same <code>plndr-cp-lock</code> Lease, so the two must
 never run side by side on one node. Where the file is already gone, the init
 container does nothing.</p>
+<p>A few details keep that handover short and safe:</p>
+<ul>
+<li>A <code>pull</code> init container runs first and only makes the kubelet fetch the
+  kube-vip image, so the gap between the old process exiting and the new one
+  starting does not include a registry round trip. Keep its image in step with
+  the main container.</li>
+<li><code>adopt</code> mounts <code>/etc/kubernetes/manifests</code> as a directory, because a hostPath
+  mounted as a single file is a bind mount and cannot be removed. It gives up
+  after 120 seconds of <code>:2112</code> still being bound (the kubelet rescans manifests
+  every 20 seconds), leaving a visible stuck <code>Init</code> rather than a second
+  kube-vip beside something else holding the port.</li>
+<li>The rollout uses <code>maxUnavailable: 1</code> with no surge, for the same reason: an
+  old and a new pod would fight over <code>:2112</code> and the lease identity.</li>
+<li>The pod tolerates every taint, since a NotReady or pressured control-plane
+  node is exactly when the VIP has to move.</li>
+<li>Its capabilities are identical to the static pod's rather than tightened. The
+  first sync replaces all three static pods at once, so an untested hardening
+  there takes the VIP down everywhere.</li>
+</ul>
 <p>A DaemonSet is usually the wrong home for the VIP, because a kubelet that
 reaches the API through the VIP cannot fetch the pod that would bring it up.
 That does not apply here: the control-plane kubelets use their own node's API
 server (check <code>server:</code> in <code>/etc/kubernetes/kubelet.conf</code>), so they still start
 kube-vip after a full power loss. kube-vip itself talks to the node's API server
-too, not to the <code>kubernetes</code> Service, which would need Cilium first.</p>
+too, not to the <code>kubernetes</code> Service, which would need Cilium first: the
+DaemonSet sets <code>KUBERNETES_SERVICE_HOST</code> to the host IP (which is in the API
+server certificate's SANs), and container env wins over the variables the
+kubelet injects.</p>
 <p>What that changes:</p>
 <ul>
 <li><code>kube_vip_version</code> in the inventory is the bootstrap version only. Bump

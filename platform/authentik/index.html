@@ -1374,6 +1374,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#client-secrets-are-generated-up-front" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2104,6 +2115,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#client-secrets-are-generated-up-front" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2404,10 +2426,36 @@ then cannot reconstruct under pressure two years later.</p>
 <li><code>!Env</code> reads an environment variable, which is how client secrets get in
   without being written to Git.</li>
 </ul>
+<p>The worker discovers every <code>.yaml</code> key in the ConfigMap and applies it.</p>
+<div class="admonition warning">
+<p class="admonition-title">OAuth2 providers must name their grant types</p>
+<p>Authentik 2026.x restricts which OAuth2 grants a provider serves, and
+<code>grant_types</code> defaults to an empty list. A provider that omits it serves
+none, and the authorize endpoint turns every login away with
+<code>invalid_request: The request is otherwise malformed</code>. The field looks
+optional; it is not.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">The outpost entry replaces its provider list</p>
 <p>The <code>authentik_outposts.outpost</code> entry sets <code>providers</code> wholesale rather than appending. Every proxied application must be listed there — adding a fifth and forgetting this line silently unassigns the other four, which means four dashboards quietly stop being protected rather than loudly breaking. Failing open is the worst failure mode a security control can have.</p>
 </div>
+<h2 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>authentik.web.base_url</code>.</strong> Authentik cannot reliably infer the URL it is
+  reached on, and builds e-mail links and outpost redirects from it. Unset,
+  every admin page shows "The base URL has not been configured" and the worker
+  logs the same on every reconcile. The UI stores it on the tenant in the
+  database; setting it in the chart backfills it, so a rebuilt cluster needs no
+  click.</li>
+<li><strong><code>metrics.enabled</code> and <code>metrics.serviceMonitor.enabled</code>.</strong> The first creates
+  the metrics Service, and the chart renders the ServiceMonitor only when both
+  are set. The ServiceMonitor switch alone produces neither object, silently.
+  The worker is scraped too: tasks, outpost state and blueprint runs are
+  measured there, not on the server.</li>
+<li><strong>Postgres resources.</strong> Sized from a measured 281Mi peak. Postgres memory is
+  bounded by <code>shared_buffers</code> and <code>work_mem</code> rather than by load, so it is
+  steadier than the number suggests.</li>
+</ul>
 <h2 id="client-secrets-are-generated-up-front">Client secrets are generated up front<a class="headerlink" href="#client-secrets-are-generated-up-front" title="Permanent link">&para;</a></h2>
 <p>The OIDC client ID and secret are shared values: Authentik needs them, and so do
 ArgoCD and Grafana. Rather than letting Authentik mint a secret that then exists

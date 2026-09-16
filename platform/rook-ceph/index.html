@@ -1284,6 +1284,62 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cluster-log-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cluster log level
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#csi-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CSI driver
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CSI driver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#serviceaccounts-and-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ServiceAccounts and RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cephx-keys-stay-on-aes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        cephx keys stay on aes
+      </span>
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2100,6 +2156,62 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Monitoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cluster-log-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cluster log level
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#csi-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CSI driver
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CSI driver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#serviceaccounts-and-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ServiceAccounts and RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cephx-keys-stay-on-aes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        cephx keys stay on aes
+      </span>
+    </span>
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2375,11 +2487,107 @@ so the Application carries <code>SkipDryRunOnMissingResource=true</code> and Arg
 retries until kube-prometheus-stack has landed. On an existing cluster the
 CRD is already there and this never comes up.</p>
 </div>
+<p>The Ceph dashboard's links to Prometheus and Grafana are set through
+<code>cephClusterSpec.cephConfig</code> (<code>mgr/dashboard/PROMETHEUS_API_HOST</code> and friends)
+rather than by running <code>ceph dashboard set-prometheus-api-host</code> from a Job. Those
+commands only write keys into the mon config store, which the operator can do
+directly, and it reapplies them on every reconcile.</p>
+<h3 id="cluster-log-level">Cluster log level<a class="headerlink" href="#cluster-log-level" title="Permanent link">&para;</a></h3>
+<p><code>mon_cluster_log_level</code> is <code>info</code>. The Ceph default is <code>debug</code>, and the mons copy
+the cluster log to stderr, so every <code>mon_status</code> from Rook's mon probes and every
+two-second pgmap from the mgr became a <code>[DBG]</code> line — about 15k of the mons' 20k
+lines per half hour in <a href="../logging/">Loki</a>. The mon applies the level before
+writing to stderr; warnings and errors in the cluster log are unaffected.</p>
+<h2 id="csi-driver">CSI driver<a class="headerlink" href="#csi-driver" title="Permanent link">&para;</a></h2>
+<p>Up to Rook v1.19 the operator chart's <code>csi</code> values deployed the RBD provisioner
+and node plugin directly. From v1.20 that job belongs to the
+ceph-csi-operator, installed as a subchart, which deploys nothing until an
+<code>OperatorConfig</code> and a <code>Driver</code> CR tell it what to run. Neither chart ships
+them — upstream keeps them in <code>deploy/examples/operator.yaml</code> — so they live in
+<code>csi-driver.yaml</code>. Without them no provisioner is registered for
+<code>rook-ceph.rbd.csi.ceph.com</code> and every PVC against <code>rook-ceph-block</code> stays
+<code>Pending</code> on <code>ExternalProvisioning</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title"><code>csi</code> values on the operator chart do nothing</p>
+<p>Helm accepts values a chart no longer reads without complaint. Driver
+settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>operator.yaml</code>.</p>
+</div>
+<ul>
+<li><strong>Sync wave <code>0</code></strong> with <code>SkipDryRunOnMissingResource</code>: the CRs need the
+  ceph-csi-operator's CRDs, which arrive with the operator chart at <code>-2</code>.</li>
+<li><strong>Image set</strong>: <code>OperatorConfig</code> points at the <code>ConfigMap</code> the chart renders,
+  so a chart bump moves every sidecar and the cephcsi image together and the
+  csi-operator's own image defaults never apply.</li>
+<li><strong>Driver name</strong>: not free to choose. Rook derives the provisioner from its
+  namespace, and it has to match the <code>provisioner</code> of the StorageClasses in
+  <code>cluster.yaml</code>. CephFS is not enabled, so RBD is the only driver.</li>
+</ul>
+<h3 id="serviceaccounts-and-rbac">ServiceAccounts and RBAC<a class="headerlink" href="#serviceaccounts-and-rbac" title="Permanent link">&para;</a></h3>
+<p>The ceph-csi-operator does not create its pods' ServiceAccounts either, and no
+chart renders them. Without <code>csi-rbac.yaml</code> the driver's Deployment and
+DaemonSet exist but create no pods:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Error creating: pods "rook-ceph.rbd.csi.ceph.com-nodeplugin-" is forbidden:
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>error looking up service account rook-ceph/rbd-nodeplugin-sa: not found
+</span></code></pre></div>
+<p>The names are fixed: the operator derives them from
+<code>CSI_SERVICE_ACCOUNT_PREFIX</code>, which the rook-ceph chart sets to the empty
+string, so they are exactly <code>rbd-ctrlplugin-sa</code> and <code>rbd-nodeplugin-sa</code>.</p>
+<p>The file is a vendored copy of the RBD half of the ceph-csi-operator's
+<code>deploy/multifile/csi-rbac.yaml</code>, at the version the rook-ceph chart pulls in
+(v1.0.4 at the time of writing). Renovate does not see it. To refresh it:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-sSfL<span class="w"> </span>https://raw.githubusercontent.com/ceph/ceph-csi-operator/vX.Y.Z/deploy/multifile/csi-rbac.yaml<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-system/rook-ceph/'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-//'</span>
+</span></code></pre></div>
+<p>then keep only the rbd documents, re-indent the sequences for yamllint, and
+prefix the cluster-scoped names so they read as ours. CephFS, NFS and NVMe-oF
+are not enabled, so their accounts are left out rather than carried dormant.</p>
+<h2 id="cephx-keys-stay-on-aes">cephx keys stay on aes<a class="headerlink" href="#cephx-keys-stay-on-aes" title="Permanent link">&para;</a></h2>
+<p>Ceph 20 (tentacle) warns about the legacy <code>aes</code> cephx cipher, and every key here
+is deliberately on it. That is a constraint, not a preference.</p>
+<p><code>aes256k</code> is userspace-only. krbd puts the cephx key in the kernel keyring, and
+the kernel ceph client does not implement <code>aes256k</code>. Moving the CSI keys to it
+made every <code>rbd map</code> fail with <code>failed to add secret ... to kernel</code> /
+<code>map failed: (22) Invalid argument</code>, so nothing with an RBD volume could start
+on any node — while Ceph accepted the keys and reported the rotation a success.
+The daemon keys never touch the kernel and could use <code>aes256k</code>, but two ciphers
+in one cluster force the mons to accept both, which is its own warning
+(<code>AUTH_EMERGENCY_CIPHERS_SET</code>) and buys no security. One cipher everywhere, and
+it has to be the one krbd can read.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keyType: aes</code></td>
+<td>krbd cannot use anything else</td>
+</tr>
+<tr>
+<td><code>keyRotationPolicy: KeyGeneration</code></td>
+<td>Changing <code>keyType</code> alone never rotates existing keys while the policy is <code>Disabled</code></td>
+</tr>
+<tr>
+<td><code>keyGeneration: 3</code></td>
+<td>Rotation only triggers on an increase, so a generation can never be lowered to undo one</td>
+</tr>
+<tr>
+<td><code>healthCheck.muteHealthWarning</code></td>
+<td>The <code>AUTH_*</code> warnings would otherwise keep the Application <code>Degraded</code> while the data is healthy</td>
+</tr>
+</tbody>
+</table>
+<p>The mutes are temporary: remove them once the keys can leave <code>aes</code>. Getting
+there means moving RBD to the userspace <code>rbd-nbd</code> mounter first, which is a
+genuine trade with its own failure modes rather than a config edit.</p>
 <h2 id="object-storage">Object storage<a class="headerlink" href="#object-storage" title="Permanent link">&para;</a></h2>
 <p>A <code>CephObjectStore</code> provides an S3-compatible endpoint inside the cluster,
-served by two RGW instances. It exists so that backups and log chunks have
-somewhere to live that is not a PVC on the same block pool they are meant to
-protect. Same cluster, different pool — half a step, but a real one.</p>
+served by two RGW instances, so an RGW restart during a node reboot does not
+stall a backup or drop log ingestion. It exists so that backups and log chunks
+have somewhere to live that is not a PVC on the same block pool they are meant
+to protect. Same cluster, different pool — half a step, but a real one.</p>
 <table>
 <thead>
 <tr>
@@ -2402,7 +2610,7 @@ protect. Same cluster, different pool — half a step, but a real one.</p>
 </tr>
 <tr>
 <td>Data pool</td>
-<td>Erasure coded 2+1 — 1.5x overhead rather than 3x</td>
+<td>Erasure coded 2+1 — 1.5x overhead rather than 3x, safe at <code>failureDomain: host</code> with six nodes</td>
 </tr>
 <tr>
 <td>Reclaim policy</td>
@@ -2418,14 +2626,14 @@ protect. Same cluster, different pool — half a step, but a real one.</p>
 <p>Ask for an <code>ObjectBucketClaim</code> rather than a PVC. Rook creates the bucket and
 writes the endpoint and credentials into a <code>ConfigMap</code> and <code>Secret</code> that share
 the claim's name:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objectbucket.io/v1alpha1</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ObjectBucketClaim</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-bucket</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">generateBucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objectbucket.io/v1alpha1</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ObjectBucketClaim</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-bucket</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">generateBucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
 </span></code></pre></div>
 <p>The resulting <code>Secret</code> holds <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>;
 the <code>ConfigMap</code> holds <code>BUCKET_NAME</code>, <code>BUCKET_HOST</code> and <code>BUCKET_PORT</code>.</p>
@@ -2435,27 +2643,27 @@ the <code>ConfigMap</code> holds <code>BUCKET_NAME</code>, <code>BUCKET_HOST</co
 with their claim, and every Application in this repo syncs with <code>prune: true</code>.
 Removing a <code>PersistentVolumeClaim</code> from Git removes the volume. Ask Velero how
 it feels about that in <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-data</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-data</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span>
 </span></code></pre></div>
 <p>To use it explicitly:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
 </span></code></pre></div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code>ReadWriteOnce</code> (RWO) is the supported access mode. <code>ReadWriteMany</code> (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in <code>ContainerCreating</code>, wondering aloud about a multi-attach error.</p>
 </div>
 <h2 id="is-storage-ready">Is storage ready?<a class="headerlink" href="#is-storage-ready" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>storage-check
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>Run it after the GitOps handover and before trusting anything that mounts a
 volume. The sync waves already put Rook ahead of every such workload, and that
@@ -2514,20 +2722,20 @@ before Flatcar is written, so a rebuilt node now comes back with nothing on it.
 What follows is what the failure looks like if that wipe is ever incomplete —
 <code>blkdiscard</code> declined by the hardware <em>and</em> something <code>wipefs</code> did not catch —
 because the symptom is distinctive and points nowhere near the cause:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="go">skipping OSD configuration as no devices matched the storage settings for this node "odin"</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">skipping OSD configuration as no devices matched the storage settings for this node "odin"</span>
 </span></code></pre></div>
 <p>The <code>CephCluster</code> reports <code>Ready</code> with <code>HEALTH_WARN</code> and the mons and mgrs come
 up, so the cluster looks alive; it simply has nowhere to put data. What you
 notice instead is the first workload that wants a volume:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>rook-ceph-osd
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">No resources found in rook-ceph namespace.</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pvc
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">data-openbao-0   Pending   rook-ceph-block</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="go">0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>rook-ceph-osd
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">No resources found in rook-ceph namespace.</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pvc
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">data-openbao-0   Pending   rook-ceph-block</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.</span>
 </span></code></pre></div>
 <p>which in a fresh bootstrap means <a href="../../quickstart/">quickstart</a> step 11 cannot
 start: <code>bao operator init</code> has no pod to exec into.</p>
@@ -2539,7 +2747,7 @@ re-adopted by anything — the bytes are there and nothing can read them.
 Take a backup off the disks <em>before</em> a rebuild if you need one.</p>
 </div>
 <p>The fix is to rebuild the node, which wipes the disk as part of the install:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
 </span></code></pre></div>
 <p>Then network-boot it — see
 <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Repartitioning the nodes</a>. The
@@ -2557,12 +2765,14 @@ worker does, and the label path can only ever be the OSD partition.</p>
 jobs. An OSD appears per node and the pending PVCs bind on the next provisioning
 attempt; <code>make storage-check</code> is the way to confirm that rather than assume it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>rook-ceph/             # Distributed Storage
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>├── application.yaml   # ArgoCD Application
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>├── operator.yaml      # Rook-Ceph operator
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>└── httproute.yaml     # Rook dashboard route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>rook-ceph/             # Distributed Storage
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>├── application.yaml   # ArgoCD Application
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>├── operator.yaml      # Rook-Ceph operator
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>└── httproute.yaml     # Rook dashboard route
 </span></code></pre></div>
 
 

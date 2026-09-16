@@ -1484,6 +1484,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resources-and-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Resources and rollout
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2220,6 +2231,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#resources-and-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Resources and rollout
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#directory-structure" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2459,7 +2481,11 @@ chart would have to spell them out.</p>
 <code>alertmanager-config.yaml</code> renders the complete <code>alertmanager.yaml</code> with ESO
 into the Secret named by <code>alertmanagerSpec.configSecret</code>. Routes, receivers and
 inhibit rules are still written out in that file's template, so they stay
-reviewable; only the three values below are filled in from OpenBao.</p>
+reviewable; only the three values below are filled in from OpenBao. The inhibit
+rules are the chart's defaults, repeated: a supplied config replaces the whole
+document, so nothing is inherited. Each templated value goes through <code>toJson</code>,
+which makes it a quoted YAML string — a password containing <code>:</code>, <code>#</code> or a quote
+cannot break the rendered file.</p>
 <table>
 <thead>
 <tr>
@@ -2519,6 +2545,12 @@ that are always red is how a team learns to ignore red, so this is worth fixing
 rather than silencing. The
 <code>bind-address</code> and <code>listen-metrics-urls</code> arguments in
 <code>ansible/templates/kubeadm.yaml.j2</code> are what make these targets real.</p>
+<p>The scheduler and controller-manager serve metrics over HTTPS with a
+self-signed certificate for the node address, so their ServiceMonitors set
+<code>insecureSkipVerify</code> — the scrape still authenticates with the ServiceAccount
+token. etcd's metrics listener on port 2381 is plain HTTP and serves only
+<code>/metrics</code> and <code>/health</code>; the client and peer APIs stay on their mTLS
+listeners.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>A cluster provisioned before that change keeps the old flags — they are
@@ -2643,6 +2675,27 @@ built in the UI lives in one PVC and nowhere else — it is not in Git, Velero i
 its only copy, and it will not follow you to a rebuilt cluster. Every
 organisation has exactly one irreplaceable dashboard that someone made in the UI
 four years ago, and nobody knows how to recreate it.</p>
+<h2 id="resources-and-rollout">Resources and rollout<a class="headerlink" href="#resources-and-rollout" title="Permanent link">&para;</a></h2>
+<p>Memory limits are sized at roughly 2.5 times the measured peak working set.
+The Grafana sidecars peaked at 89Mi and 92Mi; the operator, its config
+reloader, kube-state-metrics, node-exporter and Alertmanager each have their
+own limits in <code>application.yaml</code>.</p>
+<p>Prometheus and Grafana are deliberately uncapped. Prometheus peaked at 1501Mi
+and grows with series count and retention; Grafana peaked at 680Mi, which is
+high enough for a dashboard renderer that it wants explaining before it is
+capped. Neither can be sized from a day of steady state, and OOMKilling the
+thing that tells you the cluster is unhealthy is the specific failure worth
+avoiding.</p>
+<p>Grafana uses the <code>Recreate</code> deployment strategy. Its dashboard PVC is
+ReadWriteOnce, and under the chart's default <code>RollingUpdate</code> the new pod waits
+for a volume the old pod releases only once the new one is Ready — a rollout
+parks at <code>FailedAttachVolume: Volume is already used by pod(s)</code> until someone
+deletes a pod by hand. A few seconds of downtime is the price of a
+single-replica, single-volume Grafana.</p>
+<p>Alertmanager does not mount a ServiceAccount token
+(<code>automountServiceAccountToken: false</code>). No RoleBinding or ClusterRoleBinding
+names it — the operator talks to the API, not Alertmanager — so the token would
+buy nothing and leave a working credential in a pod reachable from the Gateway.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>monitoring/                  # Observability Stack
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)

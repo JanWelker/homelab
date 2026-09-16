@@ -1402,6 +1402,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2214,6 +2225,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#chart-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Chart values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2471,6 +2493,11 @@ have to think about.</p>
     ESO-&gt;&gt;K: create/update Secret
     App-&gt;&gt;K: mount / envFrom</code></pre>
 <p>ESO authenticates to OpenBao with its own ServiceAccount (<code>external-secrets-vault</code> in the <code>external-secrets</code> namespace). OpenBao validates the JWT against the Kubernetes TokenReview API and issues a short-lived OpenBao token bound to the <code>external-secrets</code> role/policy.</p>
+<p>To get that JWT, ESO mints a short-lived token for the ServiceAccount through
+the TokenRequest API, which is what the <code>external-secrets-vault-token-creator</code>
+ClusterRole grants. The store uses ESO's <code>vault</code> provider unchanged — OpenBao
+implements the Vault HTTP API — and talks to the in-cluster Service, so no
+request leaves the cluster network.</p>
 <p>Note what is absent from that sentence: any long-lived credential stored anywhere. The cluster's own identity system vouches for ESO, and OpenBao decides whether to believe it. This is the bootstrap problem solved properly, and it is worth understanding once rather than treating as magic — because when it breaks, it breaks in the <code>ClusterSecretStore</code> status and nowhere else.</p>
 <h2 id="adding-a-new-secret">Adding a new secret<a class="headerlink" href="#adding-a-new-secret" title="Permanent link">&para;</a></h2>
 <p>The full round-trip from "I have a new credential" to "my Pod can read it":</p>
@@ -2530,6 +2557,19 @@ have to think about.</p>
 <h2 id="refresh-interval">Refresh interval<a class="headerlink" href="#refresh-interval" title="Permanent link">&para;</a></h2>
 <p><code>refreshInterval: 1h</code> polls OpenBao hourly. Set to <code>0</code> to disable polling — ESO will only re-sync on resource changes. For rotated credentials, leave it at a value that matches your rotation cadence.</p>
 <p>Worth knowing: rotating a value in OpenBao updates the Kubernetes <code>Secret</code> within that interval, but it does <strong>not</strong> restart anything. A pod that read the secret into an environment variable at startup will happily keep using the old value until something restarts it. Reloader-style tooling or a rollout is the missing half of "rotation", and forgetting it is how a credential gets rotated on paper and not in practice.</p>
+<h2 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Sync wave <code>-6</code>.</strong> Ahead of every Application that ships an
+  <code>ExternalSecret</code>; a CRD that does not exist yet deadlocks the wave rather than
+  delaying it — see
+  <a href="../../architecture/gitops/#a-missing-crd-is-a-deadlock-not-a-delay">GitOps</a>.</li>
+<li><strong>Webhook and cert-controller resources.</strong> Memory limits are about 2.5x the
+  measured peak working set: 33Mi for the webhook, 73Mi for the cert-controller.</li>
+<li><strong>Webhook ServiceAccount token stays mounted.</strong> The webhook has no
+  RoleBinding, so it looks as if it never talks to the API server, but it builds
+  an in-cluster client at startup regardless and exits without the token
+  (<code>unable to load in-cluster config</code>). It only shows when the pod is recreated.</li>
+</ul>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="clustersecretstore-is-not-ready"><code>ClusterSecretStore</code> is not Ready<a class="headerlink" href="#clustersecretstore-is-not-ready" title="Permanent link">&para;</a></h3>
 <p>Start here for basically every secret-related problem. If the store is not Ready, nothing downstream of it will be either, and chasing the individual <code>ExternalSecret</code> first is wasted time.</p>
