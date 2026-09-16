@@ -8,8 +8,6 @@ nodeRegistration:
   imagePullPolicy: IfNotPresent
   name: "{{ inventory_hostname }}"
   taints: null
-  skipPhases:
-    - addon/kube-proxy
 bootstrapTokens:
   - groups:
       - system:bootstrappers:kubeadm:default-node-token
@@ -25,6 +23,16 @@ timeouts:
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ control_plane_endpoint }}"
+# Cilium replaces kube-proxy, so kubeadm must never deploy it. This used to be
+# `skipPhases: [addon/kube-proxy]` nested under nodeRegistration, where v1beta4
+# has no such field: kubeadm ignored it, installed kube-proxy anyway, and the
+# Makefile deleted the DaemonSet after the fact. Worse, the stored config then
+# said `proxy: {}`, and `kubeadm upgrade apply` only skips the addon when
+# Proxy.Disabled is set -- so every upgrade would have put kube-proxy back
+# beside Cilium. Setting it here is what lands in the kubeadm-config ConfigMap
+# that upgrade reads; init derives the skipped phase from it.
+proxy:
+  disabled: true
 apiServer:
   extraArgs:
     # Verify the kubelet's serving certificate instead of trusting whatever

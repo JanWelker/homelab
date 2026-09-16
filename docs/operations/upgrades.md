@@ -124,6 +124,15 @@ this is the deliberate path:
    calling it an upgrade is exactly the kind of thing that works on five nodes
    and then does not work on the sixth.
 
+    Before running it, confirm kubeadm still knows kube-proxy is off. The
+    upgrade reads the stored `kubeadm-config`, not the template, and with
+    `disabled: true` missing it redeploys `kube-proxy` beside Cilium:
+
+    ```bash
+    kubectl -n kube-system get cm kubeadm-config \
+      -o jsonpath='{.data.ClusterConfiguration}' | grep -A1 '^proxy:'
+    ```
+
 !!! note
     A **newly provisioned** node skips all of this — it installs
     `kubernetes_version` directly and gets the pinned sysupdate config from the
