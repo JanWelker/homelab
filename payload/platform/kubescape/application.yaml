@@ -61,6 +61,13 @@ spec:
           persistence:
             storageClass: rook-ceph-block
 
+          # Chart 1.40.4 ships v4.0.13, whose scheduled scans all fail.
+          # Drop once the chart's default is newer; see kubescape.md.
+          kubescape:
+            image:
+              # renovate: datasource=docker depName=quay.io/kubescape/kubescape
+              tag: v4.0.14
+
           # No kubescape.serviceMonitor: its scrape runs a full scan (HTTP 500).
           nodeAgent:
             serviceMonitor:
