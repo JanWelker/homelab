@@ -2552,7 +2552,8 @@ password Grafana checks. Reset it to match:</p>
 <h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
 <p>Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
 brings its own, from upstream. Where the chart can render one, the chart does;
-only charts without a dashboard get a vendored copy.</p>
+only charts without a dashboard get a vendored copy. Renovate does not update
+vendored copies; the header of each file names the upstream tag it came from.</p>
 <table>
 <thead>
 <tr>
@@ -2581,6 +2582,16 @@ only charts without a dashboard get a vendored copy.</p>
 <td><a href="../kubescape/">Kubescape</a></td>
 <td>Kubescape Vulnerabilities Overview</td>
 <td>Vendored: <code>kubescape/grafana-dashboard.yaml</code></td>
+</tr>
+<tr>
+<td><a href="../rook-ceph/">Rook-Ceph</a></td>
+<td>Ceph Cluster, Ceph - OSD (Single), Ceph - Pools</td>
+<td>Vendored from Rook: <code>rook-ceph/grafana-dashboards.yaml</code></td>
+</tr>
+<tr>
+<td><a href="../logging/">Alloy</a></td>
+<td>Alloy / Controller, Alloy / Loki Components, Alloy / Resources</td>
+<td>Vendored from the Alloy mixin: <code>logging/grafana-dashboards.yaml</code></td>
 </tr>
 </tbody>
 </table>
