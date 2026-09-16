@@ -1478,6 +1478,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What it scans">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-scanner-image-is-pinned-ahead-of-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The scanner image is pinned ahead of the chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2111,6 +2128,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="What it scans">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-scanner-image-is-pinned-ahead-of-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The scanner image is pinned ahead of the chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2454,6 +2488,22 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 SaaS backend when <code>server</code>, <code>account</code> and <code>accessKey</code> are set; leaving them unset
 is what keeps findings in the cluster. There is no "offline" switch to forget to
 flip, which is the right way round for a default.</p>
+<h3 id="the-scanner-image-is-pinned-ahead-of-the-chart">The scanner image is pinned ahead of the chart<a class="headerlink" href="#the-scanner-image-is-pinned-ahead-of-the-chart" title="Permanent link">&para;</a></h3>
+<p><code>kubescape.image.tag</code> overrides the chart's scanner image. Chart 1.40.4 ships
+<code>kubescape</code> v4.0.13, and on v4.0.13 a scan of everything never runs: the
+request lists every framework followed by every control, and the policy
+download routes the whole batch by the kind of its first entry. Each control ID
+is then fetched as a framework, and the nightly scan dies on the first one with
+<code>framework 'C-0214' not found</code>. No <code>ConfigurationScanSummary</code> was ever written,
+so every <code>kubescape_controls_*</code> series sat at zero — which reads like a clean
+bill of health rather than a broken scanner.</p>
+<p>v4.0.14 fixes the routing
+(<a href="https://github.com/kubescape/kubescape/pull/3768">kubescape#3768</a>). Setting
+<code>defaultFrameworks</code> would also avoid the bug, but only by pinning the list the
+section above argues against. Renovate tracks the tag through its
+<code># renovate:</code> comment; remove the override once a chart release defaults to
+v4.0.14 or later, or it will keep the scanner on whatever it last bumped to
+regardless of what the chart was tested with.</p>
 <h2 id="image-vulnerability-scanning">Image vulnerability scanning<a class="headerlink" href="#image-vulnerability-scanning" title="Permanent link">&para;</a></h2>
 <p><code>kubevuln</code> requests 5Gi of <code>ephemeral-storage</code> and limits at 10Gi, which is why
 this was not enabled when Kubescape first landed. The kubelet root directory was
@@ -2566,7 +2616,8 @@ about, and grants <code>patch</code> on nodes cluster-wide to do it.</p>
 <p>There is deliberately no <code>kubescape.serviceMonitor</code>. Its endpoint,
 <code>/v1/metrics</code>, is not a metrics page but a trigger: every scrape runs a full
 posture scan (every 200 s at the chart's interval) and answers with the result.
-Here those scans failed and the target sat at HTTP 500. The
+Here those scans failed on the <a href="#the-scanner-image-is-pinned-ahead-of-the-chart">v4.0.13 bug</a>
+and the target sat at HTTP 500. The
 <code>kubescape_controls_*</code> and <code>kubescape_vulnerabilities_*</code> series come from the
 separate prometheus-exporter instead, which reports the stored results of the
 scheduled scans.</p>
@@ -2611,10 +2662,10 @@ door explicitly sets <code>isDefault: false</code>, leaving Prometheus holding t
 </tr>
 </tbody>
 </table>
-<p>All five populate. The two <code>kubescape_vulnerabilities_*</code> panels were dark when
-CVE scanning was disabled, and were deliberately left in the dashboard rather
-than edited out — which is the reason they started working on their own rather
-than needing the dashboard rewritten.</p>
+<p>Only the two <code>kubescape_vulnerabilities_*</code> panels populate. The controls panels
+stayed at zero while the scanner could not complete a scan (see
+<a href="#the-scanner-image-is-pinned-ahead-of-the-chart">above</a>), and the workload panel
+needs <code>prometheusExporter.enableWorkloadMetrics</code>, which is off.</p>
 <div class="admonition note">
 <p class="admonition-title">Why it is vendored</p>
 <p>The kubescape-operator chart renders no dashboard, unlike Cilium's or
