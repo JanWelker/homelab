@@ -83,6 +83,8 @@ spec:
           prometheusExporter:
             serviceMonitor:
               enabled: true
+            # Per-workload series; the dashboard's tables are built on them.
+            enableWorkloadMetrics: true
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/kubescape
