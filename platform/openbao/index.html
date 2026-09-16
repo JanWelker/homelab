@@ -1456,6 +1456,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unsealing after a restart">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ready-does-not-mean-unsealed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Ready does not mean unsealed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2340,6 +2357,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unsealing after a restart">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ready-does-not-mean-unsealed" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Ready does not mean unsealed
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2589,7 +2623,7 @@ sealed and unsealed — before you need to.</p>
   dashboard (grafana.com 23725) into the namespace.</li>
 </ul>
 <h2 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h2>
-<p>ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods will be <code>Running</code> but <strong>not Ready</strong> until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
+<p>ArgoCD provisions the StatefulSet, PVCs, Services, and the <code>vault.infra.k8s.wlkr.ch</code> HTTPRoute. The pods go <code>Ready</code> within seconds, <strong>before</strong> the cluster is initialised or unsealed — see <a href="#ready-does-not-mean-unsealed">Ready does not mean unsealed</a>. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.</p>
 <p>Two commands do all of it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bao-init<span class="w">      </span><span class="c1"># initialise, unseal, configure the engine and ESO's auth</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>bao-secrets<span class="w">   </span><span class="c1"># populate the five paths the cluster reads</span>
@@ -2740,13 +2774,28 @@ not joined the raft cluster yet rather than failing on it, and it is idempotent 
 on an unsealed cluster it says so and stops.</p>
 <p>With the key file deleted, which is the <a href="#1-initialise-the-cluster-one-time">correct end state</a>, it is the loop below instead, three shares per pod:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.containerStatuses[0].ready}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">    </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="nb">true</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">      </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
-</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">    </span><span class="k">done</span>
-</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="k">done</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="nv">$?</span><span class="w"> </span><span class="k">in</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: already unsealed"</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="w">    </span><span class="m">2</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="w">         </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">       </span><span class="k">done</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: OpenBao did not answer, check the pod"</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="w">  </span><span class="k">esac</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="k">done</span>
 </span></code></pre></div>
+<p><code>bao status</code> exits <code>0</code> when unsealed, <code>2</code> when sealed and <code>1</code> when it cannot
+reach the server, and <code>kubectl exec</code> passes that exit code through.</p>
+<h3 id="ready-does-not-mean-unsealed">Ready does not mean unsealed<a class="headerlink" href="#ready-does-not-mean-unsealed" title="Permanent link">&para;</a></h3>
+<p>The readiness probe calls <code>/v1/sys/health</code> with <code>sealedcode=204</code> and
+<code>uninitcode=204</code>, so a sealed or uninitialised replica answers healthy and the
+pod goes <code>Ready</code> seconds after it starts. That is deliberate: if readiness
+waited for unsealing, a StatefulSet rolling update would stop after the first
+pod until someone typed in the keys, and every chart bump and Kured reboot
+would hang half-applied.</p>
+<p>The cost is that <code>kubectl get pods</code> cannot tell you whether OpenBao is usable.
+Only <code>bao status</code> can, and it is what <code>make bao-unseal</code> and the loop above
+check.</p>
 <p>Nothing does this for you. There is no auto-unseal seal configured, so a
 reboot at 03:00 leaves the cluster running and its secret store shut until
 someone with the key shares logs in. Plan for that rather than being surprised

@@ -2209,7 +2209,9 @@ advisory:</p>
 <code>ExternalSecret</code> resolves — which means cert-manager cannot renew certificates.
 Nothing unseals it for you, so this is a chore rather than a check:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>bao-unseal<span class="w">                      </span><span class="c1"># unseals whatever is sealed</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pods<span class="w">          </span><span class="c1"># all three Ready</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>Sealed<span class="w">   </span><span class="c1"># false</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">done</span>
 </span></code></pre></div>
 <p><code>make bao-unseal</code> reads the key shares from <code>output/credentials/openbao-init.json</code>,
 checks each replica, and feeds three shares to any that is sealed. It is
@@ -2219,7 +2221,7 @@ is where they belong, it cannot help: each pod then wants 3 of the 5 shares by
 hand. <a href="../../platform/openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing after a restart</a>
 has the loop.</p>
 <p>It is worth actually running, every time. A cluster that comes back with OpenBao
-still sealed looks entirely healthy — every pod green, every node <code>Ready</code> — and
+still sealed looks entirely healthy — every pod <code>Ready</code>, OpenBao's included — and
 the consequence surfaces sixty days later when a certificate expires on a
 Sunday, with nothing connecting it to the reboot that caused it. See
 <a href="../../architecture/limitations/#openbao-needs-an-operator-to-unseal-it">the limitation this creates</a>.</p>
