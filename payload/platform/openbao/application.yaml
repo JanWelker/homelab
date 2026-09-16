@@ -106,6 +106,7 @@ spec:
             serviceAccount:
               create: true
               name: openbao
+            # Sealed pods report Ready so rollouts don't stall; check `bao status`.
             readinessProbe:
               enabled: true
               path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
