@@ -2507,10 +2507,7 @@ Grafana and a rebuilt Authentik still agree with each other. See
 <h3 id="the-admin-password">The admin password<a class="headerlink" href="#the-admin-password" title="Permanent link">&para;</a></h3>
 <p>The admin password lives in OpenBao at <code>kv/monitoring/grafana-admin</code> and reaches
 Grafana through the <code>grafana-admin</code> Secret, rendered by <code>grafana-admin.yaml</code> and
-named in <code>grafana.admin.existingSecret</code>. Store it once:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/grafana-admin<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nv">password</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span>
-</span></code></pre></div>
+named in <code>grafana.admin.existingSecret</code>. <code>make bao-secrets</code> generates it.</p>
 <p>Leaving <code>existingSecret</code> unset is not harmless. The chart then generates a new
 random password on every render, so ArgoCD always sees its Secret as OutOfSync,
 and the <code>checksum/secret</code> annotation on the Deployment changes with it: every
@@ -2518,8 +2515,8 @@ sync restarts Grafana.</p>
 <p>Grafana reads the password only when it creates its database, and the database
 lives on the PVC. Changing the value in OpenBao later does not change the
 password Grafana checks. Reset it to match:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
 <h2 id="adding-a-dashboard">Adding a Dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h2>
 <p>Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be added:</p>
@@ -2533,12 +2530,12 @@ its only copy, and it will not follow you to a rebuilt cluster. Every
 organisation has exactly one irreplaceable dashboard that someone made in the UI
 four years ago, and nobody knows how to recreate it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>monitoring/                  # Observability Stack
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── httproute.yaml           # Grafana route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>monitoring/                  # Observability Stack
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>└── httproute.yaml           # Grafana route
 </span></code></pre></div>
 
 
