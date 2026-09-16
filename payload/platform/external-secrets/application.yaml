@@ -42,12 +42,18 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
-            # The webhook is called by the API server; it does not call back.
-            # It has no RoleBinding or ClusterRoleBinding, so its token grants
-            # only what system:authenticated already has -- which is still
-            # enough to enumerate from, and nothing needs it.
-            serviceAccount:
-              automount: false
+            # Leave the ServiceAccount token mounted. The webhook has no
+            # RoleBinding or ClusterRoleBinding, which makes it look like it
+            # never talks to the API server -- but it builds an in-cluster
+            # client at startup regardless, and without the token it exits
+            # before serving anything:
+            #
+            #   unable to load in-cluster config: open
+            #   /var/run/secrets/kubernetes.io/serviceaccount/token: no such
+            #   file or directory
+            #
+            # Only bites on pod recreation, so the pod from before the change
+            # kept admission working and hid the crashloop behind it.
           certController:
             serviceMonitor:
               enabled: true
