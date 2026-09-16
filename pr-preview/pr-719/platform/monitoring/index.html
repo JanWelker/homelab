@@ -1396,10 +1396,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#why-only-the-password-is-a-secret" class="md-nav__link">
+  <a href="#why-the-whole-config-comes-from-openbao" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Why only the password is a secret
+        Why the whole config comes from OpenBao
       </span>
     </span>
   </a>
@@ -2132,10 +2132,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#why-only-the-password-is-a-secret" class="md-nav__link">
+  <a href="#why-the-whole-config-comes-from-openbao" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Why only the password is a secret
+        Why the whole config comes from OpenBao
       </span>
     </span>
   </a>
@@ -2420,19 +2420,15 @@ false confidence. So the route and receiver below are set explicitly.</p>
 <tbody>
 <tr>
 <td>Receiver</td>
-<td><code>email</code>, to <code>jan@wlkr.ch</code></td>
+<td><code>email</code>, to the address in <code>kv/monitoring/smtp</code></td>
 </tr>
 <tr>
 <td>Smarthost</td>
 <td><code>smtp.mailbox.org:465</code>, implicit TLS</td>
 </tr>
 <tr>
-<td>Sender and login</td>
-<td><code>jan@wlkr.ch</code></td>
-</tr>
-<tr>
-<td>Password</td>
-<td><code>kv/monitoring/smtp</code> in OpenBao, mounted as a file</td>
+<td>Login, sender, password</td>
+<td><code>kv/monitoring/smtp</code> in OpenBao; the sender is the login</td>
 </tr>
 <tr>
 <td>Grouping</td>
@@ -2453,19 +2449,46 @@ proof the pipeline is alive; mailing it every twelve hours would train the
 recipient to filter the sender — and a filtered alert sender is how outages get
 missed. Alert fatigue is not a personal failing, it is a design outcome, and the
 design is under your control.</p>
-<h3 id="why-only-the-password-is-a-secret">Why only the password is a secret<a class="headerlink" href="#why-only-the-password-is-a-secret" title="Permanent link">&para;</a></h3>
-<p>Alertmanager supports <code>smtp_auth_password_file</code> but has no equivalent for the
-username, so the smarthost, from address and username stay in
-<code>application.yaml</code>. None of them is sensitive. The password is rendered from
-OpenBao by <code>smtp-credentials.yaml</code> and mounted at
-<code>/etc/alertmanager/secrets/alertmanager-smtp/password</code> through
-<code>alertmanagerSpec.secrets</code>. For mailbox.org that is the account password or an
-app password for it.</p>
-<p>Set it before expecting mail:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/smtp<span class="w"> </span><span class="nv">password</span><span class="o">=</span><span class="s2">"</span><span class="nv">$SMTP_PASSWORD</span><span class="s2">"</span>
+<h3 id="why-the-whole-config-comes-from-openbao">Why the whole config comes from OpenBao<a class="headerlink" href="#why-the-whole-config-comes-from-openbao" title="Permanent link">&para;</a></h3>
+<p>Only the password is a credential, but the login and the recipient are email
+addresses, and those are not published in this repository. Alertmanager can
+read the password from a file (<code>smtp_auth_password_file</code>) and nothing else:
+there is no file form for the username, <code>from</code> or <code>to</code>. A config rendered by the
+chart would have to spell them out.</p>
+<p>So the chart's <code>config</code> is off (<code>alertmanagerSpec.useExistingSecret</code>), and
+<code>alertmanager-config.yaml</code> renders the complete <code>alertmanager.yaml</code> with ESO
+into the Secret named by <code>alertmanagerSpec.configSecret</code>. Routes, receivers and
+inhibit rules are still written out in that file's template, so they stay
+reviewable; only the three values below are filled in from OpenBao.</p>
+<table>
+<thead>
+<tr>
+<th>Key in <code>kv/monitoring/smtp</code></th>
+<th>Used as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>username</code></td>
+<td><code>smtp_auth_username</code> and <code>smtp_from</code> — mailbox.org refuses a sender the login does not own</td>
+</tr>
+<tr>
+<td><code>password</code></td>
+<td><code>smtp_auth_password</code>, the account or an app password</td>
+</tr>
+<tr>
+<td><code>to</code></td>
+<td>The <code>email</code> receiver's recipient</td>
+</tr>
+</tbody>
+</table>
+<p><code>make bao-secrets</code> prompts for all three. By hand:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/smtp<span class="w"> </span><span class="nv">username</span><span class="o">=</span>...<span class="w"> </span><span class="nv">password</span><span class="o">=</span>...<span class="w"> </span><span class="nv">to</span><span class="o">=</span>...
 </span></code></pre></div>
-<p>For a different mail provider, the three values in <code>global:</code> are the only ones
-to change.</p>
+<p>Port 465 is implicit TLS, which Alertmanager selects from the port number;
+<code>smtp_require_tls</code> only applies to STARTTLS and stays on so a move back to 587
+cannot fall to plaintext. For a different mail provider, change
+<code>smtp_smarthost</code> in the template and the three values in OpenBao.</p>
 <h3 id="checking-it-works">Checking it works<a class="headerlink" href="#checking-it-works" title="Permanent link">&para;</a></h3>
 <p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step further.
 Everything between Alertmanager and your inbox — SMTP auth, the provider's spam
@@ -2622,7 +2645,7 @@ four years ago, and nobody knows how to recreate it.</p>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── smtp-credentials.yaml    # ExternalSecret: Alertmanager SMTP password
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── alertmanager-config.yaml # ExternalSecret: the whole Alertmanager config
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── httproute.yaml           # Grafana route
 </span></code></pre></div>
 

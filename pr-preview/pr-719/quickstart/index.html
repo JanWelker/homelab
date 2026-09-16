@@ -2596,8 +2596,9 @@ recovery flow. See <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Boots
 <p>Then populate the five paths the cluster reads:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
-<p>It prompts for the five values that belong to accounts outside the cluster —
-two Route53 IAM key pairs and the SMTP password — with the input hidden.
+<p>It prompts for the seven values that belong to accounts outside the cluster —
+two Route53 IAM key pairs, and the SMTP login, password and alert recipient —
+with the input hidden.
 Everything under <code>kv/authentik/config</code>, including the OIDC client
 credentials ArgoCD and Grafana read back, is generated, and so is Grafana's
 break-glass admin password under <code>kv/monitoring/grafana-admin</code>.</p>
