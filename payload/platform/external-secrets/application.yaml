@@ -42,6 +42,12 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
+            # The webhook is called by the API server; it does not call back.
+            # It has no RoleBinding or ClusterRoleBinding, so its token grants
+            # only what system:authenticated already has -- which is still
+            # enough to enumerate from, and nothing needs it.
+            serviceAccount:
+              automount: false
           certController:
             serviceMonitor:
               enabled: true
