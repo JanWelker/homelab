@@ -69,7 +69,7 @@ The chart is the official upstream [`openbao/openbao-helm`](https://github.com/o
 
 ## Bootstrap
 
-ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
+ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods go `Ready` within seconds, **before** the cluster is initialised or unsealed — see [Ready does not mean unsealed](#ready-does-not-mean-unsealed). Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
 
 Two commands do all of it:
 
@@ -283,13 +283,32 @@ With the key file deleted, which is the [correct end state](#1-initialise-the-cl
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do
-  kubectl -n openbao get pod "$pod" -o jsonpath='{.status.containerStatuses[0].ready}' | \
-    grep -q true || \
-    for i in 1 2 3; do
-      kubectl -n openbao exec -it "$pod" -- bao operator unseal
-    done
+  kubectl -n openbao exec "$pod" -- bao status >/dev/null 2>&1
+  case $? in
+    0) echo "$pod: already unsealed" ;;
+    2) for i in 1 2 3; do
+         kubectl -n openbao exec -it "$pod" -- bao operator unseal
+       done ;;
+    *) echo "$pod: OpenBao did not answer, check the pod" ;;
+  esac
 done
 ```
+
+`bao status` exits `0` when unsealed, `2` when sealed and `1` when it cannot
+reach the server, and `kubectl exec` passes that exit code through.
+
+### Ready does not mean unsealed
+
+The readiness probe calls `/v1/sys/health` with `sealedcode=204` and
+`uninitcode=204`, so a sealed or uninitialised replica answers healthy and the
+pod goes `Ready` seconds after it starts. That is deliberate: if readiness
+waited for unsealing, a StatefulSet rolling update would stop after the first
+pod until someone typed in the keys, and every chart bump and Kured reboot
+would hang half-applied.
+
+The cost is that `kubectl get pods` cannot tell you whether OpenBao is usable.
+Only `bao status` can, and it is what `make bao-unseal` and the loop above
+check.
 
 Nothing does this for you. There is no auto-unseal seal configured, so a
 reboot at 03:00 leaves the cluster running and its secret store shut until

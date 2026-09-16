@@ -70,7 +70,9 @@ Nothing unseals it for you, so this is a chore rather than a check:
 
 ```bash
 make bao-unseal                      # unseals whatever is sealed
-kubectl -n openbao get pods          # all three Ready
+for pod in openbao-0 openbao-1 openbao-2; do
+  kubectl -n openbao exec "$pod" -- bao status | grep Sealed   # false
+done
 ```
 
 `make bao-unseal` reads the key shares from `output/credentials/openbao-init.json`,
@@ -83,7 +85,7 @@ hand. [OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealin
 has the loop.
 
 It is worth actually running, every time. A cluster that comes back with OpenBao
-still sealed looks entirely healthy — every pod green, every node `Ready` — and
+still sealed looks entirely healthy — every pod `Ready`, OpenBao's included — and
 the consequence surfaces sixty days later when a certificate expires on a
 Sunday, with nothing connecting it to the reboot that caused it. See
 [the limitation this creates](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
