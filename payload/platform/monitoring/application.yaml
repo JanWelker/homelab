@@ -192,6 +192,14 @@ spec:
             serviceMonitor:
               scheme: http
 
+          # There is no kube-proxy: Cilium replaces it (kubeProxyReplacement)
+          # and kubeadm skips the addon. The chart's ServiceMonitor, Service,
+          # recording rules, KubeProxyDown alert and Proxy dashboard all assume
+          # one, so the alert fires permanently for a component that is absent
+          # by design. Cilium's own targets and dashboards cover service routing.
+          kubeProxy:
+            enabled: false
+
           nodeExporter:
             enabled: true
             serviceMonitor:
