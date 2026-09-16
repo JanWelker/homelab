@@ -1,29 +1,6 @@
 ---
-# ServiceAccounts and RBAC for the RBD CSI driver pods.
-#
-# The ceph-csi-operator does not create these; upstream ships them as
-# deploy/multifile/csi-rbac.yaml (ceph-csi-operator v1.0.4, the version the
-# rook-ceph chart pulls in as a subchart), and neither the rook-ceph chart nor
-# the ceph-csi-operator chart renders them. Without them the driver's
-# Deployment and DaemonSet exist but create no pods:
-#
-#   Error creating: pods "rook-ceph.rbd.csi.ceph.com-nodeplugin-" is forbidden:
-#   error looking up service account rook-ceph/rbd-nodeplugin-sa: not found
-#
-# The two ServiceAccount names are not ours to choose. The operator derives
-# them from CSI_SERVICE_ACCOUNT_PREFIX, which the rook-ceph chart sets to the
-# empty string, so they are exactly `rbd-ctrlplugin-sa` and
-# `rbd-nodeplugin-sa`.
-#
-# This is a vendored copy of the RBD half of that file, refreshable with:
-#
-#   curl -sSfL https://raw.githubusercontent.com/ceph/ceph-csi-operator/vX.Y.Z/deploy/multifile/csi-rbac.yaml \
-#     | sed -e 's/ceph-csi-operator-system/rook-ceph/' -e 's/ceph-csi-operator-//'
-#
-# keeping only the rbd documents, re-indenting the sequences for yamllint, and
-# prefixing the cluster-scoped names so they read as ours. CephFS, NFS and
-# NVMe-oF are not enabled, so their accounts are left out rather than carried
-# dormant.
+# Vendored RBD half of ceph-csi-operator v1.0.4 deploy/multifile/csi-rbac.yaml
+# Refresh: see docs/platform/rook-ceph.md#csi-driver
 ---
 apiVersion: v1
 kind: ServiceAccount

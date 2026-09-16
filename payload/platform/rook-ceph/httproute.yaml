@@ -1,5 +1,4 @@
 ---
-# Rook Dashboard HTTPRoute - Infra Gateway
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -26,9 +25,7 @@ spec:
               - name: Referrer-Policy
                 value: "strict-origin-when-cross-origin"
       backendRefs:
-        # Fronted by the Authentik embedded outpost, which authenticates and
-        # then proxies to rook-ceph-mgr-dashboard. Permitted by the
-        # ReferenceGrant in payload/platform/authentik/referencegrant.yaml.
+        # Authentik outpost proxies to the mgr dashboard; see its ReferenceGrant
         - name: authentik-server
           namespace: authentik
           port: 80

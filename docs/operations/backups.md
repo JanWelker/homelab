@@ -97,6 +97,43 @@ image: velero/velero-plugin-for-aws:v1.14.2
 Plugin `v1.14.x` pairs with Velero `v1.18.x`, this chart's appVersion. The
 chart's commented example still shows `v1.13.1`, which is the v1.17 line.
 
+### Other settings worth knowing
+
+- **No credentials file.** `credentials.useSecret` is `false`: the AWS plugin
+  reads its keys from the environment, and `extraEnvVars` feeds that straight
+  from the `Secret` Rook writes for the `velero-bucket` claim. The keys are
+  never rendered into a file or into Git.
+- **`volumeSnapshotLocation: []` must stay empty.** The chart ships a
+  placeholder entry with a null name and provider, renders it as a
+  `VolumeSnapshotLocation` called `default`, and the CRD schema rejects it,
+  failing every sync. Helm replaces lists rather than merging them, so the empty
+  list removes it. Nothing here needs one: CSI and the data mover use a
+  `VolumeSnapshotClass`, and a `VolumeSnapshotLocation` belongs to the legacy
+  per-provider snapshotter plugins.
+- **No `runAsNonRoot`.** The plugin initContainer copies itself into
+  `/target`, and whether that works as non-root depends on the image's own
+  `USER`. Confirm it on a real backup before adding it; the seccomp profile,
+  `allowPrivilegeEscalation: false` and dropped capabilities are set.
+- **Node agent sizing.** Its limits come from a measured 37Mi peak. It is idle
+  except during a backup, so the headroom is deliberately wide.
+
+### Snapshot plumbing
+
+kubeadm does not install the CSI snapshot controller and neither does Rook.
+Without it the `VolumeSnapshot` CRDs are absent and the RBD driver advertises
+snapshot support nothing can invoke. `snapshot-controller.yaml` installs the
+controller and its CRDs at sync-wave `2`, ahead of Velero at `3`.
+
+The `VolumeSnapshotClass` for `rook-ceph-block` is at wave `3` for the same
+reason, and that one is load-bearing. At the default wave it was applied before
+its CRD existed and failed with `no matches for kind VolumeSnapshotClass`.
+`SkipDryRunOnMissingResource` does not help there, since it is the apply that
+fails, not the dry run — and the failed sync meant the snapshot-controller and
+velero Applications queued behind it were never created at all.
+
+Its `deletionPolicy` is `Delete`: the snapshot is only an intermediate step, and
+the durable copy is the one the data mover writes into the object store.
+
 ### Using it
 
 ```bash
@@ -145,6 +182,17 @@ A CronJob takes one nightly at 01:00, an hour before Velero runs:
 !!! note "`etcdctl snapshot status` no longer exists"
     It was removed in etcd 3.6. The verification step uses `etcdutl`, which
     ships in the same image.
+
+The snapshots go to their own bucket rather than Velero's because they are
+recovered by entirely different means. Two details of the job are easy to undo
+by accident:
+
+- `dnsPolicy: ClusterFirstWithHostNet` — with `hostNetwork` the default policy
+  uses the node's `resolv.conf`, which cannot resolve the RGW Service the upload
+  needs.
+- The upload writes an AWS CLI config file with `addressing_style = path`. RGW
+  addresses buckets by path, the CLI defaults to virtual-host style, and there
+  is no environment variable for it.
 
 ```bash
 kubectl -n backup get cronjob etcd-backup

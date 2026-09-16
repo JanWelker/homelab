@@ -1,8 +1,4 @@
 ---
-# Velero backs up Kubernetes objects through the API server. That is the wrong
-# tool for the case where there is no API server left to restore through -- a
-# lost quorum, a corrupted data directory, three dead control-plane nodes. For
-# that you need the etcd data itself, which nothing else here captures.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -20,12 +16,9 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
-          # etcd listens on 127.0.0.1 and the client certificates are on the
-          # node's filesystem, so this has to run on a control-plane node and
-          # share its network namespace.
+          # etcd listens on 127.0.0.1 of the control-plane node
           hostNetwork: true
-          # With hostNetwork the default DNS policy uses the node's resolv.conf,
-          # which cannot resolve the RGW Service the upload step needs.
+          # Otherwise the node's resolv.conf cannot resolve the RGW Service
           dnsPolicy: ClusterFirstWithHostNet
           nodeSelector:
             node-role.kubernetes.io/control-plane: ""
@@ -57,9 +50,7 @@ spec:
                     --cert=/pki/healthcheck-client.crt \
                     --key=/pki/healthcheck-client.key \
                     snapshot save /snapshot/etcd.db
-                  # Verify before uploading, so a truncated snapshot fails the
-                  # job rather than quietly replacing a good backup. Note this
-                  # is etcdutl: `etcdctl snapshot status` was removed in 3.6.
+                  # Verify before upload; `etcdctl snapshot status` is gone in 3.6
                   etcdutl --write-out=table snapshot status /snapshot/etcd.db
               volumeMounts:
                 - name: etcd-certs
@@ -77,9 +68,7 @@ spec:
                 - |
                   set -eu
                   S3="http://${BUCKET_HOST}:${BUCKET_PORT}"
-                  # RGW addresses buckets by path; the CLI defaults to
-                  # virtual-host style and there is no environment variable for
-                  # this, only the config file.
+                  # RGW needs path-style addressing; no env var exists for it
                   mkdir -p /root/.aws
                   printf '[default]\ns3 =\n    addressing_style = path\n' > /root/.aws/config
 
@@ -87,8 +76,7 @@ spec:
                   aws --endpoint-url "$S3" s3 cp \
                     /snapshot/etcd.db "s3://${BUCKET_NAME}/etcd-${TS}.db"
 
-                  # Keep the 14 most recent. Names sort chronologically because
-                  # the timestamp is ISO-8601 basic format.
+                  # Keep the 14 most recent; the timestamp sorts chronologically
                   aws --endpoint-url "$S3" s3 ls "s3://${BUCKET_NAME}/" \
                     | awk '{print $4}' | grep -E '^etcd-.*\.db$' | sort \
                     | head -n -14 \
@@ -97,9 +85,7 @@ spec:
                         aws --endpoint-url "$S3" s3 rm "s3://${BUCKET_NAME}/${key}"
                       done
               envFrom:
-                # Both written by Rook when it provisions the
-                # etcd-backup-bucket claim: the Secret carries the keys, the
-                # ConfigMap the bucket name, host and port.
+                # Written by Rook for the etcd-backup-bucket claim
                 - secretRef:
                     name: etcd-backup-bucket
                 - configMapRef:

@@ -17,33 +17,19 @@ spec:
       valuesObject:
         operatorNamespace: rook-ceph
 
-        # Grants the operator RBAC to create ServiceMonitors, and ships Ceph's
-        # own alerting rules (CephClusterErrorState, CephOSDDown,
-        # CephPGsUnhealthy, and the near-full warnings).
         monitoring:
           enabled: true
           createPrometheusRules: true
 
-        # Toolbox for debugging (optional, useful for troubleshooting)
         toolbox:
           enabled: true
 
-        # Ingress removed - using Gateway API HTTPRoute instead
-
-        # CephCluster configuration
         cephClusterSpec:
-          # Was false, which meant the prometheus mgr module was never enabled
-          # and no Ceph metric reached Prometheus at all -- storage health was
-          # the one thing the monitoring stack could not see. The operator
-          # creates the ServiceMonitor once this is on.
           monitoring:
             enabled: true
           dataDirHostPath: /var/lib/rook
 
-          # Temporary. The cephx keys have to stay on `aes` (see cephx below),
-          # and Ceph 20 reports that with these codes, which keeps the app
-          # Degraded. Rook runs `ceph health mute` for each one. Remove them
-          # once the keys can leave `aes`.
+          # Remove once cephx can leave aes; see the cephx section in rook-ceph.md
           healthCheck:
             muteHealthWarning:
               AUTH_EMERGENCY_CIPHERS_SET: {policy: mute}
@@ -54,43 +40,10 @@ spec:
               AUTH_INSECURE_SERVICE_KEY_TYPE: {policy: mute}
               AUTH_INSECURE_SERVICE_TICKETS: {policy: mute}
 
-          # Ceph 20 (tentacle) warns about the legacy `aes` cephx cipher. The
-          # daemon keys already came up on aes256k; the four Ceph-CSI entities
-          # did not, which is the whole of AUTH_INSECURE_CLIENT_KEY_TYPE and why
-          # this app reads Degraded while the data is entirely healthy.
-          #
-          # keyType alone would not move them. Per the CRD, changing it never
-          # initiates rotation while the policy is Disabled -- it would only
-          # apply to keys created from scratch, leaving the existing four on
-          # aes. KeyGeneration plus a generation above the current one is what
-          # actually rotates them.
           security:
             cephx:
-              # Everything on aes. Not a preference -- a constraint, and one
-              # that is not going away on this cluster.
-              #
-              # aes256k is userspace-only. krbd puts the cephx key in the kernel
-              # keyring and the kernel ceph client does not implement aes256k,
-              # so moving the CSI keys to it made every `rbd map` fail with
-              # "failed to add secret 'client.csi-rbd-node.N' to kernel" /
-              # "map failed: (22) Invalid argument". Nothing with an RBD volume
-              # could start, on any node, rebooted or not. Ceph itself accepted
-              # the keys happily and reported the rotation a success; the
-              # consumer that refused is not one Ceph reports on.
-              #
-              # The daemon keys could technically stay on aes256k -- they never
-              # touch the kernel. Leaving them there is worse than useless
-              # though: a cluster running two ciphers forces the mons to accept
-              # both, which is what AUTH_EMERGENCY_CIPHERS_SET complains about,
-              # so the split buys a third health warning and no security. One
-              # cipher everywhere, and it has to be the one krbd can read.
-              #
-              # Getting off aes for real means moving RBD to the userspace
-              # rbd-nbd mounter first. That is a genuine trade with its own
-              # failure modes, not a config edit -- see the issue.
-              #
-              # Generation 3 throughout: rotation only ever triggers on an
-              # increase, so a generation cannot be lowered to undo one.
+              # aes: krbd cannot read aes256k. Generations only go up.
+              # See docs/platform/rook-ceph.md#cephx-keys-stay-on-aes
               csi:
                 keyType: aes
                 keyRotationPolicy: KeyGeneration
@@ -104,7 +57,6 @@ spec:
                 keyRotationPolicy: KeyGeneration
                 keyGeneration: 3
 
-          # HA: 3 mons, 2 mgrs
           mon:
             count: 3
             allowMultiplePerNode: false
@@ -112,17 +64,10 @@ spec:
             count: 2
             allowMultiplePerNode: false
 
-          # Dashboard (accessible via port-forward)
           dashboard:
             enabled: true
             ssl: false
 
-          # The dashboard's Prometheus and Grafana links. `ceph dashboard
-          # set-prometheus-api-host` and friends only write these keys into the
-          # MON config store, which the operator can do directly -- so this
-          # replaces a sync-hook Job that carried its own rook/ceph image pin
-          # and retried the same three commands thirty times. The operator also
-          # reapplies them on every reconcile, where the Job ran once per sync.
           cephConfig:
             mgr:
               # yamllint disable rule:line-length
@@ -131,24 +76,16 @@ spec:
               mgr/dashboard/GRAFANA_API_SSL_VERIFY: "false"
               # yamllint enable rule:line-length
             mon:
-              # The cluster log defaults to debug and the mons copy it to
-              # stderr, so every `mon_status` from Rook's mon probes and every
-              # two-second pgmap from the mgr became a [DBG] line: 15k of the
-              # mons' 20k lines per half hour in Loki. The mon applies this
-              # level before writing to stderr; warnings and errors in the
-              # cluster log are unaffected.
+              # Default debug floods Loki with mon probe and pgmap lines.
               mon_cluster_log_level: info
 
-          # Block device storage (partition created by Ignition)
           storage:
             useAllNodes: true
             useAllDevices: false
             config:
               osdsPerDevice: "1"
-            # Use the rook-osd partition created by Ignition
             devicePathFilter: "^/dev/disk/by-partlabel/rook-osd$"
 
-          # Resource limits for selected nodes
           resources:
             mon:
               requests:
@@ -176,7 +113,6 @@ spec:
                   operator: Exists
                   effect: NoSchedule
 
-        # CephBlockPool for RBD volumes
         cephBlockPools:
           - name: rbd-pool
             spec:
@@ -204,16 +140,8 @@ spec:
                 # yamllint enable rule:line-length
                 csi.storage.k8s.io/fstype: ext4
 
-        # Disable CephFS for now (can enable later)
         cephFileSystems: []
 
-        # RGW, so the cluster has an S3 endpoint of its own. Velero needs a
-        # bucket to put backups in and Loki needs one for chunks; without this
-        # both would have to reach out of the house or fall back to a PVC on
-        # the same Ceph they are supposed to protect.
-        #
-        # Consumers create an ObjectBucketClaim against the `ceph-bucket`
-        # StorageClass below and get a bucket plus credentials as a Secret.
         cephObjectStores:
           - name: object-store
             spec:
@@ -221,9 +149,6 @@ spec:
                 failureDomain: host
                 replicated:
                   size: 3
-              # Erasure coded 2+1: 1.5x overhead instead of the 3x a replicated
-              # pool would cost, which matters for backups and log chunks. Safe
-              # at failureDomain host with six nodes.
               dataPool:
                 failureDomain: host
                 erasureCoded:
@@ -234,8 +159,6 @@ spec:
               preservePoolsOnDelete: true
               gateway:
                 port: 80
-                # Two, so an RGW restart during a node reboot does not stall a
-                # backup or drop log ingestion.
                 instances: 2
                 priorityClassName: system-cluster-critical
                 resources:
@@ -247,8 +170,7 @@ spec:
             storageClass:
               enabled: true
               name: ceph-bucket
-              # Retain, not Delete. Deleting an ObjectBucketClaim should not be
-              # able to take the backups with it.
+              # Retain, so deleting a claim cannot take the backups with it.
               reclaimPolicy: Retain
               volumeBindingMode: Immediate
               parameters:
@@ -263,8 +185,5 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      # createPrometheusRules renders a PrometheusRule, whose CRD arrives with
-      # kube-prometheus-stack at sync-wave 1 -- after this app at -1. On a
-      # fresh bootstrap the first sync therefore runs before the CRD exists;
-      # skipping the dry run lets ArgoCD retry instead of hard-failing.
+      # PrometheusRule CRD arrives later, at wave 1
       - SkipDryRunOnMissingResource=true

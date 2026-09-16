@@ -1,15 +1,6 @@
 ---
-# Ceph dashboards: cluster, single OSD, and pools.
-#
-# Rook's copies, from deploy/examples/monitoring/grafana/ at the tag matching
-# the rook-ceph-cluster chart (v1.20.7), unmodified. They are Ceph's own
-# ceph-mixin dashboards with Rook's adjustments, and the Rook docs point at
-# them; neither Rook chart renders them, hence vendored. Re-copy them when Rook
-# moves a minor version -- Renovate does not see this file.
-#
-# Data comes from the mgr prometheus module and the ceph-exporter, both enabled
-# by `monitoring.enabled` in cluster.yaml. Datasource is a template variable,
-# so no import-time substitution is needed.
+# Vendored from Rook v1.20.7 deploy/examples/monitoring/grafana/, unmodified.
+# Renovate does not see this file: re-copy when Rook moves a minor version.
 apiVersion: v1
 kind: ConfigMap
 metadata:

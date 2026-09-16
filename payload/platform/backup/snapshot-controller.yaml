@@ -6,8 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # Before Velero (3), which cannot take a CSI snapshot until the
-    # VolumeSnapshot CRDs and their controller exist.
+    # Before Velero and the VolumeSnapshotClass (3), which need its CRDs
     argocd.argoproj.io/sync-wave: "2"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -19,16 +18,10 @@ spec:
     targetRevision: 5.2.0
     helm:
       valuesObject:
-        # kubeadm does not install this and neither does Rook. Without it the
-        # VolumeSnapshot CRDs are absent, so `kubectl get volumesnapshot`
-        # returns "no resources found" -- and Rook's RBD driver advertises
-        # snapshot support that nothing can actually invoke.
         installCRDs: true
         controller:
           enabled: true
           replicaCount: 2
-          # The chart already drops ALL and runs non-root with a read-only
-          # root; these are the two it leaves out.
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
