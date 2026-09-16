@@ -142,12 +142,7 @@ Grafana and a rebuilt Authentik still agree with each other. See
 
 The admin password lives in OpenBao at `kv/monitoring/grafana-admin` and reaches
 Grafana through the `grafana-admin` Secret, rendered by `grafana-admin.yaml` and
-named in `grafana.admin.existingSecret`. Store it once:
-
-```bash
-bao kv put kv/monitoring/grafana-admin \
-  password="$(openssl rand -base64 24 | tr -d '\n')"
-```
+named in `grafana.admin.existingSecret`. `make bao-secrets` generates it.
 
 Leaving `existingSecret` unset is not harmless. The chart then generates a new
 random password on every render, so ArgoCD always sees its Secret as OutOfSync,

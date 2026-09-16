@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the four kv paths the cluster reads through ExternalSecrets.
+# Populates the five kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -26,15 +26,16 @@
 # payload/platform/external-dns/route53-credentials.yaml.
 #
 # Everything under kv/authentik/config is generated here, including the OIDC
-# client credentials ArgoCD and Grafana read back from the same path.
+# client credentials ArgoCD and Grafana read back from the same path. Grafana's
+# break-glass admin password under kv/monitoring/grafana-admin is generated too.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
-# other four secrets, and does not put kv/authentik/config anywhere near the
+# other secrets, and does not put kv/authentik/config anywhere near the
 # blast radius. Rewriting that one rotates Authentik's Postgres password out
 # from under its database, so it asks for a typed confirmation rather than a
 # keystroke -- and keeps asking even under FORCE=1, which answers yes to the
-# other three for non-interactive use.
+# others for non-interactive use.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openbao}"
@@ -101,7 +102,7 @@ decide() {
   # FORCE=1 is a reasonable thing to want; taking Authentik down as a side
   # effect of it is not, and an env var set once in a shell is far too quiet a
   # way to authorise that. Without a terminal it is left alone rather than
-  # failing, so automation still gets the other three.
+  # failing, so automation still gets the others.
   if [ -n "$danger" ]; then
     if [ ! -t 0 ]; then
       printf '  %-24s exists, left alone -- needs a terminal to confirm\n' "kv/${path}"
@@ -156,10 +157,12 @@ decide WRITE_CERT_MANAGER cert-manager/route53
 decide WRITE_EXTERNAL_DNS external-dns/route53
 decide WRITE_AUTHENTIK    authentik/config "$AUTHENTIK_DANGER"
 decide WRITE_MONITORING   monitoring/smtp
+decide WRITE_GRAFANA      monitoring/grafana-admin
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
-  && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ]; then
+  && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
+  && [ "$WRITE_GRAFANA" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -266,6 +269,14 @@ if [ "$WRITE_MONITORING" = "1" ]; then
     "password=${SMTP_PASSWORD}"
 fi
 
+# Grafana reads this only when it creates its database, so rewriting it on a
+# running cluster changes nothing until the password is reset to match -- see
+# payload/platform/monitoring/grafana-admin.yaml.
+if [ "$WRITE_GRAFANA" = "1" ]; then
+  put monitoring/grafana-admin \
+    "password=$(rand_b64 24)"
+fi
+
 cat <<'EOF'
 
 Done. External Secrets refreshes hourly on its own. A path that was just
@@ -289,4 +300,9 @@ in with as akadmin:
 
   kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
     -field=bootstrap-password authentik/config
+
+Grafana's break-glass admin password is generated the same way:
+
+  kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
+    -field=password monitoring/grafana-admin
 EOF

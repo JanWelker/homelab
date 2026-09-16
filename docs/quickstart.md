@@ -342,7 +342,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
         means the data is unrecoverable — there is no support line and no
         recovery flow. See [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap).
 
-    Then populate the four paths the cluster reads:
+    Then populate the five paths the cluster reads:
 
     ```bash
     make bao-secrets
@@ -351,7 +351,8 @@ The deployment host (the machine running Ansible and the boot server) must be re
     It prompts for the five values that belong to accounts outside the cluster —
     two Route53 IAM key pairs and the SMTP password — with the input hidden.
     Everything under `kv/authentik/config`, including the OIDC client
-    credentials ArgoCD and Grafana read back, is generated.
+    credentials ArgoCD and Grafana read back, is generated, and so is Grafana's
+    break-glass admin password under `kv/monitoring/grafana-admin`.
 
     !!! tip "Paste them at the prompt, not onto a command line"
         The prompt takes the line exactly as typed. A secret containing `#` put
