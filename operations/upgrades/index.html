@@ -2257,11 +2257,19 @@ this is the deliberate path:</p>
    sysupdate sets the sentinel, one node at a time; to move faster, follow
    <a href="../nodes/#rebooting-a-node">Rebooting a node</a> instead.</p>
 </li>
-<li>On a control-plane node, run <code>kubeadm upgrade</code> as the Kubernetes release
+<li>
+<p>On a control-plane node, run <code>kubeadm upgrade</code> as the Kubernetes release
    notes require. The sysext swaps the binaries; it does not run the upgrade
    steps kubeadm needs for control-plane components. Swapping binaries and
    calling it an upgrade is exactly the kind of thing that works on five nodes
-   and then does not work on the sixth.</li>
+   and then does not work on the sixth.</p>
+<p>Before running it, confirm kubeadm still knows kube-proxy is off. The
+upgrade reads the stored <code>kubeadm-config</code>, not the template, and with
+<code>disabled: true</code> missing it redeploys <code>kube-proxy</code> beside Cilium:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>cm<span class="w"> </span>kubeadm-config<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.ClusterConfiguration}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A1<span class="w"> </span><span class="s1">'^proxy:'</span>
+</span></code></pre></div>
+</li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

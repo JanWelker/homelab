@@ -2194,8 +2194,9 @@ never a small problem.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>kube-proxy replacement</strong>: <code>kubeProxyReplacement: true</code>. Service routing
-  happens in eBPF rather than iptables or IPVS, which is why <code>make install-core</code>
-  deletes <code>kube-proxy</code> outright.</li>
+  happens in eBPF rather than iptables or IPVS, which is why kubeadm never
+  deploys <code>kube-proxy</code>: <code>proxy.disabled</code> in <code>ansible/templates/kubeadm.yaml.j2</code>
+  keeps it out at init and on every <code>kubeadm upgrade apply</code>.</li>
 <li><strong>Gateway API</strong>: Replaces a traditional Ingress controller — see
   <a href="../gateway-api/">Gateway API</a>.</li>
 <li><strong>LoadBalancer Pools</strong>: <code>10.9.2.249</code> (apps) and <code>10.9.2.248</code> (infra),
