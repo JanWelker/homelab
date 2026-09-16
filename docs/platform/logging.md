@@ -59,7 +59,10 @@ when the node itself is the thing that failed. See
 [Audit logging](../architecture/audit-logging.md) for what is recorded
 and at which level. Alloy runs on all six nodes and `local.file_match` simply
 finds nothing on the workers, which is a cheaper way to say "control plane only"
-than any scheduling constraint.
+than any scheduling constraint. It does need a toleration for the
+control-plane `NoSchedule` taint, though: without one Alloy runs on the workers
+alone, and neither the audit log nor the control-plane kubelets' journals reach
+Loki.
 
 All three sources Alloy reads — `/var/log/pods`, `/var/log/journal` and
 `/var/log/kubernetes/audit` — are directories on the 50GB root filesystem, so
@@ -69,7 +72,27 @@ Container logs pass through `stage.cri {}`. containerd writes
 `<timestamp> <stream> <flags> <message>`; without that stage the timestamp and
 stream end up inside the log line and Loki stamps everything at ingest time —
 which quietly destroys the one property you actually needed, namely being able
-to line logs up against the incident.
+to line logs up against the incident. Audit events get the same treatment from
+`stage.timestamp`, which stamps each one with its `requestReceivedTimestamp`
+rather than the moment Alloy read the file.
+
+The journal's `job="systemd-journal"` label is set by a relabel rule, not the
+source's `labels` argument. `loki.source.journal` overwrites `job` with its
+component ID after applying `labels`, and only the relabel rules run after that.
+
+### Running Alloy
+
+Alloy runs as root (`runAsUser: 0`). The log files are root-owned with
+restrictive modes, and a non-root Alloy does not fail — it silently collects
+nothing. Everything else is locked down around that: a read-only root
+filesystem, no capabilities, no privilege escalation, and the `RuntimeDefault`
+seccomp profile, which is worth having precisely because the process is root.
+
+The read-only root has one side effect. Alloy writes its data directory to
+`storagePath`, which the chart defaults to `/tmp/alloy`, and every pod would die
+at startup with `mkdir /tmp/alloy: read-only file system`. An `emptyDir` mounted
+at `/tmp` restores what the chart assumes. It holds file-tailing positions and
+does not survive a restart — nor would the container layer it replaces.
 
 ## Storage
 
@@ -101,6 +124,16 @@ set.
 would add four pods in front of a Loki this size — caching infrastructure larger
 than the thing it caches is a decision best left to people with more logs.
 
+The chart already runs Loki as UID 10001 with a read-only root and no
+capabilities; `loki.podSecurityContext` adds the `RuntimeDefault` seccomp
+profile at pod level, which covers the rules sidecar too. It has to be that key:
+`singleBinary.podSecurityContext` does not exist, so setting it there is
+silently inert.
+
+The sidecars have limits of their own: Loki's rules sidecar (measured
+peak 72Mi, limit 192Mi) and Alloy's config reloader (peak 12Mi, given the
+platform's 128Mi floor rather than a measured figure).
+
 ## Querying
 
 The Loki datasource is registered with Grafana automatically. In Grafana,
@@ -124,6 +157,20 @@ to query by and far too numerous to label, so they stay in the line where
     release namespace for `grafana_datasource` ConfigMaps, so one placed next to
     Loki would never be picked up. It is defined with the component it
     describes and applied where Grafana can see it.
+
+## Dashboards
+
+`grafana-dashboards.yaml` carries three dashboards from the Alloy mixin
+(`operations/alloy-mixin/rendered/dashboards/` in grafana/alloy), unmodified, at
+the Alloy version the chart deploys. The chart renders none, hence the vendored
+copy — and Renovate does not see it, so re-copy them when Alloy moves a minor
+version.
+
+The mixin's other dashboards are left out on purpose. Clustering, OpenTelemetry
+and Prometheus remote-write are features this Alloy does not use, and "Logs
+Overview" reads Alloy's own logs by a `job` label this pipeline never sets. The
+`cluster` variable on the remaining three has nothing to list, since no scrape
+sets a `cluster` label; its empty value matches series without one.
 
 ## Directory Structure
 

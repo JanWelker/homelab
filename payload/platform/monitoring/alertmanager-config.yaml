@@ -1,35 +1,12 @@
 ---
-# Alertmanager's whole configuration, rendered from OpenBao.
-#
-# The mail account's username, the sender and the recipient are addresses, and
-# they are not published in this repository. Alertmanager can read only the SMTP
-# password from a file -- there is no `_file` form for the username, `from` or
-# `to` -- so a mounted Secret next to a chart-rendered config cannot keep them
-# out of Git. Instead ESO renders the complete alertmanager.yaml into the
-# Secret named by `alertmanagerSpec.configSecret`, and the chart's own `config`
-# is off (`useExistingSecret`).
-#
-# Everything that is not an address or a credential is still spelled out here,
-# in the template below, so routing stays reviewable.
-#
-# The values live in OpenBao at kv/monitoring/smtp:
-#
-#   username   the mail account login, also used as the sender
-#   password   its password (or an app password)
-#   to         where alerts are delivered
-#
-# `make bao-secrets` prompts for all three. By hand:
-#
-#   bao kv put kv/monitoring/smtp username=... password=... to=...
+# The whole Alertmanager config, rendered from kv/monitoring/smtp.
+# See docs/platform/monitoring.md#alerting
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: alertmanager-config
   namespace: monitoring
   annotations:
-    # Alertmanager needs this Secret to start. It is created by ESO at
-    # sync-wave 1, the same wave as this Application, so on a fresh bootstrap
-    # the first attempt can lose the race and ArgoCD retries.
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   refreshInterval: 1h
@@ -43,26 +20,18 @@ spec:
     template:
       engineVersion: v2
       data:
-        # Every templated value goes through toJson, which makes it a quoted
-        # YAML string: a password containing `:`, `#` or a quote cannot break
-        # the document.
+        # toJson quotes every value so special characters cannot break YAML.
         alertmanager.yaml: |
           global:
             resolve_timeout: 5m
-            # mailbox.org on 465 is implicit TLS (SSL/TLS), not STARTTLS, and
-            # Alertmanager switches to it by port number alone.
-            # smtp_require_tls only governs STARTTLS and is skipped on that
-            # path; it stays true so a move back to 587 cannot fall to
-            # plaintext. The sender is the login: mailbox.org refuses a From
-            # address the authenticated account does not own.
+            # 465 is implicit TLS; require_tls guards a move back to 587.
             smtp_smarthost: "smtp.mailbox.org:465"
             smtp_from: {{ .username | toJson }}
             smtp_auth_username: {{ .username | toJson }}
             smtp_auth_password: {{ .password | toJson }}
             smtp_require_tls: true
 
-          # The chart's defaults: supplying a config replaces the whole
-          # document, so they are repeated rather than inherited.
+          # Chart defaults, repeated: a supplied config replaces them.
           inhibit_rules:
             - source_matchers:
                 - severity = critical
@@ -94,14 +63,10 @@ spec:
             repeat_interval: 12h
             receiver: email
             routes:
-              # Watchdog fires constantly by design -- it is the alert that
-              # proves the pipeline works. Mailing it every 12 hours would
-              # train the recipient to ignore the sender.
+              # Watchdog always fires by design; do not mail it.
               - receiver: "null"
                 matchers:
                   - alertname = "Watchdog"
-              # Critical repeats four times as often, on the assumption that a
-              # mail nobody acted on should come back sooner.
               - receiver: email
                 matchers:
                   - severity = "critical"

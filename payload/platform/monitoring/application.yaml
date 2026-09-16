@@ -33,9 +33,6 @@ spec:
           grafana:
             enabled: true
 
-            # The dashboard and datasource sidecars, which peaked at 89Mi and
-            # 92Mi. Grafana's own container is not capped here -- see the note
-            # further down.
             sidecar:
               resources:
                 requests:
@@ -43,34 +40,20 @@ spec:
                   memory: 112Mi
                 limits:
                   memory: 256Mi
-              # Dashboards are picked up from `grafana_dashboard` ConfigMaps in
-              # every namespace, so a dashboard ships with the component it
-              # describes -- including the ones charts render into their own
-              # namespace. This is already kube-prometheus-stack's default;
-              # it is spelled out because other docs once assumed the
-              # opposite. The datasource sidecar has no such setting here and
-              # does watch only `monitoring`, see logging/grafana-datasource.yaml.
+              # Every namespace; the datasource sidecar watches only `monitoring`.
               dashboards:
                 searchNamespace: ALL
 
-            # Single sign-on against Authentik. Grafana previously used the
-            # chart's generated admin password -- a shared credential nobody
-            # rotates, documented as "read it out of the Secret".
             envFromSecret: grafana-oidc
 
-            # The break-glass admin account, from OpenBao via grafana-admin.yaml.
-            # Leaving this unset makes the chart generate a new password on
-            # every render, which keeps the app OutOfSync and restarts Grafana
-            # on every sync.
+            # Unset, the chart regenerates the password and restarts Grafana.
             admin:
               existingSecret: grafana-admin
             grafana.ini:
               server:
                 root_url: https://monitoring.infra.k8s.wlkr.ch
               auth:
-                # No local login form. The admin account still exists and is
-                # reachable through the API as a break-glass path if Authentik
-                # is down -- see docs/platform/authentik.md.
+                # Admin stays reachable via the API, see docs/platform/authentik.md
                 disable_login_form: true
                 oauth_auto_login: true
               auth.generic_oauth:
@@ -81,21 +64,12 @@ spec:
                 auth_url: https://auth.infra.k8s.wlkr.ch/application/o/authorize/
                 token_url: https://auth.infra.k8s.wlkr.ch/application/o/token/
                 api_url: https://auth.infra.k8s.wlkr.ch/application/o/userinfo/
-                # Group membership decides the Grafana role. Anyone who
-                # authenticates but is in neither group lands on Viewer.
                 # yamllint disable-line rule:line-length
                 role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-editors') && 'Editor' || 'Viewer'"
               users:
                 auto_assign_org_role: Viewer
 
-            # The dashboard PVC is ReadWriteOnce, so two Grafana pods cannot
-            # exist at once -- and the chart's default RollingUpdate strategy
-            # tries: the new pod waits on a volume the old pod will not release
-            # until the new one is Ready, which it cannot become. A rollout then
-            # parks at `FailedAttachVolume: Volume is already used by pod(s)`
-            # until someone deletes a pod by hand. Recreate takes the old pod
-            # down first, and the seconds of downtime are the price of a
-            # single-replica, single-volume Grafana.
+            # RWO volume: RollingUpdate deadlocks, see docs/platform/monitoring.md
             deploymentStrategy:
               type: Recreate
 
@@ -109,17 +83,7 @@ spec:
 
           prometheus:
             prometheusSpec:
-              # Select every ServiceMonitor, PodMonitor, Probe, ScrapeConfig and
-              # PrometheusRule in every namespace, not only this release's.
-              #
-              # An empty `serviceMonitorSelector: {}` does not say that. The
-              # chart tests the selector for truthiness, an empty map is falsy,
-              # and it falls through to `*NilUsesHelmValues` -- true by default
-              # -- which renders `release: kube-prometheus-stack`. For as long
-              # as the selectors were written that way, Prometheus scraped this
-              # chart's own targets and nothing else: no Cilium, Ceph, OpenBao,
-              # Kubescape or Alloy metrics, and no Ceph or Velero alert rules,
-              # while every ServiceMonitor for them existed and looked fine.
+              # `{}` alone still filters by release, see docs/platform/monitoring.md
               ruleSelectorNilUsesHelmValues: false
               serviceMonitorSelectorNilUsesHelmValues: false
               podMonitorSelectorNilUsesHelmValues: false
@@ -136,11 +100,7 @@ spec:
               retention: 10d
 
           alertmanager:
-            # Alertmanager has no RoleBinding or ClusterRoleBinding anywhere in
-            # the cluster -- the operator is what talks to the API, not the
-            # Alertmanager pod -- so the projected token buys it nothing and
-            # costs a working credential sitting in a pod reachable from the
-            # Gateway.
+            # Nothing binds Alertmanager to RBAC; the token is only exposure.
             serviceAccount:
               automountServiceAccountToken: false
 
@@ -159,19 +119,11 @@ spec:
                     resources:
                       requests:
                         storage: 5Gi
-              # The whole Alertmanager configuration -- routing, receivers and
-              # the mail account -- is rendered from OpenBao by
-              # alertmanager-config.yaml in this directory, so that no address
-              # is published here. `useExistingSecret` turns the chart's
-              # `config` off; `configSecret` names the Secret to load instead.
+              # Rendered from OpenBao by alertmanager-config.yaml.
               useExistingSecret: true
               configSecret: alertmanager-config
 
-          # kubeadm binds these two to 127.0.0.1 by default; the provisioning
-          # change that moves them to 0.0.0.0 is what makes these ServiceMonitors
-          # able to reach anything. Their serving certificates are self-signed
-          # for the node address, so verification is off -- the scrape still
-          # authenticates with the ServiceAccount token.
+          # Needs kubeadm's bind-address change, see docs/platform/monitoring.md
           kubeControllerManager:
             enabled: true
             serviceMonitor:
@@ -182,8 +134,7 @@ spec:
             serviceMonitor:
               https: true
               insecureSkipVerify: true
-          # Plain HTTP on 2381, which serves only /metrics and /health. The
-          # client and peer APIs stay on their mTLS listeners.
+          # Plain-HTTP metrics-only listener; client and peer APIs stay mTLS.
           kubeEtcd:
             enabled: true
             service:
@@ -192,11 +143,7 @@ spec:
             serviceMonitor:
               scheme: http
 
-          # There is no kube-proxy: Cilium replaces it (kubeProxyReplacement)
-          # and kubeadm skips the addon. The chart's ServiceMonitor, Service,
-          # recording rules, KubeProxyDown alert and Proxy dashboard all assume
-          # one, so the alert fires permanently for a component that is absent
-          # by design. Cilium's own targets and dashboards cover service routing.
+          # No kube-proxy: Cilium replaces it.
           kubeProxy:
             enabled: false
 
@@ -214,14 +161,7 @@ spec:
           kubeStateMetrics:
             enabled: true
 
-          # Memory limits sized from measured peak working set at roughly 2.5x.
-          #
-          # Prometheus and Grafana are deliberately absent. Prometheus peaked at
-          # 1501Mi and grows with series count and retention; Grafana peaked at
-          # 680Mi, which is high enough for a dashboard renderer that it wants
-          # explaining before it is capped. Neither can be sized from 23h of
-          # steady state, and OOMKilling the thing that tells you the cluster is
-          # unhealthy is the specific failure worth avoiding. Tracked separately.
+          # Limits ~2.5x measured peak, see docs/platform/monitoring.md
           prometheusOperator:
             resources:
               requests:

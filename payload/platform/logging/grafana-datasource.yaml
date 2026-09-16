@@ -1,11 +1,5 @@
 ---
-# Loki as a Grafana datasource.
-#
-# Deliberately in the `monitoring` namespace rather than `logging`: the
-# kube-prometheus-stack Grafana sidecar only watches its own release namespace
-# for `grafana_datasource` ConfigMaps, so one placed next to Loki would never be
-# picked up. It is defined here, with the component it describes, and applied
-# there.
+# In `monitoring`: Grafana's datasource sidecar watches only that namespace.
 apiVersion: v1
 kind: ConfigMap
 metadata:
