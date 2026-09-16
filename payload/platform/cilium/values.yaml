@@ -22,6 +22,11 @@ prometheus:
   serviceMonitor:
     enabled: true
 
+# The chart's own agent dashboard, as a `grafana_dashboard` ConfigMap in
+# kube-system. Grafana's sidecar watches every namespace for those.
+dashboards:
+  enabled: true
+
 # Memory limits sized from measured peak working set at roughly 2.5x. The
 # cilium-agent DaemonSet is deliberately left without one: it peaked at 337Mi,
 # it is the one process on the node whose death takes pod networking with it,
@@ -34,6 +39,8 @@ operator:
     enabled: true
     serviceMonitor:
       enabled: true
+  dashboards:
+    enabled: true
   resources:
     requests:
       cpu: 25m
@@ -67,14 +74,29 @@ encryption:
 hubble:
   enabled: true
   metrics:
+    # Source and destination namespace on the flow-level metrics, because the
+    # chart's per-namespace Hubble dashboards filter on exactly those labels
+    # and show nothing without them. Namespace rather than workload or IP
+    # keeps the series count to the square of the namespace count. HTTP adds
+    # workloads for the L7 dashboard; it only has data for traffic Cilium
+    # proxies at L7, which here is the Gateway.
+    #
+    # The agent reads this at startup: a change lands as nodes reboot or
+    # Cilium upgrades, not on sync.
     enabled:
-      - dns
-      - drop
-      - tcp
-      - flow
+      - dns:labelsContext=source_namespace,destination_namespace
+      - drop:labelsContext=source_namespace,destination_namespace
+      - tcp:labelsContext=source_namespace,destination_namespace
+      - flow:labelsContext=source_namespace,destination_namespace
       - port-distribution
-      - icmp
-      - http
+      - icmp:labelsContext=source_namespace,destination_namespace
+      - httpV2:labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction
+    # The metrics above were exported on every node and read by nothing: the
+    # hubble-metrics Service existed without a ServiceMonitor pointing at it.
+    serviceMonitor:
+      enabled: true
+    dashboards:
+      enabled: true
   relay:
     enabled: true
     resources:

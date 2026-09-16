@@ -1,12 +1,9 @@
 ---
 # The Kubescape posture dashboard.
 #
-# Deliberately in the `monitoring` namespace rather than `kubescape`, for the
-# same reason as `payload/platform/logging/grafana-datasource.yaml`: the
-# kube-prometheus-stack Grafana sidecar only watches its own release namespace
-# for `grafana_dashboard` ConfigMaps, so one placed next to Kubescape would
-# never be picked up. It is defined with the component it describes and applied
-# where Grafana can see it.
+# Vendored because the kubescape-operator chart ships no dashboard of its own.
+# It lives next to Kubescape: Grafana's dashboard sidecar watches every
+# namespace.
 #
 # The JSON is upstream's, from kubescape/prometheus-exporter, unmodified. It
 # carries no datasource of its own, which is what makes it work here -- the
@@ -23,7 +20,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kubescape-dashboard
-  namespace: monitoring
+  namespace: kubescape
   labels:
     grafana_dashboard: "1"
 data:

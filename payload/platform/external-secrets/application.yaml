@@ -29,6 +29,9 @@ spec:
           serviceMonitor:
             enabled: true
             interval: 30s
+          # The chart's dashboard, rendered into this namespace.
+          grafanaDashboard:
+            enabled: true
           # The webhook and cert-controller had no limits while the controller
           # above did. Sized from measured peak working set at roughly 2.5x:
           # webhook 33Mi, cert-controller 73Mi.
