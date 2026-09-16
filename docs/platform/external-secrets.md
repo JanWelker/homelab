@@ -49,6 +49,12 @@ sequenceDiagram
 
 ESO authenticates to OpenBao with its own ServiceAccount (`external-secrets-vault` in the `external-secrets` namespace). OpenBao validates the JWT against the Kubernetes TokenReview API and issues a short-lived OpenBao token bound to the `external-secrets` role/policy.
 
+To get that JWT, ESO mints a short-lived token for the ServiceAccount through
+the TokenRequest API, which is what the `external-secrets-vault-token-creator`
+ClusterRole grants. The store uses ESO's `vault` provider unchanged — OpenBao
+implements the Vault HTTP API — and talks to the in-cluster Service, so no
+request leaves the cluster network.
+
 Note what is absent from that sentence: any long-lived credential stored anywhere. The cluster's own identity system vouches for ESO, and OpenBao decides whether to believe it. This is the bootstrap problem solved properly, and it is worth understanding once rather than treating as magic — because when it breaks, it breaks in the `ClusterSecretStore` status and nowhere else.
 
 ## Adding a new secret
@@ -129,6 +135,19 @@ spec:
 `refreshInterval: 1h` polls OpenBao hourly. Set to `0` to disable polling — ESO will only re-sync on resource changes. For rotated credentials, leave it at a value that matches your rotation cadence.
 
 Worth knowing: rotating a value in OpenBao updates the Kubernetes `Secret` within that interval, but it does **not** restart anything. A pod that read the secret into an environment variable at startup will happily keep using the old value until something restarts it. Reloader-style tooling or a rollout is the missing half of "rotation", and forgetting it is how a credential gets rotated on paper and not in practice.
+
+## Chart values
+
+- **Sync wave `-6`.** Ahead of every Application that ships an
+  `ExternalSecret`; a CRD that does not exist yet deadlocks the wave rather than
+  delaying it — see
+  [GitOps](../architecture/gitops.md#a-missing-crd-is-a-deadlock-not-a-delay).
+- **Webhook and cert-controller resources.** Memory limits are about 2.5x the
+  measured peak working set: 33Mi for the webhook, 73Mi for the cert-controller.
+- **Webhook ServiceAccount token stays mounted.** The webhook has no
+  RoleBinding, so it looks as if it never talks to the API server, but it builds
+  an in-cluster client at startup regardless and exits without the token
+  (`unable to load in-cluster config`). It only shows when the pod is recreated.
 
 ## Troubleshooting
 

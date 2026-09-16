@@ -45,6 +45,28 @@ flowchart LR
 
 The chart is the official upstream [`openbao/openbao-helm`](https://github.com/openbao/openbao-helm), pinned in `application.yaml`.
 
+### Chart values that are not what they look like
+
+- **Pod security context.** OpenBao keeps the root key out of swap with
+  `mlock`, which needs `IPC_LOCK` — the reason the namespace enforces
+  `privileged`. The container still drops `ALL` and adds back only
+  `IPC_LOCK`. The chart's `securityContext.pod` is an if/else, not a merge:
+  setting it replaces the default block, so `runAsUser: 100`,
+  `runAsGroup: 1000` and `fsGroup: 1000` (the chart's own defaults) are
+  restated. Drop them and keep only `runAsNonRoot`, and the kubelet refuses to
+  start the container, because the image's `USER` is the name `openbao`
+  rather than a number and cannot be proven non-root. It only shows on pod
+  recreation, typically after a node reboot.
+- **Image repository.** The chart prepends `server.image.registry`, which
+  defaults to `quay.io`; the repository is therefore `openbao/openbao`, not
+  `quay.io/openbao/openbao`.
+- **Unauthenticated metrics.** `/v1/sys/metrics` otherwise wants a token, and
+  the ServiceMonitor has none, so the target would sit at 403. The metrics carry
+  counts and timings, not paths or secrets, and are readable only by what can
+  reach port 8200 — the namespace policy's callers plus the Gateway.
+- **Dashboard.** `serverTelemetry.grafanaDashboard` renders OpenBao's upstream
+  dashboard (grafana.com 23725) into the namespace.
+
 ## Bootstrap
 
 ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods will be `Running` but **not Ready** until the cluster is initialised and unsealed. Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
