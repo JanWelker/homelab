@@ -9,6 +9,7 @@ metadata:
     # Before Velero and the VolumeSnapshotClass (3), which need its CRDs
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

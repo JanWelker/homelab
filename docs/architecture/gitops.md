@@ -131,14 +131,25 @@ deletion of everything that Application deployed.
 
 So a move takes two changes:
 
-1. Annotate the resource `argocd.argoproj.io/sync-options: Prune=false` where
-   it is, and let that sync. Pruning skips a resource whose **live** object
-   carries the annotation, whichever Application gets there first.
-2. Move the file, keeping the annotation. The new Application applies it and
+1. Annotate the resource where it is, and let that sync:
+
+    ```yaml
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false
+      argocd.argoproj.io/compare-options: IgnoreExtraneous
+    ```
+
+    Pruning skips a resource whose **live** object carries `Prune=false`,
+    whichever Application gets there first. `IgnoreExtraneous` keeps the old
+    Application Synced while it still sees the resource it may no longer prune;
+    without it the old Application stays OutOfSync until the new one has
+    applied the resource, which is a deadlock when a sync gate waits on the old
+    one first.
+2. Move the file, keeping the annotations. The new Application applies it and
    takes over the tracking annotation; the old one no longer considers the
    resource its own.
 
-The annotation can go once the second change has synced everywhere.
+The annotations can go once the second change has synced everywhere.
 
 ## ArgoCD's own configuration
 
