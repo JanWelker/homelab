@@ -120,6 +120,26 @@ that ships an `ExternalSecret`, the earliest of which is cert-manager at `-5`.
 `SkipDryRunOnMissingResource=true` on each `ExternalSecret` covers the first
 sync of a fresh cluster, where the CRDs have not landed yet.
 
+## Moving a resource to another Application
+
+Moving a manifest from one Application's directory to another's is not a move
+to ArgoCD. The old Application sees a resource it tracks vanish from Git and,
+with `prune: true`, deletes it; the new one creates it again, possibly first,
+possibly seconds later. For a `ClusterSecretStore` that is an outage of every
+secret. For a child `Application` with the resources finalizer it is the
+deletion of everything that Application deployed.
+
+So a move takes two changes:
+
+1. Annotate the resource `argocd.argoproj.io/sync-options: Prune=false` where
+   it is, and let that sync. Pruning skips a resource whose **live** object
+   carries the annotation, whichever Application gets there first.
+2. Move the file, keeping the annotation. The new Application applies it and
+   takes over the tracking annotation; the old one no longer considers the
+   resource its own.
+
+The annotation can go once the second change has synced everywhere.
+
 ## ArgoCD's own configuration
 
 `payload/argocd/values.yaml` holds the chart values. The parts that are not
@@ -132,6 +152,7 @@ self-explanatory:
 | `controller` has no resources | The application-controller peaked at 1639Mi and grows with the number of managed resources; a day of steady state is not enough to size it |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the [break-glass path](../platform/authentik.md#when-authentik-is-down) |
+| `applicationsetcontroller.enable.progressive.syncs` | Lets an ApplicationSet with a `RollingSync` strategy order the Applications it generates. Without the flag the strategy is ignored and every Application syncs at once |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
 
 The OIDC client ID and secret come from `kv/authentik/config`, the same OpenBao
