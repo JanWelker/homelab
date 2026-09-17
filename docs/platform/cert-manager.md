@@ -57,9 +57,10 @@ controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
 limited, like the rest of the platform.
 
 The chart renders its `ServiceMonitor` unconditionally, so it cannot sync until
-the Prometheus operator CRDs exist. `make install-cilium` installs them during
-bootstrap; kube-prometheus-stack, which owns them, arrives several sync waves
-later.
+the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
+arrives several sync waves later, so on a new cluster the first attempts fail;
+`SkipDryRunOnMissingResource` lets the rest apply meanwhile, and `retry` keeps
+trying until the CRDs are there.
 
 ## AWS Credentials Setup
 
@@ -93,9 +94,6 @@ The IAM user needs at minimum:
 !!! note
     Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. This is the dependency that catches people after every power cut: sealed OpenBao means no Route53 credentials, which means no renewals, which means an expired certificate roughly two months later with no obvious connection to the outage that caused it. For the very first bootstrap, see the [Quickstart](../quickstart.md) which walks through the order.
 
-!!! note "cert-manager is installed twice, sort of"
-    `make install-cert-manager` — which `make install-core` calls — installs the chart and the ClusterIssuers by Helm before ArgoCD exists, and ArgoCD then adopts them. As with Cilium, there is only one pin: the `Makefile` reads `targetRevision` out of `application.yaml` rather than keeping a version of its own. On a single tainted node this is the target that hangs; see [Single-node clusters](../quickstart.md#single-node-clusters).
-
 ## Issuers
 
 | Issuer | Purpose |
@@ -122,7 +120,7 @@ A `Challenge` stuck in `pending` is a DNS problem, not a cert-manager problem: e
 ```text
 cert-manager/                  # TLS Certificate Management
 ├── application.yaml           # ArgoCD Application (Helm chart)
-├── values.yaml                # Helm values, shared with `make install-core`
+├── values.yaml                # Helm values
 ├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
 ├── certificates.yaml          # All Certificate resources
 └── route53-credentials.yaml   # ExternalSecret → OpenBao

@@ -35,8 +35,16 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    # The ServiceMonitors wait for kube-prometheus-stack's CRDs on a new cluster.
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
   ignoreDifferences:
     # Ignore certificates managed by Cilium operator/agent
     - group: ""

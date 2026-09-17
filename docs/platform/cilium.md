@@ -19,7 +19,7 @@ never a small problem.
 | --- | --- |
 | Namespace | `kube-system` |
 | Sync wave | `-1`, after the Gateway API CRDs it renders against |
-| Depends on | Gateway API CRDs (`-10`), the Prometheus operator CRDs from `make install-cilium`, and a `k8sServiceHost` that answers |
+| Depends on | Gateway API CRDs (`-10`), the Prometheus operator CRDs from kube-prometheus-stack (`1`) for its ServiceMonitors, and a `k8sServiceHost` that answers |
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
 | UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
@@ -89,5 +89,31 @@ cilium/                # CNI + Gateway API Controller
 └── httproute.yaml     # Hubble UI route
 ```
 
-!!! note "Cilium is installed twice, sort of"
-    `make install-core` installs it by Helm, because it has to exist before ArgoCD does, and ArgoCD then adopts it. There is only one number: the `Makefile` reads `targetRevision` straight out of `application.yaml` instead of keeping a pin of its own, so a rebuilt cluster cannot quietly land on a different Cilium than the one it replaced.
+## Installation
+
+Cilium is installed twice, sort of. `make install-cilium` installs it by Helm,
+because no pod runs without a CNI and ArgoCD is a pod, and ArgoCD then adopts
+it. There is only one number: the `Makefile` reads `targetRevision` straight
+out of `application.yaml` instead of keeping a pin of its own, so a rebuilt
+cluster cannot quietly land on a different Cilium than the one it replaced.
+
+The bootstrap install uses the same `values.yaml` as ArgoCD, and has to: the
+agent and operator do not restart when `cilium-config` changes, so a slimmer
+bootstrap config would keep running long after ArgoCD "fixed" it. The Gateway
+API CRDs go in first for the same reason — the operator checks for them once,
+at startup, and leaves the Gateway controller off if they are missing.
+
+The one difference is the three `serviceMonitor.enabled` flags, which `make`
+turns off. The ServiceMonitor CRDs belong to kube-prometheus-stack, which
+arrives later through ArgoCD, and without them Helm cannot apply the monitors.
+Switching them off changes nothing in `cilium-config`; it drops three
+ServiceMonitors and two metrics Services, and the `prometheus.io/scrape`
+annotations on the agent and operator pods. When ArgoCD adopts the release it
+adds those back, which rolls the agent and operator once.
+
+ArgoCD's own render would fail the same way — the chart refuses to render
+ServiceMonitors while `monitoring.coreos.com/v1` is missing — so `values.yaml`
+sets `trustCRDsExist: true`. On a new cluster the first sync attempts then fail
+on the missing kind; `SkipDryRunOnMissingResource` lets everything else apply
+meanwhile, and `retry` keeps trying until kube-prometheus-stack has installed
+the CRDs.
