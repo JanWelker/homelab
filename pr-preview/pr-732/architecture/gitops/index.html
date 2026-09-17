@@ -2280,14 +2280,24 @@ secret. For a child <code>Application</code> with the resources finalizer it is 
 deletion of everything that Application deployed.</p>
 <p>So a move takes two changes:</p>
 <ol>
-<li>Annotate the resource <code>argocd.argoproj.io/sync-options: Prune=false</code> where
-   it is, and let that sync. Pruning skips a resource whose <strong>live</strong> object
-   carries the annotation, whichever Application gets there first.</li>
-<li>Move the file, keeping the annotation. The new Application applies it and
+<li>
+<p>Annotate the resource where it is, and let that sync:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
+</span></code></pre></div>
+<p>Pruning skips a resource whose <strong>live</strong> object carries <code>Prune=false</code>,
+whichever Application gets there first. <code>IgnoreExtraneous</code> keeps the old
+Application Synced while it still sees the resource it may no longer prune;
+without it the old Application stays OutOfSync until the new one has
+applied the resource, which is a deadlock when a sync gate waits on the old
+one first.
+2. Move the file, keeping the annotations. The new Application applies it and
    takes over the tracking annotation; the old one no longer considers the
-   resource its own.</li>
+   resource its own.</p>
+</li>
 </ol>
-<p>The annotation can go once the second change has synced everywhere.</p>
+<p>The annotations can go once the second change has synced everywhere.</p>
 <h2 id="argocds-own-configuration">ArgoCD's own configuration<a class="headerlink" href="#argocds-own-configuration" title="Permanent link">&para;</a></h2>
 <p><code>payload/argocd/values.yaml</code> holds the chart values. The parts that are not
 self-explanatory:</p>
