@@ -1,0 +1,25 @@
+---
+# Same operator version as kube-prometheus-stack; see docs/platform/monitoring.md#crds
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-operator-crds
+  namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 01-crds
+  # No resources finalizer: deleting the Application must not delete the CRDs.
+spec:
+  project: infra
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-operator-crds
+    targetRevision: 32.0.0
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

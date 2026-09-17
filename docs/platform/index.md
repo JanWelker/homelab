@@ -33,7 +33,7 @@ to. The [stage ordering](#usage) below explains why each is where it is.
 | [kured](kured.md) | `kured` | `11-policy` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
 | [logging](logging.md) | `logging` | `08-services` to `10-agents` | Loki and Grafana Alloy, for container, journal and audit logs |
 | [metrics-server](metrics-server.md) | `kube-system` | `08-services` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
-| [monitoring](monitoring.md) | `monitoring` | `08-services` | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
+| [monitoring](monitoring.md) | `monitoring` | `01-crds` CRDs, `08-services` stack | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
 | [openbao](openbao.md) | `openbao` | `05-secrets` | Cluster-wide secret store |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | `03-controllers` operator, `04-storage` cluster | Replicated block storage and an S3 object store |
 | [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels and default-deny ingress policies |
@@ -108,7 +108,7 @@ the gating works and what it costs.
 
 | Stage | Applications | Waits for |
 | --- | --- | --- |
-| `01-crds` | `gateway-api-crds` | — |
+| `01-crds` | `gateway-api-crds`, `prometheus-operator-crds` | — |
 | `02-network` | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
 | `03-controllers` | `cert-manager`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | `04-storage` | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |

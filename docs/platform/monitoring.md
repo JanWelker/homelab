@@ -29,13 +29,24 @@ One chart, five components, and roughly a hundred alerting rules you did not wri
 
 ## CRDs
 
-The chart owns the `monitoring.coreos.com` CRDs -- `crds.enabled`, plus an
-upgrade job that re-applies them on every chart bump -- but it is not the first
-thing in the cluster that needs them. Cilium and cert-manager both render
-ServiceMonitors and roll out stages ahead of this stack. Neither is blocked for good:
-both carry `SkipDryRunOnMissingResource` and a `retry`, so on a new cluster they
-apply everything else, fail on the missing kind, and succeed once this stack
-has installed the CRDs. See [Cilium](cilium.md#installation).
+The `monitoring.coreos.com` CRDs are not part of this Application. Cilium,
+cert-manager, External Secrets, Rook and OpenBao all render ServiceMonitors or
+PrometheusRules, in stages well ahead of `08-services`, and a stage only
+finishes once its Applications are Synced — which a missing kind never is. So
+the CRDs are a separate `prometheus-operator-crds` Application in `01-crds`,
+from the prometheus-community chart of the same name, and this chart runs with
+`crds.enabled: false`.
+
+!!! warning "Two versions that have to agree"
+    `prometheus-operator-crds` must carry the same Prometheus operator version
+    as kube-prometheus-stack: chart `32.0.0` is operator `v0.94.0`, which is what
+    kube-prometheus-stack `91.4.1` deploys. Renovate bumps the two separately.
+    Merge the CRD bump first, or together: an operator newer than its CRDs can
+    depend on fields the older CRDs do not define yet.
+
+`prometheus-operator-crds` has no resources finalizer, so deleting the
+Application leaves the CRDs, and every ServiceMonitor, Prometheus and
+Alertmanager with them, in place.
 
 ## Alerting
 

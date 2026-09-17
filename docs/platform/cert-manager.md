@@ -61,10 +61,10 @@ controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
 limited, like the rest of the platform.
 
 The chart renders its `ServiceMonitor` unconditionally, so it cannot sync until
-the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
-arrives several stages later, so on a new cluster the first attempts fail;
-`SkipDryRunOnMissingResource` lets the rest apply meanwhile, and `retry` keeps
-trying until the CRDs are there.
+the Prometheus operator CRDs exist. They are the `prometheus-operator-crds`
+Application in `01-crds`, two stages ahead. `retry` stays, so a failed apply is
+retried rather than holding `03-controllers` until the next commit changes the
+Application's revision.
 
 ## AWS Credentials Setup
 
