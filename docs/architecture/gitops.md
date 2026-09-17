@@ -1,13 +1,14 @@
 ---
-description: "The App-of-Apps pattern, parent ArgoCD Applications, and the sync waves that order cluster deployment."
+description: "The App-of-Apps pattern, the platform ApplicationSet, and the staged rollout that orders cluster deployment."
 ---
 
 # GitOps Strategy
 
 **ArgoCD** manages the cluster state declaratively. The rule is simple and
 absolute: if it is not in Git, it is not in the cluster — and if you put it in
-the cluster anyway, `selfHeal` will remove it while you are still admiring your
-work.
+the cluster anyway, the next commit puts it back the way Git says. Not
+immediately, for the platform: see [what staged rollouts
+cost](#what-the-staging-costs).
 
 This is not pedantry. It is the difference between a cluster you can rebuild
 from a repository and a cluster held together by a series of `kubectl apply`
@@ -33,6 +34,25 @@ two things on purpose:
 - **No resources finalizer.** Deleting `root` must not cascade into `platform`
   and `gitops`.
 
+`platform` holds a single resource, the `platform` ApplicationSet in
+`payload/platform/applicationset.yaml`, which generates one Application per
+`payload/platform/*/application.yaml`. It does not prune, for two reasons. Until
+the ApplicationSet adopted them, `platform` itself tracked every component
+Application, so a prune on the change that introduced the ApplicationSet would
+have deleted them all, finalizers and all. And the only thing it could ever
+prune is the ApplicationSet, whose removal should be a deliberate step anyway.
+
+The `application.yaml` files are complete Applications, not fragments: the
+generator reads each file, and the template copies its labels, annotations,
+finalizers and `spec` into the generated Application unchanged. Renovate and the
+`Makefile` read them like any other manifest, and a file without a
+`homelab.wlkr.ch/stage` label fails the whole ApplicationSet rather than
+quietly dropping out of the rollout.
+
+ArgoCD stopped assessing the health of `Application` resources in 1.8.
+`argocd-cm` restores it, so `root`, `platform` and `gitops` report the health of
+what they manage instead of a permanent Healthy.
+
 ```mermaid
 flowchart LR
     subgraph "Bootstrap (Manual)"
@@ -45,7 +65,8 @@ flowchart LR
     end
 
     subgraph "Managed by platform"
-        PL --> |"payload/platform/**"| INFRA[Core Components]
+        PL --> AS[ApplicationSet platform]
+        AS --> |"payload/platform/*/application.yaml"| INFRA[Core Components]
     end
 
     subgraph "Managed by gitops"
@@ -59,66 +80,101 @@ Yes, ArgoCD manages ArgoCD. It is exactly as recursive as it sounds, and it
 works fine until the day you sync a broken ArgoCD config with ArgoCD. Keep
 `make install-argo` in your back pocket for that day.
 
-## Deployment Waves
+## Rollout order
 
-ArgoCD uses **sync waves** to control deployment order. Lower waves sync first.
-This ensures CRDs exist before Operators, and Storage exists before
-Applications.
+On a running cluster everything a manifest depends on already exists. On a
+fresh one, ordering is the whole game — and the sync waves this repository used
+to rely on never provided it. Waves order the resources *inside* one
+Application's sync, and ArgoCD waits for each wave to be healthy before the
+next. The waves between platform components were on child Applications,
+though, whose health ArgoCD had stopped assessing, so every wave counted as
+healthy the moment it was created and all of them went out within seconds.
 
-Sync waves are the answer to the question "why did my perfectly correct manifest
-fail on a fresh cluster and work on an existing one?" On a running cluster
-everything it depends on already exists. On a fresh one, ordering is the whole
-game.
+The `platform` ApplicationSet uses a `RollingSync` strategy instead. Each
+Application carries a `homelab.wlkr.ch/stage` label, the ApplicationSet has one
+step per stage, and a step starts only once every Application in the step
+before it is **Synced and Healthy**. The stages and what each waits for are
+listed in [Platform &rarr; Rollout order](../platform/index.md#rollout-order).
 
 ```mermaid
-flowchart TB
-    subgraph "Wave -10: CRDs"
-        GW[gateway-api-crds]
-    end
-
-    subgraph "Wave -5: Security"
-        CM[cert-manager]
-    end
-
-    subgraph "Wave -2: Operators"
-        RO[rook-ceph-operator]
-    end
-
-    subgraph "Wave -1: Infrastructure"
-        CL[cilium]
-        RC[rook-ceph-cluster]
-    end
-
-    subgraph "Wave 0: Core Apps"
-        AR[argocd]
-    end
-
-    subgraph "Wave 1+: User Apps"
-        MON[kube-prometheus-stack]
-    end
-
-    %% Dependencies
-    GW --> CL
-    CM --> RC
-    RO --> RC
-    CL --> AR
-    AR --> MON
+flowchart LR
+    CRDS[01 crds] --> NET[02 network] --> CTRL[03 controllers] --> STOR[04 storage]
+    STOR --> SEC[05 secrets] --> CERT[06 certificates] --> ING[07 ingress]
+    ING --> SVC[08 services] --> BACK[09 backends] --> AG[10 agents] --> POL[11 policy]
 ```
 
-The full wave-by-wave listing is in [Platform &rarr; Usage](../platform/index.md#usage).
+Resource-level sync waves still work inside a single Application, and are still
+used there: the `certificates` Application applies its `ExternalSecret`, then
+the ClusterIssuers, then the Certificates.
 
-### A missing CRD is a deadlock, not a delay
+### Nothing may wait on a later stage
 
-A custom resource whose CRD does not exist yet does not merely fail and retry.
-ArgoCD marks the task `SyncFailed`, leaves the operation `Running` while it
-waits on the rest of the wave to become healthy, and starts no new sync until
-that one finishes. When the resource it could not apply is the credential the
-wave is waiting for, nothing ever moves again.
+A step that needs Synced **and** Healthy turns every forward dependency into a
+deadlock. An Application that ships a resource which cannot be applied, or
+cannot go healthy, until a later stage has run never finishes its step, so the
+later stage never starts. Three rules keep the graph pointing one way:
 
-That is why `external-secrets` sits at wave `-6`: ahead of every Application
-that ships an `ExternalSecret`, the earliest of which is cert-manager at `-5`.
-`SkipDryRunOnMissingResource=true` on each `ExternalSecret` covers the first
-sync of a fresh cluster, where the CRDs have not landed yet.
+- **A resource lives with what it needs, not with what it configures.** The
+  `ClusterSecretStore` needs a running OpenBao, so it is in `openbao`, not
+  `external-secrets`. cert-manager's issuers and certificates need the Route53
+  credentials in OpenBao, so they are in `certificates`, not `cert-manager`.
+- **CRDs come first.** A missing kind is a failed sync, and a failed sync is
+  never Synced.
+- **Routes do not gate.** An `HTTPRoute` stays Progressing until a Gateway
+  accepts it, and the Gateways come late because they need certificates. The
+  routes in `cilium`, `rook-ceph` and `openbao` are annotated
+  `argocd.argoproj.io/ignore-healthcheck: "true"` so their Applications can be
+  Healthy before `07-ingress`.
+
+A new component goes in the earliest stage after everything it needs. If that
+stage is later than something that needs it, the dependency is in the wrong
+Application.
+
+### Bootstrap pauses at OpenBao
+
+`05-secrets` is where a fresh cluster stops on purpose. OpenBao's pods report
+Ready while sealed, but the `ClusterSecretStore` next to it stays Degraded until
+OpenBao is initialised, unsealed and has the Kubernetes auth role — so
+`openbao` is not Healthy and `06-certificates` does not start.
+`make bao-init` and `make bao-unseal` let it continue. `06-certificates` then
+waits again until `make bao-secrets` has written the Route53 credentials.
+Nothing times out; the rollout resumes on its own once the store validates.
+
+### What the staging costs
+
+`RollingSync` makes the ApplicationSet controller, not ArgoCD's automated sync,
+the thing that syncs platform Applications. The `syncPolicy.automated` block in
+each `application.yaml` is still read for `prune`, and `retry` still applies,
+but the controller switches automated sync off on every generated Application.
+It triggers a sync only when an Application's revision or spec changes:
+
+- **No self-heal.** A resource edited or deleted by hand stays that way until
+  the next change to its Application. For an Application with a Git source,
+  any commit to this repository changes its revision; for one that only
+  installs a chart — `alloy`, `external-secrets`, `kubelet-csr-approver`,
+  `kured`, `loki`, `metrics-server`, `rook-ceph-cluster`, `rook-ceph-operator`,
+  `snapshot-controller`, `velero` — or pins a tag, like `gateway-api-crds`, only
+  a version bump does.
+- **A failed sync waits for a person.** Once `retry` is exhausted the
+  Application stays in the step, and everything after it waits, until its
+  revision changes again or it is synced by hand:
+
+    ```bash
+    argocd app sync <application>
+    ```
+
+- **Only changes are gated.** An Application that breaks later, with no new
+  revision, does not hold anything back; the next change that reaches it does.
+- **Ceph warnings block.** ArgoCD maps `HEALTH_WARN` to Degraded, so while Ceph
+  warns, no change reaches anything after `04-storage`.
+
+Where a rollout is stuck, the ApplicationSet says which Application it is
+waiting for:
+
+```bash
+kubectl -n argocd get applicationset platform \
+  -o jsonpath='{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'
+```
 
 ## Moving a resource to another Application
 
@@ -163,6 +219,7 @@ self-explanatory:
 | `controller` has no resources | The application-controller peaked at 1639Mi and grows with the number of managed resources; a day of steady state is not enough to size it |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the [break-glass path](../platform/authentik.md#when-authentik-is-down) |
+| `resource.customizations.health.argoproj.io_Application` | Restores health assessment for `Application` resources, which ArgoCD dropped in 1.8, so a parent reports the health of its children |
 | `applicationsetcontroller.enable.progressive.syncs` | Lets an ApplicationSet with a `RollingSync` strategy order the Applications it generates. Without the flag the strategy is ignored and every Application syncs at once |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
 

@@ -4,9 +4,10 @@ kind: Application
 metadata:
   name: authentik
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 08-services
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    argocd.argoproj.io/sync-wave: "2"
     link.argocd.argoproj.io/external-link: https://auth.infra.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io

@@ -4,10 +4,10 @@ kind: Application
 metadata:
   name: external-secrets
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 03-controllers
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # Must precede every ExternalSecret consumer; see docs/architecture/gitops.md
-    argocd.argoproj.io/sync-wave: "-6"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -53,11 +53,6 @@ spec:
             limits:
               cpu: 200m
               memory: 256Mi
-    - repoURL: https://github.com/JanWelker/homelab.git
-      targetRevision: HEAD
-      path: payload/platform/external-secrets
-      directory:
-        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: external-secrets

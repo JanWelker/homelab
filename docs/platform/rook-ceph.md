@@ -17,7 +17,7 @@ the grounds that everything still appears to work.
 | | |
 | --- | --- |
 | Namespace | `rook-ceph` |
-| Sync wave | `-3` Application, `-2` operator, `-1` cluster, `0` CSI driver |
+| Stage | `03-controllers` for `rook-ceph-operator`; `04-storage` for `rook-ceph` (CSI driver, RBAC, dashboards) and `rook-ceph-cluster` |
 | Depends on | A raw `rook-osd` partition on every node, written at install time |
 | If it is down | Every pod with a volume. `openbao` first, and the secret store going with it is what turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
@@ -63,7 +63,7 @@ warnings, and the rest).
 
 !!! note "Sync ordering"
     The rules render as a `PrometheusRule`, whose CRD arrives with
-    kube-prometheus-stack at sync-wave `1` — after this Application at `-1`. On
+    kube-prometheus-stack in `08-services` — after this Application in `04-storage`. On
     a **fresh** bootstrap the first sync therefore runs before the CRD exists,
     so the Application carries `SkipDryRunOnMissingResource=true` and ArgoCD
     retries until kube-prometheus-stack has landed. On an existing cluster the
@@ -96,16 +96,17 @@ them — upstream keeps them in `deploy/examples/operator.yaml` — so they live
 
 !!! warning "`csi` values on the operator chart do nothing"
     Helm accepts values a chart no longer reads without complaint. Driver
-    settings go in `csi-driver.yaml`, not under `csi` in `operator.yaml`.
+    settings go in `csi-driver.yaml`, not under `csi` in `rook-ceph-operator`.
 
-- **Sync wave `0`** with `SkipDryRunOnMissingResource`: the CRs need the
-  ceph-csi-operator's CRDs, which arrive with the operator chart at `-2`.
+- **In `rook-ceph`, at `04-storage`**, with `SkipDryRunOnMissingResource`: the
+  CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart in
+  `03-controllers`.
 - **Image set**: `OperatorConfig` points at the `ConfigMap` the chart renders,
   so a chart bump moves every sidecar and the cephcsi image together and the
   csi-operator's own image defaults never apply.
 - **Driver name**: not free to choose. Rook derives the provisioner from its
   namespace, and it has to match the `provisioner` of the StorageClasses in
-  `cluster.yaml`. CephFS is not enabled, so RBD is the only driver.
+  `rook-ceph-cluster`. CephFS is not enabled, so RBD is the only driver.
 
 ### ServiceAccounts and RBAC
 
@@ -236,11 +237,11 @@ make storage-check
 ```
 
 Run it after the GitOps handover and before trusting anything that mounts a
-volume. The sync waves already put Rook ahead of every such workload, and that
+volume. The rollout stages already put Rook ahead of every such workload, and that
 is not the same question: a `CephCluster` reports `Ready` with mons and mgrs up
 while having no OSDs to store data on, and a `StorageClass` exists whether or
 not a CSI driver ever registered for its provisioner. Both failures leave the
-apps at later waves running and their pods `Pending`, several layers away from
+apps in later stages running and their pods `Pending`, several layers away from
 the cause.
 
 The script walks the chain instead, in the order it breaks, and stops at the
@@ -329,10 +330,14 @@ attempt; `make storage-check` is the way to confirm that rather than assume it.
 ## Directory Structure
 
 ```text
+rook-ceph-operator/
+└── application.yaml   # Rook-Ceph operator
+
+rook-ceph-cluster/
+└── application.yaml   # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+
 rook-ceph/             # Distributed Storage
 ├── application.yaml   # ArgoCD Application
-├── operator.yaml      # Rook-Ceph operator
-├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
 ├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
 ├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
 ├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored

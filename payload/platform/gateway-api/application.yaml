@@ -4,9 +4,10 @@ kind: Application
 metadata:
   name: gateway-api
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 07-ingress
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    argocd.argoproj.io/sync-wave: "-4"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

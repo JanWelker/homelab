@@ -13,7 +13,7 @@ The practical improvement over Ingress is the split in ownership: the cluster ow
 | | |
 | --- | --- |
 | Namespace | `gateway-system` for the Application, `kube-system` for the Gateways themselves |
-| Sync wave | `-10` for the CRDs, `-4` for the Gateways |
+| Stage | `01-crds` for the CRDs, `07-ingress` for the Gateways |
 | Depends on | [Cilium](cilium.md) to implement it, [cert-manager](cert-manager.md) for the wildcard certificates |
 | If it is down | Nothing reaches any hostname. Running pods keep running and nothing outside the cluster can talk to them |
 | Health check | `kubectl -n kube-system get gateway` &rarr; both `PROGRAMMED=True` with an address |
@@ -83,7 +83,9 @@ kubectl get gateway infra-gateway -n kube-system \
 ```text
 gateway-api/            # Gateway API Resources
 ├── application.yaml    # ArgoCD Application
-├── crds.yaml           # ArgoCD Application for the Gateway API CRDs
 ├── gateways.yaml       # apps-gateway + infra-gateway
 └── http-redirect.yaml  # Central HTTP to HTTPS redirect
+
+gateway-api-crds/
+└── application.yaml    # ArgoCD Application for the Gateway API CRDs
 ```

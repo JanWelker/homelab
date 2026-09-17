@@ -21,7 +21,7 @@ Ceph check.
 | | |
 | --- | --- |
 | Namespace | `kured` |
-| Sync wave | `2` |
+| Stage | `11-policy`, last, so it reboots a converged cluster |
 | Depends on | [Monitoring](monitoring.md) for the alerts it gates on |
 | If it is down | Nothing visible, which is the problem. Staged OS and sysext updates simply never get applied, silently, for as long as nobody looks |
 | Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |

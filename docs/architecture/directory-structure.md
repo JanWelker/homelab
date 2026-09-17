@@ -52,7 +52,9 @@ generated — never edit anything in there, it will be overwritten by the next
 │   │   ├── httproute.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
-│       ├── cert-manager/     # TLS certificates
+│       ├── applicationset.yaml # One Application per */application.yaml, in stages
+│       ├── cert-manager/     # cert-manager controller
+│       ├── certificates/     # Let's Encrypt issuers and TLS certificates
 │       ├── cilium/           # CNI + Gateway API
 │       ├── external-secrets/ # OpenBao to K8s Secret bridge
 │       ├── gateway-api/      # Gateway resources

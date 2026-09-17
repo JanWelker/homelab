@@ -4,9 +4,10 @@ kind: Application
 metadata:
   name: velero
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 09-backends
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/compare-options: IgnoreExtraneous
   finalizers:

@@ -4,8 +4,9 @@ kind: Application
 metadata:
   name: rook-ceph-operator
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 03-controllers
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
     argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/compare-options: IgnoreExtraneous
   finalizers:

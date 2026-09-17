@@ -22,7 +22,7 @@ nothing, forever, until somebody audits the zone and cannot work out what
 | | |
 | --- | --- |
 | Namespace | `external-dns` |
-| Sync wave | `2` |
+| Stage | `06-certificates`, with the Route53 credentials it shares a source with |
 | Depends on | [External Secrets](external-secrets.md) for its Route53 credential, [Gateway API](gateway-api.md) for the HTTPRoutes it reads |
 | If it is down | New hostnames get no DNS record. Existing records are left alone, so nothing already working breaks |
 | Health check | `kubectl -n external-dns logs deploy/external-dns --tail=50` |

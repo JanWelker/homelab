@@ -76,7 +76,7 @@ disguise. Gateway API separates the cluster-owned `Gateway` from the app-owned
 `payload/workloads/` exactly.
 
 The cost is a smaller ecosystem and more moving parts: CRDs must be installed
-before anything that references them, which is why they occupy sync wave `-10`.
+before anything that references them, which is why they are the first rollout stage.
 
 ## Rook-Ceph, not Longhorn or local volumes
 

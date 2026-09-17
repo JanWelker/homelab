@@ -25,7 +25,7 @@ currently misbehaving.
 | | |
 | --- | --- |
 | Namespace | `logging` |
-| Sync wave | `1` parent, `2` Loki, `3` Alloy — the collector last, so it has somewhere to ship |
+| Stage | `08-services` for `logging` (bucket, dashboards), `09-backends` for Loki, `10-agents` for Alloy — the collector last, so it has somewhere to ship |
 | Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
 | If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
@@ -175,10 +175,14 @@ sets a `cluster` label; its empty value matches series without one.
 ## Directory Structure
 
 ```text
+loki/
+└── application.yaml          # ArgoCD Application (Helm: grafana/loki)
+
+alloy/
+└── application.yaml          # ArgoCD Application (Helm: grafana/alloy)
+
 logging/
 ├── application.yaml          # Directory Application (wraps the rest)
-├── loki.yaml                 # ArgoCD Application (Helm: grafana/loki)
-├── alloy.yaml                # ArgoCD Application (Helm: grafana/alloy)
 ├── bucket.yaml               # ObjectBucketClaim for Loki's chunks
 ├── grafana-dashboards.yaml   # Alloy mixin dashboards, vendored
 └── grafana-datasource.yaml   # Loki datasource, applied into monitoring/

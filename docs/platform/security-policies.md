@@ -17,7 +17,7 @@ cluster.
 | | |
 | --- | --- |
 | Namespace | `kube-system` for the Application; it owns Namespace objects across the cluster |
-| Sync wave | `3`, last, so it labels namespaces that already exist |
+| Stage | `11-policy`, last, so it labels namespaces that already exist |
 | Depends on | [Cilium](cilium.md) to enforce the network policies |
 | If it is down | Nothing at the time. The labels and policies are already applied; what stops is them being corrected if something changes them |
 | Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce` |

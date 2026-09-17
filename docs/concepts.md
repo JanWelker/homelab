@@ -98,12 +98,13 @@ Two terms recur throughout this site:
 
 - **App-of-Apps** — one ArgoCD `Application` whose job is to create other
   `Application`s, so a single `kubectl apply` bootstraps the whole tree.
-- **Sync wave** — an integer annotation that orders deployment. Lower goes
-  first. It is how a fresh cluster installs CRDs before the operators that need
-  them, rather than deadlocking. The full ordering is in
-  [Platform](platform/index.md#usage).
+- **Rollout stage** — a label on each platform `Application` that orders
+  deployment. An ApplicationSet syncs one stage at a time and starts the next
+  only when the last is Synced and Healthy. It is how a fresh cluster installs
+  CRDs before the operators that need them, rather than deadlocking. The full
+  ordering is in [Platform](platform/index.md#rollout-order).
 
-Sync waves answer the question every GitOps newcomer eventually asks: *why did
+Rollout stages answer the question every GitOps newcomer eventually asks: *why did
 my perfectly correct manifest fail on a fresh cluster and work on an existing
 one?* On a running cluster, everything it depends on already exists. On a fresh
 one, ordering is the whole game. See [GitOps Strategy](architecture/gitops.md).
