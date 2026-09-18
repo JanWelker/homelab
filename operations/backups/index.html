@@ -2529,14 +2529,16 @@ chart's commented example still shows <code>v1.13.1</code>, which is the v1.17 l
 <h3 id="snapshot-plumbing">Snapshot plumbing<a class="headerlink" href="#snapshot-plumbing" title="Permanent link">&para;</a></h3>
 <p>kubeadm does not install the CSI snapshot controller and neither does Rook.
 Without it the <code>VolumeSnapshot</code> CRDs are absent and the RBD driver advertises
-snapshot support nothing can invoke. <code>snapshot-controller.yaml</code> installs the
-controller and its CRDs at sync-wave <code>2</code>, ahead of Velero at <code>3</code>.</p>
-<p>The <code>VolumeSnapshotClass</code> for <code>rook-ceph-block</code> is at wave <code>3</code> for the same
-reason, and that one is load-bearing. At the default wave it was applied before
-its CRD existed and failed with <code>no matches for kind VolumeSnapshotClass</code>.
-<code>SkipDryRunOnMissingResource</code> does not help there, since it is the apply that
-fails, not the dry run — and the failed sync meant the snapshot-controller and
-velero Applications queued behind it were never created at all.</p>
+snapshot support nothing can invoke. The <code>snapshot-controller</code> Application
+installs the controller and its CRDs in <code>03-controllers</code>, well ahead of the
+<code>backup</code> Application in <code>08-services</code> and Velero in <code>09-backends</code>.</p>
+<p>The <code>VolumeSnapshotClass</code> for <code>rook-ceph-block</code>, in <code>backup</code>, is what needs that
+order. Applied before its CRD existed, it failed with
+<code>no matches for kind VolumeSnapshotClass</code>; <code>SkipDryRunOnMissingResource</code> does
+not help there, since it is the apply that fails, not the dry run. When the
+snapshot controller was still a child of <code>backup</code>, that failed sync meant the
+snapshot-controller and velero Applications queued behind it were never created
+at all. Its sync wave <code>3</code> inside <code>backup</code> is left over from then and harmless.</p>
 <p>Its <code>deletionPolicy</code> is <code>Delete</code>: the snapshot is only an intermediate step, and
 the durable copy is the one the data mover writes into the object store.</p>
 <h3 id="using-it">Using it<a class="headerlink" href="#using-it" title="Permanent link">&para;</a></h3>

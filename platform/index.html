@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they sync.">
+        <meta name="description" content="The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they roll out.">
       
       
       
@@ -1962,6 +1962,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#rollout-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rollout order
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2094,14 +2105,14 @@ bare metal does not come with the thing a cloud provider would have handed you. 
 storage API, no identity provider, no backup service. This section is the bill
 for not having those.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<p>Alphabetical, with the namespace it lands in and the sync wave it lands at.
-The <a href="#usage">wave ordering</a> below explains why those numbers are what they are.</p>
+<p>Alphabetical, with the namespace it lands in and the rollout stage it belongs
+to. The <a href="#usage">stage ordering</a> below explains why each is where it is.</p>
 <table>
 <thead>
 <tr>
 <th>Component</th>
 <th>Namespace</th>
-<th>Wave</th>
+<th>Stage</th>
 <th>What it does</th>
 </tr>
 </thead>
@@ -2109,103 +2120,103 @@ The <a href="#usage">wave ordering</a> below explains why those numbers are what
 <tr>
 <td><a href="authentik/">authentik</a></td>
 <td><code>authentik</code></td>
-<td><code>2</code></td>
+<td><code>08-services</code></td>
 <td>Single sign-on for every platform UI</td>
 </tr>
 <tr>
 <td>backup</td>
 <td><code>backup</code></td>
-<td><code>1</code></td>
+<td><code>08-services</code></td>
 <td>Velero, the CSI snapshot controller and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="cert-manager/">cert-manager</a></td>
 <td><code>cert-manager</code></td>
-<td><code>-5</code></td>
+<td><code>03-controllers</code>, issuers and certificates <code>06-certificates</code></td>
 <td>Let's Encrypt wildcards over a Route53 DNS-01 challenge</td>
 </tr>
 <tr>
 <td><a href="cilium/">cilium</a></td>
 <td><code>kube-system</code></td>
-<td><code>-1</code></td>
+<td><code>02-network</code></td>
 <td>CNI, <code>kube-proxy</code> replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble</td>
 </tr>
 <tr>
 <td><a href="external-dns/">external-dns</a></td>
 <td><code>external-dns</code></td>
-<td><code>2</code></td>
+<td><code>06-certificates</code></td>
 <td>Publishes Route53 records from HTTPRoutes</td>
 </tr>
 <tr>
 <td><a href="external-secrets/">external-secrets</a></td>
 <td><code>external-secrets</code></td>
-<td><code>-6</code></td>
+<td><code>03-controllers</code></td>
 <td>Bridges OpenBao to native Kubernetes Secrets</td>
 </tr>
 <tr>
 <td><a href="gateway-api/">gateway-api</a></td>
 <td><code>gateway-system</code></td>
-<td><code>-4</code></td>
+<td><code>01-crds</code> CRDs, <code>07-ingress</code> Gateways</td>
 <td>The two Gateways and the HTTP-to-HTTPS redirect</td>
 </tr>
 <tr>
 <td>kube-vip</td>
 <td><code>kube-system</code></td>
-<td><code>-1</code></td>
+<td><code>02-network</code></td>
 <td>Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see <a href="../operations/control-plane-vip/">Control Plane VIP</a></td>
 </tr>
 <tr>
 <td>kubelet-csr-approver</td>
 <td><code>kubelet-csr-approver</code></td>
-<td><code>1</code></td>
+<td><code>03-controllers</code></td>
 <td>Approves <code>kubelet-serving</code> CSRs against the inventory — see <a href="metrics-server/#verifying-the-kubelet-instead-of-trusting-it">Metrics Server</a></td>
 </tr>
 <tr>
 <td><a href="kubescape/">kubescape</a></td>
 <td><code>kubescape</code></td>
-<td><code>2</code></td>
+<td><code>11-policy</code></td>
 <td>Nightly CIS, NSA and MITRE posture scans, exported to Grafana</td>
 </tr>
 <tr>
 <td><a href="kured/">kured</a></td>
 <td><code>kured</code></td>
-<td><code>2</code></td>
+<td><code>11-policy</code></td>
 <td>Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates</td>
 </tr>
 <tr>
 <td><a href="logging/">logging</a></td>
 <td><code>logging</code></td>
-<td><code>1</code></td>
+<td><code>08-services</code> to <code>10-agents</code></td>
 <td>Loki and Grafana Alloy, for container, journal and audit logs</td>
 </tr>
 <tr>
 <td><a href="metrics-server/">metrics-server</a></td>
 <td><code>kube-system</code></td>
-<td><code>2</code></td>
+<td><code>08-services</code></td>
 <td>The <code>metrics.k8s.io</code> API behind <code>kubectl top</code> and every HPA</td>
 </tr>
 <tr>
 <td><a href="monitoring/">monitoring</a></td>
 <td><code>monitoring</code></td>
-<td><code>1</code></td>
+<td><code>08-services</code></td>
 <td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics</td>
 </tr>
 <tr>
 <td><a href="openbao/">openbao</a></td>
 <td><code>openbao</code></td>
-<td><code>0</code></td>
+<td><code>05-secrets</code></td>
 <td>Cluster-wide secret store</td>
 </tr>
 <tr>
 <td><a href="rook-ceph/">rook-ceph</a></td>
 <td><code>rook-ceph</code></td>
-<td><code>-3</code> to <code>0</code></td>
+<td><code>03-controllers</code> operator, <code>04-storage</code> cluster</td>
 <td>Replicated block storage and an S3 object store</td>
 </tr>
 <tr>
 <td><a href="security-policies/">security policies</a></td>
 <td><code>kube-system</code></td>
-<td><code>3</code></td>
+<td><code>11-policy</code></td>
 <td>Pod Security Admission levels and default-deny ingress policies</td>
 </tr>
 </tbody>
@@ -2299,12 +2310,12 @@ In that order — the answer is usually the first one.</p>
 </thead>
 <tbody>
 <tr>
-<td>Platform Parent</td>
-<td>Core platform components</td>
-<td><code>payload/root.yaml</code> (App: platform)</td>
+<td><code>platform</code></td>
+<td>Holds the <code>platform</code> ApplicationSet, which generates one Application per <code>payload/platform/*/application.yaml</code></td>
+<td><code>payload/platform/applicationset.yaml</code></td>
 </tr>
 <tr>
-<td>GitOps</td>
+<td><code>gitops</code></td>
 <td>ArgoCD's own config + HTTPRoute</td>
 <td><code>payload/argocd/</code></td>
 </tr>
@@ -2312,97 +2323,87 @@ In that order — the answer is usually the first one.</p>
 </table>
 <p>A third parent, <code>workloads</code>, is added back alongside the first workload. See
 <a href="../development/add-workload/">Adding a Workload</a>.</p>
-<p>Excluded from sync:</p>
-<ul>
-<li><code>cilium/values.yaml</code>, <code>values.yaml</code> (Helm values)</li>
-<li><code>README.md</code> (documentation)</li>
-<li><code>**/*.template</code> (credential templates)</li>
-</ul>
-<p>Sync wave ordering. This is the dependency graph made explicit, and it is the
-reason a fresh bootstrap converges rather than deadlocking on a CRD that does
-not exist yet:</p>
+<p>Each component directory holds exactly one <code>application.yaml</code>; everything else
+in the directory is what that Application deploys, apart from Helm <code>values.yaml</code>
+files, which the Application references instead.</p>
+<h3 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h3>
+<p>The ApplicationSet syncs its Applications in stages, selected by the
+<code>homelab.wlkr.ch/stage</code> label, and starts a stage only when every Application in
+the one before it is Synced and Healthy. This is the dependency graph made
+explicit; <a href="../architecture/gitops/#rollout-order">GitOps Strategy</a> covers how
+the gating works and what it costs.</p>
 <table>
 <thead>
 <tr>
-<th>Wave</th>
+<th>Stage</th>
 <th>Applications</th>
-<th>Other resources in the wave</th>
+<th>Waits for</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>-10</code></td>
+<td><code>01-crds</code></td>
 <td><code>gateway-api-crds</code></td>
-<td></td>
+<td>—</td>
 </tr>
 <tr>
-<td><code>-6</code></td>
-<td><code>external-secrets</code></td>
-<td></td>
+<td><code>02-network</code></td>
+<td><code>cilium</code>, <code>kube-vip</code></td>
+<td>the Gateway API CRDs Cilium's operator reads at startup</td>
 </tr>
 <tr>
-<td><code>-5</code></td>
-<td><code>cert-manager</code></td>
-<td></td>
+<td><code>03-controllers</code></td>
+<td><code>cert-manager</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>, <code>rook-ceph-operator</code>, <code>snapshot-controller</code></td>
+<td>a network; each brings its own CRDs</td>
 </tr>
 <tr>
-<td><code>-4</code></td>
-<td><code>gateway-api</code></td>
-<td></td>
+<td><code>04-storage</code></td>
+<td><code>rook-ceph</code>, <code>rook-ceph-cluster</code></td>
+<td>the Rook operator and its CRDs</td>
 </tr>
 <tr>
-<td><code>-3</code></td>
-<td><code>rook-ceph</code></td>
-<td></td>
-</tr>
-<tr>
-<td><code>-2</code></td>
-<td><code>rook-ceph-operator</code></td>
-<td></td>
-</tr>
-<tr>
-<td><code>-1</code></td>
-<td><code>cilium</code>, <code>kube-vip</code>, <code>rook-ceph-cluster</code></td>
-<td></td>
-</tr>
-<tr>
-<td><code>0</code></td>
+<td><code>05-secrets</code></td>
 <td><code>openbao</code></td>
-<td>Ceph CSI <code>OperatorConfig</code> and <code>Driver</code></td>
+<td><code>rook-ceph-block</code> for its volumes. <strong>Bootstrap pauses here</strong> until OpenBao is initialised and unsealed</td>
 </tr>
 <tr>
-<td><code>1</code></td>
-<td><code>kube-prometheus-stack</code>, <code>logging</code>, <code>kubelet-csr-approver</code>, <code>backup</code></td>
-<td>the <code>route53-credentials</code> ExternalSecret</td>
+<td><code>06-certificates</code></td>
+<td><code>certificates</code>, <code>external-dns</code></td>
+<td>a working <code>ClusterSecretStore</code> and the Route53 credentials in OpenBao</td>
 </tr>
 <tr>
-<td><code>2</code></td>
-<td><code>authentik</code>, <code>external-dns</code>, <code>kubescape</code>, <code>kured</code>, <code>loki</code>, <code>metrics-server</code>, <code>snapshot-controller</code></td>
-<td>both Let's Encrypt <code>ClusterIssuer</code>s</td>
+<td><code>07-ingress</code></td>
+<td><code>gateway-api</code></td>
+<td>the wildcard certificates the Gateways terminate TLS with</td>
 </tr>
 <tr>
-<td><code>3</code></td>
-<td><code>alloy</code>, <code>velero</code>, <code>security</code></td>
-<td>the gateway <code>Certificate</code>s, the <code>VolumeSnapshotClass</code></td>
+<td><code>08-services</code></td>
+<td><code>authentik</code>, <code>backup</code>, <code>kube-prometheus-stack</code>, <code>logging</code>, <code>metrics-server</code></td>
+<td>secrets, storage, the Gateways, and approved kubelet certificates</td>
+</tr>
+<tr>
+<td><code>09-backends</code></td>
+<td><code>loki</code>, <code>velero</code></td>
+<td>the buckets <code>logging</code> and <code>backup</code> claim</td>
+</tr>
+<tr>
+<td><code>10-agents</code></td>
+<td><code>alloy</code></td>
+<td>Loki, so the collector has somewhere to ship</td>
+</tr>
+<tr>
+<td><code>11-policy</code></td>
+<td><code>kubescape</code>, <code>kured</code>, <code>security</code></td>
+<td>everything else, so policies label namespaces that exist and kured reboots a converged cluster</td>
 </tr>
 </tbody>
 </table>
-<p>Waves <code>1</code> through <code>3</code> are where a component and its own children separate:
-<code>logging</code> is the parent Application at <code>1</code>, and it brings Loki at <code>2</code> and Alloy
-at <code>3</code>, in that order because a collector with nowhere to ship is just a
-collector. The same split puts <code>backup</code> at <code>1</code> ahead of the snapshot controller
-it needs at <code>2</code> and the Velero that needs both at <code>3</code>.</p>
-<p>The negative waves are the interesting half: nothing above wave <code>0</code> can work
-until networking, storage and certificates exist, so those get to go first and
-everything else waits its turn.</p>
-<p>External Secrets sits at the very front despite needing OpenBao, which arrives
-six waves later, because what the wave has to guarantee is the <em>CRD</em>, not a
-working secret store. An <code>ExternalSecret</code> whose CRD is missing is not applied
-at all, and ArgoCD keeps the operation open waiting for the rest of the wave —
-so cert-manager's Route53 credential, which sits beside the <code>Certificate</code>
-resources that cannot go Ready without it, would wait for a retry that never
-comes. A store that is not ready yet is a normal, self-correcting state; a
-resource that was never applied is not.</p>
+<p>External Secrets is a controller like any other now: its CRDs arrive in
+<code>03-controllers</code>, well ahead of the first <code>ExternalSecret</code>, while the
+<code>ClusterSecretStore</code> that needs a running OpenBao lives with OpenBao in
+<code>05-secrets</code>. The same split takes cert-manager's issuers and certificates out
+of <code>03-controllers</code> into their own <code>certificates</code> Application, because they
+cannot go Ready until OpenBao holds the Route53 credentials.</p>
 
 
 

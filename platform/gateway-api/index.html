@@ -2165,8 +2165,8 @@
 <td><code>gateway-system</code> for the Application, <code>kube-system</code> for the Gateways themselves</td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>-10</code> for the CRDs, <code>-4</code> for the Gateways</td>
+<td>Stage</td>
+<td><code>01-crds</code> for the CRDs, <code>07-ingress</code> for the Gateways</td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2252,9 +2252,11 @@ everyone forgot.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gateway-api/            # Gateway API Resources
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml    # ArgoCD Application
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── crds.yaml           # ArgoCD Application for the Gateway API CRDs
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── gateways.yaml       # apps-gateway + infra-gateway
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>└── http-redirect.yaml  # Central HTTP to HTTPS redirect
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── gateways.yaml       # apps-gateway + infra-gateway
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>└── http-redirect.yaml  # Central HTTP to HTTPS redirect
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>gateway-api-crds/
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>└── application.yaml    # ArgoCD Application for the Gateway API CRDs
 </span></code></pre></div>
 
 

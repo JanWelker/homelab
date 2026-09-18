@@ -2262,7 +2262,7 @@ disguise. Gateway API separates the cluster-owned <code>Gateway</code> from the 
 <code>HTTPRoute</code>, which fits the split between <code>payload/platform/</code> and
 <code>payload/workloads/</code> exactly.</p>
 <p>The cost is a smaller ecosystem and more moving parts: CRDs must be installed
-before anything that references them, which is why they occupy sync wave <code>-10</code>.</p>
+before anything that references them, which is why they are the first rollout stage.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
 <p>Every node contributes a raw partition, and Ceph turns them into replicated
 block storage that survives a node failure. Local <code>hostPath</code> volumes would be

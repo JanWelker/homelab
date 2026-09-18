@@ -2543,8 +2543,8 @@ sealed and unsealed — before you need to.</p>
 <td><code>openbao</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>0</code>, after networking, storage and certificates exist</td>
+<td>Stage</td>
+<td><code>05-secrets</code>, after networking and storage exist. A fresh bootstrap <a href="../../architecture/gitops/#bootstrap-pauses-at-openbao">pauses here</a> until OpenBao is initialised and unsealed</td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2758,7 +2758,7 @@ missing file fails loudly rather than storing half a secret:</p>
 </span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span><span class="nv">policies</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">  </span><span class="nv">ttl</span><span class="o">=</span>1h
 </span></code></pre></div>
-<p>The <code>external-secrets-vault</code> ServiceAccount is created by <code>payload/platform/external-secrets/cluster-secret-store.yaml</code> — see <a href="../external-secrets/">External Secrets</a>.</p>
+<p>The <code>external-secrets-vault</code> ServiceAccount is created by <code>payload/platform/openbao/cluster-secret-store.yaml</code> — see <a href="../external-secrets/">External Secrets</a>.</p>
 <p>Once this is done, ExternalSecret resources cluster-wide will resolve. Verify with:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>-A
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span>yaml
@@ -2813,8 +2813,9 @@ nobody connects the two events. See
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>openbao/
 </span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
-</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>└── rbac.yaml                       # system:auth-delegator binding for the openbao SA
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>├── cluster-secret-store.yaml       # ESO ServiceAccount, RBAC, ClusterSecretStore
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>└── rbac.yaml                       # system:auth-delegator binding for the openbao SA
 </span></code></pre></div>
 
 

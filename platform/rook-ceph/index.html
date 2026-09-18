@@ -2425,8 +2425,8 @@ the grounds that everything still appears to work.</p>
 <td><code>rook-ceph</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>-3</code> Application, <code>-2</code> operator, <code>-1</code> cluster, <code>0</code> CSI driver</td>
+<td>Stage</td>
+<td><code>03-controllers</code> for <code>rook-ceph-operator</code>; <code>04-storage</code> for <code>rook-ceph</code> (CSI driver, RBAC, dashboards) and <code>rook-ceph-cluster</code></td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2481,7 +2481,7 @@ warnings, and the rest).</p>
 <div class="admonition note">
 <p class="admonition-title">Sync ordering</p>
 <p>The rules render as a <code>PrometheusRule</code>, whose CRD arrives with
-kube-prometheus-stack at sync-wave <code>1</code> — after this Application at <code>-1</code>. On
+kube-prometheus-stack in <code>08-services</code> — after this Application in <code>04-storage</code>. On
 a <strong>fresh</strong> bootstrap the first sync therefore runs before the CRD exists,
 so the Application carries <code>SkipDryRunOnMissingResource=true</code> and ArgoCD
 retries until kube-prometheus-stack has landed. On an existing cluster the
@@ -2510,17 +2510,18 @@ them — upstream keeps them in <code>deploy/examples/operator.yaml</code> — s
 <div class="admonition warning">
 <p class="admonition-title"><code>csi</code> values on the operator chart do nothing</p>
 <p>Helm accepts values a chart no longer reads without complaint. Driver
-settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>operator.yaml</code>.</p>
+settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>rook-ceph-operator</code>.</p>
 </div>
 <ul>
-<li><strong>Sync wave <code>0</code></strong> with <code>SkipDryRunOnMissingResource</code>: the CRs need the
-  ceph-csi-operator's CRDs, which arrive with the operator chart at <code>-2</code>.</li>
+<li><strong>In <code>rook-ceph</code>, at <code>04-storage</code></strong>, with <code>SkipDryRunOnMissingResource</code>: the
+  CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart in
+  <code>03-controllers</code>.</li>
 <li><strong>Image set</strong>: <code>OperatorConfig</code> points at the <code>ConfigMap</code> the chart renders,
   so a chart bump moves every sidecar and the cephcsi image together and the
   csi-operator's own image defaults never apply.</li>
 <li><strong>Driver name</strong>: not free to choose. Rook derives the provisioner from its
   namespace, and it has to match the <code>provisioner</code> of the StorageClasses in
-  <code>cluster.yaml</code>. CephFS is not enabled, so RBD is the only driver.</li>
+  <code>rook-ceph-cluster</code>. CephFS is not enabled, so RBD is the only driver.</li>
 </ul>
 <h3 id="serviceaccounts-and-rbac">ServiceAccounts and RBAC<a class="headerlink" href="#serviceaccounts-and-rbac" title="Permanent link">&para;</a></h3>
 <p>The ceph-csi-operator does not create its pods' ServiceAccounts either, and no
@@ -2666,11 +2667,11 @@ it feels about that in <a href="../../operations/backups/">Backups &amp; Recover
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>Run it after the GitOps handover and before trusting anything that mounts a
-volume. The sync waves already put Rook ahead of every such workload, and that
+volume. The rollout stages already put Rook ahead of every such workload, and that
 is not the same question: a <code>CephCluster</code> reports <code>Ready</code> with mons and mgrs up
 while having no OSDs to store data on, and a <code>StorageClass</code> exists whether or
 not a CSI driver ever registered for its provisioner. Both failures leave the
-apps at later waves running and their pods <code>Pending</code>, several layers away from
+apps in later stages running and their pods <code>Pending</code>, several layers away from
 the cause.</p>
 <p>The script walks the chain instead, in the order it breaks, and stops at the
 first missing link with the command that explains it:</p>
@@ -2765,14 +2766,18 @@ worker does, and the label path can only ever be the OSD partition.</p>
 jobs. An OSD appears per node and the pending PVCs bind on the next provisioning
 attempt; <code>make storage-check</code> is the way to confirm that rather than assume it.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>rook-ceph/             # Distributed Storage
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>├── application.yaml   # ArgoCD Application
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>├── operator.yaml      # Rook-Ceph operator
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>├── cluster.yaml       # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>└── httproute.yaml     # Rook dashboard route
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>rook-ceph-operator/
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>└── application.yaml   # Rook-Ceph operator
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>rook-ceph-cluster/
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>└── application.yaml   # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>rook-ceph/             # Distributed Storage
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>├── application.yaml   # ArgoCD Application
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
+</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
+</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
+</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>└── httproute.yaml     # Rook dashboard route
 </span></code></pre></div>
 
 

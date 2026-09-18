@@ -2387,8 +2387,8 @@
 <td><code>monitoring</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>1</code></td>
+<td>Stage</td>
+<td><code>08-services</code></td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2420,7 +2420,7 @@
 <p>The chart owns the <code>monitoring.coreos.com</code> CRDs -- <code>crds.enabled</code>, plus an
 upgrade job that re-applies them on every chart bump -- but it is not the first
 thing in the cluster that needs them. Cilium and cert-manager both render
-ServiceMonitors and sync waves ahead of this stack. Neither is blocked for good:
+ServiceMonitors and roll out stages ahead of this stack. Neither is blocked for good:
 both carry <code>SkipDryRunOnMissingResource</code> and a <code>retry</code>, so on a new cluster they
 apply everything else, fail on the missing kind, and succeed once this stack
 has installed the CRDs. See <a href="../cilium/#installation">Cilium</a>.</p>

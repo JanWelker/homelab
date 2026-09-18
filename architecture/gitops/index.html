@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The App-of-Apps pattern, parent ArgoCD Applications, and the sync waves that order cluster deployment.">
+        <meta name="description" content="The App-of-Apps pattern, the platform ApplicationSet, and the staged rollout that orders cluster deployment.">
       
       
       
@@ -886,22 +886,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deployment-waves" class="md-nav__link">
+  <a href="#rollout-order" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Deployment Waves
+        Rollout order
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Deployment Waves">
+    <nav class="md-nav" aria-label="Rollout order">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#a-missing-crd-is-a-deadlock-not-a-delay" class="md-nav__link">
+  <a href="#nothing-may-wait-on-a-later-stage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        A missing CRD is a deadlock, not a delay
+        Nothing may wait on a later stage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-pauses-at-openbao" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap pauses at OpenBao
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-staging-costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What the staging costs
       </span>
     </span>
   </a>
@@ -2015,22 +2037,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deployment-waves" class="md-nav__link">
+  <a href="#rollout-order" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Deployment Waves
+        Rollout order
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Deployment Waves">
+    <nav class="md-nav" aria-label="Rollout order">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#a-missing-crd-is-a-deadlock-not-a-delay" class="md-nav__link">
+  <a href="#nothing-may-wait-on-a-later-stage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        A missing CRD is a deadlock, not a delay
+        Nothing may wait on a later stage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-pauses-at-openbao" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap pauses at OpenBao
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-staging-costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What the staging costs
       </span>
     </span>
   </a>
@@ -2175,8 +2219,9 @@
 <h1 id="gitops-strategy">GitOps Strategy<a class="headerlink" href="#gitops-strategy" title="Permanent link">&para;</a></h1>
 <p><strong>ArgoCD</strong> manages the cluster state declaratively. The rule is simple and
 absolute: if it is not in Git, it is not in the cluster — and if you put it in
-the cluster anyway, <code>selfHeal</code> will remove it while you are still admiring your
-work.</p>
+the cluster anyway, the next commit puts it back the way Git says. Not
+immediately, for the platform: see <a href="#what-the-staging-costs">what staged rollouts
+cost</a>.</p>
 <p>This is not pedantry. It is the difference between a cluster you can rebuild
 from a repository and a cluster held together by a series of <code>kubectl apply</code>
 commands that exist only in one person's shell history.</p>
@@ -2198,6 +2243,22 @@ two things on purpose:</p>
 <li><strong>No resources finalizer.</strong> Deleting <code>root</code> must not cascade into <code>platform</code>
   and <code>gitops</code>.</li>
 </ul>
+<p><code>platform</code> holds a single resource, the <code>platform</code> ApplicationSet in
+<code>payload/platform/applicationset.yaml</code>, which generates one Application per
+<code>payload/platform/*/application.yaml</code>. It does not prune, for two reasons. Until
+the ApplicationSet adopted them, <code>platform</code> itself tracked every component
+Application, so a prune on the change that introduced the ApplicationSet would
+have deleted them all, finalizers and all. And the only thing it could ever
+prune is the ApplicationSet, whose removal should be a deliberate step anyway.</p>
+<p>The <code>application.yaml</code> files are complete Applications, not fragments: the
+generator reads each file, and the template copies its labels, annotations,
+finalizers and <code>spec</code> into the generated Application unchanged. Renovate and the
+<code>Makefile</code> read them like any other manifest, and a file without a
+<code>homelab.wlkr.ch/stage</code> label fails the whole ApplicationSet rather than
+quietly dropping out of the rollout.</p>
+<p>ArgoCD stopped assessing the health of <code>Application</code> resources in 1.8.
+<code>argocd-cm</code> restores it, so <code>root</code>, <code>platform</code> and <code>gitops</code> report the health of
+what they manage instead of a permanent Healthy.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (Manual)"
         RA[root.yaml]
@@ -2209,7 +2270,8 @@ two things on purpose:</p>
     end
 
     subgraph "Managed by platform"
-        PL --&gt; |"payload/platform/**"| INFRA[Core Components]
+        PL --&gt; AS[ApplicationSet platform]
+        AS --&gt; |"payload/platform/*/application.yaml"| INFRA[Core Components]
     end
 
     subgraph "Managed by gitops"
@@ -2220,57 +2282,88 @@ two things on purpose:</p>
 <p>Yes, ArgoCD manages ArgoCD. It is exactly as recursive as it sounds, and it
 works fine until the day you sync a broken ArgoCD config with ArgoCD. Keep
 <code>make install-argo</code> in your back pocket for that day.</p>
-<h2 id="deployment-waves">Deployment Waves<a class="headerlink" href="#deployment-waves" title="Permanent link">&para;</a></h2>
-<p>ArgoCD uses <strong>sync waves</strong> to control deployment order. Lower waves sync first.
-This ensures CRDs exist before Operators, and Storage exists before
-Applications.</p>
-<p>Sync waves are the answer to the question "why did my perfectly correct manifest
-fail on a fresh cluster and work on an existing one?" On a running cluster
-everything it depends on already exists. On a fresh one, ordering is the whole
-game.</p>
-<pre class="mermaid"><code>flowchart TB
-    subgraph "Wave -10: CRDs"
-        GW[gateway-api-crds]
-    end
-
-    subgraph "Wave -5: Security"
-        CM[cert-manager]
-    end
-
-    subgraph "Wave -2: Operators"
-        RO[rook-ceph-operator]
-    end
-
-    subgraph "Wave -1: Infrastructure"
-        CL[cilium]
-        RC[rook-ceph-cluster]
-    end
-
-    subgraph "Wave 0: Core Apps"
-        AR[argocd]
-    end
-
-    subgraph "Wave 1+: User Apps"
-        MON[kube-prometheus-stack]
-    end
-
-    %% Dependencies
-    GW --&gt; CL
-    CM --&gt; RC
-    RO --&gt; RC
-    CL --&gt; AR
-    AR --&gt; MON</code></pre>
-<p>The full wave-by-wave listing is in <a href="../../platform/#usage">Platform &rarr; Usage</a>.</p>
-<h3 id="a-missing-crd-is-a-deadlock-not-a-delay">A missing CRD is a deadlock, not a delay<a class="headerlink" href="#a-missing-crd-is-a-deadlock-not-a-delay" title="Permanent link">&para;</a></h3>
-<p>A custom resource whose CRD does not exist yet does not merely fail and retry.
-ArgoCD marks the task <code>SyncFailed</code>, leaves the operation <code>Running</code> while it
-waits on the rest of the wave to become healthy, and starts no new sync until
-that one finishes. When the resource it could not apply is the credential the
-wave is waiting for, nothing ever moves again.</p>
-<p>That is why <code>external-secrets</code> sits at wave <code>-6</code>: ahead of every Application
-that ships an <code>ExternalSecret</code>, the earliest of which is cert-manager at <code>-5</code>.
-<code>SkipDryRunOnMissingResource=true</code> on each <code>ExternalSecret</code> covers the first
-sync of a fresh cluster, where the CRDs have not landed yet.</p>
+<h2 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h2>
+<p>On a running cluster everything a manifest depends on already exists. On a
+fresh one, ordering is the whole game — and the sync waves this repository used
+to rely on never provided it. Waves order the resources <em>inside</em> one
+Application's sync, and ArgoCD waits for each wave to be healthy before the
+next. The waves between platform components were on child Applications,
+though, whose health ArgoCD had stopped assessing, so every wave counted as
+healthy the moment it was created and all of them went out within seconds.</p>
+<p>The <code>platform</code> ApplicationSet uses a <code>RollingSync</code> strategy instead. Each
+Application carries a <code>homelab.wlkr.ch/stage</code> label, the ApplicationSet has one
+step per stage, and a step starts only once every Application in the step
+before it is <strong>Synced and Healthy</strong>. The stages and what each waits for are
+listed in <a href="../../platform/#rollout-order">Platform &rarr; Rollout order</a>.</p>
+<pre class="mermaid"><code>flowchart LR
+    CRDS[01 crds] --&gt; NET[02 network] --&gt; CTRL[03 controllers] --&gt; STOR[04 storage]
+    STOR --&gt; SEC[05 secrets] --&gt; CERT[06 certificates] --&gt; ING[07 ingress]
+    ING --&gt; SVC[08 services] --&gt; BACK[09 backends] --&gt; AG[10 agents] --&gt; POL[11 policy]</code></pre>
+<p>Resource-level sync waves still work inside a single Application, and are still
+used there: the <code>certificates</code> Application applies its <code>ExternalSecret</code>, then
+the ClusterIssuers, then the Certificates.</p>
+<h3 id="nothing-may-wait-on-a-later-stage">Nothing may wait on a later stage<a class="headerlink" href="#nothing-may-wait-on-a-later-stage" title="Permanent link">&para;</a></h3>
+<p>A step that needs Synced <strong>and</strong> Healthy turns every forward dependency into a
+deadlock. An Application that ships a resource which cannot be applied, or
+cannot go healthy, until a later stage has run never finishes its step, so the
+later stage never starts. Three rules keep the graph pointing one way:</p>
+<ul>
+<li><strong>A resource lives with what it needs, not with what it configures.</strong> The
+  <code>ClusterSecretStore</code> needs a running OpenBao, so it is in <code>openbao</code>, not
+  <code>external-secrets</code>. cert-manager's issuers and certificates need the Route53
+  credentials in OpenBao, so they are in <code>certificates</code>, not <code>cert-manager</code>.</li>
+<li><strong>CRDs come first.</strong> A missing kind is a failed sync, and a failed sync is
+  never Synced.</li>
+<li><strong>Routes do not gate.</strong> An <code>HTTPRoute</code> stays Progressing until a Gateway
+  accepts it, and the Gateways come late because they need certificates. The
+  routes in <code>cilium</code>, <code>rook-ceph</code> and <code>openbao</code> are annotated
+  <code>argocd.argoproj.io/ignore-healthcheck: "true"</code> so their Applications can be
+  Healthy before <code>07-ingress</code>.</li>
+</ul>
+<p>A new component goes in the earliest stage after everything it needs. If that
+stage is later than something that needs it, the dependency is in the wrong
+Application.</p>
+<h3 id="bootstrap-pauses-at-openbao">Bootstrap pauses at OpenBao<a class="headerlink" href="#bootstrap-pauses-at-openbao" title="Permanent link">&para;</a></h3>
+<p><code>05-secrets</code> is where a fresh cluster stops on purpose. OpenBao's pods report
+Ready while sealed, but the <code>ClusterSecretStore</code> next to it stays Degraded until
+OpenBao is initialised, unsealed and has the Kubernetes auth role — so
+<code>openbao</code> is not Healthy and <code>06-certificates</code> does not start.
+<code>make bao-init</code> and <code>make bao-unseal</code> let it continue. <code>06-certificates</code> then
+waits again until <code>make bao-secrets</code> has written the Route53 credentials.
+Nothing times out; the rollout resumes on its own once the store validates.</p>
+<h3 id="what-the-staging-costs">What the staging costs<a class="headerlink" href="#what-the-staging-costs" title="Permanent link">&para;</a></h3>
+<p><code>RollingSync</code> makes the ApplicationSet controller, not ArgoCD's automated sync,
+the thing that syncs platform Applications. The <code>syncPolicy.automated</code> block in
+each <code>application.yaml</code> is still read for <code>prune</code>, and <code>retry</code> still applies,
+but the controller switches automated sync off on every generated Application.
+It triggers a sync only when an Application's revision or spec changes:</p>
+<ul>
+<li><strong>No self-heal.</strong> A resource edited or deleted by hand stays that way until
+  the next change to its Application. For an Application with a Git source,
+  any commit to this repository changes its revision; for one that only
+  installs a chart — <code>alloy</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>,
+  <code>kured</code>, <code>loki</code>, <code>metrics-server</code>, <code>rook-ceph-cluster</code>, <code>rook-ceph-operator</code>,
+  <code>snapshot-controller</code>, <code>velero</code> — or pins a tag, like <code>gateway-api-crds</code>, only
+  a version bump does.</li>
+<li>
+<p><strong>A failed sync waits for a person.</strong> Once <code>retry</code> is exhausted the
+  Application stays in the step, and everything after it waits, until its
+  revision changes again or it is synced by hand:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>app<span class="w"> </span>sync<span class="w"> </span>&lt;application&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p><strong>Only changes are gated.</strong> An Application that breaks later, with no new
+  revision, does not hold anything back; the next change that reaches it does.</p>
+</li>
+<li><strong>Ceph warnings block.</strong> ArgoCD maps <code>HEALTH_WARN</code> to Degraded, so while Ceph
+  warns, no change reaches anything after <code>04-storage</code>.</li>
+</ul>
+<p>Where a rollout is stuck, the ApplicationSet says which Application it is
+waiting for:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>platform<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'</span>
+</span></code></pre></div>
 <h2 id="moving-a-resource-to-another-application">Moving a resource to another Application<a class="headerlink" href="#moving-a-resource-to-another-application" title="Permanent link">&para;</a></h2>
 <p>Moving a manifest from one Application's directory to another's is not a move
 to ArgoCD. The old Application sees a resource it tracks vanish from Git and,
@@ -2282,9 +2375,9 @@ deletion of everything that Application deployed.</p>
 <ol>
 <li>
 <p>Annotate the resource where it is, and let that sync:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
 </span></code></pre></div>
 <p>Pruning skips a resource whose <strong>live</strong> object carries <code>Prune=false</code>,
 whichever Application gets there first. <code>IgnoreExtraneous</code> keeps the old
@@ -2328,6 +2421,10 @@ self-explanatory:</p>
 <tr>
 <td><code>admin.enabled: "false"</code></td>
 <td>With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the <a href="../../platform/authentik/#when-authentik-is-down">break-glass path</a></td>
+</tr>
+<tr>
+<td><code>resource.customizations.health.argoproj.io_Application</code></td>
+<td>Restores health assessment for <code>Application</code> resources, which ArgoCD dropped in 1.8, so a parent reports the health of its children</td>
 </tr>
 <tr>
 <td><code>applicationsetcontroller.enable.progressive.syncs</code></td>

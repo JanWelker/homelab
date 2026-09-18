@@ -2236,12 +2236,12 @@ never a small problem.</p>
 <td><code>kube-system</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>-1</code>, after the Gateway API CRDs it renders against</td>
+<td>Stage</td>
+<td><code>02-network</code>, after the Gateway API CRDs it renders against</td>
 </tr>
 <tr>
 <td>Depends on</td>
-<td>Gateway API CRDs (<code>-10</code>), the Prometheus operator CRDs from kube-prometheus-stack (<code>1</code>) for its ServiceMonitors, and a <code>k8sServiceHost</code> that answers</td>
+<td>Gateway API CRDs (<code>01-crds</code>), the Prometheus operator CRDs for its ServiceMonitors, and a <code>k8sServiceHost</code> that answers</td>
 </tr>
 <tr>
 <td>If it is down</td>

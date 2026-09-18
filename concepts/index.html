@@ -2251,12 +2251,13 @@ you are still admiring your work.</p>
 <ul>
 <li><strong>App-of-Apps</strong> — one ArgoCD <code>Application</code> whose job is to create other
   <code>Application</code>s, so a single <code>kubectl apply</code> bootstraps the whole tree.</li>
-<li><strong>Sync wave</strong> — an integer annotation that orders deployment. Lower goes
-  first. It is how a fresh cluster installs CRDs before the operators that need
-  them, rather than deadlocking. The full ordering is in
-  <a href="../platform/#usage">Platform</a>.</li>
+<li><strong>Rollout stage</strong> — a label on each platform <code>Application</code> that orders
+  deployment. An ApplicationSet syncs one stage at a time and starts the next
+  only when the last is Synced and Healthy. It is how a fresh cluster installs
+  CRDs before the operators that need them, rather than deadlocking. The full
+  ordering is in <a href="../platform/#rollout-order">Platform</a>.</li>
 </ul>
-<p>Sync waves answer the question every GitOps newcomer eventually asks: <em>why did
+<p>Rollout stages answer the question every GitOps newcomer eventually asks: <em>why did
 my perfectly correct manifest fail on a fresh cluster and work on an existing
 one?</em> On a running cluster, everything it depends on already exists. On a fresh
 one, ordering is the whole game. See <a href="../architecture/gitops/">GitOps Strategy</a>.</p>

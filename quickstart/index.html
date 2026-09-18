@@ -2542,25 +2542,27 @@ synced by <code>gitops</code> — which needs <code>system</code> to exist befor
 anything. ArgoCD adopts that file on the first sync, so this is the
 same bootstrap-by-hand handover as <code>make install-cilium</code>.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
-from the repository rather than from you. Watch the platform sync.
-Applications appear in <a href="../platform/#usage">sync-wave order</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
+from the repository rather than from you. The <code>platform</code> ApplicationSet
+creates every platform Application at once, then syncs them one
+<a href="../platform/#rollout-order">stage</a> at a time. Watch which stage it
+is on:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="s1">'{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'</span>
 </span></code></pre></div>
-<p>Expect <code>cilium</code> and <code>cert-manager</code> to show failed sync attempts at
-first: their ServiceMonitors wait for the CRDs that
-kube-prometheus-stack installs, and both retry until they exist.</p>
-<p>The <code>Certificate</code> resources stay un-Ready until step 11 — that is
-expected, since their Route53 credentials don't exist yet.</p>
+<p><strong>The rollout stops at <code>05-secrets</code>, and that is expected.</strong> <code>openbao</code>
+cannot go Healthy until step 11 has initialised and unsealed it, so
+nothing from <code>06-certificates</code> onwards has been synced yet — see
+<a href="../architecture/gitops/#bootstrap-pauses-at-openbao">Bootstrap pauses at OpenBao</a>.</p>
 </li>
 <li>
 <p><strong>Gate on storage</strong> before trusting the workloads that need it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
-<p>The sync waves put Rook ahead of everything that mounts a volume, which
-is not the same as Rook being able to serve one: a <code>CephCluster</code> reports
-<code>Ready</code> with no OSDs, and a <code>StorageClass</code> exists whether or not a CSI
-driver registered for it. Either way the later waves start regardless
-and their pods sit in <code>Pending</code>. This asks for a volume the way a
+<p>The rollout stages put Rook ahead of everything that mounts a volume,
+which is not the same as Rook being able to serve one: a <code>StorageClass</code>
+exists whether or not a CSI driver registered for it, so <code>04-storage</code>
+can finish with no working provisioner and OpenBao's volumes sit in
+<code>Pending</code>. This asks for a volume the way a
 workload would and names the first broken link if it does not get one —
 see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storage
 ready?</a>.</p>
@@ -2571,15 +2573,11 @@ ready?</a>.</p>
 <p><strong>Initialise the secret store</strong>:
     OpenBao starts uninitialised, sealed and empty, and four of the platform
     components read their credentials out of it through
-    <a href="../platform/external-secrets/">ExternalSecrets</a>. Until it is initialised,
-    unsealed and populated, none of those Secrets exist, so cert-manager issues
-    no certificates and the pods that mount one never start:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>Warning  Failed  12s (x7 over 72s)  kubelet  Error: secret "route53-credentials" not found
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>Warning  Failed   2s (x7 over 69s)  kubelet  Error: secret "authentik-secrets" not found
-</span></code></pre></div>
-<p>That is expected until this step is done; the pods recover on their own once
-the Secrets materialise.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>make<span class="w"> </span>bao-init
+    <a href="../platform/external-secrets/">ExternalSecrets</a>. Until it is initialised and
+    unsealed the <code>ClusterSecretStore</code> cannot authenticate, so the rollout holds
+    at <code>05-secrets</code>; until it is populated, <code>06-certificates</code> holds on the
+    Route53 credentials. Both resume on their own.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>make<span class="w"> </span>bao-init
 </span></code></pre></div>
 <p>That initialises OpenBao with 5 key shares and a threshold of 3, unseals all
 three replicas, enables the <code>kv</code> v2 engine, enables the Kubernetes auth
@@ -2593,7 +2591,7 @@ means the data is unrecoverable — there is no support line and no
 recovery flow. See <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a>.</p>
 </div>
 <p>Then populate the five paths the cluster reads:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>bao-secrets
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
 <p>It prompts for the seven values that belong to accounts outside the cluster —
 two Route53 IAM key pairs, and the SMTP login, password and alert recipient —
@@ -2615,18 +2613,19 @@ already set; quote them with <strong>single</strong> quotes.</p>
 for every hostname. Existing paths are left alone — rewriting
 <code>kv/authentik/config</code> on a running cluster rotates Authentik's Postgres
 password out from under its database.</p>
-<p>Cert-manager then picks up the materialised Secret and issues the gateway
-certificates, and the pods that were waiting on the others start on the next
-ESO refresh. Authentik's is what finally gives you a login for the ArgoCD
-and Grafana UIs.</p>
+<p>Once the store validates, the rollout moves on: <code>certificates</code> issues the
+gateway certificates, the Gateways come up, and the services after them sync
+with their Secrets already in place. Authentik is what finally gives you a
+login for the ArgoCD and Grafana UIs. The store is re-checked every few
+minutes, so the next stage can take that long to start.</p>
 </li>
 <li>
 <p><strong>Create the first administrator</strong>:
     There is no sign-up, and no user to be created: Authentik ships the built-in
     <code>akadmin</code> account, and its password is the <code>bootstrap-password</code> step 11
     generated and never showed you. Read it back out of OpenBao:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
 </span></code></pre></div>
 <p>(That needs a token — <code>bao login</code> inside the pod, or the port-forward in
 <a href="../platform/openbao/#3-authenticate-locally">OpenBao &rarr; Authenticate locally</a>.
@@ -2681,7 +2680,7 @@ the account falls back to after a rebuild.</p>
 worker nodes, so the control-plane taint stays in place. If you are instead
 running everything on one node, remove the taint before step 9 so workloads can
 schedule:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>make<span class="w"> </span>untaint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>
 <p>Before, not after, because step 10 does not survive the taint. Cilium does: the
 agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
@@ -2698,7 +2697,7 @@ stay Pending whatever the taints say. A single-node cluster needs
 node being <code>NotReady</code> until Cilium lands does not matter — this is an API call
 against the node object, not something that has to schedule.</p>
 <p>Re-apply it when you later add worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>make<span class="w"> </span>taint
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>make<span class="w"> </span>taint
 </span></code></pre></div>
 <h2 id="reprovisioned-nodes">Reprovisioned nodes<a class="headerlink" href="#reprovisioned-nodes" title="Permanent link">&para;</a></h2>
 <p>A rebuild onto the same hardware used to inherit the previous cluster's OSDs.
@@ -2713,8 +2712,8 @@ an empty disk back.</p>
 that wipe ever failed — or on hardware where <code>blkdiscard</code> is declined <em>and</em>
 <code>wipefs</code> missed something. There are no <code>rook-ceph-osd</code> pods, the <code>CephCluster</code>
 still reports <code>Ready</code>, and the failure surfaces one layer up, at step 11:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>init
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="go">error: unable to upgrade connection: pod openbao-0 does not have a host assigned</span>
 </span></code></pre></div>
 <p><code>openbao-0</code> is <code>Pending</code> on an unbound PVC because the cluster has no OSDs to
 provision one from. <code>make storage-check</code> says so in one line. The fix is to
@@ -2723,11 +2722,11 @@ wipes the disk on the way in: <a href="../platform/rook-ceph/#no-osds-after-repr
 reprovisioning</a>.</p>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
 <p>The five commands that answer "is it actually fine?":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
-</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
-</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
-</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
-</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
 </span></code></pre></div>
 <p>The last one earns its place: the <code>cephcluster</code> line above is the one that
 lies, reporting <code>Ready</code> on a cluster with no OSDs and no CSI driver.</p>

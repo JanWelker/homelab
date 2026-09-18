@@ -2256,8 +2256,8 @@ zone works from anywhere, and it is also the only way to get a wildcard.</p>
 <td><code>cert-manager</code>; the certificates it issues land in <code>kube-system</code></td>
 </tr>
 <tr>
-<td>Sync wave</td>
-<td><code>-5</code>; the ClusterIssuers at <code>2</code> and the Certificates at <code>3</code></td>
+<td>Stage</td>
+<td><code>03-controllers</code> for the controller; <code>06-certificates</code> for the <code>certificates</code> Application with the ClusterIssuers and Certificates</td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2279,8 +2279,12 @@ zone works from anywhere, and it is also the only way to get a wildcard.</p>
 <li><strong>Certificates</strong>: Wildcard TLS certs for <code>*.k8s.wlkr.ch</code> and <code>*.infra.k8s.wlkr.ch</code>, stored as Secrets in <code>kube-system</code> and referenced by the Gateways. Two certificates cover every hostname this cluster will ever serve, which is a pleasant place to be.</li>
 </ul>
 <h2 id="sync-order">Sync order<a class="headerlink" href="#sync-order" title="Permanent link">&para;</a></h2>
-<p>The Application's own resources go in three sync waves, because each one cannot
-work until the one before it exists:</p>
+<p>The issuers and certificates are a separate <code>certificates</code> Application, in
+<code>payload/platform/certificates/</code>. Kept in the cert-manager Application they
+would hold its stage until OpenBao — two stages later — held the Route53
+credentials; see <a href="../../architecture/gitops/#nothing-may-wait-on-a-later-stage">Rollout order</a>.
+Inside that Application the resources go in three sync waves, because each one
+cannot work until the one before it exists:</p>
 <table>
 <thead>
 <tr>
@@ -2324,7 +2328,7 @@ controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
 limited, like the rest of the platform.</p>
 <p>The chart renders its <code>ServiceMonitor</code> unconditionally, so it cannot sync until
 the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
-arrives several sync waves later, so on a new cluster the first attempts fail;
+arrives several stages later, so on a new cluster the first attempts fail;
 <code>SkipDryRunOnMissingResource</code> lets the rest apply meanwhile, and <code>retry</code> keeps
 trying until the CRDs are there.</p>
 <h2 id="aws-credentials-setup">AWS Credentials Setup<a class="headerlink" href="#aws-credentials-setup" title="Permanent link">&para;</a></h2>
@@ -2379,10 +2383,13 @@ trying until the CRDs are there.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cert-manager/                  # TLS Certificate Management
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml           # ArgoCD Application (Helm chart)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── values.yaml                # Helm values
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── certificates.yaml          # All Certificate resources
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── route53-credentials.yaml   # ExternalSecret → OpenBao
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>└── values.yaml                # Helm values
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>certificates/                  # Issuers and certificates, after OpenBao
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── application.yaml           # ArgoCD Application
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>├── certificates.yaml          # All Certificate resources
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>└── route53-credentials.yaml   # ExternalSecret → OpenBao
 </span></code></pre></div>
 
 
