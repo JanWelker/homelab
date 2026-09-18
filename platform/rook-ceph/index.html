@@ -2480,12 +2480,11 @@ finds out simultaneously. This is not a metric to leave unwatched.</p>
 warnings, and the rest).</p>
 <div class="admonition note">
 <p class="admonition-title">Sync ordering</p>
-<p>The rules render as a <code>PrometheusRule</code>, whose CRD arrives with
-kube-prometheus-stack in <code>08-services</code> — after this Application in <code>04-storage</code>. On
-a <strong>fresh</strong> bootstrap the first sync therefore runs before the CRD exists,
-so the Application carries <code>SkipDryRunOnMissingResource=true</code> and ArgoCD
-retries until kube-prometheus-stack has landed. On an existing cluster the
-CRD is already there and this never comes up.</p>
+<p>The rules render as a <code>PrometheusRule</code>. Its CRD is the
+<code>prometheus-operator-crds</code> Application in <code>01-crds</code>, not
+kube-prometheus-stack in <code>08-services</code>: a kind that is missing when
+<code>04-storage</code> syncs would fail the sync, and a failed sync never lets the
+stage finish.</p>
 </div>
 <p>The Ceph dashboard's links to Prometheus and Grafana are set through
 <code>cephClusterSpec.cephConfig</code> (<code>mgr/dashboard/PROMETHEUS_API_HOST</code> and friends)

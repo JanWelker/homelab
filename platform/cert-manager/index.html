@@ -2327,10 +2327,10 @@ and certificate behind it unmade.</p>
 controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
 limited, like the rest of the platform.</p>
 <p>The chart renders its <code>ServiceMonitor</code> unconditionally, so it cannot sync until
-the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
-arrives several stages later, so on a new cluster the first attempts fail;
-<code>SkipDryRunOnMissingResource</code> lets the rest apply meanwhile, and <code>retry</code> keeps
-trying until the CRDs are there.</p>
+the Prometheus operator CRDs exist. They are the <code>prometheus-operator-crds</code>
+Application in <code>01-crds</code>, two stages ahead. <code>retry</code> stays, so a failed apply is
+retried rather than holding <code>03-controllers</code> until the next commit changes the
+Application's revision.</p>
 <h2 id="aws-credentials-setup">AWS Credentials Setup<a class="headerlink" href="#aws-credentials-setup" title="Permanent link">&para;</a></h2>
 <p>The DNS-01 solver needs AWS credentials with Route53 permissions. The <code>route53-credentials</code> Secret is materialised from <a href="../openbao/">OpenBao</a> via an <a href="../external-secrets/">ExternalSecret</a>.</p>
 <p>Store the credentials in OpenBao once OpenBao and ESO are up:</p>

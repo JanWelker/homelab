@@ -2241,7 +2241,7 @@ never a small problem.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td>Gateway API CRDs (<code>01-crds</code>), the Prometheus operator CRDs for its ServiceMonitors, and a <code>k8sServiceHost</code> that answers</td>
+<td>Gateway API and Prometheus operator CRDs (<code>01-crds</code>), and a <code>k8sServiceHost</code> that answers</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2330,12 +2330,12 @@ Switching them off changes nothing in <code>cilium-config</code>; it drops three
 ServiceMonitors and two metrics Services, and the <code>prometheus.io/scrape</code>
 annotations on the agent and operator pods. When ArgoCD adopts the release it
 adds those back, which rolls the agent and operator once.</p>
-<p>ArgoCD's own render would fail the same way — the chart refuses to render
-ServiceMonitors while <code>monitoring.coreos.com/v1</code> is missing — so <code>values.yaml</code>
-sets <code>trustCRDsExist: true</code>. On a new cluster the first sync attempts then fail
-on the missing kind; <code>SkipDryRunOnMissingResource</code> lets everything else apply
-meanwhile, and <code>retry</code> keeps trying until kube-prometheus-stack has installed
-the CRDs.</p>
+<p>Through ArgoCD the CRDs are already there: <code>prometheus-operator-crds</code> is in
+<code>01-crds</code>, a stage ahead of Cilium. <code>values.yaml</code> still sets
+<code>trustCRDsExist: true</code>, because the chart otherwise refuses to render at all
+while <code>monitoring.coreos.com/v1</code> is missing — which is the case for the
+bootstrap install above, for a render before <code>01-crds</code> has synced, and for the
+diff preview's throwaway cluster.</p>
 
 
 

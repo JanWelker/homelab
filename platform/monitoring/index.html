@@ -2417,13 +2417,24 @@
 <li><strong>kube-state-metrics</strong>: Kubernetes object metrics (pod status, deployments, etc.).</li>
 </ul>
 <h2 id="crds">CRDs<a class="headerlink" href="#crds" title="Permanent link">&para;</a></h2>
-<p>The chart owns the <code>monitoring.coreos.com</code> CRDs -- <code>crds.enabled</code>, plus an
-upgrade job that re-applies them on every chart bump -- but it is not the first
-thing in the cluster that needs them. Cilium and cert-manager both render
-ServiceMonitors and roll out stages ahead of this stack. Neither is blocked for good:
-both carry <code>SkipDryRunOnMissingResource</code> and a <code>retry</code>, so on a new cluster they
-apply everything else, fail on the missing kind, and succeed once this stack
-has installed the CRDs. See <a href="../cilium/#installation">Cilium</a>.</p>
+<p>The <code>monitoring.coreos.com</code> CRDs are not part of this Application. Cilium,
+cert-manager, External Secrets, Rook and OpenBao all render ServiceMonitors or
+PrometheusRules, in stages well ahead of <code>08-services</code>, and a stage only
+finishes once its Applications are Synced — which a missing kind never is. So
+the CRDs are a separate <code>prometheus-operator-crds</code> Application in <code>01-crds</code>,
+from the prometheus-community chart of the same name, and this chart runs with
+<code>crds.enabled: false</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Two versions that have to agree</p>
+<p><code>prometheus-operator-crds</code> must carry the same Prometheus operator version
+as kube-prometheus-stack: chart <code>32.0.0</code> is operator <code>v0.94.0</code>, which is what
+kube-prometheus-stack <code>91.4.1</code> deploys. Renovate bumps the two separately.
+Merge the CRD bump first, or together: an operator newer than its CRDs can
+depend on fields the older CRDs do not define yet.</p>
+</div>
+<p><code>prometheus-operator-crds</code> has no resources finalizer, so deleting the
+Application leaves the CRDs, and every ServiceMonitor, Prometheus and
+Alertmanager with them, in place.</p>
 <h2 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h2>
 <p>Alertmanager routes to email. The chart's default is a <code>null</code> receiver that
 swallows every alert, which is worse than not deploying it at all: the stack
