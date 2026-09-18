@@ -188,3 +188,27 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: cnpg-system
+spec:
+  description: >-
+    Default-deny ingress for the CloudNativePG operator. It reaches out to the
+    API server and to the Postgres instances it manages; the only things that
+    connect to it are the API server calling its webhooks from the node, and
+    Prometheus scraping the PodMonitor. The databases themselves are not here
+    -- each one runs in its workload's namespace, behind that namespace's own
+    policy.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring

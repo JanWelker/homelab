@@ -1,0 +1,60 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudnative-pg
+  namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 03-controllers
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://cloudnative-pg.github.io/charts
+      chart: cloudnative-pg
+      targetRevision: 0.29.0
+      helm:
+        valuesObject:
+          # The operator is the only thing in this namespace; the databases it
+          # runs live in their workload's namespace.
+          crds:
+            create: true
+
+          replicaCount: 1
+
+          monitoring:
+            podMonitorEnabled: true
+            # The chart renders upstream's dashboard, so nothing is vendored
+            # here and Renovate keeps it current with the chart. It stays in
+            # this namespace; Grafana's sidecar searches all of them.
+            grafanaDashboard:
+              create: true
+
+          resources:
+            requests:
+              cpu: 25m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cnpg-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # A failed sync is retried rather than holding 03-controllers until the
+    # next commit.
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

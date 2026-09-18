@@ -26,6 +26,7 @@ to. The [stage ordering](#usage) below explains why each is where it is.
 | backup | `backup` | `08-services` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
 | [cert-manager](cert-manager.md) | `cert-manager` | `03-controllers`, issuers and certificates `06-certificates` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
 | [cilium](cilium.md) | `kube-system` | `02-network` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
+| [cloudnative-pg](cloudnative-pg.md) | `cnpg-system` | `03-controllers` | The PostgreSQL operator every workload database runs on |
 | [external-dns](external-dns.md) | `external-dns` | `06-certificates` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](external-secrets.md) | `external-secrets` | `03-controllers` | Bridges OpenBao to native Kubernetes Secrets |
 | [gateway-api](gateway-api.md) | `gateway-system` | `01-crds` CRDs, `07-ingress` Gateways | The two Gateways and the HTTP-to-HTTPS redirect |
@@ -114,7 +115,7 @@ the gating works and what it costs.
 | `00-projects` | `argocd-projects` | — |
 | `01-crds` | `gateway-api-crds`, `prometheus-operator-crds` | the AppProjects every Application names |
 | `02-network` | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
-| `03-controllers` | `cert-manager`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
+| `03-controllers` | `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | `04-storage` | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
 | `05-secrets` | `openbao` | `rook-ceph-block` for its volumes. **Bootstrap pauses here** until OpenBao is initialised and unsealed |
 | `06-certificates` | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
