@@ -7,7 +7,7 @@ config:
   kind: ControllerConfiguration
   enableGatewayAPI: true
 
-# Needs the Prometheus operator CRDs that `make install-cilium` installs.
+# Rendered unconditionally; waits for kube-prometheus-stack CRDs, see docs.
 prometheus:
   enabled: true
   servicemonitor:

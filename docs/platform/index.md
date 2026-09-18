@@ -79,8 +79,7 @@ HTTPRoutes are co-located with their respective apps:
 ### Bootstrap (before ArgoCD)
 
 ```bash
-make install-core  # Gateway API + Prometheus operator CRDs, Cilium, cert-manager
-make install-argo  # ArgoCD
+make bootstrap  # Gateway API CRDs + Cilium, ArgoCD, then the parent Applications
 ```
 
 ### GitOps (after ArgoCD)

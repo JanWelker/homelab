@@ -33,9 +33,10 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    # One failed apply would otherwise strand the issuers and certificates.
+    # One failed apply would otherwise strand the issuers and certificates, and
+    # on a new cluster the ServiceMonitor waits for kube-prometheus-stack's CRDs.
     retry:
-      limit: 5
+      limit: 10
       backoff:
         duration: 30s
         factor: 2
@@ -43,3 +44,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

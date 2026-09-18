@@ -39,7 +39,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
 | `uv` | Ansible and the boot server | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `butane` | transpiling Butane YAML to Ignition JSON | `brew install butane` or the [Flatcar docs](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/) |
 | `kubectl` | steps 8 onwards | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
-| `helm` | `make install-core`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
+| `helm` | `make install-cilium`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
 | `sudo` | `make serve` binds privileged port 69 | — |
 
 ### Other requirements
@@ -204,23 +204,21 @@ The deployment host (the machine running Ansible and the boot server) must be re
     cp -n output/kubeconfig ~/.kube/config
     ```
 
-9. **Install Core Components** (CRITICAL):
+9. **Install Cilium** (CRITICAL):
     With `output/kubeconfig` in place (`kubeadm` likely finished):
 
     ```bash
-    make install-core
+    make install-cilium
     ```
 
-    - Installs the Gateway API and Prometheus operator CRDs, then **Cilium**
-      (CNI, Ingress, L2 Announcements) via Helm.
-    - Installs **cert-manager** (for ACME TLS) and the Let's Encrypt
-      ClusterIssuers.
+    - Installs the Gateway API CRDs, then **Cilium** (CNI, Gateway API, L2
+      Announcements) via Helm.
 
-    !!! warning "Single-node clusters: untaint first"
-        cert-manager ships no tolerations, so on one tainted node this target hangs at `rollout status deploy/cert-manager` and never returns. Run `make untaint` before it — see [Single-node clusters](#single-node-clusters).
+    `make bootstrap` runs this step, `make install-argo` and
+    `make bootstrap-apps` in one go.
 
     !!! note
-        This target runs before ArgoCD exists, so it installs Cilium, cert-manager and the Gateway API CRDs directly. It carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The Prometheus operator CRDs ride along for the same reason in reverse: Cilium's chart refuses to render at all while `monitoring.coreos.com/v1` is missing, and kube-prometheus-stack, which owns those CRDs, arrives several sync waves later. See [Monitoring](platform/monitoring.md#crds).
+        `make` installs only what ArgoCD needs in order to run: a CNI, and the Gateway API CRDs that Cilium's operator looks for once, at startup. Everything else — cert-manager, the LoadBalancer pools, the Prometheus operator CRDs — arrives through ArgoCD. The target carries no version pins of its own: the `Makefile` reads each version out of the ArgoCD `Application` that adopts the component later, so what bootstrap installs is what ArgoCD then reconciles, and Renovate only ever has one number to move. The one deliberate difference is that the ServiceMonitors are switched off, because their CRDs do not exist yet; see [Cilium](platform/cilium.md#installation).
 
     Nodes should reach `Ready` once Cilium is up:
 
@@ -284,7 +282,7 @@ The deployment host (the machine running Ansible and the boot server) must be re
         both parent applications name one, and the file defining them is
         synced by `gitops` — which needs `system` to exist before it can sync
         anything. ArgoCD adopts that file on the first sync, so this is the
-        same bootstrap-by-hand handover as `make install-core`.
+        same bootstrap-by-hand handover as `make install-cilium`.
 
         This is the handover moment: from here on the cluster takes its orders
         from the repository rather than from you. Watch the platform sync.
@@ -293,6 +291,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
         ```bash
         kubectl -n argocd get applications -w
         ```
+
+        Expect `cilium` and `cert-manager` to show failed sync attempts at
+        first: their ServiceMonitors wait for the CRDs that
+        kube-prometheus-stack installs, and both retry until they exist.
 
         The `Certificate` resources stay un-Ready until step 11 — that is
         expected, since their Route53 credentials don't exist yet.
@@ -426,15 +428,18 @@ schedule:
 make untaint
 ```
 
-Before, not after, because step 9 does not survive the taint. Cilium does: the
+Before, not after, because step 10 does not survive the taint. Cilium does: the
 agent and Envoy DaemonSets tolerate every taint and the operator tolerates the
 control-plane one by name, so the node reaches `Ready` and it looks like the
-taint is not in the way. cert-manager carries no tolerations at all, so
-`make install-core` gets as far as `rollout status deploy/cert-manager` and
-stops there: none of its three Deployments can be placed, and `rollout status`
-has no timeout, so it waits for a scheduling decision that is never coming.
-Hubble's relay and UI are Pending for the same reason, quietly, because nothing
-waits on them.
+taint is not in the way. ArgoCD carries no tolerations at all, so
+`make install-argo` waits on pods that cannot be placed until Helm's `--wait`
+times out. Hubble's relay and UI are Pending for the same reason, quietly,
+because nothing waits on them.
+
+Untainting is not enough on its own, either: `redis-ha` runs three Redis and
+three HAProxy pods with hard per-host anti-affinity, so on one node two of each
+stay Pending whatever the taints say. A single-node cluster needs
+`redis-ha.enabled: false` in `payload/argocd/values.yaml`.
 
 The taint can come off any time after step 8 puts a kubeconfig in place. The
 node being `NotReady` until Cilium lands does not matter — this is an API call

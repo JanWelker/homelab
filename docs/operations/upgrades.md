@@ -156,8 +156,8 @@ Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a
 `targetRevision` and the PR merges. No manual step is involved. See
 [Maintenance](../development/maintenance.md).
 
-Cilium, cert-manager, the Gateway API CRDs and ArgoCD itself are a little
-different, because `make install-core` and `make install-argo` install them by
+Cilium, the Gateway API CRDs and ArgoCD itself are a little
+different, because `make install-cilium` and `make install-argo` install them by
 Helm during bootstrap, before ArgoCD exists to manage them. They are still not
 a second place to bump: those targets read each version out of the same
 `Application` manifest Renovate updates, so merging a `targetRevision` bump

@@ -189,7 +189,7 @@ first boot.
 
 Step 14 leaving the node `NotReady` is correct and expected — there is no CNI
 yet, so the kubelet has nothing to plug pods into. It stays that way until
-`make install-core` lands Cilium.
+`make install-cilium` lands Cilium.
 
 ## Every boot after the first
 
@@ -217,8 +217,9 @@ data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
 ## 4. Post-Installation Bootstrap
 
 Once Kubeadm has initialized the control plane, the remaining components are
-installed from the deployment host. This is the last time anything is applied by
-hand; after step 6 the repository is in charge.
+installed from the deployment host — only what ArgoCD needs to run, and ArgoCD
+itself. This is the last time anything is applied by hand; after step 6 the
+repository is in charge. `make bootstrap` runs all three targets in order.
 
 ```mermaid
 sequenceDiagram
@@ -226,8 +227,8 @@ sequenceDiagram
     participant Deploy as Deployment Host
     participant Cluster
 
-    Admin->>Deploy: 1. make install-core
-    Deploy->>Cluster: 2. Helm install Cilium, cert-manager
+    Admin->>Deploy: 1. make install-cilium
+    Deploy->>Cluster: 2. Helm install Gateway API CRDs, Cilium
     Note over Cluster: Nodes become Ready
     Admin->>Deploy: 3. make install-argo
     Deploy->>Cluster: 4. Helm install ArgoCD
@@ -236,4 +237,4 @@ sequenceDiagram
 ```
 
 !!! note
-    `make untaint` is **not** part of this flow. It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster. The layout in [Architecture Overview](index.md#cluster-layout) has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes *before* step 1: cert-manager has no tolerations, so `make install-core` hangs waiting on pods that cannot be scheduled. See [Single-node clusters](../quickstart.md#single-node-clusters).
+    `make untaint` is **not** part of this flow. It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster. The layout in [Architecture Overview](index.md#cluster-layout) has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes *before* step 3: ArgoCD has no tolerations, so `make install-argo` waits on pods that cannot be scheduled. See [Single-node clusters](../quickstart.md#single-node-clusters).

@@ -13,7 +13,7 @@ One chart, five components, and roughly a hundred alerting rules you did not wri
 | | |
 | --- | --- |
 | Namespace | `monitoring` |
-| Sync wave | `1`; its CRDs arrive earlier, with `make install-core` |
+| Sync wave | `1` |
 | Depends on | [Rook-Ceph](rook-ceph.md) for Prometheus and Grafana volumes, [Authentik](authentik.md) for the Grafana login |
 | If it is down | No alerts and no metrics — and [Kured](kured.md) loses the alert gate it checks before rebooting a node |
 | Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
@@ -31,12 +31,11 @@ One chart, five components, and roughly a hundred alerting rules you did not wri
 
 The chart owns the `monitoring.coreos.com` CRDs -- `crds.enabled`, plus an
 upgrade job that re-applies them on every chart bump -- but it is not the first
-thing in the cluster that needs them. Cilium's chart aborts its render while
-`monitoring.coreos.com/v1` is missing, cert-manager renders a `ServiceMonitor`
-unconditionally, and both sync waves ahead of this stack, at bootstrap and on
-every rebuild since. So `make install-cilium` applies the CRD files out of this
-same chart, at the version `application.yaml` pins, and the upgrade job adopts
-them when the stack itself lands.
+thing in the cluster that needs them. Cilium and cert-manager both render
+ServiceMonitors and sync waves ahead of this stack. Neither is blocked for good:
+both carry `SkipDryRunOnMissingResource` and a `retry`, so on a new cluster they
+apply everything else, fail on the missing kind, and succeed once this stack
+has installed the CRDs. See [Cilium](cilium.md#installation).
 
 ## Alerting
 

@@ -1,11 +1,9 @@
-.PHONY: download config serve clean clean-artifacts kubeconfig untaint taint fonts fonts-check install-core install-cilium install-cert-manager install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
 
 chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
-CILIUM_VERSION       := $(call chart_version,payload/platform/cilium/application.yaml)
-CERT_MANAGER_VERSION := $(call chart_version,payload/platform/cert-manager/application.yaml)
-ARGOCD_VERSION       := $(call chart_version,payload/argocd/application.yaml)
-MONITORING_VERSION   := $(call chart_version,payload/platform/monitoring/application.yaml)
-GATEWAY_API_VERSION  := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
+CILIUM_VERSION      := $(call chart_version,payload/platform/cilium/application.yaml)
+ARGOCD_VERSION      := $(call chart_version,payload/argocd/application.yaml)
+GATEWAY_API_VERSION := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
 
 require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
 
@@ -42,52 +40,31 @@ fonts:
 fonts-check:
 	scripts/update-fonts.sh --check
 
-install-core: install-cilium install-cert-manager
+# Everything ArgoCD needs to run, and nothing it can install itself.
+bootstrap: install-cilium install-argo bootstrap-apps
 
+# ServiceMonitors off: their CRDs arrive later with kube-prometheus-stack, and
+# ArgoCD adds the monitors then. They leave cilium-config untouched.
 install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
-	$(call require,MONITORING_VERSION,payload/platform/monitoring/application.yaml)
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
 	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
-	helm repo add cilium https://helm.cilium.io/
-	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-	helm repo update
-	@echo "Installing Prometheus operator CRDs (kube-prometheus-stack $(MONITORING_VERSION))..."
-	rm -rf output/tmp/kube-prometheus-stack
-	helm pull prometheus-community/kube-prometheus-stack \
-		--version $(MONITORING_VERSION) \
-		--untar --untardir output/tmp
-	kubectl apply --server-side --force-conflicts \
-		-f output/tmp/kube-prometheus-stack/charts/crds/crds/
-	rm -rf output/tmp/kube-prometheus-stack
-	helm upgrade --install cilium cilium/cilium \
+	helm upgrade --install cilium cilium \
+		--repo https://helm.cilium.io/ \
 		--version $(CILIUM_VERSION) \
 		--namespace kube-system \
-		--values payload/platform/cilium/values.yaml
+		--values payload/platform/cilium/values.yaml \
+		--set prometheus.serviceMonitor.enabled=false \
+		--set operator.prometheus.serviceMonitor.enabled=false \
+		--set hubble.metrics.serviceMonitor.enabled=false
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
-	kubectl apply -f payload/platform/cilium/lb-pools.yaml
-
-install-cert-manager:
-	$(call require,CERT_MANAGER_VERSION,payload/platform/cert-manager/application.yaml)
-	helm repo add jetstack https://charts.jetstack.io
-	helm repo update
-	helm upgrade --install cert-manager jetstack/cert-manager \
-		--namespace cert-manager \
-		--create-namespace \
-		--version $(CERT_MANAGER_VERSION) \
-		--values payload/platform/cert-manager/values.yaml
-	@echo "Waiting for Cert-Manager..."
-	kubectl -n cert-manager rollout status deploy/cert-manager
-	kubectl -n cert-manager rollout status deploy/cert-manager-webhook
-	kubectl apply -f payload/platform/cert-manager/cluster-issuers.yaml
 
 install-argo:
 	$(call require,ARGOCD_VERSION,payload/argocd/application.yaml)
-	helm repo add argocd https://argoproj.github.io/argo-helm
-	helm repo update
-	helm upgrade --install argocd argocd/argo-cd \
+	helm upgrade --install argocd argo-cd \
+		--repo https://argoproj.github.io/argo-helm \
 		--namespace argocd \
 		--create-namespace \
 		--values payload/argocd/values.yaml \

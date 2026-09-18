@@ -147,7 +147,7 @@ image:
 The alternative is to move the values into a real `values.yaml` and reference it
 with `valueFiles`, the way Cilium, ArgoCD and cert-manager already do. Either
 works; the annotation is cheaper for a single tag, and the values file pays off
-the moment there is a second one -- or the moment `make install-core` needs the
+the moment there is a second one -- or the moment a bootstrap target needs the
 same settings, since a bootstrap target can pass a file to Helm and cannot pass
 a `valuesObject`.
 
@@ -177,9 +177,8 @@ digest.
 
 ### Bootstrap versions are derived, not pinned
 
-`make install-core` and `make install-argo` install Cilium, cert-manager, the
-Gateway API and Prometheus operator CRDs, and ArgoCD itself before ArgoCD exists
-to manage them. The `Makefile` used to carry its own pins for those, and
+`make install-cilium` and `make install-argo` install Cilium, the Gateway API
+CRDs, and ArgoCD itself before ArgoCD exists to manage them. The `Makefile` used to carry its own pins for those, and
 Renovate never saw them — by the time anybody looked, the bootstrap Cilium was
 two minors behind the one the cluster was actually running.
 
