@@ -8,6 +8,8 @@ metadata:
     argocd.argoproj.io/manifest-generate-paths: .
     # After Loki, which it ships to.
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

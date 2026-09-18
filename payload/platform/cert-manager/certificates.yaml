@@ -7,6 +7,8 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   secretName: argocd-server-tls
   privateKey:
@@ -27,6 +29,8 @@ metadata:
   namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   secretName: apps-gateway-tls
   privateKey:
@@ -48,6 +52,8 @@ metadata:
   namespace: kube-system
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   secretName: infra-gateway-tls
   privateKey:

@@ -6,6 +6,8 @@ metadata:
   name: letsencrypt-staging
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   acme:
     email: jan@wlkr.ch
@@ -30,6 +32,8 @@ metadata:
   name: letsencrypt-prod
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   acme:
     email: jan@wlkr.ch
