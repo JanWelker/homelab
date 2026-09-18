@@ -2323,9 +2323,10 @@ and certificate behind it unmade.</p>
 controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
 limited, like the rest of the platform.</p>
 <p>The chart renders its <code>ServiceMonitor</code> unconditionally, so it cannot sync until
-the Prometheus operator CRDs exist. <code>make install-cilium</code> installs them during
-bootstrap; kube-prometheus-stack, which owns them, arrives several sync waves
-later.</p>
+the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
+arrives several sync waves later, so on a new cluster the first attempts fail;
+<code>SkipDryRunOnMissingResource</code> lets the rest apply meanwhile, and <code>retry</code> keeps
+trying until the CRDs are there.</p>
 <h2 id="aws-credentials-setup">AWS Credentials Setup<a class="headerlink" href="#aws-credentials-setup" title="Permanent link">&para;</a></h2>
 <p>The DNS-01 solver needs AWS credentials with Route53 permissions. The <code>route53-credentials</code> Secret is materialised from <a href="../openbao/">OpenBao</a> via an <a href="../external-secrets/">ExternalSecret</a>.</p>
 <p>Store the credentials in OpenBao once OpenBao and ESO are up:</p>
@@ -2347,10 +2348,6 @@ later.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. This is the dependency that catches people after every power cut: sealed OpenBao means no Route53 credentials, which means no renewals, which means an expired certificate roughly two months later with no obvious connection to the outage that caused it. For the very first bootstrap, see the <a href="../../quickstart/">Quickstart</a> which walks through the order.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">cert-manager is installed twice, sort of</p>
-<p><code>make install-cert-manager</code> — which <code>make install-core</code> calls — installs the chart and the ClusterIssuers by Helm before ArgoCD exists, and ArgoCD then adopts them. As with Cilium, there is only one pin: the <code>Makefile</code> reads <code>targetRevision</code> out of <code>application.yaml</code> rather than keeping a version of its own. On a single tainted node this is the target that hangs; see <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
 </div>
 <h2 id="issuers">Issuers<a class="headerlink" href="#issuers" title="Permanent link">&para;</a></h2>
 <table>
@@ -2382,7 +2379,7 @@ later.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>cert-manager/                  # TLS Certificate Management
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml           # ArgoCD Application (Helm chart)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── values.yaml                # Helm values, shared with `make install-core`
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── values.yaml                # Helm values
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── certificates.yaml          # All Certificate resources
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── route53-credentials.yaml   # ExternalSecret → OpenBao

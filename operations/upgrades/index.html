@@ -2295,8 +2295,8 @@ change a running node.</p>
 <p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
 <code>targetRevision</code> and the PR merges. No manual step is involved. See
 <a href="../../development/maintenance/">Maintenance</a>.</p>
-<p>Cilium, cert-manager, the Gateway API CRDs and ArgoCD itself are a little
-different, because <code>make install-core</code> and <code>make install-argo</code> install them by
+<p>Cilium, the Gateway API CRDs and ArgoCD itself are a little
+different, because <code>make install-cilium</code> and <code>make install-argo</code> install them by
 Helm during bootstrap, before ArgoCD exists to manage them. They are still not
 a second place to bump: those targets read each version out of the same
 <code>Application</code> manifest Renovate updates, so merging a <code>targetRevision</code> bump

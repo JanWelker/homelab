@@ -2394,7 +2394,7 @@ server for its config — only for the sysext images in step 12, and only on thi
 first boot.</p>
 <p>Step 14 leaving the node <code>NotReady</code> is correct and expected — there is no CNI
 yet, so the kubelet has nothing to plug pods into. It stays that way until
-<code>make install-core</code> lands Cilium.</p>
+<code>make install-cilium</code> lands Cilium.</p>
 <h2 id="every-boot-after-the-first">Every boot after the first<a class="headerlink" href="#every-boot-after-the-first" title="Permanent link">&para;</a></h2>
 <p>The node boots from its own disk. The boot server can be, and should be,
 switched off.</p>
@@ -2438,15 +2438,16 @@ data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.</p>
 </div>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once Kubeadm has initialized the control plane, the remaining components are
-installed from the deployment host. This is the last time anything is applied by
-hand; after step 6 the repository is in charge.</p>
+installed from the deployment host — only what ArgoCD needs to run, and ArgoCD
+itself. This is the last time anything is applied by hand; after step 6 the
+repository is in charge. <code>make bootstrap</code> runs all three targets in order.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant Admin as Operator
     participant Deploy as Deployment Host
     participant Cluster
 
-    Admin-&gt;&gt;Deploy: 1. make install-core
-    Deploy-&gt;&gt;Cluster: 2. Helm install Cilium, cert-manager
+    Admin-&gt;&gt;Deploy: 1. make install-cilium
+    Deploy-&gt;&gt;Cluster: 2. Helm install Gateway API CRDs, Cilium
     Note over Cluster: Nodes become Ready
     Admin-&gt;&gt;Deploy: 3. make install-argo
     Deploy-&gt;&gt;Cluster: 4. Helm install ArgoCD
@@ -2454,7 +2455,7 @@ hand; after step 6 the repository is in charge.</p>
     Deploy-&gt;&gt;Cluster: 6. Apply root.yaml (App-of-Apps)</code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in <a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes <em>before</em> step 1: cert-manager has no tolerations, so <code>make install-core</code> hangs waiting on pods that cannot be scheduled. See <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
+<p><code>make untaint</code> is <strong>not</strong> part of this flow. It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster. The layout in <a href="../#cluster-layout">Architecture Overview</a> has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes <em>before</em> step 3: ArgoCD has no tolerations, so <code>make install-argo</code> waits on pods that cannot be scheduled. See <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
 </div>
 
 

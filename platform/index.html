@@ -2285,8 +2285,7 @@ In that order — the answer is usually the first one.</p>
 </table>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="bootstrap-before-argocd">Bootstrap (before ArgoCD)<a class="headerlink" href="#bootstrap-before-argocd" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>install-core<span class="w">  </span><span class="c1"># Gateway API + Prometheus operator CRDs, Cilium, cert-manager</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>install-argo<span class="w">  </span><span class="c1"># ArgoCD</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bootstrap<span class="w">  </span><span class="c1"># Gateway API CRDs + Cilium, ArgoCD, then the parent Applications</span>
 </span></code></pre></div>
 <h3 id="gitops-after-argocd">GitOps (after ArgoCD)<a class="headerlink" href="#gitops-after-argocd" title="Permanent link">&para;</a></h3>
 <p>Two parent ArgoCD Applications manage the cluster:</p>

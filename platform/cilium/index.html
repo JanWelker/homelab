@@ -1200,6 +1200,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Installation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2074,6 +2085,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Installation
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2219,7 +2241,7 @@ never a small problem.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td>Gateway API CRDs (<code>-10</code>), the Prometheus operator CRDs from <code>make install-cilium</code>, and a <code>k8sServiceHost</code> that answers</td>
+<td>Gateway API CRDs (<code>-10</code>), the Prometheus operator CRDs from kube-prometheus-stack (<code>1</code>) for its ServiceMonitors, and a <code>k8sServiceHost</code> that answers</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2290,10 +2312,30 @@ respect they deserve — the ordering is spelled out in
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── httproute.yaml     # Hubble UI route
 </span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Cilium is installed twice, sort of</p>
-<p><code>make install-core</code> installs it by Helm, because it has to exist before ArgoCD does, and ArgoCD then adopts it. There is only one number: the <code>Makefile</code> reads <code>targetRevision</code> straight out of <code>application.yaml</code> instead of keeping a pin of its own, so a rebuilt cluster cannot quietly land on a different Cilium than the one it replaced.</p>
-</div>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p>Cilium is installed twice, sort of. <code>make install-cilium</code> installs it by Helm,
+because no pod runs without a CNI and ArgoCD is a pod, and ArgoCD then adopts
+it. There is only one number: the <code>Makefile</code> reads <code>targetRevision</code> straight
+out of <code>application.yaml</code> instead of keeping a pin of its own, so a rebuilt
+cluster cannot quietly land on a different Cilium than the one it replaced.</p>
+<p>The bootstrap install uses the same <code>values.yaml</code> as ArgoCD, and has to: the
+agent and operator do not restart when <code>cilium-config</code> changes, so a slimmer
+bootstrap config would keep running long after ArgoCD "fixed" it. The Gateway
+API CRDs go in first for the same reason — the operator checks for them once,
+at startup, and leaves the Gateway controller off if they are missing.</p>
+<p>The one difference is the three <code>serviceMonitor.enabled</code> flags, which <code>make</code>
+turns off. The ServiceMonitor CRDs belong to kube-prometheus-stack, which
+arrives later through ArgoCD, and without them Helm cannot apply the monitors.
+Switching them off changes nothing in <code>cilium-config</code>; it drops three
+ServiceMonitors and two metrics Services, and the <code>prometheus.io/scrape</code>
+annotations on the agent and operator pods. When ArgoCD adopts the release it
+adds those back, which rolls the agent and operator once.</p>
+<p>ArgoCD's own render would fail the same way — the chart refuses to render
+ServiceMonitors while <code>monitoring.coreos.com/v1</code> is missing — so <code>values.yaml</code>
+sets <code>trustCRDsExist: true</code>. On a new cluster the first sync attempts then fail
+on the missing kind; <code>SkipDryRunOnMissingResource</code> lets everything else apply
+meanwhile, and <code>retry</code> keeps trying until kube-prometheus-stack has installed
+the CRDs.</p>
 
 
 

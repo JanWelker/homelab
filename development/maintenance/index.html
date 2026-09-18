@@ -2447,7 +2447,7 @@ custom regex manager picks it up.</p>
 <p>The alternative is to move the values into a real <code>values.yaml</code> and reference it
 with <code>valueFiles</code>, the way Cilium, ArgoCD and cert-manager already do. Either
 works; the annotation is cheaper for a single tag, and the values file pays off
-the moment there is a second one -- or the moment <code>make install-core</code> needs the
+the moment there is a second one -- or the moment a bootstrap target needs the
 same settings, since a bootstrap target can pass a file to Helm and cannot pass
 a <code>valuesObject</code>.</p>
 <h3 id="a-dependency-can-be-extracted-and-still-never-looked-up">A dependency can be extracted and still never looked up<a class="headerlink" href="#a-dependency-can-be-extracted-and-still-never-looked-up" title="Permanent link">&para;</a></h3>
@@ -2469,9 +2469,8 @@ sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
 container image in the repository that <code>config:best-practices</code> never pinned to a
 digest.</p>
 <h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
-<p><code>make install-core</code> and <code>make install-argo</code> install Cilium, cert-manager, the
-Gateway API and Prometheus operator CRDs, and ArgoCD itself before ArgoCD exists
-to manage them. The <code>Makefile</code> used to carry its own pins for those, and
+<p><code>make install-cilium</code> and <code>make install-argo</code> install Cilium, the Gateway API
+CRDs, and ArgoCD itself before ArgoCD exists to manage them. The <code>Makefile</code> used to carry its own pins for those, and
 Renovate never saw them — by the time anybody looked, the bootstrap Cilium was
 two minors behind the one the cluster was actually running.</p>
 <p>The fix was not another custom manager. A second copy of a version is the
