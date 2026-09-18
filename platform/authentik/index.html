@@ -1378,6 +1378,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#home-assistant-is-the-exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Home Assistant is the exception
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-hostnames" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Two hostnames
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two hostnames">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#where-the-proxied-routes-point" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1390,6 +1418,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-a-blueprint-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where a blueprint lives
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2119,6 +2158,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#home-assistant-is-the-exception" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Home Assistant is the exception
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-hostnames" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Two hostnames
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Two hostnames">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#where-the-proxied-routes-point" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2131,6 +2198,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-a-blueprint-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where a blueprint lives
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2361,6 +2439,14 @@ the project never shipped any.</p>
 <td>OIDC, login form disabled</td>
 </tr>
 <tr>
+<td>Nextcloud</td>
+<td>OIDC, login form hidden, local admin break-glass</td>
+</tr>
+<tr>
+<td>Home Assistant</td>
+<td>Proxy outpost <strong>in front of</strong> its own login — see <a href="#home-assistant-is-the-exception">the exception</a></td>
+</tr>
+<tr>
 <td>Rook dashboard</td>
 <td>Proxy outpost</td>
 </tr>
@@ -2422,7 +2508,7 @@ so much as a password prompt.</p>
 <h2 id="two-integration-styles">Two integration styles<a class="headerlink" href="#two-integration-styles" title="Permanent link">&para;</a></h2>
 <p><strong>OIDC</strong>, for applications that can do it themselves. ArgoCD and Grafana each
 talk to Authentik directly and map group membership to a role.</p>
-<p><strong>Proxy</strong>, for the four that cannot. Authentik's embedded outpost is a reverse
+<p><strong>Proxy</strong>, for the five that cannot. Authentik's embedded outpost is a reverse
 proxy: the hostname resolves to the outpost, the outpost authenticates the
 request, and only then forwards it to the real backend. No support is needed
 from the application, which is the only option for something like Hubble. It is
@@ -2434,17 +2520,120 @@ well as your certainty that nothing else can reach the backend directly.</p>
     APP -.-&gt;|OIDC redirect| AK[Authentik]
     GW --&gt;|hubble, rook, prometheus, alertmanager| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
+<h3 id="home-assistant-is-the-exception">Home Assistant is the exception<a class="headerlink" href="#home-assistant-is-the-exception" title="Permanent link">&para;</a></h3>
+<p>Every other proxied application has no login of its own, which is what makes
+the outpost <em>the</em> authentication rather than an extra one. Home Assistant does
+have a login, and upstream ships no OIDC provider to replace it — the only auth
+providers in the codebase are <code>homeassistant</code>, <code>command_line</code>,
+<code>trusted_networks</code> and an example marked insecure.</p>
+<p>So the outpost sits <em>in front of</em> Home Assistant's own login rather than
+instead of it. Browser users authenticate twice. That is defence in depth, not
+single sign-on, and it is worth being honest about which one you are getting.</p>
+<p>The companion apps and webhooks cannot complete an interactive Authentik login
+at all — they hold a long-lived token — so <code>skip_path_regex</code> on the provider
+lets <code>/api/</code>, <code>/auth/token</code> and the external-auth callback through untouched.
+<strong>Home Assistant's own accounts still guard those paths</strong>, and they are the
+only thing guarding them. Revoking someone's Authentik account does not revoke
+their Home Assistant token; that has to be done in Home Assistant.</p>
+<h2 id="two-hostnames">Two hostnames<a class="headerlink" href="#two-hostnames" title="Permanent link">&para;</a></h2>
+<p>Authentik answers on two names, and which one a client uses is not arbitrary:</p>
+<table>
+<thead>
+<tr>
+<th>Hostname</th>
+<th>Gateway</th>
+<th>Reachable from</th>
+<th>Used by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>auth.infra.k8s.wlkr.ch</code></td>
+<td><code>infra-gateway</code></td>
+<td>the local network</td>
+<td>ArgoCD, Grafana, break-glass <code>akadmin</code> login</td>
+</tr>
+<tr>
+<td><code>auth.k8s.wlkr.ch</code></td>
+<td><code>apps-gateway</code></td>
+<td>outside it too</td>
+<td>Nextcloud</td>
+</tr>
+</tbody>
+</table>
+<p>The workload hostnames are reachable from outside the local network and the
+<code>*.infra</code> ones are not, so an OIDC client that users reach from outside would
+send them to an authorize endpoint that does not resolve, and the login would
+hang with no useful error.</p>
+<p>Authentik needs no configuration for this. Every URL it publishes — issuer,
+authorize, token, userinfo, jwks — is built with <code>request.build_absolute_uri()</code>,
+so it serves a self-consistent OpenID configuration on whichever name the
+request arrived on.</p>
+<div class="admonition warning">
+<p class="admonition-title">A client must never mix the two</p>
+<p>The <code>iss</code> claim in the token is the hostname the token was issued through, and a client compares it against the issuer it discovered. Point a client's discovery URI at one name and its redirect at the other and every login fails the issuer check — with an error that blames the token, not the hostname. Each client is pinned to exactly one name; ArgoCD and Grafana are on the infra name, and nothing about them changed when the second route was added.</p>
+</div>
+<p>Proxied applications are unaffected either way: their route points at
+<code>authentik-server</code>, so the whole flow — including the login — happens on the
+application's own hostname and never redirects to either of these.</p>
 <h3 id="where-the-proxied-routes-point">Where the proxied routes point<a class="headerlink" href="#where-the-proxied-routes-point" title="Permanent link">&para;</a></h3>
 <p>The <code>HTTPRoute</code> for <code>hubble.infra.k8s.wlkr.ch</code> stays in <code>payload/platform/cilium/</code>
 next to the thing it exposes, but its <code>backendRef</code> is <code>authentik-server</code> in the
 <code>authentik</code> namespace. Gateway API forbids a cross-namespace <code>backendRef</code> unless
 the target namespace grants it, so <code>referencegrant.yaml</code> allows exactly that:
-<code>HTTPRoute</code> objects, from <code>kube-system</code> and <code>rook-ceph</code> only, to the
-<code>authentik-server</code> Service only.</p>
+<code>HTTPRoute</code> objects, from <code>kube-system</code>, <code>rook-ceph</code> and <code>home-assistant</code>
+only, to the <code>authentik-server</code> Service only.</p>
+<p><code>home-assistant</code> is on that list because its route lives in the
+<a href="../../development/add-workload/">workloads repository</a> — the one place a
+workload needs something granted to it here. Adding a proxied workload is
+therefore two pull requests, which is the intended friction: a workload should
+not be able to put itself behind, or take itself out from behind, the
+authentication layer on its own.</p>
 <p>Prometheus and Alertmanager have no route of their own to reuse, so theirs live
 in the <code>authentik</code> directory. <strong>Neither has authentication of its own</strong> —
 publishing them at all is only defensible because the outpost authenticates in
 front of them.</p>
+<h2 id="where-a-blueprint-lives">Where a blueprint lives<a class="headerlink" href="#where-a-blueprint-lives" title="Permanent link">&para;</a></h2>
+<p>Platform providers are in <code>blueprints.yaml</code> here. A <strong>workload's</strong> provider is
+not: it lives in that workload's own directory in the
+<a href="../../development/add-workload/">workloads repository</a>, as a ConfigMap targeted
+at this namespace, so the provider and the application it authenticates change
+in one commit.</p>
+<p>This repository keeps the parts that cannot safely be delegated:</p>
+<table>
+<thead>
+<tr>
+<th>Stays here</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The client credentials, in <code>bao-secrets.sh</code></td>
+<td>A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act</td>
+</tr>
+<tr>
+<td>The mount entry, in <code>application.yaml</code></td>
+<td>One projected-volume source per workload</td>
+</tr>
+<tr>
+<td>The embedded outpost's <code>providers:</code> list</td>
+<td>It replaces a single global object; two repositories writing it would overwrite each other</td>
+</tr>
+<tr>
+<td><code>referencegrant.yaml</code></td>
+<td>A proxied workload's route needs granting from this side</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">The mount must be optional, and not <code>blueprints.configMaps</code></p>
+<p><code>blueprints.configMaps</code> renders a plain <code>configMap</code> volume, and the kubelet refuses to start a pod whose ConfigMap does not exist. Workload blueprints arrive in <code>12-workloads</code>, four stages after Authentik has to be Healthy — so a required mount means the worker waits for a stage that is waiting for the worker. The workload sources are a <code>projected</code> volume instead, which accepts <code>optional: true</code>, and the worker starts whether or not any of them exist yet.</p>
+</div>
+<p><code>blueprints_discovery</code> runs on the worker's startup, hourly, and on a file
+watcher, so a blueprint that lands later is picked up without a restart —
+asynchronously, which is why anything configuring itself <em>against</em> a provider
+has to tolerate it not being there yet.</p>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
 (<code>blueprints.yaml</code>), mounted into the worker as a ConfigMap. Clicking them
