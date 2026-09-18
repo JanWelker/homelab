@@ -2609,6 +2609,10 @@ self-explanatory:</p>
 <td>Three replicas with hard per-host anti-affinity and only three schedulable nodes. The default strategy surges a fourth pod with nowhere to land, wedging every rollout until the progress deadline gives up. Retiring first frees the node</td>
 </tr>
 <tr>
+<td><code>redis-ha.image.tag</code>, <code>redis-ha.haproxy.image.tag</code></td>
+<td>Both run ahead of the chart. The chart pins exact patch tags, and an exact patch tag stops being rebuilt once the next one lands, so it never picks up a base-image security update. <code>redis</code> 8.6.4-alpine was last built 2026-06-23 and therefore predates the Alpine OpenSSL 3.5.8-r0 of 2026-08-25; 8.6.6-alpine is the current head of the same 8.6 line the chart deliberately chose. Renovate needs each bare <code>tag:</code> listed under the <code>pinDigests: false</code> rule in <code>renovate.json</code></td>
+</tr>
+<tr>
 <td>Memory limits, no CPU limits</td>
 <td>Limits are about 2.5x the measured peak working set; requests are about steady state. A CPU limit throttles even on an idle node, while memory is not compressible, so only memory is capped</td>
 </tr>
