@@ -64,17 +64,17 @@ In that order — the answer is usually the first one.
 
 HTTPRoutes are co-located with their respective apps:
 
-| Service        | URL                              | HTTPRoute Location                           |
-|----------------|----------------------------------|----------------------------------------------|
-| ArgoCD         | `argo.infra.k8s.wlkr.ch`         | `payload/argocd/httproute.yaml`              |
-| Authentik      | `auth.infra.k8s.wlkr.ch`         | `payload/platform/authentik/httproute.yaml`  |
-| Prometheus     | `prometheus.infra.k8s.wlkr.ch`   | `payload/platform/authentik/httproute.yaml`  |
-| Alertmanager   | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml`  |
-| Grafana        | `monitoring.infra.k8s.wlkr.ch`   | `payload/platform/monitoring/httproute.yaml` |
-| Hubble         | `hubble.infra.k8s.wlkr.ch`       | `payload/platform/cilium/httproute.yaml`     |
-| OpenBao UI     | `vault.infra.k8s.wlkr.ch`        | `payload/platform/openbao/httproute.yaml`    |
-| Rook Dashboard | `rook.infra.k8s.wlkr.ch`         | `payload/platform/rook-ceph/httproute.yaml`  |
-| Apps           | `<app>.k8s.wlkr.ch`              | `payload/workloads/<app>/httproute.yaml`     |
+| Service        | URL                              | HTTPRoute Location                              |
+|----------------|----------------------------------|-------------------------------------------------|
+| ArgoCD         | `argo.infra.k8s.wlkr.ch`         | `payload/platform/argocd-config/httproute.yaml` |
+| Authentik      | `auth.infra.k8s.wlkr.ch`         | `payload/platform/authentik/httproute.yaml`     |
+| Prometheus     | `prometheus.infra.k8s.wlkr.ch`   | `payload/platform/authentik/httproute.yaml`     |
+| Alertmanager   | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml`     |
+| Grafana        | `monitoring.infra.k8s.wlkr.ch`   | `payload/platform/monitoring/httproute.yaml`    |
+| Hubble         | `hubble.infra.k8s.wlkr.ch`       | `payload/platform/cilium/httproute.yaml`        |
+| OpenBao UI     | `vault.infra.k8s.wlkr.ch`        | `payload/platform/openbao/httproute.yaml`       |
+| Rook Dashboard | `rook.infra.k8s.wlkr.ch`         | `payload/platform/rook-ceph/httproute.yaml`     |
+| Apps           | `<app>.k8s.wlkr.ch`              | `payload/workloads/<app>/httproute.yaml`        |
 
 ## Usage
 
@@ -93,7 +93,8 @@ One Application sits above everything else:
 | `argocd` Application | Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand | `payload/argocd/application.yaml` |
 | `platform` ApplicationSet | Generates one Application per `payload/platform/*/application.yaml` | `payload/argocd/applicationset.yaml` |
 
-A third parent, `workloads`, is added back alongside the first workload. See
+Workloads do not add a third object: the same ApplicationSet grows a generator
+path and a `12-workloads` step. See
 [Adding a Workload](../development/add-workload.md).
 
 Each component directory holds exactly one `application.yaml`; everything else

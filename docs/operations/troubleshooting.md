@@ -37,20 +37,24 @@ and those two look identical from here.
 ## Rolling back a bad sync
 
 Everything under `payload/` is applied by ArgoCD from Git, so the durable fix is
-a revert commit. To stop the bleeding first, disable auto-sync on the affected
-Application and roll it back:
+a revert commit. To stop the bleeding first, roll the Application back:
 
 ```bash
-kubectl -n argocd patch application <app> --type merge \
-  -p '{"spec":{"syncPolicy":{"automated":null}}}'
 argocd app rollback <app>
 ```
 
-Re-enable auto-sync by restoring `syncPolicy.automated` once the revert has
-landed on `main`. Leaving it disabled means the Application silently stops
-tracking Git — and an Application that has quietly stopped tracking Git is a
-time bomb with a three-month fuse, defused only by somebody wondering why their
-change never took effect.
+Nothing has to be disabled first. The Applications the `platform` ApplicationSet
+generates already have automated sync switched off — the ApplicationSet
+controller syncs them — so a rollback holds until the next change to that
+Application. Do not patch their `spec` to pin them: the ApplicationSet copies
+`spec` wholesale from `payload/platform/*/application.yaml` on its next
+reconcile and the patch disappears.
+
+The exception is `argocd` itself, which is not generated and does run with
+`automated`. Pinning that one means restoring `syncPolicy.automated` afterwards,
+and an Application that has quietly stopped tracking Git is a time bomb with a
+three-month fuse, defused only by somebody wondering why their change never took
+effect.
 
 !!! warning
-    Do not fix a broken workload by editing live objects with `kubectl edit`. Every Application here runs with `selfHeal: true`, so ArgoCD reverts the change within minutes and the real cause gets harder to find — and you will spend twenty minutes convinced you are losing your mind before you remember why.
+    Do not fix a broken workload by editing live objects with `kubectl edit`. Under the ApplicationSet these edits are worse than useless rather than merely useless: nothing reverts them, so the cluster quietly stops matching Git and the next sync of that Application — whenever its revision happens to change — undoes your fix without warning. Change the manifest instead.

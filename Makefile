@@ -30,9 +30,14 @@ untaint:
 	@echo "WARNING: Only run this task in a single node cluster setup!"
 	kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
+# --overwrite: without it this fails on any node that is already tainted, so
+# re-tainting a partly untainted cluster takes two tries and a reading of the
+# error message.
 taint:
 	@echo "Re-applying control-plane taints..."
-	kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane:NoSchedule
+	kubectl taint nodes --overwrite \
+		-l node-role.kubernetes.io/control-plane \
+		node-role.kubernetes.io/control-plane:NoSchedule
 
 fonts:
 	scripts/update-fonts.sh
@@ -43,13 +48,15 @@ fonts-check:
 # Everything ArgoCD needs to run, and nothing it can install itself.
 bootstrap: install-cilium install-argo bootstrap-apps
 
-# ServiceMonitors off: their CRDs arrive later with kube-prometheus-stack, and
-# ArgoCD adds the monitors then. They leave cilium-config untouched.
+# ServiceMonitors off: their CRDs arrive with the prometheus-operator-crds
+# Application in 01-crds, and ArgoCD adds the monitors when it adopts the
+# release. The flags leave cilium-config untouched.
 install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	kubectl apply --server-side \
+		-f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
 	helm upgrade --install cilium cilium \
 		--repo https://helm.cilium.io/ \
 		--version $(CILIUM_VERSION) \
@@ -79,6 +86,7 @@ bootstrap-apps:
 	kubectl apply -f payload/argocd/application.yaml
 	@echo "AppProjects and the self-managing argocd Application created."
 	@echo "ArgoCD now syncs the platform ApplicationSet and everything under it."
+	@echo "It stops at 05-secrets until make bao-init and make bao-unseal run."
 
 storage-check:
 	scripts/storage-check.sh

@@ -91,8 +91,8 @@ The full sequence, arrow by arrow, is in
 Everything the cluster runs is described in this repository under `payload/`,
 and [ArgoCD](https://argo-cd.readthedocs.io/) continuously reconciles the
 cluster to match. The rule is absolute: if it is not in Git, it is not in the
-cluster — and if you put it in the cluster anyway, `selfHeal` removes it while
-you are still admiring your work.
+cluster — and if you put it in the cluster anyway, the next sync of the
+Application that owns it puts Git's version back.
 
 Two terms recur throughout this site:
 
