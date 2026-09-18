@@ -66,9 +66,10 @@ located in `renovate.json`.
     config short enough to hold in your head; what it costs is listed under
     [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
-    are pinned to commit SHAs and container images to digests. Two Helm `tag:`
-    overrides are exempt, because a bare tag has nowhere to put one -- see
-    [A bare Helm tag cannot be digest-pinned](#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it).
+    are pinned to commit SHAs and container images to digests. A custom manager
+    needs `autoReplaceStringTemplate` to take part, and two Helm `tag:` overrides
+    are exempt because a bare tag has nowhere to put a digest -- see
+    [A custom manager cannot add a digest](#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
     Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
@@ -177,7 +178,7 @@ sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
 container image in the repository that `config:best-practices` never pinned to a
 digest.
 
-### A bare Helm tag cannot be digest-pinned, and takes the branch with it
+### A custom manager cannot add a digest without `autoReplaceStringTemplate`
 
 `config:best-practices` pins container images to digests, and Renovate collects
 every pin into one shared `renovate/pin-dependencies` branch. A pin it cannot
@@ -187,29 +188,41 @@ write does not skip that dependency; it fails the whole branch:
 WARN: Error updating branch: update failure
 ```
 
-Two pins in this repository have nowhere for a digest to go. The HAProxy and
-Kubescape overrides are Helm `tag:` values inside a `valuesObject`, so the field
-holds `3.4.4-alpine`, not a complete image reference -- there is no `@sha256:`
-position in it at all. No capture group fixes that, unlike a full reference where
-an optional `(?:@(?<currentDigest>sha256:[a-f0-9]+))?` is enough. So both carry
-`pinDigests: false`, and **a third bare-tag docker pin has to be added to that
-rule** or the banner comes back.
+A custom regex manager rewrites the string it matched, and nothing else. For a
+pin, `currentValue` does not change and there is no digest in the file to swap,
+so the replacement comes out byte-identical, the post-write check finds no
+digest where it demanded one, and the branch throws. **Capturing `currentDigest`
+does not fix this** -- that group only lets Renovate *update* a digest that is
+already written. Adding one needs a template:
 
-The collateral is the part worth remembering. `dagandersen/argocd-diff-preview`
-*can* be pinned -- its manager captures `currentDigest` precisely so that it can
--- but it shared the failing branch, so its digest pin never landed either. One
-unwritable pin held up every pin in the repository, which is why the symptom
-reads as "Renovate is broken" rather than as two specific fields.
+```json
+"autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
+```
 
-Images written as a full reference are unaffected: `velero-plugin-for-aws`,
-`etcd`, `aws-cli`, `kube-vip` and `busybox` are all digest-pinned already,
-because the `kubernetes` manager reads those `image:` lines natively and writes
-digests into them. Only the Helm-values overrides needed the exception.
+That is the same template the `docker` and `kubernetes` managers set on every
+dep they extract, which is exactly why `velero-plugin-for-aws`, `etcd`,
+`aws-cli`, `kube-vip` and `busybox` pinned themselves without anyone noticing.
+**A custom manager for a full image reference needs the template, or it takes
+the pin branch down with it.** Where the matched string has a prefix, the
+template has to rebuild it -- the workloads repository matches on an
+`imageName:` prefix, so its template starts with that literal.
+
+The HAProxy and Kubescape overrides are the genuine exception. Those are Helm
+`tag:` values inside a `valuesObject`, holding `3.4.4-alpine` rather than a
+complete image reference, so there is no `@sha256:` position in the field and no
+template that could invent one. Both carry `pinDigests: false`, and **a third
+bare-tag docker pin has to be added to that rule** or the banner comes back.
+
+The collateral is the part worth remembering. One unwritable pin holds up every
+pin in the repository -- the Home Assistant image in the workloads repository is
+perfectly pinnable and still never got its digest, because it shared a branch
+with a CloudNativePG pin that could not be written. That is why the symptom
+reads as "Renovate is broken" rather than as one specific field.
 
 Version bumps never stopped working through any of this, which is what makes it
-easy to miss: the CloudNativePG image in the workloads repository was bumped to
-18.6 by the very manager whose pin was failing. The Dependency Dashboard banner
-is the only place it shows.
+easy to miss: the CloudNativePG image was bumped to 18.6 by the very manager
+whose pin was failing. The Dependency Dashboard banner is the only place it
+shows.
 
 ### Bootstrap versions are derived, not pinned
 
