@@ -47,6 +47,17 @@
         "containerd"
       ],
       "extractVersion": "^containerd-(?<version>.+)$"
+    },
+    {
+      "description": "A Helm `tag:` override holds a bare tag, so docker:pinDigests has nowhere to write a digest and fails the whole shared pin branch. Add a bare-tag docker pin here or the Dependency Dashboard reports `Error updating branch: update failure`. Images written as a full reference keep their digests -- see docs/development/maintenance.md",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ecr-public.aws.com/docker/library/haproxy",
+        "quay.io/kubescape/kubescape"
+      ],
+      "pinDigests": false
     }
   ],
   "pre-commit": {
