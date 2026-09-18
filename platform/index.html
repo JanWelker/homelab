@@ -2341,7 +2341,7 @@ In that order — the answer is usually the first one.</p>
 <tr>
 <td>Apps</td>
 <td><code>&lt;app&gt;.k8s.wlkr.ch</code></td>
-<td><code>payload/workloads/&lt;app&gt;/httproute.yaml</code></td>
+<td><code>&lt;app&gt;/httproute.yaml</code> in <a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a></td>
 </tr>
 </tbody>
 </table>
@@ -2368,12 +2368,18 @@ In that order — the answer is usually the first one.</p>
 <tr>
 <td><code>platform</code> ApplicationSet</td>
 <td>Generates one Application per <code>payload/platform/*/application.yaml</code></td>
-<td><code>payload/argocd/applicationset.yaml</code></td>
+<td><code>payload/argocd/applicationset-platform.yaml</code></td>
+</tr>
+<tr>
+<td><code>apps</code> ApplicationSet</td>
+<td>Generates one Application per <code>&lt;app&gt;/application.yaml</code> in the workloads repository</td>
+<td><code>payload/workloads/applicationset.yaml</code></td>
 </tr>
 </tbody>
 </table>
-<p>Workloads do not add a third object: the same ApplicationSet grows a generator
-path and a <code>12-workloads</code> step. See
+<p>The <code>apps</code> ApplicationSet is itself deployed by the <code>workloads</code> Application in
+the last platform stage, which is what keeps workloads from being generated
+before the platform under them exists. See
 <a href="../development/add-workload/">Adding a Workload</a>.</p>
 <p>Each component directory holds exactly one <code>application.yaml</code>; everything else
 in the directory is what that Application deploys, apart from Helm <code>values.yaml</code>
@@ -2452,6 +2458,11 @@ the gating works and what it costs.</p>
 <td><code>11-policy</code></td>
 <td><code>kubescape</code>, <code>kured</code>, <code>security</code></td>
 <td>everything else, so policies label namespaces that exist and kured reboots a converged cluster</td>
+</tr>
+<tr>
+<td><code>12-workloads</code></td>
+<td><code>workloads</code></td>
+<td>the whole platform. It deploys the <code>apps</code> ApplicationSet, and nothing in the <a href="../development/add-workload/">workloads repository</a> is generated before it</td>
 </tr>
 </tbody>
 </table>

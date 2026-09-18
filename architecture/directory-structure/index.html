@@ -962,6 +962,23 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Repository Layout
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="././" class="md-nav__link md-nav__link--active">
         
   
@@ -977,6 +994,37 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-workloads-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The workloads repository
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1913,6 +1961,11 @@
                       
                     
                     
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1924,6 +1977,25 @@
   
     
   
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-workloads-repository" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The workloads repository
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -2034,9 +2106,12 @@
 <h1 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h1>
 <p>Four directories do the real work, and knowing which is which saves a lot of
 grepping. <code>ansible/</code> describes the machines, <code>boot_server/</code> hands them their
-operating system, <code>payload/</code> is everything the cluster runs, and <code>output/</code> is
-generated — never edit anything in there, it will be overwritten by the next
+operating system, <code>payload/</code> is the platform the cluster runs on, and <code>output/</code>
+is generated — never edit anything in there, it will be overwritten by the next
 <code>make config</code> without ceremony.</p>
+<p>The applications the cluster exists to <em>serve</em> are not here at all: they live
+in <a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a>, and
+<a href="../gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a> explains why.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── ansible
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   ├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
@@ -2072,22 +2147,25 @@ generated — never edit anything in there, it will be overwritten by the next
 </span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>├── payload                 # K8s Manifests &amp; Bootstrap scripts
 </span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│   ├── argocd/             # ArgoCD itself (managed by ArgoCD after bootstrap)
 </span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│   │   ├── application.yaml     # Self-management Application, applied at bootstrap
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│   │   ├── applicationset.yaml  # One Application per */application.yaml, in stages
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│   │   ├── applicationset-platform.yaml  # One Application per platform/*/application.yaml
 </span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│   │   └── values.yaml
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│   └── platform/           # Core infrastructure managed by ArgoCD
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│       ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│       ├── argocd-projects/  # AppProjects (see Security Posture)
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│       ├── cert-manager/     # cert-manager controller
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│       ├── certificates/     # Let's Encrypt issuers and TLS certificates
-</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>│       ├── cilium/           # CNI + Gateway API
-</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>│       ├── external-secrets/ # OpenBao to K8s Secret bridge
-</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│       ├── gateway-api/      # Gateway resources
-</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│       ├── monitoring/       # Prometheus stack
-</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│       ├── openbao/          # Cluster secret store
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│       ├── rook-ceph/        # Storage operator &amp; cluster
-</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│       └── ...               # One directory per component; see Platform
-</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>├── zensical.toml           # Documentation site configuration
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>└── README.md
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│   ├── platform/           # Core infrastructure managed by ArgoCD
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│   │   ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│   │   ├── argocd-projects/  # AppProjects (see Security Posture)
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│   │   ├── cert-manager/     # cert-manager controller
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│   │   ├── certificates/     # Let's Encrypt issuers and TLS certificates
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>│   │   ├── cilium/           # CNI + Gateway API
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>│   │   ├── external-secrets/ # OpenBao to K8s Secret bridge
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│   │   ├── gateway-api/      # Gateway resources
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│   │   ├── monitoring/       # Prometheus stack
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│   │   ├── openbao/          # Cluster secret store
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   │   ├── rook-ceph/        # Storage operator &amp; cluster
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│   │   └── ...               # One directory per component; see Platform
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>│   └── workloads/          # NOT platform: the handover to the apps repository
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>│       ├── application.yaml     # Stage 12-workloads, the rollout's last step
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>│       └── applicationset.yaml  # ApplicationSet `apps`, pointed at homelab-apps
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>├── zensical.toml           # Documentation site configuration
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>└── README.md
 </span></code></pre></div>
 <div class="admonition danger">
 <p class="admonition-title"><code>output/</code> is generated; <code>output/credentials/</code> is not regenerable</p>
@@ -2124,6 +2202,36 @@ being built. <code>payload/</code> matters every day after that. If you are debu
 running cluster and find yourself in <code>ansible/</code>, you are probably in the wrong
 place — with the honourable exception of <code>kubeadm.yaml.j2</code>, which explains why
 half the control plane is configured the way it is.</p>
+<h2 id="the-workloads-repository">The workloads repository<a class="headerlink" href="#the-workloads-repository" title="Permanent link">&para;</a></h2>
+<p><code>homelab-apps</code> is one directory per application, its own documentation, and
+very little else:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── docs                    # Its own site, published separately
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│   ├── index.md
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   ├── conventions.md      # The rules every app directory follows
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   ├── home-assistant.md
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│   └── nextcloud.md
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>├── zensical.toml
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>├── renovate.json           # Same policy as this repository
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── home-assistant/
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>│   ├── application.yaml    # The ArgoCD Application, read by the `apps` set
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│   ├── namespace.yaml      # Pod Security labels, sync wave -2
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│   ├── database.yaml       # CloudNativePG Cluster, sync wave -1
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│   ├── ...                 # Whatever that application is made of
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│   ├── httproute.yaml
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│   └── networkpolicy.yaml
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>└── nextcloud/
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    └── ...
+</span></code></pre></div>
+<p>The shape is deliberately the same as <code>payload/platform/</code>: exactly one
+<code>application.yaml</code> per directory, and everything beside it is what that
+Application deploys. Adding a directory adds an application; there is no list
+to register it in. See <a href="../../development/add-workload/">Adding a Workload</a>.</p>
+<p>Its documentation is its own site, at
+<a href="https://janwelker.github.io/homelab-apps/">janwelker.github.io/homelab-apps</a>,
+built the same way this one is. Two repositories, two sites: a change to a
+workload and the page describing it belong in one pull request, and neither
+site has to be rebuilt because the other changed.</p>
 
 
 

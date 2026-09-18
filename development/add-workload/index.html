@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Deploy a new application to the cluster, from the ArgoCD Application and manifests through to exposing and documenting it.">
+        <meta name="description" content="Deploy an application to the cluster: the workloads repository, the rules every app directory follows, and what the platform gives you for free.">
       
       
       
@@ -1864,10 +1864,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-the-platform-already-does-for-you" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Overview
+        What the platform already does for you
       </span>
     </span>
   </a>
@@ -1875,10 +1875,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-let-the-applicationset-see-the-workloads" class="md-nav__link">
+  <a href="#the-rules" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 1: Let the ApplicationSet see the workloads
+        The rules
       </span>
     </span>
   </a>
@@ -1886,10 +1886,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-create-the-app-directory" class="md-nav__link">
+  <a href="#step-1-create-the-directory" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 2: Create the App Directory
+        Step 1: Create the directory
       </span>
     </span>
   </a>
@@ -1897,10 +1897,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-create-the-argocd-application" class="md-nav__link">
+  <a href="#step-2-write-the-application" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 3: Create the ArgoCD Application
+        Step 2: Write the Application
       </span>
     </span>
   </a>
@@ -1908,10 +1908,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-add-kubernetes-manifests" class="md-nav__link">
+  <a href="#step-3-add-the-manifests" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 4: Add Kubernetes Manifests
+        Step 3: Add the manifests
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Add the manifests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The namespace
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#if-it-needs-a-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        If it needs a database
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exposing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Exposing it
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-commit-and-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step 4: Commit and push
       </span>
     </span>
   </a>
@@ -1919,10 +1969,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-expose-the-app-optional" class="md-nav__link">
+  <a href="#step-5-document-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 5: Expose the App (Optional)
+        Step 5: Document it
       </span>
     </span>
   </a>
@@ -1930,21 +1980,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-6-commit-and-push" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 6: Commit and Push
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-7-document-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Step 7: Document It
+        Troubleshooting
       </span>
     </span>
   </a>
@@ -2062,10 +2101,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#what-the-platform-already-does-for-you" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Overview
+        What the platform already does for you
       </span>
     </span>
   </a>
@@ -2073,10 +2112,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-let-the-applicationset-see-the-workloads" class="md-nav__link">
+  <a href="#the-rules" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 1: Let the ApplicationSet see the workloads
+        The rules
       </span>
     </span>
   </a>
@@ -2084,10 +2123,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-create-the-app-directory" class="md-nav__link">
+  <a href="#step-1-create-the-directory" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 2: Create the App Directory
+        Step 1: Create the directory
       </span>
     </span>
   </a>
@@ -2095,10 +2134,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-create-the-argocd-application" class="md-nav__link">
+  <a href="#step-2-write-the-application" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 3: Create the ArgoCD Application
+        Step 2: Write the Application
       </span>
     </span>
   </a>
@@ -2106,10 +2145,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-add-kubernetes-manifests" class="md-nav__link">
+  <a href="#step-3-add-the-manifests" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 4: Add Kubernetes Manifests
+        Step 3: Add the manifests
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3: Add the manifests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The namespace
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#if-it-needs-a-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        If it needs a database
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exposing-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Exposing it
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-commit-and-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Step 4: Commit and push
       </span>
     </span>
   </a>
@@ -2117,10 +2206,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-expose-the-app-optional" class="md-nav__link">
+  <a href="#step-5-document-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 5: Expose the App (Optional)
+        Step 5: Document it
       </span>
     </span>
   </a>
@@ -2128,21 +2217,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-6-commit-and-push" class="md-nav__link">
+  <a href="#troubleshooting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 6: Commit and Push
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-7-document-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Step 7: Document It
+        Troubleshooting
       </span>
     </span>
   </a>
@@ -2248,123 +2326,264 @@
 
 
 <h1 id="adding-a-workload">Adding a Workload<a class="headerlink" href="#adding-a-workload" title="Permanent link">&para;</a></h1>
-<p>This guide walks through deploying a new application to the cluster from
-scratch. The good news: once the first one exists, adding the next is creating a
-directory and pushing. The whole point of the machinery in the rest of this
-documentation is that this page is short.</p>
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>All workloads live under <code>payload/workloads/&lt;app-name&gt;/</code>, one directory per app with an <code>application.yaml</code> in it. The <code>platform</code> ApplicationSet generates an ArgoCD Application from every such file it is told to look at, so adding a new folder is all that's needed to register an app. No console, no <code>kubectl apply</code>, no step that only exists in someone's memory.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>There are currently no workloads, so <code>payload/workloads/</code> does not exist. The first workload needs Step 1 below; subsequent ones can skip it.</p>
+<p>Workloads live in their own repository,
+<a href="https://github.com/JanWelker/homelab-apps"><code>JanWelker/homelab-apps</code></a>, not in
+this one. Adding an application is creating a directory there and pushing it —
+no console, no <code>kubectl apply</code>, no step that exists only in someone's memory.
+<a href="../../architecture/gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>
+covers why the split exists and what it costs.</p>
+<p>The <code>apps</code> ApplicationSet generates one ArgoCD Application per
+<code>*/application.yaml</code> in that repository. There is no list to register a new
+application in; the directory <em>is</em> the registration.</p>
+<h2 id="what-the-platform-already-does-for-you">What the platform already does for you<a class="headerlink" href="#what-the-platform-already-does-for-you" title="Permanent link">&para;</a></h2>
+<p>This is the part worth internalising before writing any YAML, because most of
+what an application needs is already handled and duplicating it is the usual
+mistake:</p>
+<table>
+<thead>
+<tr>
+<th>You want</th>
+<th>You write</th>
+<th>The platform does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A hostname</td>
+<td>An <code>HTTPRoute</code> with <code>hostnames: [app.k8s.wlkr.ch]</code></td>
+<td><a href="../../platform/external-dns/">external-dns</a> publishes the Route53 record from the route</td>
+</tr>
+<tr>
+<td>HTTPS</td>
+<td>Nothing</td>
+<td>The <code>apps-gateway</code> already terminates TLS with a <code>*.k8s.wlkr.ch</code> wildcard</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>A PVC with <code>storageClassName: rook-ceph-block</code></td>
+<td><a href="../../platform/rook-ceph/">Rook-Ceph</a> replicates it three ways, one copy per host</td>
+</tr>
+<tr>
+<td>A database</td>
+<td>A CloudNativePG <code>Cluster</code></td>
+<td><a href="../../platform/cloudnative-pg/">The operator</a> generates the credentials and runs the failover</td>
+</tr>
+<tr>
+<td>A secret from outside the cluster</td>
+<td>An <code>ExternalSecret</code></td>
+<td><a href="../../platform/openbao/">OpenBao</a> holds it; ESO renders a native <code>Secret</code></td>
+</tr>
+<tr>
+<td>Metrics</td>
+<td>A <code>ServiceMonitor</code> or <code>PodMonitor</code></td>
+<td>Prometheus scrapes it, Grafana can chart it</td>
+</tr>
+<tr>
+<td>Logs</td>
+<td>Nothing</td>
+<td>Alloy ships every container's stdout to Loki</td>
+</tr>
+<tr>
+<td>Backups</td>
+<td>Nothing, for a PVC</td>
+<td>Velero snapshots it on the cluster schedule</td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-rules">The rules<a class="headerlink" href="#the-rules" title="Permanent link">&para;</a></h2>
+<p>Every directory in the workloads repository follows these. They are restated in
+its <code>CONVENTIONS.md</code>, which is the copy to keep current.</p>
+<ol>
+<li><strong>Exactly one <code>application.yaml</code> per directory</strong>, and it is a complete
+   ArgoCD <code>Application</code>, not a fragment. The generator reads the file and
+   copies its labels, annotations, finalizers and <code>spec</code> through unchanged.</li>
+<li><strong><code>project: apps</code>.</strong> The ApplicationSet refuses to generate anything else —
+   a workload in the <code>infra</code> or <code>system</code> project would be authorised against
+   destinations it has no business in, so the whole set fails rather than let
+   one through.</li>
+<li><strong>The workload owns its namespace.</strong> Ship a <code>namespace.yaml</code> at sync wave
+   <code>-2</code> carrying the three Pod Security Admission labels, and annotate it
+   <code>Prune=false</code> — pruning a <code>Namespace</code> deletes every PVC inside it. A
+   namespace nobody labelled runs at <code>privileged</code>, which enforces nothing, and
+   that is exactly what <code>CreateNamespace=true</code> on its own leaves behind.</li>
+<li><strong>PostgreSQL is a CloudNativePG <code>Cluster</code>.</strong> Never a chart's bundled
+   database. See <a href="../../platform/cloudnative-pg/#the-contract">the contract</a>.</li>
+<li><strong>Ship a <code>CiliumNetworkPolicy</code>.</strong> Not a plain <code>NetworkPolicy</code> — a plain one
+   blocks health probes and the pods restart forever. The reasons are in
+   <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security Policies</a>.</li>
+<li><strong>Official upstream sources only.</strong> The vendor's own chart or the vendor's
+   own image. Not a repackager's chart, however convenient — the whole point of
+   pinning a version is knowing who published it.</li>
+<li><strong>Pin every version</strong>, and let Renovate move it. No <code>latest</code>, no floating
+   tags.</li>
+</ol>
+<h2 id="step-1-create-the-directory">Step 1: Create the directory<a class="headerlink" href="#step-1-create-the-directory" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:JanWelker/homelab-apps.git
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>homelab-apps
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mkdir<span class="w"> </span>my-app
+</span></code></pre></div>
+<h2 id="step-2-write-the-application">Step 2: Write the Application<a class="headerlink" href="#step-2-write-the-application" title="Permanent link">&para;</a></h2>
+<p><code>my-app/application.yaml</code>, for an app built from plain manifests:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nn">---</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argoproj.io/v1alpha1</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Application</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argocd</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/manifest-generate-paths</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">  </span><span class="nt">source</span><span class="p">:</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="nt">repoURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/JanWelker/homelab-apps.git</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="nt">targetRevision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HEAD</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">directory</span><span class="p">:</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">      </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="s">"application.yaml"</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">  </span><span class="nt">destination</span><span class="p">:</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://kubernetes.default.svc</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">  </span><span class="nt">syncPolicy</span><span class="p">:</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">    </span><span class="nt">automated</span><span class="p">:</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">      </span><span class="nt">prune</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">      </span><span class="nt">selfHeal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="nt">syncOptions</span><span class="p">:</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">      </span><span class="c1"># No CreateNamespace: namespace.yaml below creates it, with the Pod</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">      </span><span class="c1"># Security labels an implicitly created one would not have.</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServerSideApply=true</span>
+</span></code></pre></div>
+<p>For a Helm chart that also needs manifests of its own — a database, an
+<code>HTTPRoute</code>, a network policy — use a <code>sources</code> list with the chart in one
+entry and this repository in another. <code>nextcloud/application.yaml</code> is the
+worked example.</p>
+<div class="admonition tip">
+<p class="admonition-title">Workloads keep selfHeal</p>
+<p>Platform Applications give up <code>selfHeal</code> to the <code>RollingSync</code> strategy;
+workloads do not. A hand-edited workload Deployment is reverted within
+minutes, which is the behaviour most people expect from ArgoCD in the first
+place.</p>
 </div>
-<h2 id="step-1-let-the-applicationset-see-the-workloads">Step 1: Let the ApplicationSet see the workloads<a class="headerlink" href="#step-1-let-the-applicationset-see-the-workloads" title="Permanent link">&para;</a></h2>
-<p>In <code>payload/argocd/applicationset.yaml</code>, add the workloads path to the generator
-and a step for them at the end of the rollout:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="w">  </span><span class="nt">generators</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">git</span><span class="p">:</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">        </span><span class="nt">repoURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/JanWelker/homelab.git</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">        </span><span class="nt">revision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HEAD</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">        </span><span class="nt">files</span><span class="p">:</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload/platform/*/application.yaml</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload/workloads/*/application.yaml</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingSync</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">rollingSync</span><span class="p">:</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">      </span><span class="nt">steps</span><span class="p">:</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">        </span><span class="c1"># ... the existing steps, then:</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">matchExpressions</span><span class="p">:</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="nv">homelab.wlkr.ch/stage</span><span class="p p-Indicator">,</span><span class="nt"> operator</span><span class="p">:</span><span class="w"> </span><span class="nv">In</span><span class="p p-Indicator">,</span><span class="nt"> values</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">12-workloads</span><span class="p p-Indicator">]}</span>
+<h2 id="step-3-add-the-manifests">Step 3: Add the manifests<a class="headerlink" href="#step-3-add-the-manifests" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>my-app/
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── namespace.yaml      # Pod Security labels, sync wave -2
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── database.yaml       # CloudNativePG Cluster, sync wave -1, if it needs one
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── deployment.yaml
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── service.yaml
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── httproute.yaml      # if you want it reachable
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>└── networkpolicy.yaml
 </span></code></pre></div>
-<p>Workloads go last, after <code>11-policy</code>: they need the platform under them, and a
-broken workload should not hold back anything the cluster runs on.</p>
-<p>The <code>argocd</code> Application syncs <code>payload/argocd/</code>, so merging the change is
-enough — no <code>kubectl apply</code>.</p>
-<h2 id="step-2-create-the-app-directory">Step 2: Create the App Directory<a class="headerlink" href="#step-2-create-the-app-directory" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>payload/workloads/my-app
+<h3 id="the-namespace">The namespace<a class="headerlink" href="#the-namespace" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nn">---</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Namespace</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">    </span><span class="nt">pod-security.kubernetes.io/enforce</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">baseline</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="nt">pod-security.kubernetes.io/audit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="nt">pod-security.kubernetes.io/warn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">restricted</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="c1"># Pruning a Namespace deletes the PVCs inside it.</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
 </span></code></pre></div>
-<h2 id="step-3-create-the-argocd-application">Step 3: Create the ArgoCD Application<a class="headerlink" href="#step-3-create-the-argocd-application" title="Permanent link">&para;</a></h2>
-<p>Create <code>payload/workloads/my-app/application.yaml</code>. For a plain manifest-based app:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argoproj.io/v1alpha1</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Application</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argocd</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">labels</span><span class="p">:</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="c1"># Without a stage the ApplicationSet fails rather than skipping the app.</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">homelab.wlkr.ch/stage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12-workloads</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/manifest-generate-paths</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">  </span><span class="nt">project</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">  </span><span class="nt">source</span><span class="p">:</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="nt">repoURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/JanWelker/homelab.git</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="nt">targetRevision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HEAD</span>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload/workloads/my-app</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="nt">directory</span><span class="p">:</span>
-</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">      </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="s">"application.yaml"</span>
-</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span><span class="nt">destination</span><span class="p">:</span>
-</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://kubernetes.default.svc</span>
-</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">  </span><span class="nt">syncPolicy</span><span class="p">:</span>
-</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="nt">automated</span><span class="p">:</span>
-</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">      </span><span class="nt">prune</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">      </span><span class="nt">selfHeal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="w">    </span><span class="nt">syncOptions</span><span class="p">:</span>
-</span><span id="__span-2-27"><a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CreateNamespace=true</span>
+<p>Set <code>enforce</code> to what the image demonstrably needs — <code>restricted</code> if it runs
+as a non-root user, <code>baseline</code> if it does not — and leave <code>audit</code> and <code>warn</code>
+stricter so the gap stays visible.</p>
+<h3 id="if-it-needs-a-database">If it needs a database<a class="headerlink" href="#if-it-needs-a-database" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nn">---</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql.cnpg.io/v1</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cluster</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-db</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="c1"># Before the application: ArgoCD has a health check for this kind and</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="c1"># waits for "Cluster in healthy state" before starting the next wave.</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-1"</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span><span class="nt">instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10Gi</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">storageClass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="nt">initdb</span><span class="p">:</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span></code></pre></div>
-<p>For a Helm chart, replace <code>source</code> with a <code>sources</code> block.</p>
-<h2 id="step-4-add-kubernetes-manifests">Step 4: Add Kubernetes Manifests<a class="headerlink" href="#step-4-add-kubernetes-manifests" title="Permanent link">&para;</a></h2>
-<p>At minimum you need a Deployment and a Service. Place them alongside <code>application.yaml</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>payload/workloads/my-app/
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>├── namespace.yaml      # optional if using CreateNamespace=true
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>├── deployment.yaml
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>├── service.yaml
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>├── httproute.yaml      # if you want to expose the app
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>└── networkpolicy.yaml  # recommended
+<p>That produces a Secret called <code>my-app-db-app</code> holding <code>username</code>, <code>password</code>,
+<code>host</code>, <code>port</code>, <code>dbname</code> and a ready-assembled <code>uri</code>. Point the application at
+those keys; never copy the value anywhere.</p>
+<h3 id="exposing-it">Exposing it<a class="headerlink" href="#exposing-it" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nn">---</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HTTPRoute</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">  </span><span class="nt">parentRefs</span><span class="p">:</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-gateway</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-system</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">      </span><span class="nt">sectionName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">  </span><span class="nt">hostnames</span><span class="p">:</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"my-app.k8s.wlkr.ch"</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">  </span><span class="nt">rules</span><span class="p">:</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">backendRefs</span><span class="p">:</span>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>A namespace with a policy is default-deny for ingress once one selects its pods, while every other namespace stays open. If you write one, use a <code>CiliumNetworkPolicy</code> rather than a plain <code>NetworkPolicy</code> — the reasons are in <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security Policies</a>, and the short version is that a plain one blocks health probes and your pods will restart forever. See also <a href="../../architecture/security/#authorization">Security Posture</a>.</p>
-</div>
-<h2 id="step-5-expose-the-app-optional">Step 5: Expose the App (Optional)<a class="headerlink" href="#step-5-expose-the-app-optional" title="Permanent link">&para;</a></h2>
-<p>Create <code>httproute.yaml</code> to route traffic from the <code>apps-gateway</code>:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HTTPRoute</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">parentRefs</span><span class="p">:</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps-gateway</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-system</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">      </span><span class="nt">sectionName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span><span class="nt">hostnames</span><span class="p">:</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"my-app.k8s.wlkr.ch"</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">rules</span><span class="p">:</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">backendRefs</span><span class="p">:</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-svc</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+<p>DNS and TLS need nothing further. See <a href="../../platform/gateway-api/">Gateway API</a>.</p>
+<h2 id="step-4-commit-and-push">Step 4: Commit and push<a class="headerlink" href="#step-4-commit-and-push" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>my-app/
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"feat: add my-app"</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>git<span class="w"> </span>push
 </span></code></pre></div>
-<p>See <a href="../../platform/gateway-api/">Gateway API</a> for more details.</p>
-<h2 id="step-6-commit-and-push">Step 6: Commit and Push<a class="headerlink" href="#step-6-commit-and-push" title="Permanent link">&para;</a></h2>
-<p>The ApplicationSet picks up the new <code>application.yaml</code> on its next reconcile and generates the Application; it syncs once the stages before it are Healthy. The hostname's DNS record and TLS certificate are already handled — <a href="../../platform/external-dns/">external-dns</a> publishes the record from the <code>HTTPRoute</code>, and the Gateway's wildcard certificate covers the name. Neither needs a step of its own.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>git<span class="w"> </span>add<span class="w"> </span>payload/workloads/my-app/
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"feat: add my-app workload"</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>git<span class="w"> </span>push
+<p>The ApplicationSet picks the directory up on its next reconcile — within about
+three minutes, or immediately if you hit <strong>Refresh</strong> on the <code>apps</code>
+ApplicationSet in the ArgoCD UI.</p>
+<h2 id="step-5-document-it">Step 5: Document it<a class="headerlink" href="#step-5-document-it" title="Permanent link">&para;</a></h2>
+<p>Not optional, and not busywork: an undocumented workload is one you will
+rediscover in eighteen months by reading YAML and guessing.</p>
+<p>The page goes in the <strong>workloads</strong> repository, next to the manifests it
+describes, at <code>docs/my-app.md</code> — registered in that repository's own
+<code>zensical.toml</code>, which publishes to
+<a href="https://janwelker.github.io/homelab-apps/">janwelker.github.io/homelab-apps</a>.
+Documentation lives with what it documents, so a pull request that changes a
+manifest can change its page in the same diff. Both sites build with
+<code>--strict</code>, so an unregistered page fails CI.</p>
+<p>Say what the application is for, which hostname it answers on, what it stores
+and where, and anything about it that surprised you while deploying it. That
+last category is the one that pays for the page.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>The Application was never generated.</strong> The ApplicationSet only reads files
+matching <code>*/application.yaml</code> — one level deep, exactly that name. Check the
+controller:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>logs<span class="w"> </span>deploy/argocd-applicationset-controller<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-50
 </span></code></pre></div>
-<h2 id="step-7-document-it">Step 7: Document It<a class="headerlink" href="#step-7-document-it" title="Permanent link">&para;</a></h2>
-<p>Not optional, and not busywork. An undocumented workload is one you will
-rediscover in eighteen months by reading YAML and guessing. Add a page at
-<code>docs/workloads/my-app.md</code> and register it in <code>zensical.toml</code>. There is no
-Workloads section in the <code>nav</code> yet — the first workload creates it, after
-Platform and before Operations:</p>
-<div class="language-toml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">  </span><span class="err">{</span><span class="w"> </span><span class="s2">"Workloads"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="s2">"My App"</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"workloads/my-app.md"</span><span class="w"> </span><span class="p">},</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="p">]</span><span class="w"> </span><span class="err">},</span>
+<p>A workload whose <code>spec.project</code> is not <code>apps</code> fails the whole set with a
+message naming the file, rather than silently skipping it.</p>
+<p><strong>The Application exists but will not sync.</strong> On a fresh cluster, check that
+<code>12-workloads</code> has been reached at all — the <code>apps</code> ApplicationSet does not
+exist before then:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>platform<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'</span>
 </span></code></pre></div>
-<p>The build runs with <code>--strict</code>, so an unregistered page fails CI.</p>
+<p><strong>The pods will not start, and the events mention a security policy.</strong> The
+<code>enforce</code> level in the workload's own <code>namespace.yaml</code> is stricter than the
+image needs. Both applications deployed so far sit at <code>baseline</code>, because
+neither upstream supports running as a non-root user. Loosen <code>enforce</code> to what
+the image demonstrably needs and leave <code>audit</code> and <code>warn</code> where they are, so
+the violations stay visible in the <a href="../../architecture/audit-logging/">audit
+log</a> — see <a href="../../platform/security-policies/#pod-security-admission">Security
+Policies</a> for why the
+three labels are split that way.</p>
+<p><strong>The login redirects in a loop, or every link is <code>http://</code>.</strong> The application
+is behind the <code>apps-gateway</code>, so requests arrive from Cilium's Envoy inside the
+pod CIDR (<code>10.244.0.0/16</code>) and TLS was terminated at the Gateway. Find the
+application's trusted-proxy and "overwrite protocol" settings; both workloads
+in the repository configure them, and neither works without.</p>
 
 
 

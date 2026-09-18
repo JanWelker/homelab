@@ -2312,8 +2312,10 @@ should you ever point it at an address that does not answer.</p>
 Ingress manifests are rarely portable — every non-trivial Ingress in existence
 is really a controller-specific config file wearing a standard resource as a
 disguise. Gateway API separates the cluster-owned <code>Gateway</code> from the app-owned
-<code>HTTPRoute</code>, which fits the split between <code>payload/platform/</code> and
-<code>payload/workloads/</code> exactly.</p>
+<code>HTTPRoute</code>, which fits the split between this repository and the
+<a href="../../development/add-workload/">workloads repository</a> exactly — the <code>Gateway</code>
+is platform, and the <code>HTTPRoute</code> ships with the application that needs it, in
+a repository the platform never reads back.</p>
 <p>The cost is a smaller ecosystem and more moving parts: CRDs must be installed
 before anything that references them, which is why they are the first rollout stage.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
