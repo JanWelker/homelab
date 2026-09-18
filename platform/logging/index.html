@@ -2242,6 +2242,18 @@ currently misbehaving.</p>
 deprecated in early 2025 and reached <strong>end of life in March 2026</strong>. Alloy is
 its supported replacement and the one to reach for now.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Not the <code>grafana/loki</code> chart</p>
+<p>Loki comes from <code>grafana-community/loki</code>, not the <code>grafana/loki</code> chart most
+documentation points at. In March 2026 the OSS chart moved to
+<a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a>;
+what stayed behind in <code>grafana/loki</code> is maintained for Grafana Enterprise
+Logs customers. Its 7.x line pins a <code>k8s-sidecar</code> six minor releases behind
+— 2.5.0, carrying ten critical CVEs the current 2.11.2 has none of — and a
+<code>loki.image.tag</code> hardcoded below the chart's own <code>appVersion</code>. Open-source
+pull requests against it are closed with a pointer to the community
+repository.</p>
+</div>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2363,7 +2375,7 @@ does not survive a restart — nor would the container layer it replaces.</p>
 <tbody>
 <tr>
 <td>Deployment mode</td>
-<td><code>SingleBinary</code>, 1 replica</td>
+<td><code>Monolithic</code>, 1 replica</td>
 </tr>
 <tr>
 <td>Chunks + ruler</td>
@@ -2439,7 +2451,7 @@ Overview" reads Alloy's own logs by a <code>job</code> label this pipeline never
 sets a <code>cluster</code> label; its empty value matches series without one.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>loki/
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>└── application.yaml          # ArgoCD Application (Helm: grafana/loki)
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>└── application.yaml          # ArgoCD Application (Helm: grafana-community/loki)
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>alloy/
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>└── application.yaml          # ArgoCD Application (Helm: grafana/alloy)
