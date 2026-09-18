@@ -123,3 +123,23 @@ system after three months away, than Flux's smaller footprint.
 Bootstrap is two `kubectl apply`s — the AppProjects and the self-managing
 `argocd` Application — and everything else is discovered from the repository by
 an ApplicationSet. See [GitOps Strategy](gitops.md).
+
+## CloudNativePG for every database, not the chart's bundled one
+
+Almost every application chart worth deploying ships a PostgreSQL subchart, and
+accepting those defaults is how a cluster ends up running four different
+Postgres versions installed by four different maintainers, each upgraded on
+someone else's release schedule. A database is not an implementation detail of
+the application in front of it; it is the part with the data in it.
+
+So the rule in the [workloads repository](../development/add-workload.md) is
+absolute: the subchart is disabled, and the application points at a
+CloudNativePG `Cluster` in its own namespace. The operator generates the
+credentials into a Secret the chart consumes, which also means no database
+password is ever written down — not in Git, and not in OpenBao either.
+
+The cost is a controller and a CRD to learn, and a major-version upgrade that
+is now explicitly this project's problem rather than something that arrives
+silently inside a chart bump. That is the trade: the upgrade is more visible
+*and* more work, which is the correct direction for the only component whose
+failure mode is permanent. See [CloudNativePG](../platform/cloudnative-pg.md).
