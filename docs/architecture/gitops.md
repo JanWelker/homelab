@@ -53,6 +53,13 @@ ArgoCD stopped assessing the health of `Application` resources in 1.8.
 `argocd-cm` restores it, so `root`, `platform` and `gitops` report the health of
 what they manage instead of a permanent Healthy.
 
+That recursion needs one cut. `gitops` manages `root`, `root` manages `gitops`,
+and an Application's health is the worst health among the resources it manages
+— so each read the other's, both settled on Progressing, and neither could
+leave it. `root` carries `argocd.argoproj.io/ignore-healthcheck: "true"`, which
+takes it out of the health `gitops` reports. Nothing is lost by that: `root`
+manages `platform` and `gitops`, and reports the health of both.
+
 ```mermaid
 flowchart LR
     subgraph "Bootstrap (Manual)"
