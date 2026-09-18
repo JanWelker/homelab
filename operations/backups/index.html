@@ -2644,8 +2644,9 @@ the data is moved into the object store, so a deleted PVC is recoverable.</p>
 <p>Ceph's own replication is not a backup and should not be mistaken for one. It
 spreads each block across OSDs, which protects against a disk or a node failing
 and against nothing else — not deletion, not corruption, not a bad <code>prune</code>. That
-last one is not hypothetical: every Application here runs with <code>prune: true</code>, so
-removing a <code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
+last one is not hypothetical: almost every Application runs with <code>prune: true</code>
+— <code>kube-vip</code> and <code>security</code> are the two deliberate exceptions — so removing a
+<code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
 <p>What is still open is off-cluster replication — see
 <a href="#what-is-not-covered">What is not covered</a>. RBD mirroring to a second cluster
 would close it.</p>

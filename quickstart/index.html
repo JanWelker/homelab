@@ -2248,7 +2248,7 @@
 <p><img align="right" alt="Homelab Logo" src="../assets/images/logo.png" width="150" /></p>
 <p>Bring up the bare metal Kubernetes cluster from scratch. This project automates
 the deployment using Flatcar Container Linux and Kubeadm.</p>
-<p>Set aside an afternoon. Not because the steps are long — they are eleven
+<p>Set aside an afternoon. Not because the steps are long — they are thirteen
 commands — but because somewhere around step 7 a machine will sit at a blinking
 cursor, and you will learn something about your DHCP server that you did not
 want to know.</p>
@@ -2538,9 +2538,10 @@ documented at
 self-managing <code>argocd</code> Application, which brings the <code>platform</code>
 ApplicationSet and with it every component.</em> The projects go first
 because an Application naming a project that does not exist is
-rejected, and the <code>argocd</code> Application names <code>system</code>. Both files are
-adopted by ArgoCD on the first sync, so this is the same
-bootstrap-by-hand handover as <code>make install-cilium</code>.</p>
+rejected, and the <code>argocd</code> Application names <code>system</code>. The projects are
+adopted by the <code>argocd-projects</code> Application on its first sync; the
+<code>argocd</code> Application stays hand-applied and unmanaged, which is what
+makes it the thing to re-apply when everything else is broken.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
 from the repository rather than from you. The <code>platform</code> ApplicationSet
 creates every platform Application at once, then syncs them one

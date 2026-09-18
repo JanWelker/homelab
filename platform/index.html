@@ -2262,7 +2262,7 @@ In that order — the answer is usually the first one.</p>
 <tr>
 <td>ArgoCD</td>
 <td><code>argo.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/argocd/httproute.yaml</code></td>
+<td><code>payload/platform/argocd-config/httproute.yaml</code></td>
 </tr>
 <tr>
 <td>Authentik</td>
@@ -2333,7 +2333,8 @@ In that order — the answer is usually the first one.</p>
 </tr>
 </tbody>
 </table>
-<p>A third parent, <code>workloads</code>, is added back alongside the first workload. See
+<p>Workloads do not add a third object: the same ApplicationSet grows a generator
+path and a <code>12-workloads</code> step. See
 <a href="../development/add-workload/">Adding a Workload</a>.</p>
 <p>Each component directory holds exactly one <code>application.yaml</code>; everything else
 in the directory is what that Application deploys, apart from Helm <code>values.yaml</code>

@@ -2245,8 +2245,8 @@ replace it.</p>
 <p>Everything the cluster runs is described in this repository under <code>payload/</code>,
 and <a href="https://argo-cd.readthedocs.io/">ArgoCD</a> continuously reconciles the
 cluster to match. The rule is absolute: if it is not in Git, it is not in the
-cluster — and if you put it in the cluster anyway, <code>selfHeal</code> removes it while
-you are still admiring your work.</p>
+cluster — and if you put it in the cluster anyway, the next sync of the
+Application that owns it puts Git's version back.</p>
 <p>Two terms recur throughout this site:</p>
 <ul>
 <li><strong>ApplicationSet</strong> — one ArgoCD object that generates an <code>Application</code> per

@@ -2384,8 +2384,8 @@ allowed — and the <code>audit</code> half of the Pod Security Admission labels
 to go without it. The policy, the retention, and the LogQL to query it are in
 <a href="../audit-logging/">Audit Logging</a>.</p>
 <h2 id="authorization">Authorization<a class="headerlink" href="#authorization" title="Permanent link">&para;</a></h2>
-<p><strong>ArgoCD AppProjects do not constrain much.</strong> <code>payload/argocd/argocd-projects.yaml</code>
-defines three projects, but <code>apps</code> and <code>infra</code> both allow <code>sourceRepos: "*"</code> and
+<p><strong>ArgoCD AppProjects do not constrain much.</strong>
+<code>payload/platform/argocd-projects/projects.yaml</code> defines three projects, but <code>apps</code> and <code>infra</code> both allow <code>sourceRepos: "*"</code> and
 a <code>clusterResourceWhitelist</code> of every group and kind, in every namespace. Only
 <code>system</code> restricts its destination namespace.</p>
 <p>They are useful as grouping and as a place to add restrictions later. They are

@@ -2226,8 +2226,8 @@ months from now, <code>git log</code> is the only place the reasoning survives, 
 bug" helps nobody, least of all you.</p>
 <h2 id="changing-manifests-under-payload">Changing manifests under <code>payload/</code><a class="headerlink" href="#changing-manifests-under-payload" title="Permanent link">&para;</a></h2>
 <p>Everything under <code>payload/</code> is applied by ArgoCD, so a mistake there reaches the
-cluster on merge, automatically, with <code>selfHeal</code> making sure it stays there. Two
-checks before pushing, both of which take seconds:</p>
+cluster on merge, automatically, and stays there until another commit says
+otherwise. Two checks before pushing, both of which take seconds:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Valid YAML and valid Kubernetes objects, without touching the cluster</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-f<span class="w"> </span>payload/platform/&lt;component&gt;/
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
