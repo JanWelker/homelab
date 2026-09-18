@@ -88,6 +88,54 @@ observes. That is the difference between a list of four hundred findings and a
 list of the ones reachable in this cluster — and it is the other reason CVE
 scanning and the runtime stack arrive together rather than separately.
 
+### An image whose SBOM is too large is not scanned at all
+
+`kubevuln.config.maxSBOMSize` is raised from the chart's 20Mi to 64Mi, because
+Home Assistant does not fit in 20Mi and the way it does not fit is invisible.
+The node-agent generates the SBOM, `kubevuln` weighs it, and an SBOM over the
+cap is discarded rather than truncated:
+
+```text
+"incomplete or too large SBOM, skipping scan"
+imageSlug: ghcr.io-home-assistant-home-assistant-2026.9.3-dda196
+```
+
+The `SBOMSyft` object is kept, which is the trap. It exists, it is named after
+the image, and it holds nothing:
+
+| Annotation | Value |
+| --- | --- |
+| `kubescape.io/resource-size` | 41651848 — **39.7Mi** |
+| `kubescape.io/max-sbom-size` | 20971520 — **20Mi** |
+| `kubescape.io/status` | `too-large` |
+| `kubescape.io/status-reason` | `sbom-too-large` |
+| `spec.syft.artifacts` | 0 |
+
+So no `VulnerabilityManifest` is ever written, no summary either, and Home
+Assistant reports **zero CVEs in both the loaded and whole-image columns** — the
+one combination that reads as a clean bill of health rather than a missing scan.
+A single Python image with several thousand packages was enough to cross the cap;
+it is not an exotic case, and the next workload to cross it will fail the same
+quiet way.
+
+This is not `maxImageSize`, which is 5Gi and nowhere near binding — the Home
+Assistant image is 0.65 GB compressed. Package count is what makes an SBOM
+large, not bytes on disk.
+
+The real ceiling on this setting lives in the storage component's `kindQueues`
+rather than in `kubevuln`: `sbomsyfts` accepts objects up to 100000000 bytes and
+`sbomsyftfiltereds` up to 50000000. 64Mi keeps the full SBOM inside the first
+with room for a year of monthly Home Assistant releases. If a filtered SBOM ever
+crosses the second, relevancy for that one image degrades and the whole-image
+scan still lands.
+
+!!! tip "The number to watch is node-agent memory, not kubevuln"
+    Raising the cap means the node-agent now *keeps* a 40Mi SBOM it used to
+    throw away, against a 1400Mi limit. The agent on the node running Home
+    Assistant was already the hungriest of the six at ~860Mi before this
+    change. `kubevuln` has far more room — a 5000Mi limit against ~600Mi in use.
+    Nothing has restarted yet, but this is the figure that would move first.
+
 ## The runtime stack
 
 `runtimeObservability` and its relatives deploy an eBPF node-agent DaemonSet on
@@ -207,7 +255,7 @@ that either:
 A `namespace` variable filters every panel. The trends are the part that pays
 off later: a step after a sync is a regression a chart or image bump brought in.
 
-Two things the counts cannot tell you:
+Three things the counts cannot tell you:
 
 - **"Loaded" reads 0 until the node-agent has profiled a container**, and a
   zero from that is indistinguishable from a clean container. A row with a high
@@ -215,6 +263,10 @@ Two things the counts cannot tell you:
   the summary's `vulnerabilitiesRef.relevant.name` is empty in that case.
 - **The CVE IDs are not in Prometheus.** One series per CVE per container would
   be thousands of series for a table better read with `kubectl`.
+- **An unscanned image reads 0 in *both* columns**, which is the one reading
+  that looks like good news. A zero pair means
+  [check for a skipped scan](#an-image-whose-sbom-is-too-large-is-not-scanned-at-all)
+  before believing it.
 
 The panels take their datasource from a `datasource` variable restricted to
 Prometheus, so the Loki datasource's `isDefault: false` no longer matters to it.
