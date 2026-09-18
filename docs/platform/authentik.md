@@ -16,6 +16,8 @@ the project never shipped any.
 | --- | --- |
 | ArgoCD | OIDC, local admin **disabled** |
 | Grafana | OIDC, login form disabled |
+| Nextcloud | OIDC, login form hidden, local admin break-glass |
+| Home Assistant | Proxy outpost **in front of** its own login — see [the exception](#home-assistant-is-the-exception) |
 | Rook dashboard | Proxy outpost |
 | Hubble UI | Proxy outpost |
 | Prometheus | Proxy outpost |
@@ -44,7 +46,7 @@ so much as a password prompt.
 **OIDC**, for applications that can do it themselves. ArgoCD and Grafana each
 talk to Authentik directly and map group membership to a role.
 
-**Proxy**, for the four that cannot. Authentik's embedded outpost is a reverse
+**Proxy**, for the five that cannot. Authentik's embedded outpost is a reverse
 proxy: the hostname resolves to the outpost, the outpost authenticates the
 request, and only then forwards it to the real backend. No support is needed
 from the application, which is the only option for something like Hubble. It is
@@ -60,14 +62,66 @@ flowchart LR
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
+### Home Assistant is the exception
+
+Every other proxied application has no login of its own, which is what makes
+the outpost *the* authentication rather than an extra one. Home Assistant does
+have a login, and upstream ships no OIDC provider to replace it — the only auth
+providers in the codebase are `homeassistant`, `command_line`,
+`trusted_networks` and an example marked insecure.
+
+So the outpost sits *in front of* Home Assistant's own login rather than
+instead of it. Browser users authenticate twice. That is defence in depth, not
+single sign-on, and it is worth being honest about which one you are getting.
+
+The companion apps and webhooks cannot complete an interactive Authentik login
+at all — they hold a long-lived token — so `skip_path_regex` on the provider
+lets `/api/`, `/auth/token` and the external-auth callback through untouched.
+**Home Assistant's own accounts still guard those paths**, and they are the
+only thing guarding them. Revoking someone's Authentik account does not revoke
+their Home Assistant token; that has to be done in Home Assistant.
+
+## Two hostnames
+
+Authentik answers on two names, and which one a client uses is not arbitrary:
+
+| Hostname | Gateway | Reachable from | Used by |
+| --- | --- | --- | --- |
+| `auth.infra.k8s.wlkr.ch` | `infra-gateway` | the local network | ArgoCD, Grafana, break-glass `akadmin` login |
+| `auth.k8s.wlkr.ch` | `apps-gateway` | outside it too | Nextcloud |
+
+The workload hostnames are reachable from outside the local network and the
+`*.infra` ones are not, so an OIDC client that users reach from outside would
+send them to an authorize endpoint that does not resolve, and the login would
+hang with no useful error.
+
+Authentik needs no configuration for this. Every URL it publishes — issuer,
+authorize, token, userinfo, jwks — is built with `request.build_absolute_uri()`,
+so it serves a self-consistent OpenID configuration on whichever name the
+request arrived on.
+
+!!! warning "A client must never mix the two"
+    The `iss` claim in the token is the hostname the token was issued through, and a client compares it against the issuer it discovered. Point a client's discovery URI at one name and its redirect at the other and every login fails the issuer check — with an error that blames the token, not the hostname. Each client is pinned to exactly one name; ArgoCD and Grafana are on the infra name, and nothing about them changed when the second route was added.
+
+Proxied applications are unaffected either way: their route points at
+`authentik-server`, so the whole flow — including the login — happens on the
+application's own hostname and never redirects to either of these.
+
 ### Where the proxied routes point
 
 The `HTTPRoute` for `hubble.infra.k8s.wlkr.ch` stays in `payload/platform/cilium/`
 next to the thing it exposes, but its `backendRef` is `authentik-server` in the
 `authentik` namespace. Gateway API forbids a cross-namespace `backendRef` unless
 the target namespace grants it, so `referencegrant.yaml` allows exactly that:
-`HTTPRoute` objects, from `kube-system` and `rook-ceph` only, to the
-`authentik-server` Service only.
+`HTTPRoute` objects, from `kube-system`, `rook-ceph` and `home-assistant`
+only, to the `authentik-server` Service only.
+
+`home-assistant` is on that list because its route lives in the
+[workloads repository](../development/add-workload.md) — the one place a
+workload needs something granted to it here. Adding a proxied workload is
+therefore two pull requests, which is the intended friction: a workload should
+not be able to put itself behind, or take itself out from behind, the
+authentication layer on its own.
 
 Prometheus and Alertmanager have no route of their own to reuse, so theirs live
 in the `authentik` directory. **Neither has authentication of its own** —

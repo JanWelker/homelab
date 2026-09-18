@@ -1,5 +1,8 @@
 ---
-# Lets the Hubble and Rook routes reach the outpost; keep it this narrow.
+# Lets the Hubble, Rook and Home Assistant routes reach the outpost; keep it
+# this narrow. Home Assistant's route is in the workloads repository, which is
+# the one place a workload needs something from this one -- see
+# docs/development/add-workload.md#putting-a-workload-behind-authentik
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant
 metadata:
@@ -13,6 +16,9 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       namespace: rook-ceph
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: home-assistant
   to:
     - group: ""
       kind: Service

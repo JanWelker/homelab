@@ -81,6 +81,45 @@ data:
           provider: !KeyOf grafana-provider
           meta_launch_url: https://monitoring.infra.k8s.wlkr.ch
 
+  12-oidc-nextcloud.yaml: |
+    version: 1
+    metadata:
+      name: homelab-nextcloud
+    entries:
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        id: nextcloud-provider
+        identifiers:
+          name: nextcloud
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          client_type: confidential
+          # Required; see the ArgoCD provider above.
+          grant_types:
+            - authorization_code
+            - refresh_token
+          client_id: !Env NEXTCLOUD_CLIENT_ID
+          client_secret: !Env NEXTCLOUD_CLIENT_SECRET
+          # user_oidc builds this path from the provider name it is given.
+          redirect_uris:
+            - matching_mode: strict
+              url: https://cloud.k8s.wlkr.ch/apps/user_oidc/code
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: nextcloud
+        attrs:
+          name: Nextcloud
+          provider: !KeyOf nextcloud-provider
+          meta_launch_url: https://cloud.k8s.wlkr.ch
+          meta_description: Files, calendar and contacts
+
   20-proxy-providers.yaml: |
     version: 1
     metadata:
@@ -170,6 +209,42 @@ data:
           provider: !KeyOf alertmanager-provider
           meta_launch_url: https://alertmanager.infra.k8s.wlkr.ch
 
+      # Home Assistant is the one proxied application that has a login of its
+      # own: upstream ships no OIDC provider (only `homeassistant`,
+      # `command_line`, `trusted_networks` and an insecure example), so this
+      # gate sits in front of that login rather than replacing it. Browser
+      # users authenticate twice, deliberately; see docs/platform/authentik.md
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        id: home-assistant-provider
+        identifiers:
+          name: home-assistant
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: https://home.k8s.wlkr.ch
+          internal_host: http://home-assistant.home-assistant.svc.cluster.local:8123
+          internal_host_ssl_validation: false
+          # The companion apps and every webhook authenticate with a
+          # long-lived token against these paths and cannot complete an
+          # interactive Authentik login. Gating them would not make the API
+          # safer -- it would make the phones stop working and push people
+          # back to exposing Home Assistant some other way.
+          skip_path_regex: |-
+            ^/api/.*
+            ^/auth/token$
+            ^/auth/external/callback$
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: home-assistant
+        attrs:
+          name: Home Assistant
+          provider: !KeyOf home-assistant-provider
+          meta_launch_url: https://home.k8s.wlkr.ch
+          meta_description: Home automation
+
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
@@ -182,3 +257,4 @@ data:
             - !KeyOf rook-provider
             - !KeyOf prometheus-provider
             - !KeyOf alertmanager-provider
+            - !KeyOf home-assistant-provider
