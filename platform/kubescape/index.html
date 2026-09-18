@@ -1537,6 +1537,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Image vulnerability scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#an-image-whose-sbom-is-too-large-is-not-scanned-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        An image whose SBOM is too large is not scanned at all
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2187,6 +2204,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Image vulnerability scanning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#an-image-whose-sbom-is-too-large-is-not-scanned-at-all" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        An image whose SBOM is too large is not scanned at all
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2553,6 +2587,69 @@ are narrowed to packages actually loaded at runtime, which the node-agent
 observes. That is the difference between a list of four hundred findings and a
 list of the ones reachable in this cluster — and it is the other reason CVE
 scanning and the runtime stack arrive together rather than separately.</p>
+<h3 id="an-image-whose-sbom-is-too-large-is-not-scanned-at-all">An image whose SBOM is too large is not scanned at all<a class="headerlink" href="#an-image-whose-sbom-is-too-large-is-not-scanned-at-all" title="Permanent link">&para;</a></h3>
+<p><code>kubevuln.config.maxSBOMSize</code> is raised from the chart's 20Mi to 64Mi, because
+Home Assistant does not fit in 20Mi and the way it does not fit is invisible.
+The node-agent generates the SBOM, <code>kubevuln</code> weighs it, and an SBOM over the
+cap is discarded rather than truncated:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>"incomplete or too large SBOM, skipping scan"
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>imageSlug: ghcr.io-home-assistant-home-assistant-2026.9.3-dda196
+</span></code></pre></div>
+<p>The <code>SBOMSyft</code> object is kept, which is the trap. It exists, it is named after
+the image, and it holds nothing:</p>
+<table>
+<thead>
+<tr>
+<th>Annotation</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kubescape.io/resource-size</code></td>
+<td>41651848 — <strong>39.7Mi</strong></td>
+</tr>
+<tr>
+<td><code>kubescape.io/max-sbom-size</code></td>
+<td>20971520 — <strong>20Mi</strong></td>
+</tr>
+<tr>
+<td><code>kubescape.io/status</code></td>
+<td><code>too-large</code></td>
+</tr>
+<tr>
+<td><code>kubescape.io/status-reason</code></td>
+<td><code>sbom-too-large</code></td>
+</tr>
+<tr>
+<td><code>spec.syft.artifacts</code></td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>So no <code>VulnerabilityManifest</code> is ever written, no summary either, and Home
+Assistant reports <strong>zero CVEs in both the loaded and whole-image columns</strong> — the
+one combination that reads as a clean bill of health rather than a missing scan.
+A single Python image with several thousand packages was enough to cross the cap;
+it is not an exotic case, and the next workload to cross it will fail the same
+quiet way.</p>
+<p>This is not <code>maxImageSize</code>, which is 5Gi and nowhere near binding — the Home
+Assistant image is 0.65 GB compressed. Package count is what makes an SBOM
+large, not bytes on disk.</p>
+<p>The real ceiling on this setting lives in the storage component's <code>kindQueues</code>
+rather than in <code>kubevuln</code>: <code>sbomsyfts</code> accepts objects up to 100000000 bytes and
+<code>sbomsyftfiltereds</code> up to 50000000. 64Mi keeps the full SBOM inside the first
+with room for a year of monthly Home Assistant releases. If a filtered SBOM ever
+crosses the second, relevancy for that one image degrades and the whole-image
+scan still lands.</p>
+<div class="admonition tip">
+<p class="admonition-title">The number to watch is node-agent memory, not kubevuln</p>
+<p>Raising the cap means the node-agent now <em>keeps</em> a 40Mi SBOM it used to
+throw away, against a 1400Mi limit. The agent on the node running Home
+Assistant was already the hungriest of the six at ~860Mi before this
+change. <code>kubevuln</code> has far more room — a 5000Mi limit against ~600Mi in use.
+Nothing has restarted yet, but this is the figure that would move first.</p>
+</div>
 <h2 id="the-runtime-stack">The runtime stack<a class="headerlink" href="#the-runtime-stack" title="Permanent link">&para;</a></h2>
 <p><code>runtimeObservability</code> and its relatives deploy an eBPF node-agent DaemonSet on
 all six nodes. It learns what a workload normally does — which syscalls, which
@@ -2705,7 +2802,7 @@ that either:</p>
 </table>
 <p>A <code>namespace</code> variable filters every panel. The trends are the part that pays
 off later: a step after a sync is a regression a chart or image bump brought in.</p>
-<p>Two things the counts cannot tell you:</p>
+<p>Three things the counts cannot tell you:</p>
 <ul>
 <li><strong>"Loaded" reads 0 until the node-agent has profiled a container</strong>, and a
   zero from that is indistinguishable from a clean container. A row with a high
@@ -2713,6 +2810,10 @@ off later: a step after a sync is a regression a chart or image bump brought in.
   the summary's <code>vulnerabilitiesRef.relevant.name</code> is empty in that case.</li>
 <li><strong>The CVE IDs are not in Prometheus.</strong> One series per CVE per container would
   be thousands of series for a table better read with <code>kubectl</code>.</li>
+<li><strong>An unscanned image reads 0 in <em>both</em> columns</strong>, which is the one reading
+  that looks like good news. A zero pair means
+  <a href="#an-image-whose-sbom-is-too-large-is-not-scanned-at-all">check for a skipped scan</a>
+  before believing it.</li>
 </ul>
 <p>The panels take their datasource from a <code>datasource</code> variable restricted to
 Prometheus, so the Loki datasource's <code>isDefault: false</code> no longer matters to it.
@@ -2723,26 +2824,26 @@ next to the component, and Grafana's dashboard sidecar watches every namespace.<
 <code>kubectl</code> objects. <code>kubectl get</code> on a list of them prints names only — the
 aggregated API leaves <code>spec</code> out of list responses — so fetch objects one at a
 time to see counts.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Failed controls per namespace (cluster-scoped, named after the namespace)</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>authentik<span class="w"> </span>-o<span class="w"> </span>yaml
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># The full finding set for one workload</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>-l<span class="w"> </span>kubescape.io/workload-name<span class="o">=</span>&lt;workload&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Failed controls per namespace (cluster-scoped, named after the namespace)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>authentik<span class="w"> </span>-o<span class="w"> </span>yaml
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># The full finding set for one workload</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>-l<span class="w"> </span>kubescape.io/workload-name<span class="o">=</span>&lt;workload&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
 </span></code></pre></div>
 <p>CVEs take two hops. The per-container summary, named
 <code>&lt;kind&gt;-&lt;workload&gt;-&lt;container&gt;</code>, points at two manifests in the <code>kubescape</code>
 namespace: <code>all</code>, named after the image, and <code>relevant</code>, named after the
 workload instance and holding only loaded packages.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">NS</span><span class="o">=</span>argocd<span class="p">;</span><span class="w"> </span><span class="nv">SUMMARY</span><span class="o">=</span>deployment-argocd-server-server
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nv">REF</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifestsummaries<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NS</span><span class="w"> </span><span class="nv">$SUMMARY</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.vulnerabilitiesRef.relevant.name}'</span><span class="k">)</span><span class="w">   </span><span class="c1"># .all.name for the whole image</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifests<span class="w"> </span>-n<span class="w"> </span>kubescape<span class="w"> </span><span class="s2">"</span><span class="nv">$REF</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="s1">  .spec.payload.matches[]</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="s1">  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="s1">  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="s1">     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="s1">  | @tsv'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">NS</span><span class="o">=</span>argocd<span class="p">;</span><span class="w"> </span><span class="nv">SUMMARY</span><span class="o">=</span>deployment-argocd-server-server
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">REF</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifestsummaries<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NS</span><span class="w"> </span><span class="nv">$SUMMARY</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.vulnerabilitiesRef.relevant.name}'</span><span class="k">)</span><span class="w">   </span><span class="c1"># .all.name for the whole image</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifests<span class="w"> </span>-n<span class="w"> </span>kubescape<span class="w"> </span><span class="s2">"</span><span class="nv">$REF</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s1">  .spec.payload.matches[]</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s1">  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s1">  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s1">     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s1">  | @tsv'</span>
 </span></code></pre></div>
 <p>A <code>fix.state</code> of <code>fixed</code> means a newer package exists; with upstream images
 that almost always means waiting for, or bumping to, a newer chart.</p>
@@ -2781,7 +2882,7 @@ implementation and is worth a one-off run for a second opinion; it maps findings
 to numbered CIS controls (<code>1.2.16</code>, <code>1.3.7</code>) in a way Kubescape does not. Note
 that its newest profile is <code>cis-2.0</code>, covering Kubernetes 1.34–1.35, so on
 v1.37 auto-detection fails and the benchmark has to be pinned:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
 </span></code></pre></div>
 <p>Kubescape is what runs <em>continuously</em>, which is the part that matters. A
 benchmark you run once is a screenshot.</p>
@@ -2804,9 +2905,9 @@ that needs the most privilege in it. It is also exactly the sort of finding
 Kubescape will report about itself, which is the correct behaviour and worth not
 suppressing.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubescape/
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubescape/
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
 </span></code></pre></div>
 
 
