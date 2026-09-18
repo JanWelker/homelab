@@ -2033,10 +2033,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it" class="md-nav__link">
+  <a href="#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        A bare Helm tag cannot be digest-pinned, and takes the branch with it
+        A custom manager cannot add a digest without <code>autoReplaceStringTemplate</code>
       </span>
     </span>
   </a>
@@ -2244,10 +2244,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it" class="md-nav__link">
+  <a href="#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        A bare Helm tag cannot be digest-pinned, and takes the branch with it
+        A custom manager cannot add a digest without <code>autoReplaceStringTemplate</code>
       </span>
     </span>
   </a>
@@ -2436,9 +2436,10 @@ located in <code>renovate.json</code>.</p>
     config short enough to hold in your head; what it costs is listed under
     <a href="#what-automerging-everything-actually-means">What automerging everything actually means</a>.</li>
 <li><strong>Pinning</strong>: The <code>config:best-practices</code> preset is enabled, so GitHub Actions
-    are pinned to commit SHAs and container images to digests. Two Helm <code>tag:</code>
-    overrides are exempt, because a bare tag has nowhere to put one -- see
-    <a href="#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it">A bare Helm tag cannot be digest-pinned</a>.</li>
+    are pinned to commit SHAs and container images to digests. A custom manager
+    needs <code>autoReplaceStringTemplate</code> to take part, and two Helm <code>tag:</code> overrides
+    are exempt because a bare tag has nowhere to put a digest -- see
+    <a href="#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate">A custom manager cannot add a digest</a>.</li>
 <li><strong>Scope</strong>: Renovate checks Python dependencies (<code>pyproject.toml</code>, <code>uv.lock</code>),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
     Helm values (<code>payload/**/values.yaml</code>), and pre-commit hooks. Custom regex
@@ -2523,32 +2524,41 @@ hyphen, which is what the workflow correctly uses. Nothing matched, so the image
 sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
 container image in the repository that <code>config:best-practices</code> never pinned to a
 digest.</p>
-<h3 id="a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it">A bare Helm tag cannot be digest-pinned, and takes the branch with it<a class="headerlink" href="#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it" title="Permanent link">&para;</a></h3>
+<h3 id="a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate">A custom manager cannot add a digest without <code>autoReplaceStringTemplate</code><a class="headerlink" href="#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate" title="Permanent link">&para;</a></h3>
 <p><code>config:best-practices</code> pins container images to digests, and Renovate collects
 every pin into one shared <code>renovate/pin-dependencies</code> branch. A pin it cannot
 write does not skip that dependency; it fails the whole branch:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>WARN: Error updating branch: update failure
 </span></code></pre></div>
-<p>Two pins in this repository have nowhere for a digest to go. The HAProxy and
-Kubescape overrides are Helm <code>tag:</code> values inside a <code>valuesObject</code>, so the field
-holds <code>3.4.4-alpine</code>, not a complete image reference -- there is no <code>@sha256:</code>
-position in it at all. No capture group fixes that, unlike a full reference where
-an optional <code>(?:@(?&lt;currentDigest&gt;sha256:[a-f0-9]+))?</code> is enough. So both carry
-<code>pinDigests: false</code>, and <strong>a third bare-tag docker pin has to be added to that
-rule</strong> or the banner comes back.</p>
-<p>The collateral is the part worth remembering. <code>dagandersen/argocd-diff-preview</code>
-<em>can</em> be pinned -- its manager captures <code>currentDigest</code> precisely so that it can
--- but it shared the failing branch, so its digest pin never landed either. One
-unwritable pin held up every pin in the repository, which is why the symptom
-reads as "Renovate is broken" rather than as two specific fields.</p>
-<p>Images written as a full reference are unaffected: <code>velero-plugin-for-aws</code>,
-<code>etcd</code>, <code>aws-cli</code>, <code>kube-vip</code> and <code>busybox</code> are all digest-pinned already,
-because the <code>kubernetes</code> manager reads those <code>image:</code> lines natively and writes
-digests into them. Only the Helm-values overrides needed the exception.</p>
+<p>A custom regex manager rewrites the string it matched, and nothing else. For a
+pin, <code>currentValue</code> does not change and there is no digest in the file to swap,
+so the replacement comes out byte-identical, the post-write check finds no
+digest where it demanded one, and the branch throws. <strong>Capturing <code>currentDigest</code>
+does not fix this</strong> -- that group only lets Renovate <em>update</em> a digest that is
+already written. Adding one needs a template:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">"autoReplaceStringTemplate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"</span>
+</span></code></pre></div>
+<p>That is the same template the <code>docker</code> and <code>kubernetes</code> managers set on every
+dep they extract, which is exactly why <code>velero-plugin-for-aws</code>, <code>etcd</code>,
+<code>aws-cli</code>, <code>kube-vip</code> and <code>busybox</code> pinned themselves without anyone noticing.
+<strong>A custom manager for a full image reference needs the template, or it takes
+the pin branch down with it.</strong> Where the matched string has a prefix, the
+template has to rebuild it -- the workloads repository matches on an
+<code>imageName:</code> prefix, so its template starts with that literal.</p>
+<p>The HAProxy and Kubescape overrides are the genuine exception. Those are Helm
+<code>tag:</code> values inside a <code>valuesObject</code>, holding <code>3.4.4-alpine</code> rather than a
+complete image reference, so there is no <code>@sha256:</code> position in the field and no
+template that could invent one. Both carry <code>pinDigests: false</code>, and <strong>a third
+bare-tag docker pin has to be added to that rule</strong> or the banner comes back.</p>
+<p>The collateral is the part worth remembering. One unwritable pin holds up every
+pin in the repository -- the Home Assistant image in the workloads repository is
+perfectly pinnable and still never got its digest, because it shared a branch
+with a CloudNativePG pin that could not be written. That is why the symptom
+reads as "Renovate is broken" rather than as one specific field.</p>
 <p>Version bumps never stopped working through any of this, which is what makes it
-easy to miss: the CloudNativePG image in the workloads repository was bumped to
-18.6 by the very manager whose pin was failing. The Dependency Dashboard banner
-is the only place it shows.</p>
+easy to miss: the CloudNativePG image was bumped to 18.6 by the very manager
+whose pin was failing. The Dependency Dashboard banner is the only place it
+shows.</p>
 <h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
 <p><code>make install-cilium</code> and <code>make install-argo</code> install Cilium, the Gateway API
 CRDs, and ArgoCD itself before ArgoCD exists to manage them. The <code>Makefile</code> used to carry its own pins for those, and
@@ -2558,7 +2568,7 @@ two minors behind the one the cluster was actually running.</p>
 problem; tracking both copies only makes the drift arrive in pairs. Each target
 now reads <code>targetRevision</code> out of the <code>Application</code> manifest that owns the
 component after the handover:</p>
-<div class="language-make highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">CILIUM_VERSION</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>call<span class="w"> </span>chart_version,payload/platform/cilium/application.yaml<span class="k">)</span>
+<div class="language-make highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">CILIUM_VERSION</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>call<span class="w"> </span>chart_version,payload/platform/cilium/application.yaml<span class="k">)</span>
 </span></code></pre></div>
 <p>So there is nothing <code>Makefile</code>-shaped in <code>renovate.json</code>, and nothing to add
 there when a new bootstrap component appears — point the target at the manifest
@@ -2569,8 +2579,8 @@ lookup comes back empty, because the alternative is Helm receiving an empty
 <p>The docs site self-hosts its webfonts, so <code>docs/assets/fonts/</code> holds <code>woff2</code>
 files that no manager can rewrite. <code>scripts/update-fonts.sh</code> pins the two
 upstream releases those files come from, and a custom manager tracks the pins:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
 </span></code></pre></div>
 <p>A Renovate PR therefore changes one line and nothing else — the fonts it claims
 to update are still the old ones, which is a uniquely deceptive kind of green
