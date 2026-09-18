@@ -57,6 +57,24 @@ spec:
 
           worker:
             replicas: 1
+
+            # Bump this whenever authentik-secrets gains a key.
+            #
+            # envFrom injects a Secret's contents as environment variables
+            # once, when the pod starts. External Secrets updating that Secret
+            # afterwards changes nothing a running worker can see -- so a
+            # blueprint reading a newly added client credential through !Env
+            # gets an empty string and quietly creates a provider that does not
+            # work. That is not hypothetical: Nextcloud's first rollout missed
+            # it by two seconds, and the resulting OIDC application answered
+            # 404 on its discovery endpoint.
+            #
+            # Changing this annotation changes the pod template, so ArgoCD
+            # restarts the worker as part of the same sync that adds the
+            # credential. A `kubectl rollout restart` would do it too, and
+            # would be undone by the next person who reads only the repository.
+            podAnnotations:
+              homelab.wlkr.ch/secret-generation: "2"
             metrics:
               enabled: true
               serviceMonitor:
