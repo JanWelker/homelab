@@ -128,6 +128,31 @@ in the `authentik` directory. **Neither has authentication of its own** —
 publishing them at all is only defensible because the outpost authenticates in
 front of them.
 
+## Where a blueprint lives
+
+Platform providers are in `blueprints.yaml` here. A **workload's** provider is
+not: it lives in that workload's own directory in the
+[workloads repository](../development/add-workload.md), as a ConfigMap targeted
+at this namespace, so the provider and the application it authenticates change
+in one commit.
+
+This repository keeps the parts that cannot safely be delegated:
+
+| Stays here | Why |
+| --- | --- |
+| The client credentials, in `bao-secrets.sh` | A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act |
+| The mount entry, in `application.yaml` | One projected-volume source per workload |
+| The embedded outpost's `providers:` list | It replaces a single global object; two repositories writing it would overwrite each other |
+| `referencegrant.yaml` | A proxied workload's route needs granting from this side |
+
+!!! warning "The mount must be optional, and not `blueprints.configMaps`"
+    `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses to start a pod whose ConfigMap does not exist. Workload blueprints arrive in `12-workloads`, four stages after Authentik has to be Healthy — so a required mount means the worker waits for a stage that is waiting for the worker. The workload sources are a `projected` volume instead, which accepts `optional: true`, and the worker starts whether or not any of them exist yet.
+
+`blueprints_discovery` runs on the worker's startup, hourly, and on a file
+watcher, so a blueprint that lands later is picked up without a restart —
+asynchronously, which is why anything configuring itself *against* a provider
+has to tolerate it not being there yet.
+
 ## Configuration as code
 
 Providers and applications are declared in blueprints

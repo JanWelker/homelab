@@ -204,14 +204,17 @@ DNS and TLS need nothing further. See [Gateway API](../platform/gateway-api.md).
 
 Which of the two shapes applies depends on the application, not on preference:
 
-**It speaks OIDC.** Add an `oauth2provider` to
-`payload/platform/authentik/blueprints.yaml`, generate its client credentials
+**It speaks OIDC.** The `oauth2provider` blueprint goes in the *workload's* own
+directory, as a ConfigMap targeted at the `authentik` namespace — see
+[Where a blueprint lives](../platform/authentik.md#where-a-blueprint-lives).
+Two things still come from this repository: its client credentials, generated
 in `scripts/bao-secrets.sh` under the workload's own `kv/<app>/config` path —
 never by adding keys to `kv/authentik/config`, which a `bao kv put` would
-rewrite wholesale and take Authentik down with it — and point the application's
-discovery URI at **`auth.k8s.wlkr.ch`**. Not the `infra` name: workloads are
-reachable from outside the local network and that one is not. See
-[Two hostnames](../platform/authentik.md#two-hostnames).
+rewrite wholesale and take Authentik down with it — and one projected-volume
+source in `payload/platform/authentik/application.yaml` so the worker mounts
+it. Point the application's discovery URI at **`auth.k8s.wlkr.ch`**, not the
+`infra` name: workloads are reachable from outside the local network and that
+one is not. See [Two hostnames](../platform/authentik.md#two-hostnames).
 
 **It does not.** Add a `proxyprovider` and list it on the embedded outpost, then
 point the workload's `HTTPRoute` `backendRef` at `authentik-server` in the
