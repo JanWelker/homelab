@@ -8,8 +8,6 @@ metadata:
     homelab.wlkr.ch/stage: 04-storage
   annotations:
     link.argocd.argoproj.io/external-link: https://rook.infra.k8s.wlkr.ch
-    argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   project: infra
   source:
@@ -188,5 +186,3 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      # PrometheusRule CRD comes with kube-prometheus-stack, a later stage
-      - SkipDryRunOnMissingResource=true

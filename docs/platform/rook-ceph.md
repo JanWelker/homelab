@@ -62,12 +62,11 @@ finds out simultaneously. This is not a metric to leave unwatched.
 warnings, and the rest).
 
 !!! note "Sync ordering"
-    The rules render as a `PrometheusRule`, whose CRD arrives with
-    kube-prometheus-stack in `08-services` — after this Application in `04-storage`. On
-    a **fresh** bootstrap the first sync therefore runs before the CRD exists,
-    so the Application carries `SkipDryRunOnMissingResource=true` and ArgoCD
-    retries until kube-prometheus-stack has landed. On an existing cluster the
-    CRD is already there and this never comes up.
+    The rules render as a `PrometheusRule`. Its CRD is the
+    `prometheus-operator-crds` Application in `01-crds`, not
+    kube-prometheus-stack in `08-services`: a kind that is missing when
+    `04-storage` syncs would fail the sync, and a failed sync never lets the
+    stage finish.
 
 The Ceph dashboard's links to Prometheus and Grafana are set through
 `cephClusterSpec.cephConfig` (`mgr/dashboard/PROMETHEUS_API_HOST` and friends)

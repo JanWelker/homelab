@@ -19,17 +19,9 @@ spec:
       targetRevision: 91.4.1
       helm:
         valuesObject:
+          # The CRDs are the prometheus-operator-crds Application, in 01-crds.
           crds:
-            enabled: true
-            upgradeJob:
-              enabled: true
-              forceConflicts: true
-              image:
-                kubectl:
-                  registry: registry.k8s.io
-                  repository: kubectl
-                  # renovate: datasource=github-releases depName=kubernetes/kubernetes
-                  tag: v1.37.0
+            enabled: false
 
           grafana:
             enabled: true

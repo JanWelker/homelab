@@ -19,7 +19,7 @@ never a small problem.
 | --- | --- |
 | Namespace | `kube-system` |
 | Stage | `02-network`, after the Gateway API CRDs it renders against |
-| Depends on | Gateway API CRDs (`01-crds`), the Prometheus operator CRDs for its ServiceMonitors, and a `k8sServiceHost` that answers |
+| Depends on | Gateway API and Prometheus operator CRDs (`01-crds`), and a `k8sServiceHost` that answers |
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
 | UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
@@ -111,9 +111,9 @@ ServiceMonitors and two metrics Services, and the `prometheus.io/scrape`
 annotations on the agent and operator pods. When ArgoCD adopts the release it
 adds those back, which rolls the agent and operator once.
 
-ArgoCD's own render would fail the same way — the chart refuses to render
-ServiceMonitors while `monitoring.coreos.com/v1` is missing — so `values.yaml`
-sets `trustCRDsExist: true`. On a new cluster the first sync attempts then fail
-on the missing kind; `SkipDryRunOnMissingResource` lets everything else apply
-meanwhile, and `retry` keeps trying until kube-prometheus-stack has installed
-the CRDs.
+Through ArgoCD the CRDs are already there: `prometheus-operator-crds` is in
+`01-crds`, a stage ahead of Cilium. `values.yaml` still sets
+`trustCRDsExist: true`, because the chart otherwise refuses to render at all
+while `monitoring.coreos.com/v1` is missing — which is the case for the
+bootstrap install above, for a render before `01-crds` has synced, and for the
+diff preview's throwaway cluster.

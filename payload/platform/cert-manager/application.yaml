@@ -29,7 +29,7 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    # On a new cluster the ServiceMonitor waits for kube-prometheus-stack's CRDs.
+    # A failed sync is retried rather than holding 03-controllers until the next commit.
     retry:
       limit: 10
       backoff:
