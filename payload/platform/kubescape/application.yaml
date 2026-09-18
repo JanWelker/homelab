@@ -68,6 +68,12 @@ spec:
               # renovate: datasource=docker depName=quay.io/kubescape/kubescape
               tag: v4.0.14
 
+          kubevuln:
+            config:
+              # 20Mi silently drops Home Assistant, whose SBOM is 40Mi.
+              # See docs/platform/kubescape.md
+              maxSBOMSize: 67108864
+
           # No kubescape.serviceMonitor: its scrape runs a full scan (HTTP 500).
           nodeAgent:
             serviceMonitor:
