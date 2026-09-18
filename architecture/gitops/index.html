@@ -2259,6 +2259,12 @@ quietly dropping out of the rollout.</p>
 <p>ArgoCD stopped assessing the health of <code>Application</code> resources in 1.8.
 <code>argocd-cm</code> restores it, so <code>root</code>, <code>platform</code> and <code>gitops</code> report the health of
 what they manage instead of a permanent Healthy.</p>
+<p>That recursion needs one cut. <code>gitops</code> manages <code>root</code>, <code>root</code> manages <code>gitops</code>,
+and an Application's health is the worst health among the resources it manages
+— so each read the other's, both settled on Progressing, and neither could
+leave it. <code>root</code> carries <code>argocd.argoproj.io/ignore-healthcheck: "true"</code>, which
+takes it out of the health <code>gitops</code> reports. Nothing is lost by that: <code>root</code>
+manages <code>platform</code> and <code>gitops</code>, and reports the health of both.</p>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (Manual)"
         RA[root.yaml]
