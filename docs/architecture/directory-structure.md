@@ -6,9 +6,13 @@ description: "Repository layout: where Ansible playbooks, the boot server, docum
 
 Four directories do the real work, and knowing which is which saves a lot of
 grepping. `ansible/` describes the machines, `boot_server/` hands them their
-operating system, `payload/` is everything the cluster runs, and `output/` is
-generated — never edit anything in there, it will be overwritten by the next
+operating system, `payload/` is the platform the cluster runs on, and `output/`
+is generated — never edit anything in there, it will be overwritten by the next
 `make config` without ceremony.
+
+The applications the cluster exists to *serve* are not here at all: they live
+in [`homelab-apps`](https://github.com/JanWelker/homelab-apps), and
+[GitOps Strategy](gitops.md#workloads-live-in-a-second-repository) explains why.
 
 ```text
 .
@@ -46,7 +50,7 @@ generated — never edit anything in there, it will be overwritten by the next
 ├── payload                 # K8s Manifests & Bootstrap scripts
 │   ├── argocd/             # ArgoCD itself (managed by ArgoCD after bootstrap)
 │   │   ├── application.yaml     # Self-management Application, applied at bootstrap
-│   │   ├── applicationset.yaml  # One Application per */application.yaml, in stages
+│   │   ├── applicationset-platform.yaml  # One Application per platform/*/application.yaml
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
 │       ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
@@ -59,6 +63,7 @@ generated — never edit anything in there, it will be overwritten by the next
 │       ├── monitoring/       # Prometheus stack
 │       ├── openbao/          # Cluster secret store
 │       ├── rook-ceph/        # Storage operator & cluster
+│       ├── workloads/         # The `apps` ApplicationSet, pointed at homelab-apps
 │       └── ...               # One directory per component; see Platform
 ├── zensical.toml           # Documentation site configuration
 └── README.md
@@ -83,3 +88,39 @@ being built. `payload/` matters every day after that. If you are debugging a
 running cluster and find yourself in `ansible/`, you are probably in the wrong
 place — with the honourable exception of `kubeadm.yaml.j2`, which explains why
 half the control plane is configured the way it is.
+
+## The workloads repository
+
+`homelab-apps` is one directory per application, its own documentation, and
+very little else:
+
+```text
+.
+├── docs                    # Its own site, published separately
+│   ├── index.md
+│   ├── conventions.md      # The rules every app directory follows
+│   ├── home-assistant.md
+│   └── nextcloud.md
+├── zensical.toml
+├── renovate.json           # Same policy as this repository
+├── home-assistant/
+│   ├── application.yaml    # The ArgoCD Application, read by the `apps` set
+│   ├── namespace.yaml      # Pod Security labels, sync wave -2
+│   ├── database.yaml       # CloudNativePG Cluster, sync wave -1
+│   ├── ...                 # Whatever that application is made of
+│   ├── httproute.yaml
+│   └── networkpolicy.yaml
+└── nextcloud/
+    └── ...
+```
+
+The shape is deliberately the same as `payload/platform/`: exactly one
+`application.yaml` per directory, and everything beside it is what that
+Application deploys. Adding a directory adds an application; there is no list
+to register it in. See [Adding a Workload](../development/add-workload.md).
+
+Its documentation is its own site, at
+[janwelker.github.io/homelab-apps](https://janwelker.github.io/homelab-apps/),
+built the same way this one is. Two repositories, two sites: a change to a
+workload and the page describing it belong in one pull request, and neither
+site has to be rebuilt because the other changed.

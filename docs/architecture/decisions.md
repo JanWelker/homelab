@@ -72,8 +72,10 @@ Ingress is effectively frozen, and its per-controller annotations are the reason
 Ingress manifests are rarely portable — every non-trivial Ingress in existence
 is really a controller-specific config file wearing a standard resource as a
 disguise. Gateway API separates the cluster-owned `Gateway` from the app-owned
-`HTTPRoute`, which fits the split between `payload/platform/` and
-`payload/workloads/` exactly.
+`HTTPRoute`, which fits the split between this repository and the
+[workloads repository](../development/add-workload.md) exactly — the `Gateway`
+is platform, and the `HTTPRoute` ships with the application that needs it, in
+a repository the platform never reads back.
 
 The cost is a smaller ecosystem and more moving parts: CRDs must be installed
 before anything that references them, which is why they are the first rollout stage.

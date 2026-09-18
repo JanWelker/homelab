@@ -46,6 +46,10 @@ spec:
             - {key: homelab.wlkr.ch/stage, operator: In, values: [10-agents]}
         - matchExpressions:
             - {key: homelab.wlkr.ch/stage, operator: In, values: [11-policy]}
+        # Last: the Application holding the `apps` ApplicationSet, so no
+        # workload is generated until the platform under it is Healthy.
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [12-workloads]}
   syncPolicy:
     # Otherwise every generated Application gains the resources finalizer.
     preserveResourcesOnDeletion: true

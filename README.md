@@ -31,6 +31,10 @@ The full project documentation is published to GitHub Pages at
   - `platform/`: Core infrastructure (Cilium, Rook, etc.).
   - `argocd/`: ArgoCD bootstrap configuration.
 
+The applications the cluster runs live in a second repository,
+[JanWelker/homelab-apps](https://github.com/JanWelker/homelab-apps); this one
+references it once, from the `apps` ApplicationSet, and never reads it back.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), or the

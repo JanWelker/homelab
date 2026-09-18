@@ -1,0 +1,46 @@
+---
+# One Application per <app>/application.yaml in the workloads repository.
+# See docs/development/add-workload.md
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    # The diff preview renders this repository; the workloads live elsewhere.
+    argocd-diff-preview/ignore: "true"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/JanWelker/homelab-apps.git
+        revision: HEAD
+        files:
+          - path: "*/application.yaml"
+  # No RollingSync, deliberately. Workloads do not depend on each other, and
+  # the platform under them is already guaranteed by the stage this
+  # ApplicationSet is created in -- so there is nothing left to order, and the
+  # generated Applications keep the selfHeal that the platform gives up.
+  syncPolicy:
+    # Otherwise every generated Application gains the resources finalizer.
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: "{{ .metadata.name }}"
+      namespace: argocd
+    spec:
+      # templatePatch cannot set the project.
+      project: "{{ .spec.project }}"
+      destination: {}
+  # A workload in the wrong project would be authorised against the wrong
+  # destinations, so fail the whole set rather than generate it.
+  templatePatch: |
+    {{- if ne .spec.project "apps" }}
+    {{- fail (printf "%s is in project %s, not apps" .metadata.name .spec.project) }}
+    {{- end }}
+    metadata:
+      labels: {{ get .metadata "labels" | default dict | toJson }}
+      annotations: {{ get .metadata "annotations" | default dict | toJson }}
+      finalizers: {{ get .metadata "finalizers" | default list | toJson }}
+    spec: {{ .spec | toJson }}
