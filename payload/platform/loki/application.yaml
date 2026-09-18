@@ -13,12 +13,12 @@ metadata:
 spec:
   project: infra
   source:
-    repoURL: https://grafana.github.io/helm-charts
+    repoURL: https://grafana-community.github.io/helm-charts
     chart: loki
-    targetRevision: 7.3.0
+    targetRevision: 18.13.3
     helm:
       valuesObject:
-        deploymentMode: SingleBinary
+        deploymentMode: Monolithic
 
         loki:
           # Here, not singleBinary.podSecurityContext: that key does not exist.
@@ -118,10 +118,6 @@ spec:
           # The chart relabels `job` to logging/loki.
           serviceMonitor:
             enabled: true
-          selfMonitoring:
-            enabled: false
-            grafanaAgent:
-              installOperator: false
   destination:
     server: https://kubernetes.default.svc
     namespace: logging
