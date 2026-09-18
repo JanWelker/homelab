@@ -1,0 +1,2524 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they roll out.">
+      
+      
+      
+        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/">
+      
+      
+        <link rel="prev" href="../architecture/directory-structure/">
+      
+      
+        <link rel="next" href="./cilium/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/logo.png">
+      <meta name="generator" content="zensical-0.0.62">
+    
+    
+      
+        <title>Platform - Homelab Documentation</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.ce62732f.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.812a03bb.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/fonts.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#platform" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+      
+  <img src="../assets/images/logo.png" alt="Homelab Documentation">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Homelab Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Platform
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Following your system theme -- switch to light"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Following your system theme -- switch to light" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun-moon" viewBox="0 0 24 24"><path d="M12 2v2M14.837 16.385a6 6 0 1 1-7.223-7.222c.624-.147.97.66.715 1.248a4 4 0 0 0 5.26 5.259c.589-.255 1.396.09 1.248.715M16 12a4 4 0 0 0-4-4M19 5l-1.256 1.256M20 12h2"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Pinned to light -- switch to dark"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Pinned to light -- switch to dark" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Pinned to dark -- follow your system theme"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Pinned to dark -- follow your system theme" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/JanWelker/homelab" title="Go to repository" class="md-source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JanWelker/homelab
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="./.." class="md-tabs__link">
+        
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../concepts/" class="md-tabs__link">
+          
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="././" class="md-tabs__link">
+          
+  
+  Platform
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../operations/" class="md-tabs__link">
+          
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../development/" class="md-tabs__link">
+          
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+      
+  <img src="../assets/images/logo.png" alt="Homelab Documentation">
+
+    </a>
+    Homelab Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/JanWelker/homelab" title="Go to repository" class="md-source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JanWelker/homelab
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Home
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Get Started
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Get Started
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Core Concepts
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quickstart
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adapting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adapt It to Your Cluster
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../architecture/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Architecture
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/boot-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Boot & Bootstrap Process
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/boot-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Boot Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/ansible/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Ansible
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/gitops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  GitOps Strategy
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Design Decisions
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security Posture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/audit-logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Audit Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Known Limitations
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/directory-structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Repository Layout
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="././" class="md-nav__link md-nav__link--active">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Platform
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Platform
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./cilium/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./gateway-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Gateway API
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./cert-manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  cert-manager
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./external-dns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  External DNS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./rook-ceph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rook-Ceph
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./openbao/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  OpenBao
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./external-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  External Secrets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./authentik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentik
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./metrics-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Metrics Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./kured/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kured
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./kubescape/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kubescape
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./security-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Operations
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/upgrades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Updates & Upgrades
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups & Recovery
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/control-plane-vip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../development/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Development
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/add-workload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/documentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Documentation System
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/maintenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Maintenance
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Components
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#traffic-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Traffic Flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#httproute-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        HTTPRoute Locations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bootstrap-before-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap (before ArgoCD)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gitops-after-argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        GitOps (after ArgoCD)
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rollout-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rollout order
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="./.." class="md-path__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-path__item">
+        <a href="././" class="md-path__link">
+          
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/index.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
+
+
+<h1 id="platform">Platform<a class="headerlink" href="#platform" title="Permanent link">&para;</a></h1>
+<p>The core infrastructure components that run the cluster. Everything here is
+managed by ArgoCD; each component's own page documents its directory layout and
+configuration.</p>
+<p>That is a lot of components for a homelab, and every one of them exists because
+bare metal does not come with the thing a cloud provider would have handed you. No load balancer, no managed certificates, no block
+storage API, no identity provider, no backup service. This section is the bill
+for not having those.</p>
+<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
+<p>Alphabetical, with the namespace it lands in and the rollout stage it belongs
+to. The <a href="#usage">stage ordering</a> below explains why each is where it is.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Namespace</th>
+<th>Stage</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="authentik/">authentik</a></td>
+<td><code>authentik</code></td>
+<td><code>08-services</code></td>
+<td>Single sign-on for every platform UI</td>
+</tr>
+<tr>
+<td>backup</td>
+<td><code>backup</code></td>
+<td><code>08-services</code></td>
+<td>Velero, the CSI snapshot controller and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
+</tr>
+<tr>
+<td><a href="cert-manager/">cert-manager</a></td>
+<td><code>cert-manager</code></td>
+<td><code>03-controllers</code>, issuers and certificates <code>06-certificates</code></td>
+<td>Let's Encrypt wildcards over a Route53 DNS-01 challenge</td>
+</tr>
+<tr>
+<td><a href="cilium/">cilium</a></td>
+<td><code>kube-system</code></td>
+<td><code>02-network</code></td>
+<td>CNI, <code>kube-proxy</code> replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble</td>
+</tr>
+<tr>
+<td><a href="external-dns/">external-dns</a></td>
+<td><code>external-dns</code></td>
+<td><code>06-certificates</code></td>
+<td>Publishes Route53 records from HTTPRoutes</td>
+</tr>
+<tr>
+<td><a href="external-secrets/">external-secrets</a></td>
+<td><code>external-secrets</code></td>
+<td><code>03-controllers</code></td>
+<td>Bridges OpenBao to native Kubernetes Secrets</td>
+</tr>
+<tr>
+<td><a href="gateway-api/">gateway-api</a></td>
+<td><code>gateway-system</code></td>
+<td><code>01-crds</code> CRDs, <code>07-ingress</code> Gateways</td>
+<td>The two Gateways and the HTTP-to-HTTPS redirect</td>
+</tr>
+<tr>
+<td>kube-vip</td>
+<td><code>kube-system</code></td>
+<td><code>02-network</code></td>
+<td>Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see <a href="../operations/control-plane-vip/">Control Plane VIP</a></td>
+</tr>
+<tr>
+<td>kubelet-csr-approver</td>
+<td><code>kubelet-csr-approver</code></td>
+<td><code>03-controllers</code></td>
+<td>Approves <code>kubelet-serving</code> CSRs against the inventory — see <a href="metrics-server/#verifying-the-kubelet-instead-of-trusting-it">Metrics Server</a></td>
+</tr>
+<tr>
+<td><a href="kubescape/">kubescape</a></td>
+<td><code>kubescape</code></td>
+<td><code>11-policy</code></td>
+<td>Nightly CIS, NSA and MITRE posture scans, exported to Grafana</td>
+</tr>
+<tr>
+<td><a href="kured/">kured</a></td>
+<td><code>kured</code></td>
+<td><code>11-policy</code></td>
+<td>Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates</td>
+</tr>
+<tr>
+<td><a href="logging/">logging</a></td>
+<td><code>logging</code></td>
+<td><code>08-services</code> to <code>10-agents</code></td>
+<td>Loki and Grafana Alloy, for container, journal and audit logs</td>
+</tr>
+<tr>
+<td><a href="metrics-server/">metrics-server</a></td>
+<td><code>kube-system</code></td>
+<td><code>08-services</code></td>
+<td>The <code>metrics.k8s.io</code> API behind <code>kubectl top</code> and every HPA</td>
+</tr>
+<tr>
+<td><a href="monitoring/">monitoring</a></td>
+<td><code>monitoring</code></td>
+<td><code>08-services</code></td>
+<td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics</td>
+</tr>
+<tr>
+<td><a href="openbao/">openbao</a></td>
+<td><code>openbao</code></td>
+<td><code>05-secrets</code></td>
+<td>Cluster-wide secret store</td>
+</tr>
+<tr>
+<td><a href="rook-ceph/">rook-ceph</a></td>
+<td><code>rook-ceph</code></td>
+<td><code>03-controllers</code> operator, <code>04-storage</code> cluster</td>
+<td>Replicated block storage and an S3 object store</td>
+</tr>
+<tr>
+<td><a href="security-policies/">security policies</a></td>
+<td><code>kube-system</code></td>
+<td><code>11-policy</code></td>
+<td>Pod Security Admission levels and default-deny ingress policies</td>
+</tr>
+</tbody>
+</table>
+<h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart LR
+    Client([Client]) --&gt; LB[Cilium LoadBalancer]
+    LB --&gt; GW[Gateway API]
+
+    subgraph Cluster
+        GW --&gt;|HTTPRoute| Svc[Service]
+        Svc --&gt; Pod[App Pod]
+    end
+
+    style Client fill:#f9f,stroke:#333</code></pre>
+<p>Four hops, and Cilium is three of them. When a hostname stops answering, the
+question is which hop stopped: does the Gateway still hold its LoadBalancer IP,
+does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have endpoints.
+In that order — the answer is usually the first one.</p>
+<h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
+<p>HTTPRoutes are co-located with their respective apps:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>URL</th>
+<th>HTTPRoute Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ArgoCD</td>
+<td><code>argo.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/argocd/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Authentik</td>
+<td><code>auth.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/authentik/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Prometheus</td>
+<td><code>prometheus.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/authentik/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Alertmanager</td>
+<td><code>alertmanager.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/authentik/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td><code>monitoring.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/monitoring/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Hubble</td>
+<td><code>hubble.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/cilium/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>OpenBao UI</td>
+<td><code>vault.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/openbao/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Rook Dashboard</td>
+<td><code>rook.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/rook-ceph/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Apps</td>
+<td><code>&lt;app&gt;.k8s.wlkr.ch</code></td>
+<td><code>payload/workloads/&lt;app&gt;/httproute.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="bootstrap-before-argocd">Bootstrap (before ArgoCD)<a class="headerlink" href="#bootstrap-before-argocd" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bootstrap<span class="w">  </span><span class="c1"># Gateway API CRDs + Cilium, ArgoCD, then the parent Applications</span>
+</span></code></pre></div>
+<h3 id="gitops-after-argocd">GitOps (after ArgoCD)<a class="headerlink" href="#gitops-after-argocd" title="Permanent link">&para;</a></h3>
+<p>Two parent ArgoCD Applications manage the cluster:</p>
+<table>
+<thead>
+<tr>
+<th>Application</th>
+<th>Role</th>
+<th>Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>platform</code></td>
+<td>Holds the <code>platform</code> ApplicationSet, which generates one Application per <code>payload/platform/*/application.yaml</code></td>
+<td><code>payload/platform/applicationset.yaml</code></td>
+</tr>
+<tr>
+<td><code>gitops</code></td>
+<td>ArgoCD's own config + HTTPRoute</td>
+<td><code>payload/argocd/</code></td>
+</tr>
+</tbody>
+</table>
+<p>A third parent, <code>workloads</code>, is added back alongside the first workload. See
+<a href="../development/add-workload/">Adding a Workload</a>.</p>
+<p>Each component directory holds exactly one <code>application.yaml</code>; everything else
+in the directory is what that Application deploys, apart from Helm <code>values.yaml</code>
+files, which the Application references instead.</p>
+<h3 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h3>
+<p>The ApplicationSet syncs its Applications in stages, selected by the
+<code>homelab.wlkr.ch/stage</code> label, and starts a stage only when every Application in
+the one before it is Synced and Healthy. This is the dependency graph made
+explicit; <a href="../architecture/gitops/#rollout-order">GitOps Strategy</a> covers how
+the gating works and what it costs.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Applications</th>
+<th>Waits for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01-crds</code></td>
+<td><code>gateway-api-crds</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>02-network</code></td>
+<td><code>cilium</code>, <code>kube-vip</code></td>
+<td>the Gateway API CRDs Cilium's operator reads at startup</td>
+</tr>
+<tr>
+<td><code>03-controllers</code></td>
+<td><code>cert-manager</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>, <code>rook-ceph-operator</code>, <code>snapshot-controller</code></td>
+<td>a network; each brings its own CRDs</td>
+</tr>
+<tr>
+<td><code>04-storage</code></td>
+<td><code>rook-ceph</code>, <code>rook-ceph-cluster</code></td>
+<td>the Rook operator and its CRDs</td>
+</tr>
+<tr>
+<td><code>05-secrets</code></td>
+<td><code>openbao</code></td>
+<td><code>rook-ceph-block</code> for its volumes. <strong>Bootstrap pauses here</strong> until OpenBao is initialised and unsealed</td>
+</tr>
+<tr>
+<td><code>06-certificates</code></td>
+<td><code>certificates</code>, <code>external-dns</code></td>
+<td>a working <code>ClusterSecretStore</code> and the Route53 credentials in OpenBao</td>
+</tr>
+<tr>
+<td><code>07-ingress</code></td>
+<td><code>gateway-api</code></td>
+<td>the wildcard certificates the Gateways terminate TLS with</td>
+</tr>
+<tr>
+<td><code>08-services</code></td>
+<td><code>authentik</code>, <code>backup</code>, <code>kube-prometheus-stack</code>, <code>logging</code>, <code>metrics-server</code></td>
+<td>secrets, storage, the Gateways, and approved kubelet certificates</td>
+</tr>
+<tr>
+<td><code>09-backends</code></td>
+<td><code>loki</code>, <code>velero</code></td>
+<td>the buckets <code>logging</code> and <code>backup</code> claim</td>
+</tr>
+<tr>
+<td><code>10-agents</code></td>
+<td><code>alloy</code></td>
+<td>Loki, so the collector has somewhere to ship</td>
+</tr>
+<tr>
+<td><code>11-policy</code></td>
+<td><code>kubescape</code>, <code>kured</code>, <code>security</code></td>
+<td>everything else, so policies label namespaces that exist and kured reboots a converged cluster</td>
+</tr>
+</tbody>
+</table>
+<p>External Secrets is a controller like any other now: its CRDs arrive in
+<code>03-controllers</code>, well ahead of the first <code>ExternalSecret</code>, while the
+<code>ClusterSecretStore</code> that needs a running OpenBao lives with OpenBao in
+<code>05-secrets</code>. The same split takes cert-manager's issuers and certificates out
+of <code>03-controllers</code> into their own <code>certificates</code> Application, because they
+cannot go Ready until OpenBao holds the Route53 credentials.</p>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../architecture/directory-structure/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Repository Layout">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Repository Layout
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="./cilium/" class="md-footer__link md-footer__link--next" aria-label="Next: Cilium">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Cilium
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Jan Welker
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
+      
+    
+  </body>
+</html>
