@@ -68,6 +68,36 @@ spec:
               limits:
                 memory: 1Gi
 
+            # Blueprints owned by the workloads that need them, mounted beside
+            # the platform's own. Not `blueprints.configMaps`: that renders a
+            # plain configMap volume, which the kubelet refuses to mount until
+            # the ConfigMap exists -- and these arrive with the workloads, in
+            # 12-workloads, four stages after Authentik has to be Healthy. The
+            # worker would be waiting for a stage that is waiting for the
+            # worker.
+            #
+            # A projected volume takes `optional`, so the worker starts either
+            # way and the blueprint appears when its workload lands.
+            # blueprints_discovery runs on startup, hourly, and on a file
+            # watcher, so nothing needs restarting to pick it up.
+            #
+            # One entry per workload, and only the mount: the provider itself
+            # lives in the workloads repository, next to the application it
+            # authenticates. The embedded outpost's provider list stays in
+            # blueprints.yaml -- it replaces one global object, so two
+            # repositories writing it would overwrite each other.
+            volumes:
+              - name: blueprints-workloads
+                projected:
+                  sources:
+                    - configMap:
+                        name: authentik-blueprint-nextcloud
+                        optional: true
+            volumeMounts:
+              - name: blueprints-workloads
+                mountPath: /blueprints/mounted/workloads
+                readOnly: true
+
           postgresql:
             enabled: true
             auth:

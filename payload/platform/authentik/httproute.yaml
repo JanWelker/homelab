@@ -28,6 +28,48 @@ spec:
         - name: authentik-server
           port: 80
 ---
+# The same Authentik, on the apps Gateway. *.infra.k8s.wlkr.ch resolves only on
+# the local network, so an OIDC client reachable from outside it -- Nextcloud --
+# would send its users to an authorize endpoint they cannot reach, and the
+# login would simply hang. Proxied applications do not have this problem: the
+# whole flow happens on their own hostname, because their route points here.
+#
+# Nothing about Authentik needs configuring for this: every OIDC URL it
+# publishes -- issuer, authorize, token, jwks -- is built from the host the
+# request arrived on, so it serves a self-consistent configuration on both
+# names. What matters is that each client uses one of them and never mixes
+# them, because the issuer in the token must match the one the client
+# discovered. ArgoCD and Grafana stay on the infra name; the workloads use this
+# one. See docs/platform/authentik.md#two-hostnames
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: authentik-apps
+  namespace: authentik
+spec:
+  parentRefs:
+    - name: apps-gateway
+      namespace: kube-system
+      sectionName: https
+  hostnames:
+    - "auth.k8s.wlkr.ch"
+  rules:
+    - filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Strict-Transport-Security
+                value: "max-age=31536000; includeSubDomains"
+              - name: X-Content-Type-Options
+                value: "nosniff"
+              - name: X-Frame-Options
+                value: "SAMEORIGIN"
+              - name: Referrer-Policy
+                value: "strict-origin-when-cross-origin"
+      backendRefs:
+        - name: authentik-server
+          port: 80
+---
 # No auth of their own: these must only ever point at the outpost.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

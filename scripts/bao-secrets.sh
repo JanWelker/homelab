@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the five kv paths the cluster reads through ExternalSecrets.
+# Populates the six kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -33,6 +33,13 @@
 # Everything under kv/authentik/config is generated here, including the OIDC
 # client credentials ArgoCD and Grafana read back from the same path. Grafana's
 # break-glass admin password under kv/monitoring/grafana-admin is generated too.
+#
+# kv/nextcloud/config is generated as well, and is deliberately its own path
+# rather than four more keys under kv/authentik/config. A `bao kv put` replaces
+# a path wholesale, so every application that kept its client credentials there
+# would make adding the next one an Authentik outage. Authentik reads the two
+# OIDC keys from here through the same ExternalSecret it reads its own config
+# with; Nextcloud reads all four. See payload/platform/authentik/secrets.yaml.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -157,17 +164,25 @@ AUTHENTIK_DANGER="  Rewriting it rotates Authentik's Postgres password while Pos
   still using the old one, and invalidates the OIDC client secrets ArgoCD
   and Grafana authenticate with. On a running cluster that is an outage."
 
+NEXTCLOUD_DANGER="  Rewriting it issues a new OIDC client secret. Authentik and Nextcloud
+  read it from here through two different ExternalSecrets that refresh
+  independently, so signing in with Authentik fails until both have caught
+  up. The admin password changes too -- and Nextcloud only reads that when
+  it first installs, so on a running cluster the new value is written down
+  and the old one is still what logs you in."
+
 echo "### Existing paths"
 decide WRITE_CERT_MANAGER cert-manager/route53
 decide WRITE_EXTERNAL_DNS external-dns/route53
 decide WRITE_AUTHENTIK    authentik/config "$AUTHENTIK_DANGER"
 decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_GRAFANA      monitoring/grafana-admin
+decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
-  && [ "$WRITE_GRAFANA" = "0" ]; then
+  && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -286,6 +301,18 @@ if [ "$WRITE_GRAFANA" = "1" ]; then
     "password=$(rand_b64 24)"
 fi
 
+# Four values, two consumers. Nextcloud reads all of them; Authentik reads the
+# two oidc-* keys to configure the provider Nextcloud then authenticates
+# against, so neither side is ever copied out of a UI. The admin account is
+# break-glass only -- day-to-day logins go through Authentik.
+if [ "$WRITE_NEXTCLOUD" = "1" ]; then
+  put nextcloud/config \
+    "username=admin" \
+    "password=$(rand_b64 24)" \
+    "oidc-client-id=$(rand_hex 16)" \
+    "oidc-client-secret=$(rand_b64 48)"
+fi
+
 cat <<'EOF'
 
 Done. External Secrets refreshes hourly on its own. A path that was just
@@ -314,4 +341,10 @@ Grafana's break-glass admin password is generated the same way:
 
   kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
     -field=password monitoring/grafana-admin
+
+So is Nextcloud's, which is the break-glass local account behind
+https://cloud.k8s.wlkr.ch/login?direct=1 -- the normal login is Authentik:
+
+  kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
+    -field=password nextcloud/config
 EOF
