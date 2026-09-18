@@ -306,6 +306,7 @@ self-explanatory:
 | Setting | Why |
 | --- | --- |
 | `redis-ha.haproxy` `maxSurge: 0` | Three replicas with hard per-host anti-affinity and only three schedulable nodes. The default strategy surges a fourth pod with nowhere to land, wedging every rollout until the progress deadline gives up. Retiring first frees the node |
+| `redis-ha.image.tag`, `redis-ha.haproxy.image.tag` | Both run ahead of the chart. The chart pins exact patch tags, and an exact patch tag stops being rebuilt once the next one lands, so it never picks up a base-image security update. `redis` 8.6.4-alpine was last built 2026-06-23 and therefore predates the Alpine OpenSSL 3.5.8-r0 of 2026-08-25; 8.6.6-alpine is the current head of the same 8.6 line the chart deliberately chose. Renovate needs each bare `tag:` listed under the `pinDigests: false` rule in `renovate.json` |
 | Memory limits, no CPU limits | Limits are about 2.5x the measured peak working set; requests are about steady state. A CPU limit throttles even on an idle node, while memory is not compressible, so only memory is capped |
 | `controller` has no resources | The application-controller peaked at 1639Mi and grows with the number of managed resources; a day of steady state is not enough to size it |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
