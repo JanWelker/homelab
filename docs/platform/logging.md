@@ -20,6 +20,17 @@ currently misbehaving.
     deprecated in early 2025 and reached **end of life in March 2026**. Alloy is
     its supported replacement and the one to reach for now.
 
+!!! note "Not the `grafana/loki` chart"
+    Loki comes from `grafana-community/loki`, not the `grafana/loki` chart most
+    documentation points at. In March 2026 the OSS chart moved to
+    [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts);
+    what stayed behind in `grafana/loki` is maintained for Grafana Enterprise
+    Logs customers. Its 7.x line pins a `k8s-sidecar` six minor releases behind
+    — 2.5.0, carrying ten critical CVEs the current 2.11.2 has none of — and a
+    `loki.image.tag` hardcoded below the chart's own `appVersion`. Open-source
+    pull requests against it are closed with a pointer to the community
+    repository.
+
 ## At a glance
 
 | | |
@@ -101,7 +112,7 @@ Loki runs as a single binary and keeps chunks in the
 
 | Property | Value |
 | --- | --- |
-| Deployment mode | `SingleBinary`, 1 replica |
+| Deployment mode | `Monolithic`, 1 replica |
 | Chunks + ruler | S3 bucket `loki`, via the `loki-bucket` ObjectBucketClaim |
 | Endpoint | `rook-ceph-rgw-object-store.rook-ceph.svc`, path-style, plain HTTP in-cluster |
 | Local PVC | 10Gi on `rook-ceph-block`, for the WAL and the index being built |
@@ -176,7 +187,7 @@ sets a `cluster` label; its empty value matches series without one.
 
 ```text
 loki/
-└── application.yaml          # ArgoCD Application (Helm: grafana/loki)
+└── application.yaml          # ArgoCD Application (Helm: grafana-community/loki)
 
 alloy/
 └── application.yaml          # ArgoCD Application (Helm: grafana/alloy)
