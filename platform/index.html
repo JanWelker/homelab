@@ -332,6 +332,8 @@
       
         
       
+        
+      
     
     
     
@@ -1016,6 +1018,8 @@
       
         
       
+        
+      
     
     
     
@@ -1192,6 +1196,33 @@
     
   
   Rook-Ceph
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./cloudnative-pg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CloudNativePG
 
     
   </span>
@@ -2054,6 +2085,8 @@
       
         
       
+        
+      
     
     
     
@@ -2152,6 +2185,12 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
 <td><code>kube-system</code></td>
 <td><code>02-network</code></td>
 <td>CNI, <code>kube-proxy</code> replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble</td>
+</tr>
+<tr>
+<td><a href="cloudnative-pg/">cloudnative-pg</a></td>
+<td><code>cnpg-system</code></td>
+<td><code>03-controllers</code></td>
+<td>The PostgreSQL operator every workload database runs on</td>
 </tr>
 <tr>
 <td><a href="external-dns/">external-dns</a></td>
@@ -2371,7 +2410,7 @@ the gating works and what it costs.</p>
 </tr>
 <tr>
 <td><code>03-controllers</code></td>
-<td><code>cert-manager</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>, <code>rook-ceph-operator</code>, <code>snapshot-controller</code></td>
+<td><code>cert-manager</code>, <code>cloudnative-pg</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>, <code>rook-ceph-operator</code>, <code>snapshot-controller</code></td>
 <td>a network; each brings its own CRDs</td>
 </tr>
 <tr>

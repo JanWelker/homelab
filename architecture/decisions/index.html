@@ -332,6 +332,8 @@
       
         
       
+        
+      
     
     
     
@@ -978,6 +980,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#cloudnativepg-for-every-database-not-the-charts-bundled-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CloudNativePG for every database, not the chart's bundled one
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1113,6 +1126,8 @@
       
         
           
+        
+      
         
       
         
@@ -1316,6 +1331,33 @@
     
   
   Rook-Ceph
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/cloudnative-pg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CloudNativePG
 
     
   </span>
@@ -2096,6 +2138,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#cloudnativepg-for-every-database-not-the-charts-bundled-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CloudNativePG for every database, not the chart's bundled one
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2299,6 +2352,22 @@ system after three months away, than Flux's smaller footprint.</p>
 <p>Bootstrap is two <code>kubectl apply</code>s — the AppProjects and the self-managing
 <code>argocd</code> Application — and everything else is discovered from the repository by
 an ApplicationSet. See <a href="../gitops/">GitOps Strategy</a>.</p>
+<h2 id="cloudnativepg-for-every-database-not-the-charts-bundled-one">CloudNativePG for every database, not the chart's bundled one<a class="headerlink" href="#cloudnativepg-for-every-database-not-the-charts-bundled-one" title="Permanent link">&para;</a></h2>
+<p>Almost every application chart worth deploying ships a PostgreSQL subchart, and
+accepting those defaults is how a cluster ends up running four different
+Postgres versions installed by four different maintainers, each upgraded on
+someone else's release schedule. A database is not an implementation detail of
+the application in front of it; it is the part with the data in it.</p>
+<p>So the rule in the <a href="../../development/add-workload/">workloads repository</a> is
+absolute: the subchart is disabled, and the application points at a
+CloudNativePG <code>Cluster</code> in its own namespace. The operator generates the
+credentials into a Secret the chart consumes, which also means no database
+password is ever written down — not in Git, and not in OpenBao either.</p>
+<p>The cost is a controller and a CRD to learn, and a major-version upgrade that
+is now explicitly this project's problem rather than something that arrives
+silently inside a chart bump. That is the trade: the upgrade is more visible
+<em>and</em> more work, which is the correct direction for the only component whose
+failure mode is permanent. See <a href="../../platform/cloudnative-pg/">CloudNativePG</a>.</p>
 
 
 
