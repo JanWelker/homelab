@@ -23,6 +23,8 @@ spec:
     rollingSync:
       steps:
         - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [00-projects]}
+        - matchExpressions:
             - {key: homelab.wlkr.ch/stage, operator: In, values: [01-crds]}
         - matchExpressions:
             - {key: homelab.wlkr.ch/stage, operator: In, values: [02-network]}

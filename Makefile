@@ -71,12 +71,14 @@ install-argo:
 		--version $(ARGOCD_VERSION) \
 		--wait
 
+# The AppProjects go first: an Application naming a project that does not
+# exist is rejected, and the argocd Application names one.
 bootstrap-apps:
-	@echo "Bootstrapping ArgoCD App-of-Apps..."
-	kubectl apply -f payload/argocd/argocd-projects.yaml
-	kubectl apply -f payload/root.yaml
-	@echo "AppProjects, root app and core-infrastructure apps created."
-	@echo "ArgoCD will now sync all applications from the Git repo."
+	@echo "Handing the cluster over to ArgoCD..."
+	kubectl apply -f payload/platform/argocd-projects/projects.yaml
+	kubectl apply -f payload/argocd/application.yaml
+	@echo "AppProjects and the self-managing argocd Application created."
+	@echo "ArgoCD now syncs the platform ApplicationSet and everything under it."
 
 storage-check:
 	scripts/storage-check.sh

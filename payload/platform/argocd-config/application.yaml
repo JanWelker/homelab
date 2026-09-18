@@ -1,0 +1,30 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-config
+  namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 08-services
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    link.argocd.argoproj.io/external-link: https://argo.infra.k8s.wlkr.ch
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: system
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/argocd-config
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

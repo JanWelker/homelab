@@ -44,15 +44,13 @@ generated — never edit anything in there, it will be overwritten by the next
 │   ├── tftp/               # PXE bootloader & configs
 │   └── tmp/                # Temporary workspace
 ├── payload                 # K8s Manifests & Bootstrap scripts
-│   ├── root.yaml           # Parent Applications (platform, gitops)
-│   ├── argocd/             # ArgoCD config (managed by ArgoCD after bootstrap)
-│   │   ├── application.yaml     # ArgoCD self-management Application
-│   │   ├── argocd-projects.yaml # AppProject grouping (see Security Posture)
-│   │   ├── root-application.yaml # Syncs root.yaml after bootstrap
-│   │   ├── httproute.yaml
+│   ├── argocd/             # ArgoCD itself (managed by ArgoCD after bootstrap)
+│   │   ├── application.yaml     # Self-management Application, applied at bootstrap
+│   │   ├── applicationset.yaml  # One Application per */application.yaml, in stages
 │   │   └── values.yaml
 │   └── platform/           # Core infrastructure managed by ArgoCD
-│       ├── applicationset.yaml # One Application per */application.yaml, in stages
+│       ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
+│       ├── argocd-projects/  # AppProjects (see Security Posture)
 │       ├── cert-manager/     # cert-manager controller
 │       ├── certificates/     # Let's Encrypt issuers and TLS certificates
 │       ├── cilium/           # CNI + Gateway API

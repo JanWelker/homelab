@@ -270,19 +270,19 @@ The deployment host (the machine running Ansible and the boot server) must be re
         documented at
         [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down).
 
-    - **Bootstrap GitOps** (App-of-Apps):
+    - **Hand the cluster over to ArgoCD**:
 
         ```bash
         make bootstrap-apps
         ```
 
-        *This applies the `apps`, `infra` and `system` AppProjects and then
-        the parent applications (platform, gitops) which enable ArgoCD to
-        manage all applications from Git.* The projects go on first because
-        both parent applications name one, and the file defining them is
-        synced by `gitops` — which needs `system` to exist before it can sync
-        anything. ArgoCD adopts that file on the first sync, so this is the
-        same bootstrap-by-hand handover as `make install-cilium`.
+        *This applies the `apps`, `infra` and `system` AppProjects, then the
+        self-managing `argocd` Application, which brings the `platform`
+        ApplicationSet and with it every component.* The projects go first
+        because an Application naming a project that does not exist is
+        rejected, and the `argocd` Application names `system`. Both files are
+        adopted by ArgoCD on the first sync, so this is the same
+        bootstrap-by-hand handover as `make install-cilium`.
 
         This is the handover moment: from here on the cluster takes its orders
         from the repository rather than from you. The `platform` ApplicationSet

@@ -37,8 +37,8 @@ five in one page.
 
     ---
 
-    App-of-Apps, and the staged rollout that makes a fresh bootstrap converge
-    instead of deadlocking on a CRD that does not exist yet.
+    The ApplicationSet, and the staged rollout that makes a fresh bootstrap
+    converge instead of deadlocking on a CRD that does not exist yet.
 
 - **[Design Decisions](decisions.md)**
 
