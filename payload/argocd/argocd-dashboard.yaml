@@ -5,6 +5,9 @@ kind: ConfigMap
 metadata:
   name: argocd-dashboard
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
   labels:
     grafana_dashboard: "1"
 data:

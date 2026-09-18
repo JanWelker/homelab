@@ -4,6 +4,9 @@ kind: AppProject
 metadata:
   name: apps
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: User-facing applications
   sourceRepos:
@@ -20,6 +23,9 @@ kind: AppProject
 metadata:
   name: infra
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: Core infrastructure (Cilium, Rook-Ceph, Monitoring, Certificates)
   sourceRepos:
@@ -36,6 +42,9 @@ kind: AppProject
 metadata:
   name: system
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: System components (ArgoCD, ApplicationSets, etc.)
   sourceRepos:
