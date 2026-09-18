@@ -2249,8 +2249,8 @@ cluster — and if you put it in the cluster anyway, <code>selfHeal</code> remov
 you are still admiring your work.</p>
 <p>Two terms recur throughout this site:</p>
 <ul>
-<li><strong>App-of-Apps</strong> — one ArgoCD <code>Application</code> whose job is to create other
-  <code>Application</code>s, so a single <code>kubectl apply</code> bootstraps the whole tree.</li>
+<li><strong>ApplicationSet</strong> — one ArgoCD object that generates an <code>Application</code> per
+  matching file in the repository, so adding a component is adding a directory.</li>
 <li><strong>Rollout stage</strong> — a label on each platform <code>Application</code> that orders
   deployment. An ApplicationSet syncs one stage at a time and starts the next
   only when the last is Synced and Healthy. It is how a fresh cluster installs

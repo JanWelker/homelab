@@ -2118,6 +2118,18 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
 </thead>
 <tbody>
 <tr>
+<td>argocd-config</td>
+<td><code>argocd</code></td>
+<td><code>08-services</code></td>
+<td>ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard</td>
+</tr>
+<tr>
+<td>argocd-projects</td>
+<td><code>argocd</code></td>
+<td><code>00-projects</code></td>
+<td>The <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects</td>
+</tr>
+<tr>
 <td><a href="authentik/">authentik</a></td>
 <td><code>authentik</code></td>
 <td><code>08-services</code></td>
@@ -2296,28 +2308,28 @@ In that order — the answer is usually the first one.</p>
 </table>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="bootstrap-before-argocd">Bootstrap (before ArgoCD)<a class="headerlink" href="#bootstrap-before-argocd" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bootstrap<span class="w">  </span><span class="c1"># Gateway API CRDs + Cilium, ArgoCD, then the parent Applications</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bootstrap<span class="w">  </span><span class="c1"># Gateway API CRDs + Cilium, ArgoCD, then the handover</span>
 </span></code></pre></div>
 <h3 id="gitops-after-argocd">GitOps (after ArgoCD)<a class="headerlink" href="#gitops-after-argocd" title="Permanent link">&para;</a></h3>
-<p>Two parent ArgoCD Applications manage the cluster:</p>
+<p>One Application sits above everything else:</p>
 <table>
 <thead>
 <tr>
-<th>Application</th>
+<th>Object</th>
 <th>Role</th>
 <th>Path</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>platform</code></td>
-<td>Holds the <code>platform</code> ApplicationSet, which generates one Application per <code>payload/platform/*/application.yaml</code></td>
-<td><code>payload/platform/applicationset.yaml</code></td>
+<td><code>argocd</code> Application</td>
+<td>Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand</td>
+<td><code>payload/argocd/application.yaml</code></td>
 </tr>
 <tr>
-<td><code>gitops</code></td>
-<td>ArgoCD's own config + HTTPRoute</td>
-<td><code>payload/argocd/</code></td>
+<td><code>platform</code> ApplicationSet</td>
+<td>Generates one Application per <code>payload/platform/*/application.yaml</code></td>
+<td><code>payload/argocd/applicationset.yaml</code></td>
 </tr>
 </tbody>
 </table>
@@ -2342,9 +2354,14 @@ the gating works and what it costs.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>00-projects</code></td>
+<td><code>argocd-projects</code></td>
+<td>—</td>
+</tr>
+<tr>
 <td><code>01-crds</code></td>
 <td><code>gateway-api-crds</code>, <code>prometheus-operator-crds</code></td>
-<td>—</td>
+<td>the AppProjects every Application names</td>
 </tr>
 <tr>
 <td><code>02-network</code></td>
@@ -2378,7 +2395,7 @@ the gating works and what it costs.</p>
 </tr>
 <tr>
 <td><code>08-services</code></td>
-<td><code>authentik</code>, <code>backup</code>, <code>kube-prometheus-stack</code>, <code>logging</code>, <code>metrics-server</code></td>
+<td><code>argocd-config</code>, <code>authentik</code>, <code>backup</code>, <code>kube-prometheus-stack</code>, <code>logging</code>, <code>metrics-server</code></td>
 <td>secrets, storage, the Gateways, and approved kubelet certificates</td>
 </tr>
 <tr>

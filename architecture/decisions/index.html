@@ -968,10 +968,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#argocd-with-app-of-apps-not-flux" class="md-nav__link">
+  <a href="#argocd-with-an-applicationset-not-flux" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        ArgoCD with App-of-Apps, not Flux
+        ArgoCD with an ApplicationSet, not Flux
       </span>
     </span>
   </a>
@@ -2086,10 +2086,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#argocd-with-app-of-apps-not-flux" class="md-nav__link">
+  <a href="#argocd-with-an-applicationset-not-flux" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        ArgoCD with App-of-Apps, not Flux
+        ArgoCD with an ApplicationSet, not Flux
       </span>
     </span>
   </a>
@@ -2291,14 +2291,14 @@ service outside the house a hard dependency of the cluster starting up instead;
 the manual step is the side of that trade this cluster takes. See
 <a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>
 and <a href="../limitations/#openbao-needs-an-operator-to-unseal-it">the resulting limitation</a>.</p>
-<h2 id="argocd-with-app-of-apps-not-flux">ArgoCD with App-of-Apps, not Flux<a class="headerlink" href="#argocd-with-app-of-apps-not-flux" title="Permanent link">&para;</a></h2>
+<h2 id="argocd-with-an-applicationset-not-flux">ArgoCD with an ApplicationSet, not Flux<a class="headerlink" href="#argocd-with-an-applicationset-not-flux" title="Permanent link">&para;</a></h2>
 <p>Either would work, and anyone claiming otherwise is selling something. ArgoCD
 was chosen mainly for its UI, which makes sync state and drift legible at a
 glance — worth more in a homelab, where the operator is often re-learning the
 system after three months away, than Flux's smaller footprint.</p>
-<p>The App-of-Apps pattern keeps bootstrap to a single <code>kubectl apply</code> of
-<code>payload/root.yaml</code>; everything else is discovered from the repository. See
-<a href="../gitops/">GitOps Strategy</a>.</p>
+<p>Bootstrap is two <code>kubectl apply</code>s — the AppProjects and the self-managing
+<code>argocd</code> Application — and everything else is discovered from the repository by
+an ApplicationSet. See <a href="../gitops/">GitOps Strategy</a>.</p>
 
 
 

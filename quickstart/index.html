@@ -2531,16 +2531,16 @@ documented at
 <a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>.</p>
 </li>
 <li>
-<p><strong>Bootstrap GitOps</strong> (App-of-Apps):</p>
+<p><strong>Hand the cluster over to ArgoCD</strong>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
-<p><em>This applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects and then
-the parent applications (platform, gitops) which enable ArgoCD to
-manage all applications from Git.</em> The projects go on first because
-both parent applications name one, and the file defining them is
-synced by <code>gitops</code> — which needs <code>system</code> to exist before it can sync
-anything. ArgoCD adopts that file on the first sync, so this is the
-same bootstrap-by-hand handover as <code>make install-cilium</code>.</p>
+<p><em>This applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects, then the
+self-managing <code>argocd</code> Application, which brings the <code>platform</code>
+ApplicationSet and with it every component.</em> The projects go first
+because an Application naming a project that does not exist is
+rejected, and the <code>argocd</code> Application names <code>system</code>. Both files are
+adopted by ArgoCD on the first sync, so this is the same
+bootstrap-by-hand handover as <code>make install-cilium</code>.</p>
 <p>This is the handover moment: from here on the cluster takes its orders
 from the repository rather than from you. The <code>platform</code> ApplicationSet
 creates every platform Application at once, then syncs them one
