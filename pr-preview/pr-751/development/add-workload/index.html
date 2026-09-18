@@ -2559,14 +2559,17 @@ those keys; never copy the value anywhere.</p>
 <p>DNS and TLS need nothing further. See <a href="../../platform/gateway-api/">Gateway API</a>.</p>
 <h3 id="putting-a-workload-behind-authentik">Putting a workload behind Authentik<a class="headerlink" href="#putting-a-workload-behind-authentik" title="Permanent link">&para;</a></h3>
 <p>Which of the two shapes applies depends on the application, not on preference:</p>
-<p><strong>It speaks OIDC.</strong> Add an <code>oauth2provider</code> to
-<code>payload/platform/authentik/blueprints.yaml</code>, generate its client credentials
+<p><strong>It speaks OIDC.</strong> The <code>oauth2provider</code> blueprint goes in the <em>workload's</em> own
+directory, as a ConfigMap targeted at the <code>authentik</code> namespace — see
+<a href="../../platform/authentik/#where-a-blueprint-lives">Where a blueprint lives</a>.
+Two things still come from this repository: its client credentials, generated
 in <code>scripts/bao-secrets.sh</code> under the workload's own <code>kv/&lt;app&gt;/config</code> path —
 never by adding keys to <code>kv/authentik/config</code>, which a <code>bao kv put</code> would
-rewrite wholesale and take Authentik down with it — and point the application's
-discovery URI at <strong><code>auth.k8s.wlkr.ch</code></strong>. Not the <code>infra</code> name: workloads are
-reachable from outside the local network and that one is not. See
-<a href="../../platform/authentik/#two-hostnames">Two hostnames</a>.</p>
+rewrite wholesale and take Authentik down with it — and one projected-volume
+source in <code>payload/platform/authentik/application.yaml</code> so the worker mounts
+it. Point the application's discovery URI at <strong><code>auth.k8s.wlkr.ch</code></strong>, not the
+<code>infra</code> name: workloads are reachable from outside the local network and that
+one is not. See <a href="../../platform/authentik/#two-hostnames">Two hostnames</a>.</p>
 <p><strong>It does not.</strong> Add a <code>proxyprovider</code> and list it on the embedded outpost, then
 point the workload's <code>HTTPRoute</code> <code>backendRef</code> at <code>authentik-server</code> in the
 <code>authentik</code> namespace instead of at the application. That is a cross-namespace

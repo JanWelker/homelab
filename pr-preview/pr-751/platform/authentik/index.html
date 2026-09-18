@@ -1422,6 +1422,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#where-a-blueprint-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where a blueprint lives
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-as-code" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2191,6 +2202,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#where-a-blueprint-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where a blueprint lives
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-as-code" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2571,6 +2593,47 @@ authentication layer on its own.</p>
 in the <code>authentik</code> directory. <strong>Neither has authentication of its own</strong> —
 publishing them at all is only defensible because the outpost authenticates in
 front of them.</p>
+<h2 id="where-a-blueprint-lives">Where a blueprint lives<a class="headerlink" href="#where-a-blueprint-lives" title="Permanent link">&para;</a></h2>
+<p>Platform providers are in <code>blueprints.yaml</code> here. A <strong>workload's</strong> provider is
+not: it lives in that workload's own directory in the
+<a href="../../development/add-workload/">workloads repository</a>, as a ConfigMap targeted
+at this namespace, so the provider and the application it authenticates change
+in one commit.</p>
+<p>This repository keeps the parts that cannot safely be delegated:</p>
+<table>
+<thead>
+<tr>
+<th>Stays here</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The client credentials, in <code>bao-secrets.sh</code></td>
+<td>A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act</td>
+</tr>
+<tr>
+<td>The mount entry, in <code>application.yaml</code></td>
+<td>One projected-volume source per workload</td>
+</tr>
+<tr>
+<td>The embedded outpost's <code>providers:</code> list</td>
+<td>It replaces a single global object; two repositories writing it would overwrite each other</td>
+</tr>
+<tr>
+<td><code>referencegrant.yaml</code></td>
+<td>A proxied workload's route needs granting from this side</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">The mount must be optional, and not <code>blueprints.configMaps</code></p>
+<p><code>blueprints.configMaps</code> renders a plain <code>configMap</code> volume, and the kubelet refuses to start a pod whose ConfigMap does not exist. Workload blueprints arrive in <code>12-workloads</code>, four stages after Authentik has to be Healthy — so a required mount means the worker waits for a stage that is waiting for the worker. The workload sources are a <code>projected</code> volume instead, which accepts <code>optional: true</code>, and the worker starts whether or not any of them exist yet.</p>
+</div>
+<p><code>blueprints_discovery</code> runs on the worker's startup, hourly, and on a file
+watcher, so a blueprint that lands later is picked up without a restart —
+asynchronously, which is why anything configuring itself <em>against</em> a provider
+has to tolerate it not being there yet.</p>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
 (<code>blueprints.yaml</code>), mounted into the worker as a ConfigMap. Clicking them
