@@ -32,7 +32,7 @@ flowchart LR
     AR --> |"payload/argocd/applicationset-platform.yaml"| AS[ApplicationSet platform]
     AS --> |"payload/platform/*/application.yaml"| INFRA[Every component]
     AS --> |"12-workloads"| WA[Application workloads]
-    WA --> |"payload/platform/workloads/applicationset.yaml"| APPS[ApplicationSet apps]
+    WA --> |"payload/workloads/applicationset.yaml"| APPS[ApplicationSet apps]
     APPS --> |"homelab-apps: */application.yaml"| WL[Every workload]
 ```
 
@@ -211,7 +211,7 @@ The dependency runs one way and only one way: workloads reference the platform
 (the `apps-gateway`, the `rook-ceph-block` StorageClass, the `openbao`
 `ClusterSecretStore`, the CloudNativePG operator), and the platform references
 the workloads repository exactly once — the `repoURL` in
-`payload/platform/workloads/applicationset.yaml`. Nothing in this repository
+`payload/workloads/applicationset.yaml`. Nothing in this repository
 reads the contents of that one.
 
 ### What the split costs
@@ -236,6 +236,23 @@ the platform — is already guaranteed by *when the ApplicationSet is created*.
 It ships inside the `workloads` Application at stage `12-workloads`, so it does
 not exist at all until `11-policy` is Synced and Healthy, which transitively
 means the whole platform is.
+
+This is why `payload/workloads/` is a sibling of `payload/platform/` rather
+than a directory inside it, and why the `platform` ApplicationSet names it as a
+second, explicit generator path instead of picking it up from a glob:
+
+```yaml
+        files:
+          - path: payload/platform/*/application.yaml
+          - path: payload/workloads/application.yaml
+```
+
+Workloads are not platform, and the directory should not claim they are. The
+platform ApplicationSet generates the handover anyway because ordering is the
+only thing it is being borrowed for — opening the door to the workloads is the
+last act of bringing the platform up, so it belongs as the last step of the
+thing that brings the platform up. It is one Application, holding one
+ApplicationSet, and it deploys nothing else.
 
 That buys back something the platform gave up: because the generated
 Applications are not under a rolling strategy, **workloads keep `selfHeal`**. A

@@ -1,6 +1,6 @@
 ---
-# One Application per payload/platform/*/application.yaml, rolled out in
-# stages; see docs/architecture/gitops.md#rollout-order
+# One Application per payload/platform/*/application.yaml, plus the workloads
+# handover, rolled out in stages; see docs/architecture/gitops.md#rollout-order
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -18,6 +18,11 @@ spec:
         revision: HEAD
         files:
           - path: payload/platform/*/application.yaml
+          # Not platform, and not in payload/platform/. It is generated here
+          # only to inherit the staged rollout: handing over to the workloads
+          # is the last act of bringing the platform up, so it has to be the
+          # last step of the thing that brings the platform up.
+          - path: payload/workloads/application.yaml
   strategy:
     type: RollingSync
     rollingSync:

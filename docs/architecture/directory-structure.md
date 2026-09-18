@@ -52,19 +52,21 @@ in [`homelab-apps`](https://github.com/JanWelker/homelab-apps), and
 │   │   ├── application.yaml     # Self-management Application, applied at bootstrap
 │   │   ├── applicationset-platform.yaml  # One Application per platform/*/application.yaml
 │   │   └── values.yaml
-│   └── platform/           # Core infrastructure managed by ArgoCD
-│       ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
-│       ├── argocd-projects/  # AppProjects (see Security Posture)
-│       ├── cert-manager/     # cert-manager controller
-│       ├── certificates/     # Let's Encrypt issuers and TLS certificates
-│       ├── cilium/           # CNI + Gateway API
-│       ├── external-secrets/ # OpenBao to K8s Secret bridge
-│       ├── gateway-api/      # Gateway resources
-│       ├── monitoring/       # Prometheus stack
-│       ├── openbao/          # Cluster secret store
-│       ├── rook-ceph/        # Storage operator & cluster
-│       ├── workloads/         # The `apps` ApplicationSet, pointed at homelab-apps
-│       └── ...               # One directory per component; see Platform
+│   ├── platform/           # Core infrastructure managed by ArgoCD
+│   │   ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
+│   │   ├── argocd-projects/  # AppProjects (see Security Posture)
+│   │   ├── cert-manager/     # cert-manager controller
+│   │   ├── certificates/     # Let's Encrypt issuers and TLS certificates
+│   │   ├── cilium/           # CNI + Gateway API
+│   │   ├── external-secrets/ # OpenBao to K8s Secret bridge
+│   │   ├── gateway-api/      # Gateway resources
+│   │   ├── monitoring/       # Prometheus stack
+│   │   ├── openbao/          # Cluster secret store
+│   │   ├── rook-ceph/        # Storage operator & cluster
+│   │   └── ...               # One directory per component; see Platform
+│   └── workloads/          # NOT platform: the handover to the apps repository
+│       ├── application.yaml     # Stage 12-workloads, the rollout's last step
+│       └── applicationset.yaml  # ApplicationSet `apps`, pointed at homelab-apps
 ├── zensical.toml           # Documentation site configuration
 └── README.md
 ```

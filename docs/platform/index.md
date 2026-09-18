@@ -93,7 +93,7 @@ One Application sits above everything else:
 | --- | --- | --- |
 | `argocd` Application | Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand | `payload/argocd/application.yaml` |
 | `platform` ApplicationSet | Generates one Application per `payload/platform/*/application.yaml` | `payload/argocd/applicationset-platform.yaml` |
-| `apps` ApplicationSet | Generates one Application per `<app>/application.yaml` in the workloads repository | `payload/platform/workloads/applicationset.yaml` |
+| `apps` ApplicationSet | Generates one Application per `<app>/application.yaml` in the workloads repository | `payload/workloads/applicationset.yaml` |
 
 The `apps` ApplicationSet is itself deployed by the `workloads` Application in
 the last platform stage, which is what keeps workloads from being generated
