@@ -77,8 +77,8 @@ reasoning, and what each choice costs, is in
 
     ---
 
-    Concepts, the eleven-command build, and what to change before pointing any
-    of it at your own hardware.
+    Concepts, the thirteen-command build, and what to change before pointing
+    any of it at your own hardware.
 
 - **[Architecture](architecture/index.md)**
 
@@ -92,7 +92,7 @@ reasoning, and what each choice costs, is in
 
     ---
 
-    The fifteen components that make the cluster more than a very expensive way
+    The nineteen components that make the cluster more than a very expensive way
     to run `nginx`, with the rollout order that lets a fresh bootstrap
     converge rather than deadlock.
 

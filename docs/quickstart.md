@@ -9,7 +9,7 @@ description: "Bring up the bare metal Kubernetes cluster from scratch: provision
 Bring up the bare metal Kubernetes cluster from scratch. This project automates
 the deployment using Flatcar Container Linux and Kubeadm.
 
-Set aside an afternoon. Not because the steps are long — they are eleven
+Set aside an afternoon. Not because the steps are long — they are thirteen
 commands — but because somewhere around step 7 a machine will sit at a blinking
 cursor, and you will learn something about your DHCP server that you did not
 want to know.
@@ -280,9 +280,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
         self-managing `argocd` Application, which brings the `platform`
         ApplicationSet and with it every component.* The projects go first
         because an Application naming a project that does not exist is
-        rejected, and the `argocd` Application names `system`. Both files are
-        adopted by ArgoCD on the first sync, so this is the same
-        bootstrap-by-hand handover as `make install-cilium`.
+        rejected, and the `argocd` Application names `system`. The projects are
+        adopted by the `argocd-projects` Application on its first sync; the
+        `argocd` Application stays hand-applied and unmanaged, which is what
+        makes it the thing to re-apply when everything else is broken.
 
         This is the handover moment: from here on the cluster takes its orders
         from the repository rather than from you. The `platform` ApplicationSet

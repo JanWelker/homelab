@@ -87,7 +87,7 @@ and the resulting intermittent outage is genuinely unpleasant to diagnose.
 
 ## 4. Set up the DNS-01 solver
 
-`payload/platform/cert-manager/cluster-issuers.yaml` is written for **AWS
+`payload/platform/certificates/cluster-issuers.yaml` is written for **AWS
 Route53**. Update:
 
 - `email:` — your address, on both issuers. Let's Encrypt sends expiry notices here.

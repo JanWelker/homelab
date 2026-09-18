@@ -152,9 +152,9 @@ It triggers a sync only when an Application's revision or spec changes:
   the next change to its Application. For an Application with a Git source,
   any commit to this repository changes its revision; for one that only
   installs a chart — `alloy`, `external-secrets`, `kubelet-csr-approver`,
-  `kured`, `loki`, `metrics-server`, `rook-ceph-cluster`, `rook-ceph-operator`,
-  `snapshot-controller`, `velero` — or pins a tag, like `gateway-api-crds`, only
-  a version bump does.
+  `kured`, `loki`, `metrics-server`, `prometheus-operator-crds`,
+  `rook-ceph-cluster`, `rook-ceph-operator`, `snapshot-controller`, `velero` —
+  or pins a tag, like `gateway-api-crds`, only a version bump does.
 - **A failed sync waits for a person.** Once `retry` is exhausted the
   Application stays in the step, and everything after it waits, until its
   revision changes again or it is synced by hand:

@@ -132,8 +132,8 @@ to go without it. The policy, the retention, and the LogQL to query it are in
 
 ## Authorization
 
-**ArgoCD AppProjects do not constrain much.** `payload/argocd/argocd-projects.yaml`
-defines three projects, but `apps` and `infra` both allow `sourceRepos: "*"` and
+**ArgoCD AppProjects do not constrain much.**
+`payload/platform/argocd-projects/projects.yaml` defines three projects, but `apps` and `infra` both allow `sourceRepos: "*"` and
 a `clusterResourceWhitelist` of every group and kind, in every namespace. Only
 `system` restricts its destination namespace.
 

@@ -223,7 +223,7 @@ vendored copies; the header of each file names the upstream tag it came from.
 | [Kubescape](kubescape.md) | Kubescape | Written for this cluster: `kubescape/grafana-dashboard.yaml` |
 | [Rook-Ceph](rook-ceph.md) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored from Rook: `rook-ceph/grafana-dashboards.yaml` |
 | [Alloy](logging.md) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored from the Alloy mixin: `logging/grafana-dashboards.yaml` |
-| ArgoCD | ArgoCD | Vendored from Argo CD: `payload/argocd/argocd-dashboard.yaml` |
+| ArgoCD | ArgoCD | Vendored from Argo CD: `payload/platform/argocd-config/argocd-dashboard.yaml` |
 
 ## Adding a Dashboard
 

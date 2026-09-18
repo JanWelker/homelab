@@ -19,7 +19,7 @@ The full project documentation is published to GitHub Pages at
 - **[Quickstart Guide](https://janwelker.github.io/homelab/quickstart/)**: Instructions for bootstrapping the cluster.
 - **[Adapting This for Your Cluster](https://janwelker.github.io/homelab/adapting/)**: What to change before running this against your own hardware.
 - **[Platform](https://janwelker.github.io/homelab/platform/)**: Details on core infrastructure components.
-- **[Workloads](https://janwelker.github.io/homelab/workloads/)**: Information about deployed applications.
+- **[Adding a Workload](https://janwelker.github.io/homelab/development/add-workload/)**: How to deploy an application onto the cluster.
 
 ## Repository Structure
 

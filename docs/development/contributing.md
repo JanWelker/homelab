@@ -51,8 +51,8 @@ bug" helps nobody, least of all you.
 ## Changing manifests under `payload/`
 
 Everything under `payload/` is applied by ArgoCD, so a mistake there reaches the
-cluster on merge, automatically, with `selfHeal` making sure it stays there. Two
-checks before pushing, both of which take seconds:
+cluster on merge, automatically, and stays there until another commit says
+otherwise. Two checks before pushing, both of which take seconds:
 
 ```bash
 # Valid YAML and valid Kubernetes objects, without touching the cluster

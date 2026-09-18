@@ -117,12 +117,12 @@ Two things follow that are worth knowing:
 
 ## Network policy is partial, and AppProjects are permissive
 
-Four namespaces have default-deny ingress and every platform namespace has Pod
+Eight namespaces have default-deny ingress and every platform namespace has Pod
 Security Admission labels — see
 [Security Policies](../platform/security-policies.md).
 
 Beyond that: all **egress** is unrestricted everywhere, and the namespaces
-outside those four allow all ingress. Two of the three ArgoCD AppProjects allow
+outside those eight allow all ingress. Two of the three ArgoCD AppProjects allow
 every resource kind in every namespace. Details in
 [Security Posture](security.md#authorization).
 
