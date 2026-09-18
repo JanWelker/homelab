@@ -32,7 +32,7 @@ jobs:
             -v $(pwd)/output:/output \
             -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
             -e REPO=${{ github.repository }} \
-            dagandersen/argocd-diff-preview:v0.2.14 \
+            dagandersen/argocd-diff-preview:v0.2.14@sha256:2cadb16274ba6834446573cbf514cec87caeec80a19690987fc1ac8338e27631 \
             --auto-detect-files-changed=true \
             --watch-if-no-watch-pattern-found=false
 
