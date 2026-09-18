@@ -2613,6 +2613,10 @@ in one commit.</p>
 <td>A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act</td>
 </tr>
 <tr>
+<td>The <code>secret-generation</code> annotation</td>
+<td>Adding a credential means restarting the worker that reads it — see the warning below</td>
+</tr>
+<tr>
 <td>The mount entry, in <code>application.yaml</code></td>
 <td>One projected-volume source per workload</td>
 </tr>
@@ -2634,6 +2638,10 @@ in one commit.</p>
 watcher, so a blueprint that lands later is picked up without a restart —
 asynchronously, which is why anything configuring itself <em>against</em> a provider
 has to tolerate it not being there yet.</p>
+<div class="admonition danger">
+<p class="admonition-title">A new client credential needs the worker restarted</p>
+<p><code>envFrom</code> injects <code>authentik-secrets</code> as environment variables <strong>once, when the pod starts</strong> — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through <code>!Env</code> gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at <code>14:34:10</code> and <code>authentik-secrets</code> gained <code>NEXTCLOUD_CLIENT_ID</code> at <code>14:34:12</code>. So <code>worker.podAnnotations.homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code> is <strong>bumped whenever <code>authentik-secrets</code> gains a key</strong> — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A <code>kubectl rollout restart</code> fixes a running cluster but leaves nothing behind for the next person.</p>
+</div>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
 (<code>blueprints.yaml</code>), mounted into the worker as a ConfigMap. Clicking them
