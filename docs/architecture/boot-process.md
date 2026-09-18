@@ -233,7 +233,7 @@ sequenceDiagram
     Admin->>Deploy: 3. make install-argo
     Deploy->>Cluster: 4. Helm install ArgoCD
     Admin->>Deploy: 5. make bootstrap-apps
-    Deploy->>Cluster: 6. Apply root.yaml (App-of-Apps)
+    Deploy->>Cluster: 6. Apply AppProjects + the argocd Application
 ```
 
 !!! note

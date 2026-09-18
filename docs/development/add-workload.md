@@ -11,46 +11,38 @@ documentation is that this page is short.
 
 ## Overview
 
-All workloads live under `payload/workloads/<app-name>/`. A `workloads` parent ArgoCD Application auto-discovers any `application.yaml` file in that directory tree, so once the parent exists, adding a new folder is all that's needed to register an app with ArgoCD. No console, no `kubectl apply`, no step that only exists in someone's memory.
+All workloads live under `payload/workloads/<app-name>/`, one directory per app with an `application.yaml` in it. The `platform` ApplicationSet generates an ArgoCD Application from every such file it is told to look at, so adding a new folder is all that's needed to register an app. No console, no `kubectl apply`, no step that only exists in someone's memory.
 
 !!! note
-    There are currently no workloads, so `payload/workloads/` and its parent Application do not exist. The first workload needs Step 1 below; subsequent ones can skip it.
+    There are currently no workloads, so `payload/workloads/` does not exist. The first workload needs Step 1 below; subsequent ones can skip it.
 
-## Step 1: Create the Workloads Parent Application
+## Step 1: Let the ApplicationSet see the workloads
 
-Add this document to `payload/root.yaml` (the `apps` AppProject it references is
-already defined in `payload/argocd/argocd-projects.yaml`):
+In `payload/argocd/applicationset.yaml`, add the workloads path to the generator
+and a step for them at the end of the rollout:
 
 ```yaml
----
-# Parent Application: manages user workloads from payload/workloads/
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: workloads
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: apps
-  source:
-    repoURL: https://github.com/JanWelker/homelab.git
-    targetRevision: HEAD
-    path: payload/workloads
-    directory:
-      recurse: true
-      include: "{**/application.yaml}"
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+  generators:
+    - git:
+        repoURL: https://github.com/JanWelker/homelab.git
+        revision: HEAD
+        files:
+          - path: payload/platform/*/application.yaml
+          - path: payload/workloads/*/application.yaml
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        # ... the existing steps, then:
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [12-workloads]}
 ```
 
-The `root` Application (`payload/argocd/root-application.yaml`) syncs
-`payload/root.yaml`, so merging the change is enough — no `kubectl apply`.
+Workloads go last, after `11-policy`: they need the platform under them, and a
+broken workload should not hold back anything the cluster runs on.
+
+The `argocd` Application syncs `payload/argocd/`, so merging the change is
+enough — no `kubectl apply`.
 
 ## Step 2: Create the App Directory
 
@@ -68,6 +60,9 @@ kind: Application
 metadata:
   name: my-app
   namespace: argocd
+  labels:
+    # Without a stage the ApplicationSet fails rather than skipping the app.
+    homelab.wlkr.ch/stage: 12-workloads
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
 spec:
@@ -135,7 +130,7 @@ See [Gateway API](../platform/gateway-api.md) for more details.
 
 ## Step 6: Commit and Push
 
-ArgoCD will detect the new `application.yaml` on the next sync (or immediately if auto-sync is enabled on the parent app) and deploy your workload. The hostname's DNS record and TLS certificate are already handled — [external-dns](../platform/external-dns.md) publishes the record from the `HTTPRoute`, and the Gateway's wildcard certificate covers the name. Neither needs a step of its own.
+The ApplicationSet picks up the new `application.yaml` on its next reconcile and generates the Application; it syncs once the stages before it are Healthy. The hostname's DNS record and TLS certificate are already handled — [external-dns](../platform/external-dns.md) publishes the record from the `HTTPRoute`, and the Gateway's wildcard certificate covers the name. Neither needs a step of its own.
 
 ```bash
 git add payload/workloads/my-app/

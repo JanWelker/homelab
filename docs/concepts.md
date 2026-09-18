@@ -96,8 +96,8 @@ you are still admiring your work.
 
 Two terms recur throughout this site:
 
-- **App-of-Apps** — one ArgoCD `Application` whose job is to create other
-  `Application`s, so a single `kubectl apply` bootstraps the whole tree.
+- **ApplicationSet** — one ArgoCD object that generates an `Application` per
+  matching file in the repository, so adding a component is adding a directory.
 - **Rollout stage** — a label on each platform `Application` that orders
   deployment. An ApplicationSet syncs one stage at a time and starts the next
   only when the last is Synced and Healthy. It is how a fresh cluster installs

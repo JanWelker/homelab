@@ -113,13 +113,13 @@ the manual step is the side of that trade this cluster takes. See
 [Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
 and [the resulting limitation](limitations.md#openbao-needs-an-operator-to-unseal-it).
 
-## ArgoCD with App-of-Apps, not Flux
+## ArgoCD with an ApplicationSet, not Flux
 
 Either would work, and anyone claiming otherwise is selling something. ArgoCD
 was chosen mainly for its UI, which makes sync state and drift legible at a
 glance — worth more in a homelab, where the operator is often re-learning the
 system after three months away, than Flux's smaller footprint.
 
-The App-of-Apps pattern keeps bootstrap to a single `kubectl apply` of
-`payload/root.yaml`; everything else is discovered from the repository. See
-[GitOps Strategy](gitops.md).
+Bootstrap is two `kubectl apply`s — the AppProjects and the self-managing
+`argocd` Application — and everything else is discovered from the repository by
+an ApplicationSet. See [GitOps Strategy](gitops.md).

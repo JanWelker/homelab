@@ -20,6 +20,8 @@ to. The [stage ordering](#usage) below explains why each is where it is.
 
 | Component | Namespace | Stage | What it does |
 | --- | --- | --- | --- |
+| argocd-config | `argocd` | `08-services` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard |
+| argocd-projects | `argocd` | `00-projects` | The `apps`, `infra` and `system` AppProjects |
 | [authentik](authentik.md) | `authentik` | `08-services` | Single sign-on for every platform UI |
 | backup | `backup` | `08-services` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
 | [cert-manager](cert-manager.md) | `cert-manager` | `03-controllers`, issuers and certificates `06-certificates` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
@@ -79,17 +81,17 @@ HTTPRoutes are co-located with their respective apps:
 ### Bootstrap (before ArgoCD)
 
 ```bash
-make bootstrap  # Gateway API CRDs + Cilium, ArgoCD, then the parent Applications
+make bootstrap  # Gateway API CRDs + Cilium, ArgoCD, then the handover
 ```
 
 ### GitOps (after ArgoCD)
 
-Two parent ArgoCD Applications manage the cluster:
+One Application sits above everything else:
 
-| Application | Role | Path |
+| Object | Role | Path |
 | --- | --- | --- |
-| `platform` | Holds the `platform` ApplicationSet, which generates one Application per `payload/platform/*/application.yaml` | `payload/platform/applicationset.yaml` |
-| `gitops` | ArgoCD's own config + HTTPRoute | `payload/argocd/` |
+| `argocd` Application | Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand | `payload/argocd/application.yaml` |
+| `platform` ApplicationSet | Generates one Application per `payload/platform/*/application.yaml` | `payload/argocd/applicationset.yaml` |
 
 A third parent, `workloads`, is added back alongside the first workload. See
 [Adding a Workload](../development/add-workload.md).
@@ -108,14 +110,15 @@ the gating works and what it costs.
 
 | Stage | Applications | Waits for |
 | --- | --- | --- |
-| `01-crds` | `gateway-api-crds`, `prometheus-operator-crds` | — |
+| `00-projects` | `argocd-projects` | — |
+| `01-crds` | `gateway-api-crds`, `prometheus-operator-crds` | the AppProjects every Application names |
 | `02-network` | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
 | `03-controllers` | `cert-manager`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | `04-storage` | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
 | `05-secrets` | `openbao` | `rook-ceph-block` for its volumes. **Bootstrap pauses here** until OpenBao is initialised and unsealed |
 | `06-certificates` | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
 | `07-ingress` | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
-| `08-services` | `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
+| `08-services` | `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | `09-backends` | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | `10-agents` | `alloy` | Loki, so the collector has somewhere to ship |
 | `11-policy` | `kubescape`, `kured`, `security` | everything else, so policies label namespaces that exist and kured reboots a converged cluster |
