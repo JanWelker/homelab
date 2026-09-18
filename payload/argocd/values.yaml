@@ -22,6 +22,7 @@ redis-ha:
     # Ahead of the chart's 3.3.10-alpine, which carries three critical CVEs.
     # Drop once argo-cd vendors redis-ha >= 4.39.1 (DandyDeveloper/charts#424).
     image:
+      # renovate: datasource=docker depName=ecr-public.aws.com/docker/library/haproxy versioning=docker
       tag: 3.3.14-alpine
     # maxSurge 0: 3 pods, hard anti-affinity, 3 nodes; see gitops docs.
     deploymentStrategy:
