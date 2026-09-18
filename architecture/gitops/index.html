@@ -914,6 +914,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#moving-a-resource-to-another-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving a resource to another Application
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#argocds-own-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2032,6 +2043,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#moving-a-resource-to-another-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Moving a resource to another Application
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#argocds-own-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2249,6 +2271,33 @@ wave is waiting for, nothing ever moves again.</p>
 that ships an <code>ExternalSecret</code>, the earliest of which is cert-manager at <code>-5</code>.
 <code>SkipDryRunOnMissingResource=true</code> on each <code>ExternalSecret</code> covers the first
 sync of a fresh cluster, where the CRDs have not landed yet.</p>
+<h2 id="moving-a-resource-to-another-application">Moving a resource to another Application<a class="headerlink" href="#moving-a-resource-to-another-application" title="Permanent link">&para;</a></h2>
+<p>Moving a manifest from one Application's directory to another's is not a move
+to ArgoCD. The old Application sees a resource it tracks vanish from Git and,
+with <code>prune: true</code>, deletes it; the new one creates it again, possibly first,
+possibly seconds later. For a <code>ClusterSecretStore</code> that is an outage of every
+secret. For a child <code>Application</code> with the resources finalizer it is the
+deletion of everything that Application deployed.</p>
+<p>So a move takes two changes:</p>
+<ol>
+<li>
+<p>Annotate the resource where it is, and let that sync:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
+</span></code></pre></div>
+<p>Pruning skips a resource whose <strong>live</strong> object carries <code>Prune=false</code>,
+whichever Application gets there first. <code>IgnoreExtraneous</code> keeps the old
+Application Synced while it still sees the resource it may no longer prune;
+without it the old Application stays OutOfSync until the new one has
+applied the resource, which is a deadlock when a sync gate waits on the old
+one first.
+2. Move the file, keeping the annotations. The new Application applies it and
+   takes over the tracking annotation; the old one no longer considers the
+   resource its own.</p>
+</li>
+</ol>
+<p>The annotations can go once the second change has synced everywhere.</p>
 <h2 id="argocds-own-configuration">ArgoCD's own configuration<a class="headerlink" href="#argocds-own-configuration" title="Permanent link">&para;</a></h2>
 <p><code>payload/argocd/values.yaml</code> holds the chart values. The parts that are not
 self-explanatory:</p>
@@ -2279,6 +2328,10 @@ self-explanatory:</p>
 <tr>
 <td><code>admin.enabled: "false"</code></td>
 <td>With SSO in front, a shared admin password would bypass it with no audit trail. Re-enabling it is the <a href="../../platform/authentik/#when-authentik-is-down">break-glass path</a></td>
+</tr>
+<tr>
+<td><code>applicationsetcontroller.enable.progressive.syncs</code></td>
+<td>Lets an ApplicationSet with a <code>RollingSync</code> strategy order the Applications it generates. Without the flag the strategy is ignored and every Application syncs at once</td>
 </tr>
 <tr>
 <td><code>policy.default: ""</code></td>
