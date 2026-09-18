@@ -30,9 +30,14 @@ untaint:
 	@echo "WARNING: Only run this task in a single node cluster setup!"
 	kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
+# --overwrite: without it this fails on any node that is already tainted, so
+# re-tainting a partly untainted cluster takes two tries and a reading of the
+# error message.
 taint:
 	@echo "Re-applying control-plane taints..."
-	kubectl taint nodes -l node-role.kubernetes.io/control-plane node-role.kubernetes.io/control-plane:NoSchedule
+	kubectl taint nodes --overwrite \
+		-l node-role.kubernetes.io/control-plane \
+		node-role.kubernetes.io/control-plane:NoSchedule
 
 fonts:
 	scripts/update-fonts.sh
