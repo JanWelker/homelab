@@ -66,7 +66,9 @@ located in `renovate.json`.
     config short enough to hold in your head; what it costs is listed under
     [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
-    are pinned to commit SHAs and container images to digests.
+    are pinned to commit SHAs and container images to digests. Two Helm `tag:`
+    overrides are exempt, because a bare tag has nowhere to put one -- see
+    [A bare Helm tag cannot be digest-pinned](#a-bare-helm-tag-cannot-be-digest-pinned-and-takes-the-branch-with-it).
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
     Helm values (`payload/**/values.yaml`), and pre-commit hooks. Custom regex
@@ -174,6 +176,40 @@ hyphen, which is what the workflow correctly uses. Nothing matched, so the image
 sat on v0.2.2 while upstream reached v0.2.14, and being invisible it was the one
 container image in the repository that `config:best-practices` never pinned to a
 digest.
+
+### A bare Helm tag cannot be digest-pinned, and takes the branch with it
+
+`config:best-practices` pins container images to digests, and Renovate collects
+every pin into one shared `renovate/pin-dependencies` branch. A pin it cannot
+write does not skip that dependency; it fails the whole branch:
+
+```text
+WARN: Error updating branch: update failure
+```
+
+Two pins in this repository have nowhere for a digest to go. The HAProxy and
+Kubescape overrides are Helm `tag:` values inside a `valuesObject`, so the field
+holds `3.4.4-alpine`, not a complete image reference -- there is no `@sha256:`
+position in it at all. No capture group fixes that, unlike a full reference where
+an optional `(?:@(?<currentDigest>sha256:[a-f0-9]+))?` is enough. So both carry
+`pinDigests: false`, and **a third bare-tag docker pin has to be added to that
+rule** or the banner comes back.
+
+The collateral is the part worth remembering. `dagandersen/argocd-diff-preview`
+*can* be pinned -- its manager captures `currentDigest` precisely so that it can
+-- but it shared the failing branch, so its digest pin never landed either. One
+unwritable pin held up every pin in the repository, which is why the symptom
+reads as "Renovate is broken" rather than as two specific fields.
+
+Images written as a full reference are unaffected: `velero-plugin-for-aws`,
+`etcd`, `aws-cli`, `kube-vip` and `busybox` are all digest-pinned already,
+because the `kubernetes` manager reads those `image:` lines natively and writes
+digests into them. Only the Helm-values overrides needed the exception.
+
+Version bumps never stopped working through any of this, which is what makes it
+easy to miss: the CloudNativePG image in the workloads repository was bumped to
+18.6 by the very manager whose pin was failing. The Dependency Dashboard banner
+is the only place it shows.
 
 ### Bootstrap versions are derived, not pinned
 
