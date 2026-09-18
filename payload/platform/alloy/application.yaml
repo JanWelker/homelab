@@ -4,10 +4,10 @@ kind: Application
 metadata:
   name: alloy
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 10-agents
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # After Loki, which it ships to.
-    argocd.argoproj.io/sync-wave: "3"
     argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/compare-options: IgnoreExtraneous
   finalizers:

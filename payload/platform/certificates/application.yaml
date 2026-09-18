@@ -2,26 +2,22 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-manager
+  name: certificates
   namespace: argocd
   labels:
-    homelab.wlkr.ch/stage: 03-controllers
+    homelab.wlkr.ch/stage: 06-certificates
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  sources:
-    - repoURL: https://charts.jetstack.io
-      chart: cert-manager
-      targetRevision: v1.21.2
-      helm:
-        valueFiles:
-          - $values/payload/platform/cert-manager/values.yaml
-    - repoURL: https://github.com/JanWelker/homelab.git
-      targetRevision: HEAD
-      ref: values
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/platform/certificates
+    directory:
+      exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -29,7 +25,7 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    # On a new cluster the ServiceMonitor waits for kube-prometheus-stack's CRDs.
+    # One failed apply would otherwise strand the issuers and certificates.
     retry:
       limit: 10
       backoff:
@@ -37,6 +33,4 @@ spec:
         factor: 2
         maxDuration: 5m
     syncOptions:
-      - CreateNamespace=true
       - ServerSideApply=true
-      - SkipDryRunOnMissingResource=true

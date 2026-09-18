@@ -4,6 +4,8 @@ kind: HTTPRoute
 metadata:
   name: rook-dashboard
   namespace: rook-ceph
+  annotations:
+    argocd.argoproj.io/ignore-healthcheck: "true"
 spec:
   parentRefs:
     - name: infra-gateway

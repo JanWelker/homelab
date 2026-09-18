@@ -25,7 +25,7 @@ events, and no clue, just a dash where a number should be.
 | | |
 | --- | --- |
 | Namespace | `kube-system`; kubelet-csr-approver in `kubelet-csr-approver` |
-| Sync wave | `2`; kubelet-csr-approver at `1`, because the CSRs have to be approved first |
+| Stage | `08-services`; kubelet-csr-approver in `03-controllers`, because the CSRs have to be approved first |
 | Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued |
 | If it is down | `kubectl top` and every HPA. Nothing else notices |
 | Health check | `kubectl top nodes` &rarr; a row per node |

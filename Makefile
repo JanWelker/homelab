@@ -3,7 +3,7 @@
 chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
 CILIUM_VERSION      := $(call chart_version,payload/platform/cilium/application.yaml)
 ARGOCD_VERSION      := $(call chart_version,payload/argocd/application.yaml)
-GATEWAY_API_VERSION := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api/crds.yaml)
+GATEWAY_API_VERSION := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api-crds/application.yaml)
 
 require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
 
@@ -46,7 +46,7 @@ bootstrap: install-cilium install-argo bootstrap-apps
 # ServiceMonitors off: their CRDs arrive later with kube-prometheus-stack, and
 # ArgoCD adds the monitors then. They leave cilium-config untouched.
 install-cilium:
-	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api/crds.yaml)
+	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
 	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml

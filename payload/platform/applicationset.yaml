@@ -1,0 +1,67 @@
+---
+# One Application per payload/platform/*/application.yaml, rolled out in
+# stages; see docs/architecture/gitops.md#rollout-order
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    # The diff preview renders the application.yaml files themselves.
+    argocd-diff-preview/ignore: "true"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/JanWelker/homelab.git
+        revision: HEAD
+        files:
+          - path: payload/platform/*/application.yaml
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [01-crds]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [02-network]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [03-controllers]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [04-storage]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [05-secrets]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [06-certificates]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [07-ingress]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [08-services]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [09-backends]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [10-agents]}
+        - matchExpressions:
+            - {key: homelab.wlkr.ch/stage, operator: In, values: [11-policy]}
+  syncPolicy:
+    # Otherwise every generated Application gains the resources finalizer.
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: "{{ .metadata.name }}"
+      namespace: argocd
+    spec:
+      # templatePatch cannot set the project.
+      project: "{{ .spec.project }}"
+      destination: {}
+  # An Application without a stage would never be synced, so fail instead.
+  templatePatch: |
+    {{- if not (index .metadata.labels "homelab.wlkr.ch/stage") }}
+    {{- fail (printf "%s has no homelab.wlkr.ch/stage label" .metadata.name) }}
+    {{- end }}
+    metadata:
+      labels: {{ .metadata.labels | toJson }}
+      annotations: {{ get .metadata "annotations" | default dict | toJson }}
+      finalizers: {{ get .metadata "finalizers" | default list | toJson }}
+    spec: {{ .spec | toJson }}

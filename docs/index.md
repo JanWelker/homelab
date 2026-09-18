@@ -93,7 +93,7 @@ reasoning, and what each choice costs, is in
     ---
 
     The fifteen components that make the cluster more than a very expensive way
-    to run `nginx`, with the sync-wave order that lets a fresh bootstrap
+    to run `nginx`, with the rollout order that lets a fresh bootstrap
     converge rather than deadlock.
 
 - **[Operations](operations/index.md)**

@@ -4,10 +4,10 @@ kind: Application
 metadata:
   name: kubelet-csr-approver
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 03-controllers
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    # Before metrics-server (2), which needs these certificates issued.
-    argocd.argoproj.io/sync-wave: "1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

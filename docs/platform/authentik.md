@@ -33,7 +33,7 @@ so much as a password prompt.
 | | |
 | --- | --- |
 | Namespace | `authentik` |
-| Sync wave | `2` |
+| Stage | `08-services` |
 | Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
 | If it is down | Every platform UI. ArgoCD, Grafana, Hubble, Prometheus, Alertmanager and the Rook dashboard all lose their only login — see [When Authentik is down](#when-authentik-is-down) |
 | Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |

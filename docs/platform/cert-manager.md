@@ -16,7 +16,7 @@ zone works from anywhere, and it is also the only way to get a wildcard.
 | | |
 | --- | --- |
 | Namespace | `cert-manager`; the certificates it issues land in `kube-system` |
-| Sync wave | `-5`; the ClusterIssuers at `2` and the Certificates at `3` |
+| Stage | `03-controllers` for the controller; `06-certificates` for the `certificates` Application with the ClusterIssuers and Certificates |
 | Depends on | [External Secrets](external-secrets.md) for the Route53 credential, so transitively on [OpenBao](openbao.md) |
 | If it is down | Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later |
 | Health check | `kubectl get certificate -A` &rarr; all `READY=True` |
@@ -28,8 +28,12 @@ zone works from anywhere, and it is also the only way to get a wildcard.
 
 ## Sync order
 
-The Application's own resources go in three sync waves, because each one cannot
-work until the one before it exists:
+The issuers and certificates are a separate `certificates` Application, in
+`payload/platform/certificates/`. Kept in the cert-manager Application they
+would hold its stage until OpenBao — two stages later — held the Route53
+credentials; see [Rollout order](../architecture/gitops.md#nothing-may-wait-on-a-later-stage).
+Inside that Application the resources go in three sync waves, because each one
+cannot work until the one before it exists:
 
 | Wave | Resource | Needs |
 | --- | --- | --- |
@@ -58,7 +62,7 @@ limited, like the rest of the platform.
 
 The chart renders its `ServiceMonitor` unconditionally, so it cannot sync until
 the Prometheus operator CRDs exist. kube-prometheus-stack, which owns them,
-arrives several sync waves later, so on a new cluster the first attempts fail;
+arrives several stages later, so on a new cluster the first attempts fail;
 `SkipDryRunOnMissingResource` lets the rest apply meanwhile, and `retry` keeps
 trying until the CRDs are there.
 
@@ -120,7 +124,10 @@ A `Challenge` stuck in `pending` is a DNS problem, not a cert-manager problem: e
 ```text
 cert-manager/                  # TLS Certificate Management
 ├── application.yaml           # ArgoCD Application (Helm chart)
-├── values.yaml                # Helm values
+└── values.yaml                # Helm values
+
+certificates/                  # Issuers and certificates, after OpenBao
+├── application.yaml           # ArgoCD Application
 ├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
 ├── certificates.yaml          # All Certificate resources
 └── route53-credentials.yaml   # ExternalSecret → OpenBao

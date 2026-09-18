@@ -4,8 +4,9 @@ kind: Application
 metadata:
   name: rook-ceph-cluster
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 04-storage
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
     link.argocd.argoproj.io/external-link: https://rook.infra.k8s.wlkr.ch
     argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/compare-options: IgnoreExtraneous
@@ -187,5 +188,5 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      # PrometheusRule CRD arrives later, at wave 1
+      # PrometheusRule CRD comes with kube-prometheus-stack, a later stage
       - SkipDryRunOnMissingResource=true

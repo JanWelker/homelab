@@ -26,7 +26,7 @@ flowchart LR
 | | |
 | --- | --- |
 | Namespace | `openbao` |
-| Sync wave | `0`, after networking, storage and certificates exist |
+| Stage | `05-secrets`, after networking and storage exist. A fresh bootstrap [pauses here](../architecture/gitops.md#bootstrap-pauses-at-openbao) until OpenBao is initialised and unsealed |
 | Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes |
 | If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks entirely healthy from the outside |
 | Health check | `kubectl -n openbao exec openbao-0 -- bao status` &rarr; `Sealed: false` on all three |
@@ -255,7 +255,7 @@ bao write auth/kubernetes/role/external-secrets \
   ttl=1h
 ```
 
-The `external-secrets-vault` ServiceAccount is created by `payload/platform/external-secrets/cluster-secret-store.yaml` — see [External Secrets](external-secrets.md).
+The `external-secrets-vault` ServiceAccount is created by `payload/platform/openbao/cluster-secret-store.yaml` — see [External Secrets](external-secrets.md).
 
 Once this is done, ExternalSecret resources cluster-wide will resolve. Verify with:
 
@@ -336,6 +336,7 @@ Snapshots include all KV data and OpenBao's own config (policies, roles, mounts)
 ```text
 openbao/
 ├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
+├── cluster-secret-store.yaml       # ESO ServiceAccount, RBAC, ClusterSecretStore
 ├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
 └── rbac.yaml                       # system:auth-delegator binding for the openbao SA
 ```

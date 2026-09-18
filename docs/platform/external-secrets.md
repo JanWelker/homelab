@@ -16,7 +16,7 @@ have to think about.
 | | |
 | --- | --- |
 | Namespace | `external-secrets` |
-| Sync wave | `-6`, the very first thing after the Gateway API CRDs — see [why](index.md#usage) |
+| Stage | `03-controllers`; the `ClusterSecretStore` is in `openbao`, at `05-secrets` — see [why](index.md#rollout-order) |
 | Depends on | [OpenBao](openbao.md) at runtime, though not to be installed |
 | If it is down | Secrets already materialised keep working. Nothing rotates, and nothing new resolves |
 | Health check | `kubectl get clustersecretstore openbao` &rarr; `Valid` |
@@ -81,9 +81,8 @@ metadata:
   name: my-app-credentials
   namespace: my-app
   annotations:
-    # ESO and its CRDs install at sync-wave -6, ahead of everything that
-    # consumes them. This annotation is what covers the first sync of a
-    # cluster where they have not landed yet.
+    # ESO and its CRDs install in 03-controllers, ahead of everything that
+    # consumes them. This annotation covers syncing before they have landed.
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   refreshInterval: 1h
@@ -138,10 +137,13 @@ Worth knowing: rotating a value in OpenBao updates the Kubernetes `Secret` withi
 
 ## Chart values
 
-- **Sync wave `-6`.** Ahead of every Application that ships an
-  `ExternalSecret`; a CRD that does not exist yet deadlocks the wave rather than
-  delaying it — see
-  [GitOps](../architecture/gitops.md#a-missing-crd-is-a-deadlock-not-a-delay).
+- **Stage `03-controllers`.** Ahead of every Application that ships an
+  `ExternalSecret`: a kind that does not exist yet is a failed sync, and a
+  failed sync never lets its stage finish — see
+  [GitOps](../architecture/gitops.md#nothing-may-wait-on-a-later-stage).
+- **No `ClusterSecretStore` here.** The store only validates against a running,
+  unsealed OpenBao, so it ships with the `openbao` Application. Here it would
+  hold `03-controllers` until two stages later.
 - **Webhook and cert-controller resources.** Memory limits are about 2.5x the
   measured peak working set: 33Mi for the webhook, 73Mi for the cert-controller.
 - **Webhook ServiceAccount token stays mounted.** The webhook has no
@@ -188,6 +190,8 @@ kubectl annotate externalsecret -n <namespace> <name> \
 
 ```text
 external-secrets/
-├── application.yaml          # ArgoCD Application (Helm: external-secrets)
+└── application.yaml          # ArgoCD Application (Helm: external-secrets)
+
+openbao/
 └── cluster-secret-store.yaml # ServiceAccount, RBAC, ClusterSecretStore
 ```

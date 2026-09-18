@@ -4,9 +4,10 @@ kind: Application
 metadata:
   name: security
   namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 11-policy
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

@@ -285,19 +285,20 @@ The deployment host (the machine running Ansible and the boot server) must be re
         same bootstrap-by-hand handover as `make install-cilium`.
 
         This is the handover moment: from here on the cluster takes its orders
-        from the repository rather than from you. Watch the platform sync.
-        Applications appear in [sync-wave order](platform/index.md#usage):
+        from the repository rather than from you. The `platform` ApplicationSet
+        creates every platform Application at once, then syncs them one
+        [stage](platform/index.md#rollout-order) at a time. Watch which stage it
+        is on:
 
         ```bash
-        kubectl -n argocd get applications -w
+        kubectl -n argocd get applicationset platform -o jsonpath=\
+        '{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'
         ```
 
-        Expect `cilium` and `cert-manager` to show failed sync attempts at
-        first: their ServiceMonitors wait for the CRDs that
-        kube-prometheus-stack installs, and both retry until they exist.
-
-        The `Certificate` resources stay un-Ready until step 11 — that is
-        expected, since their Route53 credentials don't exist yet.
+        **The rollout stops at `05-secrets`, and that is expected.** `openbao`
+        cannot go Healthy until step 11 has initialised and unsealed it, so
+        nothing from `06-certificates` onwards has been synced yet — see
+        [Bootstrap pauses at OpenBao](architecture/gitops.md#bootstrap-pauses-at-openbao).
 
     - **Gate on storage** before trusting the workloads that need it:
 
@@ -305,11 +306,11 @@ The deployment host (the machine running Ansible and the boot server) must be re
         make storage-check
         ```
 
-        The sync waves put Rook ahead of everything that mounts a volume, which
-        is not the same as Rook being able to serve one: a `CephCluster` reports
-        `Ready` with no OSDs, and a `StorageClass` exists whether or not a CSI
-        driver registered for it. Either way the later waves start regardless
-        and their pods sit in `Pending`. This asks for a volume the way a
+        The rollout stages put Rook ahead of everything that mounts a volume,
+        which is not the same as Rook being able to serve one: a `StorageClass`
+        exists whether or not a CSI driver registered for it, so `04-storage`
+        can finish with no working provisioner and OpenBao's volumes sit in
+        `Pending`. This asks for a volume the way a
         workload would and names the first broken link if it does not get one —
         see [Rook-Ceph &rarr; Is storage
         ready?](platform/rook-ceph.md#is-storage-ready).
@@ -317,17 +318,10 @@ The deployment host (the machine running Ansible and the boot server) must be re
 11. **Initialise the secret store**:
     OpenBao starts uninitialised, sealed and empty, and four of the platform
     components read their credentials out of it through
-    [ExternalSecrets](platform/external-secrets.md). Until it is initialised,
-    unsealed and populated, none of those Secrets exist, so cert-manager issues
-    no certificates and the pods that mount one never start:
-
-    ```text
-    Warning  Failed  12s (x7 over 72s)  kubelet  Error: secret "route53-credentials" not found
-    Warning  Failed   2s (x7 over 69s)  kubelet  Error: secret "authentik-secrets" not found
-    ```
-
-    That is expected until this step is done; the pods recover on their own once
-    the Secrets materialise.
+    [ExternalSecrets](platform/external-secrets.md). Until it is initialised and
+    unsealed the `ClusterSecretStore` cannot authenticate, so the rollout holds
+    at `05-secrets`; until it is populated, `06-certificates` holds on the
+    Route53 credentials. Both resume on their own.
 
     ```bash
     make bao-init
@@ -371,10 +365,11 @@ The deployment host (the machine running Ansible and the boot server) must be re
     `kv/authentik/config` on a running cluster rotates Authentik's Postgres
     password out from under its database.
 
-    Cert-manager then picks up the materialised Secret and issues the gateway
-    certificates, and the pods that were waiting on the others start on the next
-    ESO refresh. Authentik's is what finally gives you a login for the ArgoCD
-    and Grafana UIs.
+    Once the store validates, the rollout moves on: `certificates` issues the
+    gateway certificates, the Gateways come up, and the services after them sync
+    with their Secrets already in place. Authentik is what finally gives you a
+    login for the ArgoCD and Grafana UIs. The store is re-checked every few
+    minutes, so the next stage can take that long to start.
 
 12. **Create the first administrator**:
     There is no sign-up, and no user to be created: Authentik ships the built-in

@@ -1,5 +1,5 @@
 ---
-description: "The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they sync."
+description: "The core infrastructure components that power the cluster, how traffic flows through them, and the order in which they roll out."
 ---
 
 # Platform
@@ -15,28 +15,28 @@ for not having those.
 
 ## Components
 
-Alphabetical, with the namespace it lands in and the sync wave it lands at.
-The [wave ordering](#usage) below explains why those numbers are what they are.
+Alphabetical, with the namespace it lands in and the rollout stage it belongs
+to. The [stage ordering](#usage) below explains why each is where it is.
 
-| Component | Namespace | Wave | What it does |
+| Component | Namespace | Stage | What it does |
 | --- | --- | --- | --- |
-| [authentik](authentik.md) | `authentik` | `2` | Single sign-on for every platform UI |
-| backup | `backup` | `1` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
-| [cert-manager](cert-manager.md) | `cert-manager` | `-5` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
-| [cilium](cilium.md) | `kube-system` | `-1` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
-| [external-dns](external-dns.md) | `external-dns` | `2` | Publishes Route53 records from HTTPRoutes |
-| [external-secrets](external-secrets.md) | `external-secrets` | `-6` | Bridges OpenBao to native Kubernetes Secrets |
-| [gateway-api](gateway-api.md) | `gateway-system` | `-4` | The two Gateways and the HTTP-to-HTTPS redirect |
-| kube-vip | `kube-system` | `-1` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
-| kubelet-csr-approver | `kubelet-csr-approver` | `1` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
-| [kubescape](kubescape.md) | `kubescape` | `2` | Nightly CIS, NSA and MITRE posture scans, exported to Grafana |
-| [kured](kured.md) | `kured` | `2` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
-| [logging](logging.md) | `logging` | `1` | Loki and Grafana Alloy, for container, journal and audit logs |
-| [metrics-server](metrics-server.md) | `kube-system` | `2` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
-| [monitoring](monitoring.md) | `monitoring` | `1` | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
-| [openbao](openbao.md) | `openbao` | `0` | Cluster-wide secret store |
-| [rook-ceph](rook-ceph.md) | `rook-ceph` | `-3` to `0` | Replicated block storage and an S3 object store |
-| [security policies](security-policies.md) | `kube-system` | `3` | Pod Security Admission levels and default-deny ingress policies |
+| [authentik](authentik.md) | `authentik` | `08-services` | Single sign-on for every platform UI |
+| backup | `backup` | `08-services` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
+| [cert-manager](cert-manager.md) | `cert-manager` | `03-controllers`, issuers and certificates `06-certificates` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
+| [cilium](cilium.md) | `kube-system` | `02-network` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
+| [external-dns](external-dns.md) | `external-dns` | `06-certificates` | Publishes Route53 records from HTTPRoutes |
+| [external-secrets](external-secrets.md) | `external-secrets` | `03-controllers` | Bridges OpenBao to native Kubernetes Secrets |
+| [gateway-api](gateway-api.md) | `gateway-system` | `01-crds` CRDs, `07-ingress` Gateways | The two Gateways and the HTTP-to-HTTPS redirect |
+| kube-vip | `kube-system` | `02-network` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
+| kubelet-csr-approver | `kubelet-csr-approver` | `03-controllers` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
+| [kubescape](kubescape.md) | `kubescape` | `11-policy` | Nightly CIS, NSA and MITRE posture scans, exported to Grafana |
+| [kured](kured.md) | `kured` | `11-policy` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
+| [logging](logging.md) | `logging` | `08-services` to `10-agents` | Loki and Grafana Alloy, for container, journal and audit logs |
+| [metrics-server](metrics-server.md) | `kube-system` | `08-services` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
+| [monitoring](monitoring.md) | `monitoring` | `08-services` | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
+| [openbao](openbao.md) | `openbao` | `05-secrets` | Cluster-wide secret store |
+| [rook-ceph](rook-ceph.md) | `rook-ceph` | `03-controllers` operator, `04-storage` cluster | Replicated block storage and an S3 object store |
+| [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels and default-deny ingress policies |
 
 ## Traffic Flow
 
@@ -86,53 +86,43 @@ make bootstrap  # Gateway API CRDs + Cilium, ArgoCD, then the parent Application
 
 Two parent ArgoCD Applications manage the cluster:
 
-| Application     | Role                            | Path                                |
-|-----------------|---------------------------------|-------------------------------------|
-| Platform Parent | Core platform components        | `payload/root.yaml` (App: platform) |
-| GitOps          | ArgoCD's own config + HTTPRoute | `payload/argocd/`                   |
+| Application | Role | Path |
+| --- | --- | --- |
+| `platform` | Holds the `platform` ApplicationSet, which generates one Application per `payload/platform/*/application.yaml` | `payload/platform/applicationset.yaml` |
+| `gitops` | ArgoCD's own config + HTTPRoute | `payload/argocd/` |
 
 A third parent, `workloads`, is added back alongside the first workload. See
 [Adding a Workload](../development/add-workload.md).
 
-Excluded from sync:
+Each component directory holds exactly one `application.yaml`; everything else
+in the directory is what that Application deploys, apart from Helm `values.yaml`
+files, which the Application references instead.
 
-- `cilium/values.yaml`, `values.yaml` (Helm values)
-- `README.md` (documentation)
-- `**/*.template` (credential templates)
+### Rollout order
 
-Sync wave ordering. This is the dependency graph made explicit, and it is the
-reason a fresh bootstrap converges rather than deadlocking on a CRD that does
-not exist yet:
+The ApplicationSet syncs its Applications in stages, selected by the
+`homelab.wlkr.ch/stage` label, and starts a stage only when every Application in
+the one before it is Synced and Healthy. This is the dependency graph made
+explicit; [GitOps Strategy](../architecture/gitops.md#rollout-order) covers how
+the gating works and what it costs.
 
-| Wave | Applications | Other resources in the wave |
+| Stage | Applications | Waits for |
 | --- | --- | --- |
-| `-10` | `gateway-api-crds` | |
-| `-6` | `external-secrets` | |
-| `-5` | `cert-manager` | |
-| `-4` | `gateway-api` | |
-| `-3` | `rook-ceph` | |
-| `-2` | `rook-ceph-operator` | |
-| `-1` | `cilium`, `kube-vip`, `rook-ceph-cluster` | |
-| `0` | `openbao` | Ceph CSI `OperatorConfig` and `Driver` |
-| `1` | `kube-prometheus-stack`, `logging`, `kubelet-csr-approver`, `backup` | the `route53-credentials` ExternalSecret |
-| `2` | `authentik`, `external-dns`, `kubescape`, `kured`, `loki`, `metrics-server`, `snapshot-controller` | both Let's Encrypt `ClusterIssuer`s |
-| `3` | `alloy`, `velero`, `security` | the gateway `Certificate`s, the `VolumeSnapshotClass` |
+| `01-crds` | `gateway-api-crds` | — |
+| `02-network` | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
+| `03-controllers` | `cert-manager`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
+| `04-storage` | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
+| `05-secrets` | `openbao` | `rook-ceph-block` for its volumes. **Bootstrap pauses here** until OpenBao is initialised and unsealed |
+| `06-certificates` | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
+| `07-ingress` | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
+| `08-services` | `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
+| `09-backends` | `loki`, `velero` | the buckets `logging` and `backup` claim |
+| `10-agents` | `alloy` | Loki, so the collector has somewhere to ship |
+| `11-policy` | `kubescape`, `kured`, `security` | everything else, so policies label namespaces that exist and kured reboots a converged cluster |
 
-Waves `1` through `3` are where a component and its own children separate:
-`logging` is the parent Application at `1`, and it brings Loki at `2` and Alloy
-at `3`, in that order because a collector with nowhere to ship is just a
-collector. The same split puts `backup` at `1` ahead of the snapshot controller
-it needs at `2` and the Velero that needs both at `3`.
-
-The negative waves are the interesting half: nothing above wave `0` can work
-until networking, storage and certificates exist, so those get to go first and
-everything else waits its turn.
-
-External Secrets sits at the very front despite needing OpenBao, which arrives
-six waves later, because what the wave has to guarantee is the *CRD*, not a
-working secret store. An `ExternalSecret` whose CRD is missing is not applied
-at all, and ArgoCD keeps the operation open waiting for the rest of the wave —
-so cert-manager's Route53 credential, which sits beside the `Certificate`
-resources that cannot go Ready without it, would wait for a retry that never
-comes. A store that is not ready yet is a normal, self-correcting state; a
-resource that was never applied is not.
+External Secrets is a controller like any other now: its CRDs arrive in
+`03-controllers`, well ahead of the first `ExternalSecret`, while the
+`ClusterSecretStore` that needs a running OpenBao lives with OpenBao in
+`05-secrets`. The same split takes cert-manager's issuers and certificates out
+of `03-controllers` into their own `certificates` Application, because they
+cannot go Ready until OpenBao holds the Route53 credentials.

@@ -20,7 +20,7 @@ and the only useful measurement of it is a repeated one.
 | | |
 | --- | --- |
 | Namespace | `kubescape` |
-| Sync wave | `2` |
+| Stage | `11-policy` |
 | Depends on | [Monitoring](monitoring.md) for the Prometheus it exports to and its ServiceMonitor CRD; [Rook-Ceph](rook-ceph.md) for the results PVC |
 | If it is down | Nothing. This is the one component whose outage costs you only the next nightly scan |
 | Health check | `kubectl get configurationscansummaries -A` |

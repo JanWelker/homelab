@@ -121,15 +121,17 @@ chart's commented example still shows `v1.13.1`, which is the v1.17 line.
 
 kubeadm does not install the CSI snapshot controller and neither does Rook.
 Without it the `VolumeSnapshot` CRDs are absent and the RBD driver advertises
-snapshot support nothing can invoke. `snapshot-controller.yaml` installs the
-controller and its CRDs at sync-wave `2`, ahead of Velero at `3`.
+snapshot support nothing can invoke. The `snapshot-controller` Application
+installs the controller and its CRDs in `03-controllers`, well ahead of the
+`backup` Application in `08-services` and Velero in `09-backends`.
 
-The `VolumeSnapshotClass` for `rook-ceph-block` is at wave `3` for the same
-reason, and that one is load-bearing. At the default wave it was applied before
-its CRD existed and failed with `no matches for kind VolumeSnapshotClass`.
-`SkipDryRunOnMissingResource` does not help there, since it is the apply that
-fails, not the dry run — and the failed sync meant the snapshot-controller and
-velero Applications queued behind it were never created at all.
+The `VolumeSnapshotClass` for `rook-ceph-block`, in `backup`, is what needs that
+order. Applied before its CRD existed, it failed with
+`no matches for kind VolumeSnapshotClass`; `SkipDryRunOnMissingResource` does
+not help there, since it is the apply that fails, not the dry run. When the
+snapshot controller was still a child of `backup`, that failed sync meant the
+snapshot-controller and velero Applications queued behind it were never created
+at all. Its sync wave `3` inside `backup` is left over from then and harmless.
 
 Its `deletionPolicy` is `Delete`: the snapshot is only an intermediate step, and
 the durable copy is the one the data mover writes into the object store.

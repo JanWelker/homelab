@@ -4,6 +4,8 @@ kind: HTTPRoute
 metadata:
   name: openbao-ui
   namespace: openbao
+  annotations:
+    argocd.argoproj.io/ignore-healthcheck: "true"
 spec:
   parentRefs:
     - name: infra-gateway

@@ -18,8 +18,8 @@ never a small problem.
 | | |
 | --- | --- |
 | Namespace | `kube-system` |
-| Sync wave | `-1`, after the Gateway API CRDs it renders against |
-| Depends on | Gateway API CRDs (`-10`), the Prometheus operator CRDs from kube-prometheus-stack (`1`) for its ServiceMonitors, and a `k8sServiceHost` that answers |
+| Stage | `02-network`, after the Gateway API CRDs it renders against |
+| Depends on | Gateway API CRDs (`01-crds`), the Prometheus operator CRDs for its ServiceMonitors, and a `k8sServiceHost` that answers |
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
 | UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
