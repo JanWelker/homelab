@@ -141,6 +141,7 @@ This repository keeps the parts that cannot safely be delegated:
 | Stays here | Why |
 | --- | --- |
 | The client credentials, in `bao-secrets.sh` | A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act |
+| The `secret-generation` annotation | Adding a credential means restarting the worker that reads it — see the warning below |
 | The mount entry, in `application.yaml` | One projected-volume source per workload |
 | The embedded outpost's `providers:` list | It replaces a single global object; two repositories writing it would overwrite each other |
 | `referencegrant.yaml` | A proxied workload's route needs granting from this side |
@@ -152,6 +153,9 @@ This repository keeps the parts that cannot safely be delegated:
 watcher, so a blueprint that lands later is picked up without a restart —
 asynchronously, which is why anything configuring itself *against* a provider
 has to tolerate it not being there yet.
+
+!!! danger "A new client credential needs the worker restarted"
+    `envFrom` injects `authentik-secrets` as environment variables **once, when the pod starts** — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through `!Env` gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at `14:34:10` and `authentik-secrets` gained `NEXTCLOUD_CLIENT_ID` at `14:34:12`. So `worker.podAnnotations.homelab.wlkr.ch/secret-generation` in `application.yaml` is **bumped whenever `authentik-secrets` gains a key** — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A `kubectl rollout restart` fixes a running cluster but leaves nothing behind for the next person.
 
 ## Configuration as code
 
