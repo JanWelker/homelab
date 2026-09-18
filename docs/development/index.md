@@ -42,8 +42,12 @@ without surprising the cluster.
 ## Conventions
 
 - Kubernetes manifests live under `payload/`, documentation under `docs/`.
-- Everything in `payload/platform/` and `payload/workloads/` is applied by
-    ArgoCD. Nothing is applied by hand after the initial bootstrap.
+- Everything in `payload/` is applied by ArgoCD. Nothing is applied by hand
+    after the initial bootstrap.
+- Workloads are not in this repository. They live in
+    [`homelab-apps`](https://github.com/JanWelker/homelab-apps), which this
+    repository references and never reads back — see
+    [Adding a Workload](add-workload.md).
 - Do not copy version numbers into prose. `targetRevision` in the manifests is
     the single source of truth, and Renovate keeps it current. A version written
     into a sentence is a version that will be wrong within a month and will stay

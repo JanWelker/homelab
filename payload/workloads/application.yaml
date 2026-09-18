@@ -1,0 +1,29 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workloads
+  namespace: argocd
+  labels:
+    # Last stage: the workloads this generates need the whole platform, and a
+    # broken workload must not hold back anything the cluster runs on.
+    homelab.wlkr.ch/stage: 12-workloads
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+spec:
+  project: system
+  source:
+    repoURL: https://github.com/JanWelker/homelab.git
+    targetRevision: HEAD
+    path: payload/workloads
+    directory:
+      exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
