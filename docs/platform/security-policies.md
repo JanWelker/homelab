@@ -113,7 +113,7 @@ application is fine and the kubelet is the one being blocked. Cilium's
 
 ### Scope
 
-Ingress only, in eight namespaces:
+Ingress only, in nine namespaces:
 
 | Namespace | Who may connect from outside it |
 | --- | --- |
@@ -125,11 +125,19 @@ Ingress only, in eight namespaces:
 | `kubelet-csr-approver` | Prometheus |
 | `kured` | Prometheus |
 | `logging` | Prometheus and Grafana, both in `monitoring` |
+| `cnpg-system` | Prometheus; the webhooks are called by the API server from the node |
 
 Every policy also admits traffic from within the namespace and from `host` and
 `remote-node` for probes. The `monitoring` rule for kured is easy to miss and
 costly to lose: kured queries Prometheus before every reboot and blocks when the
 query fails, so without it no node ever reboots.
+
+`cnpg-system` covers the operator only. No database runs there — each one lives
+in its workload's namespace — so the rule admitting the operator to an instance
+on port `8000` belongs to *that* namespace's policy, in the workloads
+repository, not to this table. It is the one every new workload forgets; [Adding
+a Workload](../development/add-workload.md#the-network-policy) has the rule and
+the failure it causes.
 
 Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;

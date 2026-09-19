@@ -51,9 +51,12 @@ its `CONVENTIONS.md`, which is the copy to keep current.
    that is exactly what `CreateNamespace=true` on its own leaves behind.
 4. **PostgreSQL is a CloudNativePG `Cluster`.** Never a chart's bundled
    database. See [the contract](../platform/cloudnative-pg.md#the-contract).
-5. **Ship a `CiliumNetworkPolicy`.** Not a plain `NetworkPolicy` — a plain one
-   blocks health probes and the pods restart forever. The reasons are in
-   [Security Policies](../platform/security-policies.md#why-ciliumnetworkpolicy-and-not-networkpolicy).
+5. **Ship a `CiliumNetworkPolicy`**, at sync wave `-2`. Not a plain
+   `NetworkPolicy` — a plain one blocks health probes and the pods restart
+   forever. The reasons are in [Security
+   Policies](../platform/security-policies.md#why-ciliumnetworkpolicy-and-not-networkpolicy);
+   the wave is in [The network policy](#the-network-policy) and matters more
+   than it looks.
 6. **Official upstream sources only.** The vendor's own chart or the vendor's
    own image. Not a repackager's chart, however convenient — the whole point of
    pinning a version is knowing who published it.
@@ -123,7 +126,7 @@ my-app/
 ├── deployment.yaml
 ├── service.yaml
 ├── httproute.yaml      # if you want it reachable
-└── networkpolicy.yaml
+└── networkpolicy.yaml  # CiliumNetworkPolicy, sync wave -2
 ```
 
 ### The namespace
@@ -175,6 +178,54 @@ spec:
 That produces a Secret called `my-app-db-app` holding `username`, `password`,
 `host`, `port`, `dbname` and a ready-assembled `uri`. Point the application at
 those keys; never copy the value anywhere.
+
+The operator polls each instance on port `8000` from `cnpg-system` to decide
+what the `Cluster` is doing, so the network policy below has to admit it. That
+rule is not optional and its absence does not look like a network problem —
+see the troubleshooting entry.
+
+### The network policy
+
+```yaml
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: my-app
+  annotations:
+    # With the namespace, ahead of the database at -1.
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  endpointSelector: {}
+  ingress:
+    # Within the namespace, and the node for health probes.
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    # Only if a CloudNativePG Cluster is in this namespace.
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
+```
+
+Wave `-2` is load-bearing, not tidiness. At the default wave the policy is
+applied *after* the `Cluster` at `-1` — and `-1` is the wave that blocks
+waiting for that `Cluster` to go Healthy, which it cannot do until the rule
+above exists. The sync parks at `-1` forever and the rule that would release it
+sits in a wave that never runs. Putting the policy with the namespace also
+closes the window where the workload is running and unprotected.
+
+Drop `ingress` from `fromEntities` if the Gateway does not reach this workload
+directly — a namespace fronted by Authentik's outpost takes its traffic from
+the `authentik` namespace instead.
 
 ### Exposing it
 
@@ -277,6 +328,42 @@ exist before then:
 kubectl -n argocd get applicationset platform \
   -o jsonpath='{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'
 ```
+
+**The Application is stuck `Synced` with health `Unknown`, and the workload is
+running fine.** A wave is waiting on a resource that will never go Healthy.
+With a database it is almost always the missing `cnpg-system` rule: Postgres
+serves the application, `kubectl get cluster` says `1/1` ready, but the status
+reads `Instance Status Extraction Error: HTTP communication issue` because the
+operator cannot reach port `8000`.
+
+```bash
+kubectl -n argocd get application my-app \
+  -o jsonpath='{.status.operationState.message}'
+# waiting for healthy state of postgresql.cnpg.io/Cluster/my-app-db
+```
+
+Health `Unknown` with no resource naming itself is the signature — a genuinely
+unhealthy workload says which resource is failing. Confirm the drop on the node
+running the database:
+
+```bash
+kubectl -n kube-system exec <cilium-pod-on-that-node> -c cilium-agent -- \
+  hubble observe --verdict DROPPED --from-namespace cnpg-system --last 20
+```
+
+If the rule is already in Git and nothing changes, check the policy's sync wave
+before re-syncing anything. A policy at the default wave is applied after the
+`Cluster` it unblocks, so every attempt stops in the same place; the applied
+list confirms it:
+
+```bash
+kubectl -n argocd get application my-app -o jsonpath=\
+'{range .status.operationState.syncResult.resources[*]}{.kind}{"\t"}{.hookPhase}{"\n"}{end}'
+```
+
+No `CiliumNetworkPolicy` in that list while `Cluster` reads `Running` means the
+wave is wrong, not the rule. Fix the wave, then `argocd app terminate-op
+my-app` — the stuck operation does not pick up a new revision on its own.
 
 **The pods will not start, and the events mention a security policy.** The
 `enforce` level in the workload's own `namespace.yaml` is stricter than the
