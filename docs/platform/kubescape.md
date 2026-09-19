@@ -49,6 +49,35 @@ SaaS backend when `server`, `account` and `accessKey` are set; leaving them unse
 is what keeps findings in the cluster. There is no "offline" switch to forget to
 flip, which is the right way round for a default.
 
+### The control plane is in scope, and it costs something
+
+`excludeNamespaces` is set here rather than left at the chart default, which is:
+
+```text
+kubescape,kube-system,kube-public,kube-node-lease,kubeconfig,gmp-system,gmp-public
+```
+
+`kube-system` is dropped from that list. The default hides the entire control
+plane — `kube-apiserver`, `etcd`, `kube-controller-manager`, `kube-scheduler`,
+`coredns`, `metrics-server` and the CSI sidecars, fourteen distinct images that
+reported no findings because nothing ever looked at them. That is the least
+acceptable place in the cluster to have a blind spot, and the silence looks
+exactly like a clean result.
+
+`kubescape` itself stays excluded. Scanning the scanner is possible but adds
+another six images to a component that is already the write bottleneck, and its
+findings are the ones you can act on least directly.
+
+!!! warning "This is not a free flip"
+    The same value feeds the node-agent, so widening it widens **runtime
+    profiling** too, not just image scanning — `kube-system` adds 77 containers
+    on top of 304, about a quarter more `ContainerProfile` churn. The storage
+    component serialises writes through a single SQLite writer, and at ~630
+    profiles it already drops large writes on the floor: see
+    [kubescape/storage#409](https://github.com/kubescape/storage/issues/409) and
+    the section below. Widen the scope only once that is settled, or the new
+    coverage arrives as more silently-missing manifests rather than as findings.
+
 ### The scanner image is pinned ahead of the chart
 
 `kubescape.image.tag` overrides the chart's scanner image. Chart 1.40.4 ships

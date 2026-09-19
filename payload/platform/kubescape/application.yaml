@@ -25,6 +25,10 @@ spec:
           # Empty means every framework, CIS included. Do not pin a list.
           defaultFrameworks: []
 
+          # The chart default also excludes kube-system, which hides the whole
+          # control plane. See docs/platform/kubescape.md
+          excludeNamespaces: "kubescape,kube-public,kube-node-lease,kubeconfig,gmp-system,gmp-public"
+
           capabilities:
             operator: enable
             configurationScan: enable
