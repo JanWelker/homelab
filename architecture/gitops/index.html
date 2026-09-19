@@ -2610,7 +2610,7 @@ self-explanatory:</p>
 </tr>
 <tr>
 <td><code>redis-ha.image.tag</code>, <code>redis-ha.haproxy.image.tag</code></td>
-<td>Both run ahead of the chart. The chart pins exact patch tags, and an exact patch tag stops being rebuilt once the next one lands, so it never picks up a base-image security update. <code>redis</code> 8.6.4-alpine was last built 2026-06-23 and therefore predates the Alpine OpenSSL 3.5.8-r0 of 2026-08-25; 8.6.6-alpine is the current head of the same 8.6 line the chart deliberately chose. Renovate needs each bare <code>tag:</code> listed under the <code>pinDigests: false</code> rule in <code>renovate.json</code></td>
+<td>Both run ahead of the chart. The chart pins exact patch tags, and an exact patch tag stops being rebuilt once the next one lands, so it never picks up a base-image security update. <code>redis</code> 8.6.4-alpine was last built 2026-06-23 and therefore predates the Alpine OpenSSL 3.5.8-r0 of 2026-08-25. The override moved to 8.6.6-alpine, the head of that line, and Renovate has since carried it to 8.10.1-alpine — which is the point of listing it: the pin only stays current because something tracks it. Any 8.x above 8.2 is fine; the chart's own constraints are to avoid 7.4-8.0 for the licence change and 8.2.x for its Alpine 3.22 base. Renovate needs each bare <code>tag:</code> listed under the <code>pinDigests: false</code> rule in <code>renovate.json</code></td>
 </tr>
 <tr>
 <td>Memory limits, no CPU limits</td>
