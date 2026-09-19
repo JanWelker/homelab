@@ -4,8 +4,8 @@ global:
 
 redis-ha:
   enabled: true
-  # Ahead of the chart's 8.6.4-alpine, which is frozen at its June build and so
-  # predates the OpenSSL fix. Same 8.6 line the chart picked; see gitops docs.
+  # Ahead of the chart's 8.6.4-alpine, frozen at its June build and so short of
+  # the OpenSSL fix. Renovate keeps this on the newest patch; see gitops docs.
   image:
     # renovate: datasource=docker depName=ecr-public.aws.com/docker/library/redis versioning=docker
     tag: 8.10.1-alpine
