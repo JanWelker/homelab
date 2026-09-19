@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://janwelker.github.io/homelab/platform/security-policies/">
       
       
-        <link rel="prev" href="../kubescape/">
+        <link rel="prev" href="../kured/">
       
       
         <link rel="next" href="../../operations/">
@@ -302,8 +302,6 @@
       
         
           
-        
-      
         
       
         
@@ -1018,8 +1016,6 @@
       
         
       
-        
-      
     
     
     
@@ -1412,33 +1408,6 @@
     
   
   Kured
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../kubescape/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kubescape
 
     
   </span>
@@ -2271,8 +2240,6 @@
       
         
       
-        
-      
     
     
     
@@ -2424,11 +2391,6 @@ switched off permanently, which is the real risk here.</p>
 <td>Adds <code>IPC_LOCK</code> to keep the root key out of swap — not on baseline's capability allow-list</td>
 </tr>
 <tr>
-<td><code>kubescape</code></td>
-<td><code>privileged</code></td>
-<td>The eBPF node-agent needs <code>hostPID</code>, hostPath mounts of <code>/</code> and <code>/sys</code>, and seven added capabilities — see <a href="../kubescape/#namespace-security-level">Kubescape &rarr; Namespace security level</a></td>
-</tr>
-<tr>
 <td><code>cert-manager</code></td>
 <td><code>baseline</code></td>
 <td>—</td>
@@ -2566,10 +2528,6 @@ one that is taken here.</p>
 <td>A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd</td>
 </tr>
 <tr>
-<td><code>kubescape</code></td>
-<td>The node-agent talks to both the operator and the aggregated storage API server, and getting it wrong disables posture scanning silently</td>
-</tr>
-<tr>
 <td><code>argocd</code>, <code>authentik</code></td>
 <td>Already carry <code>NetworkPolicy</code> objects from their own charts</td>
 </tr>
@@ -2616,7 +2574,7 @@ SA:</p>
 <p class="admonition-title">Not retroactive</p>
 <p>The token mount is decided at admission, so existing pods keep theirs until
 they are recreated. That makes the change safe to roll out, and also means a
-Kubescape scan will not agree it is fixed until things restart.</p>
+posture scan will not agree it is fixed until things restart.</p>
 </div>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>security/
@@ -2665,7 +2623,7 @@ Kubescape scan will not agree it is fixed until things restart.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../kubescape/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Kubescape">
+          <a href="../kured/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Kured">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2675,7 +2633,7 @@ Kubescape scan will not agree it is fixed until things restart.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Kubescape
+                Kured
               </div>
             </div>
           </a>

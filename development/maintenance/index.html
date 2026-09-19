@@ -328,8 +328,6 @@
       
         
       
-        
-      
     
     
     
@@ -1014,8 +1012,6 @@
       
         
       
-        
-      
     
     
     
@@ -1405,33 +1401,6 @@
     
   
   Kured
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/kubescape/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kubescape
 
     
   </span>
@@ -2545,7 +2514,7 @@ dep they extract, which is exactly why <code>velero-plugin-for-aws</code>, <code
 the pin branch down with it.</strong> Where the matched string has a prefix, the
 template has to rebuild it -- the workloads repository matches on an
 <code>imageName:</code> prefix, so its template starts with that literal.</p>
-<p>The HAProxy and Kubescape overrides are the genuine exception. Those are Helm
+<p>The HAProxy and Redis overrides are the genuine exception. Those are Helm
 <code>tag:</code> values inside a <code>valuesObject</code>, holding <code>3.4.4-alpine</code> rather than a
 complete image reference, so there is no <code>@sha256:</code> position in the field and no
 template that could invent one. Both carry <code>pinDigests: false</code>, and <strong>a third
