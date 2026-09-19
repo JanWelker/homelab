@@ -32,7 +32,6 @@ to. The [stage ordering](#usage) below explains why each is where it is.
 | [gateway-api](gateway-api.md) | `gateway-system` | `01-crds` CRDs, `07-ingress` Gateways | The two Gateways and the HTTP-to-HTTPS redirect |
 | kube-vip | `kube-system` | `02-network` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
 | kubelet-csr-approver | `kubelet-csr-approver` | `03-controllers` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
-| [kubescape](kubescape.md) | `kubescape` | `11-policy` | Nightly CIS, NSA and MITRE posture scans, exported to Grafana |
 | [kured](kured.md) | `kured` | `11-policy` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
 | [logging](logging.md) | `logging` | `08-services` to `10-agents` | Loki and Grafana Alloy, for container, journal and audit logs |
 | [metrics-server](metrics-server.md) | `kube-system` | `08-services` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
@@ -127,7 +126,7 @@ the gating works and what it costs.
 | `08-services` | `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | `09-backends` | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | `10-agents` | `alloy` | Loki, so the collector has somewhere to ship |
-| `11-policy` | `kubescape`, `kured`, `security` | everything else, so policies label namespaces that exist and kured reboots a converged cluster |
+| `11-policy` | `kured`, `security` | everything else, so policies label namespaces that exist and kured reboots a converged cluster |
 | `12-workloads` | `workloads` | the whole platform. It deploys the `apps` ApplicationSet, and nothing in the [workloads repository](../development/add-workload.md) is generated before it |
 
 External Secrets is a controller like any other now: its CRDs arrive in

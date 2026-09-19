@@ -50,7 +50,6 @@ switched off permanently, which is the real risk here.
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap — not on baseline's capability allow-list |
-| `kubescape` | `privileged` | The eBPF node-agent needs `hostPID`, hostPath mounts of `/` and `/sys`, and seven added capabilities — see [Kubescape &rarr; Namespace security level](kubescape.md#namespace-security-level) |
 | `cert-manager` | `baseline` | — |
 | `external-secrets` | `baseline` | — |
 | `argocd` | `baseline` | — |
@@ -146,7 +145,6 @@ The rest are **not** covered and allow all ingress, each for its own reason:
 | `kube-system` | Holds Cilium itself, the static control-plane pods and kube-vip; a default-deny there is enforced by the component being restricted |
 | `rook-ceph` | Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix, and want Ceph health as the verification signal rather than a guess |
 | `backup` | A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd |
-| `kubescape` | The node-agent talks to both the operator and the aggregated storage API server, and getting it wrong disables posture scanning silently |
 | `argocd`, `authentik` | Already carry `NetworkPolicy` objects from their own charts |
 
 ### Rolling this out safely
@@ -199,7 +197,7 @@ SA:
 !!! note "Not retroactive"
     The token mount is decided at admission, so existing pods keep theirs until
     they are recreated. That makes the change safe to roll out, and also means a
-    Kubescape scan will not agree it is fixed until things restart.
+    posture scan will not agree it is fixed until things restart.
 
 ## Directory Structure
 

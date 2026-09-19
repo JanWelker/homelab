@@ -207,7 +207,7 @@ the pin branch down with it.** Where the matched string has a prefix, the
 template has to rebuild it -- the workloads repository matches on an
 `imageName:` prefix, so its template starts with that literal.
 
-The HAProxy and Kubescape overrides are the genuine exception. Those are Helm
+The HAProxy and Redis overrides are the genuine exception. Those are Helm
 `tag:` values inside a `valuesObject`, holding `3.4.4-alpine` rather than a
 complete image reference, so there is no `@sha256:` position in the field and no
 template that could invent one. Both carry `pinDigests: false`, and **a third
