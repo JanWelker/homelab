@@ -2453,7 +2453,7 @@ application is fine and the kubelet is the one being blocked. Cilium's
 <code>fromEntities</code> names these directly: <code>ingress</code> for Envoy-proxied traffic,
 <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
-<p>Ingress only, in eight namespaces:</p>
+<p>Ingress only, in nine namespaces:</p>
 <table>
 <thead>
 <tr>
@@ -2494,12 +2494,22 @@ application is fine and the kubelet is the one being blocked. Cilium's
 <td><code>logging</code></td>
 <td>Prometheus and Grafana, both in <code>monitoring</code></td>
 </tr>
+<tr>
+<td><code>cnpg-system</code></td>
+<td>Prometheus; the webhooks are called by the API server from the node</td>
+</tr>
 </tbody>
 </table>
 <p>Every policy also admits traffic from within the namespace and from <code>host</code> and
 <code>remote-node</code> for probes. The <code>monitoring</code> rule for kured is easy to miss and
 costly to lose: kured queries Prometheus before every reboot and blocks when the
 query fails, so without it no node ever reboots.</p>
+<p><code>cnpg-system</code> covers the operator only. No database runs there — each one lives
+in its workload's namespace — so the rule admitting the operator to an instance
+on port <code>8000</code> belongs to <em>that</em> namespace's policy, in the workloads
+repository, not to this table. It is the one every new workload forgets; <a href="../../development/add-workload/#the-network-policy">Adding
+a Workload</a> has the rule and
+the failure it causes.</p>
 <p>Egress is deliberately untouched. A default-deny on egress also needs rules for
 DNS, the API server, and every external endpoint each component talks to;
 getting that wrong takes the component down rather than merely leaving it
