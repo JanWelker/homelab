@@ -1513,6 +1513,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-control-plane-is-in-scope-and-it-costs-something" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The control plane is in scope, and it costs something
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-scanner-image-is-pinned-ahead-of-the-chart" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2180,6 +2191,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#the-control-plane-is-in-scope-and-it-costs-something" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The control plane is in scope, and it costs something
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-scanner-image-is-pinned-ahead-of-the-chart" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2555,6 +2577,30 @@ keeps passing, just not against the benchmark you believed you were measuring.</
 SaaS backend when <code>server</code>, <code>account</code> and <code>accessKey</code> are set; leaving them unset
 is what keeps findings in the cluster. There is no "offline" switch to forget to
 flip, which is the right way round for a default.</p>
+<h3 id="the-control-plane-is-in-scope-and-it-costs-something">The control plane is in scope, and it costs something<a class="headerlink" href="#the-control-plane-is-in-scope-and-it-costs-something" title="Permanent link">&para;</a></h3>
+<p><code>excludeNamespaces</code> is set here rather than left at the chart default, which is:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubescape,kube-system,kube-public,kube-node-lease,kubeconfig,gmp-system,gmp-public
+</span></code></pre></div>
+<p><code>kube-system</code> is dropped from that list. The default hides the entire control
+plane — <code>kube-apiserver</code>, <code>etcd</code>, <code>kube-controller-manager</code>, <code>kube-scheduler</code>,
+<code>coredns</code>, <code>metrics-server</code> and the CSI sidecars, fourteen distinct images that
+reported no findings because nothing ever looked at them. That is the least
+acceptable place in the cluster to have a blind spot, and the silence looks
+exactly like a clean result.</p>
+<p><code>kubescape</code> itself stays excluded. Scanning the scanner is possible but adds
+another six images to a component that is already the write bottleneck, and its
+findings are the ones you can act on least directly.</p>
+<div class="admonition warning">
+<p class="admonition-title">This is not a free flip</p>
+<p>The same value feeds the node-agent, so widening it widens <strong>runtime
+profiling</strong> too, not just image scanning — <code>kube-system</code> adds 77 containers
+on top of 304, about a quarter more <code>ContainerProfile</code> churn. The storage
+component serialises writes through a single SQLite writer, and at ~630
+profiles it already drops large writes on the floor: see
+<a href="https://github.com/kubescape/storage/issues/409">kubescape/storage#409</a> and
+the section below. Widen the scope only once that is settled, or the new
+coverage arrives as more silently-missing manifests rather than as findings.</p>
+</div>
 <h3 id="the-scanner-image-is-pinned-ahead-of-the-chart">The scanner image is pinned ahead of the chart<a class="headerlink" href="#the-scanner-image-is-pinned-ahead-of-the-chart" title="Permanent link">&para;</a></h3>
 <p><code>kubescape.image.tag</code> overrides the chart's scanner image. Chart 1.40.4 ships
 <code>kubescape</code> v4.0.13, and on v4.0.13 a scan of everything never runs: the
@@ -2592,8 +2638,8 @@ scanning and the runtime stack arrive together rather than separately.</p>
 Home Assistant does not fit in 20Mi and the way it does not fit is invisible.
 The node-agent generates the SBOM, <code>kubevuln</code> weighs it, and an SBOM over the
 cap is discarded rather than truncated:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>"incomplete or too large SBOM, skipping scan"
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>imageSlug: ghcr.io-home-assistant-home-assistant-2026.9.3-dda196
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>"incomplete or too large SBOM, skipping scan"
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>imageSlug: ghcr.io-home-assistant-home-assistant-2026.9.3-dda196
 </span></code></pre></div>
 <p>The <code>SBOMSyft</code> object is kept, which is the trap. It exists, it is named after
 the image, and it holds nothing:</p>
@@ -2824,26 +2870,26 @@ next to the component, and Grafana's dashboard sidecar watches every namespace.<
 <code>kubectl</code> objects. <code>kubectl get</code> on a list of them prints names only — the
 aggregated API leaves <code>spec</code> out of list responses — so fetch objects one at a
 time to see counts.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Failed controls per namespace (cluster-scoped, named after the namespace)</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>authentik<span class="w"> </span>-o<span class="w"> </span>yaml
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># The full finding set for one workload</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span>-l<span class="w"> </span>kubescape.io/workload-name<span class="o">=</span>&lt;workload&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Failed controls per namespace (cluster-scoped, named after the namespace)</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configurationscansummaries<span class="w"> </span>authentik<span class="w"> </span>-o<span class="w"> </span>yaml
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># The full finding set for one workload</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>workloadconfigurationscans<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>-l<span class="w"> </span>kubescape.io/workload-name<span class="o">=</span>&lt;workload&gt;<span class="w"> </span>-o<span class="w"> </span>yaml
 </span></code></pre></div>
 <p>CVEs take two hops. The per-container summary, named
 <code>&lt;kind&gt;-&lt;workload&gt;-&lt;container&gt;</code>, points at two manifests in the <code>kubescape</code>
 namespace: <code>all</code>, named after the image, and <code>relevant</code>, named after the
 workload instance and holding only loaded packages.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">NS</span><span class="o">=</span>argocd<span class="p">;</span><span class="w"> </span><span class="nv">SUMMARY</span><span class="o">=</span>deployment-argocd-server-server
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">REF</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifestsummaries<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NS</span><span class="w"> </span><span class="nv">$SUMMARY</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.vulnerabilitiesRef.relevant.name}'</span><span class="k">)</span><span class="w">   </span><span class="c1"># .all.name for the whole image</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifests<span class="w"> </span>-n<span class="w"> </span>kubescape<span class="w"> </span><span class="s2">"</span><span class="nv">$REF</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s1">  .spec.payload.matches[]</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s1">  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s1">  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s1">     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s1">  | @tsv'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">NS</span><span class="o">=</span>argocd<span class="p">;</span><span class="w"> </span><span class="nv">SUMMARY</span><span class="o">=</span>deployment-argocd-server-server
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nv">REF</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifestsummaries<span class="w"> </span>-n<span class="w"> </span><span class="nv">$NS</span><span class="w"> </span><span class="nv">$SUMMARY</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.vulnerabilitiesRef.relevant.name}'</span><span class="k">)</span><span class="w">   </span><span class="c1"># .all.name for the whole image</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilitymanifests<span class="w"> </span>-n<span class="w"> </span>kubescape<span class="w"> </span><span class="s2">"</span><span class="nv">$REF</span><span class="s2">"</span><span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="s1">  .spec.payload.matches[]</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="s1">  | select(.vulnerability.severity == "Critical" or .vulnerability.severity == "High")</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="s1">  | [.vulnerability.severity, .vulnerability.id, .artifact.name, .artifact.version,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="s1">     .vulnerability.fix.state, ((.vulnerability.fix.versions // []) | join(","))]</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="s1">  | @tsv'</span>
 </span></code></pre></div>
 <p>A <code>fix.state</code> of <code>fixed</code> means a newer package exists; with upstream images
 that almost always means waiting for, or bumping to, a newer chart.</p>
@@ -2882,7 +2928,7 @@ implementation and is worth a one-off run for a second opinion; it maps findings
 to numbered CIS controls (<code>1.2.16</code>, <code>1.3.7</code>) in a way Kubescape does not. Note
 that its newest profile is <code>cis-2.0</code>, covering Kubernetes 1.34–1.35, so on
 v1.37 auto-detection fails and the benchmark has to be pinned:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kube-bench<span class="w"> </span>run<span class="w"> </span>--benchmark<span class="w"> </span>cis-2.0<span class="w"> </span>--targets<span class="w"> </span>master,controlplane,node,etcd,policies
 </span></code></pre></div>
 <p>Kubescape is what runs <em>continuously</em>, which is the part that matters. A
 benchmark you run once is a screenshot.</p>
@@ -2905,9 +2951,9 @@ that needs the most privilege in it. It is also exactly the sort of finding
 Kubescape will report about itself, which is the correct behaviour and worth not
 suppressing.</p>
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubescape/
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubescape/
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>├── application.yaml         # ArgoCD Application (Helm: kubescape-operator)
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>└── grafana-dashboard.yaml   # Our dashboard (the chart ships none)
 </span></code></pre></div>
 
 
