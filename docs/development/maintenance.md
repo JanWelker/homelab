@@ -67,7 +67,7 @@ located in `renovate.json`.
     [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests. A custom manager
-    needs `autoReplaceStringTemplate` to take part, and three Helm `tag:`
+    needs `autoReplaceStringTemplate` to take part, and six Helm `tag:`
     overrides are exempt because a bare tag has nowhere to put a digest -- see
     [A custom manager cannot add a digest](#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),

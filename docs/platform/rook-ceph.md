@@ -93,16 +93,25 @@ them — upstream keeps them in `deploy/examples/operator.yaml` — so they live
 `rook-ceph.rbd.csi.ceph.com` and every PVC against `rook-ceph-block` stays
 `Pending` on `ExternalProvisioning`.
 
-!!! warning "`csi` values on the operator chart do nothing"
+!!! warning "`csi` values on the operator chart do nothing, except the images"
     Helm accepts values a chart no longer reads without complaint. Driver
     settings go in `csi-driver.yaml`, not under `csi` in `rook-ceph-operator`.
+    The one exception is `csi.<sidecar>.tag`: the chart still renders those
+    into the image-set `ConfigMap` below, which is why the sidecar pins live
+    there.
 
 - **In `rook-ceph`, at `04-storage`**, with `SkipDryRunOnMissingResource`: the
   CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart in
   `03-controllers`.
 - **Image set**: `OperatorConfig` points at the `ConfigMap` the chart renders,
   so a chart bump moves every sidecar and the cephcsi image together and the
-  csi-operator's own image defaults never apply.
+  csi-operator's own image defaults never apply. Three sidecars are pinned
+  ahead of the chart in `rook-ceph-operator`: `csi-provisioner` v6.3.0,
+  `csi-resizer` v2.2.1 and `csi-snapshotter` v8.6.0, the versions
+  ceph-csi-operator v1.0.5 defaults to. The ones Rook v1.20.7 ships link a
+  gRPC with an authorization bypass (CVE-2026-33186), and Rook has not yet
+  moved to v1.0.5. Renovate tracks the pins through their `# renovate:`
+  annotations; drop them once the chart's own defaults catch up.
 - **Driver name**: not free to choose. Rook derives the provisioner from its
   namespace, and it has to match the `provisioner` of the StorageClasses in
   `rook-ceph-cluster`. CephFS is not enabled, so RBD is the only driver.
