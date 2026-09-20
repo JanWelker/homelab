@@ -212,7 +212,11 @@ The dependency runs one way and only one way: workloads reference the platform
 `ClusterSecretStore`, the CloudNativePG operator), and the platform references
 the workloads repository exactly once — the `repoURL` in
 `payload/workloads/applicationset.yaml`. Nothing in this repository
-reads the contents of that one.
+reads the contents of that one. The nearest thing to an exception is
+`payload/platform/authentik/secrets-nextcloud.yaml`, which reads Nextcloud's
+OIDC client out of OpenBao for the blueprint the workload ships; it is its own
+ExternalSecret, mounted `optional`, precisely so that a cluster without Nextcloud
+loses nothing but that one provider.
 
 ### What the split costs
 

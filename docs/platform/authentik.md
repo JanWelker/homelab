@@ -155,7 +155,7 @@ asynchronously, which is why anything configuring itself *against* a provider
 has to tolerate it not being there yet.
 
 !!! danger "A new client credential needs the worker restarted"
-    `envFrom` injects `authentik-secrets` as environment variables **once, when the pod starts** — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through `!Env` gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at `14:34:10` and `authentik-secrets` gained `NEXTCLOUD_CLIENT_ID` at `14:34:12`. So `worker.podAnnotations.homelab.wlkr.ch/secret-generation` in `application.yaml` is **bumped whenever `authentik-secrets` gains a key** — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A `kubectl rollout restart` fixes a running cluster but leaves nothing behind for the next person.
+    `envFrom` injects `authentik-secrets` as environment variables **once, when the pod starts** — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through `!Env` gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at `14:34:10` and `authentik-secrets` gained `NEXTCLOUD_CLIENT_ID` at `14:34:12`. So `worker.podAnnotations.homelab.wlkr.ch/secret-generation` in `application.yaml` is **bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key** — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A `kubectl rollout restart` fixes a running cluster but leaves nothing behind for the next person.
 
 ## Configuration as code
 
@@ -331,6 +331,7 @@ configs:
 authentik/
 ├── application.yaml       # ArgoCD Application (Helm: goauthentik/authentik)
 ├── secrets.yaml           # ExternalSecret: secret key, DB and OIDC clients
+├── secrets-nextcloud.yaml # ExternalSecret: Nextcloud's client, optional
 ├── blueprints.yaml        # ConfigMap: providers, applications, outpost
 ├── httproute.yaml         # auth / prometheus / alertmanager hostnames
 └── referencegrant.yaml    # Lets the hubble and rook routes reach the outpost
