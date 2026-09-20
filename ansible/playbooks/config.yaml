@@ -62,29 +62,64 @@
         - "{{ output_dir }}/tftp"
         - "{{ output_dir }}/tftp/pxelinux.cfg"
 
+    # The nodes fetch these over plain HTTP on first boot. Ignition checks each
+    # against the hash of the file the boot server was given, so a substituted
+    # image fails instead of running as root. That needs the files: make
+    # download first.
+    - name: Checksum the sysext images the nodes fetch on first boot
+      ansible.builtin.stat:
+        path: "{{ output_dir }}/http/{{ item.name }}-{{ item.version }}-x86-64.raw"
+        checksum_algorithm: sha256
+      loop:
+        - {name: kubernetes, version: "{{ kubernetes_version }}"}
+        - {name: containerd, version: "{{ containerd_version }}"}
+      loop_control:
+        label: "{{ item.name }}-{{ item.version }}"
+      register: sysext_stat
+      run_once: true # noqa: run-once
+      delegate_to: localhost
+
+    - name: Require the sysext images before rendering the configs that verify them
+      ansible.builtin.assert:
+        that: sysext_stat.results | map(attribute='stat.exists') | select | list | length == 2
+        fail_msg: >-
+          output/http is missing a sysext image. The Ignition configs pin the
+          sha256 of the served file, so run make download (or make artifacts)
+          before make config.
+        quiet: true
+      run_once: true # noqa: run-once
+      delegate_to: localhost
+
+    - name: Set Sysext Checksum Facts
+      ansible.builtin.set_fact:
+        sysext_sha256: "{{ dict(sysext_stat.results | map(attribute='item.name') | zip(sysext_stat.results | map(attribute='stat.checksum'))) }}"
+
+    # 0700/0600: the renders below hold the join token, the certificate key and
+    # the etcd encryption key in plaintext. The Ignition JSON in output/http is
+    # the copy the nodes read and stays world-readable by necessity.
     - name: Ensure tmp kubeadm directory exists
       ansible.builtin.file:
         path: "{{ output_dir }}/tmp/kubeadm"
         state: directory
-        mode: "0755"
+        mode: "0700"
 
     - name: Generate Kubeadm Config (Verification only, injected into Ignition)
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/kubeadm.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/kubeadm/kubeadm-config-{{ inventory_hostname }}.yaml"
-        mode: "0755"
+        mode: "0600"
 
     - name: Ensure tmp butane directory exists
       ansible.builtin.file:
         path: "{{ output_dir }}/tmp/butane"
         state: directory
-        mode: "0755"
+        mode: "0700"
 
     - name: Generate Butane Configs
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/{{ item.template }}.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ item.suffix }}.yaml"
-        mode: "0755"
+        mode: "0600"
       loop: "{{ ignition_configs }}"
       loop_control:
         label: "{{ inventory_hostname }}{{ item.suffix }}"

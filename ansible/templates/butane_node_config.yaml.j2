@@ -233,12 +233,16 @@ storage:
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
+        verification:
+          hash: sha256-{{ sysext_sha256.kubernetes }}
     - path: /etc/sysupdate.containerd.d/containerd.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/containerd.conf
     - path: /opt/extensions/containerd/containerd-{{ containerd_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/containerd-{{ containerd_version }}-x86-64.raw
+        verification:
+          hash: sha256-{{ sysext_sha256.containerd }}
     # Stays in the unsuffixed directory on purpose. That is the default
     # component, which the unit's own ExecStart acts on; this no-op transfer is
     # what keeps that run from failing.

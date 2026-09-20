@@ -21,7 +21,9 @@ all:
       vars:
         ansible_user: core
         ansible_python_interpreter: /usr/bin/python3
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+        # accept-new pins a host key on first contact and refuses a changed
+        # one; make reinstall drops the old key, since a rebuilt node has a new one.
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
       children:
         control_plane:
           vars:

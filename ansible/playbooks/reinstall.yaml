@@ -7,6 +7,17 @@
     output_dir: "{{ playbook_dir }}/../../output"
     pxe_default: install
   tasks:
+    # A reinstalled node generates a new SSH host key. Without this, the first
+    # make kubeconfig after a rebuild is refused as a changed key, which is
+    # exactly what StrictHostKeyChecking=accept-new is there to refuse.
+    - name: Forget the node's SSH host key
+      ansible.builtin.command:
+        cmd: ssh-keygen -R {{ ansible_host }}
+      when: pxe_default == 'install'
+      register: forget_key
+      changed_when: "'updated' in forget_key.stderr or 'updated' in forget_key.stdout"
+      failed_when: false
+
     - name: Set DEFAULT in the generated PXE menu
       ansible.builtin.lineinfile:
         path: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
