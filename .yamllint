@@ -1,15 +1,23 @@
 extends: default
 
+# Tool output that lands inside the tree. The tracked YAML is what gets linted,
+# and `ansible/` is in: ansible-lint runs its own yamllint pass there with these
+# same rules, so the two never disagree.
 ignore: |
-  ansible/
   output/
+  .venv/
+  site/
+  .cache/
 
 rules:
   # Renovate writes its version annotations as "@<sha> # v1", with a single
   # space. Matching that here keeps the pins lint-clean across bumps.
   comments:
     min-spaces-from-content: 1
+  # What ansible-lint permits for inline mappings such as { src: ..., dest: ... }.
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
   line-length: disable
   document-start: disable
   comments-indentation: disable
-  trailing-spaces: disable

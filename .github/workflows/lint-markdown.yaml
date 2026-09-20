@@ -23,8 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # Same version as the pre-commit hook; renovate.json bumps both.
       - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
+        run: npm install -g markdownlint-cli2@0.23.3
 
       - name: Run markdownlint
         run: markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
