@@ -2013,6 +2013,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#an-allowedversions-range-is-graded-by-npm-semver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        An <code>allowedVersions</code> range is graded by npm semver
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-versions-are-derived-not-pinned" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2217,6 +2228,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         A custom manager cannot add a digest without <code>autoReplaceStringTemplate</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#an-allowedversions-range-is-graded-by-npm-semver" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        An <code>allowedVersions</code> range is graded by npm semver
       </span>
     </span>
   </a>
@@ -2529,6 +2551,47 @@ reads as "Renovate is broken" rather than as one specific field.</p>
 easy to miss: the CloudNativePG image was bumped to 18.6 by the very manager
 whose pin was failing. The Dependency Dashboard banner is the only place it
 shows.</p>
+<h3 id="an-allowedversions-range-is-graded-by-npm-semver">An <code>allowedVersions</code> range is graded by npm semver<a class="headerlink" href="#an-allowedversions-range-is-graded-by-npm-semver" title="Permanent link">&para;</a></h3>
+<p>Holding a dependency on a major is one line, and the obvious spelling of it is
+a range: <code>"allowedVersions": "&lt;18"</code>. It does work for the Authentik Postgres
+pin today, but not for the reason it looks like, and not durably.</p>
+<p>Renovate tries three things in order, and a Docker range falls through the
+first two. <code>docker.isValid("&lt;18")</code> is <strong>false</strong>, so the range is never handed
+to docker versioning at all -- which is fortunate, because
+<code>docker.matches("17.11-trixie", "&lt;18")</code> is also <code>false</code> and would have excluded
+the very version we are pinned to. What actually runs is the npm-semver
+fallback, where <code>17.11-trixie</code> is not valid semver, gets coerced to <code>17.11.0</code>,
+and compares correctly.</p>
+<p>That last step is the fragile one. Coercion only happens because the tag has
+two numeric parts. A three-part tag such as <code>17.11.1-trixie</code> <em>is</em> valid semver,
+with <code>trixie</code> read as a <strong>prerelease</strong>, and semver excludes prereleases from any
+range that does not name one:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>semver.satisfies('17.11-trixie',   '&lt;18')  // true   -- coerced to 17.11.0
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>semver.satisfies('17.11.1-trixie', '&lt;18')  // false  -- prerelease "trixie"
+</span></code></pre></div>
+<p>So the range holds only as long as upstream never publishes a three-part tag,
+and the day it does, every update is dropped with nothing logged. It is the
+same shape as the <code>-alpine</code> case: the filter does not fail, it silently matches
+nothing.</p>
+<p>Writing it as a regex avoids the question entirely. <code>"/^17\\./"</code> is matched by
+<code>getRegexPredicate</code> before any version parsing happens, so no coercion and no
+prerelease rule is involved:</p>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">"matchDatasources"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"docker"</span><span class="p">],</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">"matchPackageNames"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"docker.io/library/postgres"</span><span class="p">],</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">"allowedVersions"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/^17\\./"</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The regex constrains only the major. The <code>-trixie</code> suffix is held separately,
+by docker versioning's compatibility check -- <code>17.12-bookworm</code> and a bare
+<code>17.12</code> are not offered against a <code>-trixie</code> pin regardless of this rule.</p>
+<div class="admonition tip">
+<p class="admonition-title">The check that catches this class of bug</p>
+<p><strong>Does the currently pinned version pass its own rule?</strong> If the filter
+excludes what is already deployed, it excludes everything, and no update
+will ever be raised again. It is one line to verify and it is the only
+symptom you get.</p>
+</div>
 <h3 id="bootstrap-versions-are-derived-not-pinned">Bootstrap versions are derived, not pinned<a class="headerlink" href="#bootstrap-versions-are-derived-not-pinned" title="Permanent link">&para;</a></h3>
 <p><code>make install-cilium</code> and <code>make install-argo</code> install Cilium, the Gateway API
 CRDs, and ArgoCD itself before ArgoCD exists to manage them. The <code>Makefile</code> used to carry its own pins for those, and
@@ -2538,7 +2601,7 @@ two minors behind the one the cluster was actually running.</p>
 problem; tracking both copies only makes the drift arrive in pairs. Each target
 now reads <code>targetRevision</code> out of the <code>Application</code> manifest that owns the
 component after the handover:</p>
-<div class="language-make highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">CILIUM_VERSION</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>call<span class="w"> </span>chart_version,payload/platform/cilium/application.yaml<span class="k">)</span>
+<div class="language-make highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nv">CILIUM_VERSION</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>call<span class="w"> </span>chart_version,payload/platform/cilium/application.yaml<span class="k">)</span>
 </span></code></pre></div>
 <p>So there is nothing <code>Makefile</code>-shaped in <code>renovate.json</code>, and nothing to add
 there when a new bootstrap component appears — point the target at the manifest
@@ -2549,8 +2612,8 @@ lookup comes back empty, because the alternative is Helm receiving an empty
 <p>The docs site self-hosts its webfonts, so <code>docs/assets/fonts/</code> holds <code>woff2</code>
 files that no manager can rewrite. <code>scripts/update-fonts.sh</code> pins the two
 upstream releases those files come from, and a custom manager tracks the pins:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># renovate: datasource=github-releases depName=inter packageName=rsms/inter versioning=regex:^v(?&lt;major&gt;\d+)\.(?&lt;minor&gt;\d+)$</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nv">INTER_VERSION</span><span class="o">=</span><span class="s2">"v4.1"</span>
 </span></code></pre></div>
 <p>A Renovate PR therefore changes one line and nothing else — the fonts it claims
 to update are still the old ones, which is a uniquely deceptive kind of green

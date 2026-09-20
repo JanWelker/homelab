@@ -1450,67 +1450,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#client-secrets-are-generated-up-front" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Client secrets are generated up front
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#groups-and-roles" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Groups and roles
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-authentik-is-down" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        When Authentik is down
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="When Authentik is down">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#argocds-api-key-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ArgoCD's API key account
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2203,67 +2142,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#client-secrets-are-generated-up-front" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Client secrets are generated up front
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#groups-and-roles" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Groups and roles
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#when-authentik-is-down" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        When Authentik is down
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="When Authentik is down">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#argocds-api-key-account" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ArgoCD's API key account
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2669,8 +2547,16 @@ a prerelease and every candidate tag is dropped without an error. Being a
 bare tag rather than a full reference, it also has to sit in the
 <code>pinDigests: false</code> rule — see
 <a href="../../development/maintenance/#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate">Renovate</a>.
-Renovate will track 17.x within <code>-trixie</code> and will not propose 18; a
-Postgres major is a dump and restore, so that is the behaviour we want.</p>
+Renovate tracks 17.x within <code>-trixie</code>: docker versioning treats the suffix
+as a compatibility constraint, so <code>17.12-bookworm</code> and a bare <code>17.12</code> are
+never offered against a <code>-trixie</code> pin.</p>
+<p>The major is held by an <code>allowedVersions</code> rule, not by that. This page
+previously claimed Renovate would not propose 18 on its own; it did, in</p>
+<h1 id="773-within-hours-majors-were-only-excluded-from-automerge-they-were">773, within hours. Majors were only excluded from <em>automerge</em> — they were<a class="headerlink" href="#773-within-hours-majors-were-only-excluded-from-automerge-they-were" title="Permanent link">&para;</a></h1>
+<p>still raised, and a Postgres major is a dump and restore rather than an
+image bump, so it should not be raised at all until someone plans it. The
+rule is written as a regex for the reason in
+<a href="../../development/maintenance/#an-allowedversions-range-is-graded-by-npm-semver">An <code>allowedVersions</code> range is graded by npm semver</a>.</p>
 </li>
 </ul>
 <h2 id="client-secrets-are-generated-up-front">Client secrets are generated up front<a class="headerlink" href="#client-secrets-are-generated-up-front" title="Permanent link">&para;</a></h2>
