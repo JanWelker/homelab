@@ -2413,7 +2413,11 @@ its <code>CONVENTIONS.md</code>, which is the copy to keep current.</p>
 <li><strong><code>project: apps</code>.</strong> The ApplicationSet refuses to generate anything else —
    a workload in the <code>infra</code> or <code>system</code> project would be authorised against
    destinations it has no business in, so the whole set fails rather than let
-   one through.</li>
+   one through. The project names the chart repositories workloads may pull
+   from and the cluster-scoped kinds they may create, in
+   <code>payload/platform/argocd-projects/projects.yaml</code>. A workload on a new chart
+   repository extends that list first, in this repository, or ArgoCD rejects
+   its Application.</li>
 <li><strong>The workload owns its namespace.</strong> Ship a <code>namespace.yaml</code> at sync wave
    <code>-2</code> carrying the three Pod Security Admission labels, and annotate it
    <code>Prune=false</code> — pruning a <code>Namespace</code> deletes every PVC inside it. A

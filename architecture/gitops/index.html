@@ -2489,7 +2489,11 @@ payload to split. The reasons it stuck:</p>
 <code>ClusterSecretStore</code>, the CloudNativePG operator), and the platform references
 the workloads repository exactly once — the <code>repoURL</code> in
 <code>payload/workloads/applicationset.yaml</code>. Nothing in this repository
-reads the contents of that one.</p>
+reads the contents of that one. The nearest thing to an exception is
+<code>payload/platform/authentik/secrets-nextcloud.yaml</code>, which reads Nextcloud's
+OIDC client out of OpenBao for the blueprint the workload ships; it is its own
+ExternalSecret, mounted <code>optional</code>, precisely so that a cluster without Nextcloud
+loses nothing but that one provider.</p>
 <h3 id="what-the-split-costs">What the split costs<a class="headerlink" href="#what-the-split-costs" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Two repositories to clone</strong>, and a change that spans both is two pull

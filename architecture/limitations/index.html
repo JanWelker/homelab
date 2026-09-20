@@ -2322,8 +2322,9 @@ apply what has been staged, and refuses while Ceph or etcd is unhealthy.</p>
 Security Admission labels — see
 <a href="../../platform/security-policies/">Security Policies</a>.</p>
 <p>Beyond that: all <strong>egress</strong> is unrestricted everywhere, and the namespaces
-outside those eight allow all ingress. Two of the three ArgoCD AppProjects allow
-every resource kind in every namespace. Details in
+outside those eight allow all ingress. The <code>infra</code> AppProject allows every
+resource kind in every namespace, and <code>apps</code> still permits cluster RBAC because
+trivy-operator needs it. Details in
 <a href="../security/#authorization">Security Posture</a>.</p>
 <p>Partial network policy is genuinely better than none, but it is worth not
 mistaking it for a boundary. A pod in <code>authentik</code> can still talk to a pod in

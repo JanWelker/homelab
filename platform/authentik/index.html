@@ -2485,7 +2485,7 @@ asynchronously, which is why anything configuring itself <em>against</em> a prov
 has to tolerate it not being there yet.</p>
 <div class="admonition danger">
 <p class="admonition-title">A new client credential needs the worker restarted</p>
-<p><code>envFrom</code> injects <code>authentik-secrets</code> as environment variables <strong>once, when the pod starts</strong> — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through <code>!Env</code> gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at <code>14:34:10</code> and <code>authentik-secrets</code> gained <code>NEXTCLOUD_CLIENT_ID</code> at <code>14:34:12</code>. So <code>worker.podAnnotations.homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code> is <strong>bumped whenever <code>authentik-secrets</code> gains a key</strong> — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A <code>kubectl rollout restart</code> fixes a running cluster but leaves nothing behind for the next person.</p>
+<p><code>envFrom</code> injects <code>authentik-secrets</code> as environment variables <strong>once, when the pod starts</strong> — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through <code>!Env</code> gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at <code>14:34:10</code> and <code>authentik-secrets</code> gained <code>NEXTCLOUD_CLIENT_ID</code> at <code>14:34:12</code>. So <code>worker.podAnnotations.homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code> is <strong>bumped whenever <code>authentik-secrets</code> or <code>authentik-secrets-nextcloud</code> gains a key</strong> — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A <code>kubectl rollout restart</code> fixes a running cluster but leaves nothing behind for the next person.</p>
 </div>
 <h2 id="configuration-as-code">Configuration as code<a class="headerlink" href="#configuration-as-code" title="Permanent link">&para;</a></h2>
 <p>Providers and applications are declared in blueprints
@@ -2654,9 +2654,10 @@ token is for is easier to reason about and to revoke:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>authentik/
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml       # ArgoCD Application (Helm: goauthentik/authentik)
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── secrets.yaml           # ExternalSecret: secret key, DB and OIDC clients
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── blueprints.yaml        # ConfigMap: providers, applications, outpost
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── httproute.yaml         # auth / prometheus / alertmanager hostnames
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── referencegrant.yaml    # Lets the hubble and rook routes reach the outpost
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── secrets-nextcloud.yaml # ExternalSecret: Nextcloud's client, optional
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── blueprints.yaml        # ConfigMap: providers, applications, outpost
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>├── httproute.yaml         # auth / prometheus / alertmanager hostnames
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>└── referencegrant.yaml    # Lets the hubble and rook routes reach the outpost
 </span></code></pre></div>
 
 
