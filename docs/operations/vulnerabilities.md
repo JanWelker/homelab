@@ -23,7 +23,10 @@ Three things before believing a number:
   Reconcile running images against scanned ones before concluding anything;
   the `TrivyContainerNotScanned` alert does it continuously. On this pass it
   named Nextcloud and Authentik, whose scans were dying on a five-minute Job
-  deadline that a longer Trivy timeout could never reach.
+  deadline that a longer Trivy timeout could never reach, and whose reports,
+  once a scan finished, were too large for etcd: 2886 Debian findings with no
+  fix in one image. Both are handled in homelab-apps (#26, #28); the second
+  with a per-namespace policy that drops only unfixed findings below HIGH.
 - **An empty `fixedVersion` means no fix is known, not no problem.** They are
   kept on purpose (`ignoreUnfixed: false`), because a cluster of them in one
   base image is the signal that the base image is the wrong one.
