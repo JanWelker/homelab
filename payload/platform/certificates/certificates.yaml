@@ -1,24 +1,4 @@
 ---
-# ArgoCD Server TLS Certificate (specific cert for ArgoCD namespace)
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: argocd-server-tls
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  secretName: argocd-server-tls
-  privateKey:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 4096
-  issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
-  dnsNames:
-    - argo.infra.k8s.wlkr.ch
----
 # Apps Gateway wildcard certificate (covers all *.k8s.wlkr.ch)
 apiVersion: cert-manager.io/v1
 kind: Certificate

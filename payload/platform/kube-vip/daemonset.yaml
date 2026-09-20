@@ -34,7 +34,6 @@ spec:
       initContainers:
         - name: pull
           # Pre-pulls the image before `adopt`; keep in step with the container.
-          # renovate: datasource=docker depName=ghcr.io/kube-vip/kube-vip
           image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
           args:
             - version
@@ -43,7 +42,6 @@ spec:
             capabilities:
               drop: ["ALL"]
         - name: adopt
-          # renovate: datasource=docker depName=busybox
           image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command:
             - /bin/sh
@@ -84,7 +82,6 @@ spec:
               memory: 32Mi
       containers:
         - name: kube-vip
-          # renovate: datasource=docker depName=ghcr.io/kube-vip/kube-vip
           image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
           args:
             - manager
