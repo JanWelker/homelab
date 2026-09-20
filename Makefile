@@ -100,7 +100,30 @@ bao-unseal:
 bao-secrets:
 	scripts/bao-secrets.sh
 
+# Without LIMIT this arms every node, and the firmware boots network-first: a
+# power cut after that reinstalls all three control planes and every Ceph OSD.
+# make clean asks before deleting the credentials; this asks before that.
 reinstall:
+	@if [ -z "$(LIMIT)" ]; then \
+	  printf '%s\n' \
+	    '' \
+	    '  make reinstall without LIMIT arms EVERY node. Each one wipes its disk,' \
+	    '  Ceph OSD included, the next time it boots from the network -- and the' \
+	    '  firmware boots from the network first, so a power cut is enough.' \
+	    '' \
+	    '  To rebuild one node:  make reinstall LIMIT=<node>' \
+	    ''; \
+	  if [ ! -t 0 ]; then \
+	    echo "  not a terminal -- pass LIMIT=<node>, or re-run interactively to confirm"; \
+	    exit 1; \
+	  fi; \
+	  printf '  Arm all nodes for reinstall? [y/N] '; \
+	  read -r reply; \
+	  case "$$reply" in \
+	    [yY]|[yY][eE][sS]) ;; \
+	    *) echo "  cancelled -- nothing armed."; exit 1;; \
+	  esac; \
+	fi
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml $(if $(LIMIT),--limit "$(LIMIT)")
 
 reinstall-cancel:
