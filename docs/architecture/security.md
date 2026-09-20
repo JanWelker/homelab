@@ -132,15 +132,22 @@ to go without it. The policy, the retention, and the LogQL to query it are in
 
 ## Authorization
 
-**ArgoCD AppProjects do not constrain much.**
-`payload/platform/argocd-projects/projects.yaml` defines three projects, but `apps` and `infra` both allow `sourceRepos: "*"` and
-a `clusterResourceWhitelist` of every group and kind, in every namespace. Only
-`system` restricts its destination namespace.
+**ArgoCD AppProjects constrain the workloads, not the platform.**
+`payload/platform/argocd-projects/projects.yaml` defines three projects. `infra`
+allows `sourceRepos: "*"` and every group and kind in every namespace: it is
+this repository deploying this repository, and a restriction there guards
+against nothing the review of the PR does not. `system` is confined to the
+`argocd` namespace.
 
-They are useful as grouping and as a place to add restrictions later. They are
-not an isolation boundary today: an Application in the `apps` project can create
-cluster-scoped RBAC. Which is to say, a workload's manifest directory can quietly
-grant itself the keys to the cluster, and nothing would object.
+`apps` is the one with a boundary to draw, because its Applications come from a
+second repository with a smaller blast radius and a lighter review. It accepts
+only the workloads repository and the chart repositories the workloads use, may
+not write into any platform namespace (`authentik` excepted, for the blueprint
+ConfigMap a workload ships there), and at cluster scope may create namespaces,
+CRDs, cluster RBAC and Trivy's compliance reports — the set trivy-operator
+demonstrably needs. Cluster RBAC is still cluster RBAC: a workload can grant
+itself more than it should, but only from a repository this one names, and not
+by touching the platform's own namespaces.
 
 **Network policy covers eight namespaces.** `openbao`, `cert-manager`,
 `external-secrets`, `monitoring`, `external-dns`, `kubelet-csr-approver`,
