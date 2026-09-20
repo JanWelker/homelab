@@ -2331,9 +2331,9 @@ mistaking it for a boundary. A pod in <code>authentik</code> can still talk to a
 <code>kured</code> all day long.</p>
 <h2 id="provisioning-requires-the-boot-server-on-the-same-segment">Provisioning requires the boot server on the same segment<a class="headerlink" href="#provisioning-requires-the-boot-server-on-the-same-segment" title="Permanent link">&para;</a></h2>
 <p>Reprovisioning any node means running <code>make serve</code> on a machine on the nodes' L2
-segment, with the external DHCP server pointing at it, and choosing <code>install</code>
-from the PXE menu at that node's console. There is no way to rebuild a node
-remotely, and the deployment host is not part of the cluster.</p>
+segment, with the external DHCP server pointing at it, arming the node with
+<code>make reinstall LIMIT=&lt;node&gt;</code>, and power-cycling it. There is no way to rebuild
+a node remotely, and the deployment host is not part of the cluster.</p>
 <p>Translation: you cannot rebuild a dead node from a hotel room. Plan holidays
 accordingly.</p>
 <p>This is now genuinely limited to <em>re</em>provisioning. Flatcar is installed to disk,

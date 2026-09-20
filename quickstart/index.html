@@ -2708,7 +2708,7 @@ unformatted, so the old BlueStore signature survived — and Rook will not adopt
 an OSD belonging to a cluster it does not know.</p>
 <p>The installer now wipes the disk before <code>flatcar-install</code> runs: filesystem
 signatures off every partition, the GPT zapped, and a device-level discard where
-the hardware supports it. So picking <code>install</code> from the PXE menu does hand Ceph
+the hardware supports it. So a node armed with <code>make reinstall</code> does hand Ceph
 an empty disk back.</p>
 <p>Worth keeping the symptom in mind anyway, because it is what you would see if
 that wipe ever failed — or on hardware where <code>blkdiscard</code> is declined <em>and</em>

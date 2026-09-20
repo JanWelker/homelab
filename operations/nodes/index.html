@@ -2329,9 +2329,10 @@ six nodes eventually destroys all replicas of everything. Step 1 is not optional
 for that case.</p>
 <div class="admonition note">
 <p class="admonition-title">The menu will not do this by accident</p>
-<p>The PXE entry that installs has to be chosen. The menu's default is
-<code>LOCALBOOT</code>, so a node that reboots while the boot server happens to be
-running boots what it already has. The install does not touch the
+<p>The menu has no prompt and its generated default is <code>LOCALBOOT</code>; only
+<code>make reinstall</code> changes that, and the boot server changes it back once the
+node has the image. So a node that reboots while the boot server happens to
+be running boots what it already has. The install does not touch the
 firmware's boot order, which means the menu decides on every boot, on
 every node — see <a href="../../architecture/boot-process/#boot-order">Boot order</a>.</p>
 </div>

@@ -2286,10 +2286,10 @@ boot server.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Renovate keeps <code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code>
-and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code> under the
-<code>Core Infrastructure</code> group, which always requires review. Merging one of
+and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, one PR each,
+and patch and minor bumps automerge like everything else. Merging one of
 those PRs changes what a <strong>newly provisioned</strong> node installs; it does not
-change a running node.</p>
+change a running node. See <a href="../../development/maintenance/">Maintenance</a>.</p>
 </div>
 <h2 id="platform-components">Platform components<a class="headerlink" href="#platform-components" title="Permanent link">&para;</a></h2>
 <p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
