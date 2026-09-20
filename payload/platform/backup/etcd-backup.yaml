@@ -26,14 +26,23 @@ spec:
             - key: node-role.kubernetes.io/control-plane
               operator: Exists
               effect: NoSchedule
+          # Root, because the client certificates are 600 root on the host;
+          # nothing else is granted.
           securityContext:
             runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
           volumes:
             - name: etcd-certs
               hostPath:
                 path: /etc/kubernetes/pki/etcd
                 type: Directory
             - name: snapshot
+              emptyDir: {}
+            # The only two places the upload container writes.
+            - name: aws-home
+              emptyDir: {}
+            - name: tmp
               emptyDir: {}
           initContainers:
             - name: snapshot
@@ -51,6 +60,11 @@ spec:
                     snapshot save /snapshot/etcd.db
                   # Verify before upload; `etcdctl snapshot status` is gone in 3.6
                   etcdutl --write-out=table snapshot status /snapshot/etcd.db
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
               volumeMounts:
                 - name: etcd-certs
                   mountPath: /pki
@@ -88,10 +102,19 @@ spec:
                     name: etcd-backup-bucket
                 - configMapRef:
                     name: etcd-backup-bucket
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
               volumeMounts:
                 - name: snapshot
                   mountPath: /snapshot
                   readOnly: true
+                - name: aws-home
+                  mountPath: /root/.aws
+                - name: tmp
+                  mountPath: /tmp
               resources:
                 requests:
                   cpu: 50m
