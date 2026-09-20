@@ -54,6 +54,19 @@ storage:
       contents:
         inline: "{{ inventory_hostname }}"
 
+    # kubeadm writes these 0644 and Cilium creates the CNI directory 0755;
+    # CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and
+    # the kubelet drop-in below re-applies them before every kubelet start,
+    # which is when kubeadm has just rewritten them. A path that does not
+    # exist yet is skipped. See docs/operations/vulnerabilities.md.
+    - path: /etc/tmpfiles.d/kubernetes-cis.conf
+      mode: 0644
+      contents:
+        inline: |
+          z /var/lib/kubelet/config.yaml 0600 root root -
+          z /etc/kubernetes/pki/ca.crt 0600 root root -
+          z /opt/cni/bin 0700 root root -
+
     - path: /opt/kubeadm-config.yaml
       mode: 0644
       contents:
@@ -290,6 +303,8 @@ systemd:
             [Unit]
 
             [Service]
+            # Re-apply the CIS file modes kubeadm resets; see /etc/tmpfiles.d
+            ExecStartPre=-/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/kubernetes-cis.conf
             ExecStart=
             ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
     - name: systemd-sysupdate.timer

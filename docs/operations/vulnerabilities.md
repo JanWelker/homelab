@@ -86,11 +86,55 @@ what they want. Checked on this pass:
 - **Routine Go churn is not a finding.** A dozen "please bump grpc" issues
   damage standing for the one time something real turns up.
 
-## Not covered here
+## The other three report kinds
 
-The operator also writes `ConfigAuditReport`, `RbacAssessmentReport` and
-`InfraAssessmentReport` objects. Those findings are fixable in this repository
-rather than upstream, and they are a hardening backlog of their own: read-only
-root filesystems, default security contexts, and the kubelet and CNI file
-permissions the CIS benchmark wants on every node. They are deliberately not
-mixed into a CVE pass.
+`ConfigAuditReport`, `RbacAssessmentReport` and `InfraAssessmentReport` are
+fixable here rather than upstream, which makes them worth more per finding and
+also makes it worth being honest about which ones are load-bearing.
+
+### Infra: the nodes
+
+The node collector runs CIS's file checks on every node. Real modes, read on
+a control-plane and a worker node:
+
+| Check | Path it stats | Was | Disposition |
+| --- | --- | --- | --- |
+| KCV-0077 kubelet config | `/var/lib/kubelet/config.yaml` | 644 | **Fixed**, 600 |
+| KCV-0075 CA file | `/etc/kubernetes/pki/ca.crt` | 644 | **Fixed**, 600 |
+| KCV-0056 CNI files | `/*/cni/*`, so `/opt/cni/bin` | 755 | **Fixed**, 700 |
+| KCV-0069 kubelet unit | `/lib/systemd/system/kubelet.service` | 644 | **Accepted.** The unit ships in the Kubernetes sysext, on a read-only, signed `/usr`. It holds no secret. |
+| KCV-0059 etcd data dir | `/var/lib/etcd/default.etcd` | absent | **Artifact.** kubeadm uses `/var/lib/etcd`, which is already `700 etcd:etcd`. |
+| KCV-0001 and the other API server flags | static pod args | | **Tracked in #660.** Anonymous auth in particular cannot simply be switched off, because the kubelet's probes rely on it; see #678 for the shape that works. |
+
+kubeadm writes the first three itself, at 644, on every `init`, `join` and
+`upgrade`, so a one-off `chmod` would not survive. `butane_node_config.yaml.j2`
+instead drops `/etc/tmpfiles.d/kubernetes-cis.conf` with three `z` lines and
+has the kubelet's drop-in run `systemd-tmpfiles --create` on that file before
+every start. Boot applies it; a kubelet restart, which kubeadm triggers right
+after rewriting the files, applies it again. A path that does not exist yet is
+skipped, so the first boot is unaffected. The change is provisioning-time: a
+node picks it up on its next rebuild.
+
+### Config audit: the pods
+
+Two checks are most of the volume. `KSV-0014` wants a read-only root
+filesystem and `KSV-0118` fires when the *pod-level* `securityContext` is
+empty, whatever the containers set. Where they land:
+
+| Where | Disposition |
+| --- | --- |
+| Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | **Load-bearing.** Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. `pod-security.yaml` already enforces `privileged` in those namespaces for this reason. |
+| `etcd-backup` CronJob | **Own manifest, hardened.** Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are `600 root`. |
+| Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy, CoreDNS | **`KSV-0118` only.** Each container already runs non-root with capabilities dropped; the pod-level context is what is empty. Chart values can set it, and that is [#663](https://github.com/JanWelker/homelab/issues/663). |
+| Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. Also #663. |
+
+### RBAC
+
+Every critical and high is a `ClusterRole` a chart ships for its operator:
+cert-manager, CloudNativePG, Rook, External Secrets, the Prometheus operator,
+Loki, Alloy and Trivy Operator all manage Secrets because that is their job,
+and `argocd-application-controller` manages everything because it deploys
+everything. The rest are Kubernetes' own `admin`, `edit` and `cluster-admin`.
+Nothing here is narrowable without forking a chart, and the exposure is what
+[Security Posture &rarr; Authorization](../architecture/security.md#authorization)
+already describes.
