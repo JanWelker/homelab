@@ -49,6 +49,13 @@ the section you will actually come back to.
     How the API server address survives losing the node that answers it, and how
     to migrate a cluster that was built without it.
 
+- **[Vulnerability Triage](vulnerabilities.md)**
+
+    ---
+
+    What the Trivy findings amount to: the few fixed here, the ones waiting on
+    an upstream release, and the ones that will never move.
+
 </div>
 
 ## Routine health check
