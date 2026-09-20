@@ -145,10 +145,10 @@ this is the deliberate path:
 
 !!! note
     Renovate keeps `kubernetes_version`, `containerd_version`, `flatcar_version`
-    and `syslinux_version` current in `ansible/inventory.yaml` under the
-    `Core Infrastructure` group, which always requires review. Merging one of
+    and `syslinux_version` current in `ansible/inventory.yaml`, one PR each,
+    and patch and minor bumps automerge like everything else. Merging one of
     those PRs changes what a **newly provisioned** node installs; it does not
-    change a running node.
+    change a running node. See [Maintenance](../development/maintenance.md).
 
 ## Platform components
 

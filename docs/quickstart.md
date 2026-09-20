@@ -457,7 +457,7 @@ an OSD belonging to a cluster it does not know.
 
 The installer now wipes the disk before `flatcar-install` runs: filesystem
 signatures off every partition, the GPT zapped, and a device-level discard where
-the hardware supports it. So picking `install` from the PXE menu does hand Ceph
+the hardware supports it. So a node armed with `make reinstall` does hand Ceph
 an empty disk back.
 
 Worth keeping the symptom in mind anyway, because it is what you would see if

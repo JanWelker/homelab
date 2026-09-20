@@ -134,9 +134,9 @@ mistaking it for a boundary. A pod in `authentik` can still talk to a pod in
 ## Provisioning requires the boot server on the same segment
 
 Reprovisioning any node means running `make serve` on a machine on the nodes' L2
-segment, with the external DHCP server pointing at it, and choosing `install`
-from the PXE menu at that node's console. There is no way to rebuild a node
-remotely, and the deployment host is not part of the cluster.
+segment, with the external DHCP server pointing at it, arming the node with
+`make reinstall LIMIT=<node>`, and power-cycling it. There is no way to rebuild
+a node remotely, and the deployment host is not part of the cluster.
 
 Translation: you cannot rebuild a dead node from a hotel room. Plan holidays
 accordingly.
