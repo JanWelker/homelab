@@ -2406,8 +2406,8 @@ located in <code>renovate.json</code>.</p>
     <a href="#what-automerging-everything-actually-means">What automerging everything actually means</a>.</li>
 <li><strong>Pinning</strong>: The <code>config:best-practices</code> preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests. A custom manager
-    needs <code>autoReplaceStringTemplate</code> to take part, and two Helm <code>tag:</code> overrides
-    are exempt because a bare tag has nowhere to put a digest -- see
+    needs <code>autoReplaceStringTemplate</code> to take part, and three Helm <code>tag:</code>
+    overrides are exempt because a bare tag has nowhere to put a digest -- see
     <a href="#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate">A custom manager cannot add a digest</a>.</li>
 <li><strong>Scope</strong>: Renovate checks Python dependencies (<code>pyproject.toml</code>, <code>uv.lock</code>),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
@@ -2514,11 +2514,12 @@ dep they extract, which is exactly why <code>velero-plugin-for-aws</code>, <code
 the pin branch down with it.</strong> Where the matched string has a prefix, the
 template has to rebuild it -- the workloads repository matches on an
 <code>imageName:</code> prefix, so its template starts with that literal.</p>
-<p>The HAProxy and Redis overrides are the genuine exception. Those are Helm
-<code>tag:</code> values inside a <code>valuesObject</code>, holding <code>3.4.4-alpine</code> rather than a
-complete image reference, so there is no <code>@sha256:</code> position in the field and no
-template that could invent one. Both carry <code>pinDigests: false</code>, and <strong>a third
-bare-tag docker pin has to be added to that rule</strong> or the banner comes back.</p>
+<p>The HAProxy, Redis and Authentik Postgres overrides are the genuine exception.
+Those are Helm <code>tag:</code> values inside a <code>valuesObject</code>, holding <code>3.4.4-alpine</code>
+rather than a complete image reference, so there is no <code>@sha256:</code> position in
+the field and no template that could invent one. All three carry
+<code>pinDigests: false</code>, and <strong>any further bare-tag docker pin has to be added to
+that rule</strong> or the banner comes back.</p>
 <p>The collateral is the part worth remembering. One unwritable pin holds up every
 pin in the repository -- the Home Assistant image in the workloads repository is
 perfectly pinnable and still never got its digest, because it shared a branch

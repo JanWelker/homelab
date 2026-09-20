@@ -2652,6 +2652,26 @@ optional; it is not.</p>
 <li><strong>Postgres resources.</strong> Sized from a measured 281Mi peak. Postgres memory is
   bounded by <code>shared_buffers</code> and <code>work_mem</code> rather than by load, so it is
   steadier than the number suggests.</li>
+<li>
+<p><strong><code>postgresql.image.tag</code>.</strong> The chart hardcodes <code>17.11-bookworm</code> in its own
+  <code>values.yaml</code>, which is Debian 12. Nothing tracks that pin: Renovate reads
+  this repository, and the tag lives upstream, so it ages silently and had
+  become the worst image in the cluster — 465 findings, six of the eleven
+  distinct criticals anywhere on it. <code>17.11-trixie</code> is the same Postgres on
+  Debian 13, so the data directory is untouched and the move is a restart
+  rather than a migration. It clears the zlib, libsqlite3 and perl criticals.
+  It does not clear libxml2 <code>CVE-2026-6653</code> — Debian ships the same 2.9.14 in
+  trixie, and the CloudNativePG images carry it too.</p>
+<p>The <code># renovate:</code> annotation above the tag is what keeps it from ageing the
+same way, through the custom manager that reads inline <code>valuesObject</code> tags.
+It needs <code>versioning=docker</code>: under the default semver, <code>-trixie</code> parses as
+a prerelease and every candidate tag is dropped without an error. Being a
+bare tag rather than a full reference, it also has to sit in the
+<code>pinDigests: false</code> rule — see
+<a href="../../development/maintenance/#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate">Renovate</a>.
+Renovate will track 17.x within <code>-trixie</code> and will not propose 18; a
+Postgres major is a dump and restore, so that is the behaviour we want.</p>
+</li>
 </ul>
 <h2 id="client-secrets-are-generated-up-front">Client secrets are generated up front<a class="headerlink" href="#client-secrets-are-generated-up-front" title="Permanent link">&para;</a></h2>
 <p>The OIDC client ID and secret are shared values: Authentik needs them, and so do
