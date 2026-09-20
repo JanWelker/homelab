@@ -201,6 +201,25 @@ The worker discovers every `.yaml` key in the ConfigMap and applies it.
 - **Postgres resources.** Sized from a measured 281Mi peak. Postgres memory is
   bounded by `shared_buffers` and `work_mem` rather than by load, so it is
   steadier than the number suggests.
+- **`postgresql.image.tag`.** The chart hardcodes `17.11-bookworm` in its own
+  `values.yaml`, which is Debian 12. Nothing tracks that pin: Renovate reads
+  this repository, and the tag lives upstream, so it ages silently and had
+  become the worst image in the cluster — 465 findings, six of the eleven
+  distinct criticals anywhere on it. `17.11-trixie` is the same Postgres on
+  Debian 13, so the data directory is untouched and the move is a restart
+  rather than a migration. It clears the zlib, libsqlite3 and perl criticals.
+  It does not clear libxml2 `CVE-2026-6653` — Debian ships the same 2.9.14 in
+  trixie, and the CloudNativePG images carry it too.
+
+    The `# renovate:` annotation above the tag is what keeps it from ageing the
+    same way, through the custom manager that reads inline `valuesObject` tags.
+    It needs `versioning=docker`: under the default semver, `-trixie` parses as
+    a prerelease and every candidate tag is dropped without an error. Being a
+    bare tag rather than a full reference, it also has to sit in the
+    `pinDigests: false` rule — see
+    [Renovate](../development/maintenance.md#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
+    Renovate will track 17.x within `-trixie` and will not propose 18; a
+    Postgres major is a dump and restore, so that is the behaviour we want.
 
 ## Client secrets are generated up front
 

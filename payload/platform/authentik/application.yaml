@@ -118,6 +118,11 @@ spec:
 
           postgresql:
             enabled: true
+            image:
+              # Same 17.11, Debian 13 base. The chart's own default is
+              # -bookworm and nothing tracks it.
+              # renovate: datasource=docker depName=docker.io/library/postgres versioning=docker
+              tag: "17.11-trixie"
             auth:
               username: authentik
               database: authentik

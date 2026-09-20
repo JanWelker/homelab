@@ -67,8 +67,8 @@ located in `renovate.json`.
     [What automerging everything actually means](#what-automerging-everything-actually-means).
 - **Pinning**: The `config:best-practices` preset is enabled, so GitHub Actions
     are pinned to commit SHAs and container images to digests. A custom manager
-    needs `autoReplaceStringTemplate` to take part, and two Helm `tag:` overrides
-    are exempt because a bare tag has nowhere to put a digest -- see
+    needs `autoReplaceStringTemplate` to take part, and three Helm `tag:`
+    overrides are exempt because a bare tag has nowhere to put a digest -- see
     [A custom manager cannot add a digest](#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
 - **Scope**: Renovate checks Python dependencies (`pyproject.toml`, `uv.lock`),
     Docker images, GitHub Actions, Kubernetes manifests, ArgoCD resources,
@@ -207,11 +207,12 @@ the pin branch down with it.** Where the matched string has a prefix, the
 template has to rebuild it -- the workloads repository matches on an
 `imageName:` prefix, so its template starts with that literal.
 
-The HAProxy and Redis overrides are the genuine exception. Those are Helm
-`tag:` values inside a `valuesObject`, holding `3.4.4-alpine` rather than a
-complete image reference, so there is no `@sha256:` position in the field and no
-template that could invent one. Both carry `pinDigests: false`, and **a third
-bare-tag docker pin has to be added to that rule** or the banner comes back.
+The HAProxy, Redis and Authentik Postgres overrides are the genuine exception.
+Those are Helm `tag:` values inside a `valuesObject`, holding `3.4.4-alpine`
+rather than a complete image reference, so there is no `@sha256:` position in
+the field and no template that could invent one. All three carry
+`pinDigests: false`, and **any further bare-tag docker pin has to be added to
+that rule** or the banner comes back.
 
 The collateral is the part worth remembering. One unwritable pin holds up every
 pin in the repository -- the Home Assistant image in the workloads repository is
