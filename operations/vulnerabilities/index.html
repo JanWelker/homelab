@@ -6,34 +6,40 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="GitOps-driven Kubernetes homelab on bare metal, running Flatcar Container Linux, Kubeadm, Cilium, Rook-Ceph and ArgoCD.">
+        <meta name="description" content="What the Trivy Operator findings actually amount to, which ones are fixed here, which wait on an upstream release, and which are never going to move.">
       
       
       
+        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/vulnerabilities/">
       
+      
+        <link rel="prev" href="../control-plane-vip/">
+      
+      
+        <link rel="next" href="../../development/">
       
       
         
       
       
-      <link rel="icon" href="/homelab/assets/images/logo.png">
+      <link rel="icon" href="../../assets/images/logo.png">
       <meta name="generator" content="zensical-0.0.62">
     
     
       
-        <title>Homelab Documentation</title>
+        <title>Vulnerability Triage - Homelab Documentation</title>
       
     
     
       
         
       
-      <link rel="stylesheet" href="/homelab/assets/stylesheets/modern/main.ce62732f.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.ce62732f.min.css">
       
         
           
         
-        <link rel="stylesheet" href="/homelab/assets/stylesheets/modern/palette.812a03bb.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.812a03bb.min.css">
       
       
 
@@ -46,11 +52,11 @@
       
     
     
-      <link rel="stylesheet" href="/homelab/stylesheets/fonts.css">
+      <link rel="stylesheet" href="../../stylesheets/fonts.css">
     
-      <link rel="stylesheet" href="/homelab/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("/homelab",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -74,7 +80,8 @@
     <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
     <div data-md-component="skip">
       
-        <a href="#__skip" class="md-skip">
+        
+        <a href="#vulnerability-triage" class="md-skip">
           Skip to content
         </a>
       
@@ -90,9 +97,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="/homelab/" title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="../.." title="Homelab Documentation" class="md-header__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="/homelab/assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
@@ -109,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              Vulnerability Triage
             
           </span>
         </div>
@@ -197,7 +204,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="/homelab/" class="md-tabs__link">
+      <a href="../.." class="md-tabs__link">
         
   
   Home
@@ -226,7 +233,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/homelab/concepts/" class="md-tabs__link">
+        <a href="../../concepts/" class="md-tabs__link">
           
   
   Get Started
@@ -272,7 +279,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/homelab/architecture/" class="md-tabs__link">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   Architecture
@@ -328,7 +335,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/homelab/platform/" class="md-tabs__link">
+        <a href="../../platform/" class="md-tabs__link">
           
   
   Platform
@@ -343,6 +350,8 @@
   
   
   
+    
+  
   
     
       
@@ -367,8 +376,8 @@
     
     
     
-      <li class="md-tabs__item">
-        <a href="/homelab/operations/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Operations
@@ -404,7 +413,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="/homelab/development/" class="md-tabs__link">
+        <a href="../../development/" class="md-tabs__link">
           
   
   Development
@@ -443,9 +452,9 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/homelab/" title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
+    <a href="../.." title="Homelab Documentation" class="md-nav__button md-logo" aria-label="Homelab Documentation" data-md-component="logo">
       
-  <img src="/homelab/assets/images/logo.png" alt="Homelab Documentation">
+  <img src="../../assets/images/logo.png" alt="Homelab Documentation">
 
     </a>
     Homelab Documentation
@@ -472,7 +481,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -554,7 +563,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/concepts/" class="md-nav__link">
+      <a href="../../concepts/" class="md-nav__link">
         
   
   
@@ -581,7 +590,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/quickstart/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
@@ -608,7 +617,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/adapting/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
@@ -681,7 +690,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="/homelab/architecture/" class="md-nav__link ">
+            <a href="../../architecture/" class="md-nav__link ">
               
   
   
@@ -723,7 +732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/boot-process/" class="md-nav__link">
+      <a href="../../architecture/boot-process/" class="md-nav__link">
         
   
   
@@ -750,7 +759,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/boot-server/" class="md-nav__link">
+      <a href="../../architecture/boot-server/" class="md-nav__link">
         
   
   
@@ -777,7 +786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/ansible/" class="md-nav__link">
+      <a href="../../architecture/ansible/" class="md-nav__link">
         
   
   
@@ -804,7 +813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/gitops/" class="md-nav__link">
+      <a href="../../architecture/gitops/" class="md-nav__link">
         
   
   
@@ -831,7 +840,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/decisions/" class="md-nav__link">
+      <a href="../../architecture/decisions/" class="md-nav__link">
         
   
   
@@ -858,7 +867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/security/" class="md-nav__link">
+      <a href="../../architecture/security/" class="md-nav__link">
         
   
   
@@ -885,7 +894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/audit-logging/" class="md-nav__link">
+      <a href="../../architecture/audit-logging/" class="md-nav__link">
         
   
   
@@ -912,7 +921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/limitations/" class="md-nav__link">
+      <a href="../../architecture/limitations/" class="md-nav__link">
         
   
   
@@ -939,7 +948,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/architecture/directory-structure/" class="md-nav__link">
+      <a href="../../architecture/directory-structure/" class="md-nav__link">
         
   
   
@@ -1022,7 +1031,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="/homelab/platform/" class="md-nav__link ">
+            <a href="../../platform/" class="md-nav__link ">
               
   
   
@@ -1064,7 +1073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/cilium/" class="md-nav__link">
+      <a href="../../platform/cilium/" class="md-nav__link">
         
   
   
@@ -1091,7 +1100,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/gateway-api/" class="md-nav__link">
+      <a href="../../platform/gateway-api/" class="md-nav__link">
         
   
   
@@ -1118,7 +1127,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/cert-manager/" class="md-nav__link">
+      <a href="../../platform/cert-manager/" class="md-nav__link">
         
   
   
@@ -1145,7 +1154,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/external-dns/" class="md-nav__link">
+      <a href="../../platform/external-dns/" class="md-nav__link">
         
   
   
@@ -1172,7 +1181,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/rook-ceph/" class="md-nav__link">
+      <a href="../../platform/rook-ceph/" class="md-nav__link">
         
   
   
@@ -1199,7 +1208,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/cloudnative-pg/" class="md-nav__link">
+      <a href="../../platform/cloudnative-pg/" class="md-nav__link">
         
   
   
@@ -1226,7 +1235,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/openbao/" class="md-nav__link">
+      <a href="../../platform/openbao/" class="md-nav__link">
         
   
   
@@ -1253,7 +1262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/external-secrets/" class="md-nav__link">
+      <a href="../../platform/external-secrets/" class="md-nav__link">
         
   
   
@@ -1280,7 +1289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/authentik/" class="md-nav__link">
+      <a href="../../platform/authentik/" class="md-nav__link">
         
   
   
@@ -1307,7 +1316,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/monitoring/" class="md-nav__link">
+      <a href="../../platform/monitoring/" class="md-nav__link">
         
   
   
@@ -1334,7 +1343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/logging/" class="md-nav__link">
+      <a href="../../platform/logging/" class="md-nav__link">
         
   
   
@@ -1361,7 +1370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/metrics-server/" class="md-nav__link">
+      <a href="../../platform/metrics-server/" class="md-nav__link">
         
   
   
@@ -1388,7 +1397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/kured/" class="md-nav__link">
+      <a href="../../platform/kured/" class="md-nav__link">
         
   
   
@@ -1415,7 +1424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/platform/security-policies/" class="md-nav__link">
+      <a href="../../platform/security-policies/" class="md-nav__link">
         
   
   
@@ -1446,6 +1455,8 @@
       
   
   
+    
+  
   
   
     
@@ -1471,18 +1482,21 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="/homelab/operations/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1499,13 +1513,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1524,7 +1538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/operations/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1551,7 +1565,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/operations/nodes/" class="md-nav__link">
+      <a href="../nodes/" class="md-nav__link">
         
   
   
@@ -1578,7 +1592,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/operations/upgrades/" class="md-nav__link">
+      <a href="../upgrades/" class="md-nav__link">
         
   
   
@@ -1605,7 +1619,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/operations/backups/" class="md-nav__link">
+      <a href="../backups/" class="md-nav__link">
         
   
   
@@ -1632,7 +1646,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/operations/control-plane-vip/" class="md-nav__link">
+      <a href="../control-plane-vip/" class="md-nav__link">
         
   
   
@@ -1656,10 +1670,36 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/homelab/operations/vulnerabilities/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Vulnerability Triage
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1674,6 +1714,71 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-read-a-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How to read a report
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-findings-stand" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where the findings stand
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-not-filed-and-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is not filed, and why
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-covered-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Not covered here
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1722,7 +1827,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="/homelab/development/" class="md-nav__link ">
+            <a href="../../development/" class="md-nav__link ">
               
   
   
@@ -1764,7 +1869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/development/contributing/" class="md-nav__link">
+      <a href="../../development/contributing/" class="md-nav__link">
         
   
   
@@ -1791,7 +1896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/development/add-workload/" class="md-nav__link">
+      <a href="../../development/add-workload/" class="md-nav__link">
         
   
   
@@ -1818,7 +1923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/development/documentation/" class="md-nav__link">
+      <a href="../../development/documentation/" class="md-nav__link">
         
   
   
@@ -1845,7 +1950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/homelab/development/maintenance/" class="md-nav__link">
+      <a href="../../development/maintenance/" class="md-nav__link">
         
   
   
@@ -1886,6 +1991,13 @@
                     
                     
                     
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
                     
                   
                   <div class="md-sidebar__inner">
@@ -1896,6 +2008,60 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-read-a-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        How to read a report
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-findings-stand" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Where the findings stand
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-not-filed-and-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What is not filed, and why
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-covered-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Not covered here
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -1913,11 +2079,244 @@
   
 
 
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-path__item">
+        <a href="../" class="md-path__link">
+          
+  
+  <span class="md-ellipsis">
+    Operations
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
               
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
+  
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/operations/vulnerabilities.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
+    </a>
+  
+  
+    
+      
+    
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/operations/vulnerabilities.md" title="View source of this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
+    </a>
+  
 
+
+<h1 id="vulnerability-triage">Vulnerability Triage<a class="headerlink" href="#vulnerability-triage" title="Permanent link">&para;</a></h1>
+<p>Trivy Operator writes one <code>VulnerabilityReport</code> per container, and on a
+cluster this size that is a few thousand findings. Almost all of them warrant
+no action, and the work is in proving that quickly rather than in reading them.
+This page is the result of one such pass, on 2026-09-20, kept so the next one
+starts from the disposition rather than from the raw count.</p>
+<p>The operator itself is a workload, so how it is configured and how to read its
+reports lives with it, in the
+<a href="https://janwelker.github.io/homelab-apps/trivy-operator/">homelab-apps documentation</a>.
+This page is about what the findings mean for <em>this</em> platform.</p>
+<h2 id="how-to-read-a-report">How to read a report<a class="headerlink" href="#how-to-read-a-report" title="Permanent link">&para;</a></h2>
+<p>Three things before believing a number:</p>
+<ul>
+<li><strong>A missing report is not a clean image.</strong> A scan that failed writes nothing.
+  Reconcile running images against scanned ones before concluding anything;
+  the <code>TrivyContainerNotScanned</code> alert does it continuously. On this pass it
+  named Nextcloud and Authentik, whose scans were dying on a five-minute Job
+  deadline that a longer Trivy timeout could never reach.</li>
+<li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> They are
+  kept on purpose (<code>ignoreUnfixed: false</code>), because a cluster of them in one
+  base image is the signal that the base image is the wrong one.</li>
+<li><strong>The worst findings are usually not the project's code.</strong> The report's
+  <code>target</code> names the binary. Argo CD's criticals are in the <code>kustomize</code> and
+  <code>git-lfs</code> it bundles; dex's are in <code>gomplate</code>; Rook's are in <code>s5cmd</code>.
+  Which binary decides whether anything can be done, and by whom.</li>
+</ul>
+<p>The pull, and the query that separates fixable from not:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>vr.json
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | .metadata.namespace as $ns</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s1">  | .report.artifact.repository as $img</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s1">  | .report.vulnerabilities[]?</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s1">  | select(.severity=="CRITICAL")</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s1">  | [$ns, $img, .vulnerabilityID, .resource, .installedVersion,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s1">     (.fixedVersion // "NO-FIX"), (.packagePath // .target)]</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s1">  | @tsv'</span><span class="w"> </span>vr.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u
+</span></code></pre></div>
+<h2 id="where-the-findings-stand">Where the findings stand<a class="headerlink" href="#where-the-findings-stand" title="Permanent link">&para;</a></h2>
+<p>Every image with a critical finding, or a high one with a fix, and what was
+decided about it. "Waiting on release" means the fix is already merged upstream
+and nothing here can speed it up; Renovate takes the release when it exists.</p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Finding</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CSI sidecars (<code>csi-provisioner</code>, <code>csi-resizer</code>, <code>csi-snapshotter</code>)</td>
+<td>gRPC-Go authorization bypass, CVE-2026-33186</td>
+<td><strong>Fixed here.</strong> Pinned to the versions ceph-csi-operator v1.0.5 defaults to; Rook still ships v1.0.4. See <a href="../../platform/rook-ceph/#csi-driver">Rook-Ceph &rarr; CSI driver</a>.</td>
+</tr>
+<tr>
+<td><code>argoproj/argocd</code> v3.5.3</td>
+<td>Go stdlib and <code>x/net</code> in bundled <code>kustomize</code> (built with Go 1.24.0) and <code>git-lfs</code> 3.7.1; <code>grpc</code>, <code>oras-go</code> in argocd itself</td>
+<td><strong>Waiting on release.</strong> <code>master</code> has git-lfs 3.8.0, grpc 1.83.2 and oras-go 2.6.2. kustomize 5.8.1 is the latest kustomize release; only a new kustomize build fixes that one. Argo CD's <code>SECURITY.md</code> asks not to file scanner findings.</td>
+</tr>
+<tr>
+<td><code>dexidp/dex</code> v2.45.1</td>
+<td>OpenSSL in Alpine 3.23, <code>grpc</code>, <code>goxmldsig</code>, stdlib; a second set in bundled <code>gomplate</code></td>
+<td><strong>Waiting on release.</strong> Everything is fixed on <code>master</code>, nothing has been released since March 2026. Tracked in <a href="https://github.com/dexidp/dex/issues/4948">dexidp/dex#4948</a>, with this cluster's scan data added on 2026-09-18.</td>
+</tr>
+<tr>
+<td><code>rook/ceph</code> v1.20.7</td>
+<td>Go stdlib in bundled <code>s5cmd</code> 2.3.0 (built with Go 1.22.10)</td>
+<td><strong>Not reachable, waiting on release.</strong> Nothing in Rook's Go code invokes <code>s5cmd</code>; it is a CLI for the toolbox. s5cmd 2.3.0 is its latest release; <a href="https://github.com/peak/s5cmd/issues/873">peak/s5cmd#873</a> and <a href="https://github.com/peak/s5cmd/issues/820">#820</a> ask for a new one.</td>
+</tr>
+<tr>
+<td><code>home-assistant/home-assistant</code></td>
+<td>OpenSSH in Alpine 3.24.1, Go stdlib in bundled <code>tempio</code> (Go 1.23.3) and <code>go2rtc</code>, Python <code>anyio</code></td>
+<td><strong>Waiting on release.</strong> Home Assistant's base image already carries tempio 2026.07.0; core is on an older base. Weekly releases. The Open Home Foundation forbids autonomous agents from filing anything, so nothing is filed from here.</td>
+</tr>
+<tr>
+<td><code>library/postgres</code> 17.11 (Authentik)</td>
+<td>Go stdlib in <code>gosu</code> 1.19; <code>libxml2</code> in Debian 13 with no fix</td>
+<td><strong>Not reachable, nothing to do.</strong> The stdlib CVE is TLS session resumption and gosu opens no connections. 17.11 is the latest 17.x; libxml2 waits on Debian.</td>
+</tr>
+<tr>
+<td><code>cloudnative-pg/postgresql</code> 18.6</td>
+<td>31 highs and one critical, none with a fix (Debian 13)</td>
+<td><strong>Nothing to do.</strong> The base is current; every finding waits on Debian.</td>
+</tr>
+<tr>
+<td><code>coredns/coredns</code> v1.14.6</td>
+<td>Two highs fixed in 1.14.7: memory exhaustion and UPDATE forwarding, both on DoH, DoQ and gRPC listeners</td>
+<td><strong>Not reachable.</strong> kubeadm's Corefile serves plain UDP and TCP only. kubeadm 1.37 pins 1.14.6; it moves when kubeadm does.</td>
+</tr>
+<tr>
+<td><code>grafana/grafana</code></td>
+<td><code>grpc</code>, <code>otel</code>, <code>x/net</code> in thirteen bundled datasource plugin binaries</td>
+<td><strong>Waiting on release.</strong> The plugin binaries are rebuilt by Grafana's own release, and 13.2.2 is the current one. Routine churn in a bundled binary, not a report.</td>
+</tr>
+<tr>
+<td><code>ceph/ceph</code> v20.2.4</td>
+<td><code>setuptools</code> 69.2 under Python 3.9</td>
+<td><strong>Not reachable.</strong> The CVEs are in <code>easy_install</code> and <code>package_index</code>, which no Ceph daemon calls.</td>
+</tr>
+<tr>
+<td><code>openbao/openbao</code> 2.6.2</td>
+<td><code>github.com/openbao/openbao</code> "fixed in 2.5.4"</td>
+<td><strong>Scanner artifact.</strong> The binary carries a Go pseudo-version, which sorts below every real tag.</td>
+</tr>
+<tr>
+<td>Everything else</td>
+<td><code>google.golang.org/grpc</code> one or two patches behind, Go stdlib one patch behind</td>
+<td><strong>Routine churn.</strong> Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding.</td>
+</tr>
+</tbody>
+</table>
+<p>The three exposed-secret findings are the same one: <code>ssl-cert-snakeoil.key</code>,
+the placeholder Debian's <code>ssl-cert</code> package generates in every Postgres image.
+It is not a secret.</p>
+<h2 id="what-is-not-filed-and-why">What is not filed, and why<a class="headerlink" href="#what-is-not-filed-and-why" title="Permanent link">&para;</a></h2>
+<p>Filing goes out under a real name, permanently, and most projects have said
+what they want. Checked on this pass:</p>
+<ul>
+<li><strong>Argo CD</strong> asks in <code>SECURITY.md</code> not to raise issues found by a scanner,
+  and its own Renovate has already moved the bundled tools on <code>master</code>.</li>
+<li><strong>Home Assistant</strong> (Open Home Foundation) does not allow autonomous agents
+  to open issues or pull requests and closes them on sight.</li>
+<li><strong>Rook</strong> allows AI-assisted contributions with disclosure but requires a
+  human to submit them. The one thing worth asking Rook for, bumping to
+  ceph-csi-operator v1.0.5 so the sidecar pins here can go, is drafted for a
+  person to post.</li>
+<li><strong>Routine Go churn is not a finding.</strong> A dozen "please bump grpc" issues
+  damage standing for the one time something real turns up.</li>
+</ul>
+<h2 id="not-covered-here">Not covered here<a class="headerlink" href="#not-covered-here" title="Permanent link">&para;</a></h2>
+<p>The operator also writes <code>ConfigAuditReport</code>, <code>RbacAssessmentReport</code> and
+<code>InfraAssessmentReport</code> objects. Those findings are fixable in this repository
+rather than upstream, and they are a hardening backlog of their own: read-only
+root filesystems, default security contexts, and the kubelet and CNI file
+permissions the CIS benchmark wants on every node. They are deliberately not
+mixed into a CVE pass.</p>
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -1935,6 +2334,44 @@
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../control-plane-vip/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Control Plane VIP">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Control Plane VIP
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../development/" class="md-footer__link md-footer__link--next" aria-label="Next: Development">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Development
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </a>
+        
+      </nav>
     
   
   <div class="md-footer-meta md-typeset">
@@ -1972,10 +2409,10 @@
       
         
         
-      <script id="__config" type="application/json">{"annotate":null,"base":"/homelab","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"/homelab/assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
-      <script src="/homelab/assets/javascripts/bundle.8dcc8e9c.min.js"></script>
+      <script src="../../assets/javascripts/bundle.8dcc8e9c.min.js"></script>
       
     
   </body>
