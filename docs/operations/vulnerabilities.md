@@ -125,7 +125,7 @@ empty, whatever the containers set. Where they land:
 | --- | --- |
 | Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | **Load-bearing.** Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. `pod-security.yaml` already enforces `privileged` in those namespaces for this reason. |
 | `etcd-backup` CronJob | **Own manifest, hardened.** Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are `600 root`. |
-| Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy, CoreDNS | **`KSV-0118` only.** Each container already runs non-root with capabilities dropped; the pod-level context is what is empty. Chart values can set it, and that is [#663](https://github.com/JanWelker/homelab/issues/663). |
+| Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy | **`KSV-0118` only, fixed.** Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's. |
 | Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. Also #663. |
 
 ### RBAC
