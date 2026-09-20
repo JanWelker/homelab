@@ -180,6 +180,18 @@
       "autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
     },
     {
+      "description": "markdownlint-cli2 installed by the Lint Markdown workflow. Kept on the same version as the pre-commit hook, which the pre-commit manager tracks separately.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/lint-markdown\\.yaml$/"
+      ],
+      "matchStrings": [
+        "npm install -g markdownlint-cli2@(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "markdownlint-cli2",
+      "datasourceTemplate": "npm"
+    },
+    {
       "description": "Webfont releases vendored into docs/assets/fonts by scripts/update-fonts.sh",
       "customType": "regex",
       "managerFilePatterns": [

@@ -31,5 +31,8 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
+      # A directory, not a glob: under bash `**` is `*`, so `**/*.yaml` named
+      # exactly one file, which .yamllint ignores, and this job passed on
+      # anything. The ignore list in .yamllint keeps .venv/ and site/ out.
       - name: Run yamllint
-        run: uv run yamllint -f github **/*.yaml
+        run: uv run yamllint -f github .

@@ -13,6 +13,9 @@ name: Preview Documentation
       - "docs/**"
       - "overrides/**"
       - "zensical.toml"
+      # The site builder itself: a Zensical bump must rebuild too.
+      - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/preview.yaml"
 
 permissions:
