@@ -13,6 +13,7 @@ import os
 import re
 import sys
 import threading
+from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 import tftpy
@@ -313,6 +314,11 @@ class BootHandler(SimpleHTTPRequestHandler):
         self.status = code
         super().send_response(code, message)
 
+    def list_directory(self, path):
+        """No listings: a node asks for files by name, and the Ignition configs
+        here carry the cluster's join credentials and etcd encryption key."""
+        self.send_error(HTTPStatus.FORBIDDEN, 'Directory listing is off')
+
     def do_GET(self):
         # translate_path is what confines a request to output/http; going
         # around it to name the file would let a crafted URL stat anything.
@@ -327,7 +333,10 @@ class BootHandler(SimpleHTTPRequestHandler):
         say(ip, 'collecting %s', describe(name, served))
         super().do_GET()
 
-        if self.status != 200:
+        if self.status == HTTPStatus.FORBIDDEN:
+            say(ip, 'asked for a directory listing -- refused; files are '
+                    'served by name only', level=logging.WARNING)
+        elif self.status != 200:
             say(ip, '%s is not in output/http -- run make artifacts',
                 name, level=logging.WARNING)
         elif name == OS_IMAGE:
@@ -345,14 +354,28 @@ class BootHandler(SimpleHTTPRequestHandler):
                     'reboot lands on the disk', tint='ok')
 
 
-def run_http():
-    """Serve output/http until the process is killed."""
+def bind_http():
+    """Bind the HTTP server on the boot address, or exit.
+
+    The same address as TFTP, on purpose: the Ignition configs served here
+    carry the join token, the certificate key and the etcd encryption key, and
+    a listener on every interface hands them to any network the deployment host
+    happens to be on. Binding is fatal because a node that gets its menu over
+    TFTP and then fails on the kernel fetch is far harder to read than a server
+    that refused to start.
+    """
     os.makedirs(HTTP_DIR, exist_ok=True)
     try:
-        ThreadingHTTPServer(('', HTTP_PORT), BootHandler).serve_forever()
+        return ThreadingHTTPServer((BIND_IP, HTTP_PORT), BootHandler)
     except OSError as error:
-        say('server', 'HTTP failed to start on port %s: %s', HTTP_PORT, error,
-            level=logging.ERROR)
+        if error.errno == errno.EADDRINUSE:
+            say('server', 'port %s is already in use -- another make serve, or '
+                          'something else on the deployment host, holds it',
+                HTTP_PORT, level=logging.ERROR)
+        else:
+            say('server', 'HTTP failed to bind %s:%s: %s', BIND_IP, HTTP_PORT,
+                error, level=logging.ERROR)
+        sys.exit(1)
 
 
 def run_tftp():
@@ -441,7 +464,8 @@ if __name__ == '__main__':
 
     announce_start()
 
-    http_thread = threading.Thread(target=run_http, daemon=True)
+    http_server = bind_http()
+    http_thread = threading.Thread(target=http_server.serve_forever, daemon=True)
     http_thread.start()
 
     try:

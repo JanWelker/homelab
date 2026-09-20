@@ -40,9 +40,11 @@ boot_server_ip in ansible/inventory.yaml, and the address every generated PXE
 menu points at. Fix it there and re-run make config
 ```
 
-Only TFTP binds that address. The HTTP server listens on every interface the
-host has, which is worth knowing when reading the exposure warning below: the
-segment is the limit for the bootloader, not for the Ignition configs.
+Both servers bind that address and nothing else, and HTTP refuses directory
+listings: the Ignition configs it serves carry the cluster's join credentials
+and its etcd encryption key, so the segment the nodes are on is the whole
+audience. If port 8000 is already taken the server exits rather than serving
+menus over TFTP for a kernel fetch that would then fail.
 
 Leave it in the foreground where you can see it. The request log is the best
 diagnostic tool in the whole provisioning process — you can watch a node

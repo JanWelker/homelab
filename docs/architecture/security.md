@@ -41,8 +41,9 @@ and everyone solves it the same way: briefly, and with the door open.
 | --- | --- |
 | Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
 | Those configs embed join credentials | The inlined kubeadm config carries the bootstrap `token` and the `certificateKey`, which together are enough to join a new control-plane node |
+| The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. Unlike the join credentials it has no TTL: anyone who fetched a control-plane Ignition config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
-| Sysext transfers set `Verify=false` | System extension images are fetched over HTTPS but their signatures are not checked |
+| Sysext updates set `Verify=false` | On first boot, Ignition fetches the system extension images over plain HTTP but checks each against the sha256 of the file the boot server was given, so a substituted image fails. Later updates through sysupdate travel over HTTPS with signature verification off |
 
 The OS image is the exception, and deliberately so. `flatcar-install` is given
 `-b`/`-V` rather than a local file, so the node downloads the image *and* its
@@ -55,8 +56,11 @@ sysexts still do not.
 
 The practical mitigation is time: `make serve` is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
-after two hours. **Stop the boot server when provisioning is finished** — it is
-the only thing keeping those credentials off the network. A `make serve` left
+after two hours. The encryption key has no such clock, which is why the boot
+server listens only on `boot_server_ip`, hands out files by name and lists
+nothing: the segment the nodes are on is the whole audience. **Stop the boot
+server when provisioning is finished** — it is the only thing keeping those
+credentials off the network. A `make serve` left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.
 
