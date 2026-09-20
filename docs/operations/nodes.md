@@ -175,7 +175,7 @@ The procedure is a reinstall:
 4. Arm the nodes you are rebuilding:
 
     ```bash
-    make reinstall LIMIT=odin   # or `make reinstall` for every host
+    make reinstall LIMIT=odin   # `make reinstall` alone asks, then arms every host
     ```
 
     That flips `DEFAULT localboot` to `DEFAULT install` in
