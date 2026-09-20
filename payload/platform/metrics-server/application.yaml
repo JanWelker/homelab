@@ -27,6 +27,11 @@ spec:
           # Needs kubelet-csr-approver; never swap for --kubelet-insecure-tls.
           - --kubelet-certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         replicas: 2
+        # Pod-level; the container already matches.
+        podSecurityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
         podDisruptionBudget:
           enabled: true
           minAvailable: 1

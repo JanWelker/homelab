@@ -1,6 +1,12 @@
 ---
 global:
   domain: argo.infra.k8s.wlkr.ch
+  # Pod-level; every container already sets the same, this closes the gap
+  # the config audit keys on (KSV-0118). See docs/operations/vulnerabilities.md
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
 
 redis-ha:
   enabled: true

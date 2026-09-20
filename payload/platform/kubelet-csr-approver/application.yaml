@@ -25,6 +25,11 @@ spec:
           - 10.9.2.0/24
         maxExpirationSeconds: 86400
         replicas: 2
+        # Pod-level; the container already matches.
+        podSecurityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
         metrics:
           enable: true
           serviceMonitor:
