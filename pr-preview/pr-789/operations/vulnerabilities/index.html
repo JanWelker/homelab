@@ -2454,8 +2454,8 @@ empty, whatever the containers set. Where they land:</p>
 <td><strong>Own manifest, hardened.</strong> Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are <code>600 root</code>.</td>
 </tr>
 <tr>
-<td>Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy, CoreDNS</td>
-<td><strong><code>KSV-0118</code> only.</strong> Each container already runs non-root with capabilities dropped; the pod-level context is what is empty. Chart values can set it, and that is <a href="https://github.com/JanWelker/homelab/issues/663">#663</a>.</td>
+<td>Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy</td>
+<td><strong><code>KSV-0118</code> only, fixed.</strong> Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's.</td>
 </tr>
 <tr>
 <td>Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao</td>
