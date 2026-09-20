@@ -218,8 +218,17 @@ The worker discovers every `.yaml` key in the ConfigMap and applies it.
     bare tag rather than a full reference, it also has to sit in the
     `pinDigests: false` rule — see
     [Renovate](../development/maintenance.md#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
-    Renovate will track 17.x within `-trixie` and will not propose 18; a
-    Postgres major is a dump and restore, so that is the behaviour we want.
+    Renovate tracks 17.x within `-trixie`: docker versioning treats the suffix
+    as a compatibility constraint, so `17.12-bookworm` and a bare `17.12` are
+    never offered against a `-trixie` pin.
+
+    The major is held by an `allowedVersions` rule, not by that. This page
+    previously claimed Renovate would not propose 18 on its own; it did, in
+    #773, within hours. Majors were only excluded from *automerge* — they were
+    still raised, and a Postgres major is a dump and restore rather than an
+    image bump, so it should not be raised at all until someone plans it. The
+    rule is written as a regex for the reason in
+    [An `allowedVersions` range is graded by npm semver](../development/maintenance.md#an-allowedversions-range-is-graded-by-npm-semver).
 
 ## Client secrets are generated up front
 

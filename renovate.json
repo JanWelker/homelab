@@ -59,6 +59,16 @@
         "ecr-public.aws.com/docker/library/redis"
       ],
       "pinDigests": false
+    },
+    {
+      "description": "Authentik's bundled Postgres stays on major 17 until upstream moves it: a Postgres major is a dump and restore, not an image bump. Written as a regex so Renovate matches the tag directly -- a range like `<18` is graded by npm semver, where a three-part tag such as 17.11.1-trixie parses as a prerelease and is dropped from any range that does not name one. The `-trixie` suffix is held separately by docker versioning, not by this rule. See docs/development/maintenance.md",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "docker.io/library/postgres"
+      ],
+      "allowedVersions": "/^17\\./"
     }
   ],
   "pre-commit": {

@@ -225,6 +225,57 @@ easy to miss: the CloudNativePG image was bumped to 18.6 by the very manager
 whose pin was failing. The Dependency Dashboard banner is the only place it
 shows.
 
+### An `allowedVersions` range is graded by npm semver
+
+Holding a dependency on a major is one line, and the obvious spelling of it is
+a range: `"allowedVersions": "<18"`. It does work for the Authentik Postgres
+pin today, but not for the reason it looks like, and not durably.
+
+Renovate tries three things in order, and a Docker range falls through the
+first two. `docker.isValid("<18")` is **false**, so the range is never handed
+to docker versioning at all -- which is fortunate, because
+`docker.matches("17.11-trixie", "<18")` is also `false` and would have excluded
+the very version we are pinned to. What actually runs is the npm-semver
+fallback, where `17.11-trixie` is not valid semver, gets coerced to `17.11.0`,
+and compares correctly.
+
+That last step is the fragile one. Coercion only happens because the tag has
+two numeric parts. A three-part tag such as `17.11.1-trixie` *is* valid semver,
+with `trixie` read as a **prerelease**, and semver excludes prereleases from any
+range that does not name one:
+
+```text
+semver.satisfies('17.11-trixie',   '<18')  // true   -- coerced to 17.11.0
+semver.satisfies('17.11.1-trixie', '<18')  // false  -- prerelease "trixie"
+```
+
+So the range holds only as long as upstream never publishes a three-part tag,
+and the day it does, every update is dropped with nothing logged. It is the
+same shape as the `-alpine` case: the filter does not fail, it silently matches
+nothing.
+
+Writing it as a regex avoids the question entirely. `"/^17\\./"` is matched by
+`getRegexPredicate` before any version parsing happens, so no coercion and no
+prerelease rule is involved:
+
+```json
+{
+  "matchDatasources": ["docker"],
+  "matchPackageNames": ["docker.io/library/postgres"],
+  "allowedVersions": "/^17\\./"
+}
+```
+
+The regex constrains only the major. The `-trixie` suffix is held separately,
+by docker versioning's compatibility check -- `17.12-bookworm` and a bare
+`17.12` are not offered against a `-trixie` pin regardless of this rule.
+
+!!! tip "The check that catches this class of bug"
+    **Does the currently pinned version pass its own rule?** If the filter
+    excludes what is already deployed, it excludes everything, and no update
+    will ever be raised again. It is one line to verify and it is the only
+    symptom you get.
+
 ### Bootstrap versions are derived, not pinned
 
 `make install-cilium` and `make install-argo` install Cilium, the Gateway API
