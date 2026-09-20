@@ -97,15 +97,16 @@ for pod in $pods; do
   fi
 
   sealed_any=1
-  # The key goes in as an argument, which is what OpenBao itself tells you to
-  # do: `bao operator unseal` with no argument insists on a terminal and
-  # refuses piped input outright ("file descriptor 0 is not a terminal"), and
-  # `-` is taken as a literal key rather than as "read stdin" -- unlike
-  # `bao login -`, which does read stdin. Quoting is what keeps a share
-  # containing #, ! or whitespace intact; nothing here goes through a shell.
+  # Each share travels on stdin, never as an exec argument. The API server
+  # audits pods/exec at RequestResponse, and the exec URI carries every
+  # argument as a `command=` query parameter, so a share passed on the command
+  # line is written to the audit log and shipped to Loki. `bao operator
+  # unseal` with no argument insists on a terminal and refuses piped input,
+  # and `-` is taken as a literal key, so a shell inside the pod reads the
+  # share and hands it over as an argument that only the pod ever sees.
   for index in $(seq 0 $((threshold - 1))); do
-    kubectl -n "$NAMESPACE" exec "$pod" -- \
-      bao operator unseal "${keys[$index]}" >/dev/null
+    printf '%s\n' "${keys[$index]}" | kubectl -n "$NAMESPACE" exec -i "$pod" -- \
+      sh -c 'IFS= read -r share && bao operator unseal "$share"' >/dev/null
   done
 
   if [ "$(bao_status "$pod" | json_field sealed)" = "False" ]; then
