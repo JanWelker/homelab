@@ -2302,7 +2302,7 @@ person.</p>
 <li><code>make config</code> to regenerate both Ignition configs, then <code>make serve</code>.</li>
 <li>
 <p>Arm the nodes you are rebuilding:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># or `make reinstall` for every host</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
 <p>That flips <code>DEFAULT localboot</code> to <code>DEFAULT install</code> in
 <code>output/tftp/pxelinux.cfg/01-&lt;mac&gt;</code>. The template is untouched, so the next

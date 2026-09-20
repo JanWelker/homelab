@@ -2427,8 +2427,9 @@ See <a href="../architecture/boot-server/">Boot Server</a>.</p>
 <p>The generated PXE configs default to booting the local disk, which is what
 you want on every boot <em>except</em> this one — it is why a reboot later cannot
 reinstall a node. <code>make reinstall</code> flips that to <code>Install</code> in
-<code>output/tftp/pxelinux.cfg/</code>, for every host or for <code>LIMIT=&lt;node&gt;</code>;
-<code>make reinstall-cancel</code> puts it back, as does re-running <code>make config</code>.</p>
+<code>output/tftp/pxelinux.cfg/</code>, for <code>LIMIT=&lt;node&gt;</code> or, after a typed
+confirmation, for every host; <code>make reinstall-cancel</code> puts it back, as
+does re-running <code>make config</code>.</p>
 <p>You do not have to disarm it yourself. The boot server rewrites the menu
 back to local boot the moment it has finished handing that node the OS
 image, so the reboot at the end of the install lands on the disk rather than

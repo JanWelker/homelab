@@ -2281,12 +2281,16 @@ and everyone solves it the same way: briefly, and with the door open.</p>
 <td>The inlined kubeadm config carries the bootstrap <code>token</code> and the <code>certificateKey</code>, which together are enough to join a new control-plane node</td>
 </tr>
 <tr>
+<td>The control-plane configs embed the etcd encryption key</td>
+<td><code>/etc/kubernetes/enc/encryption-config.yaml</code> is inlined with the key that encrypts every Secret at rest. Unlike the join credentials it has no TTL: anyone who fetched a control-plane Ignition config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster</td>
+</tr>
+<tr>
 <td>Nodes join with <code>--discovery-token-unsafe-skip-ca-verification</code></td>
 <td>A joining node does not verify the API server's CA</td>
 </tr>
 <tr>
-<td>Sysext transfers set <code>Verify=false</code></td>
-<td>System extension images are fetched over HTTPS but their signatures are not checked</td>
+<td>Sysext updates set <code>Verify=false</code></td>
+<td>On first boot, Ignition fetches the system extension images over plain HTTP but checks each against the sha256 of the file the boot server was given, so a substituted image fails. Later updates through sysupdate travel over HTTPS with signature verification off</td>
 </tr>
 </tbody>
 </table>
@@ -2300,8 +2304,11 @@ server that becomes the operating system, which is why it gets the treatment the
 sysexts still do not.</p>
 <p>The practical mitigation is time: <code>make serve</code> is a foreground command, the
 bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
-after two hours. <strong>Stop the boot server when provisioning is finished</strong> — it is
-the only thing keeping those credentials off the network. A <code>make serve</code> left
+after two hours. The encryption key has no such clock, which is why the boot
+server listens only on <code>boot_server_ip</code>, hands out files by name and lists
+nothing: the segment the nodes are on is the whole audience. <strong>Stop the boot
+server when provisioning is finished</strong> — it is the only thing keeping those
+credentials off the network. A <code>make serve</code> left
 running in a forgotten tmux session for three months is a genuinely bad outcome,
 and it is an easy one to reach.</p>
 <div class="admonition note">
