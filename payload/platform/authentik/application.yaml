@@ -24,6 +24,11 @@ spec:
               # From secrets.yaml; the blueprints read it via !Env.
               - secretRef:
                   name: authentik-secrets
+              # From secrets-nextcloud.yaml. Optional: without it the pods
+              # would refuse to start on a cluster that has no Nextcloud.
+              - secretRef:
+                  name: authentik-secrets-nextcloud
+                  optional: true
 
           authentik:
             log_level: info
