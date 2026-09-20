@@ -120,7 +120,7 @@ Ingress only, in nine namespaces:
 | `openbao` | The Gateway (UI), Prometheus and ESO, on `8200` |
 | `cert-manager` | Prometheus; the webhook is called by the API server from the node |
 | `external-secrets` | Prometheus; the webhook is called by the API server from the node |
-| `monitoring` | The Gateway (Grafana), and kured on `9090` |
+| `monitoring` | The Gateway (Grafana); kured on `9090`; the Authentik outpost on `9090` and `9093`; the Ceph mgr on `9090` and `3000` |
 | `external-dns` | Prometheus |
 | `kubelet-csr-approver` | Prometheus |
 | `kured` | Prometheus |
@@ -128,9 +128,13 @@ Ingress only, in nine namespaces:
 | `cnpg-system` | Prometheus; the webhooks are called by the API server from the node |
 
 Every policy also admits traffic from within the namespace and from `host` and
-`remote-node` for probes. The `monitoring` rule for kured is easy to miss and
-costly to lose: kured queries Prometheus before every reboot and blocks when the
-query fails, so without it no node ever reboots.
+`remote-node` for probes. The `monitoring` rules for outside callers are easy
+to miss and costly to lose. Kured queries Prometheus before every reboot and
+blocks when the query fails, so without it no node ever reboots. The Authentik
+outpost is what `prometheus.infra` and `alertmanager.infra` resolve to, and the
+Ceph mgr pulls its alerts from Prometheus and its panels from Grafana; without
+those rules both return errors the moment the policy stage lands, on a cluster
+where everything worked through the stage before.
 
 `cnpg-system` covers the operator only. No database runs there — each one lives
 in its workload's namespace — so the rule admitting the operator to an instance
@@ -213,6 +217,6 @@ SA:
 security/
 ├── application.yaml              # ArgoCD Application, prune disabled
 ├── pod-security.yaml             # Namespace objects with PSA labels
-├── network-policies.yaml         # Default-deny ingress, eight namespaces
+├── network-policies.yaml         # Default-deny ingress, nine namespaces
 └── default-serviceaccounts.yaml  # No token automount on `default` SAs
 ```

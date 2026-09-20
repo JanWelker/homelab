@@ -117,7 +117,7 @@ Two things follow that are worth knowing:
 
 ## Network policy is partial, and AppProjects are permissive
 
-Eight namespaces have default-deny ingress and every platform namespace has Pod
+Nine namespaces have default-deny ingress and every platform namespace has Pod
 Security Admission labels — see
 [Security Policies](../platform/security-policies.md).
 
