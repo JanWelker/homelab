@@ -142,9 +142,9 @@ not an isolation boundary today: an Application in the `apps` project can create
 cluster-scoped RBAC. Which is to say, a workload's manifest directory can quietly
 grant itself the keys to the cluster, and nothing would object.
 
-**Network policy covers eight namespaces.** `openbao`, `cert-manager`,
+**Network policy covers nine namespaces.** `openbao`, `cert-manager`,
 `external-secrets`, `monitoring`, `external-dns`, `kubelet-csr-approver`,
-`kured` and `logging` have default-deny **ingress**
+`kured`, `logging` and `cnpg-system` have default-deny **ingress**
 `CiliumNetworkPolicy` rules; every other namespace, and all egress everywhere,
 is still unrestricted. See [Security Policies](../platform/security-policies.md).
 
