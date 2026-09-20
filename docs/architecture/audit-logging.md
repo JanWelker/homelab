@@ -61,13 +61,13 @@ the design:
 ## Where the log actually lives
 
 The audit log is written to the root filesystem, which on an installed node is
-125 GB of ext4 rather than the tmpfs the nodes used to run from. That is what
+50 GB of ext4 rather than the tmpfs the nodes used to run from. That is what
 makes the CIS rotation numbers affordable:
 
 | Property | Value |
 | --- | --- |
 | Path | `/var/log/kubernetes/audit/audit.log` |
-| Filesystem | root, ext4, 125 GB |
+| Filesystem | root, ext4, 50 GB |
 | `--audit-log-maxsize` | `100` (MB) |
 | `--audit-log-maxbackup` | `10` |
 | `--audit-log-maxage` | `30` (days) |
