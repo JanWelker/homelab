@@ -2392,9 +2392,9 @@ a <code>clusterResourceWhitelist</code> of every group and kind, in every namesp
 not an isolation boundary today: an Application in the <code>apps</code> project can create
 cluster-scoped RBAC. Which is to say, a workload's manifest directory can quietly
 grant itself the keys to the cluster, and nothing would object.</p>
-<p><strong>Network policy covers eight namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
+<p><strong>Network policy covers nine namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
 <code>external-secrets</code>, <code>monitoring</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>,
-<code>kured</code> and <code>logging</code> have default-deny <strong>ingress</strong>
+<code>kured</code>, <code>logging</code> and <code>cnpg-system</code> have default-deny <strong>ingress</strong>
 <code>CiliumNetworkPolicy</code> rules; every other namespace, and all egress everywhere,
 is still unrestricted. See <a href="../../platform/security-policies/">Security Policies</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace

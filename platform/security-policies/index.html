@@ -2476,7 +2476,7 @@ application is fine and the kubelet is the one being blocked. Cilium's
 </tr>
 <tr>
 <td><code>monitoring</code></td>
-<td>The Gateway (Grafana), and kured on <code>9090</code></td>
+<td>The Gateway (Grafana); kured on <code>9090</code>; the Authentik outpost on <code>9090</code> and <code>9093</code>; the Ceph mgr on <code>9090</code> and <code>3000</code></td>
 </tr>
 <tr>
 <td><code>external-dns</code></td>
@@ -2501,9 +2501,13 @@ application is fine and the kubelet is the one being blocked. Cilium's
 </tbody>
 </table>
 <p>Every policy also admits traffic from within the namespace and from <code>host</code> and
-<code>remote-node</code> for probes. The <code>monitoring</code> rule for kured is easy to miss and
-costly to lose: kured queries Prometheus before every reboot and blocks when the
-query fails, so without it no node ever reboots.</p>
+<code>remote-node</code> for probes. The <code>monitoring</code> rules for outside callers are easy
+to miss and costly to lose. Kured queries Prometheus before every reboot and
+blocks when the query fails, so without it no node ever reboots. The Authentik
+outpost is what <code>prometheus.infra</code> and <code>alertmanager.infra</code> resolve to, and the
+Ceph mgr pulls its alerts from Prometheus and its panels from Grafana; without
+those rules both return errors the moment the policy stage lands, on a cluster
+where everything worked through the stage before.</p>
 <p><code>cnpg-system</code> covers the operator only. No database runs there — each one lives
 in its workload's namespace — so the rule admitting the operator to an instance
 on port <code>8000</code> belongs to <em>that</em> namespace's policy, in the workloads
@@ -2590,7 +2594,7 @@ posture scan will not agree it is fixed until things restart.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>security/
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml              # ArgoCD Application, prune disabled
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── pod-security.yaml             # Namespace objects with PSA labels
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── network-policies.yaml         # Default-deny ingress, eight namespaces
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── network-policies.yaml         # Default-deny ingress, nine namespaces
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>└── default-serviceaccounts.yaml  # No token automount on `default` SAs
 </span></code></pre></div>
 
