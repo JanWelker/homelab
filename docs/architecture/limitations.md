@@ -122,8 +122,9 @@ Security Admission labels — see
 [Security Policies](../platform/security-policies.md).
 
 Beyond that: all **egress** is unrestricted everywhere, and the namespaces
-outside those eight allow all ingress. Two of the three ArgoCD AppProjects allow
-every resource kind in every namespace. Details in
+outside those eight allow all ingress. The `infra` AppProject allows every
+resource kind in every namespace, and `apps` still permits cluster RBAC because
+trivy-operator needs it. Details in
 [Security Posture](security.md#authorization).
 
 Partial network policy is genuinely better than none, but it is worth not
