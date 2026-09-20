@@ -7,9 +7,12 @@ bring the nodes up; ArgoCD owns everything after that.
 
 `payload/` is the cluster. One hand-applied Application,
 `payload/argocd/application.yaml`, syncs the argo-cd chart and
-`payload/argocd/applicationset.yaml`. That ApplicationSet generates one
-Application per `payload/platform/*/application.yaml`. Nothing else creates
-Applications — there is no app-of-apps tree.
+`payload/argocd/applicationset-platform.yaml`. That ApplicationSet generates one
+Application per `payload/platform/*/application.yaml`, plus
+`payload/workloads/application.yaml`. The latter deploys the only other
+ApplicationSet, `payload/workloads/applicationset.yaml`, which generates one
+Application per directory of the separate `homelab-apps` repository. There is
+no app-of-apps tree.
 
 - A component is a directory with exactly one `application.yaml` plus the
   manifests it deploys. The generator copies that file's labels, annotations,
@@ -21,7 +24,8 @@ Applications — there is no app-of-apps tree.
 - Stages sync in order, and one starts only when every Application in the
   previous stage is Synced **and** Healthy: `00-projects`, `01-crds`,
   `02-network`, `03-controllers`, `04-storage`, `05-secrets`, `06-certificates`,
-  `07-ingress`, `08-services`, `09-backends`, `10-agents`, `11-policy`.
+  `07-ingress`, `08-services`, `09-backends`, `10-agents`, `11-policy`,
+  `12-workloads`.
 - **Nothing may depend on a later stage.** A resource that cannot apply, or
   cannot go Healthy, until later deadlocks its stage. That is why the
   `ClusterSecretStore` sits with OpenBao, the issuers and certificates are their
@@ -30,7 +34,8 @@ Applications — there is no app-of-apps tree.
 - `RollingSync` switches auto-sync off on generated Applications: no self-heal,
   and a sync that exhausts its `retry` waits for `argocd app sync <app>`.
   Patching a generated Application's `spec` achieves nothing — the next
-  reconcile copies the file back over it. Only `argocd` itself keeps `selfHeal`.
+  reconcile copies the file back over it. Only `argocd` itself and the
+  workload Applications, which are not under `RollingSync`, keep `selfHeal`.
 
 The reasoning is in `docs/architecture/gitops.md`.
 
