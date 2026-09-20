@@ -2507,9 +2507,12 @@ them — upstream keeps them in <code>deploy/examples/operator.yaml</code> — s
 <code>rook-ceph.rbd.csi.ceph.com</code> and every PVC against <code>rook-ceph-block</code> stays
 <code>Pending</code> on <code>ExternalProvisioning</code>.</p>
 <div class="admonition warning">
-<p class="admonition-title"><code>csi</code> values on the operator chart do nothing</p>
+<p class="admonition-title"><code>csi</code> values on the operator chart do nothing, except the images</p>
 <p>Helm accepts values a chart no longer reads without complaint. Driver
-settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>rook-ceph-operator</code>.</p>
+settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>rook-ceph-operator</code>.
+The one exception is <code>csi.&lt;sidecar&gt;.tag</code>: the chart still renders those
+into the image-set <code>ConfigMap</code> below, which is why the sidecar pins live
+there.</p>
 </div>
 <ul>
 <li><strong>In <code>rook-ceph</code>, at <code>04-storage</code></strong>, with <code>SkipDryRunOnMissingResource</code>: the
@@ -2517,7 +2520,13 @@ settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code
   <code>03-controllers</code>.</li>
 <li><strong>Image set</strong>: <code>OperatorConfig</code> points at the <code>ConfigMap</code> the chart renders,
   so a chart bump moves every sidecar and the cephcsi image together and the
-  csi-operator's own image defaults never apply.</li>
+  csi-operator's own image defaults never apply. Three sidecars are pinned
+  ahead of the chart in <code>rook-ceph-operator</code>: <code>csi-provisioner</code> v6.3.0,
+  <code>csi-resizer</code> v2.2.1 and <code>csi-snapshotter</code> v8.6.0, the versions
+  ceph-csi-operator v1.0.5 defaults to. The ones Rook v1.20.7 ships link a
+  gRPC with an authorization bypass (CVE-2026-33186), and Rook has not yet
+  moved to v1.0.5. Renovate tracks the pins through their <code># renovate:</code>
+  annotations; drop them once the chart's own defaults catch up.</li>
 <li><strong>Driver name</strong>: not free to choose. Rook derives the provisioner from its
   namespace, and it has to match the <code>provisioner</code> of the StorageClasses in
   <code>rook-ceph-cluster</code>. CephFS is not enabled, so RBD is the only driver.</li>
