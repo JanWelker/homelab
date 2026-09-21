@@ -2685,29 +2685,6 @@ therefore covers only its pod-networked workloads, each selected by label.</p>
 <code>authentik</code>) they are switched off in its values: Cilium unions the two
 kinds, so a chart rule that allows everything would silently override the
 default-deny.</p>
-<p>Not yet covered, each for its own reason:</p>
-<table>
-<thead>
-<tr>
-<th>Namespace</th>
-<th>Why not yet</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>kube-system</code></td>
-<td>Holds Cilium itself, the static control-plane pods and kube-vip</td>
-</tr>
-<tr>
-<td><code>rook-ceph</code></td>
-<td>Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix; Ceph health is the verification signal</td>
-</tr>
-<tr>
-<td><code>argocd</code>, <code>authentik</code></td>
-<td>Already carry <code>NetworkPolicy</code> objects from their own charts</td>
-</tr>
-</tbody>
-</table>
 <h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
 <p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code>, which nothing
 configures, and gets an API token it has no use for. A workload reaching the
