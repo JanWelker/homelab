@@ -2521,6 +2521,10 @@ in the line where <code>| json</code> can reach them. See
 <td>Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki</td>
 </tr>
 <tr>
+<td><code>enableReporting: false</code></td>
+<td>Alloy otherwise sends usage statistics to <code>stats.grafana.org</code>; the policy audit showed the call, and telemetry is off in every component here</td>
+</tr>
+<tr>
 <td><code>runAsUser: 0</code></td>
 <td>The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and <code>RuntimeDefault</code> seccomp lock the rest down</td>
 </tr>
@@ -2549,6 +2553,10 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 <tr>
 <td><code>singleBinary.extraArgs</code> <code>-config.expand-env=true</code> and <code>singleBinary.extraEnvFrom</code></td>
 <td>Rook writes the bucket credentials to a Secret, Loki reads them as <code>${AWS_ACCESS_KEY_ID}</code> — nothing in Git</td>
+</tr>
+<tr>
+<td><code>loki.analytics.reporting_enabled: false</code></td>
+<td>Loki otherwise sends usage statistics to <code>stats.grafana.org</code> a few times a day; same reason as Alloy's switch above</td>
 </tr>
 <tr>
 <td><code>chunksCache</code> and <code>resultsCache</code> off</td>
