@@ -57,7 +57,8 @@ sync with `prune` and `selfHeal`, and a `retry` block of ten attempts with a
 backoff from 30s to 5m. That is the whole delivery contract:
 
 - **A commit is live within one polling interval.** ArgoCD runs on a private
-  address, so no GitHub webhook can reach it; it polls Git instead.
+  address, so no GitHub webhook can reach it; the intervals are in
+  [Platform &rarr; ArgoCD](../platform/argocd.md#configuration).
 - **Drift is reverted.** A resource edited or deleted by hand is put back on
   the next reconcile, in the platform as much as in the workloads.
 - **A failed sync retries itself.** ArgoCD never re-attempts a failed sync of
