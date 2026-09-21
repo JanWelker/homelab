@@ -2564,8 +2564,11 @@ a policy without a <code>podSelector</code>, and do exclusions in PromQL.</p>
 pod creates a counter series inside the alert window and <code>increase()</code>
 reports nothing until the second scrape moves it. Every policy alert
 therefore also matches a series absent ten minutes ago, with
-<code>unless ... offset 10m</code>. Copy that shape for a new alert, and test it
-with a pod that fires once, not with one that keeps firing.</p>
+<code>unless ... offset 10m</code>, and holds for fifteen minutes with
+<code>keep_firing_for</code>, because the agent drops a pod's series when the pod
+exits and a one-shot pod would otherwise flap. Copy that shape for a
+new alert, and test it with a pod that fires once, not with one that
+keeps firing.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">A policy that does not load is silent</p>
