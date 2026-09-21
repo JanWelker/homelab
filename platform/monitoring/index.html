@@ -1494,6 +1494,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#growing-the-prometheus-volume" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Growing the Prometheus volume
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resetting-the-grafana-admin-password" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2275,6 +2286,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#growing-the-prometheus-volume" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Growing the Prometheus volume
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resetting-the-grafana-admin-password" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2603,6 +2625,10 @@ in its place, which limits Prometheus to its own targets.</p>
 <td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding</td>
 </tr>
 <tr>
+<td>Prometheus <code>retention</code> and <code>retentionSize</code></td>
+<td>Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus</td>
+</tr>
+<tr>
 <td>Alertmanager <code>automountServiceAccountToken: false</code></td>
 <td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway</td>
 </tr>
@@ -2670,18 +2696,56 @@ describes; the sidecar watches every namespace
 (<code>sidecar.dashboards.searchNamespace: ALL</code>). Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
+<h3 id="growing-the-prometheus-volume">Growing the Prometheus volume<a class="headerlink" href="#growing-the-prometheus-volume" title="Permanent link">&para;</a></h3>
+<p>Kubernetes cannot expand a StatefulSet's <code>volumeClaimTemplate</code>, so raising the
+request in <code>payload/platform/monitoring/application.yaml</code> does not resize the
+claim that already exists. The operator handles its own half of that: it fails
+the StatefulSet update on the immutable field, logs <code>recreating StatefulSet
+because the update operation wasn't possible</code>, and rebuilds it orphaned so the
+pod survives. Only the claim is left behind.</p>
+<ol>
+<li>
+<p>Merge the size bump and wait for the Application to sync.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>app<span class="w"> </span>kube-prometheus-stack<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.sync.status}'</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Patch the claim to the same size. This is the one step nothing automates.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nv">SIZE</span><span class="o">=</span><span class="k">$(</span>awk<span class="w"> </span><span class="s1">'/prometheusSpec:/{f=1} f&amp;&amp;/storage: /{print $2; exit}'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>payload/platform/monitoring/application.yaml<span class="k">)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>patch<span class="w"> </span>pvc<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--patch<span class="w"> </span><span class="s2">"{\"spec\": {\"resources\": {\"requests\": {\"storage\": \"</span><span class="nv">$SIZE</span><span class="s2">\"}}}}"</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>The claim parks on <code>FileSystemResizePending</code> and the filesystem grows when
+    the volume is next mounted, so the pod is restarted and Prometheus replays
+    its WAL — a scrape gap of about a minute, not a seamless resize. Wait for
+    the claim to report the new capacity.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>-w<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span>NAME:.metadata.name,CAP:.status.capacity.storage
+</span></code></pre></div>
+</li>
+</ol>
+<p>If the operator has not rebuilt the StatefulSet within a sync interval, do it by
+hand; <code>--cascade=orphan</code> keeps the pod and the claim.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>delete<span class="w"> </span>statefulset<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-l<span class="w"> </span>operator.prometheus.io/name<span class="o">=</span>kube-prometheus-stack-prometheus<span class="w"> </span>--cascade<span class="o">=</span>orphan
+</span></code></pre></div>
+<p>Alertmanager and Grafana take the same two steps, with their own claim names.</p>
 <h3 id="resetting-the-grafana-admin-password">Resetting the Grafana admin password<a class="headerlink" href="#resetting-the-grafana-admin-password" title="Permanent link">&para;</a></h3>
 <p>Grafana reads the password only when it creates its database, so changing
 <code>kv/monitoring/grafana-admin</code> later does not change what it checks:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus,alertmanager
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus<span class="w"> </span>kube-prometheus-stack-prometheus<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.serviceMonitorSelector}'</span><span class="w">   </span><span class="c1"># should print {}</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus,alertmanager
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus<span class="w"> </span>kube-prometheus-stack-prometheus<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.serviceMonitorSelector}'</span><span class="w">   </span><span class="c1"># should print {}</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
 </span></code></pre></div>
 <p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step
 further; SMTP auth, spam heuristics and an expired password are unmonitored.
