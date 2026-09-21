@@ -125,43 +125,47 @@ lives nowhere else: not in Git, not on a rebuilt cluster.
 ### Growing the Prometheus volume
 
 Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the
-request in `payload/platform/monitoring/application.yaml` on its own leaves the
-PVC at its old size and wedges the operator on an immutable field. Merge that
-change, then:
+request in `payload/platform/monitoring/application.yaml` does not resize the
+claim that already exists. The operator handles its own half of that: it fails
+the StatefulSet update on the immutable field, logs `recreating StatefulSet
+because the update operation wasn't possible`, and rebuilds it orphaned so the
+pod survives. Only the claim is left behind.
 
-1. Read the new size out of the manifest.
+1. Merge the size bump and wait for the Application to sync.
+
+    ```bash
+    kubectl -n argocd get app kube-prometheus-stack -o jsonpath='{.status.sync.status}'
+    ```
+
+2. Patch the claim to the same size. This is the one step nothing automates.
 
     ```bash
     SIZE=$(awk '/prometheusSpec:/{f=1} f&&/storage: /{print $2; exit}' \
       payload/platform/monitoring/application.yaml)
-    ```
-
-2. Patch the claim. Rook grows the RBD image and the filesystem while they are
-    mounted, so the pod keeps scraping.
-
-    ```bash
     kubectl -n monitoring patch pvc \
       prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0 \
       --patch "{\"spec\": {\"resources\": {\"requests\": {\"storage\": \"$SIZE\"}}}}"
     ```
 
-3. Delete the StatefulSet so the operator rebuilds it from the new template.
-    `--cascade=orphan` leaves the pod and the claim behind, so there is no gap
-    in the metrics.
+3. The claim parks on `FileSystemResizePending` and the filesystem grows when
+    the volume is next mounted, so the pod is restarted and Prometheus replays
+    its WAL — a scrape gap of about a minute, not a seamless resize. Wait for
+    the claim to report the new capacity.
 
     ```bash
-    kubectl -n monitoring delete statefulset \
-      -l operator.prometheus.io/name=kube-prometheus-stack-prometheus --cascade=orphan
+    kubectl -n monitoring get pvc -w \
+      -o custom-columns=NAME:.metadata.name,CAP:.status.capacity.storage
     ```
 
-4. Confirm the claim reports the new capacity.
+If the operator has not rebuilt the StatefulSet within a sync interval, do it by
+hand; `--cascade=orphan` keeps the pod and the claim.
 
-    ```bash
-    kubectl -n monitoring get pvc -o custom-columns=NAME:.metadata.name,CAP:.status.capacity.storage
-    ```
+```bash
+kubectl -n monitoring delete statefulset \
+  -l operator.prometheus.io/name=kube-prometheus-stack-prometheus --cascade=orphan
+```
 
-The same four steps fit Alertmanager and Grafana; only the claim name and the
-`-l` selector change.
+Alertmanager and Grafana take the same two steps, with their own claim names.
 
 ### Resetting the Grafana admin password
 
