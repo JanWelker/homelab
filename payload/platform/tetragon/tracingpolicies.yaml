@@ -194,6 +194,15 @@ kind: TracingPolicy
 metadata:
   name: privileges-raise
 spec:
+  # The redis-ha pods run an Alpine busybox that calls setgid(0) on every
+  # applet, a hundred times a minute. The policy filter keeps them out in the
+  # kernel; every other pod is selected.
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: NotIn
+        values:
+          - redis-ha
   kprobes:
     # An unprivileged process creating a user namespace is root inside it;
     # most kernel privilege-escalation chains start here.
@@ -239,9 +248,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -268,9 +276,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -299,9 +306,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -330,9 +336,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -364,9 +369,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -397,9 +401,8 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; the busybox in
-          # redis-ha and logrotate in Ceph re-assert root, which is the
-          # record this policy keeps.
+          # runc sets the container's ids on every start; logrotate in
+          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
