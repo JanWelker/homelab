@@ -1765,13 +1765,52 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-covered-here" class="md-nav__link">
+  <a href="#the-other-three-report-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Not covered here
+        The other three report kinds
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="The other three report kinds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#infra-the-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Infra: the nodes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-audit-the-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Config audit: the pods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2051,13 +2090,52 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-covered-here" class="md-nav__link">
+  <a href="#the-other-three-report-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Not covered here
+        The other three report kinds
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="The other three report kinds">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#infra-the-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Infra: the nodes
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-audit-the-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Config audit: the pods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2180,7 +2258,10 @@ This page is about what the findings mean for <em>this</em> platform.</p>
   Reconcile running images against scanned ones before concluding anything;
   the <code>TrivyContainerNotScanned</code> alert does it continuously. On this pass it
   named Nextcloud and Authentik, whose scans were dying on a five-minute Job
-  deadline that a longer Trivy timeout could never reach.</li>
+  deadline that a longer Trivy timeout could never reach, and whose reports,
+  once a scan finished, were too large for etcd: 2886 Debian findings with no
+  fix in one image. Both are handled in homelab-apps (#26, #28); the second
+  with a per-namespace policy that drops only unfixed findings below HIGH.</li>
 <li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> They are
   kept on purpose (<code>ignoreUnfixed: false</code>), because a cluster of them in one
   base image is the signal that the base image is the wrong one.</li>
@@ -2292,13 +2373,108 @@ what they want. Checked on this pass:</p>
 <li><strong>Routine Go churn is not a finding.</strong> A dozen "please bump grpc" issues
   damage standing for the one time something real turns up.</li>
 </ul>
-<h2 id="not-covered-here">Not covered here<a class="headerlink" href="#not-covered-here" title="Permanent link">&para;</a></h2>
-<p>The operator also writes <code>ConfigAuditReport</code>, <code>RbacAssessmentReport</code> and
-<code>InfraAssessmentReport</code> objects. Those findings are fixable in this repository
-rather than upstream, and they are a hardening backlog of their own: read-only
-root filesystems, default security contexts, and the kubelet and CNI file
-permissions the CIS benchmark wants on every node. They are deliberately not
-mixed into a CVE pass.</p>
+<h2 id="the-other-three-report-kinds">The other three report kinds<a class="headerlink" href="#the-other-three-report-kinds" title="Permanent link">&para;</a></h2>
+<p><code>ConfigAuditReport</code>, <code>RbacAssessmentReport</code> and <code>InfraAssessmentReport</code> are
+fixable here rather than upstream, which makes them worth more per finding and
+also makes it worth being honest about which ones are load-bearing.</p>
+<h3 id="infra-the-nodes">Infra: the nodes<a class="headerlink" href="#infra-the-nodes" title="Permanent link">&para;</a></h3>
+<p>The node collector runs CIS's file checks on every node. Real modes, read on
+a control-plane and a worker node:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Path it stats</th>
+<th>Was</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KCV-0077 kubelet config</td>
+<td><code>/var/lib/kubelet/config.yaml</code></td>
+<td>644</td>
+<td><strong>Fixed</strong>, 600</td>
+</tr>
+<tr>
+<td>KCV-0075 CA file</td>
+<td><code>/etc/kubernetes/pki/ca.crt</code></td>
+<td>644</td>
+<td><strong>Fixed</strong>, 600</td>
+</tr>
+<tr>
+<td>KCV-0056 CNI files</td>
+<td><code>/*/cni/*</code>, so <code>/opt/cni/bin</code></td>
+<td>755</td>
+<td><strong>Fixed</strong>, 700</td>
+</tr>
+<tr>
+<td>KCV-0069 kubelet unit</td>
+<td><code>/lib/systemd/system/kubelet.service</code></td>
+<td>644</td>
+<td><strong>Accepted.</strong> The unit ships in the Kubernetes sysext, on a read-only, signed <code>/usr</code>. It holds no secret.</td>
+</tr>
+<tr>
+<td>KCV-0059 etcd data dir</td>
+<td><code>/var/lib/etcd/default.etcd</code></td>
+<td>absent</td>
+<td><strong>Artifact.</strong> kubeadm uses <code>/var/lib/etcd</code>, which is already <code>700 etcd:etcd</code>.</td>
+</tr>
+<tr>
+<td>KCV-0001 and the other API server flags</td>
+<td>static pod args</td>
+<td></td>
+<td><strong>Tracked in #660.</strong> Anonymous auth in particular cannot simply be switched off, because the kubelet's probes rely on it; see #678 for the shape that works.</td>
+</tr>
+</tbody>
+</table>
+<p>kubeadm writes the first three itself, at 644, on every <code>init</code>, <code>join</code> and
+<code>upgrade</code>, so a one-off <code>chmod</code> would not survive. <code>butane_node_config.yaml.j2</code>
+instead drops <code>/etc/tmpfiles.d/kubernetes-cis.conf</code> with three <code>z</code> lines and
+has the kubelet's drop-in run <code>systemd-tmpfiles --create</code> on that file before
+every start. Boot applies it; a kubelet restart, which kubeadm triggers right
+after rewriting the files, applies it again. A path that does not exist yet is
+skipped, so the first boot is unaffected. The change is provisioning-time: a
+node picks it up on its next rebuild.</p>
+<h3 id="config-audit-the-pods">Config audit: the pods<a class="headerlink" href="#config-audit-the-pods" title="Permanent link">&para;</a></h3>
+<p>Two checks are most of the volume. <code>KSV-0014</code> wants a read-only root
+filesystem and <code>KSV-0118</code> fires when the <em>pod-level</em> <code>securityContext</code> is
+empty, whatever the containers set. Where they land:</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured</td>
+<td><strong>Load-bearing.</strong> Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. <code>pod-security.yaml</code> already enforces <code>privileged</code> in those namespaces for this reason.</td>
+</tr>
+<tr>
+<td><code>etcd-backup</code> CronJob</td>
+<td><strong>Own manifest, hardened.</strong> Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are <code>600 root</code>.</td>
+</tr>
+<tr>
+<td>Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy</td>
+<td><strong><code>KSV-0118</code> only, fixed.</strong> Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's.</td>
+</tr>
+<tr>
+<td>Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao</td>
+<td><strong>Read-only root not attempted.</strong> Each writes somewhere under <code>/</code> at runtime; the chart or image decides where, and guessing costs an outage. Also #663.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="rbac">RBAC<a class="headerlink" href="#rbac" title="Permanent link">&para;</a></h3>
+<p>Every critical and high is a <code>ClusterRole</code> a chart ships for its operator:
+cert-manager, CloudNativePG, Rook, External Secrets, the Prometheus operator,
+Loki, Alloy and Trivy Operator all manage Secrets because that is their job,
+and <code>argocd-application-controller</code> manages everything because it deploys
+everything. The rest are Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>.
+Nothing here is narrowable without forking a chart, and the exposure is what
+<a href="../../architecture/security/#authorization">Security Posture &rarr; Authorization</a>
+already describes.</p>
 
 
 
