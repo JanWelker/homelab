@@ -15,7 +15,6 @@ sees a shell spawned in a running container.
 | | |
 | --- | --- |
 | Namespace | `kube-system` |
-| Stage | `10-agents`, with Alloy; nothing depends on it |
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](logging.md) for the events, [Monitoring](monitoring.md) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
 | Health check | `kubectl get tracingpolicies -o wide`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |

@@ -6,7 +6,7 @@ description: "ArgoCD's chart values, its OIDC login through Authentik, and the b
 
 ArgoCD is the delivery layer: everything in `payload/` and in the workloads
 repository reaches the cluster through it. How the Applications are generated
-and staged is in [GitOps Strategy](../architecture/gitops.md); this page covers
+and synced is in [GitOps Strategy](../architecture/gitops.md); this page covers
 the chart values and the supporting resources around ArgoCD itself.
 
 ## At a glance
@@ -14,7 +14,6 @@ the chart values and the supporting resources around ArgoCD itself.
 | | |
 | --- | --- |
 | Namespace | `argocd` |
-| Stage | `argocd` itself is applied by hand at bootstrap and is not staged; `argocd-projects` is `00-projects`, `argocd-config` is `08-services` |
 | Depends on | [OpenBao](openbao.md) for the OIDC client secret, [Gateway API](gateway-api.md) for its route, [Authentik](authentik.md) for every login |
 | If it is down | Nothing syncs. Running workloads are unaffected |
 | Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (HTTPRoute, OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
@@ -33,7 +32,6 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `server.extraArgs: --insecure` | TLS terminates at the Gateway |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
 | `resource.customizations.health.argoproj.io_Application` | Restores health assessment for `Application` resources, dropped in ArgoCD 1.8, so `argocd` reports the health of the ApplicationSet rather than a permanent Healthy |
-| `applicationsetcontroller.enable.progressive.syncs` | Without it a `RollingSync` strategy is ignored and every Application syncs at once |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
 
 The OIDC client ID and secret come from `kv/authentik/config`, the same OpenBao
@@ -52,9 +50,9 @@ Renovate does not see it: re-copy it when ArgoCD moves a minor version.
 kubectl -n argocd get applications
 ```
 
-Every Application should be `Synced` and `Healthy`. Where a platform rollout is
-stuck, the [ApplicationSet status](../architecture/gitops.md#what-the-staging-costs)
-names the Application it is waiting for.
+Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync`
+has exhausted its retries and waits for a hand sync — see
+[Sync policy](../architecture/gitops.md#sync-policy).
 
 ## Pitfalls
 

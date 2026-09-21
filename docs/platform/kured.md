@@ -15,7 +15,6 @@ without draining, on a cluster where every node is a storage node.
 | | |
 | --- | --- |
 | Namespace | `kured` |
-| Stage | `11-policy`, last, so it reboots a converged cluster |
 | Depends on | [Monitoring](monitoring.md) for the alerts it gates on |
 | If it is down | Nothing visible: staged OS and sysext updates simply never get applied |
 | Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |

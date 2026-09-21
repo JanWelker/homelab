@@ -232,17 +232,16 @@ the same L2 network segment as the nodes.
 
         Applies the `apps`, `infra` and `system` AppProjects, then the
         self-managing `argocd` Application, which brings the `platform`
-        ApplicationSet and with it every component, one
-        [stage](platform/index.md#rollout-order) at a time. Watch which stage
-        it is on:
+        ApplicationSet and with it every component at once. They converge in
+        the [order their dependencies allow](platform/index.md#rollout-order);
+        watch them settle:
 
         ```bash
-        kubectl -n argocd get applicationset platform -o jsonpath=\
-        '{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'
+        kubectl -n argocd get applications -w
         ```
 
-        **The rollout stops at `05-secrets`, and that is expected.** `openbao`
-        cannot go Healthy until step 11 — see
+        **Everything that reads a secret stays Degraded, and that is
+        expected.** No `ExternalSecret` resolves until step 11 — see
         [Bootstrap pauses at OpenBao](architecture/gitops.md#bootstrap-pauses-at-openbao).
 
     - **Gate on storage** before trusting anything that mounts a volume:
@@ -291,9 +290,9 @@ the same L2 network segment as the nodes.
     !!! tip "Paste them at the prompt, not onto a command line"
         A secret containing `#` on a command line is truncated at it, and one containing `!` is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with **single** quotes.
 
-    Once the store validates, `certificates` issues the gateway certificates
-    and the later stages sync. The store is re-checked every few minutes, so
-    the next stage can take that long to start.
+    Once the store validates, every `ExternalSecret` resolves, `certificates`
+    issues the gateway certificates and the Gateways come up. The store is
+    re-checked every few minutes, so that can take that long to start.
 
 12. **Create the first administrator**:
     Authentik ships the built-in `akadmin` account; its password is the

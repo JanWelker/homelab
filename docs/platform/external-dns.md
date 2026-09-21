@@ -15,7 +15,6 @@ record pointing at nothing when the workload goes.
 | | |
 | --- | --- |
 | Namespace | `external-dns` |
-| Stage | `06-certificates`, with the Route53 credentials it shares a source with |
 | Depends on | [External Secrets](external-secrets.md) for its Route53 credential, [Gateway API](gateway-api.md) for the HTTPRoutes it reads |
 | If it is down | New hostnames get no DNS record. Existing records are left alone |
 | Health check | `kubectl -n external-dns logs deploy/external-dns --tail=50` |

@@ -35,8 +35,8 @@ GitOps are; [Core Concepts](../concepts.md) covers all five.
 
     ---
 
-    The ApplicationSet, the staged rollout, and the rules that keep a fresh
-    bootstrap from deadlocking.
+    The ApplicationSet, the sync policy every Application shares, and how a
+    fresh bootstrap converges without an order.
 
 - **[Design Decisions](decisions.md)**
 
@@ -108,7 +108,7 @@ it. The applications the cluster exists to serve live in the separate
 │   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
 │   ├── platform/           # One directory per component, each with one
 │   │   └── ...             #   application.yaml -- see Platform
-│   └── workloads/          # The handover to homelab-apps, stage 12-workloads
+│   └── workloads/          # The handover to homelab-apps
 ├── zensical.toml           # Documentation site configuration
 └── README.md
 ```

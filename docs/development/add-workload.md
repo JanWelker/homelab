@@ -84,6 +84,12 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       # No CreateNamespace: namespace.yaml below creates it, with the Pod
       # Security labels an implicitly created one would not have.
@@ -92,9 +98,10 @@ spec:
 
 For a Helm chart that also needs manifests of its own, use a `sources` list
 with the chart in one entry and this repository in another;
-`nextcloud/application.yaml` is the worked example. Workloads keep `selfHeal`,
-unlike platform Applications under `RollingSync` — see
-[what the staging costs](../architecture/gitops.md#what-the-staging-costs).
+`nextcloud/application.yaml` is the worked example. The `syncPolicy` is the
+one every platform Application carries, `retry` included; without it a
+workload that referenced a platform resource a minute too early stays failed
+— see [Sync policy](../architecture/gitops.md#sync-policy).
 
 ## Step 3: Add the manifests
 
@@ -262,7 +269,7 @@ where, and what surprised you while deploying it.
 | Symptom | Cause and check |
 | --- | --- |
 | The Application was never generated | Only `*/application.yaml`, one level deep, is read, and a `spec.project` other than `apps` fails the whole set naming the file. Read the controller log (below) |
-| The Application exists but will not sync | On a fresh cluster `12-workloads` may not be reached yet; the `apps` ApplicationSet does not exist before then. Check the stage status in [GitOps Strategy](../architecture/gitops.md#what-the-staging-costs) |
+| The Application exists but will not sync | It has exhausted its retries, on a fresh cluster usually against a platform resource that arrived later than the retry budget. `argocd app sync <app>` — see [Sync policy](../architecture/gitops.md#sync-policy) |
 | `Synced`, health `Unknown`, workload running fine | A wave is waiting on a resource that will never go Healthy; with a database it is the missing `cnpg-system` rule (`kubectl get cluster` says `1/1`, status reads `Instance Status Extraction Error: HTTP communication issue`). Confirm with `kubectl -n argocd get application my-app -o jsonpath='{.status.operationState.message}'` and the Hubble check below |
 | Rule is in Git, still stuck | The policy's sync wave is wrong: the applied list has no `CiliumNetworkPolicy` while `Cluster` reads `Running`. Fix the wave, then `argocd app terminate-op my-app`; a stuck operation does not pick up a new revision |
 | Pods will not start; events mention a security policy | `enforce` in `namespace.yaml` is stricter than the image needs. Loosen `enforce`, keep `audit` and `warn`, so violations stay in the [audit log](../architecture/audit-logging.md) — see [Pod Security Admission](../platform/security-policies.md#pod-security-admission) |

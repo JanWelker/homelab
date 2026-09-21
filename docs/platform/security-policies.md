@@ -15,7 +15,6 @@ enforce second, one namespace at a time.
 | | |
 | --- | --- |
 | Namespace | `kube-system` for the Application; it owns Namespace objects across the cluster |
-| Stage | `11-policy`, last, so it labels namespaces that already exist |
 | Depends on | [Cilium](cilium.md) to enforce the network policies |
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |

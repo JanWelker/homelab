@@ -15,7 +15,6 @@ is.
 | | |
 | --- | --- |
 | Namespace | `external-secrets` |
-| Stage | `03-controllers`; the `ClusterSecretStore` is in `openbao`, at `05-secrets` — see [why](index.md#rollout-order) |
 | Depends on | [OpenBao](openbao.md) at runtime, though not to be installed |
 | If it is down | Secrets already materialised keep working. Nothing rotates, and nothing new resolves |
 | Health check | `kubectl get clustersecretstore openbao` &rarr; `Valid` |
@@ -48,8 +47,7 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
 
 | Setting | Why |
 | --- | --- |
-| Stage `03-controllers` | Ahead of every Application that ships an `ExternalSecret`; a missing kind fails the sync that [gates the stage](../architecture/gitops.md) |
-| No `ClusterSecretStore` here | It only validates against a running, unsealed OpenBao, so it ships with `openbao`; here it would hold `03-controllers` for two stages |
+| No `ClusterSecretStore` here | It only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
 | Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`), which only shows when the pod is recreated |
 
 ## Usage

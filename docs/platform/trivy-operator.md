@@ -14,7 +14,6 @@ this page is the operator itself.
 | | |
 | --- | --- |
 | Namespace | `trivy-system` |
-| Stage | `11-policy`; nothing above it depends on a scan |
 | Depends on | [Monitoring](monitoring.md) for the `ServiceMonitor` and the dashboard, [Rook-Ceph](rook-ceph.md) for the vulnerability database volume |
 | If it is down | Reports expire after 24h and are not rebuilt; `TrivyContainerNotScanned` fires for every container |
 | Health check | `kubectl -n trivy-system get pods,jobs`, then the reconciliation below |

@@ -14,7 +14,6 @@ data after a node dies, and the one with the steepest learning curve. Check
 | | |
 | --- | --- |
 | Namespace | `rook-ceph` |
-| Stage | `03-controllers` for `rook-ceph-operator`; `04-storage` for `rook-ceph` (CSI driver, RBAC, dashboards) and `rook-ceph-cluster` |
 | Depends on | A raw `rook-osd` partition on every node, written at install time |
 | If it is down | Every pod with a volume — `openbao` first, which turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
@@ -75,7 +74,7 @@ them every PVC stays `Pending` on `ExternalProvisioning`.
 
 | Setting | Why |
 | --- | --- |
-| `csi-driver.yaml` in `rook-ceph`, with `SkipDryRunOnMissingResource` | The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart one stage earlier |
+| `csi-driver.yaml` in `rook-ceph`, with `SkipDryRunOnMissingResource` | The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart |
 | `OperatorConfig` pointing at the chart's image-set `ConfigMap` | A chart bump moves every sidecar and the cephcsi image together |
 | `csi.<sidecar>.tag` pins in `rook-ceph-operator` | The sidecars Rook ships link a gRPC with an authorization bypass; the pins move ahead of the chart under `# renovate:` annotations and go once the chart catches up |
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |

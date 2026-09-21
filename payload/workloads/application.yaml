@@ -4,10 +4,6 @@ kind: Application
 metadata:
   name: workloads
   namespace: argocd
-  labels:
-    # Last stage: the workloads this generates need the whole platform, and a
-    # broken workload must not hold back anything the cluster runs on.
-    homelab.wlkr.ch/stage: 12-workloads
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
 spec:

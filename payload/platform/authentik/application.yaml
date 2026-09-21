@@ -4,8 +4,6 @@ kind: Application
 metadata:
   name: authentik
   namespace: argocd
-  labels:
-    homelab.wlkr.ch/stage: 08-services
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
     link.argocd.argoproj.io/external-link: https://auth.infra.k8s.wlkr.ch
@@ -114,10 +112,8 @@ spec:
             # Blueprints owned by the workloads that need them, mounted beside
             # the platform's own. Not `blueprints.configMaps`: that renders a
             # plain configMap volume, which the kubelet refuses to mount until
-            # the ConfigMap exists -- and these arrive with the workloads, in
-            # 12-workloads, four stages after Authentik has to be Healthy. The
-            # worker would be waiting for a stage that is waiting for the
-            # worker.
+            # the ConfigMap exists -- and these arrive with the workloads,
+            # which may not exist yet, or ever, on a fresh cluster.
             #
             # A projected volume takes `optional`, so the worker starts either
             # way and the blueprint appears when its workload lands.

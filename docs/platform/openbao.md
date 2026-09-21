@@ -25,8 +25,7 @@ flowchart LR
 | | |
 | --- | --- |
 | Namespace | `openbao` |
-| Stage | `05-secrets`. A fresh bootstrap [pauses here](../architecture/gitops.md) until OpenBao is initialised and unsealed |
-| Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes |
+| Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes. A fresh bootstrap [pauses here](../architecture/gitops.md#bootstrap-pauses-at-openbao) until OpenBao is initialised and unsealed |
 | If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside |
 | Health check | `kubectl -n openbao exec openbao-0 -- bao status` &rarr; `Sealed: false` on all three |
 | UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |

@@ -15,7 +15,6 @@ the chart tuning.
 | | |
 | --- | --- |
 | Namespace | `backup` |
-| Stage | `09-backends`; the buckets, `VolumeSnapshotClass` and etcd CronJob in `backup` at `08-services`; the CSI snapshot controller at `03-controllers` |
 | Depends on | [Rook-Ceph](rook-ceph.md) for the bucket claims and RBD snapshots |
 | If it is down | Nightly backups stop; `VeleroBackupFailures` fires |
 | Health check | `kubectl -n backup get backupstoragelocation` reads `Available` |

@@ -15,7 +15,6 @@ termination. The improvement is the split in ownership: the cluster owns the
 | | |
 | --- | --- |
 | Namespace | `gateway-system` for the Application, `kube-system` for the Gateways themselves |
-| Stage | `01-crds` for the CRDs, `07-ingress` for the Gateways |
 | Depends on | [Cilium](cilium.md) to implement it, [cert-manager](cert-manager.md) for the wildcard certificates |
 | If it is down | Nothing reaches any hostname. Running pods keep running |
 | Health check | `kubectl -n kube-system get gateway` &rarr; both `PROGRAMMED=True` with an address |

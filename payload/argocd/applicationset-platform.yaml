@@ -1,6 +1,6 @@
 ---
 # One Application per payload/platform/*/application.yaml, plus the workloads
-# handover, rolled out in stages; see docs/architecture/gitops.md#rollout-order
+# handover; see docs/architecture/gitops.md
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -18,43 +18,9 @@ spec:
         revision: HEAD
         files:
           - path: payload/platform/*/application.yaml
-          # Not platform, and not in payload/platform/. It is generated here
-          # only to inherit the staged rollout: handing over to the workloads
-          # is the last act of bringing the platform up, so it has to be the
-          # last step of the thing that brings the platform up.
+          # Not platform, and not in payload/platform/: the handover to the
+          # workloads repository, kept apart so its blast radius is one app.
           - path: payload/workloads/application.yaml
-  strategy:
-    type: RollingSync
-    rollingSync:
-      steps:
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [00-projects]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [01-crds]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [02-network]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [03-controllers]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [04-storage]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [05-secrets]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [06-certificates]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [07-ingress]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [08-services]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [09-backends]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [10-agents]}
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [11-policy]}
-        # Last: the Application holding the `apps` ApplicationSet, so no
-        # workload is generated until the platform under it is Healthy.
-        - matchExpressions:
-            - {key: homelab.wlkr.ch/stage, operator: In, values: [12-workloads]}
   syncPolicy:
     # Otherwise every generated Application gains the resources finalizer.
     preserveResourcesOnDeletion: true
@@ -66,13 +32,9 @@ spec:
       # templatePatch cannot set the project.
       project: "{{ .spec.project }}"
       destination: {}
-  # An Application without a stage would never be synced, so fail instead.
   templatePatch: |
-    {{- if not (index .metadata.labels "homelab.wlkr.ch/stage") }}
-    {{- fail (printf "%s has no homelab.wlkr.ch/stage label" .metadata.name) }}
-    {{- end }}
     metadata:
-      labels: {{ .metadata.labels | toJson }}
+      labels: {{ get .metadata "labels" | default dict | toJson }}
       annotations: {{ get .metadata "annotations" | default dict | toJson }}
       finalizers: {{ get .metadata "finalizers" | default list | toJson }}
     spec: {{ .spec | toJson }}

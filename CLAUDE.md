@@ -18,24 +18,22 @@ no app-of-apps tree.
   manifests it deploys. The generator copies that file's labels, annotations,
   finalizers and `spec` verbatim, so it is a complete Application, not a
   fragment.
-- Every `application.yaml` **must** carry a `homelab.wlkr.ch/stage` label. A
-  missing one fails the whole ApplicationSet rather than quietly skipping the
-  app.
-- Stages sync in order, and one starts only when every Application in the
-  previous stage is Synced **and** Healthy: `00-projects`, `01-crds`,
-  `02-network`, `03-controllers`, `04-storage`, `05-secrets`, `06-certificates`,
-  `07-ingress`, `08-services`, `09-backends`, `10-agents`, `11-policy`,
-  `12-workloads`.
-- **Nothing may depend on a later stage.** A resource that cannot apply, or
-  cannot go Healthy, until later deadlocks its stage. That is why the
-  `ClusterSecretStore` sits with OpenBao, the issuers and certificates are their
-  own `certificates` component, and the HTTPRoutes in `cilium`, `rook-ceph` and
-  `openbao` carry `argocd.argoproj.io/ignore-healthcheck`.
-- `RollingSync` switches auto-sync off on generated Applications: no self-heal,
-  and a sync that exhausts its `retry` waits for `argocd app sync <app>`.
-  Patching a generated Application's `spec` achieves nothing — the next
-  reconcile copies the file back over it. Only `argocd` itself and the
-  workload Applications, which are not under `RollingSync`, keep `selfHeal`.
+- Every `application.yaml` carries the same `syncPolicy`: `automated` with
+  `prune` and `selfHeal`, plus the `retry` block (limit 10, 30s backoff up to
+  5m). Copy it from any sibling. ArgoCD never re-attempts a failed sync of the
+  same revision without `retry`, so a component that lands a minute before
+  its CRDs stays failed until `argocd app sync <app>`.
+- **Nothing orders the Applications.** All of them sync at once and converge:
+  a missing kind fails the sync and retries, a resource that applies but
+  cannot go Ready just waits. Put a resource with what it needs, not with what
+  it configures: the `ClusterSecretStore` sits with OpenBao, the issuers and
+  certificates are their own `certificates` component.
+- A fresh cluster looks stuck at OpenBao: every `ExternalSecret` is Degraded
+  until `make bao-init`, `make bao-unseal` and `make bao-secrets`. Nothing
+  fails or times out there.
+- Patching a generated Application's `spec` achieves nothing — the next
+  reconcile copies the file back over it. That includes switching automated
+  sync off: the only rollback is a revert commit.
 
 The reasoning is in `docs/architecture/gitops.md`.
 
@@ -45,7 +43,7 @@ The reasoning is in `docs/architecture/gitops.md`.
   `argocd.argoproj.io/sync-options: Prune=false` and
   `argocd.argoproj.io/compare-options: IgnoreExtraneous`, and let that sync —
   ArgoCD reads both off the *live* object. Then move the file. Skip it and the
-  old owner either deletes the resource or stays OutOfSync and blocks its stage.
+  old owner deletes the resource before the new one recreates it.
 - **Deleting an Application by hand: strip
   `resources-finalizer.argocd.argoproj.io` first**, or the deletion cascades
   into everything that Application manages.
@@ -63,8 +61,8 @@ The reasoning is in `docs/architecture/gitops.md`.
 `docs/` is reference material, not an essay collection. It was condensed from
 57k to 37k words once; keep it there.
 
-- **Say each fact once, site-wide.** Stage gating, RollingSync and version
-  pins live in `docs/architecture/gitops.md`; the rollout order and the
+- **Say each fact once, site-wide.** The sync policy, bootstrap convergence
+  and version pins live in `docs/architecture/gitops.md`; the rollout order and the
   2.5x-peak memory rule in `docs/platform/index.md`; the OpenBao unseal
   consequences in `docs/platform/openbao.md`; the inventory variables in the
   Quickstart; the Renovate policy in `docs/development/maintenance.md`.
