@@ -2327,6 +2327,10 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td><code>policy.default: ""</code></td>
 <td>An authenticated user with no matching Authentik group gets no access, not read-only-everything</td>
 </tr>
+<tr>
+<td><code>timeout.reconciliation</code> and the ApplicationSets' <code>requeueAfterSeconds</code>, both one minute</td>
+<td>ArgoCD listens on a private address, so GitHub's webhook cannot reach it and a commit waits for the next poll. The two run separately: the first refreshes Applications, the second re-reads the generator paths. The repo-server caches a revision for the first, so it must not exceed the second or a new commit's files stay invisible to the generator until the cache expires</td>
+</tr>
 </tbody>
 </table>
 <p>The OIDC client ID and secret come from <code>kv/authentik/config</code>, the same OpenBao
