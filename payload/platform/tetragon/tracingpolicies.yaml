@@ -81,3 +81,49 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# What fires an alert: a container executing a binary that was not in its
+# image. A dropped binary has to live somewhere writable, and the image layer
+# is not, so this watches the writable paths every container has plus the
+# emptyDirs this cluster mounts binaries into. See docs/platform/tetragon.md
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: exec-from-writable-path
+spec:
+  kprobes:
+    - call: security_bprm_check
+      syscall: false
+      args:
+        - index: 0
+          type: linux_binprm
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /tmp/
+                - /var/tmp/
+                - /dev/shm/
+                - /run/
+                - /var/run/
+                - /shared/
+                - /controller/
+                - /plugins/
+            # The three binaries an init container legitimately copies into
+            # an emptyDir: Argo CD's dex, CloudNativePG's manager and
+            # Velero's AWS plugin.
+            - index: 0
+              operator: NotEqual
+              values:
+                - /shared/argocd-dex
+                - /controller/manager
+                - /plugins/velero-plugin-for-aws
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

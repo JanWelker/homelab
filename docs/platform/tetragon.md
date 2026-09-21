@@ -1,5 +1,5 @@
 ---
-description: "Runtime detection with Tetragon: what it records from every node, which two policies it enforces, and how the events reach Loki and Alertmanager."
+description: "Runtime detection with Tetragon: what it records from every node, which three policies it enforces, and how the events reach Loki and Alertmanager."
 ---
 
 # Tetragon
@@ -19,7 +19,7 @@ sees a shell spawned in a running container.
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
 | Health check | `kubectl get tracingpolicies -o wide`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
 | Dashboard | [Tetragon](https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
-| Files | `payload/platform/tetragon/`: the chart, two policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
+| Files | `payload/platform/tetragon/`: the chart, three policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
 ## Configuration
 
@@ -36,18 +36,29 @@ and runs privileged on the host network by the chart's default.
 
 ### Policies
 
-`tracingpolicies.yaml` carries two cluster-scoped `TracingPolicy` objects.
-Both post at most one event per minute per selector.
+`tracingpolicies.yaml` carries three cluster-scoped `TracingPolicy` objects.
+All post at most one event per minute per selector.
 
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
 | `sensitive-file-access` | `security_file_permission` | A read under `/etc/kubernetes/pki/`, `/etc/kubernetes/enc/`, `/var/lib/etcd/` or `/var/lib/kubelet/pki/` by anything but the control-plane binaries, `kubeadm` and `kube-vip`; any read of `/etc/shadow` or the admin kubeconfigs by anything but `kube-vip` and `kubeadm` | Yes: `TetragonSensitiveFileAccess` |
 | `process-creds-changed` | `commit_creds` | Any credential change in a container, from the upstream example | No; a record for the exec alert to be read against |
+| `exec-from-writable-path` | `security_bprm_check` | A container executing a file under `/tmp/`, `/var/tmp/`, `/dev/shm/`, `/run/`, `/var/run/`, `/shared/`, `/controller/` or `/plugins/`, except the three binaries an init container copies there | Yes: `TetragonExecFromWritablePath` |
 
 The allow list in the first policy is the set of things that read key material
 in steady state, found by listing what fired. Add a binary there only after
 confirming it in the export; a person running `cat` on a node is exactly what
 the policy is for.
+
+The third policy is the runtime half of an image check: nothing in an image
+lives on those paths, so a binary executing from one was written after the
+container started. An emptyDir can be mounted anywhere, so the policy names
+the mounts this cluster puts binaries into rather than every emptyDir;
+`kubectl get pods -A -o json` lists the rest. A `readOnlyRootFilesystem`
+pod makes the check complete, since then a new binary has nowhere else to
+land. The offline half, every binary Tetragon saw executed diffed against
+the image's file list, needs no policy: query Loki by image and binary and
+resolve each path in `crane export <image> - | tar t`.
 
 ## Usage
 

@@ -28,6 +28,25 @@ spec:
               one of the control-plane binaries. The event, with the path and
               arguments, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
+        - alert: TetragonExecFromWritablePath
+          expr: |
+            sum by (namespace, pod, binary) (
+              increase(tetragon_policy_events_total{policy="exec-from-writable-path"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.namespace }}/{{ $labels.pod }} ran a binary from a writable path
+            description: >-
+              A process in {{ $labels.namespace }}/{{ $labels.pod }} executed
+              a file under /tmp, /var/tmp, /dev/shm, /run or one of the
+              emptyDirs that carry binaries here, and it is not one an init
+              container is known to put there. Nothing in an image lives on
+              those paths, so the binary was written after the container
+              started. The event, with the path and the parent process, is in
+              Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="exec-from-writable-path".
         - alert: TetragonPolicyNotLoaded
           expr: |
             tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
