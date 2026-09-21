@@ -29,6 +29,14 @@ spec:
               - secretRef:
                   name: authentik-secrets-nextcloud
                   optional: true
+            # Pod-level for server and worker. The image runs as uid 1000 and
+            # binds unprivileged ports; the per-deployment container contexts
+            # below drop the rest. Read-only root is not attempted: the image
+            # writes under /media and /templates at start.
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
 
           authentik:
             log_level: info
@@ -48,6 +56,12 @@ spec:
 
           server:
             replicas: 2
+            containerSecurityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
             # Both switches needed: serviceMonitor alone renders nothing.
             metrics:
               enabled: true
@@ -62,6 +76,12 @@ spec:
 
           worker:
             replicas: 1
+            containerSecurityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
 
             # Bump this whenever authentik-secrets gains a key.
             #
