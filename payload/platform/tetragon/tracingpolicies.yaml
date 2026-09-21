@@ -124,7 +124,8 @@ spec:
                 - CAP_SYS_PTRACE
                 - CAP_SYS_RAWIO
                 - CAP_NET_ADMIN
-                - CAP_DAC_OVERRIDE
+                # Upstream's enum spells this one without the prefix.
+                - DAC_OVERRIDE
                 - CAP_SETUID
                 - CAP_SETGID
                 - CAP_BPF
@@ -548,7 +549,7 @@ spec:
           type: file
         - index: 1
           # PROT_READ is 1, PROT_WRITE 2, PROT_EXEC 4; unsigned long in the kernel
-          type: ulong
+          type: uint64
       selectors:
         - matchArgs:
             - index: 0
