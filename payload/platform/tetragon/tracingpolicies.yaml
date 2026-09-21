@@ -1,6 +1,7 @@
 ---
 # What fires an alert: a read of the cluster's key material by anything that is
-# not the control plane. See docs/platform/tetragon.md
+# not the control plane, or a write to the files that grant a login, root or
+# code in every process. See docs/platform/tetragon.md
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -58,6 +59,38 @@ spec:
               values:
                 - /kube-vip
                 - /usr/bin/kubeadm
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+        # Persistence: a user, a sudo rule, a preloaded library or a cron job.
+        # 2 is MAY_WRITE; Mask so an append counts too.
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - /etc/passwd
+                - /etc/shadow
+                - /etc/group
+                - /etc/sudoers
+                - /etc/ld.so.preload
+            - index: 1
+              operator: Mask
+              values:
+                - "2"
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /etc/sudoers.d/
+                - /etc/cron.d/
+                - /root/.ssh/
+            - index: 1
+              operator: Mask
+              values:
+                - "2"
           matchActions:
             - action: Post
               rateLimit: 1m
