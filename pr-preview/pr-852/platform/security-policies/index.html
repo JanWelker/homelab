@@ -2594,11 +2594,6 @@ an informed change.</p>
 <td>Cilium, kube-vip and the control plane use host networking and host paths</td>
 </tr>
 <tr>
-<td><code>rook-ceph</code></td>
-<td><code>privileged</code></td>
-<td>OSDs need raw block devices</td>
-</tr>
-<tr>
 <td><code>monitoring</code></td>
 <td><code>privileged</code></td>
 <td>node-exporter is host-networked and reads <code>/proc</code> and <code>/sys</code></td>
@@ -2695,16 +2690,8 @@ default-deny.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>kube-system</code></td>
-<td>Holds Cilium itself, the static control-plane pods and kube-vip</td>
-</tr>
-<tr>
 <td><code>backup</code></td>
 <td>A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd</td>
-</tr>
-<tr>
-<td><code>argocd</code>, <code>authentik</code></td>
-<td>Already carry <code>NetworkPolicy</code> objects from their own charts</td>
 </tr>
 </tbody>
 </table>
