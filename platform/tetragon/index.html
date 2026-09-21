@@ -2421,8 +2421,8 @@ watch containers only: the host has the node journal.</p>
 <tr>
 <td><code>privileges-raise</code></td>
 <td><code>create_user_ns</code>, the <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
-<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. The alert filters out <code>runc</code>, which does the latter on every container start</td>
-<td>Yes: <code>TetragonPrivilegesRaised</code></td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (<code>runc</code> on every container start, busybox applets, <code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code></td>
+<td>Yes: <code>TetragonUserNamespaceCreated</code></td>
 </tr>
 <tr>
 <td><code>bpf-program-load</code></td>
@@ -2479,6 +2479,15 @@ binary raising privileges, a fileless exec and a deleted binary. They are
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>tracingpolicies<span class="w"> </span>-o<span class="w"> </span>wide<span class="w">     </span><span class="c1"># STATE should be enabled</span>
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">A first hit is a new series, and <code>increase()</code> of one sample is zero</p>
+<p><code>tetragon_policy_events_total</code> has a pod label, so the first hit from a
+pod creates a counter series inside the alert window and <code>increase()</code>
+reports nothing until the second scrape moves it. Every policy alert
+therefore also matches a series absent ten minutes ago, with
+<code>unless ... offset 10m</code>. Copy that shape for a new alert, and test it
+with a pod that fires once, not with one that keeps firing.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">A policy that does not load is silent</p>
 <p>A <code>TracingPolicy</code> naming a kernel function this kernel does not export sits in state <code>error</code> and watches nothing. <code>TetragonPolicyNotLoaded</code> fires after ten minutes; check <code>kubectl get tracingpolicies -o wide</code> after every Flatcar release that moves the kernel.</p>
