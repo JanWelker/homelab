@@ -7,9 +7,9 @@ metadata:
 spec:
   description: >-
     Default-deny ingress for kubelet-csr-approver. Two replicas that watch
-    CertificateSigningRequests and lease-elect between themselves through the
-    API server rather than directly, so nothing needs to reach them except
-    Prometheus and the kubelet's probes.
+    CertificateSigningRequests and lease-elect through the API server
+    rather than directly, so nothing needs to reach them except Prometheus
+    on the metrics port and the kubelet's probes.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -20,3 +20,39 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: kubelet-csr-approver
+spec:
+  description: >-
+    Default-deny egress for kubelet-csr-approver. The API server is its
+    only peer; it does not even resolve names, since the provider prefixes
+    are configured and DNS resolution is bypassed.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
