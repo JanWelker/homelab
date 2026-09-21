@@ -16,7 +16,7 @@
         <link rel="prev" href="../monitoring/">
       
       
-        <link rel="next" href="../metrics-server/">
+        <link rel="next" href="../tetragon/">
       
       
         
@@ -298,6 +298,8 @@
       
         
           
+        
+      
         
       
         
@@ -964,6 +966,8 @@
       
         
       
+        
+      
     
     
     
@@ -1526,6 +1530,33 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2285,6 +2316,8 @@
       
         
       
+        
+      
     
     
     
@@ -2404,9 +2437,16 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 <td><code>/var/log/kubernetes/audit/audit.log</code></td>
 <td><code>verb</code>, <code>audit_level</code>, <code>node</code>, <code>job="kubernetes-audit"</code></td>
 </tr>
+<tr>
+<td>Hubble policy verdicts</td>
+<td><code>/var/run/cilium/hubble/events.log</code></td>
+<td><code>verdict</code>, <code>node</code>, <code>job="hubble"</code></td>
+</tr>
 </tbody>
 </table>
-<p>All three are on the root filesystem, so one <code>varlog: true</code> mount covers them.
+<p>The first three are on the root filesystem, so one <code>varlog: true</code> mount covers
+them; the Hubble export is a separate read-only hostPath — see
+<a href="../cilium/#configuration">Cilium</a>.
 The audit log exists only on the control-plane nodes; Alloy runs everywhere and
 <code>local.file_match</code> finds nothing on the workers. Audit events keep only <code>verb</code>
 and <code>audit_level</code> as labels — small closed sets — while user and resource stay
@@ -2643,13 +2683,13 @@ healthy pods means the control-plane agents are not reading the file.</p>
         
         
           
-          <a href="../metrics-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Metrics Server">
+          <a href="../tetragon/" class="md-footer__link md-footer__link--next" aria-label="Next: Tetragon">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Metrics Server
+                Tetragon
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -328,6 +328,8 @@
       
         
       
+        
+      
     
     
     
@@ -960,6 +962,8 @@
       
         
       
+        
+      
     
     
     
@@ -1349,6 +1353,33 @@
     
   
   Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
 
     
   </span>
@@ -2239,6 +2270,11 @@ everything, and Renovate, which chases dependencies.</p>
 <td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped</td>
 </tr>
 <tr>
+<td><code>image-scan.yaml</code></td>
+<td>pull requests under <code>payload/**</code></td>
+<td><code>scripts/image-scan-diff.py</code>: renders every Application on <code>main</code> and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already <a href="../../operations/vulnerabilities/#filing-policy">waiting on a release</a> does not block the bump that gets closer to it</td>
+</tr>
+<tr>
 <td><code>renovate-validate.yaml</code></td>
 <td><code>renovate.json</code></td>
 <td><code>renovate-config-validator</code></td>
@@ -2259,6 +2295,10 @@ so a failing update never holds up an unrelated one.</p>
 <li><strong>Patch and minor updates automerge; majors wait for a human.</strong> One rule for
     everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
     the same way a Grafana chart patch does.</li>
+<li><strong>Three days between a release and its PR</strong> for images and charts
+    (<code>minimumReleaseAge</code>): long enough for an upstream to pull a broken or
+    compromised tag, short enough that a fix arrives the same week. Renovate
+    lifts it for its own vulnerability-alert PRs.</li>
 <li><strong><code>prometheus-operator-crds</code> must not lag <code>kube-prometheus-stack</code>.</strong> Merge
     the CRD bump first, or both together.</li>
 <li><strong>Flatcar, Kubernetes and containerd bumps change what a newly provisioned
