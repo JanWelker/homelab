@@ -77,13 +77,12 @@ Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 A rule that is word-for-word the same in every namespace file is lifted
 into `cluster-wide.yaml`, selecting every endpoint that has a namespace and
 with `enableDefaultDeny` off in both directions. The selector is not `{}`
-because that also takes the Gateway's `reserved:ingress` endpoint, and any
-rule on it makes the Gateway's Envoy answer `403 Access denied` to every
-caller from inside the cluster. Default deny is off because a cluster-wide
-egress rule would otherwise put every pod in a namespace without policies
-into egress default-deny. DNS is the only rule lifted; the intra-namespace
-and node-probe rules would qualify but change what a namespace file says,
-so they stay.
+because that also takes the Gateway's `reserved:ingress` endpoint and the
+health endpoint, which then carry a policy they have no use for. Default
+deny is off because a cluster-wide egress rule would otherwise put every
+pod in a namespace without policies into egress default-deny. DNS is the
+only rule lifted; the intra-namespace and node-probe rules would qualify
+but change what a namespace file says, so they stay.
 
 #### What every policy contains
 
@@ -93,7 +92,7 @@ so they stay.
 | Ingress from `host` and `remote-node` | Kubelet probes come from the node, and so do the API server's webhook calls, the aggregation layer and `kubectl port-forward`; all of them carry the node's identity, on a control-plane node with the `kube-apiserver` label as well |
 | Ingress from `ingress` | Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits `authentik` instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic |
 | Ingress from `monitoring` on the scraped port, `GET /metrics` | The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else |
-| Egress within the namespace, to kube-dns with a DNS rule, and to `kube-apiserver` where there is a Kubernetes client | `toFQDNs` only works when the DNS proxy sees the answers; `matchPattern: "*"` refuses nothing and makes every lookup visible in Hubble. The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address |
+| Egress within the namespace, and to `kube-apiserver` where there is a Kubernetes client | The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address. DNS is not repeated: the cluster-wide rule above sends every lookup through the proxy, which is what makes `toFQDNs` work and every lookup visible in Hubble |
 | Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
 | Egress to the backend pod as well, when the name is one the Gateway serves | The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers `403 Access denied` itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules |
 | HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them |
