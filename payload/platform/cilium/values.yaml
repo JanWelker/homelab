@@ -5,6 +5,11 @@ ipam:
 # Explicitly set device to avoid auto-detection issues
 devices: "en+"
 
+# Every pod that reads cilium-config or cilium-envoy-config at startup rolls
+# when it changes, so a merged value is live without a hand restart, and a
+# bad one fails at merge time; see docs/platform/cilium.md.
+rollOutCiliumPods: true
+
 kubeProxyReplacement: true
 # Only change once the new address answers; see docs/platform/cilium.md.
 k8sServiceHost: 10.9.2.1
@@ -23,6 +28,7 @@ dashboards:
 # cilium-agent has no memory limit on purpose; see docs/platform/cilium.md.
 operator:
   replicas: 1
+  rollOutPods: true
   prometheus:
     enabled: true
     serviceMonitor:
@@ -37,6 +43,7 @@ operator:
       memory: 256Mi
 
 envoy:
+  rollOutPods: true
   resources:
     requests:
       cpu: 25m
@@ -60,13 +67,13 @@ encryption:
 
 # Every policy is evaluated and logged, none enforced, for the observation week
 # of the egress rollout; see docs/platform/security-policies.md#rollout.
-# Applies at agent restart, not on sync. L7 rules are never audited.
+# L7 rules are never audited.
 policyAuditMode: true
 
 hubble:
   enabled: true
   metrics:
-    # Dashboards need these labels. Applies at agent restart, not on sync.
+    # Dashboards need these labels.
     enabled:
       - dns:labelsContext=source_namespace,destination_namespace
       - drop:labelsContext=source_namespace,destination_namespace
@@ -113,6 +120,7 @@ hubble:
         - node_name
   relay:
     enabled: true
+    rollOutPods: true
     resources:
       requests:
         cpu: 10m
@@ -121,6 +129,7 @@ hubble:
         memory: 128Mi
   ui:
     enabled: true
+    rollOutPods: true
     backend:
       resources:
         requests:

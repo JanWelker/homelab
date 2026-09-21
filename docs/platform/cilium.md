@@ -31,9 +31,10 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
 | `encryption.type: wireguard` | Transparent node-to-node encryption |
 | Hubble, behind the [Authentik](authentik.md) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost and a ReferenceGrant in `payload/platform/authentik/` permits the cross-namespace reference |
-| Hubble metrics labelled by namespace | The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. The agent reads the list at startup, so a change lands on reboot or upgrade, not on sync |
-| `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](logging.md) tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and of the requests the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second on a cluster this size, where the proxied requests are a few. Like the metrics list, the agent reads it at startup |
-| `policyAuditMode` | Verdicts are logged, not enforced, for the observation week of a policy rollout — see [Security Policies](security-policies.md#rollout). Cluster-wide, read at agent startup, and blind to L7 rules |
+| Hubble metrics labelled by namespace | The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. |
+| `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](logging.md) tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and of the requests the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second on a cluster this size, where the proxied requests are a few. |
+| `policyAuditMode` | Verdicts are logged, not enforced, for the observation week of a policy rollout — see [Security Policies](security-policies.md#rollout). Cluster-wide, and blind to L7 rules |
+| `rollOutCiliumPods` and the four `rollOutPods` | The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to `cilium-config` is a rolling restart of the CNI on all six nodes: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the [`k8sServiceHost` pitfall](#pitfalls) bites at merge, not later |
 | `prometheusrule.yaml` | `HubblePolicyDrops`: fifteen minutes of `POLICY_DENIED` drops between two namespaces, above a trickle. `VLAN_FILTERED` and `STALE_OR_UNROUTABLE_IP` dominate the raw counter and are the LAN, not a policy |
 | `cilium-agent` without a memory limit | It is the one process whose death takes pod networking with it, and it cannot be sized from a day of steady state |
 | `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `01-crds` has synced, and the diff preview's throwaway cluster |
@@ -45,10 +46,10 @@ Helm, because no pod runs without a CNI and ArgoCD is a pod; ArgoCD then
 adopts the release. The version comes from `targetRevision` in
 `application.yaml` — see [Version pins](../architecture/gitops.md).
 
-The bootstrap install uses the same `values.yaml`, and has to: the agent and
-operator do not restart when `cilium-config` changes, so a slimmer bootstrap
-config would keep running after ArgoCD "fixed" it. The Gateway API CRDs go in
-first for the same reason — the operator checks for them once, at startup. The
+The bootstrap install uses the same `values.yaml`, and has to: the pods roll
+whenever `cilium-config` changes, so a slimmer bootstrap config would restart
+every agent the moment ArgoCD adopts the release. The Gateway API CRDs go in
+first because the operator checks for them once, at startup. The
 one difference is the three `serviceMonitor.enabled` flags, which `make` turns
 off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
 the monitors back on adoption, rolling the agent and operator once.
