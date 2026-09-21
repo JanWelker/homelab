@@ -1,0 +1,153 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: rook-ceph
+spec:
+  description: >-
+    Default-deny ingress for Rook and Ceph. The daemons talk among
+    themselves within the namespace: mons in quorum, OSDs replicating and
+    heartbeating, the mgr polling everything, the operator driving it. The
+    node is a Ceph client too, on every port: the kernel maps RBD volumes
+    from the host and the CSI node plugin runs there, so mons, mgr and OSDs
+    see them as host and remote-node. From other namespaces: Prometheus
+    reads the mgr and the exporters, the Authentik outpost proxies the
+    dashboard, and Loki and Velero write to the object store. S3 carries
+    every backup and log chunk, so it stays at L4.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9283"
+              protocol: TCP
+            - port: "9926"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+            k8s:app.kubernetes.io/name: authentik
+            k8s:app.kubernetes.io/component: server
+      toPorts:
+        - ports:
+            - port: "7000"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: logging
+            k8s:app.kubernetes.io/name: loki
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: backup
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: rook-ceph
+spec:
+  description: >-
+    Default-deny egress for Rook and Ceph. Every daemon dials its peers by
+    Service name within the namespace; nothing here has a reason to leave
+    the cluster. The API server and the monitoring stack are per workload
+    below.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: rook-controllers
+  namespace: rook-ceph
+spec:
+  description: >-
+    The operator, the CSI operator and the CSI controller plugin's sidecars
+    reconcile through the API server. The Ceph daemons themselves never
+    touch it.
+  endpointSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - rook-ceph-operator
+          - rook-ceph.rbd.csi.ceph.com-ctrlplugin
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ceph-csi-operator
+  namespace: rook-ceph
+spec:
+  description: >-
+    The ceph-csi operator reconciles its Driver and OperatorConfig
+    through the API server.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: ceph-csi
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: rook-ceph-mgr
+  namespace: rook-ceph
+spec:
+  description: >-
+    The dashboard module reads Prometheus for its alerts and Grafana for
+    the panels it embeds.
+  endpointSelector:
+    matchLabels:
+      app: rook-ceph-mgr
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: grafana
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
