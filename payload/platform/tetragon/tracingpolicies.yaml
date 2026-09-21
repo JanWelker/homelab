@@ -590,3 +590,47 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# What fires an alert: a container resolving names anywhere but CoreDNS.
+# Every pod is handed the cluster resolver; a query to another server is
+# a hard-coded resolver in an image, a tunnel, or exfiltration. ip_output
+# sees TCP and UDP alike, so the unconnected sends musl makes count too.
+# The address is the kube-dns ClusterIP; CoreDNS itself forwards upstream
+# from kube-system and the alert leaves that out.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: dns-outside-cluster
+spec:
+  kprobes:
+    - call: ip_output
+      syscall: false
+      message: DNS query to a resolver other than CoreDNS
+      tags:
+        - observability.network
+      args:
+        - index: 2
+          type: skb
+      selectors:
+        - matchArgs:
+            - index: 2
+              operator: Protocol
+              values:
+                - IPPROTO_TCP
+                - IPPROTO_UDP
+            - index: 2
+              operator: DPort
+              values:
+                - "53"
+            - index: 2
+              operator: NotDAddr
+              values:
+                - 10.96.0.10
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

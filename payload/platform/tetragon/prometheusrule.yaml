@@ -161,6 +161,27 @@ spec:
               emptyDir was mapped with PROT_EXEC: a shared library that was not
               in the image. Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="library-from-writable-path".
+        - alert: TetragonDnsOutsideCluster
+          expr: |
+            sum by (namespace, pod, binary) (
+                increase(tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"}
+              unless
+                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"} offset 10m
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} sent DNS past CoreDNS
+            description: >-
+              A query on port 53 to something other than the cluster
+              resolver. CoreDNS forwards upstream from kube-system and is
+              left out; anything else has a resolver of its own, which is
+              how DNS tunnels and exfiltration look. The event carries the
+              destination: {container="export-stdout"} | json |
+              process_kprobe_policy_name="dns-outside-cluster".
         - alert: TetragonPolicyNotLoaded
           expr: |
             tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
