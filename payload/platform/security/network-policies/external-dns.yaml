@@ -6,10 +6,10 @@ metadata:
   namespace: external-dns
 spec:
   description: >-
-    Default-deny ingress for external-dns. It is a pure client -- it reads
-    HTTPRoutes from the API server and writes records to Route53 -- and the
-    only thing that connects *to* it is Prometheus, on the metrics port its
-    ServiceMonitor scrapes.
+    Default-deny ingress for external-dns. It is a pure client that reads
+    HTTPRoutes from the API server and writes records to Route53; the only
+    things that connect to it are the node for probes and Prometheus on the
+    metrics port.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -20,3 +20,45 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "7979"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: external-dns
+spec:
+  description: >-
+    Default-deny egress for external-dns: the API server for the routes and
+    Route53 for the records, every minute. Without Route53 a new hostname
+    gets no record and existing ones are left alone.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+    - toFQDNs:
+        - matchName: route53.amazonaws.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
