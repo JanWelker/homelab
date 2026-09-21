@@ -4,10 +4,11 @@ description: "Pod Security Admission levels per namespace and the first default-
 
 # Security Policies
 
-Three cluster-wide controls: Pod Security Admission, default-deny ingress
-network policy, and no API token on the `default` ServiceAccount. Each is
-easy to turn on and hard to turn on safely, so the pattern is the same for
-all three: measure first, enforce second, one namespace at a time.
+Four cluster-wide controls: Pod Security Admission, default-deny ingress
+network policy, no API token on the `default` ServiceAccount, and two
+admission policies on image references. Each is easy to turn on and hard to
+turn on safely, so the pattern is the same for all of them: measure first,
+enforce second, one namespace at a time.
 
 ## At a glance
 
@@ -17,7 +18,7 @@ all three: measure first, enforce second, one namespace at a time.
 | Stage | `11-policy`, last, so it labels namespaces that already exist |
 | Depends on | [Cilium](cilium.md) to enforce the network policies |
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
-| Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce` |
+| Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |
 | Pruning | **Disabled.** Pruning a Namespace deletes everything inside it, PVCs included |
 | Files | `payload/platform/security/` |
 
@@ -110,7 +111,35 @@ certificates and "very likely fine" is not the standard, and `authentik`,
 where `authentik-server` sets no `serviceAccountName` — an upstream chart
 default, to be fixed at the source.
 
+### Admission policies
+
+Trivy reports a bad image after it is running; `admission-policies.yaml`
+refuses or records it at admission, with the built-in
+`ValidatingAdmissionPolicy` rather than a policy engine. Both match Pods and
+every controller that produces them, so a bad Deployment is rejected at
+`kubectl apply` rather than failing quietly in its ReplicaSet.
+
+| Policy | Action | Why |
+| --- | --- | --- |
+| `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
+| `image-registry-allowed` | `Audit` and `Warn` | The registries the cluster pulls from today; a reference with no registry counts as `docker.io`. Recorded to the [audit log](../architecture/audit-logging.md) and shown to whoever applies, not enforced, until the record is clean |
+
+Both carry `failurePolicy: Ignore`: an expression that errors lets the request
+through rather than stopping every pod in the cluster. A real violation is
+still refused.
+
 ## Usage
+
+### Promoting the registry allowlist
+
+1. Confirm nothing running would be refused, over the full Loki retention:
+
+    ```logql
+    {job="kubernetes-audit"} |= "validation.policy.admission.k8s.io/validation_failure" |= "image-registry-allowed"
+    ```
+
+2. Change `validationActions` on the binding in `admission-policies.yaml` to
+   `["Deny"]`.
 
 ### Tightening a namespace
 
@@ -153,6 +182,7 @@ kubectl -n kube-system exec ds/cilium -- \
 ```bash
 kubectl get ns -L pod-security.kubernetes.io/enforce
 kubectl get cnp -A
+kubectl get validatingadmissionpolicy
 ```
 
 ## Pitfalls
