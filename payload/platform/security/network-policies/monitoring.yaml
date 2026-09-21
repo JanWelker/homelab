@@ -156,10 +156,6 @@ spec:
         - matchExpressions:
             - key: k8s:io.kubernetes.pod.namespace
               operator: Exists
-      toPorts:
-        - ports:
-            - port: "0"
-              protocol: TCP
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
