@@ -2375,7 +2375,7 @@ and runs privileged on the host network by the chart's default.</p>
 </tr>
 <tr>
 <td>Memory limit</td>
-<td>2.5x the measured working set of the busiest agent on the first day, per the <a href="../#components">platform rule</a>; the dashboard's first row shows the current worst node against it</td>
+<td>2.5x the measured working set of the busiest agent with the policy library loaded, per the <a href="../#components">platform rule</a>; the dashboard's first row shows the current worst node against it</td>
 </tr>
 </tbody>
 </table>
@@ -2403,8 +2403,8 @@ watch containers only: the host has the node journal.</p>
 <tr>
 <td><code>process-creds-changed</code></td>
 <td><code>commit_creds</code></td>
-<td>Any credential change in a container, from the upstream example</td>
-<td>No; a record for the exec alert to be read against</td>
+<td>A container process that gained a dangerous capability since its exec, or moved into another mount, pid, network or user namespace. The hook runs on every execve and fork; the two selectors keep the exploit signal and drop the rest</td>
+<td>Yes: <code>TetragonCredentialsEscalated</code></td>
 </tr>
 <tr>
 <td><code>exec-from-writable-path</code></td>
@@ -2421,7 +2421,7 @@ watch containers only: the host has the node journal.</p>
 <tr>
 <td><code>privileges-raise</code></td>
 <td><code>create_user_ns</code>, the <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
-<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (<code>runc</code> on every container start, busybox applets, <code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code></td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (busybox applets, <code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code>. <code>runc</code>, which sets the ids on every container start, is dropped in the kernel</td>
 <td>Yes: <code>TetragonUserNamespaceCreated</code></td>
 </tr>
 <tr>
