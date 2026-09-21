@@ -139,6 +139,11 @@ spec:
 
           postgresql:
             enabled: true
+            # The subchart's NetworkPolicy allows the database every egress,
+            # and Cilium unions it with the policy in
+            # payload/platform/security/network-policies/authentik.yaml.
+            networkPolicy:
+              enabled: false
             image:
               # Same 17.11, Debian 13 base. The chart's own default is
               # -bookworm and nothing tracks it.
