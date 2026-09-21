@@ -109,31 +109,34 @@ spec:
     In client-server mode the scan job pulls the image layers itself, so
     it needs every registry the cluster pulls from and the CDNs behind
     them: Docker Hub and its Cloudflare storage, Quay and its Akamai edge,
-    GitHub's container registry, the Kubernetes registry and the Google
-    and Amazon storage it redirects to, the Google mirror and Amazon's
-    public registry. The registry allowlist in admission-policies.yaml is
-    the list to keep this in step with.
+    GitHub's container registry, the Kubernetes registry with its CDN and
+    the Google and Amazon storage it redirects to, the Google mirror and
+    Amazon's public registry. The patterns start with two stars because a
+    single star stops at a dot, and the CDN names sit two labels deep. The
+    registry allowlist in admission-policies.yaml is the list to keep this
+    in step with.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/managed-by: trivy-operator
   egress:
     - toFQDNs:
         - matchName: docker.io
-        - matchPattern: "*.docker.io"
-        - matchPattern: "*.docker.com"
-        - matchPattern: "*.cloudflarestorage.com"
+        - matchPattern: "**.docker.io"
+        - matchPattern: "**.docker.com"
+        - matchPattern: "**.cloudflarestorage.com"
         - matchName: quay.io
-        - matchPattern: "*.quay.io"
+        - matchPattern: "**.quay.io"
         - matchName: ghcr.io
-        - matchPattern: "*.githubusercontent.com"
+        - matchPattern: "**.githubusercontent.com"
         - matchName: registry.k8s.io
-        - matchPattern: "*.pkg.dev"
+        - matchPattern: "**.registry.k8s.io"
+        - matchPattern: "**.pkg.dev"
         - matchName: storage.googleapis.com
-        - matchPattern: "*.amazonaws.com"
+        - matchPattern: "**.amazonaws.com"
         - matchName: mirror.gcr.io
         - matchName: public.ecr.aws
         - matchName: ecr-public.aws.com
-        - matchPattern: "*.cloudfront.net"
+        - matchPattern: "**.cloudfront.net"
       toPorts:
         - ports:
             - port: "443"
