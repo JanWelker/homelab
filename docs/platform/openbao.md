@@ -52,13 +52,15 @@ flowchart LR
 
 ### Audit devices
 
-Two, enabled by `scripts/bao-audit.sh` (`make bao-audit`, also the last step
-of `make bao-init`): a `file` device on the audit PVC, and a second `file`
-device on `stdout`, which [Alloy](logging.md) ships to Loki with the rest of
-the container's output. Without one, who read which secret is recorded
-nowhere; with only one, a full PVC would make OpenBao refuse every request,
-because a request no enabled device can log is refused. Values are HMACed in
-both; paths and identities are not.
+Two, declared as `audit` stanzas in the server config in `application.yaml`
+(this OpenBao refuses `bao audit enable` over the API): a `file` device on the
+audit PVC, and a second `file` device on `stdout`, which [Alloy](logging.md)
+ships to Loki with the rest of the container's output. Without one, who read
+which secret is recorded nowhere; with only one, a full PVC would make OpenBao
+refuse every request, because a request no enabled device can log is refused.
+Values are HMACed in both; paths and identities are not. The config is read at
+start-up, and the StatefulSet updates `OnDelete`, so a change lands when each
+pod next restarts — see [Unsealing after a restart](#unsealing-after-a-restart).
 
 `OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](logging.md#alerting)
 fires on a `kv/data/` read by anything but the External Secrets Operator's
@@ -139,13 +141,6 @@ bao write auth/kubernetes/role/external-secrets \
 
     ```bash
     kubectl get clustersecretstore openbao
-    ```
-
-4. On a cluster initialised before the audit devices existed, enable them
-   once; the root token comes from the key file or a prompt:
-
-    ```bash
-    make bao-audit
     ```
 
 ### Authenticating locally

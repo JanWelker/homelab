@@ -13,9 +13,8 @@
 #   4. enable the kubernetes auth method and point it at the TokenReview API
 #   5. write the external-secrets policy and the role bound to ESO's
 #      ServiceAccount
-#   6. enable the audit devices (scripts/bao-audit.sh)
 #
-# Steps 3-6 are skipped individually if they are already in place, so this is
+# Steps 3-5 are skipped individually if they are already in place, so this is
 # safe to re-run against a half-finished bootstrap. Step 1 is not re-runnable
 # by design: an initialised cluster is left alone.
 set -euo pipefail
@@ -132,8 +131,6 @@ bao write auth/kubernetes/role/external-secrets \
   policies=external-secrets \
   ttl=1h >/dev/null
 echo "    external-secrets      role bound to ${ESO_NAMESPACE}/${ESO_SERVICEACCOUNT}"
-
-NAMESPACE="$NAMESPACE" POD="$POD" KEYFILE="$KEYFILE" scripts/bao-audit.sh
 
 cat <<EOF
 
