@@ -149,12 +149,24 @@ spec:
   description: >-
     Every login and token refresh calls Authentik through its public name,
     which resolves to the infra Gateway's own address. Cilium classifies that
-    hairpin as world, so the rule names the address by its FQDN. Without it
-    the login hangs, and the local admin is disabled.
+    hairpin as world, so one rule names the address by its FQDN. The
+    Gateway's Envoy then checks this policy again against the Authentik
+    server pod it picks, and answers 403 itself when the pod is not
+    listed, audit mode or not, so the second rule names the pod. Without
+    both the login fails, and the local admin is disabled.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argocd-server
   egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+            k8s:app.kubernetes.io/name: authentik
+            k8s:app.kubernetes.io/component: server
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
     - toFQDNs:
         - matchName: auth.infra.k8s.wlkr.ch
       toPorts:
