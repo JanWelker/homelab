@@ -59,8 +59,11 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# A record, not an alert: every credential change inside a container. From
-# the upstream example process-creds-installed.yaml.
+# What fires an alert: a container process whose credentials grew after it
+# started. commit_creds runs on every execve, fork and setuid, which is a
+# record nobody reads; the two selectors keep only a process that gained a
+# dangerous capability since its exec, or moved into another namespace,
+# which is what a kernel exploit or an escape leaves behind.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -73,7 +76,35 @@ spec:
         - index: 0
           type: cred
       selectors:
-        - matchNamespaces:
+        - matchCapabilityChanges:
+            - type: Effective
+              operator: In
+              values:
+                - CAP_SYS_ADMIN
+                - CAP_SYS_MODULE
+                - CAP_SYS_PTRACE
+                - CAP_SYS_RAWIO
+                - CAP_NET_ADMIN
+                - CAP_DAC_OVERRIDE
+                - CAP_SETUID
+                - CAP_SETGID
+                - CAP_BPF
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+        - matchNamespaceChanges:
+            - operator: In
+              values:
+                - Mnt
+                - Pid
+                - Net
+                - User
+          matchNamespaces:
             - namespace: Pid
               operator: NotIn
               values:
@@ -175,6 +206,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -194,6 +232,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -215,6 +260,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -236,6 +288,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -260,6 +319,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -283,6 +349,13 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc sets the container's ids on every start; the busybox in
+          # redis-ha and logrotate in Ceph re-assert root, which is the
+          # record this policy keeps.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
