@@ -100,6 +100,9 @@ bao-unseal:
 bao-secrets:
 	scripts/bao-secrets.sh
 
+bao-audit:
+	scripts/bao-audit.sh
+
 # Without LIMIT this arms every node, and the firmware boots network-first: a
 # power cut after that reinstalls all three control planes and every Ceph OSD.
 # make clean asks before deleting the credentials; this asks before that.

@@ -37,7 +37,7 @@ flowchart LR
 | Property | Value |
 | --- | --- |
 | Mode | HA, 3 replicas, integrated Raft on a Ceph PVC per replica |
-| Audit storage | Separate PVC on `rook-ceph-block` |
+| Audit storage | Separate PVC on `rook-ceph-block`, written by the `file` audit device — see [Audit devices](#audit-devices) |
 | TLS | Terminates at the Gateway; plain HTTP at `http://openbao.openbao.svc.cluster.local:8200` |
 | Seal | Shamir, 5 shares, threshold 3, unsealed by hand |
 | Chart | Upstream [`openbao/openbao-helm`](https://github.com/openbao/openbao-helm), pinned in `application.yaml` |
@@ -49,6 +49,24 @@ flowchart LR
 | `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200 |
 | `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it as they start. `service_registration "kubernetes"` only labels pods `active` and `standby` |
 | `serverTelemetry.grafanaDashboard` | Renders OpenBao's upstream dashboard (grafana.com 23725) |
+
+### Audit devices
+
+Two, enabled by `scripts/bao-audit.sh` (`make bao-audit`, also the last step
+of `make bao-init`): a `file` device on the audit PVC, and a second `file`
+device on `stdout`, which [Alloy](logging.md) ships to Loki with the rest of
+the container's output. Without one, who read which secret is recorded
+nowhere; with only one, a full PVC would make OpenBao refuse every request,
+because a request no enabled device can log is refused. Values are HMACed in
+both; paths and identities are not.
+
+`OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](logging.md#alerting)
+fires on a `kv/data/` read by anything but the External Secrets Operator's
+policy: a person with the root token, or a token that should not exist.
+
+```logql
+{namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
+```
 
 ### KV layout
 
@@ -121,6 +139,13 @@ bao write auth/kubernetes/role/external-secrets \
 
     ```bash
     kubectl get clustersecretstore openbao
+    ```
+
+4. On a cluster initialised before the audit devices existed, enable them
+   once; the root token comes from the key file or a prompt:
+
+    ```bash
+    make bao-audit
     ```
 
 ### Authenticating locally

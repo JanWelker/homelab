@@ -93,6 +93,7 @@ these are the events only a log carries.
 | `KubernetesAuditRbacBindingChanged` | A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a `kube-system` controller | Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously |
 | `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
 | `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
+| `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by anything but the External Secrets Operator | [OpenBao's audit device](openbao.md#audit-devices) writes to stdout; ESO is the only day-to-day reader |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
 | `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
 
