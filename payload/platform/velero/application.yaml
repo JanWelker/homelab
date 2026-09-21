@@ -23,6 +23,14 @@ spec:
             # Plugin minor must match the chart's Velero appVersion
             image: velero/velero-plugin-for-aws:v1.14.2@sha256:0751144c1c8e52d52c48717fbd13ad5a3061e612ae4d7ad744a946cd5b139d1a
             imagePullPolicy: IfNotPresent
+            # It copies one binary into the plugins volume and exits.
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: ["ALL"]
+              seccompProfile:
+                type: RuntimeDefault
             volumeMounts:
               - mountPath: /target
                 name: plugins
@@ -122,6 +130,13 @@ spec:
             memory: 1Gi
 
         nodeAgent:
+          # Root and the capability set stay: kopia reads every pod volume
+          # under /var/lib/kubelet/pods, whoever owns the files. What is
+          # dropped is escalation and the unconfined syscall table.
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
           resources:
             requests:
               cpu: 25m
