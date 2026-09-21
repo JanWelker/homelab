@@ -9,6 +9,9 @@ spec:
   kprobes:
     - call: security_file_permission
       syscall: false
+      message: Sensitive file accessed
+      tags:
+        - observability.filesystem
       return: true
       args:
         - index: 0
@@ -72,6 +75,9 @@ spec:
   kprobes:
     - call: commit_creds
       syscall: false
+      message: Container process gained privileges after exec
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: cred
@@ -125,6 +131,9 @@ spec:
   kprobes:
     - call: security_bprm_check
       syscall: false
+      message: Binary executed from a writable path
+      tags:
+        - observability.process
       args:
         - index: 0
           type: linux_binprm
@@ -172,6 +181,9 @@ spec:
     # most kernel privilege-escalation chains start here.
     - call: create_user_ns
       syscall: false
+      message: User namespace created without CAP_SYS_ADMIN
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: nop
@@ -192,6 +204,9 @@ spec:
     # The setuid family, when the target is root.
     - call: __sys_setuid
       syscall: false
+      message: setuid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -218,6 +233,9 @@ spec:
               rateLimit: 1m
     - call: __sys_setgid
       syscall: false
+      message: setgid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -244,6 +262,9 @@ spec:
               rateLimit: 1m
     - call: __sys_setreuid
       syscall: false
+      message: setreuid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -272,6 +293,9 @@ spec:
               rateLimit: 1m
     - call: __sys_setregid
       syscall: false
+      message: setregid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -300,6 +324,9 @@ spec:
               rateLimit: 1m
     - call: __sys_setresuid
       syscall: false
+      message: setresuid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -331,6 +358,9 @@ spec:
               rateLimit: 1m
     - call: __sys_setresgid
       syscall: false
+      message: setresgid to root
+      tags:
+        - observability.privilege_escalation
       args:
         - index: 0
           type: int
@@ -370,6 +400,9 @@ spec:
   kprobes:
     - call: bpf_check
       syscall: false
+      message: BPF program loaded
+      tags:
+        - observability.kernel
       args:
         - index: 1
           type: bpf_attr
@@ -394,6 +427,9 @@ spec:
   kprobes:
     - call: security_kernel_module_request
       syscall: false
+      message: Kernel module requested through the autoloader
+      tags:
+        - observability.kernel
       return: true
       args:
         - index: 0
@@ -412,6 +448,9 @@ spec:
               rateLimit: 1m
     - call: security_kernel_read_file
       syscall: false
+      message: Kernel module read for loading
+      tags:
+        - observability.kernel
       return: true
       args:
         - index: 0
@@ -449,6 +488,9 @@ spec:
   kprobes:
     - call: security_mmap_file
       syscall: false
+      message: Executable mapping from a writable path
+      tags:
+        - observability.process
       args:
         - index: 0
           type: file
@@ -500,6 +542,9 @@ spec:
   kprobes:
     - call: tcp_connect
       syscall: false
+      message: TCP connection outside the cluster and site ranges
+      tags:
+        - observability.network
       args:
         - index: 0
           type: sock
