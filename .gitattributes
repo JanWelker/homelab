@@ -1,0 +1,9 @@
+# GitHub's language bar only counts what Linguist calls a language, and YAML is
+# typed as data. See docs/development/maintenance.md.
+*.yaml linguist-detectable
+*.yml linguist-detectable
+
+# Vendored dashboards: upstream JSON blobs, 57% of this repository's YAML bytes.
+payload/platform/rook-ceph/grafana-dashboards.yaml linguist-vendored
+payload/platform/argocd-config/argocd-dashboard.yaml linguist-vendored
+payload/platform/logging/grafana-dashboards.yaml linguist-vendored
