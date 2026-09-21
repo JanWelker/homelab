@@ -495,8 +495,8 @@ spec:
         - index: 0
           type: file
         - index: 1
-          # PROT_READ is 1, PROT_WRITE 2, PROT_EXEC 4
-          type: uint32
+          # PROT_READ is 1, PROT_WRITE 2, PROT_EXEC 4; unsigned long in the kernel
+          type: ulong
       selectors:
         - matchArgs:
             - index: 0
@@ -529,33 +529,35 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# A record, not an alert: every TCP connection a container opens to an
-# address outside the pod, service and LAN ranges. Too much of it is routine
-# (ACME, S3, the Trivy database, Home Assistant) for an alert; the dashboard
-# and Loki show who talks out. The ranges are the kubeadm subnets and the
-# site network the nodes sit in.
+# A record, not an alert: every connection a container opens to an address
+# outside the pod, service and LAN ranges. Too much of it is routine (ACME,
+# S3, the Trivy database, Home Assistant) for an alert; the dashboard and
+# Loki show who talks out. The LSM hook sees TCP and connected UDP alike.
+# The ranges are the kubeadm subnets and the site network the nodes sit in.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: egress-outside-cluster
 spec:
   kprobes:
-    - call: tcp_connect
+    - call: security_socket_connect
       syscall: false
-      message: TCP connection outside the cluster and site ranges
+      message: Connection outside the cluster and site ranges
       tags:
         - observability.network
       args:
         - index: 0
-          type: sock
+          type: socket
+        - index: 1
+          type: sockaddr
       selectors:
         - matchArgs:
-            - index: 0
+            - index: 1
               operator: Family
               values:
                 - AF_INET
-            - index: 0
-              operator: NotDAddr
+            - index: 1
+              operator: NotSAddr
               values:
                 - 127.0.0.1
                 - 10.244.0.0/16
