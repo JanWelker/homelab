@@ -704,3 +704,38 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# What fires an alert: a container process attaching to another. ptrace,
+# process_vm_writev and /proc/<pid>/mem are how code is injected into a
+# running process and how credentials are read out of one. Mode 2 is
+# PTRACE_MODE_ATTACH; the read mode that ps and top use is left alone.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: ptrace-in-container
+spec:
+  kprobes:
+    - call: security_ptrace_access_check
+      syscall: false
+      message: Process attached to another with ptrace
+      tags:
+        - observability.process
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: uint32
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Mask
+              values:
+                - "2"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

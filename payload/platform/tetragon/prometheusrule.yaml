@@ -206,6 +206,26 @@ spec:
               the capability. The event carries source, target and type:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="mount-in-container".
+        - alert: TetragonPtraceInContainer
+          expr: |
+            sum by (namespace, pod, binary) (
+                increase(tetragon_policy_events_total{policy="ptrace-in-container"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="ptrace-in-container"}
+              unless
+                tetragon_policy_events_total{policy="ptrace-in-container"} offset 10m
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} attached to another process
+            description: >-
+              A ptrace attach, a process_vm_writev or an open of another
+              process's memory inside a container. Nothing here debugs in
+              production; this is injection or credential theft. Loki:
+              {container="export-stdout"} | json |
+              process_kprobe_policy_name="ptrace-in-container".
         - alert: TetragonPolicyNotLoaded
           expr: |
             tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
