@@ -1,0 +1,192 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: argocd
+spec:
+  description: >-
+    Default-deny ingress for Argo CD. The components talk to each other
+    within the namespace (server and controllers to the repo-server and to
+    Redis through HAProxy, HAProxy to the Redis sentinels every second) and
+    the node runs the probes. What comes from outside is per workload: the
+    Gateway reaches the server, Prometheus the four metrics ports.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  description: >-
+    The UI and API arrive from the Gateway on the plaintext port, since the
+    server runs with --insecure and TLS ends at Envoy. Prometheus reads the
+    metrics port.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  ingress:
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8083"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-metrics
+  namespace: argocd
+spec:
+  description: >-
+    Prometheus reads the metrics port of the repo-server, the application
+    controller and the ApplicationSet controller. The notifications
+    controller, dex and HAProxy expose one too, but nothing scrapes them.
+  endpointSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - argocd-repo-server
+          - argocd-application-controller
+          - argocd-applicationset-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8084"
+              protocol: TCP
+            - port: "8082"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: argocd
+spec:
+  description: >-
+    Default-deny egress for Argo CD. Everything may reach its peers in the
+    namespace and resolve names; the Redis and HAProxy init containers do
+    not start without DNS. The API server and the outside world are per
+    workload below.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-controllers
+  namespace: argocd
+spec:
+  description: >-
+    Argo CD manages every workload through the API server and never dials a
+    workload pod. The server, both controllers, the notifications controller
+    and dex have a Kubernetes client; the repo-server and Redis do not.
+  endpointSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - argocd-server
+          - argocd-application-controller
+          - argocd-applicationset-controller
+          - argocd-notifications-controller
+          - argocd-dex-server
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-server-oidc
+  namespace: argocd
+spec:
+  description: >-
+    Every login and token refresh calls Authentik through its public name,
+    which resolves to the infra Gateway's own address. Cilium classifies that
+    hairpin as world, so the rule names the address by its FQDN. Without it
+    the login hangs, and the local admin is disabled.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  egress:
+    - toFQDNs:
+        - matchName: auth.infra.k8s.wlkr.ch
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+spec:
+  description: >-
+    The repo-server is the one Argo CD component that needs the Internet:
+    the two Git repositories on GitHub, the Gateway API CRDs, and every Helm
+    repository an application.yaml names. Most of those are GitHub Pages
+    with tarballs served from githubusercontent.com; the rest are listed
+    by name. A new chart repository needs a line here, or the Application
+    reads "ComparisonError" within a minute.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  egress:
+    - toFQDNs:
+        - matchName: github.com
+        - matchPattern: "*.github.io"
+        - matchPattern: "*.githubusercontent.com"
+        - matchName: charts.goauthentik.io
+        - matchName: charts.jetstack.io
+        - matchName: charts.external-secrets.io
+        - matchName: helm.cilium.io
+        - matchName: charts.rook.io
+        - matchName: piraeus.io
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

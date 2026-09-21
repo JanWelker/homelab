@@ -1,6 +1,11 @@
 ---
 global:
   domain: argo.infra.k8s.wlkr.ch
+  # The chart's NetworkPolicy objects union with the CiliumNetworkPolicy in
+  # payload/platform/security/network-policies/argocd.yaml, and one of them
+  # allows the server every ingress. Off, so only the Cilium policy counts.
+  networkPolicy:
+    create: false
   # Pod-level; every container already sets the same, this closes the gap
   # the config audit keys on (KSV-0118). See docs/operations/vulnerabilities.md
   securityContext:
