@@ -2570,6 +2570,10 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 <td><code>rulerConfig</code></td>
 <td>The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of <code>loki_rule</code> ConfigMaps, so <code>storage.type</code> is <code>local</code> rather than the bucket the chart would pick; <code>rule_path</code> is the ruler's scratch directory and must not be the rules directory</td>
 </tr>
+<tr>
+<td><code>retention_stream</code> for the <code>findings-history</code> container</td>
+<td>The daily <a href="../trivy-operator/#history">Trivy summary</a> is a few lines and the only long-range record of findings, so that one stream stays a year</td>
+</tr>
 </tbody>
 </table>
 <h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
