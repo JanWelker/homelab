@@ -1500,6 +1500,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Health check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enforcement
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2166,6 +2183,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Health check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enforcement
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2457,6 +2491,12 @@ what it is without a lookup here.</p>
 <td>Yes: <code>TetragonPtraceInContainer</code></td>
 </tr>
 <tr>
+<td><code>kill-unprivileged-user-namespace</code></td>
+<td><code>create_user_ns</code></td>
+<td>The same event as above, with <code>Sigkill</code>. The only policy in <code>enforce</code> mode</td>
+<td>Through <code>TetragonUserNamespaceCreated</code></td>
+</tr>
+<tr>
 <td><code>egress-outside-cluster</code></td>
 <td><code>security_socket_connect</code></td>
 <td>An IPv4 <code>connect()</code>, TCP or UDP, from a container to anything outside the pod, service and site ranges</td>
@@ -2498,6 +2538,17 @@ binary raising privileges, a fileless exec and a deleted binary. They are
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>ds<span class="w"> </span>tetragon
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>tracingpolicies<span class="w"> </span>-o<span class="w"> </span>wide<span class="w">     </span><span class="c1"># STATE should be enabled</span>
 </span></code></pre></div>
+<h3 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h3>
+<p>Every policy but one only records. <code>kill-unprivileged-user-namespace</code>
+carries <code>policy-mode: enforce</code> and a <code>Sigkill</code>, because nothing here
+creates user namespaces and most kernel escalation chains start with one.
+The limits, both checked on the running nodes: <code>Override</code> and enforcers
+need <code>CONFIG_FUNCTION_ERROR_INJECTION</code>, which Flatcar's kernel does not
+set, and BPF LSM hooks need <code>bpf</code> in the <code>lsm=</code> boot argument, which
+Flatcar does not pass. That leaves <code>Sigkill</code>, which upstream warns does
+not stop an operation already in flight. A policy without <code>policy-mode</code>
+loads in monitor mode and its kill actions are elided, so an enforcing
+policy has to say so.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">A first hit is a new series, and <code>increase()</code> of one sample is zero</p>
