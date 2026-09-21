@@ -47,7 +47,7 @@ watch containers only: the host has the node journal.
 | `process-creds-changed` | `commit_creds` | Any credential change in a container, from the upstream example | No; a record for the exec alert to be read against |
 | `exec-from-writable-path` | `security_bprm_check` | A container executing a file under `/tmp/`, `/var/tmp/`, `/dev/shm/`, `/run/`, `/var/run/`, `/shared/`, `/controller/` or `/plugins/`, except the three binaries an init container copies there | Yes: `TetragonExecFromWritablePath` |
 | `library-from-writable-path` | `security_mmap_file` | The same paths mapped with `PROT_EXEC`, which is how a dropped shared library loads | Yes: `TetragonLibraryFromWritablePath` |
-| `privileges-raise` | `create_user_ns`, the `__sys_set*uid` and `__sys_set*gid` family | A user namespace created without `CAP_SYS_ADMIN`; any setuid or setgid to root. The alert filters out `runc`, which does the latter on every container start | Yes: `TetragonPrivilegesRaised` |
+| `privileges-raise` | `create_user_ns`, the `__sys_set*uid` and `__sys_set*gid` family | A user namespace created without `CAP_SYS_ADMIN`; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (`runc` on every container start, busybox applets, `logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec` | Yes: `TetragonUserNamespaceCreated` |
 | `bpf-program-load` | `bpf_check` | Any BPF program load from a container; the alert leaves out `cilium` and `kube-system` | Yes: `TetragonBpfProgramLoaded` |
 | `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file` | A module requested or read from a container; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd` after a boot | Yes: `TetragonKernelModuleLoaded` |
 | `egress-outside-cluster` | `tcp_connect` | An IPv4 connection from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
@@ -100,6 +100,14 @@ kubectl get tracingpolicies -o wide     # STATE should be enabled
 ```
 
 ## Pitfalls
+
+!!! warning "A first hit is a new series, and `increase()` of one sample is zero"
+    `tetragon_policy_events_total` has a pod label, so the first hit from a
+    pod creates a counter series inside the alert window and `increase()`
+    reports nothing until the second scrape moves it. Every policy alert
+    therefore also matches a series absent ten minutes ago, with
+    `unless ... offset 10m`. Copy that shape for a new alert, and test it
+    with a pod that fires once, not with one that keeps firing.
 
 !!! warning "A policy that does not load is silent"
     A `TracingPolicy` naming a kernel function this kernel does not export sits in state `error` and watches nothing. `TetragonPolicyNotLoaded` fires after ten minutes; check `kubectl get tracingpolicies -o wide` after every Flatcar release that moves the kernel.
