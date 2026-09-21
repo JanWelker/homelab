@@ -72,7 +72,9 @@ reach it:
 ```
 
 The last query answers "what would break if I tightened `enforce` on this
-namespace" from evidence, for the whole retention window.
+namespace" from evidence, for the whole retention window. Exec, Secret reads
+by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts
+from Loki's ruler — see [Logging](../platform/logging.md#alerting).
 
 ## Applying it to a running cluster
 

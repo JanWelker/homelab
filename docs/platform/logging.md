@@ -19,7 +19,7 @@ journald and are reachable only over SSH to the node that is misbehaving.
 | Namespace | `logging` |
 | Stage | `08-services` for `logging` (bucket, dashboards), `09-backends` for Loki, `10-agents` for Alloy — the collector last, so it has somewhere to ship |
 | Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
-| If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy |
+| If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy, and the [log alerts](#alerting) stop |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
 | Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; Alloy's dashboards are listed under [Monitoring](monitoring.md#dashboards) |
 | Files | `payload/platform/logging/`, `payload/platform/loki/`, `payload/platform/alloy/` |
@@ -72,6 +72,33 @@ in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
 | `chunksCache` and `resultsCache` off | Four memcached pods in front of a Loki this size |
 | `loki.podSecurityContext` | Adds `RuntimeDefault` seccomp at pod level, covering the rules sidecar too |
 | Retention with the compactor enabled | Old chunks are actually deleted |
+| `rulerConfig` | The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of `loki_rule` ConfigMaps, so `storage.type` is `local` rather than the bucket the chart would pick; `rule_path` is the ruler's scratch directory and must not be the rules directory |
+
+### Alerting
+
+Alerts over logs live in `logging/loki-rules.yaml`, a ConfigMap labelled
+`loki_rule` in the same format as a `PrometheusRule` group with LogQL
+expressions. The `k8s-sidecar-target-directory: fake` annotation puts the
+file under the tenant directory the ruler reads (`fake` is the tenant when
+`auth_enabled` is off). Prometheus-side rules stay with their components;
+these are the events only a log carries.
+
+| Alert | Fires on | Why it is a log alert |
+| --- | --- | --- |
+| `KubernetesAuditExecIntoPod` | A successful `exec` or `attach` | Only the [audit log](../architecture/audit-logging.md) records who ran what in which pod |
+| `KubernetesAuditSecretReadByUser` | A Secret read by a user, not a `system:` identity | Every controller reads through a ServiceAccount; a user is a person with a kubeconfig |
+| `KubernetesAuditRbacBindingChanged` | A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a `kube-system` controller | Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously |
+| `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
+| `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
+| `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
+| `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
+
+To confirm the ruler loaded a rule:
+
+```bash
+kubectl -n logging port-forward svc/loki 3100:3100
+curl -s localhost:3100/loki/api/v1/rules
+```
 
 ### Dashboards
 

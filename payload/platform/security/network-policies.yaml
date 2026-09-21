@@ -87,7 +87,8 @@ spec:
     queries Prometheus before every reboot and blocks when the query fails, so
     without that rule no node ever reboots. The Authentik outpost proxies
     Prometheus and Alertmanager behind SSO. The Ceph mgr reads Prometheus for
-    its alerts and Grafana for its embedded panels.
+    its alerts and Grafana for its embedded panels. Loki's ruler sends the
+    alerts it evaluates from logs to Alertmanager.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -102,6 +103,13 @@ spec:
       toPorts:
         - ports:
             - port: "9090"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: logging
+      toPorts:
+        - ports:
+            - port: "9093"
               protocol: TCP
     - fromEndpoints:
         - matchLabels:
