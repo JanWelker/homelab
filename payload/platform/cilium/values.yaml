@@ -74,6 +74,30 @@ hubble:
       enabled: true
     dashboards:
       enabled: true
+  # Policy verdicts to a file Alloy tails; see docs/platform/cilium.md
+  export:
+    fileMaxSizeMb: 10
+    fileMaxBackups: 5
+    static:
+      enabled: true
+      filePath: /var/run/cilium/hubble/events.log
+      allowList:
+        - '{"verdict":["DROPPED","ERROR","AUDIT"]}'
+      fieldMask:
+        - time
+        - verdict
+        - drop_reason_desc
+        - traffic_direction
+        - event_type
+        - IP
+        - l4
+        - source.namespace
+        - source.pod_name
+        - source.workload
+        - destination.namespace
+        - destination.pod_name
+        - destination.workload
+        - node_name
   relay:
     enabled: true
     resources:

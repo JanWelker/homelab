@@ -169,6 +169,9 @@ kubectl -n kube-system port-forward svc/hubble-relay 4245:80
 hubble observe --verdict DROPPED --namespace openbao --follow
 ```
 
+Drops are also kept in Loki, so a policy that broke something overnight can
+be read back: `{job="hubble", verdict="DROPPED"}` — see [Cilium](cilium.md#health-check).
+
 If something legitimate is dropped, put a single endpoint into audit mode —
 decisions logged, not enforced — to find the missing rule without an outage:
 
