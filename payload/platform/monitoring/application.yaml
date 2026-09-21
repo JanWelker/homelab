@@ -76,6 +76,8 @@ spec:
 
           prometheus:
             prometheusSpec:
+              # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting
+              externalUrl: https://prometheus.infra.k8s.wlkr.ch
               # `{}` alone still filters by release, see docs/platform/monitoring.md
               ruleSelectorNilUsesHelmValues: false
               serviceMonitorSelectorNilUsesHelmValues: false
@@ -98,6 +100,8 @@ spec:
               automountServiceAccountToken: false
 
             alertmanagerSpec:
+              # The Alertmanager link in mails, see docs/platform/monitoring.md#alerting
+              externalUrl: https://alertmanager.infra.k8s.wlkr.ch
               resources:
                 requests:
                   cpu: 10m

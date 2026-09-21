@@ -54,6 +54,7 @@ login and recipient are e-mail addresses that do not belong in Git.
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender |
 | Inhibit rules repeated from the chart defaults | A supplied config replaces the whole document, so nothing is inherited |
 | Every templated value through `toJson` | A password containing `:`, `#` or a quote cannot break the rendered file |
+| `externalUrl` on both `prometheusSpec` and `alertmanagerSpec` in `application.yaml` | The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside the cluster can open |
 
 The three values come from `kv/monitoring/smtp` (`username`, `password`,
 `to`); `make bao-secrets` prompts for them, or by hand:
