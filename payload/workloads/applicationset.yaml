@@ -18,10 +18,6 @@ spec:
         revision: HEAD
         files:
           - path: "*/application.yaml"
-  # No RollingSync, deliberately. Workloads do not depend on each other, and
-  # the platform under them is already guaranteed by the stage this
-  # ApplicationSet is created in -- so there is nothing left to order, and the
-  # generated Applications keep the selfHeal that the platform gives up.
   syncPolicy:
     # Otherwise every generated Application gains the resources finalizer.
     preserveResourcesOnDeletion: true

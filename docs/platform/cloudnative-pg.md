@@ -13,7 +13,6 @@ maintains the chart that buried it. CloudNativePG is one operator in
 | | |
 | --- | --- |
 | Namespace | `cnpg-system` for the operator; each database in its workload's namespace |
-| Stage | `03-controllers`; it brings its own CRDs and everything that uses it comes later |
 | Depends on | [Rook-Ceph](rook-ceph.md) for the database volumes |
 | If it is down | Running databases keep running; failover, upgrades and new clusters stop |
 | Health check | `kubectl get clusters.postgresql.cnpg.io -A` &rarr; `Cluster in healthy state` |

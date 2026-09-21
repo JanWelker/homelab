@@ -22,7 +22,6 @@ every network flow in the cluster to anyone who could reach the hostname.
 | | |
 | --- | --- |
 | Namespace | `authentik` |
-| Stage | `08-services` |
 | Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
 | If it is down | Every platform UI loses its only login — see [When Authentik is down](#when-authentik-is-down) |
 | Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |
@@ -85,7 +84,7 @@ Prometheus and Alertmanager have no route of their own, so theirs are in
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.image.tag` with its `# renovate:` annotation | The chart hardcodes a Debian 12 tag nothing tracks. The annotation lets Renovate move it (`versioning=docker`, so the `-trixie` suffix is a constraint, not a prerelease); an `allowedVersions` rule holds the major, because a Postgres major is a dump and restore — see [Renovate](../development/maintenance.md) |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
-| Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive in `12-workloads`, four stages after Authentik must be Healthy, so a required mount [deadlocks the rollout](../architecture/gitops.md) |
+| Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](../architecture/gitops.md#workloads-live-in-a-second-repository), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 
 ### Where a blueprint lives
 

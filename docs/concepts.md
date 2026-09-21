@@ -86,9 +86,8 @@ Two terms recur throughout this site:
 
 - **ApplicationSet** — one ArgoCD object that generates an `Application` per
   matching file in the repository, so adding a component is adding a directory.
-- **Rollout stage** — a label on each platform `Application` that orders
-  deployment. An ApplicationSet syncs one stage at a time and starts the next
-  only when the last is Synced and Healthy, so a fresh cluster installs CRDs
-  before the operators that need them. The ordering is in
+- **Sync policy** — every `Application` syncs automatically, reverts drift
+  and retries a failed sync, so nothing orders the platform: a fresh cluster
+  converges as CRDs, storage and secrets appear. The order it settles in is in
   [Platform &rarr; Rollout order](platform/index.md#rollout-order); the
-  mechanism and what it costs are in [GitOps Strategy](architecture/gitops.md).
+  policy itself is in [GitOps Strategy](architecture/gitops.md#sync-policy).

@@ -27,19 +27,14 @@ anything.
 
 ## Rolling back a bad sync
 
-The durable fix is a revert commit. To stop the bleeding first:
-
-```bash
-argocd app rollback <app>
-```
-
-Nothing has to be disabled: the generated platform Applications have no
-automated sync under `RollingSync`, so a rollback holds until that
-Application's next change — see
-[what the staging costs](../architecture/gitops.md#what-the-staging-costs).
-Do not patch their `spec` to pin them; the next reconcile copies the file back
-over it. The exception is `argocd` itself, which is not generated and runs with
-`automated`: pinning it means restoring `syncPolicy.automated` afterwards.
+The only fix is a revert commit. Every Application runs with automated sync,
+so ArgoCD refuses `argocd app rollback`, and a manual sync to an older revision
+is undone within one polling interval. Do not patch a generated Application's
+`spec` to switch automated sync off either; the next ApplicationSet reconcile
+copies the file back over it — see
+[Sync policy](../architecture/gitops.md#sync-policy). The exception is
+`argocd` itself, which is not generated: `argocd app set argocd --sync-policy
+none` holds a rollback until `syncPolicy.automated` is restored.
 
 !!! warning
     Do not fix a broken workload with `kubectl edit`. Under the ApplicationSet nothing reverts the edit, so the cluster quietly stops matching Git and the next sync of that Application undoes your fix without warning. Change the manifest instead.

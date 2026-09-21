@@ -15,7 +15,6 @@ swallows every alert, which is what most of this page is about.
 | | |
 | --- | --- |
 | Namespace | `monitoring` |
-| Stage | `08-services`; the CRDs in `01-crds` |
 | Depends on | [Rook-Ceph](rook-ceph.md) for Prometheus and Grafana volumes, [Authentik](authentik.md) for the Grafana login |
 | If it is down | No alerts and no metrics — and [Kured](kured.md) loses the alert gate it checks before rebooting a node |
 | Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
@@ -27,11 +26,12 @@ swallows every alert, which is what most of this page is about.
 ### CRDs
 
 The `monitoring.coreos.com` CRDs are a separate `prometheus-operator-crds`
-Application in `01-crds`, from the prometheus-community chart of that name,
-and this chart runs with `crds.enabled: false`. Cilium, cert-manager, External
-Secrets, Rook and OpenBao all render ServiceMonitors or PrometheusRules in
-stages ahead of `08-services`, and a missing kind fails the sync that
-[gates the stage](../architecture/gitops.md). The Application has no resources
+Application, from the prometheus-community chart of that name, and this chart
+runs with `crds.enabled: false`. Cilium, cert-manager, External Secrets, Rook
+and OpenBao all render ServiceMonitors or PrometheusRules, and a missing kind
+fails their sync until the CRDs exist — see
+[Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence). The
+Application has no resources
 finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus
 and Alertmanager with them, in place.
 

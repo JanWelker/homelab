@@ -59,7 +59,8 @@ repository and the [workloads repository](../development/add-workload.md)
 exactly: the `Gateway` is platform, the `HTTPRoute` ships with the application.
 
 The cost is a smaller ecosystem and more moving parts: CRDs must be installed
-before anything references them, which is why they are the first rollout stage.
+before anything references them, which is why they are their own Applications
+that every consumer's sync retries against.
 
 ## Rook-Ceph, not Longhorn or local volumes
 
