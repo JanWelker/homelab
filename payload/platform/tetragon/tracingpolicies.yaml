@@ -667,3 +667,40 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# What fires an alert: a mount from inside a container. Escapes start with a
+# mount of the host's disk, cgroup or proc; a running container has no
+# reason to mount anything. runc mounts the rootfs, proc and sysfs on every
+# start and is dropped here; Cilium, Tetragon and Rook's CSI plugin mount by
+# design and the alert leaves their namespaces out.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: mount-in-container
+spec:
+  kprobes:
+    - call: security_sb_mount
+      syscall: false
+      message: Filesystem mounted from a container
+      tags:
+        - observability.filesystem
+      args:
+        - index: 0
+          type: string
+        - index: 1
+          type: path
+        - index: 2
+          type: string
+      selectors:
+        - matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
+          matchActions:
+            - action: Post
+              rateLimit: 1m

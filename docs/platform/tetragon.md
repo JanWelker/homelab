@@ -53,6 +53,7 @@ what it is without a lookup here.
 | `bpf-program-load` | `bpf_check` | Any BPF program load from a container; the alert leaves out `cilium` and `kube-system` | Yes: `TetragonBpfProgramLoaded` |
 | `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file`, `find_module_sections` | A module requested or read from a container; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd` after a boot. The third hook records every load's signature check, host included | Yes: `TetragonKernelModuleLoaded`; `TetragonUnsignedKernelModule` from Loki |
 | `dns-outside-cluster` | `ip_output` | A port 53 packet from a container to anything but the kube-dns ClusterIP; the alert leaves out `kube-system`, where CoreDNS forwards upstream | Yes: `TetragonDnsOutsideCluster` |
+| `mount-in-container` | `security_sb_mount` | Any mount from a container except by `runc`; the alert leaves out `rook-ceph`, `cilium` and `kube-system`, which mount by design | Yes: `TetragonMountInContainer` |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
 The allow list in the first policy is the set of things that read key material
