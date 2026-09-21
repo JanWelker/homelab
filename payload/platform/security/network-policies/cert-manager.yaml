@@ -6,9 +6,9 @@ metadata:
   namespace: cert-manager
 spec:
   description: >-
-    Default-deny ingress for cert-manager. It is a client of everything and a
-    server to almost nothing -- only the webhook, which the API server calls
-    from the node.
+    Default-deny ingress for cert-manager. It is a client of everything and
+    a server to almost nothing: the webhook, which the API server calls from
+    the node, and the metrics port Prometheus reads.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -19,3 +19,70 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9402"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: cert-manager
+spec:
+  description: >-
+    Default-deny egress for cert-manager. All three components watch the
+    API server; the controller alone talks to the outside, below.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: cert-manager-controller
+  namespace: cert-manager
+spec:
+  description: >-
+    The controller orders from Let's Encrypt, production and staging, and
+    answers the DNS-01 challenge in Route53. Before it tells the CA to
+    check, it asks the zone's authoritative nameservers directly whether the
+    record is visible, which is DNS to the world on 53. Renewal is about
+    every sixty days, so a wrong rule here surfaces late.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  egress:
+    - toFQDNs:
+        - matchName: acme-v02.api.letsencrypt.org
+        - matchName: acme-staging-v02.api.letsencrypt.org
+        - matchName: route53.amazonaws.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
