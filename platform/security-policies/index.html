@@ -1657,10 +1657,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#rolling-out-a-network-policy" class="md-nav__link">
+  <a href="#rollout" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rolling out a network policy
+        Rollout
       </span>
     </span>
   </a>
@@ -2342,10 +2342,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#rolling-out-a-network-policy" class="md-nav__link">
+  <a href="#rollout" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rolling out a network policy
+        Rollout
       </span>
     </span>
   </a>
@@ -2793,22 +2793,54 @@ still refused.</p>
 <p>Raise <code>enforce</code> in <code>pod-security.yaml</code>.</p>
 </li>
 </ol>
-<h3 id="rolling-out-a-network-policy">Rolling out a network policy<a class="headerlink" href="#rolling-out-a-network-policy" title="Permanent link">&para;</a></h3>
-<p>One namespace at a time, watching Hubble between each:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
+<h3 id="rollout">Rollout<a class="headerlink" href="#rollout" title="Permanent link">&para;</a></h3>
+<p>A new policy is not enforced on arrival. <code>policyAuditMode</code> in
+<code>payload/platform/cilium/values.yaml</code> makes every agent evaluate each verdict
+and log it with <code>AUDIT</code> instead of dropping, and those verdicts reach Loki the
+way drops do. The mode is cluster-wide, so while it is on the older policies
+are not enforced either, and the agent reads it at startup.</p>
+<ol>
+<li>
+<p>Merge the values change and restart the agents; <code>Enabled</code> on every node
+   before anything else merges:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>ds/cilium
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span>cilium-dbg<span class="w"> </span>config<span class="w"> </span>get<span class="w"> </span>PolicyAuditMode
 </span></code></pre></div>
-<p>Drops are also kept in Loki, so a policy that broke something overnight can
-be read back: <code>{job="hubble", verdict="DROPPED"}</code> — see <a href="../cilium/#health-check">Cilium</a>.</p>
-<p>If something legitimate is dropped, put a single endpoint into audit mode —
-decisions logged, not enforced — to find the missing rule without an outage:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
+</li>
+<li>
+<p>Merge the policies and let them run for a week. What enforcement would have
+   refused, by namespace pair:</p>
+<div class="language-promql highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">sum</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">source_namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">destination_namespace</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="kr">increase</span><span class="o">(</span><span class="nv">hubble_policy_verdicts_total</span><span class="p">{</span><span class="nl">action</span><span class="o">=</span><span class="p">"</span><span class="s">audit</span><span class="p">"}[</span><span class="s">7d</span><span class="p">]</span><span class="o">))</span>
+</span></code></pre></div>
+<p>and flow by flow, in Grafana:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>{job="hubble", verdict="AUDIT"} | json | line_format "{{.flow_source_namespace}}/{{.flow_source_pod_name}} -&gt; {{.flow_destination_namespace}}/{{.flow_destination_pod_name}} {{.flow_l4_TCP_destination_port}}{{.flow_l4_UDP_destination_port}}"
+</span></code></pre></div>
+</li>
+<li>
+<p>Add a rule for every audited flow that is legitimate. Layer 7 rules are
+   never audited: a request an HTTP rule does not match is answered <code>403</code> on
+   the spot, which is why a new policy carries <code>http: [{}]</code> — proxied and
+   recorded, nothing refused — until the week's requests have been read:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>{job="hubble"} | json | flow_l7_http_method != "" | line_format "{{.flow_source_namespace}} -&gt; {{.flow_destination_namespace}}:{{.flow_l4_TCP_destination_port}} {{.flow_l7_http_method}} {{.flow_l7_http_url}}"
+</span></code></pre></div>
+</li>
+<li>
+<p>Tighten each <code>http: [{}]</code> to the methods and paths seen, set
+   <code>policyAuditMode: false</code> and restart the agents again. From then on the
+   verdict to watch is <code>DROPPED</code>, live or from Loki — see
+   <a href="../cilium/#health-check">Cilium</a> — and the <code>HubblePolicyDrops</code> alert
+   fires on a sustained one.</p>
+</li>
+</ol>
+<p>If a single endpoint needs the same treatment later, audit mode can be set on
+it alone, until the agent restarts:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>cilium-dbg<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">

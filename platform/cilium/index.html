@@ -2351,7 +2351,11 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>hubble.export.static</code></td>
-<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities and ports and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and it costs nothing while nothing is dropped. Forwarded flows are not exported: thousands a second on a cluster this size. Like the metrics list, the agent reads it at startup</td>
+<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and of the requests the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second on a cluster this size, where the proxied requests are a few. Like the metrics list, the agent reads it at startup</td>
+</tr>
+<tr>
+<td><code>policyAuditMode</code></td>
+<td>Verdicts are logged, not enforced, for the observation week of a policy rollout — see <a href="../security-policies/#rollout">Security Policies</a>. Cluster-wide, read at agent startup, and blind to L7 rules</td>
 </tr>
 <tr>
 <td><code>prometheusrule.yaml</code></td>
