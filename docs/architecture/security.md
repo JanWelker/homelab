@@ -115,12 +115,11 @@ nothing the PR review does not. `system` is confined to the `argocd` namespace.
 repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
 namespace (`authentik` excepted, for the blueprint ConfigMap a workload ships
-there), and at cluster scope may create namespaces, CRDs, cluster RBAC and
-Trivy's compliance reports — what trivy-operator demonstrably needs.
+there), and at cluster scope may create nothing but namespaces.
 
-**Network policy covers nine namespaces.** `openbao`, `cert-manager`,
+**Network policy covers ten namespaces.** `openbao`, `cert-manager`,
 `external-secrets`, `monitoring`, `external-dns`, `kubelet-csr-approver`,
-`kured`, `logging` and `cnpg-system` have default-deny **ingress**
+`kured`, `logging`, `cnpg-system` and `trivy-system` have default-deny **ingress**
 `CiliumNetworkPolicy` rules; every other namespace, and all egress everywhere,
 is unrestricted. See [Security Policies](../platform/security-policies.md).
 

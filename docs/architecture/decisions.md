@@ -109,3 +109,14 @@ written down — not in Git, not in OpenBao.
 The cost is a controller and a CRD to learn, and a major-version upgrade that
 is explicitly this project's problem rather than something arriving silently in
 a chart bump — see [CloudNativePG](../platform/cloudnative-pg.md).
+
+## Trivy Operator, not Kubescape
+
+Trivy Operator stores every finding as a plain CRD and scans with the same
+Trivy that CI uses, so a number on the dashboard can be checked against an
+object with `kubectl`. Kubescape put results behind an aggregated API server on
+its own volume, silently reported zero findings for images whose SBOM exceeded
+a size ceiling, and needed its scanner image pinned ahead of the chart before
+scheduled scans ran. What was lost is relevancy: Kubescape's eBPF agent could
+mark a finding as loaded at runtime, and that argument now has to be made from
+the workload's configuration.

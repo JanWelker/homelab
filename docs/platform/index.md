@@ -36,7 +36,8 @@ it belongs to.
 | [openbao](openbao.md) | `openbao` | `05-secrets` | Cluster-wide secret store |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | `03-controllers` operator, `04-storage` cluster | Replicated block storage and an S3 object store |
 | [tetragon](tetragon.md) | `kube-system` | `10-agents` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
-| [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels and default-deny ingress policies |
+| [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels, default-deny ingress policies and image admission policies |
+| [trivy-operator](trivy-operator.md) | `trivy-system` | `11-policy` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](velero.md) | `backup` | `09-backends` | Volume and resource backups to the Ceph object store |
 
 Across the platform, memory limits are set at roughly 2.5x the measured peak

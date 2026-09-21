@@ -6,10 +6,9 @@ description: "How to read the Trivy Operator findings, when an upstream issue is
 
 Trivy Operator writes one `VulnerabilityReport` per container, a few thousand
 findings on a cluster this size. Almost none warrant action, and the work is in
-proving that quickly. The operator is a workload; its configuration is in the
-[homelab-apps documentation](https://homelab-apps.wlkr.ch/trivy-operator/).
-This page is the method; the dispositions from the last pass are in
-[Triage 2026-09-20](triage-2026-09-20.md).
+proving that quickly. The operator's configuration and failure modes are in
+[Trivy Operator](../platform/trivy-operator.md). This page is the method; the
+dispositions from the last pass are in [Triage 2026-09-20](triage-2026-09-20.md).
 
 ## Pulling a report
 
