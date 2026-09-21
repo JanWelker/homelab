@@ -2449,6 +2449,10 @@ left out rather than reported as failing.</p>
 <td>With the cache, every workload after the first to use an image gets an <code>SbomReport</code> from the cached SBOM and no <code>VulnerabilityReport</code>. Upstream: <a href="https://github.com/aquasecurity/trivy-operator/issues/1668">trivy-operator#1668</a></td>
 </tr>
 <tr>
+<td><code>configFile</code> with <code>scan.skip-version-check</code> and <code>scan.disable-telemetry</code></td>
+<td>The operator mounts it into every scan job as <code>trivy.yaml</code>. Trivy's version check and its usage telemetry share one request to <code>check.trivy.dev</code>, so switching off one still sends it; the server never makes the call, only the scan jobs</td>
+</tr>
+<tr>
 <td><code>metricsVulnIdEnabled: false</code></td>
 <td>One series per CVE per container is a six-figure cardinality, and every label is already in the report</td>
 </tr>
