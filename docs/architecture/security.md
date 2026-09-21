@@ -90,6 +90,13 @@ the kubeadm token and certificate key — that directory is what decrypts etcd.
 A KMS provider would remove the static key at the cost of a dependency the
 cluster must reach before it can serve Secrets.
 
+## Runtime
+
+[Tetragon](../platform/tetragon.md) records every exec in every pod and
+alerts when anything but the control plane reads the cluster's key material.
+It is detection, not prevention: nothing is killed, and a policy that fails to
+load on a new kernel watches nothing until its alert fires.
+
 ## Audit logging
 
 The API server records who did what, to which object, and whether it was

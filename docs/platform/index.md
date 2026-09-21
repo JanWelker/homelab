@@ -35,6 +35,7 @@ it belongs to.
 | [monitoring](monitoring.md) | `monitoring` | `01-crds` CRDs, `08-services` stack | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics |
 | [openbao](openbao.md) | `openbao` | `05-secrets` | Cluster-wide secret store |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | `03-controllers` operator, `04-storage` cluster | Replicated block storage and an S3 object store |
+| [tetragon](tetragon.md) | `kube-system` | `10-agents` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels and default-deny ingress policies |
 | [velero](velero.md) | `backup` | `09-backends` | Volume and resource backups to the Ceph object store |
 

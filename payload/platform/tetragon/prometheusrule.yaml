@@ -1,0 +1,56 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: tetragon
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: tetragon
+spec:
+  groups:
+    - name: tetragon
+      rules:
+        - alert: TetragonSensitiveFileAccess
+          expr: |
+            sum by (namespace, pod, binary) (
+              increase(tetragon_policy_events_total{policy="sensitive-file-access"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} read cluster key material
+            description: >-
+              {{ $labels.binary }}{{ if $labels.pod }} in pod
+              {{ $labels.namespace }}/{{ $labels.pod }}{{ else }} on the host{{ end }}
+              opened a file under the control plane's PKI, the encryption
+              config, etcd's data or the kubelet's certificates, and is not
+              one of the control-plane binaries. The event, with the path and
+              arguments, is in Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="sensitive-file-access".
+        - alert: TetragonPolicyNotLoaded
+          expr: |
+            tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A Tetragon TracingPolicy failed to load
+            description: >-
+              A policy in state {{ $labels.state }} watches nothing, silently.
+              kubectl get tracingpolicies -o wide names it.
+        - alert: TetragonEventsLost
+          expr: |
+            sum by (pod) (
+              rate(tetragon_observer_ringbuf_events_lost_total[10m])
+            ) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.pod }} is dropping events
+            description: >-
+              The agent's ring buffer overflowed for ten minutes; the record
+              has gaps. The export deny list is the usual lever.
