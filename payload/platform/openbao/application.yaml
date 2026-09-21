@@ -88,6 +88,23 @@ spec:
 
                   service_registration "kubernetes" {}
 
+                  # Two devices: a request no enabled device can log is refused,
+                  # so the PVC and stdout back each other. Read at start-up and on
+                  # SIGHUP, not on sync; see docs/platform/openbao.md#audit-devices
+                  audit "file" "file" {
+                    description = "Durable copy on the audit volume."
+                    options {
+                      file_path = "/openbao/audit/audit.log"
+                    }
+                  }
+
+                  audit "file" "stdout" {
+                    description = "Shipped to Loki by Alloy."
+                    options {
+                      file_path = "stdout"
+                    }
+                  }
+
                   # No seal stanza: Shamir, manual unseal after every restart.
 
                   telemetry {
