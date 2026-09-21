@@ -184,6 +184,28 @@ spec:
               how DNS tunnels and exfiltration look. The event carries the
               destination: {container="export-stdout"} | json |
               process_kprobe_policy_name="dns-outside-cluster".
+        - alert: TetragonMountInContainer
+          expr: |
+            sum by (namespace, pod, binary) (
+                increase(tetragon_policy_events_total{policy="mount-in-container", namespace!~"rook-ceph|cilium|kube-system"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="mount-in-container", namespace!~"rook-ceph|cilium|kube-system"}
+              unless
+                tetragon_policy_events_total{policy="mount-in-container", namespace!~"rook-ceph|cilium|kube-system"} offset 10m
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} mounted a filesystem
+            description: >-
+              A mount from inside a running container. Rook's CSI plugin,
+              Cilium and Tetragon mount by design and are left out; runc's
+              setup mounts are dropped in the kernel. Anything else is the
+              first step of an escape, or an entrypoint that should not have
+              the capability. The event carries source, target and type:
+              {container="export-stdout"} | json |
+              process_kprobe_policy_name="mount-in-container".
         - alert: TetragonPolicyNotLoaded
           expr: |
             tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
