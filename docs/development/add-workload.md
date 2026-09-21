@@ -252,7 +252,7 @@ immediately after **Refresh** on the `apps` ApplicationSet in the ArgoCD UI.
 
 The page goes in the workloads repository at `docs/my-app.md`, registered in
 its `zensical.toml`, which publishes to
-[janwelker.github.io/homelab-apps](https://janwelker.github.io/homelab-apps/).
+[homelab-apps.wlkr.ch](https://homelab-apps.wlkr.ch/).
 Both sites build with `--strict`, so an unregistered page fails CI. Say what
 the application is for, which hostname it answers on, what it stores and
 where, and what surprised you while deploying it.
