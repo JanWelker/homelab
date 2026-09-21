@@ -1799,6 +1799,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-the-medium-count-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What the medium count is
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reports-that-outlive-their-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reports that outlive their workload
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rbac" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2124,6 +2146,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-the-medium-count-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What the medium count is
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reports-that-outlive-their-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reports that outlive their workload
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rbac" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2375,9 +2419,12 @@ and nothing here can speed it up; Renovate takes the release when it exists.</p>
 </tr>
 </tbody>
 </table>
-<p>The three exposed-secret findings are the same one: <code>ssl-cert-snakeoil.key</code>,
-the placeholder Debian's <code>ssl-cert</code> package generates in every Postgres image.
-It is not a secret.</p>
+<p>The exposed-secret findings are two artifacts. <code>ssl-cert-snakeoil.key</code> in the
+three Postgres pods is the placeholder Debian's <code>ssl-cert</code> package generates
+in every image. The "Azure Storage Account Key" in Nextcloud is the Azurite
+development key that <code>azure-storage-common</code> ships in <code>Resources.php</code>; it is
+public, and the nextcloud namespace's ignore policy drops that rule
+(homelab-apps#31). Neither is a secret.</p>
 <h2 id="what-is-not-filed-and-why">What is not filed, and why<a class="headerlink" href="#what-is-not-filed-and-why" title="Permanent link">&para;</a></h2>
 <p>Filing goes out under a real name, permanently, and most projects have said
 what they want. Checked on this pass:</p>
@@ -2489,11 +2536,42 @@ empty, whatever the containers set. Where they land:</p>
 <td><strong>Seccomp only</strong> (homelab-apps#30). Both images start as root by design, Apache dropping to <code>www-data</code> and Home Assistant under s6, so <code>runAsNonRoot</code> and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp.</td>
 </tr>
 <tr>
-<td>Grafana's sidecars, Velero, OpenBao</td>
+<td>Velero</td>
+<td><strong>Node agent and plugin init container confined</strong> (#794). The node agent keeps root and its capabilities, kopia reads every pod volume whoever owns the files. The <code>velero</code> container is left as it was: its image runs as a named user, which <code>runAsNonRoot</code> cannot verify without a <code>runAsUser</code>, and <a href="../backups/#other-settings-worth-knowing">Backups</a> names a real backup as the condition for either.</td>
+</tr>
+<tr>
+<td>trivy-server, nextcloud-exporter</td>
+<td><strong>Fixed</strong> (homelab-apps#32, #31): escalation off, capabilities dropped, seccomp; the exporter also read-only.</td>
+</tr>
+<tr>
+<td>Grafana's sidecars, OpenBao</td>
 <td><strong>Read-only root not attempted.</strong> Each writes somewhere under <code>/</code> at runtime; the chart or image decides where, and guessing costs an outage. #663.</td>
 </tr>
 </tbody>
 </table>
+<h3 id="what-the-medium-count-is">What the medium count is<a class="headerlink" href="#what-the-medium-count-is" title="Permanent link">&para;</a></h3>
+<p>Two things make up most of it and neither is a finding here:</p>
+<ul>
+<li><strong><code>KSV-0125</code>, "untrusted registry", on nearly every container.</strong> The
+  check's built-in trusted list is Azure, ECR and GCR, and nothing on this
+  cluster is pulled from any of them. The list is a check parameter that
+  Trivy Operator does not expose, so the count stays. It says nothing about
+  the images.</li>
+<li><strong>Root, privilege escalation and unconfined seccomp</strong> are now almost
+  entirely in <code>rook-ceph</code> and <code>kube-system</code>, where the load-bearing table
+  above applies. Outside those two namespaces the remaining rows are the ones
+  named in the pod table.</li>
+</ul>
+<h3 id="reports-that-outlive-their-workload">Reports that outlive their workload<a class="headerlink" href="#reports-that-outlive-their-workload" title="Permanent link">&para;</a></h3>
+<p>A <code>ConfigAuditReport</code> has no TTL; it goes when its owning ReplicaSet is
+garbage-collected, and Kubernetes keeps ten superseded ReplicaSets per
+Deployment. Every old revision therefore keeps its findings on the dashboard,
+nine of them on this pass, five on old trivy-operator revisions. Upstream:
+<a href="https://github.com/aquasecurity/trivy-operator/issues/3069">aquasecurity/trivy-operator#3069</a>.
+The Deployments this repository can set <code>revisionHistoryLimit</code> on keep one or
+two (homelab-apps#33); Nextcloud's chart has no value for it. When a count
+looks wrong, check whether the ReplicaSet in the report name still has
+replicas.</p>
 <h3 id="rbac">RBAC<a class="headerlink" href="#rbac" title="Permanent link">&para;</a></h3>
 <p>Every critical and high is a <code>ClusterRole</code> a chart ships for its operator:
 cert-manager, CloudNativePG, Rook, External Secrets, the Prometheus operator,
