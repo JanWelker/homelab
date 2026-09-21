@@ -39,7 +39,9 @@ and runs privileged on the host network by the chart's default.
 `tracingpolicies.yaml` carries the cluster-scoped `TracingPolicy` objects,
 adapted from the [upstream policy library](https://tetragon.io/docs/policy-library/observability/).
 All post at most one event per minute per selector, and all but the first
-watch containers only: the host has the node journal.
+watch containers only: the host has the node journal. Every hook carries a
+`message` and one of upstream's `observability.*` tags, so an event says
+what it is without a lookup here.
 
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
