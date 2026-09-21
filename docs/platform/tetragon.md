@@ -32,7 +32,7 @@ and runs privileged on the host network by the chart's default.
 | `exportDenyList` | Exec and exit events from the host, `cilium` and `kube-system` stay out of the export; they are the bulk of the volume and the least interesting. Policy hits from those namespaces still pass, which is the point of the `event_set` field |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
-| Memory limit | 2.5x the measured working set of the busiest agent on the first day, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
+| Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
 
 ### Policies
 
@@ -44,10 +44,10 @@ watch containers only: the host has the node journal.
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
 | `sensitive-file-access` | `security_file_permission` | A read under `/etc/kubernetes/pki/`, `/etc/kubernetes/enc/`, `/var/lib/etcd/` or `/var/lib/kubelet/pki/` by anything but the control-plane binaries, `kubeadm` and `kube-vip`; any read of `/etc/shadow` or the admin kubeconfigs by anything but `kube-vip` and `kubeadm` | Yes: `TetragonSensitiveFileAccess` |
-| `process-creds-changed` | `commit_creds` | Any credential change in a container, from the upstream example | No; a record for the exec alert to be read against |
+| `process-creds-changed` | `commit_creds` | A container process that gained a dangerous capability since its exec, or moved into another mount, pid, network or user namespace. The hook runs on every execve and fork; the two selectors keep the exploit signal and drop the rest | Yes: `TetragonCredentialsEscalated` |
 | `exec-from-writable-path` | `security_bprm_check` | A container executing a file under `/tmp/`, `/var/tmp/`, `/dev/shm/`, `/run/`, `/var/run/`, `/shared/`, `/controller/` or `/plugins/`, except the three binaries an init container copies there | Yes: `TetragonExecFromWritablePath` |
 | `library-from-writable-path` | `security_mmap_file` | The same paths mapped with `PROT_EXEC`, which is how a dropped shared library loads | Yes: `TetragonLibraryFromWritablePath` |
-| `privileges-raise` | `create_user_ns`, the `__sys_set*uid` and `__sys_set*gid` family | A user namespace created without `CAP_SYS_ADMIN`; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (`runc` on every container start, busybox applets, `logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec` | Yes: `TetragonUserNamespaceCreated` |
+| `privileges-raise` | `create_user_ns`, the `__sys_set*uid` and `__sys_set*gid` family | A user namespace created without `CAP_SYS_ADMIN`; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (busybox applets, `logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec`. `runc`, which sets the ids on every container start, is dropped in the kernel | Yes: `TetragonUserNamespaceCreated` |
 | `bpf-program-load` | `bpf_check` | Any BPF program load from a container; the alert leaves out `cilium` and `kube-system` | Yes: `TetragonBpfProgramLoaded` |
 | `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file` | A module requested or read from a container; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd` after a boot | Yes: `TetragonKernelModuleLoaded` |
 | `egress-outside-cluster` | `tcp_connect` | An IPv4 connection from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |

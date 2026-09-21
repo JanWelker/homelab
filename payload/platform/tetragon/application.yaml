@@ -37,13 +37,14 @@ spec:
               serviceMonitor:
                 enabled: true
 
-            # Unmeasured: a first deployment. Revisit against the working set.
+            # 2.5x the busiest agent's working set with the policy library
+            # loaded: see docs/platform/tetragon.md
             resources:
               requests:
                 cpu: 50m
-                memory: 128Mi
+                memory: 256Mi
               limits:
-                memory: 512Mi
+                memory: 768Mi
 
           tetragonOperator:
             prometheus:

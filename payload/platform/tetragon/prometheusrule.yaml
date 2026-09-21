@@ -37,6 +37,27 @@ spec:
               one of the control-plane binaries. The event, with the path and
               arguments, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
+        - alert: TetragonCredentialsEscalated
+          expr: |
+            sum by (namespace, pod, binary) (
+                increase(tetragon_policy_events_total{policy="process-creds-changed"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="process-creds-changed"}
+              unless
+                tetragon_policy_events_total{policy="process-creds-changed"} offset 10m
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} gained privileges after it started
+            description: >-
+              A process in the container now holds a capability it did not
+              have when it was executed, or moved into another mount, pid,
+              network or user namespace. Neither happens by itself; a setuid
+              binary is TetragonPrivilegedExec instead. Loki:
+              {container="export-stdout"} | json |
+              process_kprobe_policy_name="process-creds-changed".
         - alert: TetragonExecFromWritablePath
           expr: |
             sum by (namespace, pod, binary) (
