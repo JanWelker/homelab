@@ -20,12 +20,24 @@ spec:
         valuesObject:
           installCRDs: true
           replicaCount: 1
+          # Pod-level, here and on the two deployments below; the containers
+          # already match.
+          podSecurityContext:
+            enabled: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           serviceMonitor:
             enabled: true
             interval: 30s
           grafanaDashboard:
             enabled: true
           webhook:
+            podSecurityContext:
+              enabled: true
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
             serviceMonitor:
               enabled: true
               interval: 30s
@@ -37,6 +49,11 @@ spec:
                 memory: 128Mi
             # Keep the SA token mounted: the webhook exits without it.
           certController:
+            podSecurityContext:
+              enabled: true
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
             serviceMonitor:
               enabled: true
               interval: 30s
