@@ -161,24 +161,56 @@ still refused.
 
 3. Raise `enforce` in `pod-security.yaml`.
 
-### Rolling out a network policy
+### Rollout
 
-One namespace at a time, watching Hubble between each:
+A new policy is not enforced on arrival. `policyAuditMode` in
+`payload/platform/cilium/values.yaml` makes every agent evaluate each verdict
+and log it with `AUDIT` instead of dropping, and those verdicts reach Loki the
+way drops do. The mode is cluster-wide, so while it is on the older policies
+are not enforced either, and the agent reads it at startup.
+
+1. Merge the values change and restart the agents; `Enabled` on every node
+   before anything else merges:
+
+    ```bash
+    kubectl -n kube-system rollout restart ds/cilium
+    kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg config get PolicyAuditMode
+    ```
+
+2. Merge the policies and let them run for a week. What enforcement would have
+   refused, by namespace pair:
+
+    ```promql
+    sum by (source_namespace, destination_namespace) (increase(hubble_policy_verdicts_total{action="audit"}[7d]))
+    ```
+
+    and flow by flow, in Grafana:
+
+    ```logql
+    {job="hubble", verdict="AUDIT"} | json | line_format "{{.flow_source_namespace}}/{{.flow_source_pod_name}} -> {{.flow_destination_namespace}}/{{.flow_destination_pod_name}} {{.flow_l4_TCP_destination_port}}{{.flow_l4_UDP_destination_port}}"
+    ```
+
+3. Add a rule for every audited flow that is legitimate. Layer 7 rules are
+   never audited: a request an HTTP rule does not match is answered `403` on
+   the spot, which is why a new policy carries `http: [{}]` — proxied and
+   recorded, nothing refused — until the week's requests have been read:
+
+    ```logql
+    {job="hubble"} | json | flow_l7_http_method != "" | line_format "{{.flow_source_namespace}} -> {{.flow_destination_namespace}}:{{.flow_l4_TCP_destination_port}} {{.flow_l7_http_method}} {{.flow_l7_http_url}}"
+    ```
+
+4. Tighten each `http: [{}]` to the methods and paths seen, set
+   `policyAuditMode: false` and restart the agents again. From then on the
+   verdict to watch is `DROPPED`, live or from Loki — see
+   [Cilium](cilium.md#health-check) — and the `HubblePolicyDrops` alert
+   fires on a sustained one.
+
+If a single endpoint needs the same treatment later, audit mode can be set on
+it alone, until the agent restarts:
 
 ```bash
-kubectl -n kube-system port-forward svc/hubble-relay 4245:80
-hubble observe --verdict DROPPED --namespace openbao --follow
-```
-
-Drops are also kept in Loki, so a policy that broke something overnight can
-be read back: `{job="hubble", verdict="DROPPED"}` — see [Cilium](cilium.md#health-check).
-
-If something legitimate is dropped, put a single endpoint into audit mode —
-decisions logged, not enforced — to find the missing rule without an outage:
-
-```bash
-kubectl -n kube-system exec ds/cilium -- \
-  cilium endpoint config <endpoint-id> PolicyAuditMode=Enabled
+kubectl -n kube-system exec ds/cilium -c cilium-agent -- \
+  cilium-dbg endpoint config <endpoint-id> PolicyAuditMode=Enabled
 ```
 
 ## Health check

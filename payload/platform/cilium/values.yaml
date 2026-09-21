@@ -58,6 +58,11 @@ encryption:
   enabled: true
   type: wireguard
 
+# Every policy is evaluated and logged, none enforced, for the observation week
+# of the egress rollout; see docs/platform/security-policies.md#rollout.
+# Applies at agent restart, not on sync. L7 rules are never audited.
+policyAuditMode: true
+
 hubble:
   enabled: true
   metrics:
@@ -70,6 +75,7 @@ hubble:
       - port-distribution
       - icmp:labelsContext=source_namespace,destination_namespace
       - httpV2:labelsContext=source_namespace,source_workload,destination_namespace,destination_workload,traffic_direction
+      - policy:labelsContext=source_namespace,destination_namespace
     serviceMonitor:
       enabled: true
     dashboards:
@@ -83,6 +89,8 @@ hubble:
       filePath: /var/run/cilium/hubble/events.log
       allowList:
         - '{"verdict":["DROPPED","ERROR","AUDIT"]}'
+        # Requests the L7 rules see; the record the paths are tightened from.
+        - '{"protocol":["http"]}'
       fieldMask:
         - time
         - verdict
@@ -91,6 +99,7 @@ hubble:
         - event_type
         - IP
         - l4
+        - l7
         - source.namespace
         - source.pod_name
         - source.workload
