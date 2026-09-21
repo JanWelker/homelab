@@ -1,0 +1,34 @@
+---
+# Rendered by ArgoCD only; `make install-cilium` applies the chart alone.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cilium-policy
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: policy
+spec:
+  groups:
+    - name: cilium.policy
+      rules:
+        # Only policy verdicts: the reasons that dominate the drop counter are
+        # VLAN_FILTERED and STALE_OR_UNROUTABLE_IP, which are the LAN, not a
+        # policy. Fifteen minutes outlasts a rollout's first few retries.
+        - alert: HubblePolicyDrops
+          expr: |
+            sum by (source_namespace, destination_namespace) (
+              rate(hubble_drop_total{reason="POLICY_DENIED"}[10m])
+            ) > 0.1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Network policy is dropping {{ $labels.source_namespace }} to {{ $labels.destination_namespace }}
+            description: >-
+              Cilium has dropped traffic from {{ $labels.source_namespace }}
+              to {{ $labels.destination_namespace }} for fifteen minutes at
+              {{ $value | humanize }} packets per second. Either a policy is
+              missing a rule or something is probing. The flows are in Loki
+              under job="hubble".

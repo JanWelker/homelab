@@ -37,6 +37,11 @@ spec:
               # Alloy's data directory, see the mount below.
               - name: tmp
                 emptyDir: {}
+              # Hubble's flow export, written by the cilium-agent on each node.
+              - name: hubble
+                hostPath:
+                  path: /var/run/cilium/hubble
+                  type: DirectoryOrCreate
 
         alloy:
           mounts:
@@ -46,6 +51,9 @@ spec:
             extra:
               - name: tmp
                 mountPath: /tmp
+              - name: hubble
+                mountPath: /var/run/cilium/hubble
+                readOnly: true
 
           # Log files are root-owned; non-root Alloy silently collects nothing.
           securityContext:
@@ -188,6 +196,43 @@ spec:
                 }
 
                 // Stamp with the request time, not the time Alloy read the line.
+                stage.timestamp {
+                  source = "timestamp"
+                  format = "RFC3339Nano"
+                }
+
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // Policy verdicts only; see the allowList in cilium/values.yaml.
+              local.file_match "hubble" {
+                path_targets = [{
+                  __path__ = "/var/run/cilium/hubble/events.log",
+                  job      = "hubble",
+                  node     = sys.env("K8S_NODE_NAME"),
+                }]
+              }
+
+              loki.source.file "hubble" {
+                targets    = local.file_match.hubble.targets
+                forward_to = [loki.process.hubble.receiver]
+              }
+
+              loki.process "hubble" {
+                // The verdict is a closed set of a few values; everything else stays in the line.
+                stage.json {
+                  expressions = {
+                    verdict   = "flow.verdict",
+                    timestamp = "time",
+                  }
+                }
+
+                stage.labels {
+                  values = {
+                    verdict = null,
+                  }
+                }
+
                 stage.timestamp {
                   source = "timestamp"
                   format = "RFC3339Nano"

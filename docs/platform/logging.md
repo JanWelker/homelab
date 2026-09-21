@@ -36,8 +36,11 @@ journald and are reachable only over SSH to the node that is misbehaving.
 | Container logs | `/var/log/pods/<ns>_<pod>_<uid>/<container>/*.log` | `namespace`, `pod`, `container`, `node`, `app` |
 | Node journal | `/var/log/journal` | `unit`, `node`, `job="systemd-journal"` |
 | API server audit log | `/var/log/kubernetes/audit/audit.log` | `verb`, `audit_level`, `node`, `job="kubernetes-audit"` |
+| Hubble policy verdicts | `/var/run/cilium/hubble/events.log` | `verdict`, `node`, `job="hubble"` |
 
-All three are on the root filesystem, so one `varlog: true` mount covers them.
+The first three are on the root filesystem, so one `varlog: true` mount covers
+them; the Hubble export is a separate read-only hostPath — see
+[Cilium](cilium.md#configuration).
 The audit log exists only on the control-plane nodes; Alloy runs everywhere and
 `local.file_match` finds nothing on the workers. Audit events keep only `verb`
 and `audit_level` as labels — small closed sets — while user and resource stay
