@@ -2494,9 +2494,9 @@ because several steps can leave you unable to open a new one.</p>
 </li>
 <li>
 <p><strong>Only now</strong> change <code>k8sServiceHost</code> in <code>payload/platform/cilium/values.yaml</code>
-   to the VIP, commit, let ArgoCD sync, and restart Cilium.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>ds/cilium
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
+   to the VIP and commit. The merge rolls every agent, so the VIP must
+   answer before it lands; watch the rollout.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
 </span></code></pre></div>
 </li>
 <li>
