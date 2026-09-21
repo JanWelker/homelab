@@ -58,6 +58,32 @@ The reasoning is in `docs/architecture/gitops.md`.
 - Long explanations belong in `docs/`, not in YAML comments.
 - Changes land through PRs off `main`.
 
+## Writing docs
+
+`docs/` is reference material, not an essay collection. It was condensed from
+57k to 37k words once; keep it there.
+
+- **Say each fact once, site-wide.** Stage gating, RollingSync and version
+  pins live in `docs/architecture/gitops.md`; the rollout order and the
+  2.5x-peak memory rule in `docs/platform/index.md`; the OpenBao unseal
+  consequences in `docs/platform/openbao.md`; the inventory variables in the
+  Quickstart; the Renovate policy in `docs/development/maintenance.md`.
+  Everywhere else is one clause and a link.
+- **One sentence of why per rule.** No history, postmortems, or "this page
+  previously claimed". If the reasoning needs a paragraph it goes in
+  `docs/architecture/decisions.md`.
+- **Never restate values from `payload/` or `ansible/`.** Link the file and
+  explain why the setting is what it is. Numbers rot on the next Renovate merge.
+- **Tables and numbered steps over prose.** A runbook is numbered steps with one
+  code block each. Headings are nouns a reader would search for, not essay
+  titles.
+- **Platform pages share one skeleton:** intro, At a glance, Configuration,
+  Usage, Health check, Pitfalls, and Recovery only where a real runbook exists.
+- **Dated logs are their own page**, like `docs/operations/triage-2026-09-20.md`.
+  The reference page keeps the method and links the log.
+- The build validates links and anchors. Grep for `#anchor` before renaming a
+  heading.
+
 ## Bootstrap
 
 `make bootstrap` runs `install-cilium` (Gateway API CRDs + Cilium) →

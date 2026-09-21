@@ -1,19 +1,17 @@
 ---
-description: "How a bare metal node goes from power-on to joined cluster member via PXE, Ignition, and Kubeadm."
+description: "How a bare metal node goes from power-on to joined cluster member via PXE, Ignition and kubeadm, and the boot server that feeds it."
 ---
 
 # Boot & Bootstrap Process
 
-This page follows a single node from the moment you press the power button to
-the moment it shows up in `kubectl get nodes`. Understanding this sequence is
-what turns a stalled PXE boot from a mystery into a question with an obvious
-next step: *which arrow didn't happen?*
+One node from the power button to `kubectl get nodes`. When an install stalls,
+the question is *which arrow did not happen?*
 
 ## 1. Preparation (on the deployment host)
 
-Before any node is powered on, the operator runs `make config` to generate the
-per-host Ignition and PXE configs, then `make serve` to start the TFTP and HTTP
-servers. See the [Quickstart](../quickstart.md) for the exact sequence.
+`make config` generates the per-host Ignition and PXE configs; `make serve`
+starts the [boot server](#boot-server). The [Quickstart](../quickstart.md) has
+the exact sequence.
 
 ## 2. Network Boot
 
@@ -31,43 +29,29 @@ sequenceDiagram
     Server-->>Node: 6. Flatcar kernel, initrd
 ```
 
-The DHCP server is external to this project. It must hand out the boot server's
-IP as `next-server` and a syslinux filename — see the
-[Quickstart prerequisites](../quickstart.md#prerequisites).
-
-Step 2 is where most first attempts die, and it dies silently: the node asks,
-nothing useful answers, and the firmware moves on to the next boot device
-without a word of complaint.
+The DHCP server is external and must hand out the boot server's IP as
+`next-server` and a syslinux filename — see the
+[Quickstart prerequisites](../quickstart.md#prerequisites). Step 2 is where most
+first attempts die, silently: the firmware moves on to the next boot device.
 
 ## 3. Install & Bootstrap
 
-PXE does not boot the node; it boots the **installer** — and only when the node
-has been armed with `make reinstall`, since the generated config otherwise says
-`DEFAULT localboot`. What it loads is a RAM environment whose only job is to
-write Flatcar to `install_disk` and reboot into it.
+PXE boots the **installer**, and only on a node armed with `make reinstall`;
+the generated menu otherwise says `DEFAULT localboot`. The installer is a RAM
+environment whose only job is to write Flatcar to `install_disk` and reboot
+into it. Two templates, because two machines share a disk and nothing else:
 
-There are **two templates, because there are two machines**. The RAM
-environment and the node it installs share a disk and nothing else, and
-pretending otherwise is what made every failure in this page's troubleshooting
-possible.
-
-| | renders to | runs in |
-| --- | --- | --- |
-| `butane_installer_config.yaml.j2` | `ignition-<host>-install.json` | the PXE environment |
-| `butane_node_config.yaml.j2` | `ignition-<host>.json` | the installed system, on first boot |
+| Template | Renders to | Runs in | `wipe_table` |
+| --- | --- | --- | --- |
+| `butane_installer_config.yaml.j2` | `ignition-<host>-install.json` | the PXE environment | `true` |
+| `butane_node_config.yaml.j2` | `ignition-<host>.json` | the installed system, first boot | `false` |
 
 The PXE menu points at the first. The installer fetches the second as a plain
 file and hands it to `flatcar-install -i`, which embeds it in the OEM partition
-of the system it writes — so the node's own config is delivered *by* the
-installer without ever being executed in it.
-
-The installer config is deliberately small: an SSH key, `wipe_table: true`, the
-one file to hand onward, and the two `flatcar-install` units. Everything it does
-not contain is downloaded into a RAM disk and discarded ninety seconds later —
-which used to include 144 MiB of sysext images the installer had no use for.
+of the system it writes.
 
 !!! tip "Keep the installer minimal"
-    Anything added to `butane_installer_config.yaml.j2` is paid for on every install of every node, in RAM and in download time, and thrown away. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
+    Anything in `butane_installer_config.yaml.j2` is downloaded into RAM on every install of every node and discarded ninety seconds later. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
 
 ```mermaid
 sequenceDiagram
@@ -88,138 +72,45 @@ sequenceDiagram
     Note over Node: Node is NotReady - no CNI yet
 ```
 
-Step 10 is the point of no return, and the wipe is deliberately in three parts
-rather than one:
-
-| | |
-| --- | --- |
-| Ignition `wipe_table` | Destroys the GPT, in the initramfs, before the installer unit runs. Only in `ignition-<host>-install.json` — see [Wiping the disk](#wiping-the-disk) |
-| `blkdiscard` | Returns the whole device to unwritten. Best-effort — SATA without TRIM declines it |
-| `format: none` on `rook-osd` | On the **installed** system's first boot, in `butane_node_config.yaml.j2` |
-
-### Boot order
-
-The install leaves the firmware's boot order alone. `flatcar-install` can write
-a UEFI boot entry for the disk with `-u`, which is `efibootmgr -c` and puts that
-entry at the front of `BootOrder`; this project does not pass it.
-
-That is deliberate, because the boot order is the one thing the PXE menu cannot
-override. These nodes are set to network boot first and reach their disk through
-`LOCALBOOT`, so the generated menu decides what happens on every boot of every
-node. An install that quietly promoted the disk ahead of PXE would take a node
-out of that arrangement: `make reinstall` would rewrite a menu the firmware had
-stopped reading, and the node would ignore it with no error anywhere.
-
-The cost is that a node has to be able to reach its disk without that entry —
-network boot first with a working `LOCALBOOT`, or the disk ahead of PXE in the
-firmware. A machine with neither installs correctly and then has nothing to
-boot.
+Between steps 9 and 10 the boot server rewrites the node's menu to
+`DEFAULT localboot` — see
+[Switching back to local boot](#switching-back-to-local-boot). From step 11 the
+node runs from disk and needs the boot server only for the sysexts in step 12,
+on this first boot. `NotReady` after step 14 is expected: there is no CNI until
+`make install-cilium`.
 
 ### Wiping the disk
 
-`wipe_table` is the one setting the two environments need opposite answers for,
-and it is why there are two files rather than one.
+Step 10 is the point of no return, and the wipe has three parts:
 
-In the **installer** it must be `true`. The disk is about to be overwritten
-wholesale, so starting from a blank table is what makes an install reproducible:
-partition numbers, offsets and sizes come out the same whether the disk was
-empty or held the last cluster. With it `false`, a rebuild inherits the previous
-layout — Ignition pins `rook-osd` to its old offset while growing `ROOT` over
-it, and `ignition-disks.service` fails in the initramfs:
+| Wipe | Where | What it does |
+| --- | --- | --- |
+| `wipe_table: true` | `ignition-<host>-install.json` only | Destroys the GPT before the installer runs, so partition numbers and offsets come out the same whether the disk was empty or held the last cluster. Without it a rebuild inherits the old layout and `ignition-disks.service` fails on an `sgdisk` overlap |
+| `blkdiscard` | installer | Returns the device to unwritten. Best-effort: SATA without TRIM declines |
+| `format: none` on `rook-osd` | `butane_node_config.yaml.j2` | Erases the old BlueStore signature, which `ceph-volume` reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster |
 
-```console
-sgdisk --delete=9 --delete=10 --new=9:12722176:+102400000 --new=10:65150976:+0
-Could not create partition 9 from 12722176 to 115122175
-```
-
-The node drops to an emergency shell before `flatcar-install.service` ever runs,
-so the disk is never touched. A node that has never been installed is
-unaffected, which is why this only appears on a rebuild.
-
-In the **installed system** it must be `false`, and Ignition will not do it
-anyway. That config runs on the first boot from the disk it would be wiping, and
-Ignition refuses by name — before reading the partition table, before running
-`sgdisk`, about a millisecond into the stage:
-
-```console
-Ignition failed: create partitions failed: refusing to wipe active disk "/run/ignition/dev_aliases/dev/nvme0n1"
-```
-
-Which makes it the safer of the two mistakes: loud, and before anything is
-written. The installer side has no such guard. A missing wipe there does not
-announce itself — it surfaces as the `sgdisk` error above, about offsets you
-have to work backwards from, and only on hardware that has been installed
-before.
-
-The tell that the two values have been collapsed into one is quieter still:
-`resize: true` on `ROOT` stops mattering. With the table always wiped there is
-never an existing partition to match, so the flag can never fire.
-
-`storage.filesystems` follows the same split for the same reason. The installer
-has just wiped the table, so `rook-osd` does not exist there, and asking Ignition
-to prepare a filesystem on it blocks until it gives up:
-
-```console
-Ignition failed: failed to create filesystems: failed to wait on filesystems devs:
-device unit dev-disk-by\x2dpartlabel-rook\x2dosd.device timeout
-```
-
-Erasing the previous cluster's BlueStore signature belongs on the installed
-system regardless — that is where the partition is.
-
-The third wipe is about Ceph specifically. BlueStore metadata lives at the start of
-the raw `rook-osd` partition, and `ceph-volume` reads that *signature* rather
-than the partition table — so a repartition alone can resurrect an OSD on a
-cluster that has never heard of it. The partition is new; the bytes under it are
-not, which is why the erase belongs where the partition is created.
+The installed system's config must not wipe: Ignition refuses to touch the disk
+it booted from (`refusing to wipe active disk`) and the first boot fails before
+anything is written. `storage.filesystems` follows the same split — `rook-osd`
+does not exist in the installer, and Ignition would block waiting for it.
 
 Check `install_disk` before you check anything else.
 
-Between steps 9 and 10 the boot server rewrites that node's menu back to
-`DEFAULT localboot`. Nothing else would: `make reinstall` arms the menu and the
-generated files never disarm it, so on firmware that network boots first the
-reboot in step 10 would read the same armed menu and start the install over.
-See [Boot Server &rarr; Switching back to local
-boot](boot-server.md#switching-back-to-local-boot).
+### Boot order
 
-Step 11 runs from disk, not from the network. Ignition is embedded in the OEM
-partition by `flatcar-install -i`, so the node no longer depends on the boot
-server for its config — only for the sysext images in step 12, and only on this
-first boot.
-
-Step 14 leaving the node `NotReady` is correct and expected — there is no CNI
-yet, so the kubelet has nothing to plug pods into. It stays that way until
-`make install-cilium` lands Cilium.
-
-## Every boot after the first
-
-The node boots from its own disk. The boot server can be, and should be,
-switched off.
-
-| | |
-| --- | --- |
-| `/` | ext4 on partition 9, capped at 50 GB and grown into it by `grow-root.service` |
-| Ignition | Runs **once**, on the first boot after the install |
-| `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
-| `rook-osd` | Partition 10, raw and unmounted — Ceph owns it |
-
-A reboot is therefore just a reboot. `bootstrap-k8s.service` does *not* fire,
-because its `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer
-satisfied — the file is still there from last time. etcd comes back with its
-data, Rook finds its OSD, and the kubelet rejoins a cluster it never left.
-
-!!! note "Why `grow-root.service` exists"
-    Flatcar grows its root filesystem on first boot, and taking partition 9 over in Ignition is precisely what stops that happening — the stock `systemd-growfs-root.service` is `static` and is pulled in by an `x-systemd.growfs` mount option, which a root mounted from `root=LABEL=ROOT` on the kernel command line does not carry. Without the unit, a node comes up with a 50 GB ROOT partition holding the image's original ~1.6 GB filesystem — about 1.2 GB free for everything the node writes. It runs the same binary the stock unit does, and is a no-op once the filesystem already fills the partition.
-
-!!! note "Two boot paths, and the menu picks the safe one"
-    Nothing is chosen at the console. `PROMPT 0` boots whatever `DEFAULT` names and shows no menu, and the template always emits `DEFAULT localboot` — so a node that network-boots for any reason ends up on its own disk, with no keyboard involved. Installing means arming it with `make reinstall`, which rewrites that one line in the generated file; see [Repartitioning the nodes](../operations/nodes.md#rebuilding-or-repartitioning-a-node). Holding Shift or Alt at boot still forces the prompt, which is the escape hatch for a node that is armed and should not be.
+The install leaves the firmware's boot order alone (`flatcar-install -u`, which
+would put the disk at the front of `BootOrder`, is not passed). The nodes
+network-boot first and reach their disk through `LOCALBOOT`, so the generated
+menu decides every boot; a disk promoted ahead of PXE would make
+`make reinstall` rewrite a menu the firmware no longer reads. A node therefore
+needs network boot first with a working `LOCALBOOT`, or the disk ahead of PXE
+in the firmware — with neither it installs and then has nothing to boot.
 
 ## 4. Post-Installation Bootstrap
 
-Once Kubeadm has initialized the control plane, the remaining components are
-installed from the deployment host — only what ArgoCD needs to run, and ArgoCD
-itself. This is the last time anything is applied by hand; after step 6 the
-repository is in charge. `make bootstrap` runs all three targets in order.
+Once kubeadm has initialised the control plane, `make bootstrap` installs only
+what ArgoCD needs to run, and ArgoCD itself. After step 6 the repository is in
+charge.
 
 ```mermaid
 sequenceDiagram
@@ -236,5 +127,89 @@ sequenceDiagram
     Deploy->>Cluster: 6. Apply AppProjects + the argocd Application
 ```
 
-!!! note
-    `make untaint` is **not** part of this flow. It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster. The layout in [Architecture Overview](index.md#cluster-layout) has dedicated workers, so the taint should stay in place — an untainted control plane is a control plane that will one day be evicted by a Helm chart with ambitious resource requests. On a single node it is not optional and it goes *before* step 3: ArgoCD has no tolerations, so `make install-argo` waits on pods that cannot be scheduled. See [Single-node clusters](../quickstart.md#single-node-clusters).
+!!! note "`make untaint` is not part of this flow"
+    It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* step 3 — ArgoCD has no tolerations. The [documented layout](index.md#cluster-layout) has dedicated workers, so the taint stays. See [Single-node clusters](../quickstart.md#single-node-clusters).
+
+## Every boot after the first
+
+The node boots from its own disk; the boot server should be off.
+
+| | |
+| --- | --- |
+| `/` | ext4 on partition 9, capped at 50 GB and grown into it by `grow-root.service` |
+| Ignition | Runs **once**, on the first boot after the install |
+| `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
+| `rook-osd` | Partition 10, raw and unmounted — Ceph owns it |
+
+`bootstrap-k8s.service` does not fire again: its
+`ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer satisfied.
+
+!!! note "Why `grow-root.service` exists"
+    Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: it is pulled in by an `x-systemd.growfs` mount option that a root mounted from `root=LABEL=ROOT` does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a 50 GB partition. It runs the same binary and is a no-op once the filesystem fills the partition.
+
+!!! note "Two boot paths, and the menu picks the safe one"
+    `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
+
+## Boot server
+
+`boot_server/serve.py` is a TFTP server and an HTTP server. `make serve` starts
+it from the repository root (the document roots are relative to the working
+directory) and needs `sudo` for port 69. Both servers bind `boot_server_ip`
+from `ansible/inventory.yaml` — the address `make config` baked into every
+generated URL — and nothing else. If no interface holds that address it says so
+and names the variable; if port 8000 is taken it exits.
+
+| Server | Root | Serves |
+| --- | --- | --- |
+| TFTP, port 69 | `output/tftp` | `lpxelinux.0` (BIOS) or `syslinux.efi` (UEFI), and the menus in `pxelinux.cfg/` |
+| HTTP, port 8000 | `output/http` | Kernel, initrd, OS image and signature, Ignition configs, sysext images. No directory listings |
+
+Both roots are written by `make config` and `make download`; a missing file is
+fixed by `make artifacts`, not by the script.
+
+Leave it in the foreground. It opens by naming what it serves and which nodes
+are armed — a boxed warning listing every disk about to be wiped, with
+`make reinstall-cancel` and its `LIMIT=<node>` form — then logs one line per
+request against the node that made it. The file a node *stops* at is the
+diagnosis; see
+[Troubleshooting PXE boot](../quickstart.md#troubleshooting-pxe-boot).
+
+```console
+20:33:04  server        http on 10.9.200.222:8000 from output/http
+20:33:04  server        tftp on 10.9.200.222:69 from output/tftp
+20:33:04  server        armed to install: odin, thor
+20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie
+20:34:17  odin          collecting the bootloader (lpxelinux.0)
+20:34:17  odin          collecting its boot menu -- armed, so it will install
+20:34:19  odin          collecting the kernel
+20:34:21  odin          collecting the initrd (391.2 MB)
+20:34:48  odin          collecting its Ignition config
+20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one
+20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk
+20:38:40  odin          collecting the kubernetes sysext (61.4 MB)
+```
+
+A node is identified by MAC from the `01-<mac>` menu it fetches, and after the
+install by name from the `ignition-<host>.json` it asks for. A request from an
+address that has done neither is logged against the bare IP.
+
+## Switching back to local boot
+
+`make reinstall` writes `DEFAULT install` into a node's menu and nothing in the
+generated files writes it back, so firmware that network-boots first would
+reinstall forever. The boot server therefore disarms the node the moment it has
+delivered the whole OS image — the same edit `make reinstall-cancel` makes. A
+node that never fetched an Ignition config cannot be identified by name; the
+server says so and tells you to run `make reinstall-cancel` yourself.
+
+Arming survives the boot server, because the menu is a file on disk. `Ctrl-C`
+therefore checks: if anything is still armed it offers
+`Disarm 2 node(s) now? [Y/n]`. Enter accepts; anything else leaves them armed
+and repeats the cancel command. Without a terminal on stdin it warns and leaves
+them armed.
+
+!!! warning "It disarms on delivery, not on success"
+    The server sees a transfer complete, not whether `flatcar-install` then wrote the disk. An install that fails after the download leaves a disarmed node with no working disk — loud, because `flatcar-install.service` does not reboot on failure — and the fix is `make reinstall LIMIT=<node>` before the power cycle.
+
+!!! warning "Stop it when you are done"
+    While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](security.md#provisioning).

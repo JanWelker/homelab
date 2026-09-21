@@ -1,15 +1,14 @@
 ---
-description: "Automated TLS certificates from Let’s Encrypt using cert-manager with a Route53 DNS-01 solver."
+description: "Automated TLS certificates from Let's Encrypt using cert-manager with a Route53 DNS-01 solver."
 ---
 
 # cert-manager
 
-TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53.
-
-DNS-01 rather than HTTP-01 for one decisive reason: these hostnames resolve to
-RFC1918 addresses that Let's Encrypt cannot reach. Nothing on the public internet
-can complete an HTTP challenge against `10.9.2.248`. Proving control of the DNS
-zone works from anywhere, and it is also the only way to get a wildcard.
+TLS certificate automation via Let's Encrypt, using DNS-01 challenges through
+AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that
+Let's Encrypt cannot reach, and because it is the only way to get a wildcard:
+two certificates, `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`, cover every
+hostname the cluster serves.
 
 ## At a glance
 
@@ -20,70 +19,17 @@ zone works from anywhere, and it is also the only way to get a wildcard.
 | Depends on | [External Secrets](external-secrets.md) for the Route53 credential, so transitively on [OpenBao](openbao.md) |
 | If it is down | Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later |
 | Health check | `kubectl get certificate -A` &rarr; all `READY=True` |
+| Files | `payload/platform/cert-manager/`, `payload/platform/certificates/` |
 
-## Components
+## Configuration
 
-- **ClusterIssuers**: Both staging (testing) and production issuers using DNS-01 via Route53.
-- **Certificates**: Wildcard TLS certs for `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`, stored as Secrets in `kube-system` and referenced by the Gateways. Two certificates cover every hostname this cluster will ever serve, which is a pleasant place to be.
-
-## Sync order
-
-The issuers and certificates are a separate `certificates` Application, in
-`payload/platform/certificates/`. Kept in the cert-manager Application they
-would hold its stage until OpenBao — two stages later — held the Route53
-credentials; see [Rollout order](../architecture/gitops.md#nothing-may-wait-on-a-later-stage).
-Inside that Application the resources go in three sync waves, because each one
-cannot work until the one before it exists:
-
-| Wave | Resource | Needs |
-| --- | --- | --- |
-| `1` | `ExternalSecret` `route53-credentials` | OpenBao, through ESO |
-| `2` | `letsencrypt-staging`, `letsencrypt-prod` | The `route53-credentials` Secret |
-| `3` | The three `Certificate`s | A `Ready` ClusterIssuer |
-
-Left in one wave, ArgoCD orders custom resources alphabetically — `Certificate`,
-then `ClusterIssuer`, then `ExternalSecret`, exactly backwards. The sync then
-waits on certificates that cannot issue until two resources behind them in the
-queue are applied. An issuer applied alongside the `ExternalSecret` fares no
-better: it comes up `Ready=False` with `InvalidSolver` ("failed to get secret
-route53-credentials") and stays there until something resyncs it.
-
-The Application also sets a sync `retry`. Without one, a failed apply ends the
-operation where it fell and nothing picks it up again — and a single flake at
-the front of the chain, such as the external-secrets admission webhook being
-unreachable on a cluster whose CNI has only just come up, leaves every issuer
-and certificate behind it unmade.
-
-## Resources
-
-Requests and limits are sized at roughly 2.5x the measured peak working set:
-controller 84Mi, cainjector 89Mi, webhook 24Mi. CPU is requested but not
-limited, like the rest of the platform.
-
-The chart renders its `ServiceMonitor` unconditionally, so it cannot sync until
-the Prometheus operator CRDs exist. They are the `prometheus-operator-crds`
-Application in `01-crds`, two stages ahead. `retry` stays, so a failed apply is
-retried rather than holding `03-controllers` until the next commit changes the
-Application's revision.
-
-## AWS Credentials Setup
-
-The DNS-01 solver needs AWS credentials with Route53 permissions. The `route53-credentials` Secret is materialised from [OpenBao](openbao.md) via an [ExternalSecret](external-secrets.md).
-
-Store the credentials in OpenBao once OpenBao and ESO are up:
-
-```bash
-bao kv put kv/cert-manager/route53 \
-  access-key-id="YOUR_AWS_ACCESS_KEY_ID" \
-  secret-access-key="YOUR_AWS_SECRET_ACCESS_KEY"
-```
-
-ESO will then create the `route53-credentials` Secret in the `cert-manager` namespace within `refreshInterval` (1h by default) — or, if you would rather not spend an hour wondering whether it worked, immediately:
-
-```bash
-kubectl annotate externalsecret -n cert-manager route53-credentials \
-  force-sync=$(date +%s) --overwrite
-```
+| Setting | Why |
+| --- | --- |
+| Issuers and certificates in their own `certificates` Application | Kept with cert-manager they would hold `03-controllers` until OpenBao, two stages later, held the Route53 credentials — see [GitOps](../architecture/gitops.md) |
+| Three sync waves inside `certificates`: `ExternalSecret`, then the ClusterIssuers, then the Certificates | In one wave ArgoCD orders custom resources alphabetically — `Certificate`, `ClusterIssuer`, `ExternalSecret`, exactly backwards — and an issuer applied before its Secret stays `Ready=False` with `InvalidSolver` until something resyncs it |
+| Sync `retry` on both Applications | Without one a failed apply ends the operation where it fell; one flake at the front of the chain, such as the ESO webhook being unreachable on a fresh CNI, leaves every issuer and certificate behind it unmade |
+| `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are a separate Application in `01-crds` — see [Monitoring](monitoring.md#crds) |
+| `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week, a misconfigured solver retries until that is gone, and there is no appeals process |
 
 The IAM user needs at minimum:
 
@@ -95,21 +41,24 @@ The IAM user needs at minimum:
 }
 ```
 
-!!! note
-    Until OpenBao is initialised, unsealed, and the secret is stored, cert-manager will fail to issue certificates. This is the dependency that catches people after every power cut: sealed OpenBao means no Route53 credentials, which means no renewals, which means an expired certificate roughly two months later with no obvious connection to the outage that caused it. For the very first bootstrap, see the [Quickstart](../quickstart.md) which walks through the order.
+## Usage
 
-## Issuers
+Store the credentials once OpenBao and ESO are up; `make bao-secrets` prompts
+for them, or by hand:
 
-| Issuer | Purpose |
-| --- | --- |
-| `letsencrypt-staging` | Testing — issues untrusted certs, no rate limits |
-| `letsencrypt-prod` | Production — issues trusted certs, subject to rate limits |
+```bash
+bao kv put kv/cert-manager/route53 \
+  access-key-id="YOUR_AWS_ACCESS_KEY_ID" \
+  secret-access-key="YOUR_AWS_SECRET_ACCESS_KEY"
+```
 
-Use `letsencrypt-staging` first when setting up. Production allows five duplicate certificates per week, a misconfigured solver will retry cheerfully until that is gone, and then you wait — there is no appeals process and no amount of restarting the pod helps. Staging exists exactly so you can get it wrong as many times as you need to.
+ESO creates the `route53-credentials` Secret within its `refreshInterval`, or
+[immediately on request](external-secrets.md#adding-a-secret).
 
-## When a certificate will not issue
+## Health check
 
-Work down the chain of custody; the answer is nearly always further back than the `Certificate` itself:
+Work down the chain of custody; the answer is nearly always further back than
+the `Certificate`:
 
 ```bash
 kubectl describe certificate -n kube-system <name>
@@ -117,18 +66,11 @@ kubectl get certificaterequest,order,challenge -A
 kubectl -n cert-manager logs deploy/cert-manager --tail=100
 ```
 
-A `Challenge` stuck in `pending` is a DNS problem, not a cert-manager problem: either the credentials cannot write to the zone, or the TXT record is there and the resolver has not caught up yet. `dig +short TXT _acme-challenge.<host>` settles which.
+A `Challenge` stuck in `pending` is a DNS problem: either the credentials
+cannot write to the zone, or the TXT record is there and the resolver has not
+caught up. `dig +short TXT _acme-challenge.<host>` settles which.
 
-## Directory Structure
+## Pitfalls
 
-```text
-cert-manager/                  # TLS Certificate Management
-├── application.yaml           # ArgoCD Application (Helm chart)
-└── values.yaml                # Helm values
-
-certificates/                  # Issuers and certificates, after OpenBao
-├── application.yaml           # ArgoCD Application
-├── cluster-issuers.yaml       # Let's Encrypt staging + prod issuers
-├── certificates.yaml          # All Certificate resources
-└── route53-credentials.yaml   # ExternalSecret → OpenBao
-```
+!!! note "A sealed OpenBao means no renewals"
+    Until OpenBao is unsealed and the secret stored, cert-manager cannot issue or renew, and the failure surfaces as an expired certificate roughly two months later — see [OpenBao](openbao.md#pitfalls).

@@ -5,17 +5,10 @@ description: "external-dns publishes Route53 records from HTTPRoutes, closing th
 # external-dns
 
 [external-dns](https://kubernetes-sigs.github.io/external-dns/) creates the
-Route53 records for this cluster's hostnames, from the `HTTPRoute` objects that
-already declare them.
-
-Without it, every hostname needs a record created by hand in the AWS console —
-while cert-manager automates the *certificate* for the same name, through the
-same zone, with the same credentials. Automating the hard half and leaving the
-easy half manual is a very common shape, and it is always the manual half that
-gets forgotten. Adding a workload would mean remembering a step that lives
-nowhere in the repository, and removing one would leave a record pointing at
-nothing, forever, until somebody audits the zone and cannot work out what
-`old-thing.k8s.wlkr.ch` was.
+Route53 records for this cluster's hostnames from the `HTTPRoute` objects that
+already declare them. Without it every hostname is a record made by hand in
+the AWS console, a step that lives nowhere in the repository and leaves a
+record pointing at nothing when the workload goes.
 
 ## At a glance
 
@@ -24,56 +17,31 @@ nothing, forever, until somebody audits the zone and cannot work out what
 | Namespace | `external-dns` |
 | Stage | `06-certificates`, with the Route53 credentials it shares a source with |
 | Depends on | [External Secrets](external-secrets.md) for its Route53 credential, [Gateway API](gateway-api.md) for the HTTPRoutes it reads |
-| If it is down | New hostnames get no DNS record. Existing records are left alone, so nothing already working breaks |
+| If it is down | New hostnames get no DNS record. Existing records are left alone |
 | Health check | `kubectl -n external-dns logs deploy/external-dns --tail=50` |
+| Files | `payload/platform/external-dns/` |
 
-## How it decides what to publish
+## Configuration
 
-| Setting | Value | Why |
-| --- | --- | --- |
-| Source | `gateway-httproute` | `HTTPRoute` is the only thing here that publishes a hostname. Ingress is unused, and Services are reached through a Gateway rather than directly |
-| Domain filter | `k8s.wlkr.ch` | Nothing outside that subtree is touched |
-| Registry | `txt`, owner `homelab-k8s` | Ownership marker on every record it creates |
-| Policy | `sync` | Deleting an HTTPRoute removes its record |
-| Zone matching | `--aws-zone-match-parent` | The records live in the `wlkr.ch` zone, not a zone of their own |
+| Setting | Why |
+| --- | --- |
+| Source `gateway-httproute` | `HTTPRoute` is the only thing here that publishes a hostname; the address comes from the route's parent `Gateway`, so nothing is written down twice |
+| Domain filter | Nothing outside that subtree is touched |
+| TXT registry with an owner id | A companion `_externaldns.*` TXT record stamps every record it creates, and it only modifies or deletes records carrying that stamp. Hand-made records in the same zone are invisible to it |
+| Policy `sync` | Deleting an HTTPRoute removes its record. Safe only because of the registry; without it `sync` would happily delete your MX records |
+| `--aws-zone-match-parent` | The records live in the `wlkr.ch` zone, not a zone of their own |
+| Credentials as a file (`AWS_SHARED_CREDENTIALS_FILE`), not environment variables | The environment puts a key that can repoint every hostname into `kubectl describe pod`, crash dumps and every child process. The `ExternalSecret` templates an INI `credentials` key, the only key mounted; the original keys stay in the Secret so nothing still reading them breaks |
 
-The address comes from the `HTTPRoute`'s parent `Gateway` — so a route attached
-to `infra-gateway` resolves to `10.9.2.248`, and one on `apps-gateway` to
-`10.9.2.249`, without either address being written down again.
+The credential is a separate IAM user and OpenBao path from cert-manager's —
+see [OpenBao](openbao.md#kv-layout) for why. Its policy needs
+`route53:ChangeResourceRecordSets` on the hosted zone, plus
+`route53:ListHostedZones` and `route53:ListResourceRecordSets`.
 
-!!! note "Why `sync` is safe here"
-    `sync` lets external-dns **delete** records, which is reasonably where people reach for `upsert-only` instead — pointing a deletion-capable robot at a production DNS zone is not a decision to make casually. It is safe because of the TXT registry: for every record it creates, external-dns writes a companion `_externaldns.*` TXT record stamped with `homelab-k8s`, and it will only modify or delete records carrying that stamp. Anything created by hand in the same zone is invisible to it. Without the registry, `sync` would be a genuinely excellent way to delete your MX records.
+## Usage
 
-## Adding a hostname
-
-Nothing beyond the `HTTPRoute` you were already writing:
-
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: my-app
-  namespace: my-app
-spec:
-  parentRefs:
-    - name: apps-gateway
-      namespace: kube-system
-      sectionName: https
-  hostnames:
-    - "my-app.k8s.wlkr.ch"
-  rules:
-    - backendRefs:
-        - name: my-app
-          port: 80
-```
-
-The certificate is already covered by the wildcard on the Gateway, so nothing
-outside the `HTTPRoute` needs touching.
-
-## Credentials
-
-A **separate** IAM user and OpenBao path from cert-manager's, at
-`kv/external-dns/route53`:
+Nothing beyond the `HTTPRoute` you were already writing — see
+[Gateway API](gateway-api.md#usage). The credential is stored once,
+by `make bao-secrets` or by hand:
 
 ```bash
 bao kv put kv/external-dns/route53 \
@@ -81,60 +49,22 @@ bao kv put kv/external-dns/route53 \
   secret-access-key="..."
 ```
 
-They are split because the blast radii differ. cert-manager writes only
-`_acme-challenge` TXT records, and a stolen key means someone can issue
-certificates for the zone. external-dns creates and deletes A and TXT records,
-and a stolen key means someone can repoint hostnames. One shared key would
-collapse both into "someone owns your domain", which is a strictly worse
-sentence.
-
-The policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus
-`route53:ListHostedZones` and `route53:ListResourceRecordSets`.
-
-The key reaches the pod as a file, not as environment variables. The AWS SDK
-reads either, but the environment puts both halves of a key that can repoint
-every hostname into `kubectl describe pod`, into crash dumps, and into every
-child process. A file is readable only by something already inside the
-container. The `ExternalSecret` templates an INI `credentials` key, which is
-the only key mounted at `/aws` (`AWS_SHARED_CREDENTIALS_FILE`), so the file
-exists nowhere but the Secret and the pod. The original `access-key-id` and
-`secret-access-key` keys stay in the Secret beside it: dropping them would
-rewrite it out from under anything still reading them.
-
-## Checking it works
+## Health check
 
 ```bash
 kubectl -n external-dns logs deploy/external-dns --tail=50
 dig +short argo.infra.k8s.wlkr.ch
-```
-
-If it publishes nothing at all, and says so as
-`All records are already up to date, there are no changes for the matching
-hosted zones`, read that message literally: it found no zone to change. The
-metrics separate the two halves —
-
-```bash
 kubectl -n external-dns port-forward deploy/external-dns 7979:7979
 curl -s localhost:7979/metrics | grep endpoints_total
 # external_dns_source_endpoints_total   8   <- hostnames it can see
 # external_dns_registry_endpoints_total 0   <- records it owns
 ```
 
-— so 8 and 0 together means the sources are fine and the provider is the
-problem, which on Route53 is usually zone matching: `k8s.wlkr.ch` has no
-hosted zone of its own, and `--aws-zone-match-parent` is what lets the
-`wlkr.ch` zone satisfy the filter.
+`All records are already up to date, there are no changes for the matching
+hosted zones` means it found no zone to change: sources fine, provider not,
+which on Route53 is usually zone matching.
 
-A record that will not update is usually one external-dns does not own — check
-for the matching `_externaldns.` TXT record in Route53. This is the safety
-mechanism working exactly as designed, and it will still confuse you the first
-time. Adopting a hand-made record means creating that TXT entry, or deleting the
-record and letting external-dns recreate it.
+## Pitfalls
 
-## Directory Structure
-
-```text
-external-dns/
-├── application.yaml            # ArgoCD Application (Helm: external-dns)
-└── route53-credentials.yaml    # ExternalSecret: scoped Route53 IAM user
-```
+!!! note "A record that will not update is one external-dns does not own"
+    Check for the matching `_externaldns.` TXT record in Route53. To adopt a hand-made record, create that TXT entry or delete the record and let external-dns recreate it.

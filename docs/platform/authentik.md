@@ -5,30 +5,17 @@ description: "Authentik as the single sign-on layer: OIDC for ArgoCD and Grafana
 # Authentik
 
 [Authentik](https://goauthentik.io/) is the cluster's identity provider. Every
-platform UI sits behind one login.
-
-The alternative — the state most homelabs live in — is six dashboards with six
-different credentials, three of which are the chart default, one of which is
-written on a sticky note, and one of which has no authentication at all because
-the project never shipped any.
+platform UI sits behind one login instead of a chart-default password each —
+and Hubble UI, which ships no authentication at all, would otherwise publish
+every network flow in the cluster to anyone who could reach the hostname.
 
 | Service | Authentication |
 | --- | --- |
 | ArgoCD | OIDC, local admin **disabled** |
 | Grafana | OIDC, login form disabled |
 | Nextcloud | OIDC, login form hidden, local admin break-glass |
-| Home Assistant | Proxy outpost **in front of** its own login — see [the exception](#home-assistant-is-the-exception) |
-| Rook dashboard | Proxy outpost |
-| Hubble UI | Proxy outpost |
-| Prometheus | Proxy outpost |
-| Alertmanager | Proxy outpost |
-
-Left to themselves these each carry a different answer — a local `admin` account
-with an API key, a chart-generated password, separate Ceph credentials — and
-Hubble UI carries none at all, which would publish cluster-wide network flow
-data to anyone who could reach the hostname. Hubble is the one that should make
-you sit up: it is a live map of every connection in the cluster, served without
-so much as a password prompt.
+| Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](#pitfalls) |
+| Rook dashboard, Hubble UI, Prometheus, Alertmanager | Proxy outpost |
 
 ## At a glance
 
@@ -37,21 +24,20 @@ so much as a password prompt.
 | Namespace | `authentik` |
 | Stage | `08-services` |
 | Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
-| If it is down | Every platform UI. ArgoCD, Grafana, Hubble, Prometheus, Alertmanager and the Rook dashboard all lose their only login — see [When Authentik is down](#when-authentik-is-down) |
+| If it is down | Every platform UI loses its only login — see [When Authentik is down](#when-authentik-is-down) |
 | Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |
 | UI | `auth.infra.k8s.wlkr.ch` |
+| Files | `payload/platform/authentik/` |
 
-## Two integration styles
+## Configuration
 
-**OIDC**, for applications that can do it themselves. ArgoCD and Grafana each
-talk to Authentik directly and map group membership to a role.
+### Two integration styles
 
-**Proxy**, for the five that cannot. Authentik's embedded outpost is a reverse
-proxy: the hostname resolves to the outpost, the outpost authenticates the
-request, and only then forwards it to the real backend. No support is needed
-from the application, which is the only option for something like Hubble. It is
-the classic auth-in-front-of-a-dumb-backend pattern, and it works precisely as
-well as your certainty that nothing else can reach the backend directly.
+**OIDC**, for applications that can do it themselves: ArgoCD and Grafana map
+group membership to a role. **Proxy**, for the rest: the hostname resolves to
+Authentik's embedded outpost, a reverse proxy that authenticates the request
+and only then forwards it to the backend. It needs nothing from the
+application and protects exactly as far as nothing else can reach the backend.
 
 ```mermaid
 flowchart LR
@@ -62,186 +48,86 @@ flowchart LR
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
-### Home Assistant is the exception
-
-Every other proxied application has no login of its own, which is what makes
-the outpost *the* authentication rather than an extra one. Home Assistant does
-have a login, and upstream ships no OIDC provider to replace it — the only auth
-providers in the codebase are `homeassistant`, `command_line`,
-`trusted_networks` and an example marked insecure.
-
-So the outpost sits *in front of* Home Assistant's own login rather than
-instead of it. Browser users authenticate twice. That is defence in depth, not
-single sign-on, and it is worth being honest about which one you are getting.
-
-The companion apps and webhooks cannot complete an interactive Authentik login
-at all — they hold a long-lived token — so `skip_path_regex` on the provider
-lets `/api/`, `/auth/token` and the external-auth callback through untouched.
-**Home Assistant's own accounts still guard those paths**, and they are the
-only thing guarding them. Revoking someone's Authentik account does not revoke
-their Home Assistant token; that has to be done in Home Assistant.
-
-## Two hostnames
-
-Authentik answers on two names, and which one a client uses is not arbitrary:
+### Two hostnames
 
 | Hostname | Gateway | Reachable from | Used by |
 | --- | --- | --- | --- |
 | `auth.infra.k8s.wlkr.ch` | `infra-gateway` | the local network | ArgoCD, Grafana, break-glass `akadmin` login |
 | `auth.k8s.wlkr.ch` | `apps-gateway` | outside it too | Nextcloud |
 
-The workload hostnames are reachable from outside the local network and the
-`*.infra` ones are not, so an OIDC client that users reach from outside would
-send them to an authorize endpoint that does not resolve, and the login would
-hang with no useful error.
-
-Authentik needs no configuration for this. Every URL it publishes — issuer,
-authorize, token, userinfo, jwks — is built with `request.build_absolute_uri()`,
-so it serves a self-consistent OpenID configuration on whichever name the
-request arrived on.
+An OIDC client used from outside the local network needs an authorize
+endpoint that resolves there. Authentik builds every published URL from the
+request, so each name serves a self-consistent OpenID configuration with no
+configuration. Proxied applications never redirect to either: their route
+points at `authentik-server`, so the whole flow happens on their own hostname.
 
 !!! warning "A client must never mix the two"
-    The `iss` claim in the token is the hostname the token was issued through, and a client compares it against the issuer it discovered. Point a client's discovery URI at one name and its redirect at the other and every login fails the issuer check — with an error that blames the token, not the hostname. Each client is pinned to exactly one name; ArgoCD and Grafana are on the infra name, and nothing about them changed when the second route was added.
-
-Proxied applications are unaffected either way: their route points at
-`authentik-server`, so the whole flow — including the login — happens on the
-application's own hostname and never redirects to either of these.
+    The `iss` claim is the hostname the token was issued through. A discovery URI on one name and a redirect on the other fails every login with an error that blames the token. Pin each client to exactly one name.
 
 ### Where the proxied routes point
 
-The `HTTPRoute` for `hubble.infra.k8s.wlkr.ch` stays in `payload/platform/cilium/`
-next to the thing it exposes, but its `backendRef` is `authentik-server` in the
-`authentik` namespace. Gateway API forbids a cross-namespace `backendRef` unless
-the target namespace grants it, so `referencegrant.yaml` allows exactly that:
-`HTTPRoute` objects, from `kube-system`, `rook-ceph` and `home-assistant`
-only, to the `authentik-server` Service only.
+Hubble's route stays in `payload/platform/cilium/`, Rook's in
+`payload/platform/rook-ceph/` and Home Assistant's in the
+[workloads repository](../development/add-workload.md), each with
+`authentik-server` as `backendRef`. Gateway API forbids a cross-namespace
+`backendRef` unless the target namespace grants it, so `referencegrant.yaml`
+allows `HTTPRoute` objects from exactly those namespaces to that Service only.
+A proxied workload is therefore two pull requests, by design: a workload
+cannot take itself out from behind the authentication layer on its own.
+Prometheus and Alertmanager have no route of their own, so theirs are in
+`httproute.yaml` here; the outpost is their only authentication.
 
-`home-assistant` is on that list because its route lives in the
-[workloads repository](../development/add-workload.md) — the one place a
-workload needs something granted to it here. Adding a proxied workload is
-therefore two pull requests, which is the intended friction: a workload should
-not be able to put itself behind, or take itself out from behind, the
-authentication layer on its own.
+### Chart values
 
-Prometheus and Alertmanager have no route of their own to reuse, so theirs live
-in the `authentik` directory. **Neither has authentication of its own** —
-publishing them at all is only defensible because the outpost authenticates in
-front of them.
-
-## Where a blueprint lives
-
-Platform providers are in `blueprints.yaml` here. A **workload's** provider is
-not: it lives in that workload's own directory in the
-[workloads repository](../development/add-workload.md), as a ConfigMap targeted
-at this namespace, so the provider and the application it authenticates change
-in one commit.
-
-This repository keeps the parts that cannot safely be delegated:
-
-| Stays here | Why |
+| Setting | Why |
 | --- | --- |
-| The client credentials, in `bao-secrets.sh` | A workload cannot mint its own, which is what keeps SSO onboarding a deliberate, two-repository act |
-| The `secret-generation` annotation | Adding a credential means restarting the worker that reads it — see the warning below |
-| The mount entry, in `application.yaml` | One projected-volume source per workload |
-| The embedded outpost's `providers:` list | It replaces a single global object; two repositories writing it would overwrite each other |
-| `referencegrant.yaml` | A proxied workload's route needs granting from this side |
+| `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
+| `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
+| `postgresql.image.tag` with its `# renovate:` annotation | The chart hardcodes a Debian 12 tag nothing tracks. The annotation lets Renovate move it (`versioning=docker`, so the `-trixie` suffix is a constraint, not a prerelease); an `allowedVersions` rule holds the major, because a Postgres major is a dump and restore — see [Renovate](../development/maintenance.md) |
+| `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
+| Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive in `12-workloads`, four stages after Authentik must be Healthy, so a required mount [deadlocks the rollout](../architecture/gitops.md) |
 
-!!! warning "The mount must be optional, and not `blueprints.configMaps`"
-    `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses to start a pod whose ConfigMap does not exist. Workload blueprints arrive in `12-workloads`, four stages after Authentik has to be Healthy — so a required mount means the worker waits for a stage that is waiting for the worker. The workload sources are a `projected` volume instead, which accepts `optional: true`, and the worker starts whether or not any of them exist yet.
+### Where a blueprint lives
 
-`blueprints_discovery` runs on the worker's startup, hourly, and on a file
-watcher, so a blueprint that lands later is picked up without a restart —
-asynchronously, which is why anything configuring itself *against* a provider
-has to tolerate it not being there yet.
+Providers and applications are blueprints, so a rebuild reproduces them.
+`!Find` resolves objects Authentik ships, `!KeyOf` references another entry in
+the same blueprint, and `!Env` reads an environment variable, which keeps
+client secrets out of Git. `blueprints_discovery` runs on worker startup,
+hourly and on a file watcher, asynchronously, so anything configuring itself
+against a provider must tolerate it not existing yet.
 
-!!! danger "A new client credential needs the worker restarted"
-    `envFrom` injects `authentik-secrets` as environment variables **once, when the pod starts** — External Secrets updating that Secret afterwards changes nothing a running worker can see, so a blueprint reading a newly added credential through `!Env` gets an empty string and creates a provider that exists but does not work, answering 404 on its discovery endpoint. Nextcloud's first rollout lost this race by two seconds: the worker started at `14:34:10` and `authentik-secrets` gained `NEXTCLOUD_CLIENT_ID` at `14:34:12`. So `worker.podAnnotations.homelab.wlkr.ch/secret-generation` in `application.yaml` is **bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key** — that changes the pod template, and ArgoCD restarts the worker in the same sync that adds the credential. A `kubectl rollout restart` fixes a running cluster but leaves nothing behind for the next person.
+| What | Lives in | Why there |
+| --- | --- | --- |
+| Platform providers, applications, the outpost | `blueprints.yaml` | Mounted into the worker as a ConfigMap |
+| A workload's provider and application | The workload's directory in the workloads repository, as a ConfigMap targeted at `authentik` | The provider and the application it authenticates change in one commit |
+| Client credentials | `bao-secrets.sh`, read by `secrets.yaml` | A workload cannot mint its own; SSO onboarding stays a deliberate two-repository act |
+| The mount entry and `secret-generation` | `application.yaml` | One projected-volume source per workload; a new credential needs the worker restarted |
+| The outpost's `providers:` list | `blueprints.yaml` | It replaces one global object; two repositories writing it would overwrite each other |
+| `referencegrant.yaml` | Here | A proxied workload's route needs granting from this side |
 
-## Configuration as code
+### Groups and roles
 
-Providers and applications are declared in blueprints
-(`blueprints.yaml`), mounted into the worker as a ConfigMap. Clicking them
-together in the UI would mean losing them on the next rebuild — and identity
-configuration is exactly the sort of thing you set up once, forget entirely, and
-then cannot reconstruct under pressure two years later.
+Authorisation is group membership. Create these in Authentik and add users:
 
-Three tags do the work:
+| Group | Grants |
+| --- | --- |
+| `argocd-admins` | ArgoCD `role:admin` |
+| `argocd-viewers` | ArgoCD `role:readonly` |
+| `grafana-admins` | Grafana `Admin` |
+| `grafana-editors` | Grafana `Editor` |
 
-- `!Find` resolves objects Authentik ships by default, such as the default
-  authorization flow.
-- `!KeyOf` references another entry in the same blueprint by its `id`.
-- `!Env` reads an environment variable, which is how client secrets get in
-  without being written to Git.
+ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group gets
+**no** access; Grafana falls back to `Viewer`. Access to a proxied application
+is bound to the application in Authentik itself.
 
-The worker discovers every `.yaml` key in the ConfigMap and applies it.
+## Usage
 
-!!! warning "OAuth2 providers must name their grant types"
-    Authentik 2026.x restricts which OAuth2 grants a provider serves, and
-    `grant_types` defaults to an empty list. A provider that omits it serves
-    none, and the authorize endpoint turns every login away with
-    `invalid_request: The request is otherwise malformed`. The field looks
-    optional; it is not.
+### Client secrets
 
-!!! warning "The outpost entry replaces its provider list"
-    The `authentik_outposts.outpost` entry sets `providers` wholesale rather than appending. Every proxied application must be listed there — adding a fifth and forgetting this line silently unassigns the other four, which means four dashboards quietly stop being protected rather than loudly breaking. Failing open is the worst failure mode a security control can have.
-
-## Chart values
-
-- **`authentik.web.base_url`.** Authentik cannot reliably infer the URL it is
-  reached on, and builds e-mail links and outpost redirects from it. Unset,
-  every admin page shows "The base URL has not been configured" and the worker
-  logs the same on every reconcile. The UI stores it on the tenant in the
-  database; setting it in the chart backfills it, so a rebuilt cluster needs no
-  click.
-- **`metrics.enabled` and `metrics.serviceMonitor.enabled`.** The first creates
-  the metrics Service, and the chart renders the ServiceMonitor only when both
-  are set. The ServiceMonitor switch alone produces neither object, silently.
-  The worker is scraped too: tasks, outpost state and blueprint runs are
-  measured there, not on the server.
-- **Postgres resources.** Sized from a measured 281Mi peak. Postgres memory is
-  bounded by `shared_buffers` and `work_mem` rather than by load, so it is
-  steadier than the number suggests.
-- **`postgresql.image.tag`.** The chart hardcodes `17.11-bookworm` in its own
-  `values.yaml`, which is Debian 12. Nothing tracks that pin: Renovate reads
-  this repository, and the tag lives upstream, so it ages silently and had
-  become the worst image in the cluster — 465 findings, six of the eleven
-  distinct criticals anywhere on it. `17.11-trixie` is the same Postgres on
-  Debian 13, so the data directory is untouched and the move is a restart
-  rather than a migration. It clears the zlib, libsqlite3 and perl criticals.
-  It does not clear libxml2 `CVE-2026-6653` — Debian ships the same 2.9.14 in
-  trixie, and the CloudNativePG images carry it too.
-
-    The `# renovate:` annotation above the tag is what keeps it from ageing the
-    same way, through the custom manager that reads inline `valuesObject` tags.
-    It needs `versioning=docker`: under the default semver, `-trixie` parses as
-    a prerelease and every candidate tag is dropped without an error. Being a
-    bare tag rather than a full reference, it also has to sit in the
-    `pinDigests: false` rule — see
-    [Renovate](../development/maintenance.md#a-custom-manager-cannot-add-a-digest-without-autoreplacestringtemplate).
-    Renovate tracks 17.x within `-trixie`: docker versioning treats the suffix
-    as a compatibility constraint, so `17.12-bookworm` and a bare `17.12` are
-    never offered against a `-trixie` pin.
-
-    The major is held by an `allowedVersions` rule, not by that. This page
-    previously claimed Renovate would not propose 18 on its own; it did, in
-    #773, within hours. Majors were only excluded from *automerge* — they were
-    still raised, and a Postgres major is a dump and restore rather than an
-    image bump, so it should not be raised at all until someone plans it. The
-    rule is written as a regex for the reason in
-    [An `allowedVersions` range is graded by npm semver](../development/maintenance.md#an-allowedversions-range-is-graded-by-npm-semver).
-
-## Client secrets are generated up front
-
-The OIDC client ID and secret are shared values: Authentik needs them, and so do
-ArgoCD and Grafana. Rather than letting Authentik mint a secret that then exists
-only in its database, both are generated once into OpenBao and read from there
-by both sides — Authentik through `!Env`, the clients through their own
-`ExternalSecret`.
-
-That is what makes the whole thing reproducible: a rebuilt Authentik gets the
-same client credentials, and nothing has to be copied out of a UI. Anything that
-exists only inside a running system's database is not configuration, it is a
-hostage situation.
+The OIDC client IDs and secrets are generated once into OpenBao and read by
+both sides — Authentik through `!Env`, ArgoCD and Grafana through their own
+`ExternalSecret` — so a rebuilt Authentik gets the same credentials and
+nothing is copied out of a UI. `make bao-secrets` does this; by hand:
 
 ```bash
 bao kv put kv/authentik/config \
@@ -256,35 +142,40 @@ bao kv put kv/authentik/config \
 ```
 
 Then log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
-`akadmin` with `bootstrap-password`, and create the groups below.
+`akadmin` with `bootstrap-password` and create the groups above.
 
-## Groups and roles
+### Adding an application
 
-Authorisation is group membership. Create these in Authentik and add users:
+1. Generate its client credentials into OpenBao and add them to
+   `bao-secrets.sh` and an `ExternalSecret` (a workload's own, mounted
+   `optional`, like `secrets-nextcloud.yaml`).
+2. Bump `homelab.wlkr.ch/secret-generation` in `application.yaml`.
+3. Add the provider and application blueprint: an OAuth2 provider with
+   `grant_types`, or a proxy provider added to the outpost's `providers:` list.
+4. For a proxied application, point its `HTTPRoute` at `authentik-server` and
+   add its namespace to `referencegrant.yaml`.
+5. Bind the groups or policies that may reach it, in Authentik.
 
-| Group | Grants |
-| --- | --- |
-| `argocd-admins` | ArgoCD `role:admin` |
-| `argocd-viewers` | ArgoCD `role:readonly` |
-| `grafana-admins` | Grafana `Admin` |
-| `grafana-editors` | Grafana `Editor` |
+## Pitfalls
 
-ArgoCD's `policy.default` is empty, so an authenticated user in neither ArgoCD
-group gets **no** access rather than read-only-everything. That default is worth
-copying elsewhere: "authenticated" and "authorised" are different questions, and
-plenty of systems answer the second one with a shrug. Grafana falls back to
-`Viewer`.
+!!! danger "A new client credential needs the worker restarted"
+    `envFrom` injects `authentik-secrets` **once, when the pod starts**. A blueprint reading a newly added credential through `!Env` on a running worker gets an empty string and creates a provider that answers 404 on its discovery endpoint. Bumping `secret-generation` restarts the worker in the sync that adds the credential; `kubectl rollout restart` fixes a running cluster but leaves nothing for the next one.
 
-Access to a proxied application is controlled in Authentik itself, by binding
-policies or groups to the application.
+!!! warning "OAuth2 providers must name their grant types"
+    `grant_types` defaults to an empty list. A provider that omits it serves no grants, and every login fails with `invalid_request: The request is otherwise malformed`.
 
-## When Authentik is down
+!!! warning "The outpost entry replaces its provider list"
+    `authentik_outposts.outpost` sets `providers` wholesale. Every proxied application must be listed there; adding one and forgetting the list silently unassigns the others, which fail open.
 
-Authentik becoming a dependency of every UI is the cost of this, and it is a real
-one: single sign-on is also a single point of failure for logging in at all.
-Read this section *before* you need it, because the ArgoCD escape hatch below
-requires a working `kubectl`, and you will be reaching for it on the day nothing
-else works. Both OIDC integrations keep a break-glass path:
+!!! note "Home Assistant is the exception"
+    It has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice, which is defence in depth rather than single sign-on. The companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through. Home Assistant's own accounts are the only thing guarding those paths; revoking an Authentik account does not revoke a Home Assistant token.
+
+## Recovery
+
+### When Authentik is down
+
+Single sign-on is a single point of failure for logging in at all. The ArgoCD
+path needs a working `kubectl`, so keep a kubeconfig off-cluster.
 
 **ArgoCD** — re-enable the local admin account:
 
@@ -294,14 +185,10 @@ kubectl -n argocd patch cm argocd-cm --type merge \
 kubectl -n argocd rollout restart deploy/argocd-server
 ```
 
-**Grafana** — the login form is hidden, not removed. The admin account still
-works through the API, and setting `GF_AUTH_DISABLE_LOGIN_FORM=false` brings the
-form back.
+**Grafana** — the login form is hidden, not removed: the admin account works
+through the API, and `GF_AUTH_DISABLE_LOGIN_FORM=false` brings the form back.
 
-The four proxied dashboards have no bypass: with the outpost down, the hostname
-does not answer, full stop. Reach them by port-forward instead — which is a
-reminder that `kubectl port-forward` is the universal break-glass tool and the
-reason keeping a working kubeconfig off-cluster matters:
+**Proxied dashboards** have no bypass; port-forward instead:
 
 ```bash
 kubectl -n kube-system port-forward svc/hubble-ui 8080:80
@@ -310,10 +197,9 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:909
 
 ### ArgoCD's API key account
 
-Disabling the local admin also removes the `accounts.admin: apiKey` capability
-that was configured for MCP integration. If a token is still needed, add a
-dedicated account rather than re-enabling admin — an account scoped to what the
-token is for is easier to reason about and to revoke:
+Disabling the local admin also removes its `apiKey` capability. If a token is
+needed, add an account scoped to what the token is for rather than
+re-enabling admin:
 
 ```yaml
 configs:
@@ -323,16 +209,4 @@ configs:
     policy.csv: |
       p, role:mcp, applications, get, */*, allow
       g, mcp, role:mcp
-```
-
-## Directory Structure
-
-```text
-authentik/
-├── application.yaml       # ArgoCD Application (Helm: goauthentik/authentik)
-├── secrets.yaml           # ExternalSecret: secret key, DB and OIDC clients
-├── secrets-nextcloud.yaml # ExternalSecret: Nextcloud's client, optional
-├── blueprints.yaml        # ConfigMap: providers, applications, outpost
-├── httproute.yaml         # auth / prometheus / alertmanager hostnames
-└── referencegrant.yaml    # Lets the hubble and rook routes reach the outpost
 ```

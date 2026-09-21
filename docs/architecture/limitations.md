@@ -4,154 +4,16 @@ description: "Known limitations of this cluster: what is single-homed, unmonitor
 
 # Known Limitations
 
-Things this cluster does not currently do, collected in one place so they are
-findable before they are discovered. None of these is a bug; each is either an
-accepted tradeoff or work not yet done.
+Things this cluster does not do, collected so they are findable before they are
+discovered. None is a bug; each is an accepted tradeoff or work not yet done.
 
-Every system has a page like this. Most of them are unwritten, which is why the
-same three failure modes keep surprising the same teams. Writing it down does
-not fix anything — it just means that when one of these bites, the response is
-"ah, that one" rather than four hours of confused archaeology.
-
-## Single API server endpoint
-
-Provisioning places a [kube-vip](https://kube-vip.io/) virtual IP in front of
-the API servers, so a cluster built by this repo reaches the control plane at an
-address no single machine owns. See
-[Control Plane VIP](../operations/control-plane-vip.md).
-
-The endpoint is fixed at `kubeadm init`, though: whatever `controlPlaneEndpoint`
-named at bootstrap is baked into the API server certificates, and no amount of
-syncing changes it afterwards. A cluster whose certificates name a
-control-plane node rather than the VIP is single-homed on that node, and while
-it is down:
-
-- No node can join the cluster.
-- Cilium on every other node loses its connection to the API server, because
-  with `kube-proxy` replaced it cannot reach the API through a Service.
-- `output/kubeconfig` points at an address that is not answering.
-
-The other control-plane nodes keep running and etcd keeps quorum, so existing
-workloads continue; it is control-plane *access* that fails. Which is its own
-special kind of frustrating: the cluster is fine, you simply cannot talk to it.
-
-`k8sServiceHost` in the Cilium values must name an address that actually
-answers — pointing it at one that does not takes the CNI down cluster-wide — so
-it moves to the VIP only once the VIP is live. The ordering is in
-[Migrating a cluster built without a VIP](../operations/control-plane-vip.md#migrating-a-cluster-built-without-a-vip).
-
-## OpenBao needs an operator to unseal it
-
-The seal is Shamir, with no auto-unseal configured, so every OpenBao pod comes
-back sealed after any restart — a node reboot, a Kured cycle, a chart bump — and
-stays that way until someone supplies 3 of the 5 key shares to each of the three
-replicas. While it is sealed no `ExternalSecret` resolves and cert-manager
-cannot renew certificates.
-
-Read that with a power cut in mind: the house comes back, the cluster comes
-back, and the secrets do not, because nobody has typed in the keys yet. See
-[Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart).
-
-The failure is quiet, which is the part that bites. A cluster with OpenBao
-sealed looks entirely healthy, and the consequence surfaces sixty days later
-when a certificate expires. Checking `bao status` after every reboot is the
-[routine](../operations/nodes.md#after-any-node-reboot-unseal-openbao) that
-catches it.
-
-An auto-unseal seal — a cloud KMS, or a transit seal against a second OpenBao —
-would remove the manual step, at the price of making something outside the
-cluster a hard dependency of it starting up. That trade was made deliberately in
-the other direction: the key shares stay entirely in the operator's hands.
-
-## Alerting reaches one mailbox
-
-The delivery path out of Alertmanager is single-homed and unmonitored. There is
-one receiver, one mailbox, and one SMTP provider; if that provider rejects mail
-or the password expires, alerts stop and nothing says so. `Watchdog` proves the
-pipeline as far as Alertmanager, not as far as the inbox.
-
-This is the oldest failure in monitoring: the thing that tells you when things
-break, breaking quietly. Silence is not evidence of health. See
-[Alerting](../platform/monitoring.md#alerting).
-
-A second receiver on a different transport would fix it. Meanwhile the health
-checks in [Operations](../operations/index.md#routine-health-check) remain worth
-running.
-
-## Backups do not leave the cluster
-
-Velero backs up Kubernetes objects and PVC data nightly, and a CronJob snapshots
-etcd — both into the same Ceph object store the cluster runs on. See
-[Backups & Recovery](../operations/backups.md).
-
-Writing them next to their source protects against the failures that actually
-happen — a deleted PVC, a bad `prune`, a workload that ate its own data — and
-not at all against losing the cluster. A backup that shares a failure domain
-with its source is a convenience feature, not a backup, and it is worth being
-honest about which one you have.
-
-RGW bucket replication or a second Velero `BackupStorageLocation` would close
-it; neither is configured. Until then Git plus the OpenBao unseal keys is the
-real disaster-recovery story, and these backups protect against mistakes rather
-than against the building burning down.
-
-## Automatic updates stop at patch releases
-
-Sysupdate configs are pinned to the Kubernetes and containerd major.minor in
-`ansible/inventory.yaml`, so a node picks up patch releases inside its series
-and cannot stage a minor kubeadm refuses to skip to. See
-[Nodes are pinned to a minor series](../operations/upgrades.md#nodes-are-pinned-to-a-minor-series).
-[Kured](../platform/kured.md) then drains and reboots one node at a time to
-apply what has been staged, and refuses while Ceph or etcd is unhealthy.
-
-Two things follow that are worth knowing:
-
-- **A minor Kubernetes upgrade is manual.** Kured applies whatever the sysext
-  already staged, and the pin means that is only ever a patch. Moving to a new
-  minor means changing the inventory, pushing the new sysupdate config to
-  running nodes, and running `kubeadm upgrade` — see
-  [Upgrading a minor version deliberately](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
-- **The alert list is a judgement call.** Kured blocks on the Ceph, etcd and
-  node-readiness alerts named in its config. An alert outside that list will not
-  stop a reboot.
-
-## Network policy is partial, and AppProjects are permissive
-
-Nine namespaces have default-deny ingress and every platform namespace has Pod
-Security Admission labels — see
-[Security Policies](../platform/security-policies.md).
-
-Beyond that: all **egress** is unrestricted everywhere, and the namespaces
-outside those eight allow all ingress. The `infra` AppProject allows every
-resource kind in every namespace, and `apps` still permits cluster RBAC because
-trivy-operator needs it. Details in
-[Security Posture](security.md#authorization).
-
-Partial network policy is genuinely better than none, but it is worth not
-mistaking it for a boundary. A pod in `authentik` can still talk to a pod in
-`kured` all day long.
-
-## Provisioning requires the boot server on the same segment
-
-Reprovisioning any node means running `make serve` on a machine on the nodes' L2
-segment, with the external DHCP server pointing at it, arming the node with
-`make reinstall LIMIT=<node>`, and power-cycling it. There is no way to rebuild
-a node remotely, and the deployment host is not part of the cluster.
-
-Translation: you cannot rebuild a dead node from a hotel room. Plan holidays
-accordingly.
-
-This is now genuinely limited to *re*provisioning. Flatcar is installed to disk,
-so a running node reboots, updates and rejoins with the boot server switched
-off — which is the difference between needing it for a rebuild and needing it
-for a Tuesday.
-
-## Single-region, single-site, single-rack
-
-There is no failure domain larger than a node. Ceph replicates across nodes in
-one rack on one power feed; a site-level event takes everything.
-
-The cluster's true availability zone is "this building has electricity", and no
-amount of replication factor changes that. This is the honest limit of a
-homelab, and pretending otherwise is how people end up genuinely surprised by a
-tripped breaker.
+| Limitation | Consequence | Mitigation / plan | Where documented |
+| --- | --- | --- | --- |
+| **API server endpoint is fixed at `kubeadm init`** | `controlPlaneEndpoint` is baked into the API server certificates. A cluster whose certificates name one node is single-homed on it: while that node is down no node can join, Cilium on every other node loses the API server (with `kube-proxy` replaced it cannot reach it through a Service), and `output/kubeconfig` points at nothing. Workloads keep running; control-plane *access* fails | Provisioning puts a kube-vip VIP in front of the API servers. Cilium's `k8sServiceHost` must name an address that answers — pointing it at one that does not takes the CNI down cluster-wide — so it moves to the VIP only once the VIP is live | [Control Plane VIP](../operations/control-plane-vip.md), [migrating a cluster built without one](../operations/control-plane-vip.md#migrating-a-cluster-built-without-a-vip) |
+| **OpenBao needs an operator to unseal it** | Shamir seal, no auto-unseal: every restart (node reboot, Kured cycle, chart bump) leaves each replica sealed until 3 of 5 key shares are supplied. Sealed, no `ExternalSecret` resolves and cert-manager cannot renew. The cluster looks healthy; the consequence surfaces when a certificate expires | Check `bao status` after every reboot. Auto-unseal against a KMS or a second OpenBao would remove the step at the price of an external hard dependency; the key shares stay in the operator's hands on purpose | [Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart), [after any node reboot](../operations/nodes.md#after-any-node-reboot-unseal-openbao) |
+| **Alerting reaches one mailbox** | One receiver, one mailbox, one SMTP provider, unmonitored. If mail is rejected or the password expires, alerts stop silently; `Watchdog` proves the pipeline only as far as Alertmanager | A second receiver on a different transport. Meanwhile, run the routine health check | [Alerting](../platform/monitoring.md#alerting), [routine health check](../operations/index.md#routine-health-check) |
+| **Backups do not leave the cluster** | Velero and the etcd snapshot CronJob write to the Ceph object store the cluster runs on: protection against a deleted PVC or a bad `prune`, none against losing the cluster | RGW bucket replication or a second Velero `BackupStorageLocation`; neither is configured. Until then disaster recovery is Git plus the OpenBao unseal keys | [Backups & Recovery](../operations/backups.md) |
+| **Automatic updates stop at patch releases** | Sysupdate is pinned to the Kubernetes and containerd major.minor in `ansible/inventory.yaml`; Kured drains and reboots one node at a time to apply what is staged, and refuses while Ceph or etcd is unhealthy. A minor Kubernetes upgrade is manual: change the inventory, push the sysupdate config to running nodes, run `kubeadm upgrade`. Kured blocks only on the alerts named in its config; anything outside that list does not stop a reboot | By design | [Nodes are pinned to a minor series](../operations/upgrades.md#nodes-are-pinned-to-a-minor-series), [upgrading a minor deliberately](../operations/upgrades.md#upgrading-a-minor-version-deliberately), [Kured](../platform/kured.md) |
+| **Network policy is partial, AppProjects are permissive** | Nine namespaces have default-deny ingress and every platform namespace has Pod Security Admission labels. All egress is unrestricted, other namespaces allow all ingress, the `infra` AppProject allows every kind in every namespace, and `apps` permits cluster RBAC because trivy-operator needs it. A pod in `authentik` can still talk to a pod in `kured` | Extend default-deny, then egress; narrow the projects | [Security Policies](../platform/security-policies.md), [Security Posture](security.md#authorization) |
+| **Reprovisioning needs the boot server on the segment** | Rebuilding a node means `make serve` on a machine on the nodes' L2 segment, the external DHCP pointing at it, `make reinstall LIMIT=<node>`, and a power cycle. There is no remote rebuild, and the deployment host is not part of the cluster | Only *re*provisioning: Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server off | [Boot & Bootstrap Process](boot-process.md#every-boot-after-the-first) |
+| **Single region, site and rack** | No failure domain larger than a node. Ceph replicates across nodes on one power feed; a site-level event takes everything | The honest limit of a homelab | — |

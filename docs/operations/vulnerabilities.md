@@ -1,41 +1,17 @@
 ---
-description: "What the Trivy Operator findings actually amount to, which ones are fixed here, which wait on an upstream release, and which are never going to move."
+description: "How to read the Trivy Operator findings, when an upstream issue is warranted, and which pod-level findings are load-bearing by design."
 ---
 
 # Vulnerability Triage
 
-Trivy Operator writes one `VulnerabilityReport` per container, and on a
-cluster this size that is a few thousand findings. Almost all of them warrant
-no action, and the work is in proving that quickly rather than in reading them.
-This page is the result of one such pass, on 2026-09-20, kept so the next one
-starts from the disposition rather than from the raw count.
-
-The operator itself is a workload, so how it is configured and how to read its
-reports lives with it, in the
+Trivy Operator writes one `VulnerabilityReport` per container, a few thousand
+findings on a cluster this size. Almost none warrant action, and the work is in
+proving that quickly. The operator is a workload; its configuration is in the
 [homelab-apps documentation](https://janwelker.github.io/homelab-apps/trivy-operator/).
-This page is about what the findings mean for *this* platform.
+This page is the method; the dispositions from the last pass are in
+[Triage 2026-09-20](triage-2026-09-20.md).
 
-## How to read a report
-
-Three things before believing a number:
-
-- **A missing report is not a clean image.** A scan that failed writes nothing.
-  Reconcile running images against scanned ones before concluding anything;
-  the `TrivyContainerNotScanned` alert does it continuously. On this pass it
-  named Nextcloud and Authentik, whose scans were dying on a five-minute Job
-  deadline that a longer Trivy timeout could never reach, and whose reports,
-  once a scan finished, were too large for etcd: 2886 Debian findings with no
-  fix in one image. Both are handled in homelab-apps (#26, #28); the second
-  with a per-namespace policy that drops only unfixed findings below HIGH.
-- **An empty `fixedVersion` means no fix is known, not no problem.** They are
-  kept on purpose (`ignoreUnfixed: false`), because a cluster of them in one
-  base image is the signal that the base image is the wrong one.
-- **The worst findings are usually not the project's code.** The report's
-  `target` names the binary. Argo CD's criticals are in the `kustomize` and
-  `git-lfs` it bundles; dex's are in `gomplate`; Rook's are in `s5cmd`.
-  Which binary decides whether anything can be done, and by whom.
-
-The pull, and the query that separates fixable from not:
+## Pulling a report
 
 ```bash
 kubectl get vulnerabilityreports -A -o json > vr.json
@@ -48,133 +24,56 @@ jq -r '.items[] | .metadata.namespace as $ns
   | @tsv' vr.json | sort -u
 ```
 
-## Where the findings stand
+## Reading it
 
-Every image with a critical finding, or a high one with a fix, and what was
-decided about it. "Waiting on release" means the fix is already merged upstream
-and nothing here can speed it up; Renovate takes the release when it exists.
+- **A missing report is not a clean image.** A failed scan writes nothing;
+    the `TrivyContainerNotScanned` alert reconciles running images against
+    scanned ones continuously.
+- **An empty `fixedVersion` means no fix is known, not no problem.** Unfixed
+    findings are kept (`ignoreUnfixed: false`) because a cluster of them in one
+    base image says the base image is the wrong one.
+- **The worst findings are usually not the project's code.** The `target`
+    names the binary, and which binary decides whether anything can be done and
+    by whom.
 
-| Image | Finding | Disposition |
-| --- | --- | --- |
-| CSI sidecars (`csi-provisioner`, `csi-resizer`, `csi-snapshotter`) | gRPC-Go authorization bypass, CVE-2026-33186 | **Fixed here.** Pinned to the versions ceph-csi-operator v1.0.5 defaults to; Rook still ships v1.0.4. See [Rook-Ceph &rarr; CSI driver](../platform/rook-ceph.md#csi-driver). |
-| `argoproj/argocd` v3.5.3 | Go stdlib and `x/net` in bundled `kustomize` (built with Go 1.24.0) and `git-lfs` 3.7.1; `grpc`, `oras-go` in argocd itself | **Waiting on release.** `master` has git-lfs 3.8.0, grpc 1.83.2 and oras-go 2.6.2. kustomize 5.8.1 is the latest kustomize release; only a new kustomize build fixes that one. Argo CD's `SECURITY.md` asks not to file scanner findings. |
-| `dexidp/dex` v2.45.1 | OpenSSL in Alpine 3.23, `grpc`, `goxmldsig`, stdlib; a second set in bundled `gomplate` | **Waiting on release.** Everything is fixed on `master`, nothing has been released since March 2026. Tracked in [dexidp/dex#4948](https://github.com/dexidp/dex/issues/4948), with this cluster's scan data added on 2026-09-18. |
-| `rook/ceph` v1.20.7 | Go stdlib in bundled `s5cmd` 2.3.0 (built with Go 1.22.10) | **Not reachable, waiting on release.** Nothing in Rook's Go code invokes `s5cmd`; it is a CLI for the toolbox. s5cmd 2.3.0 is its latest release; [peak/s5cmd#873](https://github.com/peak/s5cmd/issues/873) and [#820](https://github.com/peak/s5cmd/issues/820) ask for a new one. |
-| `home-assistant/home-assistant` | OpenSSH in Alpine 3.24.1, Go stdlib in bundled `tempio` (Go 1.23.3) and `go2rtc`, Python `anyio` | **Waiting on release.** Home Assistant's base image already carries tempio 2026.07.0; core is on an older base. Weekly releases. The Open Home Foundation forbids autonomous agents from filing anything, so nothing is filed from here. |
-| `library/postgres` 17.11 (Authentik) | Go stdlib in `gosu` 1.19; `libxml2` in Debian 13 with no fix | **Not reachable, nothing to do.** The stdlib CVE is TLS session resumption and gosu opens no connections. 17.11 is the latest 17.x; libxml2 waits on Debian. |
-| `cloudnative-pg/postgresql` 18.6 | 31 highs and one critical, none with a fix (Debian 13) | **Nothing to do.** The base is current; every finding waits on Debian. |
-| `coredns/coredns` v1.14.6 | Two highs fixed in 1.14.7: memory exhaustion and UPDATE forwarding, both on DoH, DoQ and gRPC listeners | **Not reachable.** kubeadm's Corefile serves plain UDP and TCP only. kubeadm 1.37 pins 1.14.6; it moves when kubeadm does. |
-| `grafana/grafana` | `grpc`, `otel`, `x/net` in thirteen bundled datasource plugin binaries | **Waiting on release.** The plugin binaries are rebuilt by Grafana's own release, and 13.2.2 is the current one. Routine churn in a bundled binary, not a report. |
-| `ceph/ceph` v20.2.4 | `setuptools` 69.2 under Python 3.9 | **Not reachable.** The CVEs are in `easy_install` and `package_index`, which no Ceph daemon calls. |
-| `openbao/openbao` 2.6.2 | `github.com/openbao/openbao` "fixed in 2.5.4" | **Scanner artifact.** The binary carries a Go pseudo-version, which sorts below every real tag. |
-| `library/nextcloud` 34.0.4 | 2887 findings, 2886 in Debian packages with no fix; the criticals are `libopenexr` and `libxml2`. One fixable, a LOW in the bundled `webauthn-lib` | **Nothing to do here.** The base is current Debian 13; every fix waits on Debian. `webauthn-lib` is pinned `^4.9.1` in nextcloud/3rdparty on `master` too. The report only exists because of the per-namespace policy in homelab-apps. |
-| `goauthentik/server` 2026.8.3 | `anyio` 4.14.1 (critical, IDNA TLS spoofing), `msgpack`, `setuptools`; `libxml2` with no fix | **Waiting on release.** `uv.lock` on `main` already has anyio 4.14.2, msgpack 1.2.2 and setuptools 84. Authentik releases monthly and its bot bumps these; nothing to file. |
-| `xperimental/nextcloud-exporter` 0.9.1 | Go stdlib, 28 advisories, 7 HIGH, in a release built with Go 1.26.1 | **Filed.** No bot bumps the Dockerfile's builder tag; the project's own history is a "update Go and release" cycle. [xperimental/nextcloud-exporter#143](https://github.com/xperimental/nextcloud-exporter/issues/143). |
-| `prometheus-config-reloader` v0.91.0 (Alloy's sidecar) | Go stdlib, 4 HIGH | **Waiting on chart release.** The Alloy chart pins it; `main` already carries v0.94.0. Renovate takes the next chart. |
-| Everything else | `google.golang.org/grpc` one or two patches behind, Go stdlib one patch behind | **Routine churn.** Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding. |
+Two artifacts recur. A `ConfigAuditReport` has no TTL and goes only when its
+ReplicaSet is garbage-collected, so superseded revisions keep their findings on
+the dashboard
+([aquasecurity/trivy-operator#3069](https://github.com/aquasecurity/trivy-operator/issues/3069));
+when a count looks wrong, check whether the ReplicaSet in the report name still
+has replicas. `KSV-0125` ("untrusted registry") fires on nearly every
+container because the check's built-in list is Azure, ECR and GCR, which Trivy
+Operator does not expose as a parameter; it says nothing about the images.
 
-The exposed-secret findings are two artifacts. `ssl-cert-snakeoil.key` in the
-three Postgres pods is the placeholder Debian's `ssl-cert` package generates
-in every image. The "Azure Storage Account Key" in Nextcloud is the Azurite
-development key that `azure-storage-common` ships in `Resources.php`; it is
-public, and the nextcloud namespace's ignore policy drops that rule
-(homelab-apps#31). Neither is a secret.
-
-## What is not filed, and why
+## Filing policy
 
 Filing goes out under a real name, permanently, and most projects have said
-what they want. Checked on this pass:
+what they want:
 
-- **Argo CD** asks in `SECURITY.md` not to raise issues found by a scanner,
-  and its own Renovate has already moved the bundled tools on `master`.
-- **Home Assistant** (Open Home Foundation) does not allow autonomous agents
-  to open issues or pull requests and closes them on sight.
-- **Rook** allows AI-assisted contributions with disclosure but requires a
-  human to submit them. The one thing worth asking Rook for, bumping to
-  ceph-csi-operator v1.0.5 so the sidecar pins here can go, is drafted for a
-  person to post.
-- **Routine Go churn is not a finding.** A dozen "please bump grpc" issues
-  damage standing for the one time something real turns up.
+- **Argo CD** asks in `SECURITY.md` not to raise scanner findings.
+- **Home Assistant** (Open Home Foundation) does not accept issues or PRs from
+    autonomous agents.
+- **Rook** accepts AI-assisted contributions with disclosure, submitted by a
+    human.
+- **Routine Go churn is not a finding.** `grpc` or the stdlib one patch behind
+    is fixed by the next release every project here takes automatically.
 
-## The other three report kinds
+"Waiting on release" means the fix is merged upstream and Renovate takes the
+release when it exists; nothing here speeds it up.
+
+## What is load-bearing
 
 `ConfigAuditReport`, `RbacAssessmentReport` and `InfraAssessmentReport` are
-fixable here rather than upstream, which makes them worth more per finding and
-also makes it worth being honest about which ones are load-bearing.
+fixable here rather than upstream. Two checks are most of the volume:
+`KSV-0014` (read-only root filesystem) and `KSV-0118` (empty pod-level
+`securityContext`, whatever the containers set).
 
-### Infra: the nodes
-
-The node collector runs CIS's file checks on every node. Real modes, read on
-a control-plane and a worker node:
-
-| Check | Path it stats | Was | Disposition |
-| --- | --- | --- | --- |
-| KCV-0077 kubelet config | `/var/lib/kubelet/config.yaml` | 644 | **Fixed**, 600 |
-| KCV-0075 CA file | `/etc/kubernetes/pki/ca.crt` | 644 | **Fixed**, 600 |
-| KCV-0056 CNI files | `/*/cni/*`, so `/opt/cni/bin` | 755 | **Fixed**, 700 |
-| KCV-0069 kubelet unit | `/lib/systemd/system/kubelet.service` | 644 | **Accepted.** The unit ships in the Kubernetes sysext, on a read-only, signed `/usr`. It holds no secret. |
-| KCV-0059 etcd data dir | `/var/lib/etcd/default.etcd` | absent | **Artifact.** kubeadm uses `/var/lib/etcd`, which is already `700 etcd:etcd`. |
-| KCV-0001 and the other API server flags | static pod args | | **Tracked in #660.** Anonymous auth in particular cannot simply be switched off, because the kubelet's probes rely on it; see #678 for the shape that works. |
-
-kubeadm writes the first three itself, at 644, on every `init`, `join` and
-`upgrade`, so a one-off `chmod` would not survive. `butane_node_config.yaml.j2`
-instead drops `/etc/tmpfiles.d/kubernetes-cis.conf` with three `z` lines and
-has the kubelet's drop-in run `systemd-tmpfiles --create` on that file before
-every start. Boot applies it; a kubelet restart, which kubeadm triggers right
-after rewriting the files, applies it again. A path that does not exist yet is
-skipped, so the first boot is unaffected. The change is provisioning-time: a
-node picks it up on its next rebuild.
-
-### Config audit: the pods
-
-Two checks are most of the volume. `KSV-0014` wants a read-only root
-filesystem and `KSV-0118` fires when the *pod-level* `securityContext` is
-empty, whatever the containers set. Where they land:
-
-| Where | Disposition |
+| Where | Why it stays |
 | --- | --- |
-| Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | **Load-bearing.** Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. `pod-security.yaml` already enforces `privileged` in those namespaces for this reason. |
-| `etcd-backup` CronJob | **Own manifest, hardened.** Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are `600 root`. |
-| Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy | **`KSV-0118` only, fixed.** Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's. |
-| Authentik | **Fixed** (#792): non-root, no capabilities, no escalation, runtime seccomp, at pod and container level. Read-only root not attempted, the image writes under `/media` and `/templates`. |
-| Nextcloud, Home Assistant | **Seccomp only** (homelab-apps#30). Both images start as root by design, Apache dropping to `www-data` and Home Assistant under s6, so `runAsNonRoot` and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp. |
-| Velero | **Node agent and plugin init container confined** (#794). The node agent keeps root and its capabilities, kopia reads every pod volume whoever owns the files. The `velero` container is left as it was: its image runs as a named user, which `runAsNonRoot` cannot verify without a `runAsUser`, and [Backups](backups.md#other-settings-worth-knowing) names a real backup as the condition for either. |
-| trivy-server, nextcloud-exporter | **Fixed** (homelab-apps#32, #31): escalation off, capabilities dropped, seccomp; the exporter also read-only. |
-| Grafana's sidecars, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. #663. |
-
-### What the medium count is
-
-Two things make up most of it and neither is a finding here:
-
-- **`KSV-0125`, "untrusted registry", on nearly every container.** The
-  check's built-in trusted list is Azure, ECR and GCR, and nothing on this
-  cluster is pulled from any of them. The list is a check parameter that
-  Trivy Operator does not expose, so the count stays. It says nothing about
-  the images.
-- **Root, privilege escalation and unconfined seccomp** are now almost
-  entirely in `rook-ceph` and `kube-system`, where the load-bearing table
-  above applies. Outside those two namespaces the remaining rows are the ones
-  named in the pod table.
-
-### Reports that outlive their workload
-
-A `ConfigAuditReport` has no TTL; it goes when its owning ReplicaSet is
-garbage-collected, and Kubernetes keeps ten superseded ReplicaSets per
-Deployment. Every old revision therefore keeps its findings on the dashboard,
-nine of them on this pass, five on old trivy-operator revisions. Upstream:
-[aquasecurity/trivy-operator#3069](https://github.com/aquasecurity/trivy-operator/issues/3069).
-The Deployments this repository can set `revisionHistoryLimit` on keep one or
-two (homelab-apps#33); Nextcloud's chart has no value for it. When a count
-looks wrong, check whether the ReplicaSet in the report name still has
-replicas.
-
-### RBAC
-
-Every critical and high is a `ClusterRole` a chart ships for its operator:
-cert-manager, CloudNativePG, Rook, External Secrets, the Prometheus operator,
-Loki, Alloy and Trivy Operator all manage Secrets because that is their job,
-and `argocd-application-controller` manages everything because it deploys
-everything. The rest are Kubernetes' own `admin`, `edit` and `cluster-admin`.
-Nothing here is narrowable without forking a chart, and the exposure is what
-[Security Posture &rarr; Authorization](../architecture/security.md#authorization)
-already describes.
+| Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | Host network, host PID, privileged and added capabilities are what these do; `pod-security.yaml` enforces `privileged` in those namespaces for this reason |
+| `etcd-backup` CronJob | Host network, because etcd listens on the node's loopback; root, because the client certificates are `600 root` |
+| Velero node agent | Root and capabilities stay: kopia reads every pod volume, whoever owns the files |
+| Images that start as root by design (Nextcloud, Home Assistant) | `runAsNonRoot` or a read-only root would change how they run; seccomp is set |
+| Read-only root on charts that write under `/` at runtime (Grafana sidecars, OpenBao) | The chart or image decides where; guessing costs an outage (#663) |
+| Every critical or high `ClusterRole` | A chart's operator role, or Kubernetes' own `admin`, `edit` and `cluster-admin`; not narrowable without forking a chart — see [Security Posture](../architecture/security.md#authorization) |
+| Node file modes kubeadm resets | Handled at provisioning time — see [Triage 2026-09-20](triage-2026-09-20.md#infra-the-nodes) |

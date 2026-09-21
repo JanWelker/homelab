@@ -5,105 +5,70 @@ description: "The trust boundary this cluster assumes, the tradeoffs made to get
 # Security Posture
 
 This is a homelab on a private network, and several deliberate shortcuts follow
-from that. They are listed here so the assumptions are explicit rather than
-implied — someone reading the manifests should be able to tell a decision from
-an oversight.
-
-That distinction is the whole reason this page exists. Every system carries
-weaknesses; the dangerous ones are the weaknesses nobody chose.
+from that. They are listed so that someone reading the manifests can tell a
+decision from an oversight.
 
 ## Assumed trust boundary
 
-The cluster assumes a **trusted L2 network segment**. Anything with a port on
-that segment is treated as friendly. There is no VPN requirement, no mutual TLS
-between components, and no network segmentation inside the cluster.
+The cluster assumes a **trusted L2 network segment**: anything with a port on
+it is treated as friendly. There is no VPN requirement, no mutual TLS between
+components, and no network segmentation inside the cluster.
 
-Worth being clear-eyed about what "trusted" means in a house: it includes the
-guest laptop, the smart TV, and the doorbell running firmware from 2019 that
-nobody has thought about since. The boundary is real, it is just not as tidy as
-the phrase suggests.
-
-The published hostnames are a partial exception. Certificates are issued by
-Let's Encrypt through a DNS-01 challenge against a public zone, so
-`argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable names and
-appear in Certificate Transparency logs, even though they point at RFC1918
-addresses that are unreachable from outside the LAN. Your internal hostnames are
-public knowledge the moment you request a certificate for them; plan names
-accordingly.
+The published hostnames are a partial exception. Certificates come from Let's
+Encrypt through a DNS-01 challenge against a public zone, so
+`argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable and appear in
+Certificate Transparency logs, even though they point at RFC1918 addresses. Plan
+names accordingly.
 
 ## Provisioning
 
-Provisioning is the least protected phase, by design — it has to work before
-any of the cluster's own security exists. This is the classic bootstrap problem,
-and everyone solves it the same way: briefly, and with the door open.
+Provisioning is the least protected phase, by design: it has to work before any
+of the cluster's own security exists.
 
 | Property | Detail |
 | --- | --- |
 | Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
-| Those configs embed join credentials | The inlined kubeadm config carries the bootstrap `token` and the `certificateKey`, which together are enough to join a new control-plane node |
-| The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. Unlike the join credentials it has no TTL: anyone who fetched a control-plane Ignition config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
+| Those configs embed join credentials | The inlined kubeadm config carries the bootstrap `token` and the `certificateKey`, together enough to join a new control-plane node |
+| The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. It has no TTL: anyone who fetched a control-plane config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
-| Sysext updates set `Verify=false` | On first boot, Ignition fetches the system extension images over plain HTTP but checks each against the sha256 of the file the boot server was given, so a substituted image fails. Later updates through sysupdate travel over HTTPS with signature verification off |
+| Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off |
+| The OS image is signature-checked | `flatcar-install` is given `-b`/`-V`, so the node downloads the image and its detached signature and checks both against Flatcar's key before writing anything |
 
-The OS image is the exception, and deliberately so. `flatcar-install` is given
-`-b`/`-V` rather than a local file, so the node downloads the image *and* its
-detached signature from the boot server and checks both against Flatcar's
-signing key before writing anything. Serving it over plain HTTP on a segment
-this page calls only conditionally trusted is fine precisely because a
-substituted image fails the signature check. It is the one artifact on that
-server that becomes the operating system, which is why it gets the treatment the
-sysexts still do not.
+The mitigation is time: `make serve` is a foreground command, the bootstrap
+token has a 24 hour TTL and the certificate key expires after two hours. The
+encryption key has no clock, which is why the boot server listens only on
+`boot_server_ip`, serves files by name and lists nothing. **Stop the boot
+server when provisioning is finished.** Flatcar is installed to disk, so
+nothing needs it after a build — see
+[Every boot after the first](boot-process.md#every-boot-after-the-first).
 
-The practical mitigation is time: `make serve` is a foreground command, the
-bootstrap token has a 24 hour TTL, and the uploaded certificate key expires
-after two hours. The encryption key has no such clock, which is why the boot
-server listens only on `boot_server_ip`, hands out files by name and lists
-nothing: the segment the nodes are on is the whole audience. **Stop the boot
-server when provisioning is finished** — it is the only thing keeping those
-credentials off the network. A `make serve` left
-running in a forgotten tmux session for three months is a genuinely bad outcome,
-and it is an easy one to reach.
-
-!!! note "Stopping it is now free"
-    Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server switched off — the exposure above exists only during a build. That was not true when the nodes ran from RAM and PXE-booted on every restart, which made "stop the boot server" and "let Kured reboot a node at 02:00" mutually exclusive instructions. See [Boot & Bootstrap Process](boot-process.md#every-boot-after-the-first).
-
-`output/credentials/` holds the generated bootstrap token and certificate key in
-plaintext. The directory is `0700` and `output/` is gitignored, but the values
-are reused across `make config` runs — the Ansible `password` lookup reads back
-an existing file rather than regenerating. Delete them to force new ones.
+`output/credentials/` holds the generated bootstrap token and certificate key
+in plaintext. The directory is `0700` and `output/` is gitignored, but the
+values are reused across `make config` runs — the Ansible `password` lookup
+reads back an existing file. Delete them to force new ones.
 
 ## Secrets
 
 Secrets live in [OpenBao](../platform/openbao.md) and reach workloads as native
 Kubernetes `Secret` objects through the
-[External Secrets Operator](../platform/external-secrets.md). Nothing sensitive
-is committed to Git.
-
-Two consequences worth knowing:
+[External Secrets Operator](../platform/external-secrets.md). Nothing
+sensitive is committed to Git.
 
 - OpenBao is sealed with Shamir and
-  [unsealed by hand](../platform/openbao.md#unsealing-after-a-restart), so the 5
-  key shares are the root of trust for every other secret and the only thing that
-  brings the store back after a restart. They exist only wherever the operator
-  put them; losing all of them loses everything, and nothing outside the cluster
-  holds a copy. The cost is a manual step after every reboot — see
-  [the resulting limitation](limitations.md#openbao-needs-an-operator-to-unseal-it).
+  [unsealed by hand](../platform/openbao.md#unsealing-after-a-restart), so the
+  5 key shares are the root of trust for every other secret; losing all of them
+  loses everything, and nothing outside the cluster holds a copy.
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
-  a namespace can read what ESO materialised there. Encryption at rest, below,
-  does nothing about this — it protects the bytes in etcd, not the API. If you
-  remember one thing from this page, make it this one; the number of people who
-  believe otherwise is remarkable.
+  a namespace can read what ESO materialised there. Encryption at rest protects
+  the bytes in etcd, not the API.
 
 ### Encryption at rest
 
-The API server is configured with an `EncryptionConfiguration` that encrypts
-`secrets` with `secretbox` before they reach etcd
-(`ansible/templates/kubeadm.yaml.j2`, and the key file in
-`ansible/templates/butane_node_config.yaml.j2`). Without it a Secret sits in the etcd
-data directory as plaintext, so an etcd backup, a stolen disk, or read access to
-`/var/lib/etcd` yields every credential the cluster holds. `strings` on an
-unencrypted etcd file is a memorable demonstration, and one worth doing exactly
-once, on a cluster you do not care about.
+The API server encrypts `secrets` with `secretbox` before they reach etcd
+(`ansible/templates/kubeadm.yaml.j2`; the key file in
+`ansible/templates/butane_node_config.yaml.j2`). Without it an etcd backup, a
+stolen disk, or read access to `/var/lib/etcd` yields every credential the
+cluster holds.
 
 | Property | Detail |
 | --- | --- |
@@ -112,68 +77,59 @@ once, on a cluster you do not care about.
 | Scope | `secrets` only; ConfigMaps and other resources are unencrypted |
 | Distribution | The same key on every control-plane node, written by Ignition to `/etc/kubernetes/enc/encryption-config.yaml` (mode `0600`) |
 
-Two things follow from `identity` being listed last. New writes are encrypted,
-and Secrets written *before* this was enabled stay readable — they are not
-rewritten automatically. To encrypt what already exists, rewrite every Secret
-in place once the API servers have restarted:
+With `identity` last, new writes are encrypted and Secrets written before it
+was enabled stay readable but are not rewritten. To encrypt what already
+exists, once the API servers have restarted:
 
 ```bash
 kubectl get secrets -A -o json | kubectl replace -f -
 ```
 
-The key is a single static key with no rotation, and it lives beside the
-kubeadm token and certificate key in `output/credentials/`. That directory is
-now the thing to protect: it holds the material that decrypts etcd. A KMS
-provider would remove the static key, at the cost of a dependency the cluster
-must reach before it can serve Secrets.
+The key is static, with no rotation, and lives in `output/credentials/` beside
+the kubeadm token and certificate key — that directory is what decrypts etcd.
+A KMS provider would remove the static key at the cost of a dependency the
+cluster must reach before it can serve Secrets.
 
 ## Audit logging
 
 The API server records who did what, to which object, and whether it was
-allowed — and the `audit` half of the Pod Security Admission labels has nowhere
-to go without it. The policy, the retention, and the LogQL to query it are in
+allowed; the `audit` half of the Pod Security Admission labels has nowhere to
+go without it. Policy, retention and queries are in
 [Audit Logging](audit-logging.md).
 
 ## Authorization
 
-**ArgoCD AppProjects constrain the workloads, not the platform.**
-`payload/platform/argocd-projects/projects.yaml` defines three projects. `infra`
-allows `sourceRepos: "*"` and every group and kind in every namespace: it is
-this repository deploying this repository, and a restriction there guards
-against nothing the review of the PR does not. `system` is confined to the
-`argocd` namespace.
-
-`apps` is the one with a boundary to draw, because its Applications come from a
-second repository with a smaller blast radius and a lighter review. It accepts
-only the workloads repository and the chart repositories the workloads use, may
-not write into any platform namespace (`authentik` excepted, for the blueprint
-ConfigMap a workload ships there), and at cluster scope may create namespaces,
-CRDs, cluster RBAC and Trivy's compliance reports — the set trivy-operator
-demonstrably needs. Cluster RBAC is still cluster RBAC: a workload can grant
-itself more than it should, but only from a repository this one names, and not
-by touching the platform's own namespaces.
+**AppProjects constrain the workloads, not the platform.**
+`payload/platform/argocd-projects/projects.yaml` defines three. `infra` allows
+`sourceRepos: "*"` and every group and kind in every namespace: it is this
+repository deploying this repository, and a restriction there guards against
+nothing the PR review does not. `system` is confined to the `argocd` namespace.
+`apps` has the boundary to draw, because its Applications come from a second
+repository with a lighter review: it accepts only the workloads repository and
+the chart repositories the workloads use, may not write into any platform
+namespace (`authentik` excepted, for the blueprint ConfigMap a workload ships
+there), and at cluster scope may create namespaces, CRDs, cluster RBAC and
+Trivy's compliance reports — what trivy-operator demonstrably needs.
 
 **Network policy covers nine namespaces.** `openbao`, `cert-manager`,
 `external-secrets`, `monitoring`, `external-dns`, `kubelet-csr-approver`,
 `kured`, `logging` and `cnpg-system` have default-deny **ingress**
 `CiliumNetworkPolicy` rules; every other namespace, and all egress everywhere,
-is still unrestricted. See [Security Policies](../platform/security-policies.md).
+is unrestricted. See [Security Policies](../platform/security-policies.md).
 
 **Pod Security Admission is on, but mostly auditing.** Every platform namespace
 carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
-stricter one, so violations are visible without breaking what runs today. This is
-the sane order of operations: measure first, enforce second. Enforcing first is
-how you end up disabling the control entirely at 2am. The `audit` half of that
-now has a destination — see [Audit logging](audit-logging.md).
+stricter one, so violations are visible without breaking what runs: measure
+first, enforce second.
 
-**Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`).
-Any namespace can attach an `HTTPRoute` to `infra-gateway` and claim a hostname
-under `*.infra.k8s.wlkr.ch`.
+**Both Gateways admit routes from every namespace**
+(`allowedRoutes.namespaces.from: All`). Any namespace can attach an `HTTPRoute`
+to `infra-gateway` and claim a hostname under `*.infra.k8s.wlkr.ch`.
 
 ## Exposed interfaces
 
 Every platform UI on the infra gateway is behind
-[Authentik](../platform/authentik.md), by one of two routes:
+[Authentik](../platform/authentik.md):
 
 | Service | Authentication |
 | --- | --- |
@@ -185,12 +141,10 @@ Every platform UI on the infra gateway is behind
 | Alertmanager | Authentik proxy outpost |
 | OpenBao UI | Token or configured auth method — not behind Authentik |
 
-Two things follow. Authentik is now a dependency of reaching any of them, so
-the break-glass paths in
-[When Authentik is down](../platform/authentik.md#when-authentik-is-down) matter.
-And OpenBao is deliberately left out: putting the thing that holds Authentik's
-own database password behind Authentik would be a loop, and circular
-dependencies in an auth stack are only funny from a distance.
+Authentik is therefore a dependency of reaching any of them; the break-glass
+paths are in [When Authentik is down](../platform/authentik.md#when-authentik-is-down).
+OpenBao is left out deliberately: it holds Authentik's own database password,
+so putting it behind Authentik would be a loop.
 
 ## What would tighten this up
 
@@ -202,17 +156,11 @@ Roughly in order of value against effort:
 2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
 3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
-4. Add a second Alertmanager receiver on a different transport. One receiver,
-   one mailbox and one SMTP provider means a failure of the mail path is itself
-   unmonitored — see
-   [Alerting reaches one mailbox](limitations.md#alerting-reaches-one-mailbox).
+4. Add a second Alertmanager receiver on a different transport, so a failure of
+   the mail path is not itself unmonitored.
 5. Move etcd encryption to a KMS provider, removing the static
-   `encryption_key` that currently sits in `output/credentials/` with no
-   rotation.
-6. Get the backups out of the cluster. Velero and the etcd snapshots write to
-   the Ceph object store they are backing up — see
-   [Backups do not leave the cluster](limitations.md#backups-do-not-leave-the-cluster).
-   With etcd now persisting across reboots there is more worth losing than
-   there used to be.
+   `encryption_key` in `output/credentials/`.
+6. Get the backups out of the cluster: Velero and the etcd snapshots write to
+   the Ceph object store they are backing up.
 
 See [Known Limitations](limitations.md) for the operational counterparts.

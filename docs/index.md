@@ -6,11 +6,9 @@ description: "GitOps-driven Kubernetes homelab on bare metal, running Flatcar Co
 
 ![Homelab Logo](assets/images/logo.png){ align=right width=150 }
 
-Six machines in a rack, a pile of YAML, and a stubborn refusal to pay a cloud
-provider for something that fits under a desk. This is a bare metal Kubernetes
-cluster that provisions itself over PXE, keeps its entire state in Git, and is
-documented here mostly so that Future Me, at 02:00, with one hand holding a
-phone flashlight, does not have to re-derive any of it.
+Six machines in a rack and a pile of YAML: a bare metal Kubernetes cluster that
+provisions itself over PXE, keeps its entire state in Git, and is documented
+here so that nothing has to be re-derived at 02:00.
 
 It is a real cluster doing real work, built the way a production cluster is
 built, at a scale where breaking it is a learning experience rather than an
@@ -56,6 +54,10 @@ incident review.
 
 ## The stack in one table
 
+Each choice had a simpler alternative that was rejected on purpose; the
+reasoning and what each one costs is in
+[Design Decisions](architecture/decisions.md).
+
 | Layer | Choice | Why it is not the obvious one |
 | --- | --- | --- |
 | OS | [Flatcar Container Linux](concepts.md#flatcar-container-linux) | Read-only `/usr`. You cannot `apt install` your way out of a problem, which turns out to be the feature |
@@ -65,50 +67,8 @@ incident review.
 | Secrets | [OpenBao](platform/openbao.md) | Nothing sensitive in Git, at the price of a manual unseal after every reboot |
 | Delivery | [ArgoCD](architecture/gitops.md) | If it is not in Git it is not real, and it will not survive the next reconcile |
 
-Every one of those had a simpler alternative that was rejected on purpose. The
-reasoning, and what each choice costs, is in
-[Design Decisions](architecture/decisions.md).
-
-## What is in each section
-
-<div class="grid cards" markdown>
-
-- **[Get Started](quickstart.md)**
-
-    ---
-
-    Concepts, the thirteen-command build, and what to change before pointing
-    any of it at your own hardware.
-
-- **[Architecture](architecture/index.md)**
-
-    ---
-
-    The boot process arrow by arrow, the GitOps strategy, the security posture
-    it assumes, and the limitations written down deliberately — because the ones
-    you have not admitted to are the ones that page you.
-
-- **[Platform](platform/index.md)**
-
-    ---
-
-    The nineteen components that make the cluster more than a very expensive way
-    to run `nginx`, with the rollout order that lets a fresh bootstrap
-    converge rather than deadlock.
-
-- **[Operations](operations/index.md)**
-
-    ---
-
-    Health checks, node reboots, how updates actually get applied, and what is
-    and is not backed up — the last of which is the only page here that will
-    ever matter on your worst day.
-
-- **[Development](development/index.md)**
-
-    ---
-
-    Working on the repository: the checks that run, how this site is built, what
-    Renovate is allowed to merge, and how to add a workload.
-
-</div>
+The sections follow the reader's journey: [Get Started](quickstart.md) to build
+it, [Architecture](architecture/index.md) to understand it,
+[Platform](platform/index.md) for each of the components,
+[Operations](operations/index.md) to run it, and
+[Development](development/index.md) to work on the repository.

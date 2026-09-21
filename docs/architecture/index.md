@@ -1,17 +1,17 @@
 ---
-description: "How the cluster is put together: hardware, node roles, networking, and the design decisions behind the homelab."
+description: "How the cluster is put together: node roles, networking, the repository layout, and where the design decisions live."
 ---
 
 # Architecture
 
-This project deploys a bare metal Kubernetes cluster using Flatcar Container
-Linux and Kubeadm. No cloud provider, no managed control plane, no friendly
-button labelled "create cluster" — just six machines, a network, and a
-deployment host that talks them into existence.
+A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: six
+machines, a network, and a deployment host that talks them into existence. The
+stack itself is summarised in [one table](../index.md#the-stack-in-one-table)
+on the home page, and the reasoning behind each choice in
+[Design Decisions](decisions.md).
 
-This page assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
-GitOps are. If any of those is new, [Core Concepts](../concepts.md) covers all
-five in one page.
+This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
+GitOps are; [Core Concepts](../concepts.md) covers all five.
 
 ## What is in this section
 
@@ -21,80 +21,49 @@ five in one page.
 
     ---
 
-    One node from power-on to `kubectl get nodes`, arrow by arrow. The page to
-    read when an install stalls, because it turns "it hangs" into "which arrow
-    did not happen?"
+    One node from power-on to `kubectl get nodes`, arrow by arrow, and the
+    boot server that serves each step. Start here when an install stalls.
 
-- **[Boot Server](boot-server.md)** · **[Ansible](ansible.md)**
+- **[Ansible](ansible.md)**
 
     ---
 
-    The two halves of the deployment host: the Python script that serves TFTP
-    and HTTP to a booting node, and the playbooks that generate everything it
-    serves.
+    The playbooks that generate everything the boot server serves. Ansible
+    never configures a node.
 
 - **[GitOps Strategy](gitops.md)**
 
     ---
 
-    The ApplicationSet, and the staged rollout that makes a fresh bootstrap
-    converge instead of deadlocking on a CRD that does not exist yet.
+    The ApplicationSet, the staged rollout, and the rules that keep a fresh
+    bootstrap from deadlocking.
 
 - **[Design Decisions](decisions.md)**
 
     ---
 
-    Seven choices, each stated as *X, not Y*, each with the cost it carries.
-    Read this before proposing a simpler alternative — it is probably in here.
+    Seven choices, each as *X, not Y*, each with its cost. Read before
+    proposing a simpler alternative.
 
-- **[Security Posture](security.md)**
+- **[Security Posture](security.md)** · **[Audit Logging](audit-logging.md)**
 
     ---
 
-    The trust boundary this cluster assumes, what is deliberately not enforced,
-    and the audit logging that records the rest.
+    The trust boundary this cluster assumes, what is deliberately not
+    enforced, and what the API server records.
 
 - **[Known Limitations](limitations.md)**
 
     ---
 
-    What it does not do, written down so it is findable before it is discovered.
-
-- **[Repository Layout](directory-structure.md)**
-
-    ---
-
-    Which of the four top-level directories to be in, and which one never to
-    edit by hand.
+    What it does not do, in one table.
 
 </div>
 
-## Components
-
-### 1. Deployment Host (Local Machine)
-
-The machine where this project is executed. Notably **not** part of the cluster —
-it is a laptop on the same network, and the cluster does not depend on it once
-provisioning is done.
-
-- **Ansible**: Responsible for generating the configuration files (Ignition,
-  Kubeadm config) based on templates and variables.
-- **Python Boot Server**: A custom Python script that runs:
-  - **TFTP Server**: Serves the Bootloader (syslinux.efi/lpxelinux.0) and config.
-  - **HTTP Server**: Serves Ignition configs, Flatcar Kernel/Initrd, and Sysext
-    images (`.raw`) + configs (`.conf`).
-- **Artifacts**: Directory containing downloaded OS images (Flatcar) and
-  generated configs.
-
-### 2. Target Host (Bare Metal Node)
-
-The physical machine to be provisioned.
-
-- **PXE Client**: NIC boots via network (DHCP provided externally).
-- **Flatcar OS**: The operating system loaded into RAM and then installed to disk.
-- **Kubeadm**: The tool used to bootstrap the Kubernetes cluster.
-
 ## Cluster Layout
+
+The deployment host — the laptop running Ansible and the boot server — is
+**not** part of the cluster and nothing depends on it once provisioning is done.
 
 | Node | Role | IP |
 | --- | --- | --- |
@@ -105,30 +74,56 @@ The physical machine to be provisioned.
 | heimdall | Worker | 10.9.2.5 |
 | valkyrie | Worker | 10.9.2.6 |
 
-Three control-plane nodes, because etcd needs an odd number and two is the worst
-possible answer: twice the hardware, and you still lose quorum when one dies.
+Three control-plane nodes because etcd needs an odd number, and two is the
+worst answer: twice the hardware and quorum still lost when one dies. The API
+server is reached through a kube-vip virtual IP (`10.9.2.10` by default) rather
+than any single node — see
+[Control Plane VIP](../operations/control-plane-vip.md).
 
-The API server is reached through a kube-vip virtual IP (`10.9.2.10` by
-default) rather than any single node — see
-[Control Plane VIP](../operations/control-plane-vip.md). Naming a node as the
-API endpoint works fine right up until that node is the one you need to reboot.
+**Networks**: pod subnet `10.244.0.0/16`, service subnet `10.96.0.0/12`.
 
-**Networks**: Pod subnet `10.244.0.0/16`, Service subnet `10.96.0.0/12`
+## Repository layout
 
-## Technologies
+`ansible/` describes the machines, `boot_server/` hands them their operating
+system, `payload/` is the platform the cluster runs on, and `output/` is
+generated — never edit anything in there, the next `make config` overwrites
+it. The applications the cluster exists to serve live in the separate
+[`homelab-apps`](https://github.com/JanWelker/homelab-apps) repository; see
+[GitOps Strategy](gitops.md#workloads-live-in-a-second-repository).
 
-| Layer | Tool | Purpose |
+```text
+.
+├── ansible                 # Inventory, playbooks and templates -- see Ansible
+├── boot_server
+│   └── serve.py            # TFTP + HTTP boot server
+├── docs                    # This site
+├── output                  # Generated; never edited by hand
+│   ├── credentials/        # Bootstrap token, certificate key, etcd
+│   │                       # encryption key, OpenBao unseal keys -- 0700
+│   ├── http/               # Ignition, Flatcar artifacts, sysext images
+│   ├── kubeconfig          # Admin kubeconfig
+│   ├── tftp/               # PXE bootloader and menus
+│   └── tmp/                # Temporary workspace
+├── payload                 # Everything ArgoCD deploys
+│   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
+│   ├── platform/           # One directory per component, each with one
+│   │   └── ...             #   application.yaml -- see Platform
+│   └── workloads/          # The handover to homelab-apps, stage 12-workloads
+├── zensical.toml           # Documentation site configuration
+└── README.md
+```
+
+`ansible/` and `boot_server/` matter only while a node is being built;
+`payload/` matters every day after that. The exception is
+`ansible/templates/kubeadm.yaml.j2`, which explains why half the control plane
+is configured the way it is.
+
+`output/credentials/` is generated once and read back on every later run;
+`make config` writes new values for anything missing, which a running cluster
+will not accept. `make clean` therefore prints that inventory and asks before
+deleting, and refuses without a terminal.
+
+| Target | Removes | Keeps |
 | --- | --- | --- |
-| OS | Flatcar Container Linux | Immutable container OS, updated via A/B partitions |
-| Orchestration | Kubernetes (Kubeadm) | Container scheduling and management |
-| CNI | Cilium (eBPF) | Networking, kube-proxy replacement |
-| Ingress | Gateway API (via Cilium) | HTTP/HTTPS traffic routing |
-| GitOps | ArgoCD | Declarative cluster state management |
-| Storage | Rook-Ceph | Distributed block storage |
-| Config Gen | Ansible + Jinja2 | Per-node config generation |
-| Boot Serving | Python (HTTP + TFTP) | PXE boot artifacts |
-| API HA | kube-vip (ARP) | Virtual IP in front of the API servers |
-
-Every one of these had a simpler alternative that was rejected on purpose. The
-reasoning, including what each choice costs, is in
-[Design Decisions](decisions.md).
+| `make clean-artifacts` | `output/http`, `output/tftp`, `output/tmp` | `output/credentials/`, `output/kubeconfig` |
+| `make clean` | everything under `output/` | nothing — it asks first |
