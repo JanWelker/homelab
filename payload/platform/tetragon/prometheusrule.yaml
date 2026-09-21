@@ -10,10 +10,19 @@ spec:
   groups:
     - name: tetragon
       rules:
+        # A policy hit from a pod that never hit before is a new counter
+        # series, and increase() over one sample is zero. The "unless offset"
+        # branch catches those; the "> 0" before "or" matters, since "or"
+        # keeps a zero-valued left side over the right. See
+        # docs/platform/tetragon.md
         - alert: TetragonSensitiveFileAccess
           expr: |
             sum by (namespace, pod, binary) (
-              increase(tetragon_policy_events_total{policy="sensitive-file-access"}[10m])
+                increase(tetragon_policy_events_total{policy="sensitive-file-access"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="sensitive-file-access"}
+              unless
+                tetragon_policy_events_total{policy="sensitive-file-access"} offset 10m
             ) > 0
           labels:
             severity: warning
@@ -31,7 +40,11 @@ spec:
         - alert: TetragonExecFromWritablePath
           expr: |
             sum by (namespace, pod, binary) (
-              increase(tetragon_policy_events_total{policy="exec-from-writable-path"}[10m])
+                increase(tetragon_policy_events_total{policy="exec-from-writable-path"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="exec-from-writable-path"}
+              unless
+                tetragon_policy_events_total{policy="exec-from-writable-path"} offset 10m
             ) > 0
           labels:
             severity: warning
@@ -47,28 +60,36 @@ spec:
               started. The event, with the path and the parent process, is in
               Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="exec-from-writable-path".
-        - alert: TetragonPrivilegesRaised
+        - alert: TetragonUserNamespaceCreated
           expr: |
-            sum by (namespace, pod, binary, hook) (
-              increase(tetragon_policy_events_total{policy="privileges-raise", binary!~".*/runc"}[10m])
+            sum by (namespace, pod, binary) (
+                increase(tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"}
+              unless
+                tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"} offset 10m
             ) > 0
           labels:
             severity: warning
           annotations:
             summary: >-
-              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} raised its privileges
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} created a user namespace
             description: >-
-              {{ $labels.hook }}: a process in {{ $labels.namespace }}/{{ $labels.pod }}
-              either became root through the setuid family or created a user
-              namespace without CAP_SYS_ADMIN. The container runtime does the
-              first on every start and is filtered by binary; anything else is
-              an entrypoint dropping to root the wrong way round, or an
-              exploit. Loki: {container="export-stdout"} | json |
+              A process without CAP_SYS_ADMIN created a user namespace, in
+              which it is root; most kernel privilege-escalation chains start
+              there. Nothing here does that on purpose. The policy's setuid
+              hooks are a record only: root re-asserting root is routine
+              (runc, busybox applets, logrotate). Loki:
+              {container="export-stdout"} | json |
               process_kprobe_policy_name="privileges-raise".
         - alert: TetragonBpfProgramLoaded
           expr: |
             sum by (namespace, pod, binary) (
-              increase(tetragon_policy_events_total{policy="bpf-program-load", namespace!~"cilium|kube-system"}[10m])
+                increase(tetragon_policy_events_total{policy="bpf-program-load", namespace!~"cilium|kube-system"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="bpf-program-load", namespace!~"cilium|kube-system"}
+              unless
+                tetragon_policy_events_total{policy="bpf-program-load", namespace!~"cilium|kube-system"} offset 10m
             ) > 0
           labels:
             severity: warning
@@ -83,7 +104,11 @@ spec:
         - alert: TetragonKernelModuleLoaded
           expr: |
             sum by (namespace, pod, binary, hook) (
-              increase(tetragon_policy_events_total{policy="kernel-module-load", namespace!="rook-ceph"}[10m])
+                increase(tetragon_policy_events_total{policy="kernel-module-load", namespace!="rook-ceph"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="kernel-module-load", namespace!="rook-ceph"}
+              unless
+                tetragon_policy_events_total{policy="kernel-module-load", namespace!="rook-ceph"} offset 10m
             ) > 0
           labels:
             severity: warning
@@ -99,7 +124,11 @@ spec:
         - alert: TetragonLibraryFromWritablePath
           expr: |
             sum by (namespace, pod, binary) (
-              increase(tetragon_policy_events_total{policy="library-from-writable-path"}[10m])
+                increase(tetragon_policy_events_total{policy="library-from-writable-path"}[10m]) > 0
+              or
+                tetragon_policy_events_total{policy="library-from-writable-path"}
+              unless
+                tetragon_policy_events_total{policy="library-from-writable-path"} offset 10m
             ) > 0
           labels:
             severity: warning
