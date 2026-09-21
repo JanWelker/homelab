@@ -1580,6 +1580,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#cluster-wide-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cluster-wide rules
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-every-policy-contains" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2265,6 +2276,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#cluster-wide-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Cluster-wide rules
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#what-every-policy-contains" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2630,7 +2652,9 @@ after <code>CreateNamespace=true</code>.</p>
 <code>default-ingress</code> and <code>default-egress</code>, so every pod in it is default-deny in
 both directions, plus one policy per workload that needs more than the rest
 of the namespace does. Each policy's <code>description</code> is the record of who may
-connect and why; the rules are not repeated here.</p>
+connect and why; the rules are not repeated here. <code>cluster-wide.yaml</code> holds
+the <code>CiliumClusterwideNetworkPolicy</code> objects: the rules every pod gets, so a
+namespace file is the record of what its namespace may do <em>beyond</em> those.</p>
 <h4 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h4>
 <p>Two kinds of traffic have no pod identity a standard <code>NetworkPolicy</code> can name:
 Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet
@@ -2638,6 +2662,13 @@ health probes, which come from the node. A plain default-deny therefore kills
 ingress <em>and</em> probes, and the pods restart forever in a way that looks like an
 application fault. Cilium's <code>fromEntities</code> names them: <code>ingress</code> for
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
+<h4 id="cluster-wide-rules">Cluster-wide rules<a class="headerlink" href="#cluster-wide-rules" title="Permanent link">&para;</a></h4>
+<p>A rule that is word-for-word the same in every namespace file is lifted
+into <code>cluster-wide.yaml</code>, with <code>endpointSelector: {}</code> and
+<code>enableDefaultDeny</code> off in both directions: without that, a cluster-wide
+egress rule puts every pod in a namespace without policies into egress
+default-deny. DNS is the first; the intra-namespace and node-probe rules
+would qualify but change what a namespace file says, so they stay.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -2804,7 +2835,8 @@ it alone, until the agent restarts:</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
