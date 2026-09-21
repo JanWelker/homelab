@@ -1,0 +1,56 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: monitoring
+spec:
+  description: >-
+    Default-deny ingress for the monitoring stack. Grafana is reached through
+    the Gateway; Prometheus and Alertmanager are reached by each other and by
+    Grafana within the namespace. Three callers come from outside it. Kured
+    queries Prometheus before every reboot and blocks when the query fails, so
+    without that rule no node ever reboots. The Authentik outpost proxies
+    Prometheus and Alertmanager behind SSO. The Ceph mgr reads Prometheus for
+    its alerts and Grafana for its embedded panels. Loki's ruler sends the
+    alerts it evaluates from logs to Alertmanager.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kured
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: logging
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "3000"
+              protocol: TCP

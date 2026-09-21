@@ -1,0 +1,21 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: kured
+spec:
+  description: >-
+    Default-deny ingress for kured. The DaemonSet talks outward -- to the API
+    server for the lock annotation and to Prometheus to ask whether rebooting is
+    safe -- and serves only its own metrics endpoint.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring

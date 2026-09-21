@@ -16,6 +16,8 @@ spec:
     path: payload/platform/security
     directory:
       exclude: "application.yaml"
+      # One file per namespace under network-policies/.
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
