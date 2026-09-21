@@ -10,12 +10,9 @@ spec:
     PostgreSQL within the namespace and the node runs the probes. Every
     hostname the Gateway serves for it, its own two and the five it proxies
     for other applications, lands on the server's plaintext port. Nothing in
-    the cluster dials Authentik by its Service name, but an OIDC client in
-    the cluster that calls the public name arrives with its own identity,
-    not as ingress: the Gateway's proxy checks this policy against the
-    caller and answers 403 itself, audit mode or not. Argo CD, Grafana and
-    Nextcloud exchange their codes for tokens that way. Prometheus reads
-    the metrics port of the server and the worker.
+    the cluster dials Authentik by its Service name: every OIDC client goes
+    through the Gateway and arrives as ingress. Prometheus reads the metrics
+    port of the server and the worker.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -25,20 +22,6 @@ spec:
         - remote-node
     - fromEntities:
         - ingress
-      toPorts:
-        - ports:
-            - port: "9000"
-              protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: argocd
-            k8s:app.kubernetes.io/name: argocd-server
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: monitoring
-            k8s:app.kubernetes.io/name: grafana
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: nextcloud
-            k8s:app.kubernetes.io/name: nextcloud
       toPorts:
         - ports:
             - port: "9000"

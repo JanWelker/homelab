@@ -75,11 +75,15 @@ Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 #### Cluster-wide rules
 
 A rule that is word-for-word the same in every namespace file is lifted
-into `cluster-wide.yaml`, with `endpointSelector: {}` and
-`enableDefaultDeny` off in both directions: without that, a cluster-wide
-egress rule puts every pod in a namespace without policies into egress
-default-deny. DNS is the first; the intra-namespace and node-probe rules
-would qualify but change what a namespace file says, so they stay.
+into `cluster-wide.yaml`, selecting every endpoint that has a namespace and
+with `enableDefaultDeny` off in both directions. The selector is not `{}`
+because that also takes the Gateway's `reserved:ingress` endpoint, and any
+rule on it makes the Gateway's Envoy answer `403 Access denied` to every
+caller from inside the cluster. Default deny is off because a cluster-wide
+egress rule would otherwise put every pod in a namespace without policies
+into egress default-deny. DNS is the only rule lifted; the intra-namespace
+and node-probe rules would qualify but change what a namespace file says,
+so they stay.
 
 #### What every policy contains
 
@@ -88,7 +92,6 @@ would qualify but change what a namespace file says, so they stay.
 | Ingress from within the namespace | Replicas, sidecars and a workload's own database talk to each other on ports that change with the chart |
 | Ingress from `host` and `remote-node` | Kubelet probes come from the node, and so do the API server's webhook calls, the aggregation layer and `kubectl port-forward`; all of them carry the node's identity, on a control-plane node with the `kube-apiserver` label as well |
 | Ingress from `ingress` | Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits `authentik` instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic |
-| Ingress from each pod in the cluster that calls the namespace's public name | A caller inside the cluster keeps its own identity through the Gateway, so `ingress` does not cover it, and the Gateway's proxy answers the check with a `403` that audit mode never sees. The OIDC clients of Authentik are the case today |
 | Ingress from `monitoring` on the scraped port, `GET /metrics` | The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else |
 | Egress within the namespace, to kube-dns with a DNS rule, and to `kube-apiserver` where there is a Kubernetes client | `toFQDNs` only works when the DNS proxy sees the answers; `matchPattern: "*"` refuses nothing and makes every lookup visible in Hubble. The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address |
 | Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
@@ -229,7 +232,7 @@ kubectl get validatingadmissionpolicy
 ## Pitfalls
 
 !!! note "Audit mode stops at the proxy"
-    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`.
+    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`, and check `cilium-dbg endpoint list` for a policy on the `reserved:ingress` endpoint.
 
 !!! note "The token change is not retroactive"
     The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.

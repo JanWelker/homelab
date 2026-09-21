@@ -11,10 +11,17 @@ spec:
     Every pod may ask kube-dns, through the DNS proxy, so a toFQDNs rule
     works in any namespace and every lookup is visible in Hubble. The
     rule used to be repeated in every namespace's default-egress and was
-    the same each time. enableDefaultDeny is off in both directions
+    the same each time. The selector takes every endpoint that has a
+    namespace, that is every pod, and not the reserved ones: an empty
+    selector also takes the Gateway's own ingress endpoint, and an egress
+    rule on that one makes its Envoy answer 403 to every caller from
+    inside the cluster. enableDefaultDeny is off in both directions
     because a cluster-wide policy with an egress rule would otherwise put
     every pod without a policy of its own into egress default-deny.
-  endpointSelector: {}
+  endpointSelector:
+    matchExpressions:
+      - key: io.kubernetes.pod.namespace
+        operator: Exists
   enableDefaultDeny:
     ingress: false
     egress: false
