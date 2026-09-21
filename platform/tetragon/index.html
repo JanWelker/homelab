@@ -2434,9 +2434,9 @@ what it is without a lookup here.</p>
 </tr>
 <tr>
 <td><code>kernel-module-load</code></td>
-<td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code></td>
-<td>A module requested or read from a container; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot</td>
-<td>Yes: <code>TetragonKernelModuleLoaded</code></td>
+<td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>find_module_sections</code></td>
+<td>A module requested or read from a container; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included</td>
+<td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
 <td><code>egress-outside-cluster</code></td>
