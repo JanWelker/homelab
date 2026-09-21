@@ -153,6 +153,10 @@ spec:
     spec:
       backoffLimit: 2
       template:
+        metadata:
+          labels:
+            # Selected by the network policy; job-name alone is not stable.
+            app.kubernetes.io/name: findings-history
         spec:
           serviceAccountName: findings-history
           automountServiceAccountToken: true

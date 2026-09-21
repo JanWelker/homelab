@@ -6,11 +6,11 @@ metadata:
   namespace: trivy-system
 spec:
   description: >-
-    Default-deny ingress for Trivy Operator. The operator serves only metrics
-    and the built-in Trivy server answers scan jobs inside the namespace, so
-    the callers are the scan jobs, the node for probes and Prometheus. Egress
-    stays open: a scanner that cannot reach a registry reports zero findings
-    rather than an error.
+    Default-deny ingress for Trivy Operator. The operator serves only
+    metrics and the built-in Trivy server answers scan jobs inside the
+    namespace, so the callers are the scan jobs, the node for probes and
+    Prometheus. The server has no token, so keeping it to the namespace is
+    what stops anything else from submitting scans.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -21,7 +21,120 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
       toPorts:
         - ports:
             - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: trivy-system
+spec:
+  description: >-
+    Default-deny egress for Trivy Operator. Scan jobs reach the Trivy
+    server within the namespace and resolve a registry name per layer;
+    what each workload reaches beyond that is below. A scanner that cannot
+    reach a registry reports zero findings rather than an error, so an
+    audited flow here is a missing registry, not noise.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+spec:
+  description: >-
+    The operator and the findings-history CronJob read and write reports
+    through the API server. Scan jobs mount no token and need nothing
+    there.
+  endpointSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - trivy-operator
+          - findings-history
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: trivy-server
+  namespace: trivy-system
+spec:
+  description: >-
+    The server fetches the vulnerability and Java databases from the
+    Google mirror.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-server
+  egress:
+    - toFQDNs:
+        - matchName: mirror.gcr.io
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: scan-jobs
+  namespace: trivy-system
+spec:
+  description: >-
+    In client-server mode the scan job pulls the image layers itself, so
+    it needs every registry the cluster pulls from and the CDNs behind
+    them: Docker Hub and its Cloudflare storage, Quay and its Akamai edge,
+    GitHub's container registry, the Kubernetes registry and the Google
+    and Amazon storage it redirects to, the Google mirror and Amazon's
+    public registry. The registry allowlist in admission-policies.yaml is
+    the list to keep this in step with.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: trivy-operator
+  egress:
+    - toFQDNs:
+        - matchName: docker.io
+        - matchPattern: "*.docker.io"
+        - matchPattern: "*.docker.com"
+        - matchPattern: "*.cloudflarestorage.com"
+        - matchName: quay.io
+        - matchPattern: "*.quay.io"
+        - matchName: ghcr.io
+        - matchPattern: "*.githubusercontent.com"
+        - matchName: registry.k8s.io
+        - matchPattern: "*.pkg.dev"
+        - matchName: storage.googleapis.com
+        - matchPattern: "*.amazonaws.com"
+        - matchName: mirror.gcr.io
+        - matchName: public.ecr.aws
+        - matchName: ecr-public.aws.com
+        - matchPattern: "*.cloudfront.net"
+      toPorts:
+        - ports:
+            - port: "443"
               protocol: TCP
