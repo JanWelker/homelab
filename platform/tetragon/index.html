@@ -2451,6 +2451,12 @@ what it is without a lookup here.</p>
 <td>Yes: <code>TetragonMountInContainer</code></td>
 </tr>
 <tr>
+<td><code>ptrace-in-container</code></td>
+<td><code>security_ptrace_access_check</code></td>
+<td>An attach-mode access to another process from a container: ptrace, <code>process_vm_writev</code>, <code>/proc/&lt;pid&gt;/mem</code>. The read mode <code>ps</code> uses is left alone</td>
+<td>Yes: <code>TetragonPtraceInContainer</code></td>
+</tr>
+<tr>
 <td><code>egress-outside-cluster</code></td>
 <td><code>security_socket_connect</code></td>
 <td>An IPv4 <code>connect()</code>, TCP or UDP, from a container to anything outside the pod, service and site ranges</td>
