@@ -739,3 +739,41 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# The one policy that enforces: an unprivileged container process that
+# creates a user namespace is killed. Nothing here uses them and most kernel
+# privilege-escalation chains start with one. A sysctl would do the same for
+# the host, where systemd's PrivateUsers= needs them, so this stays scoped to
+# containers. Override is not available on Flatcar's kernel, so the namespace
+# may exist for the instant before the process dies. See
+# docs/platform/tetragon.md
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: kill-unprivileged-user-namespace
+spec:
+  options:
+    - name: policy-mode
+      value: enforce
+  kprobes:
+    - call: create_user_ns
+      syscall: false
+      message: Unprivileged user namespace creation killed
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: nop
+      selectors:
+        - matchCapabilities:
+            - type: Effective
+              operator: NotIn
+              values:
+                - CAP_SYS_ADMIN
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Sigkill
