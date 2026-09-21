@@ -19,7 +19,8 @@ sees a shell spawned in a running container.
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](logging.md) for the events, [Monitoring](monitoring.md) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
 | Health check | `kubectl get tracingpolicies -o wide`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
-| Files | `payload/platform/tetragon/` |
+| Dashboard | [Tetragon](https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
+| Files | `payload/platform/tetragon/`: the chart, two policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
 ## Configuration
 
@@ -32,6 +33,7 @@ and runs privileged on the host network by the chart's default.
 | `exportDenyList` | Exec and exit events from the host, `cilium` and `kube-system` stay out of the export; they are the bulk of the volume and the least interesting. Policy hits from those namespaces still pass, which is the point of the `event_set` field |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
+| Memory limit | 2.5x the measured working set of the busiest agent on the first day, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
 
 ### Policies
 
@@ -49,6 +51,8 @@ confirming it in the export; a person running `cat` on a node is exactly what
 the policy is for.
 
 ## Usage
+
+The dashboard is the summary; the queries below are what its Loki panels run.
 
 ```logql
 # Everything a policy caught

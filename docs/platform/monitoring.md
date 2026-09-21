@@ -107,6 +107,8 @@ its upstream tag.
 | [Rook-Ceph](rook-ceph.md) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored: `rook-ceph/grafana-dashboards.yaml` |
 | [Alloy](logging.md) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored: `logging/grafana-dashboards.yaml` |
 | ArgoCD | ArgoCD | Vendored: `argocd-config/argocd-dashboard.yaml` |
+| [Tetragon](tetragon.md) | Tetragon | Written for this cluster: `tetragon/grafana-dashboard.yaml`; upstream ships none |
+| [Trivy Operator](trivy-operator.md) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboard.yaml` |
 
 ## Usage
 
