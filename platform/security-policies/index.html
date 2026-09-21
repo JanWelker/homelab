@@ -1580,10 +1580,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scope" class="md-nav__link">
+  <a href="#what-every-policy-contains" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Scope
+        What every policy contains
       </span>
     </span>
   </a>
@@ -2265,10 +2265,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#scope" class="md-nav__link">
+  <a href="#what-every-policy-contains" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Scope
+        What every policy contains
       </span>
     </span>
   </a>
@@ -2506,9 +2506,9 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Four cluster-wide controls: Pod Security Admission, default-deny ingress
-network policy, no API token on the <code>default</code> ServiceAccount, and two
-admission policies on image references. Each is easy to turn on and hard to
+<p>Four cluster-wide controls: Pod Security Admission, default-deny network
+policy in both directions, no API token on the <code>default</code> ServiceAccount, and
+two admission policies on image references. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2542,7 +2542,7 @@ enforce second, one namespace at a time.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/security/</code></td>
+<td><code>payload/platform/security/</code>, the network policies one file per namespace under <code>network-policies/</code></td>
 </tr>
 </tbody>
 </table>
@@ -2625,9 +2625,12 @@ are still <code>baseline</code> or <code>restricted</code> on all of them. Names
 owned by this Application so the labels stay declarative rather than drifting
 after <code>CreateNamespace=true</code>.</p>
 <h3 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h3>
-<p>Ingress only, in ten namespaces, as <code>CiliumNetworkPolicy</code> in
-<code>network-policies.yaml</code>. Every policy also admits traffic from within the
-namespace and from <code>host</code> and <code>remote-node</code> for probes.</p>
+<p>One file per namespace in <code>network-policies/</code>, holding that namespace's
+<code>CiliumNetworkPolicy</code> objects. A namespace gets two whole-namespace policies,
+<code>default-ingress</code> and <code>default-egress</code>, so every pod in it is default-deny in
+both directions, plus one policy per workload that needs more than the rest
+of the namespace does. Each policy's <code>description</code> is the record of who may
+connect and why; the rules are not repeated here.</p>
 <h4 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h4>
 <p>Two kinds of traffic have no pod identity a standard <code>NetworkPolicy</code> can name:
 Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet
@@ -2635,66 +2638,54 @@ health probes, which come from the node. A plain default-deny therefore kills
 ingress <em>and</em> probes, and the pods restart forever in a way that looks like an
 application fault. Cilium's <code>fromEntities</code> names them: <code>ingress</code> for
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
-<h4 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h4>
+<h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
-<th>Namespace</th>
-<th>Who may connect from outside it</th>
+<th>Rule</th>
+<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>openbao</code></td>
-<td>The Gateway (UI), Prometheus and ESO, on <code>8200</code></td>
+<td>Ingress from within the namespace</td>
+<td>Replicas, sidecars and a workload's own database talk to each other on ports that change with the chart</td>
 </tr>
 <tr>
-<td><code>cert-manager</code></td>
-<td>Prometheus; the webhook is called by the API server from the node</td>
+<td>Ingress from <code>host</code> and <code>remote-node</code></td>
+<td>Kubelet probes come from the node, and so do the API server's webhook calls, the aggregation layer and <code>kubectl port-forward</code>; all of them carry the node's identity, on a control-plane node with the <code>kube-apiserver</code> label as well</td>
 </tr>
 <tr>
-<td><code>external-secrets</code></td>
-<td>Prometheus; the webhook is called by the API server from the node</td>
+<td>Ingress from <code>ingress</code></td>
+<td>Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits <code>authentik</code> instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic</td>
 </tr>
 <tr>
-<td><code>monitoring</code></td>
-<td>The Gateway (Grafana); kured on <code>9090</code>; the Authentik outpost on <code>9090</code> and <code>9093</code>; the Ceph mgr on <code>9090</code> and <code>3000</code>; Loki's ruler on <code>9093</code></td>
+<td>Ingress from <code>monitoring</code> on the scraped port, <code>GET /metrics</code></td>
+<td>The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else</td>
 </tr>
 <tr>
-<td><code>external-dns</code></td>
-<td>Prometheus</td>
+<td>Egress within the namespace, to kube-dns with a DNS rule, and to <code>kube-apiserver</code> where there is a Kubernetes client</td>
+<td><code>toFQDNs</code> only works when the DNS proxy sees the answers; <code>matchPattern: "*"</code> refuses nothing and makes every lookup visible in Hubble. The <code>kube-apiserver</code> entity is the endpoints behind <code>kubernetes.default</code>; no pod uses the kube-vip address</td>
 </tr>
 <tr>
-<td><code>kubelet-csr-approver</code></td>
-<td>Prometheus</td>
+<td>Egress to external names as <code>toFQDNs</code></td>
+<td>A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling <code>auth.k8s.wlkr.ch</code> is classified <code>world</code>, not <code>ingress</code></td>
 </tr>
 <tr>
-<td><code>kured</code></td>
-<td>Prometheus</td>
-</tr>
-<tr>
-<td><code>logging</code></td>
-<td>Prometheus and Grafana, both in <code>monitoring</code></td>
-</tr>
-<tr>
-<td><code>cnpg-system</code></td>
-<td>Prometheus; the webhooks are called by the API server from the node</td>
-</tr>
-<tr>
-<td><code>trivy-system</code></td>
-<td>Prometheus; scan jobs reach the Trivy server within the namespace</td>
+<td>HTTP rules on plaintext ports, ingress side only</td>
+<td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>monitoring</code> callers are easy to lose: Kured blocks every reboot when its
-Prometheus query fails, the Authentik outpost is what <code>prometheus.infra</code> and
-<code>alertmanager.infra</code> resolve to, and the Ceph dashboard pulls from both.
-<code>cnpg-system</code> covers the operator only; each database lives in its workload's
-namespace, so the rule admitting the operator on port <code>8000</code> belongs to that
-namespace's policy — see <a href="../../development/add-workload/">Adding a Workload</a>.</p>
-<p>Egress is untouched: a default-deny there also needs DNS, the API server and
-every external endpoint, and getting it wrong takes the component down rather
-than leaving it exposed. Not covered, each for its own reason:</p>
+<p>Host-networked pods (Cilium, kube-vip, the control plane, node-exporter,
+Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
+selected; to everything else they are <code>host</code> or <code>remote-node</code>. <code>kube-system</code>
+therefore covers only its pod-networked workloads, each selected by label.</p>
+<p>Where a chart ships <code>NetworkPolicy</code> objects of its own (<code>argocd</code>,
+<code>authentik</code>) they are switched off in its values: Cilium unions the two
+kinds, so a chart rule that allows everything would silently override the
+default-deny.</p>
+<p>Not yet covered, each for its own reason:</p>
 <table>
 <thead>
 <tr>
