@@ -26,5 +26,11 @@ spec:
       # Never prune: this Application owns Namespaces (and all they contain).
       prune: false
       selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - ServerSideApply=true
