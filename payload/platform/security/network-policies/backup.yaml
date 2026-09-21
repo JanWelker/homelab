@@ -1,0 +1,69 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: backup
+spec:
+  description: >-
+    Default-deny ingress for the backup namespace. Velero, the node agent
+    and the snapshot controller are clients of the API server and the
+    object store; the only things that connect to them are the node for
+    probes and Prometheus on Velero's metrics port.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8085"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: backup
+spec:
+  description: >-
+    Default-deny egress for the backup namespace. Everything here
+    reconciles through the API server. Velero checks its store every
+    minute and the data-mover pods the node agent starts each night carry
+    the volume data to it: plaintext S3 to the RGW pods in rook-ceph. The
+    movers are created with Velero's own labels, so the rule is for the
+    namespace. The etcd CronJob is host-networked and outside any policy.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+            k8s:app: rook-ceph-rgw
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
