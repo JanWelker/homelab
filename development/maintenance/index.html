@@ -2038,6 +2038,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#language-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Language statistics
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2152,6 +2163,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#language-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Language statistics
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2391,6 +2413,16 @@ found and why it skipped any. The rules, each of which is written into
 <li><strong>Check that the currently pinned version passes its own rule.</strong> A filter
     that excludes what is deployed excludes everything, silently.</li>
 </ul>
+<h2 id="language-statistics">Language statistics<a class="headerlink" href="#language-statistics" title="Permanent link">&para;</a></h2>
+<p>GitHub's language bar comes from
+<a href="https://github.com/github-linguist/linguist">Linguist</a>, which counts bytes of
+files it classifies as a <em>language</em>. YAML is classified as data and Markdown as
+prose, so both are excluded by default and the bar reported this repository as
+Shell and Jinja. <code>.gitattributes</code> marks YAML detectable, and marks the three
+vendored Grafana dashboards as vendored, because their upstream JSON blobs are
+more than half the repository's YAML bytes and would otherwise be most of the
+bar. A vendored dashboard added later needs its own line there; GitHub
+recalculates on the next push to <code>main</code>.</p>
 
 
 
