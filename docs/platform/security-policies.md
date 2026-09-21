@@ -41,6 +41,7 @@ an informed change.
 | Namespace | Enforce | Why not stricter |
 | --- | --- | --- |
 | `kube-system` | `privileged` | Cilium, kube-vip and the control plane use host networking and host paths |
+| `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap, which baseline does not allow |
 | `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
@@ -90,12 +91,6 @@ Where a chart ships `NetworkPolicy` objects of its own (`argocd`,
 `authentik`) they are switched off in its values: Cilium unions the two
 kinds, so a chart rule that allows everything would silently override the
 default-deny.
-
-Not yet covered, each for its own reason:
-
-| Namespace | Why not yet |
-| --- | --- |
-| `backup` | A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd |
 
 ### Default ServiceAccount tokens
 
