@@ -6,12 +6,10 @@ metadata:
   namespace: cnpg-system
 spec:
   description: >-
-    Default-deny ingress for the CloudNativePG operator. It reaches out to the
-    API server and to the Postgres instances it manages; the only things that
-    connect to it are the API server calling its webhooks from the node, and
-    Prometheus scraping the PodMonitor. The databases themselves are not here
-    -- each one runs in its workload's namespace, behind that namespace's own
-    policy.
+    Default-deny ingress for the CloudNativePG operator. The API server
+    calls its webhooks from the node, Prometheus scrapes the metrics port.
+    The databases are not here; each runs in its workload's namespace
+    behind that namespace's own policy.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -22,3 +20,48 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: cnpg-system
+spec:
+  description: >-
+    Default-deny egress for the CloudNativePG operator. It reconciles
+    through the API server and polls every instance it manages on the
+    status port, wherever that instance runs, which is why the target is
+    the instance label rather than a namespace list. The port is TLS, so
+    the rule stays at L4.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:cnpg.io/podRole: instance
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
