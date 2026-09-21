@@ -228,13 +228,6 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
-    # Only if a CloudNativePG Cluster is in this namespace: the instance
-    # manager reports to the API server.
-    - toEndpoints:
-        - matchLabels:
-            k8s:cnpg.io/podRole: instance
-      toEntities:
-        - kube-apiserver
     # Every name the application dials, by name. Authentik counts: its
     # hostname resolves to the Gateway's own address, which is world.
     - toFQDNs:
@@ -243,6 +236,23 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+---
+# Only if a CloudNativePG Cluster is in this namespace: the instance
+# manager reports to the API server.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: database
+  namespace: my-app
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/podRole: instance
+  egress:
+    - toEntities:
+        - kube-apiserver
 ```
 
 Wave `-2` is load-bearing: at the default wave the policy is applied after the
