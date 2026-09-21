@@ -1,0 +1,52 @@
+---
+# Whether the nodes are actually taking the OS and sysext updates they stage.
+# Trivy scans containers, not the host; see docs/operations/upgrades.md
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-updates
+  namespace: monitoring
+spec:
+  groups:
+    - name: node-updates
+      rules:
+        # Kured reboots one node at a time and refuses while Ceph or etcd is
+        # unhealthy, so a marker that stays for two days is a node that is
+        # blocked, not one that is queued.
+        - alert: NodeRebootPending
+          expr: kured_reboot_required == 1
+          for: 2d
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.node }} has had an update staged for two days
+            description: >-
+              /run/reboot-required has been set on {{ $labels.node }} for two
+              days and Kured has not rebooted it. Either an alert in Kured's
+              block list is firing, or Ceph or etcd is unhealthy, or Kured is
+              not running. Until the reboot the node runs the old OS or sysext.
+        - alert: NodeOsVersionDrift
+          expr: count(count by (version_id) (node_os_info)) > 1
+          for: 3d
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Nodes run {{ $value }} different Flatcar releases
+            description: >-
+              A release rolls across every node within a day or two; three
+              days of mixed versions means at least one node is not updating
+              at all. kubectl get nodes -o wide shows which.
+        - alert: NodeKubeletVersionDrift
+          expr: count(count by (kubelet_version) (kube_node_info)) > 1
+          for: 3d
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Nodes run {{ $value }} different kubelet versions
+            description: >-
+              sysupdate keeps every node on the same Kubernetes patch; three
+              days of mixed kubelets means a node missed its update or its
+              reboot, or a deliberate minor upgrade stalled halfway.
