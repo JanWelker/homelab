@@ -1,0 +1,100 @@
+---
+# Image references every container must carry; see docs/platform/security-policies.md
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: image-tag-pinned
+spec:
+  # Ignore: a policy bug must not stop every pod in the cluster. A real
+  # violation is still refused; only an evaluation error is let through.
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs", "cronjobs"]
+  variables:
+    - name: podSpec
+      expression: >-
+        object.kind == 'Pod' ? object.spec :
+        object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec :
+        object.spec.template.spec
+    - name: images
+      expression: >-
+        variables.podSpec.containers.map(c, c.image) +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : [])
+  validations:
+    - expression: >-
+        variables.images.all(i,
+          i.matches('@sha256:[0-9a-f]{64}$') ||
+          (i.matches('^([^/]+/)*[^/:@]+:[^/:@]+$') && !i.endsWith(':latest')))
+      message: >-
+        Every container image must name a tag other than "latest" or a digest.
+      reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: image-tag-pinned
+spec:
+  policyName: image-tag-pinned
+  validationActions: ["Deny"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: image-registry-allowed
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs", "cronjobs"]
+  variables:
+    - name: podSpec
+      expression: >-
+        object.kind == 'Pod' ? object.spec :
+        object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec :
+        object.spec.template.spec
+    - name: images
+      expression: >-
+        variables.podSpec.containers.map(c, c.image) +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : [])
+  validations:
+    # A first component without a dot or a port is not a registry: the
+    # runtime reads such a reference from docker.io.
+    - expression: >-
+        variables.images.all(i,
+          !i.matches('^[^/]*[.:][^/]*/') ||
+          i.matches('^(docker[.]io|ecr-public[.]aws[.]com|ghcr[.]io|mirror[.]gcr[.]io|quay[.]io|registry[.]k8s[.]io)/'))
+      message: >-
+        Container image comes from a registry outside the allowlist.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: image-registry-allowed
+spec:
+  policyName: image-registry-allowed
+  # Measured, not enforced: the audit log records what a Deny would refuse.
+  validationActions: ["Audit", "Warn"]

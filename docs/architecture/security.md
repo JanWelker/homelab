@@ -122,6 +122,12 @@ carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
 stricter one, so violations are visible without breaking what runs: measure
 first, enforce second.
 
+**Image references are checked at admission.** An untagged or `latest` image
+is refused; a registry outside the allowlist is recorded and warned about but
+admitted. Signatures are not verified: few of the upstreams sign, so a
+verifier would exempt nearly everything. See
+[Security Policies](../platform/security-policies.md#admission-policies).
+
 **Both Gateways admit routes from every namespace**
 (`allowedRoutes.namespaces.from: All`). Any namespace can attach an `HTTPRoute`
 to `infra-gateway` and claim a hostname under `*.infra.k8s.wlkr.ch`.
@@ -155,7 +161,8 @@ Roughly in order of value against effort:
    egress — the larger and more breakable half.
 2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces.
+3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and
+   promote the registry allowlist to `Deny`.
 4. Add a second Alertmanager receiver on a different transport, so a failure of
    the mail path is not itself unmonitored.
 5. Move etcd encryption to a KMS provider, removing the static
