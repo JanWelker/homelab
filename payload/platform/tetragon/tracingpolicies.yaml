@@ -95,11 +95,12 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container process whose credentials grew after it
-# started. commit_creds runs on every execve, fork and setuid, which is a
-# record nobody reads; the two selectors keep only a process that gained a
-# dangerous capability since its exec, or moved into another namespace,
-# which is what a kernel exploit or an escape leaves behind.
+# What fires an alert: a container process that moved into another namespace
+# after it started, which is what nsenter, setns and an escape leave behind.
+# commit_creds runs on every execve, fork and setuid; the selector keeps only
+# the namespace change. Upstream's matchCapabilityChanges is not used here
+# because it matches a change in either direction, and every entrypoint that
+# drops root would fire it.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -108,35 +109,13 @@ spec:
   kprobes:
     - call: commit_creds
       syscall: false
-      message: Container process gained privileges after exec
+      message: Container process changed namespace after exec
       tags:
         - observability.privilege_escalation
       args:
         - index: 0
           type: cred
       selectors:
-        - matchCapabilityChanges:
-            - type: Effective
-              operator: In
-              values:
-                - CAP_SYS_ADMIN
-                - CAP_SYS_MODULE
-                - CAP_SYS_PTRACE
-                - CAP_SYS_RAWIO
-                - CAP_NET_ADMIN
-                # Upstream's enum spells this one without the prefix.
-                - DAC_OVERRIDE
-                - CAP_SETUID
-                - CAP_SETGID
-                - CAP_BPF
-          matchNamespaces:
-            - namespace: Pid
-              operator: NotIn
-              values:
-                - host_ns
-          matchActions:
-            - action: Post
-              rateLimit: 1m
         - matchNamespaceChanges:
             - operator: In
               values:
@@ -149,6 +128,11 @@ spec:
               operator: NotIn
               values:
                 - host_ns
+          # runc joins the container's namespaces on every start.
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
           matchActions:
             - action: Post
               rateLimit: 1m
