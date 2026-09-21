@@ -6,9 +6,12 @@ metadata:
   namespace: openbao
 spec:
   description: >-
-    Default-deny ingress for OpenBao, allowing only the cluster's own traffic:
-    peers within the namespace for Raft, the Gateway for the UI, Prometheus for
-    the metrics endpoint, ESO for secret reads, and the node for health probes.
+    Default-deny ingress for OpenBao, allowing only the cluster's own
+    traffic: peers within the namespace for Raft and request forwarding, the
+    Gateway for the UI, Prometheus for the metrics endpoint on the active
+    pod, the External Secrets controller for logins and kv reads, and the
+    node for health probes. The API is plaintext behind the Gateway, so the
+    last two are at L7.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -16,18 +19,61 @@ spec:
     - fromEntities:
         - host
         - remote-node
+    - fromEntities:
         - ingress
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
       toPorts:
         - ports:
             - port: "8200"
               protocol: TCP
+          rules:
+            http:
+              - {}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
+            k8s:app.kubernetes.io/name: external-secrets
       toPorts:
         - ports:
             - port: "8200"
               protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: openbao
+spec:
+  description: >-
+    Default-deny egress for OpenBao. Raft, retry_join and standby forwarding
+    stay within the namespace and need the headless names resolved before
+    a pod can start. The API server answers the TokenReview behind every
+    Kubernetes-auth login and receives the pod's own active/sealed labels.
+    Shamir seal, file audit: nothing outside the cluster.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
