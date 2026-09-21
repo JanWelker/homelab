@@ -2594,11 +2594,6 @@ an informed change.</p>
 <td>Cilium, kube-vip and the control plane use host networking and host paths</td>
 </tr>
 <tr>
-<td><code>rook-ceph</code></td>
-<td><code>privileged</code></td>
-<td>OSDs need raw block devices</td>
-</tr>
-<tr>
 <td><code>monitoring</code></td>
 <td><code>privileged</code></td>
 <td>node-exporter is host-networked and reads <code>/proc</code> and <code>/sys</code></td>
@@ -2694,10 +2689,6 @@ default-deny.</p>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>rook-ceph</code></td>
-<td>Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix; Ceph health is the verification signal</td>
-</tr>
 <tr>
 <td><code>backup</code></td>
 <td>A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd</td>
