@@ -59,7 +59,9 @@ One file per namespace in `network-policies/`, holding that namespace's
 `default-ingress` and `default-egress`, so every pod in it is default-deny in
 both directions, plus one policy per workload that needs more than the rest
 of the namespace does. Each policy's `description` is the record of who may
-connect and why; the rules are not repeated here.
+connect and why; the rules are not repeated here. `cluster-wide.yaml` holds
+the `CiliumClusterwideNetworkPolicy` objects: the rules every pod gets, so a
+namespace file is the record of what its namespace may do *beyond* those.
 
 #### Why CiliumNetworkPolicy and not NetworkPolicy
 
@@ -69,6 +71,15 @@ health probes, which come from the node. A plain default-deny therefore kills
 ingress *and* probes, and the pods restart forever in a way that looks like an
 application fault. Cilium's `fromEntities` names them: `ingress` for
 Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
+
+#### Cluster-wide rules
+
+A rule that is word-for-word the same in every namespace file is lifted
+into `cluster-wide.yaml`, with `endpointSelector: {}` and
+`enableDefaultDeny` off in both directions: without that, a cluster-wide
+egress rule puts every pod in a namespace without policies into egress
+default-deny. DNS is the first; the intra-namespace and node-probe rules
+would qualify but change what a namespace file says, so they stay.
 
 #### What every policy contains
 
@@ -210,6 +221,7 @@ kubectl -n kube-system exec ds/cilium -c cilium-agent -- \
 ```bash
 kubectl get ns -L pod-security.kubernetes.io/enforce
 kubectl get cnp -A
+kubectl get ccnp
 kubectl get validatingadmissionpolicy
 ```
 
