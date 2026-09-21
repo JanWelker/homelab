@@ -124,6 +124,10 @@ configs:
   cm:
     url: https://argo.infra.k8s.wlkr.ch
 
+    # No webhook can reach a private address; poll instead. Must not exceed
+    # the ApplicationSets' requeueAfterSeconds, see docs/platform/argocd.md
+    timeout.reconciliation: 60s
+
     # Break-glass if Authentik is down: see docs/platform/authentik.md
     admin.enabled: "false"
 

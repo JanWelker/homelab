@@ -33,6 +33,7 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
 | `resource.customizations.health.argoproj.io_Application` | Restores health assessment for `Application` resources, dropped in ArgoCD 1.8, so `argocd` reports the health of the ApplicationSet rather than a permanent Healthy |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
+| `timeout.reconciliation` and the ApplicationSets' `requeueAfterSeconds`, both one minute | ArgoCD listens on a private address, so GitHub's webhook cannot reach it and a commit waits for the next poll. The two run separately: the first refreshes Applications, the second re-reads the generator paths. The repo-server caches a revision for the first, so it must not exceed the second or a new commit's files stay invisible to the generator until the cache expires |
 
 The OIDC client ID and secret come from `kv/authentik/config`, the same OpenBao
 path Authentik's blueprint reads. `argocd-cm` refers to them as
