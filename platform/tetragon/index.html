@@ -2457,7 +2457,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>privileges-raise</code></td>
 <td><code>create_user_ns</code>, the <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
-<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (busybox applets, <code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code>. <code>runc</code>, which sets the ids on every container start, is dropped in the kernel</td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (<code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code>. <code>runc</code>, which sets the ids on every container start, and the redis-ha pods, whose busybox calls setgid on every applet, are dropped in the kernel with <code>matchBinaries</code> and a <code>podSelector</code></td>
 <td>Yes: <code>TetragonUserNamespaceCreated</code></td>
 </tr>
 <tr>
