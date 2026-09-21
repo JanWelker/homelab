@@ -99,7 +99,6 @@ Not yet covered, each for its own reason:
 | `kube-system` | Holds Cilium itself, the static control-plane pods and kube-vip |
 | `rook-ceph` | Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix; Ceph health is the verification signal |
 | `backup` | A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd |
-| `authentik` | Already carries `NetworkPolicy` objects from its own chart |
 
 ### Default ServiceAccount tokens
 
