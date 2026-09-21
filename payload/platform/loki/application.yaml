@@ -56,6 +56,12 @@ spec:
               insecure: true
           limits_config:
             retention_period: 30d
+            # The daily Trivy summary is a few lines; a year of it is the
+            # only long-range record of findings. See docs/platform/trivy-operator.md
+            retention_stream:
+              - selector: '{namespace="trivy-system", container="findings-history"}'
+                priority: 1
+                period: 8760h
             reject_old_samples: true
             reject_old_samples_max_age: 168h
             volume_enabled: true

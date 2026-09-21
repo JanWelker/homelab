@@ -34,6 +34,8 @@ jq -r '.items[] | .metadata.namespace as $ns
 - **The worst findings are usually not the project's code.** The `target`
     names the binary, and which binary decides whether anything can be done and
     by whom.
+- **Ten days of Prometheus is not a trend.** The daily summary the operator
+    ships to Loki is: see [History](../platform/trivy-operator.md#history).
 
 Two artifacts recur. A `ConfigAuditReport` has no TTL and goes only when its
 ReplicaSet is garbage-collected, so superseded revisions keep their findings on

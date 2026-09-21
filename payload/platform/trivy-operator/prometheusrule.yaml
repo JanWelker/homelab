@@ -45,3 +45,97 @@ spec:
               with no findings. Check the operator log for a ResourceExhausted
               write rejection, which means the report exceeded the 2 MiB API
               server limit.
+    # Findings that should page. Reports expire every 24h and are rebuilt, so
+    # "new" is compared against two days ago rather than against the previous
+    # sample, only once the operator has two days of history, and every rule
+    # waits long enough for a rebuild to complete.
+    # See docs/platform/trivy-operator.md.
+    - name: trivy-operator.findings
+      rules:
+        - alert: TrivyExposedSecretNew
+          expr: |
+            count by (namespace, container_name, secret_rule_id, secret_target) (
+              trivy_exposedsecrets_info
+            )
+            unless
+            count by (namespace, container_name, secret_rule_id, secret_target) (
+              trivy_exposedsecrets_info offset 2d
+            )
+            and on ()
+            (count(trivy_image_info offset 2d) > 0)
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              New exposed secret in {{ $labels.namespace }}/{{ $labels.container_name }}
+            description: >-
+              Trivy found a {{ $labels.secret_rule_id }} at {{ $labels.secret_target }}
+              in container {{ $labels.container_name }} of namespace
+              {{ $labels.namespace }} that was not in any report two days ago.
+        - alert: TrivyRbacCriticalNew
+          expr: |
+            (
+              (
+                count by (namespace, resource_kind, resource_name) (
+                  trivy_rbacassessments_info{severity="Critical"}
+                )
+                unless
+                count by (namespace, resource_kind, resource_name) (
+                  trivy_rbacassessments_info{severity="Critical"} offset 2d
+                )
+              )
+              or
+              (
+                sum by (resource_kind, resource_name) (
+                  trivy_clusterrole_clusterrbacassessments{severity="Critical"}
+                ) > 0
+                unless
+                sum by (resource_kind, resource_name) (
+                  trivy_clusterrole_clusterrbacassessments{severity="Critical"} offset 2d
+                ) > 0
+              )
+            )
+            and on ()
+            (count(trivy_image_info offset 2d) > 0)
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              New critical RBAC finding on {{ $labels.resource_kind }} {{ $labels.resource_name }}
+            description: >-
+              {{ $labels.resource_kind }} {{ $labels.resource_name }}
+              {{ if $labels.namespace }}in namespace {{ $labels.namespace }} {{ end }}
+              has a critical RBAC finding that no report carried two days ago.
+        - alert: TrivyConfigAuditCritical
+          expr: |
+            sum by (namespace, resource_kind, resource_name) (
+              trivy_resource_configaudits{severity="Critical"}
+            ) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Critical misconfiguration on {{ $labels.namespace }}/{{ $labels.resource_name }}
+            description: >-
+              {{ $labels.resource_kind }} {{ $labels.resource_name }} in namespace
+              {{ $labels.namespace }} fails a critical config-audit check. Nothing
+              in the cluster did when this rule was written.
+        - alert: TrivyComplianceRegression
+          expr: |
+            sum by (title) (trivy_cluster_compliance{status="Fail"})
+            >
+            sum by (title) (trivy_cluster_compliance{status="Fail"} offset 1d)
+          # Compliance is recomputed every six hours; two runs above
+          # yesterday's count is drift, not a rebuild in progress.
+          for: 12h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              More {{ $labels.title }} controls fail than at any point this week
+            description: >-
+              {{ $labels.title }} has {{ $value }} failing controls, more than
+              a day ago. Something applied since then loosened a control.

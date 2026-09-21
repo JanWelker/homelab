@@ -1573,6 +1573,143 @@ data:
           }
         },
         {
+          "id": 24,
+          "type": "row",
+          "title": "History (one year, from Loki)",
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 72
+          },
+          "panels": []
+        },
+        {
+          "id": 25,
+          "type": "timeseries",
+          "title": "Critical and high vulnerabilities per namespace, daily",
+          "description": "One sample a day from the findings-history CronJob, counted once per image. Prometheus keeps ten days; this stream is kept for a year.",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 73
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "${loki}"
+              },
+              "editorMode": "code",
+              "expr": "max_over_time({namespace=\"trivy-system\", container=\"findings-history\"} | json | kind=\"vulnerabilities\" | namespace=~\"$namespace\" | unwrap critical [1d]) by (namespace) + max_over_time({namespace=\"trivy-system\", container=\"findings-history\"} | json | kind=\"vulnerabilities\" | namespace=~\"$namespace\" | unwrap high [1d]) by (namespace)",
+              "refId": "A",
+              "queryType": "range",
+              "legendFormat": "{{namespace}}"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineInterpolation": "stepAfter",
+                "stacking": {
+                  "mode": "none"
+                }
+              },
+              "decimals": 0,
+              "min": 0,
+              "mappings": []
+            },
+            "overrides": []
+          }
+        },
+        {
+          "id": 26,
+          "type": "timeseries",
+          "title": "Failing compliance controls per framework, daily",
+          "description": "The same series as the compliance panel above, kept for a year.",
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 73
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "${loki}"
+              },
+              "editorMode": "code",
+              "expr": "max_over_time({namespace=\"trivy-system\", container=\"findings-history\"} | json | kind=\"compliance\" | unwrap failed [1d]) by (framework)",
+              "refId": "A",
+              "queryType": "range",
+              "legendFormat": "{{framework}}"
+            }
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "showLegend": true,
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "never",
+                "lineInterpolation": "stepAfter",
+                "stacking": {
+                  "mode": "none"
+                }
+              },
+              "decimals": 0,
+              "min": 0,
+              "mappings": []
+            },
+            "overrides": []
+          }
+        },
+        {
           "id": 22,
           "type": "row",
           "title": "Reading results without Grafana",
@@ -1581,7 +1718,7 @@ data:
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 72
+            "y": 82
           },
           "panels": []
         },
@@ -1593,7 +1730,7 @@ data:
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 73
+            "y": 83
           },
           "options": {
             "mode": "markdown",
@@ -1614,6 +1751,17 @@ data:
             "type": "datasource",
             "query": "prometheus",
             "label": "Data source",
+            "current": {},
+            "hide": 0,
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false
+          },
+          {
+            "name": "loki",
+            "type": "datasource",
+            "query": "loki",
+            "label": "Loki",
             "current": {},
             "hide": 0,
             "refresh": 1,

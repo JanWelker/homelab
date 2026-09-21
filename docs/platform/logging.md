@@ -76,6 +76,7 @@ in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
 | `loki.podSecurityContext` | Adds `RuntimeDefault` seccomp at pod level, covering the rules sidecar too |
 | Retention with the compactor enabled | Old chunks are actually deleted |
 | `rulerConfig` | The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of `loki_rule` ConfigMaps, so `storage.type` is `local` rather than the bucket the chart would pick; `rule_path` is the ruler's scratch directory and must not be the rules directory |
+| `retention_stream` for the `findings-history` container | The daily [Trivy summary](trivy-operator.md#history) is a few lines and the only long-range record of findings, so that one stream stays a year |
 
 ### Alerting
 
