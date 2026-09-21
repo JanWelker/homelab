@@ -2664,11 +2664,14 @@ application fault. Cilium's <code>fromEntities</code> names them: <code>ingress<
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h4 id="cluster-wide-rules">Cluster-wide rules<a class="headerlink" href="#cluster-wide-rules" title="Permanent link">&para;</a></h4>
 <p>A rule that is word-for-word the same in every namespace file is lifted
-into <code>cluster-wide.yaml</code>, with <code>endpointSelector: {}</code> and
-<code>enableDefaultDeny</code> off in both directions: without that, a cluster-wide
-egress rule puts every pod in a namespace without policies into egress
-default-deny. DNS is the only one; the intra-namespace and node-probe rules
-would qualify but change what a namespace file says, so they stay.</p>
+into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace and
+with <code>enableDefaultDeny</code> off in both directions. The selector is not <code>{}</code>
+because that also takes the Gateway's <code>reserved:ingress</code> endpoint and the
+health endpoint, which then carry a policy they have no use for. Default
+deny is off because a cluster-wide egress rule would otherwise put every
+pod in a namespace without policies into egress default-deny. DNS is the
+only rule lifted; the intra-namespace and node-probe rules would qualify
+but change what a namespace file says, so they stay.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -2701,6 +2704,10 @@ would qualify but change what a namespace file says, so they stay.</p>
 <tr>
 <td>Egress to external names as <code>toFQDNs</code></td>
 <td>A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling <code>auth.k8s.wlkr.ch</code> is classified <code>world</code>, not <code>ingress</code></td>
+</tr>
+<tr>
+<td>Egress to the backend pod as well, when the name is one the Gateway serves</td>
+<td>The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers <code>403 Access denied</code> itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules</td>
 </tr>
 <tr>
 <td>HTTP rules on plaintext ports, ingress side only</td>
@@ -2839,6 +2846,10 @@ it alone, until the agent restarts:</p>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Audit mode stops at the proxy</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">The token change is not retroactive</p>
 <p>The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.</p>
