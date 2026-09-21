@@ -4,14 +4,11 @@ description: "Cilium as the CNI, providing Gateway API, WireGuard encryption, L2
 
 # Cilium
 
-Cilium is the CNI, and on this cluster it is considerably more than that. It
-replaces `kube-proxy`, terminates ingress traffic through Gateway API, hands out
-LoadBalancer addresses on a network with no cloud load balancer, encrypts
-node-to-node traffic, and shows you what is actually talking to what.
-
-Four components' worth of responsibility in one DaemonSet. That consolidation is
-the whole argument for it on bare metal — and also the reason a broken Cilium is
-never a small problem.
+Cilium is the CNI, and on this cluster considerably more: it replaces
+`kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer
+addresses on a network with no cloud load balancer, encrypts node-to-node
+traffic, and shows what is talking to what. That consolidation is the argument
+for it on bare metal, and the reason a broken Cilium is never a small problem.
 
 ## At a glance
 
@@ -23,97 +20,51 @@ never a small problem.
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
 | UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
+| Files | `payload/platform/cilium/` |
 
-## Components
+## Configuration
 
-- **kube-proxy replacement**: `kubeProxyReplacement: true`. Service routing
-  happens in eBPF rather than iptables or IPVS, which is why kubeadm never
-  deploys `kube-proxy`: `proxy.disabled` in `ansible/templates/kubeadm.yaml.j2`
-  keeps it out at init and on every `kubeadm upgrade apply`.
-- **Gateway API**: Replaces a traditional Ingress controller — see
-  [Gateway API](gateway-api.md).
-- **LoadBalancer Pools**: `10.9.2.249` (apps) and `10.9.2.248` (infra),
-  announced over L2 ARP so the rest of the LAN can find them.
-- **WireGuard encryption**: `encryption.type: wireguard`, transparently, between
-  nodes.
-- **Hubble**: Observability with metrics and UI at `hubble.infra.k8s.wlkr.ch`,
-  behind the [Authentik](authentik.md) proxy outpost, because Hubble has no
-  authentication of its own. The HTTPRoute points at the outpost, which proxies
-  to hubble-ui; a ReferenceGrant in `payload/platform/authentik/` permits the
-  cross-namespace reference.
-
-## Hubble metrics
-
-The flow-level metrics carry source and destination namespace, which the
-chart's Hubble dashboards in Grafana filter on and show nothing without; see
-[Monitoring](monitoring.md#dashboards). Namespace rather than workload or IP
-keeps the series count to the square of the namespace count. The HTTP metric
-adds workloads for the L7 dashboard, but only has data for traffic Cilium
-proxies at L7, which here is the Gateway.
-
-The agent reads this list at startup, so a change lands as nodes reboot or
-Cilium upgrades, not when ArgoCD syncs.
-
-## Resource limits
-
-The operator, Envoy, Hubble Relay and Hubble UI have memory limits sized at
-roughly 2.5x their measured peak working set. The `cilium-agent` DaemonSet is
-deliberately left without one: it peaked at 337Mi, it is the one process on the
-node whose death takes pod networking with it, and a day of steady state is not
-enough to size something on that critical path.
-
-## The one setting that will ruin your day
-
-`k8sServiceHost` in `values.yaml` is a literal IP address, because with
-`kube-proxy` gone Cilium cannot reach the API server through a Service. It has to
-be told where the control plane lives.
-
-Point it at an address that does not answer and every Cilium pod loses the API
-server at once. Cluster networking goes with it, including whatever you were
-using to fix the problem. This is the single most effective way to take the
-whole cluster down from one line of YAML, so treat changes to it with the
-respect they deserve — the ordering is spelled out in
-[Control Plane VIP](../operations/control-plane-vip.md).
-
-!!! tip "Hubble earns its keep during a network policy rollout"
-    `hubble observe --verdict DROPPED --follow` answers the question every default-deny policy raises — *what did I just break?* — in seconds rather than in an hour of guessing. See [Security Policies](security-policies.md#rolling-this-out-safely).
-
-## Directory Structure
-
-```text
-cilium/                # CNI + Gateway API Controller
-├── application.yaml   # ArgoCD Application (Helm chart)
-├── values.yaml        # Helm values
-├── lb-pools.yaml      # CiliumLoadBalancerIPPool + L2 Policy
-├── rbac-gateway-fix.yaml # RBAC fix for Gateway API
-└── httproute.yaml     # Hubble UI route
-```
+| Setting | Why |
+| --- | --- |
+| `kubeProxyReplacement: true` | Service routing in eBPF. `proxy.disabled` in `ansible/templates/kubeadm.yaml.j2` keeps `kube-proxy` out at init and on every `kubeadm upgrade apply` |
+| `k8sServiceHost` as a literal IP | With `kube-proxy` gone Cilium cannot reach the API server through a Service — see [Pitfalls](#pitfalls) |
+| Gateway API | Replaces an Ingress controller — see [Gateway API](gateway-api.md) |
+| `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
+| `encryption.type: wireguard` | Transparent node-to-node encryption |
+| Hubble, behind the [Authentik](authentik.md) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost and a ReferenceGrant in `payload/platform/authentik/` permits the cross-namespace reference |
+| Hubble metrics labelled by namespace | The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. The agent reads the list at startup, so a change lands on reboot or upgrade, not on sync |
+| `cilium-agent` without a memory limit | It is the one process whose death takes pod networking with it, and it cannot be sized from a day of steady state |
+| `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `01-crds` has synced, and the diff preview's throwaway cluster |
 
 ## Installation
 
-Cilium is installed twice, sort of. `make install-cilium` installs it by Helm,
-because no pod runs without a CNI and ArgoCD is a pod, and ArgoCD then adopts
-it. There is only one number: the `Makefile` reads `targetRevision` straight
-out of `application.yaml` instead of keeping a pin of its own, so a rebuilt
-cluster cannot quietly land on a different Cilium than the one it replaced.
+Cilium is installed twice, in a sense. `make install-cilium` installs it by
+Helm, because no pod runs without a CNI and ArgoCD is a pod; ArgoCD then
+adopts the release. The version comes from `targetRevision` in
+`application.yaml` — see [Version pins](../architecture/gitops.md).
 
-The bootstrap install uses the same `values.yaml` as ArgoCD, and has to: the
-agent and operator do not restart when `cilium-config` changes, so a slimmer
-bootstrap config would keep running long after ArgoCD "fixed" it. The Gateway
-API CRDs go in first for the same reason — the operator checks for them once,
-at startup, and leaves the Gateway controller off if they are missing.
+The bootstrap install uses the same `values.yaml`, and has to: the agent and
+operator do not restart when `cilium-config` changes, so a slimmer bootstrap
+config would keep running after ArgoCD "fixed" it. The Gateway API CRDs go in
+first for the same reason — the operator checks for them once, at startup. The
+one difference is the three `serviceMonitor.enabled` flags, which `make` turns
+off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
+the monitors back on adoption, rolling the agent and operator once.
 
-The one difference is the three `serviceMonitor.enabled` flags, which `make`
-turns off. The ServiceMonitor CRDs belong to kube-prometheus-stack, which
-arrives later through ArgoCD, and without them Helm cannot apply the monitors.
-Switching them off changes nothing in `cilium-config`; it drops three
-ServiceMonitors and two metrics Services, and the `prometheus.io/scrape`
-annotations on the agent and operator pods. When ArgoCD adopts the release it
-adds those back, which rolls the agent and operator once.
+## Health check
 
-Through ArgoCD the CRDs are already there: `prometheus-operator-crds` is in
-`01-crds`, a stage ahead of Cilium. `values.yaml` still sets
-`trustCRDsExist: true`, because the chart otherwise refuses to render at all
-while `monitoring.coreos.com/v1` is missing — which is the case for the
-bootstrap install above, for a render before `01-crds` has synced, and for the
-diff preview's throwaway cluster.
+```bash
+kubectl -n kube-system exec ds/cilium -- cilium status --brief
+```
+
+Hubble answers *what did I just break?* during a network policy rollout — see
+[Security Policies](security-policies.md#usage):
+
+```bash
+hubble observe --verdict DROPPED --follow
+```
+
+## Pitfalls
+
+!!! danger "`k8sServiceHost` pointed at an address that does not answer takes the cluster down"
+    Every Cilium pod loses the API server at once, and cluster networking goes with it — including whatever you were using to fix the problem. The change ordering is in [Control Plane VIP](../operations/control-plane-vip.md).

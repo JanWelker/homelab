@@ -4,10 +4,9 @@ description: "The five ideas this cluster is built on — immutable OS, first-bo
 
 # Core Concepts
 
-Five ideas carry this whole cluster. None of them is Kubernetes; Kubernetes is
-the ordinary part. What makes this project unusual is *how the machines
-underneath it come to exist and stay current*, and once these five click, the
-rest of this site stops reading like a list of unrelated tools.
+Five ideas carry this cluster, and none of them is Kubernetes; Kubernetes is
+the ordinary part. What makes the project unusual is how the machines
+underneath it come to exist and stay current.
 
 Read this before the [Quickstart](quickstart.md) if any of the names in the
 table are new. Skip it if none of them are.
@@ -25,13 +24,9 @@ table are new. Skip it if none of them are.
 [Flatcar](https://www.flatcar.org/) is an immutable, minimal Linux distribution
 designed for running containers. The root filesystem is read-only — you cannot
 install packages or modify system files at runtime — which forces all
-configuration to happen declaratively, at first boot, through Ignition.
-
-That constraint is the entire point. Anyone who has inherited a fleet of
-"identical" servers knows they are identical the way siblings are: broadly
-similar, differing in ways nobody wrote down, and each carrying one undocumented
-fix applied at 3am by someone who has since left. A read-only `/usr` makes that
-impossible rather than merely discouraged.
+configuration to happen declaratively, at first boot, through Ignition. A
+read-only `/usr` makes undocumented drift between "identical" nodes impossible
+rather than merely discouraged.
 
 Updates are downloaded in the background onto the passive half of an A/B
 partition pair, so a bad one can be rolled back and nothing changes until the
@@ -60,12 +55,9 @@ and `containerd`, in this cluster — arrives as **system extensions**: read-onl
 squashfs images overlaid onto `/usr` at boot, managed by `systemd-sysupdate`.
 Nodes fetch them from the HTTP boot server on their first boot from disk.
 
-This is where "immutable OS" stops being an abstract virtue and becomes a thing
-you have to reason about. Upgrading Kubernetes on these nodes is not
-`apt upgrade`; it is swapping an image and rebooting. See
-[Updates & Upgrades](operations/upgrades.md) for how that plays out, including
-why a minor version bump is a deliberate act rather than something that happens
-overnight.
+Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is
+swapping an image and rebooting. See
+[Updates & Upgrades](operations/upgrades.md).
 
 ## PXE boot
 
@@ -78,21 +70,17 @@ over TFTP, and the bootloader fetches everything else. In this project:
 3. Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition
    config URL as a kernel parameter.
 
-PXE is a protocol from 1998 that runs over UDP with no error correction worth
-the name, which is why everything larger than the bootloader moves to HTTP as
-fast as possible. Respect it; it has outlived most of the things designed to
-replace it.
-
-The full sequence, arrow by arrow, is in
-[Boot & Bootstrap Process](architecture/boot-process.md).
+TFTP runs over UDP with no error correction worth the name, which is why
+everything larger than the bootloader moves to HTTP as fast as possible. The
+full sequence is in [Boot & Bootstrap Process](architecture/boot-process.md).
 
 ## GitOps
 
 Everything the cluster runs is described in this repository under `payload/`,
 and [ArgoCD](https://argo-cd.readthedocs.io/) continuously reconciles the
-cluster to match. The rule is absolute: if it is not in Git, it is not in the
-cluster — and if you put it in the cluster anyway, the next sync of the
-Application that owns it puts Git's version back.
+cluster to match. If it is not in Git, it is not in the cluster — and if you
+put it in the cluster anyway, the next sync of the Application that owns it
+puts Git's version back.
 
 Two terms recur throughout this site:
 
@@ -100,11 +88,7 @@ Two terms recur throughout this site:
   matching file in the repository, so adding a component is adding a directory.
 - **Rollout stage** — a label on each platform `Application` that orders
   deployment. An ApplicationSet syncs one stage at a time and starts the next
-  only when the last is Synced and Healthy. It is how a fresh cluster installs
-  CRDs before the operators that need them, rather than deadlocking. The full
-  ordering is in [Platform](platform/index.md#rollout-order).
-
-Rollout stages answer the question every GitOps newcomer eventually asks: *why did
-my perfectly correct manifest fail on a fresh cluster and work on an existing
-one?* On a running cluster, everything it depends on already exists. On a fresh
-one, ordering is the whole game. See [GitOps Strategy](architecture/gitops.md).
+  only when the last is Synced and Healthy, so a fresh cluster installs CRDs
+  before the operators that need them. The ordering is in
+  [Platform &rarr; Rollout order](platform/index.md#rollout-order); the
+  mechanism and what it costs are in [GitOps Strategy](architecture/gitops.md).

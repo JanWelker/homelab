@@ -14,12 +14,12 @@ Welcome to the **Flatcar Homelab** project. This repository contains the configu
 ## Documentation
 
 The full project documentation is published to GitHub Pages at
-**[https://janwelker.github.io/homelab/](https://janwelker.github.io/homelab/)**.
+**[https://homelab.wlkr.ch/](https://homelab.wlkr.ch/)**.
 
-- **[Quickstart Guide](https://janwelker.github.io/homelab/quickstart/)**: Instructions for bootstrapping the cluster.
-- **[Adapting This for Your Cluster](https://janwelker.github.io/homelab/adapting/)**: What to change before running this against your own hardware.
-- **[Platform](https://janwelker.github.io/homelab/platform/)**: Details on core infrastructure components.
-- **[Adding a Workload](https://janwelker.github.io/homelab/development/add-workload/)**: How to deploy an application onto the cluster.
+- **[Quickstart Guide](https://homelab.wlkr.ch/quickstart/)**: Instructions for bootstrapping the cluster.
+- **[Adapting This for Your Cluster](https://homelab.wlkr.ch/adapting/)**: What to change before running this against your own hardware.
+- **[Platform](https://homelab.wlkr.ch/platform/)**: Details on core infrastructure components.
+- **[Adding a Workload](https://homelab.wlkr.ch/development/add-workload/)**: How to deploy an application onto the cluster.
 
 ## Repository Structure
 
@@ -39,6 +39,6 @@ references it once, from the `apps` ApplicationSet, and never reads it back.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), or the
-[Contributing](https://janwelker.github.io/homelab/development/contributing/)
+[Contributing](https://homelab.wlkr.ch/development/contributing/)
 page for setup, checks, commit conventions, and how to validate a `payload/`
 change before opening a pull request.

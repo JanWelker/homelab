@@ -4,12 +4,11 @@ description: "OpenBao as the cluster secret store: bootstrapping, unsealing, the
 
 # OpenBao
 
-[OpenBao](https://openbao.org/) is the cluster's secret store — an open-source, Linux Foundation fork of HashiCorp Vault. It holds every secret consumed by workloads on the cluster (cloud credentials, API tokens, registry pulls, database passwords, …). Secrets are surfaced to Kubernetes as native `Secret` objects via the [External Secrets Operator](external-secrets.md).
-
-It is also the single most consequential component on this cluster. When
-OpenBao is unhappy, nothing that needs a credential works, and the failure
-presents as six unrelated things breaking at once. Learn its two states —
-sealed and unsealed — before you need to.
+[OpenBao](https://openbao.org/) is the cluster's secret store, an open-source
+fork of HashiCorp Vault. It holds every secret the cluster consumes, surfaced
+as native `Secret` objects by the [External Secrets Operator](external-secrets.md).
+Sealed, nothing that needs a credential works, and the failure looks like six
+unrelated things breaking at once.
 
 ```mermaid
 flowchart LR
@@ -26,122 +25,105 @@ flowchart LR
 | | |
 | --- | --- |
 | Namespace | `openbao` |
-| Stage | `05-secrets`, after networking and storage exist. A fresh bootstrap [pauses here](../architecture/gitops.md#bootstrap-pauses-at-openbao) until OpenBao is initialised and unsealed |
+| Stage | `05-secrets`. A fresh bootstrap [pauses here](../architecture/gitops.md) until OpenBao is initialised and unsealed |
 | Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes |
-| If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks entirely healthy from the outside |
+| If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside |
 | Health check | `kubectl -n openbao exec openbao-0 -- bao status` &rarr; `Sealed: false` on all three |
 | UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |
+| Files | `payload/platform/openbao/` |
 
-## Architecture
+## Configuration
 
-| Property           | Value                                                       |
-|--------------------|-------------------------------------------------------------|
-| Mode               | HA, 3 replicas                                              |
-| Storage backend    | Integrated Raft (`/openbao/data`, Ceph PVC per replica)     |
-| Audit storage      | Enabled, separate PVC on `rook-ceph-block`                  |
-| TLS                | Disabled inside the cluster — TLS terminates at the Gateway |
-| In-cluster service | `http://openbao.openbao.svc.cluster.local:8200`             |
-| Seal               | Shamir — 5 key shares, threshold 3, unsealed by hand        |
+| Property | Value |
+| --- | --- |
+| Mode | HA, 3 replicas, integrated Raft on a Ceph PVC per replica |
+| Audit storage | Separate PVC on `rook-ceph-block` |
+| TLS | Terminates at the Gateway; plain HTTP at `http://openbao.openbao.svc.cluster.local:8200` |
+| Seal | Shamir, 5 shares, threshold 3, unsealed by hand |
+| Chart | Upstream [`openbao/openbao-helm`](https://github.com/openbao/openbao-helm), pinned in `application.yaml` |
 
-The chart is the official upstream [`openbao/openbao-helm`](https://github.com/openbao/openbao-helm), pinned in `application.yaml`.
+| Setting | Why |
+| --- | --- |
+| Pod security context restated in full | OpenBao keeps the root key out of swap with `mlock`, which needs `IPC_LOCK` — the reason the namespace enforces `privileged`; the container drops `ALL` and adds only that. The chart's `securityContext.pod` replaces rather than merges, and the image's `USER` is a name, so dropping the numeric IDs makes the kubelet refuse the container as unprovably non-root — on pod recreation, typically after a reboot |
+| `image.repository` without a registry | The chart prepends `server.image.registry` (`quay.io`) itself |
+| `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200 |
+| `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it as they start. `service_registration "kubernetes"` only labels pods `active` and `standby` |
+| `serverTelemetry.grafanaDashboard` | Renders OpenBao's upstream dashboard (grafana.com 23725) |
 
-### Chart values that are not what they look like
+### KV layout
 
-- **Pod security context.** OpenBao keeps the root key out of swap with
-  `mlock`, which needs `IPC_LOCK` — the reason the namespace enforces
-  `privileged`. The container still drops `ALL` and adds back only
-  `IPC_LOCK`. The chart's `securityContext.pod` is an if/else, not a merge:
-  setting it replaces the default block, so `runAsUser: 100`,
-  `runAsGroup: 1000` and `fsGroup: 1000` (the chart's own defaults) are
-  restated. Drop them and keep only `runAsNonRoot`, and the kubelet refuses to
-  start the container, because the image's `USER` is the name `openbao`
-  rather than a number and cannot be proven non-root. It only shows on pod
-  recreation, typically after a node reboot.
-- **Image repository.** The chart prepends `server.image.registry`, which
-  defaults to `quay.io`; the repository is therefore `openbao/openbao`, not
-  `quay.io/openbao/openbao`.
-- **Unauthenticated metrics.** `/v1/sys/metrics` otherwise wants a token, and
-  the ServiceMonitor has none, so the target would sit at 403. The metrics carry
-  counts and timings, not paths or secrets, and are readable only by what can
-  reach port 8200 — the namespace policy's callers plus the Gateway.
-- **Dashboard.** `serverTelemetry.grafanaDashboard` renders OpenBao's upstream
-  dashboard (grafana.com 23725) into the namespace.
+One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, and
+ExternalSecrets reference `cert-manager/route53` without the `data/` prefix ESO
+adds itself. The `bao kv put` for each path sits in a comment at the top of the
+`ExternalSecret` that consumes it, collected in [Quickstart step 11](../quickstart.md).
 
-## Bootstrap
+| Path | Keys | Read by |
+| --- | --- | --- |
+| `authentik/config` | `secret-key`, `postgres-password`, `bootstrap-password`, `bootstrap-token`, the ArgoCD and Grafana client id/secret pairs | Authentik, ArgoCD and Grafana — generating the OIDC credentials up front keeps both sides of each integration declarative |
+| `cert-manager/route53` | `access-key-id`, `secret-access-key` | The `certificates` Application |
+| `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
+| `monitoring/grafana-admin` | `password` | Grafana |
+| `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 
-ArgoCD provisions the StatefulSet, PVCs, Services, and the `vault.infra.k8s.wlkr.ch` HTTPRoute. The pods go `Ready` within seconds, **before** the cluster is initialised or unsealed — see [Ready does not mean unsealed](#ready-does-not-mean-unsealed). Neither happens on its own: initialisation is a one-time step, and unsealing is a step you will repeat after every restart.
+The two `route53` leaves are separate IAM users on purpose: cert-manager's
+key only writes `_acme-challenge` TXT records, so stolen it can issue
+certificates, while external-dns's creates and deletes A records, so stolen it
+can repoint hostnames. One shared key collapses both into "someone owns your
+domain".
 
-Two commands do all of it:
+### Kubernetes auth
 
-```bash
-make bao-init      # initialise, unseal, configure the engine and ESO's auth
-make bao-secrets   # populate the five paths the cluster reads
-```
-
-The rest of this section is what those do, in the order they do it — worth
-reading once, because the failure modes are much easier to recognise if you
-know what was supposed to happen.
-
-!!! note "`make bao-init` is safe to re-run"
-    Each configuration step is skipped if it is already in place, so a
-    half-finished bootstrap can be resumed. Initialisation itself is not
-    re-runnable by design: an already-initialised cluster is left alone and the
-    command exits.
-
-### 1. Initialise the cluster (one-time)
+ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
+validates against the TokenReview API (`rbac.yaml` binds
+`system:auth-delegator` to the `openbao` ServiceAccount) and answers with a
+token bound to the `external-secrets` policy. The `external-secrets-vault`
+ServiceAccount and the `ClusterSecretStore` live in `cluster-secret-store.yaml`
+here, because the store only validates against a running, unsealed OpenBao.
+`make bao-init` configures all of it:
 
 ```bash
-kubectl -n openbao exec -it openbao-0 -- bao operator init \
-  -key-shares=5 \
-  -key-threshold=3
+bao secrets enable -path=kv -version=2 kv
+bao auth enable kubernetes
+bao write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc"
+bao policy write external-secrets - <<'EOF'
+path "kv/data/*"     { capabilities = ["read"] }
+path "kv/metadata/*" { capabilities = ["read", "list"] }
+EOF
+bao write auth/kubernetes/role/external-secrets \
+  bound_service_account_names=external-secrets-vault \
+  bound_service_account_namespaces=external-secrets \
+  policies=external-secrets ttl=1h
 ```
 
-The command prints **5 unseal keys** and an **initial root token**. Store them in a password manager, right now, before you run another command. Not in the terminal scrollback. Not in a note you will "tidy up later". Losing all 5 keys means the data is unrecoverable, and OpenBao is not being dramatic about that — there is no support line, no recovery flow, and no clever trick. There is just the ciphertext and no way in.
+## Usage
 
-!!! danger
-    These keys protect every other secret on the cluster. There is no backup, no second chance, and no amount of Ceph replication that helps. Treat them like the root credentials they are, and keep them somewhere that does not require this cluster to be running in order to read.
+### Bootstrap
 
-!!! warning "Where `make bao-init` puts them"
-    Rather than to the terminal, `make bao-init` writes the whole `-format=json` output to **`output/credentials/openbao-init.json`**, mode `0600`, in a `0700` directory that is gitignored. That is what lets `make bao-unseal` work without prompting fifteen times, and it is also a plaintext copy of the keys to every secret the cluster holds, sitting on the deployment host next to [the etcd encryption key](../architecture/security.md#encryption-at-rest). Copy them into a password manager and **delete the file**; unsealing then goes back to being manual, which is the same trade the rest of this repository already makes — see [the limitation](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
+1. Initialise, unseal and configure the engine and ESO's auth. Safe to re-run:
+   each configuration step is skipped if already in place, and an initialised
+   cluster is left alone.
 
-### 2. Unseal each replica
+    ```bash
+    make bao-init
+    ```
 
-The seal is Shamir, so nothing unseals these pods but you. Repeat for
-`openbao-0`, `openbao-1`, `openbao-2`, providing 3 of the 5 keys each time:
+    !!! danger "Move the unseal keys before you do anything else"
+        `make bao-init` writes the 5 unseal keys and the root token to `output/credentials/openbao-init.json` (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](../architecture/security.md). Copy them into a password manager that does not need this cluster to be running, then delete the file. Losing all five means the data is unrecoverable: no support line, no recovery flow.
 
-```bash
-for pod in openbao-0 openbao-1 openbao-2; do
-  for i in 1 2 3; do
-    kubectl -n openbao exec -it "$pod" -- bao operator unseal
-  done
-done
-```
+2. Populate the five paths the cluster reads — the prompts follow
+   [Quickstart step 11](../quickstart.md):
 
-Three of five, three times, once per pod. Yes, it is tedious — that tedium is the entire security model, and it is the price of keeping the key material off every machine but yours.
+    ```bash
+    make bao-secrets
+    ```
 
-!!! note "If a replica says `Vault is not initialized`"
-    `bao operator init` initialises one raft cluster, on the pod you ran it against — not the other two. A follower that has not joined that cluster reports `Initialized: false` and turns unseal keys away, which is the error the loop above produces if the replicas are not members yet. The `retry_join` stanzas in `application.yaml` are what make them join on their own as they start. `service_registration "kubernetes"` does not join anything; it only labels pods `active` and `standby`.
+3. Confirm the store validates:
 
-A pod that predates those stanzas, or that started before `openbao-0` was
-initialised, needs pointing at the leader once. It takes unseal keys
-afterwards:
+    ```bash
+    kubectl get clustersecretstore openbao
+    ```
 
-```bash
-kubectl -n openbao exec openbao-1 -- \
-  bao operator raft join http://openbao-0.openbao-internal:8200
-```
-
-Confirm the result with:
-
-```bash
-kubectl -n openbao exec -it openbao-0 -- bao status
-```
-
-You should see `Initialized: true`, `Sealed: false`, `HA Mode: active` on one pod and `standby` on the others.
-
-### 3. Authenticate locally
-
-For convenience, port-forward and point the CLI at the local instance:
+### Authenticating locally
 
 ```bash
 kubectl -n openbao port-forward svc/openbao 8200:8200 &
@@ -149,137 +131,46 @@ export BAO_ADDR=http://127.0.0.1:8200
 bao login   # paste the root token
 ```
 
-The remaining steps assume `bao` is configured this way.
-
-## Secret engine
-
-A single KV v2 engine is mounted at the path `kv/`. All cluster secrets live under it. One engine, one convention, no debates six months from now about whether it was `kv/` or `secret/`.
+### Storing and reading a secret
 
 ```bash
-bao secrets enable -path=kv -version=2 kv
-```
-
-### Layout convention
-
-```text
-kv/
-├── authentik/
-│   └── config             # secret-key, postgres-password, bootstrap-password,
-│                          # bootstrap-token, and the client id/secret pairs
-│                          # ArgoCD and Grafana read back from here
-├── cert-manager/
-│   └── route53            # access-key-id, secret-access-key
-├── external-dns/
-│   └── route53            # access-key-id, secret-access-key
-├── monitoring/
-│   ├── grafana-admin      # password
-│   └── smtp               # username, password, to
-└── <workload>/<purpose>   # one leaf per secret
-```
-
-Five paths, seven [ExternalSecrets](external-secrets.md): `authentik/config` is
-read by three of them, because generating the OIDC client credentials up front
-is what keeps both sides of each integration declarative. The two `route53`
-leaves are deliberately separate and meant to be separate IAM users --
-cert-manager only writes `_acme-challenge` TXT records, while external-dns can
-repoint hostnames. Anything added later follows the same `<workload>/<purpose>`
-shape.
-
-The `bao kv put` for each path lives in a comment at the top of the
-`ExternalSecret` that consumes it, which is the list to trust; they are
-collected in [Quickstart step 11](../quickstart.md).
-
-Each leaf is a single secret with one or more keys. ExternalSecret resources reference paths as `cert-manager/route53` (the KV v2 `data/` prefix is added by ESO automatically).
-
-### Storing a secret
-
-```bash
-bao kv put kv/cert-manager/route53 \
-  access-key-id="AKIA..." \
-  secret-access-key="..."
-```
-
-!!! warning "`#` and `!` on a command line"
-    Double quotes are not enough. A value containing `#` is fine inside them, but one containing `!` is expanded by an interactive bash's history *before* the quotes are considered, and an unquoted `#` truncates the rest of the line. Either is silent, and stores a credential that looks plausible and does not work. Use **single** quotes — or avoid the command line entirely.
-
-Avoiding it means writing the secret as JSON and handing `bao` the file, which
-is what `make bao-secrets` does. `@` is parsed before anything is sent, so a
-missing file fails loudly rather than storing half a secret:
-
-```bash
-bao kv put -mount=kv cert-manager/route53 @/tmp/secret.json
-```
-
-### Reading a secret
-
-```bash
+bao kv put kv/cert-manager/route53 access-key-id='AKIA...' secret-access-key='...'
+bao kv put -mount=kv cert-manager/route53 @/tmp/secret.json   # what make bao-secrets does
 bao kv get kv/cert-manager/route53
 ```
 
-## Kubernetes auth method
-
-External Secrets Operator authenticates to OpenBao using ServiceAccount JWTs. Set this up once after init:
+## Health check
 
 ```bash
-# Enable the auth method
-bao auth enable kubernetes
-
-# Tell OpenBao how to reach the cluster's TokenReview API. The CA cert
-# and host are read from the in-cluster ServiceAccount projection.
-bao write auth/kubernetes/config \
-  kubernetes_host="https://kubernetes.default.svc"
-```
-
-The OpenBao ServiceAccount (`openbao` in namespace `openbao`) already has the `system:auth-delegator` ClusterRole bound to it via `rbac.yaml` in this directory, so the TokenReview calls succeed without additional setup.
-
-### Policy for ESO
-
-```bash
-bao policy write external-secrets - <<'EOF'
-path "kv/data/*" {
-  capabilities = ["read"]
-}
-path "kv/metadata/*" {
-  capabilities = ["read", "list"]
-}
-EOF
-```
-
-### Role binding ESO's ServiceAccount
-
-```bash
-bao write auth/kubernetes/role/external-secrets \
-  bound_service_account_names=external-secrets-vault \
-  bound_service_account_namespaces=external-secrets \
-  policies=external-secrets \
-  ttl=1h
-```
-
-The `external-secrets-vault` ServiceAccount is created by `payload/platform/openbao/cluster-secret-store.yaml` — see [External Secrets](external-secrets.md).
-
-Once this is done, ExternalSecret resources cluster-wide will resolve. Verify with:
-
-```bash
-kubectl get externalsecret -A
+kubectl -n openbao exec -it openbao-0 -- bao status
 kubectl get clustersecretstore openbao -o yaml
+kubectl get externalsecret -A
 ```
 
-The `Status.Conditions` of the `ClusterSecretStore` should report `Ready=True`.
+`bao status` should show `Initialized: true`, `Sealed: false`, and
+`HA Mode: active` on one pod with `standby` on the others; it exits `0`
+unsealed, `2` sealed and `1` unreachable. The `ClusterSecretStore` should
+report `Ready=True`.
 
-## Unsealing after a restart
+## Pitfalls
 
-OpenBao seals itself on every pod restart — every node reboot, every ArgoCD upgrade, every chart bump, every time a kubelet has a bad day. This is by design and it is not going to stop:
+!!! warning "Sealed after every restart, and Ready does not mean unsealed"
+    OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness probe answers healthy while sealed (`sealedcode=204`), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](../architecture/limitations.md).
+
+!!! warning "`#` and `!` on a command line"
+    Inside double quotes an interactive bash expands `!` from history before the quotes are considered, and an unquoted `#` truncates the line. Both are silent and store a plausible credential that does not work. Use single quotes, or write the secret as JSON and pass `@file` — a missing file then fails loudly.
+
+## Recovery
+
+### Unsealing after a restart
 
 ```bash
 make bao-unseal
 ```
 
-That checks each replica and feeds three shares to whichever are sealed, reading
-them from `output/credentials/openbao-init.json`. It waits for a replica that has
-not joined the raft cluster yet rather than failing on it, and it is idempotent —
-on an unsealed cluster it says so and stops.
-
-With the key file deleted, which is the [correct end state](#1-initialise-the-cluster-one-time), it is the loop below instead, three shares per pod:
+It feeds three shares from `output/credentials/openbao-init.json` to each sealed
+replica, waits for one that has not joined Raft yet, and is idempotent. With
+the key file deleted, which is the correct end state, unseal by hand:
 
 ```bash
 for pod in openbao-0 openbao-1 openbao-2; do
@@ -294,49 +185,22 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-`bao status` exits `0` when unsealed, `2` when sealed and `1` when it cannot
-reach the server, and `kubectl exec` passes that exit code through.
+A replica that says `Vault is not initialized` has not joined the Raft cluster
+— one that predates the `retry_join` stanzas or started before `openbao-0` was
+initialised. Point it at the leader once; it takes unseal keys afterwards:
 
-### Ready does not mean unsealed
+```bash
+kubectl -n openbao exec openbao-1 -- \
+  bao operator raft join http://openbao-0.openbao-internal:8200
+```
 
-The readiness probe calls `/v1/sys/health` with `sealedcode=204` and
-`uninitcode=204`, so a sealed or uninitialised replica answers healthy and the
-pod goes `Ready` seconds after it starts. That is deliberate: if readiness
-waited for unsealing, a StatefulSet rolling update would stop after the first
-pod until someone typed in the keys, and every chart bump and Kured reboot
-would hang half-applied.
-
-The cost is that `kubectl get pods` cannot tell you whether OpenBao is usable.
-Only `bao status` can, and it is what `make bao-unseal` and the loop above
-check.
-
-Nothing does this for you. There is no auto-unseal seal configured, so a
-reboot at 03:00 leaves the cluster running and its secret store shut until
-someone with the key shares logs in. Plan for that rather than being surprised
-by it: while OpenBao is sealed no `ExternalSecret` resolves, so cert-manager
-loses the Route53 credentials it needs to renew certificates.
-
-The failure is slow, which is what makes it dangerous. Nothing breaks the day
-OpenBao seals; things break sixty days later when a certificate expires and
-nobody connects the two events. See
-[OpenBao needs an operator to unseal it](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
-
-## Backups
-
-The Raft storage backend supports snapshotting:
+### Backups
 
 ```bash
 bao operator raft snapshot save snapshot.bao
 ```
 
-Snapshots include all KV data and OpenBao's own config (policies, roles, mounts). Store them off-cluster — a snapshot on a PVC inside the cluster it is meant to rebuild is decoration. Restore with `bao operator raft snapshot restore`. And note the obvious: the snapshot is encrypted with a key that exists only in those five shares, so it is exactly as recoverable as your key custody is.
-
-## Directory Structure
-
-```text
-openbao/
-├── application.yaml                # ArgoCD Application (Helm: openbao/openbao)
-├── cluster-secret-store.yaml       # ESO ServiceAccount, RBAC, ClusterSecretStore
-├── httproute.yaml                  # vault.infra.k8s.wlkr.ch
-└── rbac.yaml                       # system:auth-delegator binding for the openbao SA
-```
+The snapshot holds all KV data and OpenBao's own configuration; restore with
+`bao operator raft snapshot restore`. Store it off-cluster — it is encrypted
+with a key that exists only in the five shares, so it is exactly as
+recoverable as your key custody. See [Backups & Recovery](../operations/backups.md).

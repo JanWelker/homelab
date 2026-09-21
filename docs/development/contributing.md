@@ -1,42 +1,42 @@
 ---
-description: "Setting up the repository for development, the checks that run, and what to do before opening a pull request."
+description: "Repository setup, the checks to run before a pull request, commit conventions, and how the documentation site is built and published."
 ---
 
 # Contributing
 
-Changes here reach real hardware. Not immediately, and not dangerously, but a
-merge to `main` is a deployment — there is no staging cluster between your
-branch and six machines in a rack. The checks below exist to make that
-comfortable rather than exciting.
+A merge to `main` is a deployment: ArgoCD applies `payload/` to real hardware,
+and there is no staging cluster in between. The checks below exist to make that
+routine.
 
-## One-time setup
+## Setup
 
 ```bash
-uv sync                 # virtualenv and dependencies, including dev tools
-uv run pre-commit install
+uv sync                     # virtualenv and dependencies, including dev tools
+uv run pre-commit install   # the same linters CI runs
 ```
 
-Installing the hooks matters: the same linters run in CI, and every one of them
-is faster to satisfy locally than in a PR. Three round trips through GitHub
-Actions to fix trailing whitespace is a rite of passage you only need once.
-
-## Running the checks
+## Checks
 
 ```bash
 uv run pre-commit run --all-files       # ansible-lint, markdownlint, pylint, yamllint
-uv run zensical build --clean --strict  # docs; strict fails on broken links
+uv run zensical build --clean --strict  # docs; strict fails on broken links and orphan pages
+
+# Before touching payload/: valid objects, and what Helm will actually render
+kubectl apply --dry-run=client -f payload/platform/<component>/
+helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
 ```
 
-`--strict` is what CI uses, so a local build that passes is a docs build that
-passes. A page that is not registered in `nav` in `zensical.toml` fails here —
-which is deliberate, because an unlinked page is a page nobody will ever read.
+`--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
+fails the build, deliberately. On a pull request, the `argo-diff-preview`
+workflow comments the rendered ArgoCD manifest diff between `main` and your
+branch; read it, since a three-line values change can render as two hundred
+lines of different objects. The full list of workflows is in
+[Maintenance](maintenance.md#ci-workflows).
 
 ## Branches and commits
 
-Branch names are prefixed by area: `docs/`, `feat/`, `fix/`, `chore/`.
-
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/),
-matching the existing history:
+Branch names are prefixed by area: `docs/`, `feat/`, `fix/`, `chore/`. Commit
+messages follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```text
 docs: explain the stack choices and collect the known limitations
@@ -44,49 +44,69 @@ fix(bootstrap): repoint the install targets at the files that exist
 chore(deps): update helm release kube-prometheus-stack to v89
 ```
 
-Write the body to explain *why*, not what — the diff already says what. Six
-months from now, `git log` is the only place the reasoning survives, and "fix
-bug" helps nobody, least of all you.
+The body explains *why*; the diff already says what.
 
-## Changing manifests under `payload/`
-
-Everything under `payload/` is applied by ArgoCD, so a mistake there reaches the
-cluster on merge, automatically, and stays there until another commit says
-otherwise. Two checks before pushing, both of which take seconds:
-
-```bash
-# Valid YAML and valid Kubernetes objects, without touching the cluster
-kubectl apply --dry-run=client -f payload/platform/<component>/
-
-# What a Helm-sourced Application will actually render
-helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
-```
-
-Opening the PR adds a third: the `argo-diff-preview` workflow comments the
-rendered ArgoCD manifest diff between `main` and your branch. Read it. A
-three-line Helm values change routinely renders as two hundred lines of
-different Kubernetes objects, and the diff is the only place that shows up
-before the cluster finds out.
-
-!!! warning
-    Do not hand-edit version numbers. `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](maintenance.md). Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. There is no exception: the `Makefile` installs the pre-ArgoCD components from the same `targetRevision` values rather than pinning its own.
-
-## Changing documentation
-
-See [Documentation System](documentation.md) for the build, the conventions, and
-the two markdownlint rules that most often bite (`MD046` on multi-paragraph
-admonitions, `MD007` on nested list indentation).
+!!! warning "Do not hand-edit version numbers"
+    `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](maintenance.md#renovate). A hand bump conflicts with, or is reverted by, the next Renovate PR. The bootstrap targets in the `Makefile` read the same `targetRevision` values rather than pinning their own — see [Version pins](../architecture/gitops.md#version-pins).
 
 ## Review
 
-`.github/CODEOWNERS` assigns every path to the repository owner, so all pull
-requests need that review before merging. On a single-maintainer homelab this is
-mostly a speed bump against your own 23:00 enthusiasm, which is exactly the
-enthusiasm most in need of a speed bump. Renovate PRs for patch and minor
-updates automerge, whatever the component; majors always wait for a human.
-
-## Agent-assisted changes
+`.github/CODEOWNERS` assigns every path to the repository owner, so every pull
+request needs that review. Renovate PRs for patch and minor updates automerge;
+majors wait for a human.
 
 `.agent/rules/general-rules.md` holds the standing rules for AI coding agents
-working in this repository — GitOps only, docs in `docs/`, and no hand-edited
-version numbers. Keep it in sync when those conventions change.
+working here: GitOps only, docs in `docs/`, no hand-edited versions. Keep it in
+sync when those conventions change.
+
+## Documentation
+
+The site is built with [Zensical](https://zensical.org/) from `docs/`,
+configured in `zensical.toml`, and published to GitHub Pages by
+`.github/workflows/docs.yaml` at <https://homelab.wlkr.ch/>. It is
+deliberately not hosted on the cluster, so it stays readable when the cluster
+is not.
+
+| Stage | What happens |
+| --- | --- |
+| Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
+| Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes to `gh-pages`, leaving `pr-preview/` untouched |
+| Previews | `preview.yaml` builds every pull request matching the same paths and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Fork PRs are skipped: they have no write access |
+
+Locally:
+
+```bash
+uv run zensical serve   # http://localhost:8000, rebuilds on save
+uv run zensical build   # one-off build into site/ (gitignored)
+```
+
+### Conventions
+
+- Every page is registered in `nav`; cross-references are relative Markdown
+    paths (`platform/openbao.md`, `../quickstart.md`) so they resolve on the
+    site and on GitHub.
+- Diagrams use Mermaid fences; Zensical loads the runtime on pages that contain
+    one.
+- Markdown is linted by `lint-markdown.yaml` and the `markdownlint-cli2`
+    pre-commit hook. `MD046`: a blank line followed by an indented line reads as
+    a code block, so keep `!!!` admonition bodies to a single paragraph.
+    `MD007`: nested lists indent by four spaces.
+- Inline HTML is limited to `<div>` (`MD033` in `.markdownlint-cli2.yaml`),
+    which the card grids on hub pages need.
+- Theme templates are overridden by a same-named file under `overrides/`
+    (`theme.custom_dir`). Currently only `partials/source.html`, which drops the
+    repository-facts call that 404s because this repository publishes no
+    releases.
+
+### Fonts
+
+Fonts are self-hosted so the site makes no third-party requests:
+`theme.font = false` in `zensical.toml`, `docs/stylesheets/fonts.css` declares
+Inter and JetBrains Mono from the `woff2` files in `docs/assets/fonts/`, and
+each SIL OFL licence sits next to them. `scripts/update-fonts.sh` pins both
+upstream releases ([Inter](https://github.com/rsms/inter/releases),
+[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono/releases)) and
+Renovate tracks the pins.
+
+!!! warning "A font-pin PR needs a second commit"
+    Renovate can move the pin but cannot write the binaries, so its PR changes one line and the `woff2` files are still the old release. Check out the branch, run `make fonts` to download what the pin now names, and commit the result. `make fonts-check` (run by `fonts-check.yaml` on every such PR) diffs the downloads against what is committed and fails the branch until that commit arrives, which is what holds the automerge.

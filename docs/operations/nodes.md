@@ -4,28 +4,21 @@ description: "Rebooting, adding, replacing and rebuilding nodes, in the order th
 
 # Node Lifecycle
 
-Everything you do to one machine: reboot it, add one, replace a dead one, or
-rebuild one from scratch. The four procedures share a shape — drain, act, wait
-for Ceph, move on — and the waiting is the part people skip.
+Everything you do to one machine. The four procedures share a shape: drain,
+act, wait for Ceph, move on.
 
 !!! danger "Two of these destroy data and two do not"
-    [Rebooting](#rebooting-a-node) and [adding](#adding-a-node) are safe and routine. [Replacing](#replacing-a-failed-node) destroys one node's OSD. [Rebuilding](#rebuilding-or-repartitioning-a-node) destroys the disk it runs against, and doing it to every node in turn destroys every replica of everything. Read the danger block in that section before you start it.
+    [Rebooting](#rebooting-a-node) and [adding](#adding-a-node) are safe and routine. [Replacing](#replacing-a-failed-node) destroys one node's OSD. [Rebuilding](#rebuilding-or-repartitioning-a-node) destroys the disk it runs against, and doing it to every node in turn destroys every replica of everything.
 
 ## Rebooting a node
 
-[Kured](../platform/kured.md) reboots nodes on its own once an update has been
-staged, one at a time, and refuses while Ceph or etcd is unhealthy. The procedure
-below is for the cases it does not cover: rebooting a node ahead of its next
-30-minute check, or rebooting one for a reason nothing set a sentinel for.
-
-A reboot is just a reboot. Flatcar is installed to disk, the node boots from it
-without the boot server, and `/etc/kubernetes`, `/var/lib/etcd` and
-`/var/lib/rook` are all still there when it comes back. A change made with
-`make config` is *not* picked up here — that takes a
-[rebuild](#rebuilding-or-repartitioning-a-node).
-
-One node at a time, and both gates at the end are mandatory rather than
-advisory:
+[Kured](../platform/kured.md) reboots nodes on its own once an update is
+staged, one at a time, and refuses while Ceph or etcd is unhealthy. The
+procedure below is for rebooting ahead of its next 30-minute check, or for a
+reason nothing set a sentinel for. Flatcar is installed to disk, so the node
+boots without the boot server and keeps `/etc/kubernetes`, `/var/lib/etcd` and
+`/var/lib/rook`. A change made with `make config` is *not* picked up by a
+reboot; that takes a [rebuild](#rebuilding-or-repartitioning-a-node).
 
 1. Drain it.
 
@@ -33,7 +26,7 @@ advisory:
     kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
     ```
 
-2. Reboot it, and wait for it to come back `Ready`.
+2. Reboot it and wait for `Ready`.
 
     ```bash
     ssh core@<node> sudo systemctl reboot
@@ -46,89 +39,75 @@ advisory:
     kubectl uncordon <node>
     ```
 
-4. **Wait for Ceph** before touching the next node. Draining a second node while
-   the first is still backfilling can take a placement group below its minimum
-   replica count. Ceph is patient; impatient operators are how "one node down"
-   becomes "read-only cluster".
+4. **Wait for Ceph** before touching the next node: draining a second node
+   while the first is still backfilling can take a placement group below its
+   minimum replica count.
 
     ```bash
     kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status   # HEALTH_OK
     ```
 
-5. **Unseal OpenBao** if the node hosted a replica. It came back sealed, and a
-   sealed OpenBao looks exactly like a healthy one — see below.
-
-    ```bash
-    make bao-unseal
-    ```
+5. **Unseal OpenBao** if the node hosted a replica (below).
 
 ## After any node reboot: unseal OpenBao
 
-OpenBao seals itself whenever its pods restart, and while it is sealed no
-`ExternalSecret` resolves — which means cert-manager cannot renew certificates.
-Nothing unseals it for you, so this is a chore rather than a check:
+OpenBao comes back sealed and looks healthy while sealed, and nothing unseals
+it for you — see [OpenBao](../platform/openbao.md) for what that costs.
 
 ```bash
-make bao-unseal                      # unseals whatever is sealed
+make bao-unseal                      # idempotent: unseals whatever is sealed
 for pod in openbao-0 openbao-1 openbao-2; do
   kubectl -n openbao exec "$pod" -- bao status | grep Sealed   # false
 done
 ```
 
-`make bao-unseal` reads the key shares from `output/credentials/openbao-init.json`,
-checks each replica, and feeds three shares to any that is sealed. It is
-idempotent — on an unsealed cluster it reports that and stops.
-
-If you have moved the keys into a password manager and deleted that file, which
-is where they belong, it cannot help: each pod then wants 3 of the 5 shares by
-hand. [OpenBao &rarr; Unsealing after a restart](../platform/openbao.md#unsealing-after-a-restart)
-has the loop.
-
-It is worth actually running, every time. A cluster that comes back with OpenBao
-still sealed looks entirely healthy — every pod `Ready`, OpenBao's included — and
-the consequence surfaces sixty days later when a certificate expires on a
-Sunday, with nothing connecting it to the reboot that caused it. See
-[the limitation this creates](../architecture/limitations.md#openbao-needs-an-operator-to-unseal-it).
+`make bao-unseal` reads the key shares from
+`output/credentials/openbao-init.json`. If that file has been moved into a
+password manager, each pod wants 3 of the 5 shares by hand, per
+[OpenBao](../platform/openbao.md).
 
 ## Adding a node
 
-The bootstrap token generated at provisioning time has a 24 hour TTL, so it has
-long expired on an established cluster. This trips up everyone exactly once.
-Generate a fresh join command on a control-plane node:
+1. Add the host to `ansible/inventory.yaml`, then regenerate and serve the boot
+   files.
 
-```bash
-ssh core@<control-plane-node>
-sudo kubeadm token create --print-join-command
-```
+    ```bash
+    make config && make serve
+    ```
 
-For a new **control-plane** node you also need a current certificate key, which
-expires after two hours:
+2. On a control-plane node, generate a fresh join command; the provisioning
+   token has a 24 hour TTL and has long expired.
 
-```bash
-sudo kubeadm init phase upload-certs --upload-certs
-```
+    ```bash
+    ssh core@<control-plane-node>
+    sudo kubeadm token create --print-join-command
+    ```
 
-Add the host to `ansible/inventory.yaml`, re-run `make config` and `make serve`
-so it can PXE boot, then run the printed join command on it. The
-`bootstrap-k8s.service` unit only fires when `/etc/kubernetes/kubelet.conf` is
-absent, so it will not interfere with a node that has already joined.
+3. For a new **control-plane** node, also upload a current certificate key,
+   which expires after two hours.
+
+    ```bash
+    sudo kubeadm init phase upload-certs --upload-certs
+    ```
+
+4. Network-boot the new node and run the printed join command on it. The
+   `bootstrap-k8s.service` unit only fires when `/etc/kubernetes/kubelet.conf`
+   is absent, so it does not interfere with a node that has joined.
 
 ## Replacing a failed node
 
-1. Remove it from the cluster:
+1. Remove it from the cluster.
 
     ```bash
     kubectl drain <node> --ignore-daemonsets --delete-emptydir-data --force
     kubectl delete node <node>
     ```
 
-2. Let Ceph re-replicate. With `useAllNodes: true` the OSD on that disk is gone
-   for good; check `ceph status` returns to `HEALTH_OK` before continuing. This
-   is not a step to rush — Ceph will tell you when it is done, and it is never as
-   fast as you would like.
-3. If it was a control-plane node, remove its etcd member. A dead member left in
-   the list still counts toward quorum, which is a delightful way to lose a
-   cluster that is otherwise fine:
+2. Let Ceph re-replicate. With `useAllNodes: true` the OSD on that disk is
+   gone for good; wait for `ceph status` to return to `HEALTH_OK`.
+
+3. If it was a control-plane node, remove its etcd member; a dead member still
+   counts toward quorum.
 
     ```bash
     kubectl -n kube-system exec -it etcd-<healthy-node> -- etcdctl \
@@ -139,77 +118,50 @@ absent, so it will not interfere with a node that has already joined.
     # then: member remove <id>
     ```
 
-4. Reprovision the replacement following [Adding a node](#adding-a-node).
+4. Reprovision the replacement per [Adding a node](#adding-a-node).
 
 !!! danger
-    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection on every other node. Check which endpoint your kubeconfig uses before assuming otherwise.
+    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
 
 ## Rebuilding or repartitioning a node
 
-The disk layout lives in `ansible/templates/butane_node_config.yaml.j2` and is applied
-by Ignition, which runs once — on the first boot after a node is installed.
-Changing a *size* or *order* in it is not an edit you roll out. Neither is
-changing anything else under `ansible/`: the node's Ignition config is embedded
-in its OEM partition at install time, so a running node will never see the new
-one.
-
-`rook-osd` is the last partition and is deliberately raw: Ceph owns the bytes,
-and there is no filesystem or label inside it that would let anything relocate
-them. Move its start offset by so much as a sector — which is what inserting or
-resizing any partition above it does — and every OSD on that node is gone.
+The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by
+Ignition once, on the first boot after install, and the Ignition config is
+embedded in the OEM partition at install time, so no change under `ansible/`
+reaches a running node. `rook-osd` is the last partition and deliberately raw:
+move its start by a sector, which any insert or resize above it does, and every
+OSD on that node is gone. Only the last partition can grow without a reinstall,
+and `rook-osd` cannot shrink in place because Ceph has already written across
+the space.
 
 !!! danger "The backups are inside the thing being wiped"
-    Velero and the etcd snapshot CronJob both write to the Ceph object store
-    this destroys — see
-    [Backups do not leave the cluster](../architecture/limitations.md#backups-do-not-leave-the-cluster).
-    Copy anything you intend to restore from **off-cluster** before you start.
-    This is the failure mode that limitation was written about, arriving in
-    person.
+    Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see [Backups & Recovery](backups.md#what-is-not-covered). Copy anything you intend to restore from **off-cluster** first.
 
-The procedure is a reinstall:
-
-1. Copy what matters off the cluster — Velero backups, the latest etcd snapshot,
-   and anything in a PVC that is not reproducible from Git.
+1. Copy what matters off the cluster: Velero backups, the latest etcd snapshot,
+   and anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
-3. `make config` to regenerate both Ignition configs, then `make serve`.
-4. Arm the nodes you are rebuilding:
+3. Regenerate both Ignition configs and serve them.
+
+    ```bash
+    make config && make serve
+    ```
+
+4. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
+   no prompt), and the boot server disarms a node once it has the image, so the
+   reboot at the end of the install does not start a second one — see
+   [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot).
 
     ```bash
     make reinstall LIMIT=odin   # `make reinstall` alone asks, then arms every host
     ```
 
-    That flips `DEFAULT localboot` to `DEFAULT install` in
-    `output/tftp/pxelinux.cfg/01-<mac>`. The template is untouched, so the next
-    `make config` puts the safe default back — including over anything armed and
-    not used. `make reinstall-cancel` does the same deliberately, and the boot
-    server does it for you once the node has the OS image, which is what keeps
-    the reboot at the end of the install from starting a second one: see
-    [Boot Server &rarr; Switching back to local boot](../architecture/boot-server.md#switching-back-to-local-boot).
+5. Network-boot the node. The installer wipes the disk, runs `flatcar-install`,
+   and reboots into the installed system, which then runs `kubeadm`.
+6. Leave the boot server up until the node is `Ready` (the sysext images are
+   fetched from it on that first boot), then stop it.
 
-    Arming is the *only* way in: the menu shows no prompt, so there is nothing
-    to pick at the console and nothing to mistype at three in the morning.
-5. Network-boot the node. The installer wipes the disk — every partition
-   signature, the GPT, and a device-level discard where the hardware supports
-   it — runs `flatcar-install`, and reboots into the freshly installed system,
-   which then runs `kubeadm`.
-6. Leave the boot server up until the node is `Ready`: the sysext images are
-   still fetched from it on that first boot. Then stop it.
-
-One node at a time is safe if you are rebuilding rather than repartitioning —
-etcd keeps quorum and Ceph backfills, exactly as in
-[Replacing a failed node](#replacing-a-failed-node). Repartitioning is different
-only in that it destroys every OSD as it goes, so a rolling rebuild across all
-six nodes eventually destroys all replicas of everything. Step 1 is not optional
-for that case.
-
-!!! note "The menu will not do this by accident"
-    The menu has no prompt and its generated default is `LOCALBOOT`; only
-    `make reinstall` changes that, and the boot server changes it back once the
-    node has the image. So a node that reboots while the boot server happens to
-    be running boots what it already has. The install does not touch the
-    firmware's boot order, which means the menu decides on every boot, on
-    every node — see [Boot order](../architecture/boot-process.md#boot-order).
-
-Only the *last* partition can grow without a reinstall. Shrinking `rook-osd` to
-make room for something else cannot be done in place either, because Ceph has
-already written across the space you would be taking back.
+One node at a time is safe when rebuilding: etcd keeps quorum and Ceph
+backfills, as in [Replacing a failed node](#replacing-a-failed-node).
+Repartitioning destroys every OSD as it goes, so a rolling repartition across
+all six nodes destroys all replicas of everything; step 1 is not optional for
+that case.

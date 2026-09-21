@@ -4,26 +4,23 @@ description: "The core infrastructure components that power the cluster, how tra
 
 # Platform
 
-The core infrastructure components that run the cluster. Everything here is
-managed by ArgoCD; each component's own page documents its directory layout and
-configuration.
-
-That is a lot of components for a homelab, and every one of them exists because
-bare metal does not come with the thing a cloud provider would have handed you. No load balancer, no managed certificates, no block
-storage API, no identity provider, no backup service. This section is the bill
-for not having those.
+The core infrastructure components that run the cluster, all managed by
+ArgoCD. Every one of them exists because bare metal does not come with the
+thing a cloud provider would have handed you: no load balancer, no managed
+certificates, no block storage API, no identity provider, no backup service.
 
 ## Components
 
-Alphabetical, with the namespace it lands in and the rollout stage it belongs
-to. The [stage ordering](#usage) below explains why each is where it is.
+Alphabetical, with the namespace it lands in and the [rollout stage](#rollout-order)
+it belongs to.
 
 | Component | Namespace | Stage | What it does |
 | --- | --- | --- | --- |
-| argocd-config | `argocd` | `08-services` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard |
+| [argocd](argocd.md) | `argocd` | hand-applied | ArgoCD itself and the `platform` ApplicationSet |
+| argocd-config | `argocd` | `08-services` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see [ArgoCD](argocd.md) |
 | argocd-projects | `argocd` | `00-projects` | The `apps`, `infra` and `system` AppProjects |
 | [authentik](authentik.md) | `authentik` | `08-services` | Single sign-on for every platform UI |
-| backup | `backup` | `08-services` | Velero, the CSI snapshot controller and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
+| backup | `backup` | `08-services` | The CSI snapshot controller, Velero's buckets and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
 | [cert-manager](cert-manager.md) | `cert-manager` | `03-controllers`, issuers and certificates `06-certificates` | Let's Encrypt wildcards over a Route53 DNS-01 challenge |
 | [cilium](cilium.md) | `kube-system` | `02-network` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](cloudnative-pg.md) | `cnpg-system` | `03-controllers` | The PostgreSQL operator every workload database runs on |
@@ -39,6 +36,10 @@ to. The [stage ordering](#usage) below explains why each is where it is.
 | [openbao](openbao.md) | `openbao` | `05-secrets` | Cluster-wide secret store |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | `03-controllers` operator, `04-storage` cluster | Replicated block storage and an S3 object store |
 | [security policies](security-policies.md) | `kube-system` | `11-policy` | Pod Security Admission levels and default-deny ingress policies |
+| [velero](velero.md) | `backup` | `09-backends` | Volume and resource backups to the Ceph object store |
+
+Across the platform, memory limits are set at roughly 2.5x the measured peak
+working set and requests at steady state; CPU is requested but never limited.
 
 ## Traffic Flow
 
@@ -55,10 +56,10 @@ flowchart LR
     style Client fill:#f9f,stroke:#333
 ```
 
-Four hops, and Cilium is three of them. When a hostname stops answering, the
-question is which hop stopped: does the Gateway still hold its LoadBalancer IP,
-does the `HTTPRoute` still say `Accepted`, does the Service still have endpoints.
-In that order — the answer is usually the first one.
+Four hops, and Cilium is three of them. When a hostname stops answering, ask
+which hop stopped, in this order: does the Gateway still hold its LoadBalancer
+IP, does the `HTTPRoute` still say `Accepted`, does the Service still have
+endpoints.
 
 ## HTTPRoute Locations
 
@@ -78,40 +79,26 @@ HTTPRoutes are co-located with their respective apps:
 | Home Assistant   | `home.k8s.wlkr.ch`               | `home-assistant/httproute.yaml` in [homelab-apps](https://github.com/JanWelker/homelab-apps) |
 | Nextcloud        | `cloud.k8s.wlkr.ch`              | `nextcloud/httproute.yaml` in [homelab-apps](https://github.com/JanWelker/homelab-apps)      |
 
-## Usage
-
-### Bootstrap (before ArgoCD)
+## Deployment
 
 ```bash
 make bootstrap  # Gateway API CRDs + Cilium, ArgoCD, then the handover
 ```
 
-### GitOps (after ArgoCD)
+After that the `argocd` Application syncs the `platform` ApplicationSet, which
+generates one Application per `payload/platform/*/application.yaml` plus the
+`workloads` Application that deploys the `apps` ApplicationSet for the
+[workloads repository](../development/add-workload.md). Each component
+directory holds exactly one `application.yaml`; everything else in it is what
+that Application deploys. [GitOps Strategy](../architecture/gitops.md) has the
+structure and what the staging costs.
 
-One Application sits above everything else:
-
-| Object | Role | Path |
-| --- | --- | --- |
-| `argocd` Application | Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand | `payload/argocd/application.yaml` |
-| `platform` ApplicationSet | Generates one Application per `payload/platform/*/application.yaml` | `payload/argocd/applicationset-platform.yaml` |
-| `apps` ApplicationSet | Generates one Application per `<app>/application.yaml` in the workloads repository | `payload/workloads/applicationset.yaml` |
-
-The `apps` ApplicationSet is itself deployed by the `workloads` Application in
-the last platform stage, which is what keeps workloads from being generated
-before the platform under them exists. See
-[Adding a Workload](../development/add-workload.md).
-
-Each component directory holds exactly one `application.yaml`; everything else
-in the directory is what that Application deploys, apart from Helm `values.yaml`
-files, which the Application references instead.
-
-### Rollout order
+## Rollout order
 
 The ApplicationSet syncs its Applications in stages, selected by the
-`homelab.wlkr.ch/stage` label, and starts a stage only when every Application in
-the one before it is Synced and Healthy. This is the dependency graph made
-explicit; [GitOps Strategy](../architecture/gitops.md#rollout-order) covers how
-the gating works and what it costs.
+`homelab.wlkr.ch/stage` label, and starts a stage only when every Application
+in the one before it is Synced and Healthy; [GitOps
+Strategy](../architecture/gitops.md#rollout-order) covers how the gating works.
 
 | Stage | Applications | Waits for |
 | --- | --- | --- |
@@ -129,9 +116,7 @@ the gating works and what it costs.
 | `11-policy` | `kured`, `security` | everything else, so policies label namespaces that exist and kured reboots a converged cluster |
 | `12-workloads` | `workloads` | the whole platform. It deploys the `apps` ApplicationSet, and nothing in the [workloads repository](../development/add-workload.md) is generated before it |
 
-External Secrets is a controller like any other now: its CRDs arrive in
-`03-controllers`, well ahead of the first `ExternalSecret`, while the
-`ClusterSecretStore` that needs a running OpenBao lives with OpenBao in
-`05-secrets`. The same split takes cert-manager's issuers and certificates out
-of `03-controllers` into their own `certificates` Application, because they
-cannot go Ready until OpenBao holds the Route53 credentials.
+The `ClusterSecretStore` lives with OpenBao in `05-secrets` rather than with
+External Secrets, and cert-manager's issuers and certificates are their own
+`certificates` Application, for the same reason: neither can go Ready until
+OpenBao holds what they read.

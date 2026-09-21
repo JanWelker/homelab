@@ -1,12 +1,11 @@
 ---
-description: "What is backed up, what is not, and how to snapshot etcd and OpenBao before you need them."
+description: "What is backed up, what is not, how to take a backup by hand, and the restore runbooks for Velero, OpenBao, etcd and a full rebuild."
 ---
 
 # Backups & Recovery
 
-Nobody wants backups. Everybody wants restores. This page is written with that
-distinction in mind: every mechanism below is described in terms of what it can
-actually get back for you, and — more importantly — what it cannot.
+Every mechanism below is described by what it can get back, and by what it
+cannot.
 
 ## Current state
 
@@ -16,185 +15,73 @@ actually get back for you, and — more importantly — what it cannot.
 | Ceph RBD volumes (PVCs) | Nightly, 02:00 | Velero CSI snapshot, moved into the object store |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly, 01:00 | [CronJob](#etcd) to the object store, last 14 kept |
-| OpenBao secrets | Manual | [Raft snapshot](../platform/openbao.md#backups) |
+| OpenBao secrets | Manual | [Raft snapshot](#openbao) |
 | OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
 | Prometheus metrics | **No** | 10 day retention, then gone |
-| Everything in `payload/` | Yes | It is in Git; that is the point of GitOps |
+| Everything in `payload/` | Yes | It is in Git |
 
 ## What is not covered
 
-Alerting is the other half of a backup: a backup that silently stopped running
-is indistinguishable from one that works, right up until the moment you need it,
-which is also the moment you find out. Velero's
-`PrometheusRule` covers that, but only reaches whoever Alertmanager is
-configured to tell — see
-[Monitoring](../platform/monitoring.md) for the state of that.
+**Every automated backup lands in the same cluster's Ceph.** That protects
+against operator error (a deleted PVC, a bad `prune`, a corrupted database) and
+not against losing the cluster, because the backups go with it. Off-site
+replication is the missing piece: RGW supports bucket replication and Velero a
+second `BackupStorageLocation`, and neither is configured. Until then, disaster
+recovery is **Git, the OpenBao unseal keys, and a copy of the latest OpenBao
+and etcd snapshots kept off-cluster**; the nightly backups protect against
+mistakes.
 
-The bigger gap is where the backups land.
-
-**Every automated backup here goes into the same cluster's Ceph.** That protects
-against the failures that actually happen — a deleted PVC, a bad `prune`, a
-corrupted database, a workload that ate its own data. It does not protect
-against losing the cluster, because the backups go with it.
-
-This is worth sitting with for a moment rather than nodding past. A backup that
-shares a failure domain with its source covers operator error and nothing else.
-Operator error is genuinely the most common cause of data loss, so this is not
-worthless — it is just precisely one half of the job, and it is important to
-know which half you have.
-
-Off-site replication is the missing piece. RGW supports bucket replication and
-Velero supports a second `BackupStorageLocation`, so the shape of the fix is
-known; neither is configured. Until then, treat the OpenBao unseal keys plus
-Git as the real disaster-recovery story and these backups as protection against
-mistakes rather than against the building burning down.
+Velero's `PrometheusRule` (`VeleroBackupFailures` critical,
+`VeleroBackupPartialFailures` warning) is what notices a backup that silently
+stopped, and it only reaches whoever Alertmanager is configured to tell — see
+[Monitoring](../platform/monitoring.md).
 
 ## Velero
 
 [Velero](https://velero.io/) backs up Kubernetes objects and volume data
-nightly at 02:00, keeping 14 days.
+nightly. Chart values and why each is set are in
+[Velero](../platform/velero.md).
 
 | Property | Value |
 | --- | --- |
 | Schedule | `0 2 * * *`, TTL `336h` |
-| Scope | All namespaces except `kube-system`, minus `events` |
+| Scope | All namespaces except `kube-system` (rebuilt from Git, and large), minus `events` (they expire anyway) |
 | Destination | S3 bucket `velero` in the [Ceph object store](../platform/rook-ceph.md) |
-| Volume data | CSI snapshot, then moved into the bucket by the data mover (Kopia) |
+| Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
 
-`kube-system` is excluded because it is reconstructed from Git on the next sync
-and is large. `events` are excluded because they expire anyway.
-
-### Why the data mover matters
-
-A CSI snapshot on its own is a Ceph object. Backing up a PVC by snapshotting it
-would leave the only copy inside the same Ceph cluster the backup exists to
-survive — protection against a deleted PVC, but not against a broken pool. A
-snapshot is a bookmark, not a copy, and confusing the two is one of the more
-expensive mistakes available in storage. With
-`defaultSnapshotMoveData`, Velero takes the snapshot, streams the data out to
-the object store, and deletes the snapshot. The durable copy is the one in the
-bucket.
-
-This is why `deployNodeAgent` is on: the node agent is what reads the snapshot
-and does the streaming.
-
-### Two settings that are not optional here
-
-```yaml
-checksumAlgorithm: ""      # on the BackupStorageLocation config
-```
-
-The AWS plugin's `aws-sdk-go-v2` sends a trailing checksum that Ceph RGW rejects
-with `api error XAmzContentSHA256Mismatch`, so **every upload fails** without
-this. The plugin's own README lists Ceph S3 as needing it. "S3-compatible" is
-one of the great load-bearing hyphens of our industry, and this is the sort of
-thing it is carrying.
-
-```yaml
-image: velero/velero-plugin-for-aws:v1.14.2
-```
-
-Plugin `v1.14.x` pairs with Velero `v1.18.x`, this chart's appVersion. The
-chart's commented example still shows `v1.13.1`, which is the v1.17 line.
-
-### Other settings worth knowing
-
-- **No credentials file.** `credentials.useSecret` is `false`: the AWS plugin
-  reads its keys from the environment, and `extraEnvVars` feeds that straight
-  from the `Secret` Rook writes for the `velero-bucket` claim. The keys are
-  never rendered into a file or into Git.
-- **`volumeSnapshotLocation: []` must stay empty.** The chart ships a
-  placeholder entry with a null name and provider, renders it as a
-  `VolumeSnapshotLocation` called `default`, and the CRD schema rejects it,
-  failing every sync. Helm replaces lists rather than merging them, so the empty
-  list removes it. Nothing here needs one: CSI and the data mover use a
-  `VolumeSnapshotClass`, and a `VolumeSnapshotLocation` belongs to the legacy
-  per-provider snapshotter plugins.
-- **No `runAsNonRoot`.** The plugin initContainer copies itself into
-  `/target`, and whether that works as non-root depends on the image's own
-  `USER`. Confirm it on a real backup before adding it; the seccomp profile,
-  `allowPrivilegeEscalation: false` and dropped capabilities are set.
-- **Node agent sizing.** Its limits come from a measured 37Mi peak. It is idle
-  except during a backup, so the headroom is deliberately wide.
-
-### Snapshot plumbing
-
-kubeadm does not install the CSI snapshot controller and neither does Rook.
-Without it the `VolumeSnapshot` CRDs are absent and the RBD driver advertises
-snapshot support nothing can invoke. The `snapshot-controller` Application
-installs the controller and its CRDs in `03-controllers`, well ahead of the
-`backup` Application in `08-services` and Velero in `09-backends`.
-
-The `VolumeSnapshotClass` for `rook-ceph-block`, in `backup`, is what needs that
-order. Applied before its CRD existed, it failed with
-`no matches for kind VolumeSnapshotClass`; `SkipDryRunOnMissingResource` does
-not help there, since it is the apply that fails, not the dry run. When the
-snapshot controller was still a child of `backup`, that failed sync meant the
-snapshot-controller and velero Applications queued behind it were never created
-at all. Its sync wave `3` inside `backup` is left over from then and harmless.
-
-Its `deletionPolicy` is `Delete`: the snapshot is only an intermediate step, and
-the durable copy is the one the data mover writes into the object store.
-
-### Using it
+The `velero` CLI defaults to the `velero` namespace; this install is in
+`backup`, so pass `-n backup` every time.
 
 ```bash
 kubectl -n backup get backups.velero.io
 kubectl -n backup get backupstoragelocation     # should be Available
 
-# On demand
-velero backup create manual-$(date +%s) --include-namespaces my-app
-
-# Restore
-velero restore create --from-backup velero-daily-20260905020000
+velero -n backup backup create manual-$(date +%s) --include-namespaces my-app
 ```
 
-If backups sit in `PartiallyFailed`, check that a `VolumeSnapshotClass` labelled
-`velero.io/csi-volumesnapshot-class: "true"` exists — without it Velero finds no
-class for the RBD driver and skips volumes **silently**, leaving you with a
-backup full of Kubernetes objects and none of the data anybody cared about.
-
-### Alerting
-
-Velero ships a `PrometheusRule` here: `VeleroBackupFailures` (critical) and
-`VeleroBackupPartialFailures` (warning). A backup that silently stopped running
-is the failure mode this exists to prevent — and it is the one that catches
-experienced people, because the dashboard stays green and the CronJob still
-exists and everything looks exactly like it did last month.
+Backups in `PartiallyFailed` with no volume data mean Velero found no
+`VolumeSnapshotClass` labelled `velero.io/csi-volumesnapshot-class: "true"`
+and skipped the volumes silently — check
+`payload/platform/backup/volumesnapshotclass.yaml` is applied.
 
 ## etcd
 
-Velero restores objects *through the API server*. That is the wrong tool for the
-case where there is no API server left to restore through — lost quorum, a
-corrupted data directory, three dead control-plane nodes. For that you need the
-etcd data itself, which Velero does not capture.
-
-Two backup systems for two genuinely different disasters. It looks like
-redundancy until the day you need the one you skipped.
-
-A CronJob takes one nightly at 01:00, an hour before Velero runs:
+Velero restores *through* the API server, which is no use with no API server
+left (lost quorum, a corrupted data directory). For that a CronJob in
+`payload/platform/backup/etcd-backup.yaml` snapshots etcd nightly, an hour
+before Velero runs.
 
 | Property | Value |
 | --- | --- |
 | Schedule | `0 1 * * *` |
-| Where it runs | Any control-plane node — `hostNetwork`, since etcd listens on `127.0.0.1` and its client certs are on the node |
-| Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of quietly replacing a good backup |
-| Destination | S3 bucket `etcd-backup`, newest 14 kept |
+| Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node |
+| Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup (`etcdctl snapshot status` was removed in etcd 3.6) |
+| Destination | S3 bucket `etcd-backup`, separate from Velero's because it is restored by different means; newest 14 kept |
 
-!!! note "`etcdctl snapshot status` no longer exists"
-    It was removed in etcd 3.6. The verification step uses `etcdutl`, which
-    ships in the same image.
-
-The snapshots go to their own bucket rather than Velero's because they are
-recovered by entirely different means. Two details of the job are easy to undo
-by accident:
-
-- `dnsPolicy: ClusterFirstWithHostNet` — with `hostNetwork` the default policy
-  uses the node's `resolv.conf`, which cannot resolve the RGW Service the upload
-  needs.
-- The upload writes an AWS CLI config file with `addressing_style = path`. RGW
-  addresses buckets by path, the CLI defaults to virtual-host style, and there
-  is no environment variable for it.
+Two settings there are easy to undo by accident: the DNS policy for a
+host-network pod (the node's `resolv.conf` cannot resolve the RGW Service), and
+the AWS CLI config file selecting path-style addressing (no environment
+variable sets it).
 
 ```bash
 kubectl -n backup get cronjob etcd-backup
@@ -202,8 +89,6 @@ kubectl -n backup logs job/<most-recent-job> -c upload
 ```
 
 ### Taking one by hand
-
-Take a snapshot from a control-plane node:
 
 ```bash
 kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
@@ -215,13 +100,7 @@ kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
 kubectl cp kube-system/etcd-<node>:/var/lib/etcd/snapshot.db ./etcd-snapshot.db
 ```
 
-Copy it off the cluster. Now. A snapshot stored only on a Ceph PVC does not
-survive the failure it exists for, and "I'll move it later" has never once
-happened in the history of operations.
-
-Restoring is `etcdctl snapshot restore` into a fresh data directory on a stopped
-control plane, then restarting kubelet — see the
-[upstream kubeadm documentation](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster).
+Copy it off the cluster immediately.
 
 ## OpenBao
 
@@ -230,42 +109,128 @@ kubectl -n openbao exec -it openbao-0 -- bao operator raft snapshot save /tmp/sn
 kubectl -n openbao cp openbao-0:/tmp/snapshot.bao ./openbao-snapshot.bao
 ```
 
-The snapshot contains all KV data plus policies, roles and mounts. It does
-**not** contain the unseal keys, and it is useless without them — a perfect,
-verified, encrypted brick. Details in
-[OpenBao &rarr; Backups](../platform/openbao.md#backups).
+The snapshot holds all KV data plus policies, roles and mounts. It does **not**
+hold the unseal keys and is useless without them — see
+[OpenBao](../platform/openbao.md).
 
 ## Ceph volumes
 
-Volume data is covered by [Velero](#velero): PVCs are snapshotted nightly and
-the data is moved into the object store, so a deleted PVC is recoverable.
-
-Ceph's own replication is not a backup and should not be mistaken for one. It
-spreads each block across OSDs, which protects against a disk or a node failing
-and against nothing else — not deletion, not corruption, not a bad `prune`. That
-last one is not hypothetical: almost every Application runs with `prune: true`
-— `kube-vip` and `security` are the two deliberate exceptions — so removing a
+PVCs are covered by [Velero](#velero). Ceph's own replication is not a backup:
+it spreads each block across OSDs, which survives a disk or node failing and
+nothing else. Almost every Application runs with `prune: true` (`kube-vip` and
+`security` are the deliberate exceptions), so removing a
 `PersistentVolumeClaim` from Git deletes the volume.
 
-What is still open is off-cluster replication — see
-[What is not covered](#what-is-not-covered). RBD mirroring to a second cluster
-would close it.
+## Restoring
 
-## Rebuilding from scratch
+The commands are the upstream-documented ones for the versions pinned in
+`payload/platform/`; the etcd sequence has not been exercised on this cluster.
 
-What you need, in order:
+### Velero restore
 
-1. The Git repository — all platform and workload manifests.
-2. The OpenBao unseal keys and root token — without these the restored OpenBao
-   is an encrypted brick.
-3. An OpenBao raft snapshot, or the willingness to re-enter every secret.
-4. Optionally an etcd snapshot, to skip re-issuing certificates and waiting for
-   the platform to re-converge.
+1. Find the backup.
 
-Items 1 and 2 are the ones that actually matter, and only one of them lives
-somewhere GitHub keeps a copy. If you take a single action after reading this
-page, make it checking that you still know where those five key shares are.
+    ```bash
+    velero -n backup backup get
+    ```
 
-The rebuild itself is the [Quickstart](../quickstart.md) from step 1. Because
-the platform is declarative, the cluster converges back to its documented state
-once ArgoCD points at the repository and OpenBao is unsealed.
+2. Restore from it, scoped to what was lost; without `--include-namespaces`
+   everything in the backup is restored, and existing objects are skipped, not
+   overwritten.
+
+    ```bash
+    velero -n backup restore create --from-backup velero-daily-<timestamp> \
+      --include-namespaces my-app
+    ```
+
+3. Watch it finish and read the warnings.
+
+    ```bash
+    velero -n backup restore describe <restore-name>
+    velero -n backup restore logs <restore-name>
+    ```
+
+### OpenBao snapshot restore
+
+Needs an initialised, unsealed cluster and the root token. `-force` is what
+lets a snapshot from a *different* cluster (a fresh `bao operator init`) load;
+afterwards the pods seal and want the snapshot's keys, not the new cluster's.
+
+1. Copy the snapshot in.
+
+    ```bash
+    kubectl -n openbao cp ./openbao-snapshot.bao openbao-0:/tmp/snapshot.bao
+    ```
+
+2. Restore it.
+
+    ```bash
+    kubectl -n openbao exec -it openbao-0 -- \
+      env BAO_TOKEN=<root-token> bao operator raft snapshot restore -force /tmp/snapshot.bao
+    ```
+
+3. Unseal every replica with the snapshot's key shares and confirm.
+
+    ```bash
+    make bao-unseal
+    kubectl -n openbao exec openbao-0 -- bao status   # Sealed: false
+    ```
+
+### etcd restore
+
+Every etcd member restores from the same snapshot, then all three static pods
+come back together. Flatcar ships no `etcdutl`, so run it from the etcd image
+the CronJob uses. Upstream:
+[Restoring an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster).
+
+1. Copy the snapshot to every control-plane node as `/var/lib/etcd-restore/snapshot.db`.
+2. On every control-plane node, stop the API server and etcd by moving their
+   static pod manifests out, and wait until neither container is listed.
+
+    ```bash
+    sudo mkdir -p /root/manifests-stopped
+    sudo mv /etc/kubernetes/manifests/{etcd,kube-apiserver}.yaml /root/manifests-stopped/
+    sudo crictl ps --name 'etcd|kube-apiserver'    # empty
+    ```
+
+3. On every control-plane node, restore into a new data directory with the
+   `--name`, `--initial-cluster` and `--initial-advertise-peer-urls` values
+   from that node's `/etc/kubernetes/manifests/etcd.yaml` (the image tag is in
+   `payload/platform/backup/etcd-backup.yaml`).
+
+    ```bash
+    sudo ctr -n k8s.io run --rm \
+      --mount type=bind,src=/var/lib/etcd-restore,dst=/restore,options=rbind:rw \
+      registry.k8s.io/etcd:<tag> etcd-restore \
+      etcdutl snapshot restore /restore/snapshot.db --data-dir /restore/etcd \
+        --name <node> --initial-cluster <name=https://ip:2380,...> \
+        --initial-advertise-peer-urls https://<node-ip>:2380
+    ```
+
+4. Swap the data directory in, keeping the old one and its ownership.
+
+    ```bash
+    sudo mv /var/lib/etcd /var/lib/etcd.bak
+    sudo mv /var/lib/etcd-restore/etcd /var/lib/etcd
+    sudo chown -R --reference=/var/lib/etcd.bak /var/lib/etcd
+    ```
+
+5. Put the manifests back on every node, then confirm.
+
+    ```bash
+    sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/
+    kubectl get nodes
+    kubectl -n argocd get applications     # ArgoCD reconverges from Git
+    ```
+
+### Rebuild from scratch
+
+1. Have the Git repository, the OpenBao unseal keys and root token, and an
+   OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
+   certificates.
+2. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.
+3. When the rollout pauses at `05-secrets`, either `make bao-init` and restore
+   the OpenBao snapshot as above, or `make bao-init` and re-enter every secret
+   with `make bao-secrets`.
+4. Once the platform is Synced and Healthy, restore workloads with a Velero
+   restore from the copied-off backup.
