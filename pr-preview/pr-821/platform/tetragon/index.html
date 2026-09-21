@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Runtime detection with Tetragon: what it records from every node, which two policies it enforces, and how the events reach Loki and Alertmanager.">
+        <meta name="description" content="Runtime detection with Tetragon: what it records from every node, which policies it enforces, and how the events reach Loki and Alertmanager.">
       
       
       
@@ -2342,7 +2342,7 @@ sees a shell spawned in a running container.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/tetragon/</code>: the chart, two policies, <code>prometheusrule.yaml</code> and a dashboard written for this cluster, since upstream ships none</td>
+<td><code>payload/platform/tetragon/</code>: the chart, the policies, <code>prometheusrule.yaml</code> and a dashboard written for this cluster, since upstream ships none</td>
 </tr>
 </tbody>
 </table>
@@ -2380,8 +2380,10 @@ and runs privileged on the host network by the chart's default.</p>
 </tbody>
 </table>
 <h3 id="policies">Policies<a class="headerlink" href="#policies" title="Permanent link">&para;</a></h3>
-<p><code>tracingpolicies.yaml</code> carries two cluster-scoped <code>TracingPolicy</code> objects.
-Both post at most one event per minute per selector.</p>
+<p><code>tracingpolicies.yaml</code> carries the cluster-scoped <code>TracingPolicy</code> objects,
+adapted from the <a href="https://tetragon.io/docs/policy-library/observability/">upstream policy library</a>.
+All post at most one event per minute per selector, and all but the first
+watch containers only: the host has the node journal.</p>
 <table>
 <thead>
 <tr>
@@ -2404,12 +2406,62 @@ Both post at most one event per minute per selector.</p>
 <td>Any credential change in a container, from the upstream example</td>
 <td>No; a record for the exec alert to be read against</td>
 </tr>
+<tr>
+<td><code>exec-from-writable-path</code></td>
+<td><code>security_bprm_check</code></td>
+<td>A container executing a file under <code>/tmp/</code>, <code>/var/tmp/</code>, <code>/dev/shm/</code>, <code>/run/</code>, <code>/var/run/</code>, <code>/shared/</code>, <code>/controller/</code> or <code>/plugins/</code>, except the three binaries an init container copies there</td>
+<td>Yes: <code>TetragonExecFromWritablePath</code></td>
+</tr>
+<tr>
+<td><code>library-from-writable-path</code></td>
+<td><code>security_mmap_file</code></td>
+<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads</td>
+<td>Yes: <code>TetragonLibraryFromWritablePath</code></td>
+</tr>
+<tr>
+<td><code>privileges-raise</code></td>
+<td><code>create_user_ns</code>, the <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. The alert filters out <code>runc</code>, which does the latter on every container start</td>
+<td>Yes: <code>TetragonPrivilegesRaised</code></td>
+</tr>
+<tr>
+<td><code>bpf-program-load</code></td>
+<td><code>bpf_check</code></td>
+<td>Any BPF program load from a container; the alert leaves out <code>cilium</code> and <code>kube-system</code></td>
+<td>Yes: <code>TetragonBpfProgramLoaded</code></td>
+</tr>
+<tr>
+<td><code>kernel-module-load</code></td>
+<td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code></td>
+<td>A module requested or read from a container; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot</td>
+<td>Yes: <code>TetragonKernelModuleLoaded</code></td>
+</tr>
+<tr>
+<td><code>egress-outside-cluster</code></td>
+<td><code>tcp_connect</code></td>
+<td>An IPv4 connection from a container to anything outside the pod, service and site ranges</td>
+<td>No; ACME, S3, the Trivy database and Home Assistant all do this routinely</td>
+</tr>
 </tbody>
 </table>
 <p>The allow list in the first policy is the set of things that read key material
 in steady state, found by listing what fired. Add a binary there only after
 confirming it in the export; a person running <code>cat</code> on a node is exactly what
 the policy is for.</p>
+<p>The third policy is the runtime half of an image check: nothing in an image
+lives on those paths, so a binary executing from one was written after the
+container started. An emptyDir can be mounted anywhere, so the policy names
+the mounts this cluster puts binaries into rather than every emptyDir;
+<code>kubectl get pods -A -o json</code> lists the rest. A <code>readOnlyRootFilesystem</code>
+pod makes the check complete, since then a new binary has nowhere else to
+land. The offline half, every binary Tetragon saw executed diffed against
+the image's file list, needs no policy: query Loki by image and binary and
+resolve each path in <code>crane export &lt;image&gt; - | tar t</code>.</p>
+<p>Four more detections from the same library need no policy, because the exec
+event already carries what they look for: <code>sudo</code>, a setuid or file-capability
+binary raising privileges, a fileless exec and a deleted binary. They are
+<a href="../logging/#alerting">Loki alerts</a>. Upstream's <code>sshd</code> policy is covered by
+<code>NodeSshLogin</code> from the node journal.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is the summary; the queries below are what its Loki panels run.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Everything a policy caught

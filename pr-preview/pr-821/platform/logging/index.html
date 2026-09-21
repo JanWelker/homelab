@@ -2619,6 +2619,26 @@ these are the events only a log carries.</p>
 <td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader</td>
 </tr>
 <tr>
+<td><code>TetragonSudoInContainer</code></td>
+<td><code>sudo</code> executed in a container</td>
+<td>Only the exec event carries the binary and its parent</td>
+</tr>
+<tr>
+<td><code>TetragonPrivilegedExec</code></td>
+<td>A setuid, setgid or file-capability binary raised privileges on exec</td>
+<td>The <code>binary_properties</code> field exists only in the exec event</td>
+</tr>
+<tr>
+<td><code>TetragonFilelessExec</code></td>
+<td>A binary executed from memory, via <code>memfd_create</code> or an anonymous descriptor</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><code>TetragonDeletedBinaryExec</code></td>
+<td>A binary executed after its last link was removed</td>
+<td>Same; see <a href="../tetragon/#policies">Tetragon</a></td>
+</tr>
+<tr>
 <td><code>NodeSshLogin</code></td>
 <td>An accepted SSH login on a node</td>
 <td>Nothing routine logs in after provisioning</td>
