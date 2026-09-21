@@ -2524,6 +2524,10 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 <td>Every templated value through <code>toJson</code></td>
 <td>A password containing <code>:</code>, <code>#</code> or a quote cannot break the rendered file</td>
 </tr>
+<tr>
+<td><code>externalUrl</code> on both <code>prometheusSpec</code> and <code>alertmanagerSpec</code> in <code>application.yaml</code></td>
+<td>The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside the cluster can open</td>
+</tr>
 </tbody>
 </table>
 <p>The three values come from <code>kv/monitoring/smtp</code> (<code>username</code>, <code>password</code>,
