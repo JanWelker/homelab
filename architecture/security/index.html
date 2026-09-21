@@ -2407,6 +2407,11 @@ is unrestricted. See <a href="../../platform/security-policies/">Security Polici
 carries <code>enforce</code> at the level it demonstrably needs and <code>warn</code>/<code>audit</code> at a
 stricter one, so violations are visible without breaking what runs: measure
 first, enforce second.</p>
+<p><strong>Image references are checked at admission.</strong> An untagged or <code>latest</code> image
+is refused; a registry outside the allowlist is recorded and warned about but
+admitted. Signatures are not verified: few of the upstreams sign, so a
+verifier would exempt nearly everything. See
+<a href="../../platform/security-policies/#admission-policies">Security Policies</a>.</p>
 <p><strong>Both Gateways admit routes from every namespace</strong>
 (<code>allowedRoutes.namespaces.from: All</code>). Any namespace can attach an <code>HTTPRoute</code>
 to <code>infra-gateway</code> and claim a hostname under <code>*.infra.k8s.wlkr.ch</code>.</p>
@@ -2463,7 +2468,8 @@ so putting it behind Authentik would be a loop.</p>
    egress — the larger and more breakable half.</li>
 <li>Narrow <code>sourceRepos</code> on the AppProjects to this repository and the Helm
    repositories actually in use.</li>
-<li>Restrict <code>allowedRoutes</code> on <code>infra-gateway</code> to the platform namespaces.</li>
+<li>Restrict <code>allowedRoutes</code> on <code>infra-gateway</code> to the platform namespaces, and
+   promote the registry allowlist to <code>Deny</code>.</li>
 <li>Add a second Alertmanager receiver on a different transport, so a failure of
    the mail path is not itself unmonitored.</li>
 <li>Move etcd encryption to a KMS provider, removing the static
