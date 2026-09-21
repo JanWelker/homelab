@@ -120,6 +120,14 @@ spec:
             ignoreUnfixed: false
             severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 
+            # Mounted into every scan job as trivy.yaml. The version check
+            # and the telemetry share one request to check.trivy.dev, so
+            # both are off; see docs/platform/trivy-operator.md.
+            configFile:
+              scan:
+                skip-version-check: true
+                disable-telemetry: true
+
             # CVSS and the package path, so a report can be triaged without
             # going back to the registry for context. Description and Links
             # are deliberately absent -- they were 73% of the payload and
