@@ -2691,6 +2691,10 @@ would qualify but change what a namespace file says, so they stay.</p>
 <td>Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits <code>authentik</code> instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic</td>
 </tr>
 <tr>
+<td>Ingress from each pod in the cluster that calls the namespace's public name</td>
+<td>A caller inside the cluster keeps its own identity through the Gateway, so <code>ingress</code> does not cover it, and the Gateway's proxy answers the check with a <code>403</code> that audit mode never sees. The OIDC clients of Authentik are the case today</td>
+</tr>
+<tr>
 <td>Ingress from <code>monitoring</code> on the scraped port, <code>GET /metrics</code></td>
 <td>The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else</td>
 </tr>
@@ -2839,6 +2843,10 @@ it alone, until the agent restarts:</p>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Audit mode stops at the proxy</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">The token change is not retroactive</p>
 <p>The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.</p>
