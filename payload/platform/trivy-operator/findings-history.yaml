@@ -1,0 +1,191 @@
+---
+# One JSON line per namespace and per compliance framework, daily, to Loki,
+# which keeps this stream for a year. See docs/platform/trivy-operator.md.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: findings-history
+  namespace: trivy-system
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: trivy-findings-history
+rules:
+  - apiGroups: ["aquasecurity.github.io"]
+    resources:
+      - vulnerabilityreports
+      - exposedsecretreports
+      - configauditreports
+      - rbacassessmentreports
+      - clusterrbacassessmentreports
+      - infraassessmentreports
+      - clustercompliancereports
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: trivy-findings-history
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trivy-findings-history
+subjects:
+  - kind: ServiceAccount
+    name: findings-history
+    namespace: trivy-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: findings-history
+  namespace: trivy-system
+data:
+  history.py: |
+    """Summarise every Trivy report as JSON lines on stdout.
+
+    Counts come from the reports, not from Prometheus: a report is the
+    finding, and an image is counted once per namespace however many
+    containers run it.
+    """
+    import json
+    import os
+    import ssl
+    import urllib.parse
+    import urllib.request
+
+    SA = "/var/run/secrets/kubernetes.io/serviceaccount"
+    API = os.environ.get("API_URL") or (
+        f"https://{os.environ['KUBERNETES_SERVICE_HOST']}"
+        f":{os.environ['KUBERNETES_SERVICE_PORT']}"
+    )
+    GROUP = "/apis/aquasecurity.github.io/v1alpha1"
+    SEVERITIES = ("critical", "high", "medium", "low", "unknown")
+
+
+    def items(resource):
+        """Every object of one report kind, one page at a time."""
+        headers = {}
+        context = None
+        if os.path.exists(f"{SA}/token"):
+            with open(f"{SA}/token", encoding="utf-8") as handle:
+                headers["Authorization"] = f"Bearer {handle.read()}"
+            context = ssl.create_default_context(cafile=f"{SA}/ca.crt")
+        cont = ""
+        while True:
+            query = urllib.parse.urlencode({"limit": 20, "continue": cont})
+            request = urllib.request.Request(
+                f"{API}{GROUP}/{resource}?{query}", headers=headers
+            )
+            with urllib.request.urlopen(request, context=context) as response:
+                page = json.load(response)
+            yield from page["items"]
+            cont = page["metadata"].get("continue", "")
+            if not cont:
+                return
+
+
+    def emit(**fields):
+        print(json.dumps(fields, sort_keys=True), flush=True)
+
+
+    def add(total, summary):
+        for severity in SEVERITIES:
+            total[severity] += summary.get(f"{severity}Count", 0)
+
+
+    def per_image(resource, kind):
+        """Image-level reports: one count per image digest per namespace."""
+        seen = {}
+        for item in items(resource):
+            namespace = item["metadata"]["namespace"]
+            artifact = item["report"]["artifact"]
+            key = artifact.get("digest") or f"{artifact['repository']}:{artifact.get('tag')}"
+            seen.setdefault(namespace, {})[key] = item["report"]["summary"]
+        for namespace, images in sorted(seen.items()):
+            total = dict.fromkeys(SEVERITIES, 0)
+            for summary in images.values():
+                add(total, summary)
+            emit(kind=kind, namespace=namespace, images=len(images), **total)
+
+
+    def per_resource(resource, kind):
+        """Workload-level reports: one count per report per namespace."""
+        totals = {}
+        for item in items(resource):
+            namespace = item["metadata"].get("namespace", "")
+            total = totals.setdefault(namespace, dict.fromkeys(SEVERITIES, 0))
+            add(total, item["report"]["summary"])
+        for namespace, total in sorted(totals.items()):
+            emit(kind=kind, namespace=namespace, **total)
+
+
+    per_image("vulnerabilityreports", "vulnerabilities")
+    per_image("exposedsecretreports", "exposedsecrets")
+    per_resource("configauditreports", "configaudit")
+    per_resource("rbacassessmentreports", "rbac")
+    per_resource("clusterrbacassessmentreports", "clusterrbac")
+    per_resource("infraassessmentreports", "infra")
+    for item in items("clustercompliancereports"):
+        summary = item.get("status", {}).get("summary", {})
+        emit(
+            kind="compliance",
+            framework=item["metadata"]["name"],
+            title=item["spec"]["compliance"]["title"],
+            passed=summary.get("passCount", 0),
+            failed=summary.get("failCount", 0),
+        )
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: findings-history
+  namespace: trivy-system
+spec:
+  # After the 06:00 compliance run, before anyone reads the dashboard.
+  schedule: "30 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: findings-history
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: findings-history
+              image: docker.io/library/python:3.14-slim@sha256:caaf356f40667c496d405780745b9ac25771c189a51dfcc42430d531ea09f8a2
+              command: ["python3", "/scripts/history.py"]
+              env:
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: findings-history

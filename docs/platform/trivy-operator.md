@@ -19,7 +19,7 @@ this page is the operator itself.
 | If it is down | Reports expire after 24h and are not rebuilt; `TrivyContainerNotScanned` fires for every container |
 | Health check | `kubectl -n trivy-system get pods,jobs`, then the reconciliation below |
 | Dashboard | [Trivy Operator](https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview) |
-| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml` and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
+| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` CronJob and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
 
 | Scanner | Produces | Answers |
 | --- | --- | --- |
@@ -52,11 +52,25 @@ The values in `application.yaml` that are not defaults:
 | Namespace `enforce: privileged`, `audit`/`warn: restricted` | node-collector hostPath-mounts `/var/lib/etcd`, `/var/lib/kubelet`, `/etc/kubernetes` and `/etc/cni/net.d`, which `baseline` forbids. Scan jobs themselves drop all capabilities and run read-only |
 | `logDevMode: false` | Its `V(1)` lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding. Turn it on to debug, then off |
 
-### Alerting on the gap
+### Alerting
 
-`TrivyContainerNotScanned` in `prometheusrule.yaml` compares every running
-container against the containers that have a `VulnerabilityReport` and names
-the difference:
+Five rules in `prometheusrule.yaml`. Reports expire and are rebuilt every
+24h, so a "new" finding is one absent from the reports two days ago rather
+than from the previous scrape, and every rule waits longer than a rebuild.
+
+| Alert | Fires when | Why this shape |
+| --- | --- | --- |
+| `TrivyContainerNotScanned` | A running container has had no `VulnerabilityReport` for 2h | A rejected report is never written, so it looks identical to a clean one; only reconciling against what runs finds it |
+| `TrivyExposedSecretNew` | A secret finding, keyed by container, rule and path, was not reported two days ago | The known findings (snake-oil keys, a vendored SDK's public test key) never clear, so an absolute rule would fire forever |
+| `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have two days ago | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](../operations/vulnerabilities.md#what-is-load-bearing); what matters is a new one |
+| `TrivyConfigAuditCritical` | Any workload fails a critical config-audit check for 2h | Nothing does today, so the rule is absolute |
+| `TrivyComplianceRegression` | A framework has more failing controls than a day ago, for 12h | Compliance is recomputed every six hours; two runs above yesterday is drift, not a rebuild |
+
+The two "new" rules also require the operator to have been reporting two days
+ago, so a fresh cluster does not page on every existing finding.
+
+`TrivyContainerNotScanned` compares every running container against the
+containers that have a `VulnerabilityReport` and names the difference:
 
 ```promql
 count by (namespace, container) (
@@ -81,6 +95,21 @@ before summing, and workload panels join ReplicaSets against
 `kube_replicaset_spec_replicas > 0`, so a finding counts once per image and a
 superseded revision drops out. The "Worst workloads" table stays per container
 on purpose: it answers where a finding runs.
+
+### History
+
+Reports live 24h and Prometheus keeps ten days, so neither can answer whether a
+count went up over a quarter. The `findings-history` CronJob in
+`findings-history.yaml` lists every report kind once a day and prints one JSON
+line per namespace, and per compliance framework, to stdout; Alloy ships it
+like any container log and Loki keeps that one stream for a year
+(`retention_stream` in `loki/application.yaml`). The dashboard's last row
+reads it. Images are counted once per digest per namespace, the same rule the
+dashboard applies.
+
+```logql
+{namespace="trivy-system", container="findings-history"} | json | kind="vulnerabilities" | namespace="argocd"
+```
 
 ## Usage
 
