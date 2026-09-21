@@ -73,7 +73,7 @@ Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 | `openbao` | The Gateway (UI), Prometheus and ESO, on `8200` |
 | `cert-manager` | Prometheus; the webhook is called by the API server from the node |
 | `external-secrets` | Prometheus; the webhook is called by the API server from the node |
-| `monitoring` | The Gateway (Grafana); kured on `9090`; the Authentik outpost on `9090` and `9093`; the Ceph mgr on `9090` and `3000` |
+| `monitoring` | The Gateway (Grafana); kured on `9090`; the Authentik outpost on `9090` and `9093`; the Ceph mgr on `9090` and `3000`; Loki's ruler on `9093` |
 | `external-dns` | Prometheus |
 | `kubelet-csr-approver` | Prometheus |
 | `kured` | Prometheus |

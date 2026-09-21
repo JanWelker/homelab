@@ -1,0 +1,154 @@
+---
+# Alerts evaluated by Loki's ruler over the audit log and the node journal.
+# Same format as a PrometheusRule group, with LogQL. See docs/platform/logging.md
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-alert-rules
+  namespace: logging
+  labels:
+    loki_rule: "1"
+  annotations:
+    # The ruler reads <directory>/<tenant>/; with auth off the tenant is "fake".
+    k8s-sidecar-target-directory: fake
+data:
+  security.yaml: |
+    groups:
+      - name: kubernetes-audit
+        rules:
+          - alert: KubernetesAuditExecIntoPod
+            expr: |
+              sum by (user_username, objectRef_namespace, objectRef_name) (
+                count_over_time(
+                  {job="kubernetes-audit", verb="create"}
+                    | json
+                    | objectRef_subresource=~"exec|attach"
+                    | responseStatus_code < 400
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.user_username }} opened a shell in {{ $labels.objectRef_namespace }}/{{ $labels.objectRef_name }}
+              description: >-
+                An exec or attach on pod {{ $labels.objectRef_name }} in
+                {{ $labels.objectRef_namespace }} by {{ $labels.user_username }}.
+                The command is in the audit log at RequestResponse level.
+          - alert: KubernetesAuditSecretReadByUser
+            expr: |
+              sum by (user_username, objectRef_namespace) (
+                count_over_time(
+                  {job="kubernetes-audit", verb=~"get|list|watch"}
+                    | json
+                    | objectRef_resource="secrets"
+                    | user_username !~ "system:.*"
+                    | responseStatus_code < 400
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.user_username }} read Secrets in {{ $labels.objectRef_namespace }}
+              description: >-
+                A Secret read by a user rather than a component. Every
+                controller here reads through a ServiceAccount, so this is a
+                person with a kubeconfig, or someone holding one.
+          - alert: KubernetesAuditRbacBindingChanged
+            expr: |
+              sum by (user_username, objectRef_resource, objectRef_name) (
+                count_over_time(
+                  {job="kubernetes-audit", verb=~"create|update|patch|delete"}
+                    | json
+                    | objectRef_resource=~"clusterrolebindings|clusterroles"
+                    | user_username != "system:serviceaccount:argocd:argocd-application-controller"
+                    | user_username !~ "system:serviceaccount:kube-system:.*"
+                    | responseStatus_code < 400
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.objectRef_resource }}/{{ $labels.objectRef_name }} changed by {{ $labels.user_username }}
+              description: >-
+                Cluster-scoped RBAC changed outside an ArgoCD sync. Argo CD and
+                the control plane's own controllers are the only writers here;
+                namespaced RoleBindings are left out because CloudNativePG
+                reconciles one per database continuously.
+          - alert: KubernetesAuditForbiddenBurst
+            expr: |
+              sum by (user_username) (
+                count_over_time(
+                  {job="kubernetes-audit"}
+                    | json
+                    | responseStatus_code = 403
+                  [10m]
+                )
+              ) > 10
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.user_username }} was refused {{ $value }} times in ten minutes
+              description: >-
+                A burst of 403s from one identity is what probing RBAC from a
+                compromised pod looks like. A single typo is not.
+          - alert: KubernetesAuditAnonymousRequest
+            expr: |
+              sum by (requestURI) (
+                count_over_time(
+                  {job="kubernetes-audit"}
+                    | json
+                    | user_username="system:anonymous"
+                    | responseStatus_code < 400
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                Anonymous request succeeded against {{ $labels.requestURI }}
+              description: >-
+                The health endpoints are the only anonymous paths, and the
+                audit policy drops them. Anything else anonymous that succeeded
+                should not have.
+      - name: systemd-journal
+        rules:
+          - alert: NodeSshLogin
+            expr: |
+              sum by (node) (
+                count_over_time(
+                  {job="systemd-journal", unit=~"sshd@.*"} |= "Accepted " [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                SSH login on {{ $labels.node }}
+              description: >-
+                Nothing routine logs in to a node: Ansible only at provisioning,
+                Kured and updates never. The journal line names the key.
+          - alert: NodeSshAuthFailures
+            expr: |
+              sum by (node) (
+                count_over_time(
+                  {job="systemd-journal", unit=~"sshd@.*"}
+                    |~ "Failed |Invalid user|authentication failure"
+                  [10m]
+                )
+              ) > 5
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $value }} failed SSH attempts on {{ $labels.node }}
+              description: >-
+                Password authentication is off, so repeated failures are a
+                scan or a wrong key being retried, not a typo.
