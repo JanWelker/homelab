@@ -94,6 +94,10 @@ these are the events only a log carries.
 | `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
 | `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
 | `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by anything but the External Secrets Operator | [OpenBao's audit device](openbao.md#audit-devices) writes to stdout; ESO is the only day-to-day reader |
+| `TetragonSudoInContainer` | `sudo` executed in a container | Only the exec event carries the binary and its parent |
+| `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec | The `binary_properties` field exists only in the exec event |
+| `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor | Same |
+| `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](tetragon.md#policies) |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
 | `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
 

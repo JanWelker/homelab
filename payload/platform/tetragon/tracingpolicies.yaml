@@ -81,3 +81,373 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+---
+# What fires an alert: a container executing a binary that was not in its
+# image. A dropped binary has to live somewhere writable, and the image layer
+# is not, so this watches the writable paths every container has plus the
+# emptyDirs this cluster mounts binaries into. See docs/platform/tetragon.md
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: exec-from-writable-path
+spec:
+  kprobes:
+    - call: security_bprm_check
+      syscall: false
+      args:
+        - index: 0
+          type: linux_binprm
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /tmp/
+                - /var/tmp/
+                - /dev/shm/
+                - /run/
+                - /var/run/
+                - /shared/
+                - /controller/
+                - /plugins/
+            # The three binaries an init container legitimately copies into
+            # an emptyDir: Argo CD's dex, CloudNativePG's manager and
+            # Velero's AWS plugin.
+            - index: 0
+              operator: NotEqual
+              values:
+                - /shared/argocd-dex
+                - /controller/manager
+                - /plugins/velero-plugin-for-aws
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# What fires an alert: a container raising its privileges. From the upstream
+# policy library's privileges-raise.yaml, minus capset, which every container
+# start performs, and restricted to containers.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: privileges-raise
+spec:
+  kprobes:
+    # An unprivileged process creating a user namespace is root inside it;
+    # most kernel privilege-escalation chains start here.
+    - call: create_user_ns
+      syscall: false
+      args:
+        - index: 0
+          type: nop
+      selectors:
+        - matchCapabilities:
+            - type: Effective
+              operator: NotIn
+              values:
+                - CAP_SYS_ADMIN
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    # The setuid family, when the target is root.
+    - call: __sys_setuid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setgid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setreuid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setregid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setresuid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+        - index: 2
+          type: int
+      selectors:
+        # The effective id is the one that matters.
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setresgid
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+        - index: 2
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# What fires an alert: a container loading a BPF program. Cilium and Tetragon
+# are the only things here that should, and the alert leaves them out.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: bpf-program-load
+spec:
+  kprobes:
+    - call: bpf_check
+      syscall: false
+      args:
+        - index: 1
+          type: bpf_attr
+      selectors:
+        - matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# What fires an alert: a container loading a kernel module, by name through
+# the autoloader or as a file. From the upstream policy library's modules.yaml,
+# restricted to containers: the host loads its own at boot.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: kernel-module-load
+spec:
+  kprobes:
+    - call: security_kernel_module_request
+      syscall: false
+      return: true
+      args:
+        - index: 0
+          type: string
+      returnArg:
+        index: 0
+        type: int
+      selectors:
+        - matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: security_kernel_read_file
+      syscall: false
+      return: true
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          # 2 is READING_MODULE
+          type: int
+      returnArg:
+        index: 0
+        type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "2"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# What fires an alert: a container mapping a file from a writable path as
+# executable, which is how a dropped shared library gets loaded. Same paths
+# and exceptions as exec-from-writable-path; the kernel maps a binary the
+# same way before it runs it.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: library-from-writable-path
+spec:
+  kprobes:
+    - call: security_mmap_file
+      syscall: false
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          # PROT_READ is 1, PROT_WRITE 2, PROT_EXEC 4
+          type: uint32
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /tmp/
+                - /var/tmp/
+                - /dev/shm/
+                - /run/
+                - /var/run/
+                - /shared/
+                - /controller/
+                - /plugins/
+            - index: 0
+              operator: NotEqual
+              values:
+                - /shared/argocd-dex
+                - /controller/manager
+                - /plugins/velero-plugin-for-aws
+            - index: 1
+              operator: Mask
+              values:
+                - "4"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# A record, not an alert: every TCP connection a container opens to an
+# address outside the pod, service and LAN ranges. Too much of it is routine
+# (ACME, S3, the Trivy database, Home Assistant) for an alert; the dashboard
+# and Loki show who talks out. The ranges are the kubeadm subnets and the
+# site network the nodes sit in.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: egress-outside-cluster
+spec:
+  kprobes:
+    - call: tcp_connect
+      syscall: false
+      args:
+        - index: 0
+          type: sock
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Family
+              values:
+                - AF_INET
+            - index: 0
+              operator: NotDAddr
+              values:
+                - 127.0.0.1
+                - 10.244.0.0/16
+                - 10.96.0.0/12
+                - 10.9.0.0/16
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

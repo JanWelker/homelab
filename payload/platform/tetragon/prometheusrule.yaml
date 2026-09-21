@@ -28,6 +28,89 @@ spec:
               one of the control-plane binaries. The event, with the path and
               arguments, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
+        - alert: TetragonExecFromWritablePath
+          expr: |
+            sum by (namespace, pod, binary) (
+              increase(tetragon_policy_events_total{policy="exec-from-writable-path"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.namespace }}/{{ $labels.pod }} ran a binary from a writable path
+            description: >-
+              A process in {{ $labels.namespace }}/{{ $labels.pod }} executed
+              a file under /tmp, /var/tmp, /dev/shm, /run or one of the
+              emptyDirs that carry binaries here, and it is not one an init
+              container is known to put there. Nothing in an image lives on
+              those paths, so the binary was written after the container
+              started. The event, with the path and the parent process, is in
+              Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="exec-from-writable-path".
+        - alert: TetragonPrivilegesRaised
+          expr: |
+            sum by (namespace, pod, binary, hook) (
+              increase(tetragon_policy_events_total{policy="privileges-raise", binary!~".*/runc"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} raised its privileges
+            description: >-
+              {{ $labels.hook }}: a process in {{ $labels.namespace }}/{{ $labels.pod }}
+              either became root through the setuid family or created a user
+              namespace without CAP_SYS_ADMIN. The container runtime does the
+              first on every start and is filtered by binary; anything else is
+              an entrypoint dropping to root the wrong way round, or an
+              exploit. Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="privileges-raise".
+        - alert: TetragonBpfProgramLoaded
+          expr: |
+            sum by (namespace, pod, binary) (
+              increase(tetragon_policy_events_total{policy="bpf-program-load", namespace!~"cilium|kube-system"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} loaded a BPF program
+            description: >-
+              Cilium and Tetragon are the only BPF loaders here and are left
+              out. A program loaded from anywhere else sees every packet and
+              syscall on the node. Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="bpf-program-load".
+        - alert: TetragonKernelModuleLoaded
+          expr: |
+            sum by (namespace, pod, binary, hook) (
+              increase(tetragon_policy_events_total{policy="kernel-module-load", namespace!="rook-ceph"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} loaded a kernel module
+            description: >-
+              {{ $labels.hook }}: a container loaded a kernel module or asked
+              the autoloader for one. Rook's CSI plugin loads rbd after a
+              node boot and is left out; nothing else here should. Loki:
+              {container="export-stdout"} | json |
+              process_kprobe_policy_name="kernel-module-load".
+        - alert: TetragonLibraryFromWritablePath
+          expr: |
+            sum by (namespace, pod, binary) (
+              increase(tetragon_policy_events_total{policy="library-from-writable-path"}[10m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} mapped executable code from a writable path
+            description: >-
+              A file under /tmp, /var/tmp, /dev/shm, /run or a binary-carrying
+              emptyDir was mapped with PROT_EXEC: a shared library that was not
+              in the image. Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="library-from-writable-path".
         - alert: TetragonPolicyNotLoaded
           expr: |
             tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
