@@ -122,7 +122,9 @@ spec:
   description: >-
     Argo CD manages every workload through the API server and never dials a
     workload pod. The server, both controllers, the notifications controller
-    and dex have a Kubernetes client; the repo-server and Redis do not.
+    and dex have a Kubernetes client, and so does the chart's Redis secret
+    init Job, which writes the Redis password on every sync; the repo-server
+    and Redis itself do not.
   endpointSelector:
     matchExpressions:
       - key: app.kubernetes.io/name
@@ -133,6 +135,7 @@ spec:
           - argocd-applicationset-controller
           - argocd-notifications-controller
           - argocd-dex-server
+          - argocd-redis-secret-init
   egress:
     - toEntities:
         - kube-apiserver
