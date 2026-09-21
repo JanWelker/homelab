@@ -8,6 +8,9 @@ metadata:
     homelab.wlkr.ch/stage: 10-agents
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
+    # The TracingPolicy CRD defaults maxData, resolve, returnCopy and
+    # followChildren on every hook; a client-side diff reads those as drift.
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
