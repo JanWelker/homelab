@@ -2614,6 +2614,11 @@ these are the events only a log carries.</p>
 <td>The audit policy drops the health endpoints, the only legitimate anonymous paths</td>
 </tr>
 <tr>
+<td><code>OpenBaoSecretReadOutsideEso</code></td>
+<td>A <code>kv/data/</code> read from OpenBao by anything but the External Secrets Operator</td>
+<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader</td>
+</tr>
+<tr>
 <td><code>NodeSshLogin</code></td>
 <td>An accepted SSH login on a node</td>
 <td>Nothing routine logs in after provisioning</td>
