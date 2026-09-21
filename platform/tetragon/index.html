@@ -2445,6 +2445,12 @@ what it is without a lookup here.</p>
 <td>Yes: <code>TetragonDnsOutsideCluster</code></td>
 </tr>
 <tr>
+<td><code>mount-in-container</code></td>
+<td><code>security_sb_mount</code></td>
+<td>Any mount from a container except by <code>runc</code>; the alert leaves out <code>rook-ceph</code>, <code>cilium</code> and <code>kube-system</code>, which mount by design</td>
+<td>Yes: <code>TetragonMountInContainer</code></td>
+</tr>
+<tr>
 <td><code>egress-outside-cluster</code></td>
 <td><code>security_socket_connect</code></td>
 <td>An IPv4 <code>connect()</code>, TCP or UDP, from a container to anything outside the pod, service and site ranges</td>
