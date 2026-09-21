@@ -43,6 +43,14 @@ spec:
             grafana.ini:
               server:
                 root_url: https://monitoring.infra.k8s.wlkr.ch
+              # Nothing leaves for Grafana Labs or Gravatar; see
+              # docs/platform/monitoring.md
+              analytics:
+                reporting_enabled: false
+                check_for_updates: false
+                check_for_plugin_updates: false
+              security:
+                disable_gravatar: true
               auth:
                 # Admin stays reachable via the API, see docs/platform/authentik.md
                 disable_login_form: true
