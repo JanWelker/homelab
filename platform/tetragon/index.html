@@ -2439,7 +2439,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>process-creds-changed</code></td>
 <td><code>commit_creds</code></td>
-<td>A container process that gained a dangerous capability since its exec, or moved into another mount, pid, network or user namespace. The hook runs on every execve and fork; the two selectors keep the exploit signal and drop the rest</td>
+<td>A container process that moved into another mount, pid, network or user namespace after its exec, except <code>runc</code>. The hook runs on every execve and fork; the selector keeps the escape signal. Upstream's <code>matchCapabilityChanges</code> is not used: it matches a change in either direction, so every entrypoint that drops root fires it</td>
 <td>Yes: <code>TetragonCredentialsEscalated</code></td>
 </tr>
 <tr>
