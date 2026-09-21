@@ -28,14 +28,16 @@ spec:
             severity: warning
           annotations:
             summary: >-
-              {{ $labels.binary }} read cluster key material
+              {{ $labels.binary }} touched key material or a login file
             description: >-
               {{ $labels.binary }}{{ if $labels.pod }} in pod
               {{ $labels.namespace }}/{{ $labels.pod }}{{ else }} on the host{{ end }}
               opened a file under the control plane's PKI, the encryption
-              config, etcd's data or the kubelet's certificates, and is not
-              one of the control-plane binaries. The event, with the path and
-              arguments, is in Loki: {container="export-stdout"} | json |
+              config, etcd's data or the kubelet's certificates and is not a
+              control-plane binary, or wrote to passwd, shadow, group,
+              sudoers, ld.so.preload, a cron or sudoers drop-in or root's
+              ssh directory. The event, with the path and arguments, is in
+              Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
         - alert: TetragonCredentialsEscalated
           expr: |
