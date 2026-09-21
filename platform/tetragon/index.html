@@ -2439,6 +2439,12 @@ what it is without a lookup here.</p>
 <td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
+<td><code>dns-outside-cluster</code></td>
+<td><code>ip_output</code></td>
+<td>A port 53 packet from a container to anything but the kube-dns ClusterIP; the alert leaves out <code>kube-system</code>, where CoreDNS forwards upstream</td>
+<td>Yes: <code>TetragonDnsOutsideCluster</code></td>
+</tr>
+<tr>
 <td><code>egress-outside-cluster</code></td>
 <td><code>security_socket_connect</code></td>
 <td>An IPv4 <code>connect()</code>, TCP or UDP, from a container to anything outside the pod, service and site ranges</td>
