@@ -2456,9 +2456,9 @@ what it is without a lookup here.</p>
 </tr>
 <tr>
 <td><code>privileges-raise</code></td>
-<td><code>create_user_ns</code>, the <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
-<td>A user namespace created without <code>CAP_SYS_ADMIN</code>; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (<code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code>. <code>runc</code>, which sets the ids on every container start, and the redis-ha pods, whose busybox calls setgid on every applet, are dropped in the kernel with <code>matchBinaries</code> and a <code>podSelector</code></td>
-<td>Yes: <code>TetragonUserNamespaceCreated</code></td>
+<td>The <code>__sys_set*uid</code> and <code>__sys_set*gid</code> family</td>
+<td>Any setuid or setgid to root inside a container. A record: root re-asserting root is routine (<code>logrotate</code>), and a setuid binary that actually raises privileges is <code>TetragonPrivilegedExec</code>. <code>runc</code>, which sets the ids on every container start, and the redis-ha pods, whose busybox calls setgid on every applet, are dropped in the kernel with <code>matchBinaries</code> and a <code>podSelector</code></td>
+<td>No</td>
 </tr>
 <tr>
 <td><code>bpf-program-load</code></td>
@@ -2493,8 +2493,8 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>kill-unprivileged-user-namespace</code></td>
 <td><code>create_user_ns</code></td>
-<td>The same event as above, with <code>Sigkill</code>. The only policy in <code>enforce</code> mode</td>
-<td>Through <code>TetragonUserNamespaceCreated</code></td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code> in a container, killed. The only policy in <code>enforce</code> mode</td>
+<td>Yes: <code>TetragonUserNamespaceCreated</code></td>
 </tr>
 <tr>
 <td><code>egress-outside-cluster</code></td>
@@ -2550,6 +2550,14 @@ not stop an operation already in flight. A policy without <code>policy-mode</cod
 loads in monitor mode and its kill actions are elided, so an enforcing
 policy has to say so.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">A <code>podSelector</code> misses a pod's first seconds</p>
+<p>The policy filter learns pods from the API and maps their cgroups; a
+process that runs the moment a container starts is not yet selected,
+and the test pod's <code>unshare</code> went unrecorded by the filtered policy
+while the unfiltered one killed it. Put the hook an alert depends on in
+a policy without a <code>podSelector</code>, and do exclusions in PromQL.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">A first hit is a new series, and <code>increase()</code> of one sample is zero</p>
 <p><code>tetragon_policy_events_total</code> has a pod label, so the first hit from a
