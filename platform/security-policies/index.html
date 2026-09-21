@@ -2664,11 +2664,15 @@ application fault. Cilium's <code>fromEntities</code> names them: <code>ingress<
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h4 id="cluster-wide-rules">Cluster-wide rules<a class="headerlink" href="#cluster-wide-rules" title="Permanent link">&para;</a></h4>
 <p>A rule that is word-for-word the same in every namespace file is lifted
-into <code>cluster-wide.yaml</code>, with <code>endpointSelector: {}</code> and
-<code>enableDefaultDeny</code> off in both directions: without that, a cluster-wide
-egress rule puts every pod in a namespace without policies into egress
-default-deny. DNS is the first; the intra-namespace and node-probe rules
-would qualify but change what a namespace file says, so they stay.</p>
+into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace and
+with <code>enableDefaultDeny</code> off in both directions. The selector is not <code>{}</code>
+because that also takes the Gateway's <code>reserved:ingress</code> endpoint, and any
+rule on it makes the Gateway's Envoy answer <code>403 Access denied</code> to every
+caller from inside the cluster. Default deny is off because a cluster-wide
+egress rule would otherwise put every pod in a namespace without policies
+into egress default-deny. DNS is the only rule lifted; the intra-namespace
+and node-probe rules would qualify but change what a namespace file says,
+so they stay.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -2689,10 +2693,6 @@ would qualify but change what a namespace file says, so they stay.</p>
 <tr>
 <td>Ingress from <code>ingress</code></td>
 <td>Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits <code>authentik</code> instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic</td>
-</tr>
-<tr>
-<td>Ingress from each pod in the cluster that calls the namespace's public name</td>
-<td>A caller inside the cluster keeps its own identity through the Gateway, so <code>ingress</code> does not cover it, and the Gateway's proxy answers the check with a <code>403</code> that audit mode never sees. The OIDC clients of Authentik are the case today</td>
 </tr>
 <tr>
 <td>Ingress from <code>monitoring</code> on the scraped port, <code>GET /metrics</code></td>
@@ -2845,7 +2845,7 @@ it alone, until the agent restarts:</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Audit mode stops at the proxy</p>
-<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>.</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>, and check <code>cilium-dbg endpoint list</code> for a policy on the <code>reserved:ingress</code> endpoint.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">The token change is not retroactive</p>
