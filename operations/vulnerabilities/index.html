@@ -2349,6 +2349,26 @@ and nothing here can speed it up; Renovate takes the release when it exists.</p>
 <td><strong>Scanner artifact.</strong> The binary carries a Go pseudo-version, which sorts below every real tag.</td>
 </tr>
 <tr>
+<td><code>library/nextcloud</code> 34.0.4</td>
+<td>2887 findings, 2886 in Debian packages with no fix; the criticals are <code>libopenexr</code> and <code>libxml2</code>. One fixable, a LOW in the bundled <code>webauthn-lib</code></td>
+<td><strong>Nothing to do here.</strong> The base is current Debian 13; every fix waits on Debian. <code>webauthn-lib</code> is pinned <code>^4.9.1</code> in nextcloud/3rdparty on <code>master</code> too. The report only exists because of the per-namespace policy in homelab-apps.</td>
+</tr>
+<tr>
+<td><code>goauthentik/server</code> 2026.8.3</td>
+<td><code>anyio</code> 4.14.1 (critical, IDNA TLS spoofing), <code>msgpack</code>, <code>setuptools</code>; <code>libxml2</code> with no fix</td>
+<td><strong>Waiting on release.</strong> <code>uv.lock</code> on <code>main</code> already has anyio 4.14.2, msgpack 1.2.2 and setuptools 84. Authentik releases monthly and its bot bumps these; nothing to file.</td>
+</tr>
+<tr>
+<td><code>xperimental/nextcloud-exporter</code> 0.9.1</td>
+<td>Go stdlib, 28 advisories, 7 HIGH, in a release built with Go 1.26.1</td>
+<td><strong>Filed.</strong> No bot bumps the Dockerfile's builder tag; the project's own history is a "update Go and release" cycle. <a href="https://github.com/xperimental/nextcloud-exporter/issues/143">xperimental/nextcloud-exporter#143</a>.</td>
+</tr>
+<tr>
+<td><code>prometheus-config-reloader</code> v0.91.0 (Alloy's sidecar)</td>
+<td>Go stdlib, 4 HIGH</td>
+<td><strong>Waiting on chart release.</strong> The Alloy chart pins it; <code>main</code> already carries v0.94.0. Renovate takes the next chart.</td>
+</tr>
+<tr>
 <td>Everything else</td>
 <td><code>google.golang.org/grpc</code> one or two patches behind, Go stdlib one patch behind</td>
 <td><strong>Routine churn.</strong> Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding.</td>
@@ -2461,8 +2481,16 @@ empty, whatever the containers set. Where they land:</p>
 <td><strong><code>KSV-0118</code> only, fixed.</strong> Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's.</td>
 </tr>
 <tr>
-<td>Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao</td>
-<td><strong>Read-only root not attempted.</strong> Each writes somewhere under <code>/</code> at runtime; the chart or image decides where, and guessing costs an outage. Also #663.</td>
+<td>Authentik</td>
+<td><strong>Fixed</strong> (#792): non-root, no capabilities, no escalation, runtime seccomp, at pod and container level. Read-only root not attempted, the image writes under <code>/media</code> and <code>/templates</code>.</td>
+</tr>
+<tr>
+<td>Nextcloud, Home Assistant</td>
+<td><strong>Seccomp only</strong> (homelab-apps#30). Both images start as root by design, Apache dropping to <code>www-data</code> and Home Assistant under s6, so <code>runAsNonRoot</code> and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp.</td>
+</tr>
+<tr>
+<td>Grafana's sidecars, Velero, OpenBao</td>
+<td><strong>Read-only root not attempted.</strong> Each writes somewhere under <code>/</code> at runtime; the chart or image decides where, and guessing costs an outage. #663.</td>
 </tr>
 </tbody>
 </table>
