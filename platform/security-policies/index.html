@@ -2707,6 +2707,10 @@ so they stay.</p>
 <td>A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling <code>auth.k8s.wlkr.ch</code> is classified <code>world</code>, not <code>ingress</code></td>
 </tr>
 <tr>
+<td>Egress to the backend pod as well, when the name is one the Gateway serves</td>
+<td>The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers <code>403 Access denied</code> itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules</td>
+</tr>
+<tr>
 <td>HTTP rules on plaintext ports, ingress side only</td>
 <td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them</td>
 </tr>
@@ -2845,7 +2849,7 @@ it alone, until the agent restarts:</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Audit mode stops at the proxy</p>
-<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>, and check <code>cilium-dbg endpoint list</code> for a policy on the <code>reserved:ingress</code> endpoint.</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">The token change is not retroactive</p>
