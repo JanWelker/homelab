@@ -89,7 +89,8 @@ spec:
   description: >-
     The Hubble UI sits behind the Authentik outpost, so its requests come
     from the authentik namespace, not from the Gateway. Its backend talks
-    only to Relay.
+    to Relay for the flows and to the API server for the namespace, pod
+    and service lists it decorates them with.
   endpointSelector:
     matchLabels:
       k8s-app: hubble-ui
@@ -117,6 +118,8 @@ spec:
         - ports:
             - port: "4245"
               protocol: TCP
+    - toEntities:
+        - kube-apiserver
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
