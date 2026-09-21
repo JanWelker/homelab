@@ -29,6 +29,10 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           auth_enabled: false
+          # Loki otherwise reports usage to stats.grafana.org every few
+          # hours; see docs/platform/logging.md
+          analytics:
+            reporting_enabled: false
           commonConfig:
             replication_factor: 1
           schemaConfig:
