@@ -188,7 +188,13 @@ spec:
     - fromEntities:
         - host
         - remote-node
+    # The Gateway, on the port the HTTPRoute targets.
+    - fromEntities:
         - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
     # Only if a CloudNativePG Cluster is in this namespace.
     - fromEndpoints:
         - matchLabels:
@@ -197,13 +203,56 @@ spec:
         - ports:
             - port: "8000"
               protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: my-app
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  endpointSelector: {}
+  egress:
+    # Within the namespace, and DNS through the proxy so toFQDNs works.
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    # Only if a CloudNativePG Cluster is in this namespace: the instance
+    # manager reports to the API server.
+    - toEndpoints:
+        - matchLabels:
+            k8s:cnpg.io/podRole: instance
+      toEntities:
+        - kube-apiserver
+    # Every name the application dials, by name. Authentik counts: its
+    # hostname resolves to the Gateway's own address, which is world.
+    - toFQDNs:
+        - matchName: auth.k8s.wlkr.ch
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ```
 
 Wave `-2` is load-bearing: at the default wave the policy is applied after the
 `Cluster` at `-1`, which cannot go Healthy until the `cnpg-system` rule exists,
-so the sync parks at `-1` forever. Drop `ingress` from `fromEntities` if the
-Gateway does not reach this workload directly (a namespace fronted by
-Authentik's outpost takes its traffic from the `authentik` namespace).
+so the sync parks at `-1` forever. Drop the `ingress` rule if the Gateway does
+not reach this workload directly (a namespace fronted by Authentik's outpost
+takes its traffic from the `authentik` namespace). A Prometheus rule belongs
+here only with a ServiceMonitor, on that port, with `rules.http`; the shape
+and the rollout are in
+[Security Policies](../platform/security-policies.md#network-policies).
 
 ### Exposing it
 
