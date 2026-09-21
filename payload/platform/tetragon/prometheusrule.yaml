@@ -52,12 +52,12 @@ spec:
             severity: warning
           annotations:
             summary: >-
-              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} gained privileges after it started
+              {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} changed namespace after it started
             description: >-
-              A process in the container now holds a capability it did not
-              have when it was executed, or moved into another mount, pid,
-              network or user namespace. Neither happens by itself; a setuid
-              binary is TetragonPrivilegedExec instead. Loki:
+              A process in the container moved into another mount, pid,
+              network or user namespace after it was executed: nsenter,
+              setns, or an escape. runc, which does this on every start, is
+              dropped in the kernel. Loki:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="process-creds-changed".
         - alert: TetragonExecFromWritablePath
