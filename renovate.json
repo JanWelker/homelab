@@ -35,6 +35,14 @@
       "automerge": false
     },
     {
+      "description": "Three days between a release and its PR. Long enough for an upstream to pull a broken or compromised tag, short enough that a fix still arrives the same week. Renovate lifts this for its own vulnerability-alert PRs.",
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "description": "Strip kubernetes- prefix from sysext-bakery release tags",
       "matchPackageNames": [
         "kubernetes"
