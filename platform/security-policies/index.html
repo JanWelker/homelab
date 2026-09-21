@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/security-policies/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/security-policies/">
       
       
         <link rel="prev" href="../kured/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1221,6 +1194,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1499,6 +1499,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#pod-security-admission" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1507,26 +1519,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Pod Security Admission">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#checking-what-would-break" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Checking what would break
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#network-policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1560,11 +1555,16 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
           <li class="md-nav__item">
-  <a href="#rolling-this-out-safely" class="md-nav__link">
+  <a href="#default-serviceaccount-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rolling this out safely
+        Default ServiceAccount tokens
       </span>
     </span>
   </a>
@@ -1577,10 +1577,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-serviceaccount-tokens" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Default ServiceAccount tokens
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tightening-a-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tightening a namespace
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rolling-out-a-network-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rolling out a network policy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
       </span>
     </span>
   </a>
@@ -1588,10 +1627,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -1625,6 +1664,8 @@
       
         
           
+        
+      
         
       
         
@@ -1851,6 +1892,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1869,8 +1937,6 @@
       
         
           
-        
-      
         
       
         
@@ -1990,33 +2056,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2096,6 +2135,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#pod-security-admission" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2104,26 +2155,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Pod Security Admission">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#checking-what-would-break" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Checking what would break
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#network-policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2157,11 +2191,16 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
           <li class="md-nav__item">
-  <a href="#rolling-this-out-safely" class="md-nav__link">
+  <a href="#default-serviceaccount-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rolling this out safely
+        Default ServiceAccount tokens
       </span>
     </span>
   </a>
@@ -2174,10 +2213,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#default-serviceaccount-tokens" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Default ServiceAccount tokens
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tightening-a-namespace" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tightening a namespace
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rolling-out-a-network-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rolling out a network policy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
       </span>
     </span>
   </a>
@@ -2185,10 +2263,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -2271,6 +2349,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2314,12 +2396,10 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Three cluster-wide controls: Pod Security Admission, default-deny network
-policy, and no API token on the <code>default</code> ServiceAccount.</p>
-<p>Both are the kind of thing that is easy to turn on and hard to turn on <em>safely</em>.
-The pattern used here — measure first, enforce second, one namespace at a time —
-is unglamorous and is the only approach that survives contact with a running
-cluster.</p>
+<p>Three cluster-wide controls: Pod Security Admission, default-deny ingress
+network policy, and no API token on the <code>default</code> ServiceAccount. Each is
+easy to turn on and hard to turn on safely, so the pattern is the same for
+all three: measure first, enforce second, one namespace at a time.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2343,7 +2423,7 @@ cluster.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Nothing at the time. The labels and policies are already applied; what stops is them being corrected if something changes them</td>
+<td>Nothing at the time; the labels and policies stay applied and only stop being corrected</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2351,16 +2431,18 @@ cluster.</p>
 </tr>
 <tr>
 <td>Pruning</td>
-<td><strong>Disabled.</strong> This Application owns Namespaces, and pruning one deletes everything inside it</td>
+<td><strong>Disabled.</strong> Pruning a Namespace deletes everything inside it, PVCs included</td>
+</tr>
+<tr>
+<td>Files</td>
+<td><code>payload/platform/security/</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h2>
-<p>PSA is the built-in replacement for PodSecurityPolicy, and a namespace that does
-not opt in runs at the default <code>privileged</code> level — which enforces nothing at
-all. Every namespace you have not thought about is wide open, silently, by
-default. That is the fact this section exists to address.</p>
-<p>Each namespace carries three labels, and the split between them is the point:</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h3>
+<p>A namespace that does not opt in runs at <code>privileged</code>, which enforces nothing.
+Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 <table>
 <thead>
 <tr>
@@ -2387,11 +2469,9 @@ default. That is the fact this section exists to address.</p>
 </tr>
 </tbody>
 </table>
-<p>Enforcement is set to what already works, so <strong>nothing running breaks</strong>, while
-<code>warn</code> and <code>audit</code> show what a stricter level would have caught. Tightening
-enforcement later becomes an informed change rather than a guess — and a
-security control that broke production once is a security control that gets
-switched off permanently, which is the real risk here.</p>
+<p>Enforcement is set to what already works, so nothing running breaks, while
+<code>warn</code> and <code>audit</code> show what a stricter level would catch; tightening later is
+an informed change.</p>
 <table>
 <thead>
 <tr>
@@ -2404,7 +2484,7 @@ switched off permanently, which is the real risk here.</p>
 <tr>
 <td><code>kube-system</code></td>
 <td><code>privileged</code></td>
-<td>Cilium, kube-vip and the control plane all use host networking and host paths</td>
+<td>Cilium, kube-vip and the control plane use host networking and host paths</td>
 </tr>
 <tr>
 <td><code>rook-ceph</code></td>
@@ -2419,72 +2499,31 @@ switched off permanently, which is the real risk here.</p>
 <tr>
 <td><code>openbao</code></td>
 <td><code>privileged</code></td>
-<td>Adds <code>IPC_LOCK</code> to keep the root key out of swap — not on baseline's capability allow-list</td>
+<td>Adds <code>IPC_LOCK</code> to keep the root key out of swap, which baseline does not allow</td>
 </tr>
 <tr>
-<td><code>cert-manager</code></td>
-<td><code>baseline</code></td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>external-secrets</code></td>
-<td><code>baseline</code></td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>argocd</code></td>
+<td><code>cert-manager</code>, <code>external-secrets</code>, <code>argocd</code></td>
 <td><code>baseline</code></td>
 <td>—</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition note">
-<p class="admonition-title"><code>privileged</code> here means 'not yet reduced', not 'unexamined'</p>
-<p>Each of the five has a specific reason above. <code>audit</code> and <code>warn</code> are still set to <code>baseline</code> or <code>restricted</code> on all of them, so the violations are visible even where they are not blocked. The distinction matters when you come back in a year: a documented exception is a decision, an undocumented one is just something nobody got around to.</p>
-</div>
-<p>Namespace objects are owned by this Application so the labels stay declarative
-rather than being applied once by <code>CreateNamespace=true</code> and then drifting.
-<strong>Pruning is disabled</strong> for the whole Application — pruning a <code>Namespace</code> deletes
-everything inside it, including PVCs, so a misplaced deletion in Git becomes an
-irreversible data loss event roughly three minutes later. That is not a mistake
-worth leaving available to a sleepy Tuesday.</p>
-<h3 id="checking-what-would-break">Checking what would break<a class="headerlink" href="#checking-what-would-break" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>--overwrite<span class="w"> </span>ns<span class="w"> </span>cert-manager<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>pod-security.kubernetes.io/enforce<span class="o">=</span>restricted
-</span></code></pre></div>
-<p>That reports every pod in the namespace that would be rejected, without
-changing anything.</p>
-<p>It only sees what is running <em>right now</em>, though — a CronJob that fires nightly
-and violates <code>restricted</code> is invisible to a dry run at three in the afternoon.
-The <code>audit</code> label covers that gap by recording violations continuously, and
-those records are queryable in Grafana over the full Loki retention window:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
-</span></code></pre></div>
-<p>Use the dry run to check the common case and the audit log to catch the rest.
-Between them, tightening <code>enforce</code> stops being a guess.</p>
-<h2 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h2>
-<p>Without a policy, pod-to-pod traffic is unrestricted across all namespaces:
-anything with a foothold in one pod can reach OpenBao's API, the Ceph mons and
-the Kubernetes API alike. The flat network is Kubernetes' default and it is
-almost never what anyone actually wants — it is just what you get for free.</p>
-<h3 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h3>
-<p>This is the detail that makes or breaks a default-deny here. Two kinds of
-traffic have no pod identity a standard <code>NetworkPolicy</code> can name:</p>
-<ul>
-<li><strong>Gateway traffic.</strong> With Cilium's Gateway API implementation, a request
-  reaching a backend arrives from the per-node Envoy, not from a pod.</li>
-<li><strong>Health probes.</strong> kubelet's liveness and readiness probes come from the node
-  itself.</li>
-</ul>
-<p>A plain <code>NetworkPolicy</code> default-deny therefore kills all ingress <em>and</em> all
-health probes — the pods then fail their probes and restart forever, which looks
-exactly like an application fault and not at all like a policy one. Expect to
-spend a while reading application logs before it occurs to you that the
-application is fine and the kubelet is the one being blocked. Cilium's
-<code>fromEntities</code> names these directly: <code>ingress</code> for Envoy-proxied traffic,
-<code>host</code> and <code>remote-node</code> for the kubelet.</p>
-<h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
-<p>Ingress only, in nine namespaces:</p>
+<p><code>privileged</code> here means "not yet reduced", not "unexamined": <code>audit</code> and <code>warn</code>
+are still <code>baseline</code> or <code>restricted</code> on all of them. Namespace objects are
+owned by this Application so the labels stay declarative rather than drifting
+after <code>CreateNamespace=true</code>.</p>
+<h3 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h3>
+<p>Ingress only, in nine namespaces, as <code>CiliumNetworkPolicy</code> in
+<code>network-policies.yaml</code>. Every policy also admits traffic from within the
+namespace and from <code>host</code> and <code>remote-node</code> for probes.</p>
+<h4 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h4>
+<p>Two kinds of traffic have no pod identity a standard <code>NetworkPolicy</code> can name:
+Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet
+health probes, which come from the node. A plain default-deny therefore kills
+ingress <em>and</em> probes, and the pods restart forever in a way that looks like an
+application fault. Cilium's <code>fromEntities</code> names them: <code>ingress</code> for
+Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
+<h4 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
@@ -2531,27 +2570,15 @@ application is fine and the kubelet is the one being blocked. Cilium's
 </tr>
 </tbody>
 </table>
-<p>Every policy also admits traffic from within the namespace and from <code>host</code> and
-<code>remote-node</code> for probes. The <code>monitoring</code> rules for outside callers are easy
-to miss and costly to lose. Kured queries Prometheus before every reboot and
-blocks when the query fails, so without it no node ever reboots. The Authentik
-outpost is what <code>prometheus.infra</code> and <code>alertmanager.infra</code> resolve to, and the
-Ceph mgr pulls its alerts from Prometheus and its panels from Grafana; without
-those rules both return errors the moment the policy stage lands, on a cluster
-where everything worked through the stage before.</p>
-<p><code>cnpg-system</code> covers the operator only. No database runs there — each one lives
-in its workload's namespace — so the rule admitting the operator to an instance
-on port <code>8000</code> belongs to <em>that</em> namespace's policy, in the workloads
-repository, not to this table. It is the one every new workload forgets; <a href="../../development/add-workload/#the-network-policy">Adding
-a Workload</a> has the rule and
-the failure it causes.</p>
-<p>Egress is deliberately untouched. A default-deny on egress also needs rules for
-DNS, the API server, and every external endpoint each component talks to;
-getting that wrong takes the component down rather than merely leaving it
-exposed. And you will get it wrong at least twice, because nobody has a complete
-list of what their components phone home to. It is the next step to take, not
-one that is taken here.</p>
-<p>The rest are <strong>not</strong> covered and allow all ingress, each for its own reason:</p>
+<p>The <code>monitoring</code> callers are easy to lose: Kured blocks every reboot when its
+Prometheus query fails, the Authentik outpost is what <code>prometheus.infra</code> and
+<code>alertmanager.infra</code> resolve to, and the Ceph dashboard pulls from both.
+<code>cnpg-system</code> covers the operator only; each database lives in its workload's
+namespace, so the rule admitting the operator on port <code>8000</code> belongs to that
+namespace's policy — see <a href="../../development/add-workload/">Adding a Workload</a>.</p>
+<p>Egress is untouched: a default-deny there also needs DNS, the API server and
+every external endpoint, and getting it wrong takes the component down rather
+than leaving it exposed. Not covered, each for its own reason:</p>
 <table>
 <thead>
 <tr>
@@ -2562,11 +2589,11 @@ one that is taken here.</p>
 <tbody>
 <tr>
 <td><code>kube-system</code></td>
-<td>Holds Cilium itself, the static control-plane pods and kube-vip; a default-deny there is enforced by the component being restricted</td>
+<td>Holds Cilium itself, the static control-plane pods and kube-vip</td>
 </tr>
 <tr>
 <td><code>rook-ceph</code></td>
-<td>Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix, and want Ceph health as the verification signal rather than a guess</td>
+<td>Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix; Ceph health is the verification signal</td>
 </tr>
 <tr>
 <td><code>backup</code></td>
@@ -2578,56 +2605,55 @@ one that is taken here.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="rolling-this-out-safely">Rolling this out safely<a class="headerlink" href="#rolling-this-out-safely" title="Permanent link">&para;</a></h3>
-<p>One namespace at a time, watching Hubble between each. Rolling out network
-policy everywhere at once is how people end up reverting the whole thing at
-midnight and never trying again:</p>
+<h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
+<p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code>, which nothing
+configures, and gets an API token it has no use for. A workload reaching the
+API through <code>default</code> is already a misconfiguration, so
+<code>default-serviceaccounts.yaml</code> sets <code>automountServiceAccountToken: false</code> on it
+in every namespace with nothing to preserve, empty namespaces included. Left
+out: <code>kube-system</code>, where the control plane authenticates with client
+certificates and "very likely fine" is not the standard, and <code>authentik</code>,
+where <code>authentik-server</code> sets no <code>serviceAccountName</code> — an upstream chart
+default, to be fixed at the source.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="tightening-a-namespace">Tightening a namespace<a class="headerlink" href="#tightening-a-namespace" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>See what running pods a stricter level would reject, without changing
+   anything:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>--overwrite<span class="w"> </span>ns<span class="w"> </span>cert-manager<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>pod-security.kubernetes.io/enforce<span class="o">=</span>restricted
+</span></code></pre></div>
+</li>
+<li>
+<p>Catch what is not running right now — a nightly CronJob, say — from the
+   <code>audit</code> label's records over the full Loki retention window, in Grafana:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
+</span></code></pre></div>
+</li>
+<li>
+<p>Raise <code>enforce</code> in <code>pod-security.yaml</code>.</p>
+</li>
+</ol>
+<h3 id="rolling-out-a-network-policy">Rolling out a network policy<a class="headerlink" href="#rolling-out-a-network-policy" title="Permanent link">&para;</a></h3>
+<p>One namespace at a time, watching Hubble between each:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
 </span></code></pre></div>
-<p>If something legitimate is being dropped, Cilium can put a single endpoint into
-audit mode — policy decisions are logged but not enforced — which is the
-fastest way to find a missing rule without an outage:</p>
+<p>If something legitimate is dropped, put a single endpoint into audit mode —
+decisions logged, not enforced — to find the missing rule without an outage:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
-<h2 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h2>
-<p>Every pod that does not opt out gets a projected API token mounted at
-<code>/var/run/secrets/kubernetes.io/serviceaccount/token</code>. For a workload that never
-calls the API server, that is a credential handed to a process with no use for
-it — and the first thing anything with code execution in the container picks up.</p>
-<p>The <code>default</code> ServiceAccount is the worst case. Kubernetes creates one in every
-namespace, nothing configures it, and a pod that names no <code>serviceAccountName</code>
-silently lands on it. A workload reaching the API through <code>default</code> is already a
-misconfiguration, so <code>default-serviceaccounts.yaml</code> sets
-<code>automountServiceAccountToken: false</code> on it everywhere with nothing to preserve.
-That includes namespaces with no workloads at all (<code>default</code>, <code>kube-public</code>,
-<code>kube-node-lease</code>, <code>gateway-system</code>, <code>cilium-secrets</code>): a mountable token in an
-empty namespace stops being harmless the day something is deployed there.</p>
-<p>Two namespaces are left out, because something really runs on their <code>default</code>
-SA:</p>
-<ul>
-<li><strong><code>kube-system</code>.</strong> etcd, the API server, controller-manager and scheduler run
-  there. They authenticate with client certificates from kubeconfigs on the
-  node, so removing the token would very likely be fine — and "very likely
-  fine" is not the standard for the control plane.</li>
-<li><strong><code>authentik</code>.</strong> <code>authentik-server</code> sets no <code>serviceAccountName</code>, while
-  <code>authentik-worker</code> beside it uses the <code>authentik</code> SA. That asymmetry is an
-  upstream chart default, to be fixed at the source rather than worked around.</li>
-</ul>
-<div class="admonition note">
-<p class="admonition-title">Not retroactive</p>
-<p>The token mount is decided at admission, so existing pods keep theirs until
-they are recreated. That makes the change safe to roll out, and also means a
-posture scan will not agree it is fixed until things restart.</p>
-</div>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>security/
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml              # ArgoCD Application, prune disabled
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── pod-security.yaml             # Namespace objects with PSA labels
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── network-policies.yaml         # Default-deny ingress, nine namespaces
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>└── default-serviceaccounts.yaml  # No token automount on `default` SAs
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
 </span></code></pre></div>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">The token change is not retroactive</p>
+<p>The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.</p>
+</div>
 
 
 

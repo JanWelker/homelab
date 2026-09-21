@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/external-secrets/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/external-secrets/">
       
       
         <link rel="prev" href="../openbao/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1240,6 +1213,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../openbao/" class="md-nav__link">
         
   
@@ -1337,10 +1337,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Configuration
       </span>
     </span>
   </a>
@@ -1348,55 +1348,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How it works
+        Usage
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-a-new-secret" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adding a new secret
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Adding a new secret">
+    <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-store-the-value-in-openbao" class="md-nav__link">
+  <a href="#adding-a-secret" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        1. Store the value in OpenBao
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-declare-an-externalsecret-in-the-workloads-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        2. Declare an <code>ExternalSecret</code> in the workload's directory
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-consume-the-secret" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        3. Consume the Secret
+        Adding a secret
       </span>
     </span>
   </a>
@@ -1409,10 +1376,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pulling-whole-secrets" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pulling whole secrets
+        Health check
       </span>
     </span>
   </a>
@@ -1420,82 +1387,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#refresh-interval" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Refresh interval
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chart-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Chart values
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Troubleshooting
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#clustersecretstore-is-not-ready" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code>ClusterSecretStore</code> is not Ready
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#an-externalsecret-is-not-synced" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        An <code>ExternalSecret</code> is not Synced
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-a-re-sync" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Force a re-sync
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -1691,6 +1586,8 @@
       
         
           
+        
+      
         
       
         
@@ -1917,6 +1814,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1935,8 +1859,6 @@
       
         
           
-        
-      
         
       
         
@@ -2056,33 +1978,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2162,10 +2057,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Configuration
       </span>
     </span>
   </a>
@@ -2173,55 +2068,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How it works
+        Usage
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-a-new-secret" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adding a new secret
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Adding a new secret">
+    <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-store-the-value-in-openbao" class="md-nav__link">
+  <a href="#adding-a-secret" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        1. Store the value in OpenBao
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-declare-an-externalsecret-in-the-workloads-directory" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        2. Declare an <code>ExternalSecret</code> in the workload's directory
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-consume-the-secret" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        3. Consume the Secret
+        Adding a secret
       </span>
     </span>
   </a>
@@ -2234,10 +2096,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pulling-whole-secrets" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pulling whole secrets
+        Health check
       </span>
     </span>
   </a>
@@ -2245,82 +2107,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#refresh-interval" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Refresh interval
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#chart-values" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Chart values
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Troubleshooting
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#clustersecretstore-is-not-ready" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code>ClusterSecretStore</code> is not Ready
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#an-externalsecret-is-not-synced" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        An <code>ExternalSecret</code> is not Synced
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-a-re-sync" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Force a re-sync
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -2403,6 +2193,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2446,11 +2240,11 @@
 
 
 <h1 id="external-secrets-operator">External Secrets Operator<a class="headerlink" href="#external-secrets-operator" title="Permanent link">&para;</a></h1>
-<p><a href="https://external-secrets.io/">External Secrets Operator (ESO)</a> bridges the cluster's secret store (<a href="../openbao/">OpenBao</a>) to native Kubernetes <code>Secret</code> objects. Workloads consume secrets the standard way (<code>envFrom</code>, <code>volumeMounts</code>, <code>imagePullSecrets</code>) without ever talking to OpenBao directly.</p>
-<p>That last part is the whole trick. No sidecar, no init container, no application
-code that knows what a Vault token is. Applications keep reading environment
-variables like it is 2014, and the interesting work happens somewhere they never
-have to think about.</p>
+<p><a href="https://external-secrets.io/">External Secrets Operator (ESO)</a> bridges
+<a href="../openbao/">OpenBao</a> to native Kubernetes <code>Secret</code> objects. Workloads consume
+secrets the standard way — <code>envFrom</code>, <code>volumeMounts</code>, <code>imagePullSecrets</code> —
+with no sidecar, no init container and no code that knows what a Vault token
+is.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2480,36 +2274,13 @@ have to think about.</p>
 <td>Health check</td>
 <td><code>kubectl get clustersecretstore openbao</code> &rarr; <code>Valid</code></td>
 </tr>
-</tbody>
-</table>
-<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
 <tr>
-<th>Resource</th>
-<th>Scope</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>external-secrets</code></td>
-<td>Deployment</td>
-<td>Reconciler that watches ExternalSecret objects</td>
-</tr>
-<tr>
-<td><code>ClusterSecretStore</code></td>
-<td>Cluster</td>
-<td>Single store named <code>openbao</code> shared by all namespaces</td>
-</tr>
-<tr>
-<td><code>ExternalSecret</code></td>
-<td>Namespaced</td>
-<td>One per Secret you want materialised in a namespace</td>
+<td>Files</td>
+<td><code>payload/platform/external-secrets/</code>; the store in <code>payload/platform/openbao/cluster-secret-store.yaml</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>sequenceDiagram
     participant App as Workload
     participant ES as ExternalSecret
@@ -2523,22 +2294,45 @@ have to think about.</p>
     Bao--&gt;&gt;ESO: secret data
     ESO-&gt;&gt;K: create/update Secret
     App-&gt;&gt;K: mount / envFrom</code></pre>
-<p>ESO authenticates to OpenBao with its own ServiceAccount (<code>external-secrets-vault</code> in the <code>external-secrets</code> namespace). OpenBao validates the JWT against the Kubernetes TokenReview API and issues a short-lived OpenBao token bound to the <code>external-secrets</code> role/policy.</p>
-<p>To get that JWT, ESO mints a short-lived token for the ServiceAccount through
-the TokenRequest API, which is what the <code>external-secrets-vault-token-creator</code>
-ClusterRole grants. The store uses ESO's <code>vault</code> provider unchanged — OpenBao
-implements the Vault HTTP API — and talks to the in-cluster Service, so no
-request leaves the cluster network.</p>
-<p>Note what is absent from that sentence: any long-lived credential stored anywhere. The cluster's own identity system vouches for ESO, and OpenBao decides whether to believe it. This is the bootstrap problem solved properly, and it is worth understanding once rather than treating as magic — because when it breaks, it breaks in the <code>ClusterSecretStore</code> status and nowhere else.</p>
-<h2 id="adding-a-new-secret">Adding a new secret<a class="headerlink" href="#adding-a-new-secret" title="Permanent link">&para;</a></h2>
-<p>The full round-trip from "I have a new credential" to "my Pod can read it":</p>
-<h3 id="1-store-the-value-in-openbao">1. Store the value in OpenBao<a class="headerlink" href="#1-store-the-value-in-openbao" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/&lt;workload&gt;/&lt;purpose&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nv">key1</span><span class="o">=</span><span class="s2">"value1"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nv">key2</span><span class="o">=</span><span class="s2">"value2"</span>
+<p>ESO mints a short-lived token for its <code>external-secrets-vault</code> ServiceAccount
+through the TokenRequest API (the <code>external-secrets-vault-token-creator</code>
+ClusterRole); OpenBao validates it against the TokenReview API and issues a
+token bound to the <code>external-secrets</code> policy. No long-lived credential exists
+anywhere, and when it breaks it breaks in the <code>ClusterSecretStore</code> status. The
+store uses ESO's <code>vault</code> provider unchanged against the in-cluster Service.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage <code>03-controllers</code></td>
+<td>Ahead of every Application that ships an <code>ExternalSecret</code>; a missing kind fails the sync that <a href="../../architecture/gitops/">gates the stage</a></td>
+</tr>
+<tr>
+<td>No <code>ClusterSecretStore</code> here</td>
+<td>It only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>; here it would hold <code>03-controllers</code> for two stages</td>
+</tr>
+<tr>
+<td>Webhook ServiceAccount token stays mounted</td>
+<td>The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (<code>unable to load in-cluster config</code>), which only shows when the pod is recreated</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="adding-a-secret">Adding a secret<a class="headerlink" href="#adding-a-secret" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Store the value in OpenBao, following the <a href="../openbao/#kv-layout">KV layout</a>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/&lt;workload&gt;/&lt;purpose&gt;<span class="w"> </span><span class="nv">key1</span><span class="o">=</span><span class="s2">"value1"</span><span class="w"> </span><span class="nv">key2</span><span class="o">=</span><span class="s2">"value2"</span>
 </span></code></pre></div>
-<p>Pick a path that follows the layout in <a href="../openbao/#layout-convention">OpenBao &rarr; Layout convention</a>.</p>
-<h3 id="2-declare-an-externalsecret-in-the-workloads-directory">2. Declare an <code>ExternalSecret</code> in the workload's directory<a class="headerlink" href="#2-declare-an-externalsecret-in-the-workloads-directory" title="Permanent link">&para;</a></h3>
+</li>
+<li>
+<p>Declare an <code>ExternalSecret</code> alongside the workload's other manifests; the
+   parent Application picks it up:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nn">---</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external-secrets.io/v1</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExternalSecret</span>
@@ -2546,8 +2340,8 @@ request leaves the cluster network.</p>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="c1"># ESO and its CRDs install in 03-controllers, ahead of everything that</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="c1"># consumes them. This annotation covers syncing before they have landed.</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="c1"># ESO and its CRDs install in 03-controllers; this covers a sync</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="c1"># before they have landed.</span>
 </span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SkipDryRunOnMissingResource=true</span>
 </span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nt">spec</span><span class="p">:</span>
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="nt">refreshInterval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span>
@@ -2562,78 +2356,86 @@ request leaves the cluster network.</p>
 </span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">      </span><span class="nt">remoteRef</span><span class="p">:</span>
 </span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;workload&gt;/&lt;purpose&gt;</span>
 </span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">        </span><span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span><span class="w">          </span><span class="c1"># key inside the KV entry</span>
-</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key2</span>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">      </span><span class="nt">remoteRef</span><span class="p">:</span>
-</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;workload&gt;/&lt;purpose&gt;</span>
-</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">        </span><span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key2</span>
 </span></code></pre></div>
-<p>Drop the file alongside the workload's other manifests (<code>deployment.yaml</code>, <code>service.yaml</code>, …). The parent ArgoCD Application picks it up automatically.</p>
-<h3 id="3-consume-the-secret">3. Consume the Secret<a class="headerlink" href="#3-consume-the-secret" title="Permanent link">&para;</a></h3>
+<p>To pull every key without listing them, use <code>dataFrom</code> instead of <code>data</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">envFrom</span><span class="p">:</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretRef</span><span class="p">:</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">dataFrom</span><span class="p">:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">extract</span><span class="p">:</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;workload&gt;/&lt;purpose&gt;</span>
 </span></code></pre></div>
-<p>The Secret name in <code>target.name</code> is what shows up in the namespace.</p>
-<h2 id="pulling-whole-secrets">Pulling whole secrets<a class="headerlink" href="#pulling-whole-secrets" title="Permanent link">&para;</a></h2>
-<p>To pull every key from a KV entry without listing them individually:</p>
+</li>
+<li>
+<p>Consume the Secret:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">dataFrom</span><span class="p">:</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">extract</span><span class="p">:</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;workload&gt;/&lt;purpose&gt;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">containers</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">envFrom</span><span class="p">:</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretRef</span><span class="p">:</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span>
 </span></code></pre></div>
-<h2 id="refresh-interval">Refresh interval<a class="headerlink" href="#refresh-interval" title="Permanent link">&para;</a></h2>
-<p><code>refreshInterval: 1h</code> polls OpenBao hourly. Set to <code>0</code> to disable polling — ESO will only re-sync on resource changes. For rotated credentials, leave it at a value that matches your rotation cadence.</p>
-<p>Worth knowing: rotating a value in OpenBao updates the Kubernetes <code>Secret</code> within that interval, but it does <strong>not</strong> restart anything. A pod that read the secret into an environment variable at startup will happily keep using the old value until something restarts it. Reloader-style tooling or a rollout is the missing half of "rotation", and forgetting it is how a credential gets rotated on paper and not in practice.</p>
-<h2 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Stage <code>03-controllers</code>.</strong> Ahead of every Application that ships an
-  <code>ExternalSecret</code>: a kind that does not exist yet is a failed sync, and a
-  failed sync never lets its stage finish — see
-  <a href="../../architecture/gitops/#nothing-may-wait-on-a-later-stage">GitOps</a>.</li>
-<li><strong>No <code>ClusterSecretStore</code> here.</strong> The store only validates against a running,
-  unsealed OpenBao, so it ships with the <code>openbao</code> Application. Here it would
-  hold <code>03-controllers</code> until two stages later.</li>
-<li><strong>Webhook and cert-controller resources.</strong> Memory limits are about 2.5x the
-  measured peak working set: 33Mi for the webhook, 73Mi for the cert-controller.</li>
-<li><strong>Webhook ServiceAccount token stays mounted.</strong> The webhook has no
-  RoleBinding, so it looks as if it never talks to the API server, but it builds
-  an in-cluster client at startup regardless and exits without the token
-  (<code>unable to load in-cluster config</code>). It only shows when the pod is recreated.</li>
-</ul>
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<h3 id="clustersecretstore-is-not-ready"><code>ClusterSecretStore</code> is not Ready<a class="headerlink" href="#clustersecretstore-is-not-ready" title="Permanent link">&para;</a></h3>
-<p>Start here for basically every secret-related problem. If the store is not Ready, nothing downstream of it will be either, and chasing the individual <code>ExternalSecret</code> first is wasted time.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</li>
+</ol>
+<p><code>refreshInterval</code> polls OpenBao; <code>0</code> disables polling and re-syncs only on
+resource changes. To sync now rather than wait:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
-<p>Common causes:</p>
-<ul>
-<li>OpenBao is sealed (<code>bao status</code> &rarr; <code>Sealed: true</code>) — unseal it, see <a href="../openbao/#unsealing-after-a-restart">OpenBao &rarr; Unsealing</a>.</li>
-<li>Kubernetes auth role missing — re-run the <code>bao write auth/kubernetes/role/external-secrets …</code> command.</li>
-<li>Wrong <code>serviceAccountRef</code> — must point to <code>external-secrets-vault</code> in the <code>external-secrets</code> namespace.</li>
-</ul>
-<h3 id="an-externalsecret-is-not-synced">An <code>ExternalSecret</code> is not Synced<a class="headerlink" href="#an-externalsecret-is-not-synced" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>describe<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<p>Start with the store; if it is not Ready, nothing downstream is either:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
 </span></code></pre></div>
-<p>Common causes:</p>
-<ul>
-<li>The KV path doesn't exist (<code>bao kv get kv/&lt;path&gt;</code> returns 404). Store the secret first.</li>
-<li>The <code>property:</code> doesn't match a key in the KV entry. List keys with <code>bao kv get kv/&lt;path&gt;</code>.</li>
-<li>Policy doesn't grant <code>read</code> on the path. Edit the <code>external-secrets</code> policy.</li>
-</ul>
-<h3 id="force-a-re-sync">Force a re-sync<a class="headerlink" href="#force-a-re-sync" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenBao is sealed</td>
+<td><a href="../openbao/#unsealing-after-a-restart">Unseal it</a></td>
+</tr>
+<tr>
+<td>Kubernetes auth role missing</td>
+<td>Re-run <code>make bao-init</code>, which writes <code>auth/kubernetes/role/external-secrets</code></td>
+</tr>
+<tr>
+<td>Wrong <code>serviceAccountRef</code></td>
+<td>Must be <code>external-secrets-vault</code> in <code>external-secrets</code></td>
+</tr>
+</tbody>
+</table>
+<p>Then the individual object:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>describe<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;
 </span></code></pre></div>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>external-secrets/
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>└── application.yaml          # ArgoCD Application (Helm: external-secrets)
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>openbao/
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>└── cluster-secret-store.yaml # ServiceAccount, RBAC, ClusterSecretStore
-</span></code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The KV path does not exist (<code>bao kv get kv/&lt;path&gt;</code> returns 404)</td>
+<td>Store the secret first</td>
+</tr>
+<tr>
+<td><code>property:</code> matches no key in the KV entry</td>
+<td><code>bao kv get kv/&lt;path&gt;</code> lists them</td>
+</tr>
+<tr>
+<td>The policy does not grant <code>read</code> on the path</td>
+<td>Edit the <code>external-secrets</code> policy</td>
+</tr>
+</tbody>
+</table>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Rotation does not restart anything</p>
+<p>A rotated value reaches the <code>Secret</code> within <code>refreshInterval</code>, but a pod that read it into an environment variable keeps the old one until something restarts it. A rollout, or Reloader-style tooling, is the other half of rotation.</p>
+</div>
 
 
 

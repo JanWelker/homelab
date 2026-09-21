@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/operations/">
       
       
         <link rel="prev" href="../platform/security-policies/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1478,6 +1478,8 @@
       
         
       
+        
+      
     
     
     
@@ -1693,6 +1695,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1711,8 +1740,6 @@
       
         
           
-        
-      
         
       
         
@@ -1832,33 +1859,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../development/maintenance/" class="md-nav__link">
         
   
@@ -1925,17 +1925,6 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-in-this-section" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is in this section
-      </span>
-    </span>
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#routine-health-check" class="md-nav__link">
@@ -2008,6 +1997,8 @@
       
         
       
+        
+      
     
     
     
@@ -2051,55 +2042,48 @@
 
 
 <h1 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h1>
-<p>Everything in this section assumes a cluster that is already up. For first
-provisioning see the <a href="../quickstart/">Quickstart</a>.</p>
-<p>Building a cluster is a weekend. Operating one is the rest of your life. This is
-the section you will actually come back to.</p>
-<h2 id="what-is-in-this-section">What is in this section<a class="headerlink" href="#what-is-in-this-section" title="Permanent link">&para;</a></h2>
+<p>Everything here assumes a cluster that is already up; for first provisioning
+see the <a href="../quickstart/">Quickstart</a>.</p>
 <div class="grid cards">
 <ul>
 <li>
 <p><strong><a href="troubleshooting/">Troubleshooting</a></strong></p>
 <hr />
 <p>The symptom-to-first-check table, and how to roll back a sync that made
-things worse. Start here when something is wrong.</p>
+things worse.</p>
 </li>
 <li>
 <p><strong><a href="nodes/">Node Lifecycle</a></strong></p>
 <hr />
-<p>Rebooting, adding, replacing and rebuilding a node — including the two gates
-people skip: waiting for Ceph, and unsealing OpenBao afterwards.</p>
+<p>Rebooting, adding, replacing and rebuilding a node, including the two
+gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.</p>
 </li>
 <li>
 <p><strong><a href="upgrades/">Updates &amp; Upgrades</a></strong></p>
 <hr />
-<p>The three mechanisms that update a node, why none of them finishes on its
-own, and how to move a minor version deliberately.</p>
+<p>The three mechanisms that update a node, and how to move a minor version
+deliberately.</p>
 </li>
 <li>
 <p><strong><a href="backups/">Backups &amp; Recovery</a></strong></p>
 <hr />
-<p>What is backed up, what is not, and the fact worth knowing before you need
-it: every automated backup lands inside the cluster it is backing up.</p>
+<p>What is backed up, what is not, and the restore runbooks.</p>
 </li>
 <li>
 <p><strong><a href="control-plane-vip/">Control Plane VIP</a></strong></p>
 <hr />
-<p>How the API server address survives losing the node that answers it, and how
-to migrate a cluster that was built without it.</p>
+<p>How the API server address survives losing the node that answers it, and
+how to migrate a cluster built without it.</p>
 </li>
 <li>
 <p><strong><a href="vulnerabilities/">Vulnerability Triage</a></strong></p>
 <hr />
-<p>What the Trivy findings amount to: the few fixed here, the ones waiting on
-an upstream release, and the ones that will never move.</p>
+<p>How to read the Trivy findings and when to file upstream; the dated log is
+in <a href="triage-2026-09-20/">Triage 2026-09-20</a>.</p>
 </li>
 </ul>
 </div>
 <h2 id="routine-health-check">Routine health check<a class="headerlink" href="#routine-health-check" title="Permanent link">&para;</a></h2>
-<p>Four commands, thirty seconds, run them when you walk past the rack. The second
-column is what you are actually looking for, because three of the four will
-happily print something reassuring while being wrong:</p>
 <table>
 <thead>
 <tr>
@@ -2124,18 +2108,17 @@ happily print something reassuring while being wrong:</p>
 <td><code>kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status</code></td>
 <td><code>HEALTH_OK</code>, and an OSD count matching your node count</td>
 </tr>
+<tr>
+<td><code>kubectl -n openbao exec openbao-0 -- bao status</code></td>
+<td><code>Sealed: false</code>; the one failure that looks like health, so run it after anything restarted</td>
+</tr>
 </tbody>
 </table>
-<p>A fifth is worth adding after anything restarted, because it is the one failure
-that looks like health:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
-</span></code></pre></div>
 <p>The Rook toolbox pod is enabled, so <code>ceph status</code>, <code>ceph osd tree</code> and
-<code>ceph health detail</code> are available without installing anything.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Ceph metrics <strong>are</strong> scraped — <code>monitoring.enabled</code> is <code>true</code> in the <code>CephCluster</code> spec, and <code>createPrometheusRules</code> ships Ceph's own alerting rules — so a degraded pool or a down OSD reaches Prometheus without anyone running <code>ceph status</code>. Run it anyway: it is the fastest way to see <em>why</em>, and it is what <a href="../platform/kured/">Kured</a> is really asking about before it reboots anything. See <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
-</div>
+<code>ceph health detail</code> need nothing installed. Ceph metrics are scraped and
+Ceph's own alerting rules are loaded, so a degraded pool reaches Prometheus
+without anyone running <code>ceph status</code>; run it anyway, because it is the fastest
+way to see <em>why</em> — see <a href="../platform/rook-ceph/#monitoring">Rook-Ceph &rarr; Monitoring</a>.</p>
 
 
 

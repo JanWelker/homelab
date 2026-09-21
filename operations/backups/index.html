@@ -6,11 +6,11 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What is backed up, what is not, and how to snapshot etcd and OpenBao before you need them.">
+        <meta name="description" content="What is backed up, what is not, how to take a backup by hand, and the restore runbooks for Velero, OpenBao, etcd and a full rebuild.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/backups/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/operations/backups/">
       
       
         <link rel="prev" href="../upgrades/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1478,6 +1478,8 @@
       
         
       
+        
+      
     
     
     
@@ -1708,78 +1710,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Velero">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-the-data-mover-matters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Why the data mover matters
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#two-settings-that-are-not-optional-here" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Two settings that are not optional here
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#other-settings-worth-knowing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Other settings worth knowing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#snapshot-plumbing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Snapshot plumbing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Using it
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alerting
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1833,13 +1763,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebuilding-from-scratch" class="md-nav__link">
+  <a href="#restoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rebuilding from scratch
+        Restoring
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Restoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#velero-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Velero restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openbao-snapshot-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        OpenBao snapshot restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#etcd-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        etcd restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rebuild-from-scratch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rebuild from scratch
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1906,6 +1886,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1924,8 +1931,6 @@
       
         
           
-        
-      
         
       
         
@@ -2045,33 +2050,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2170,78 +2148,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Velero">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-the-data-mover-matters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Why the data mover matters
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#two-settings-that-are-not-optional-here" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Two settings that are not optional here
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#other-settings-worth-knowing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Other settings worth knowing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#snapshot-plumbing" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Snapshot plumbing
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#using-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Using it
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alerting
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -2295,13 +2201,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rebuilding-from-scratch" class="md-nav__link">
+  <a href="#restoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Rebuilding from scratch
+        Restoring
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Restoring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#velero-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Velero restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#openbao-snapshot-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        OpenBao snapshot restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#etcd-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        etcd restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rebuild-from-scratch" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rebuild from scratch
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2365,6 +2321,8 @@
       
         
       
+        
+      
     
     
     
@@ -2408,9 +2366,8 @@
 
 
 <h1 id="backups-recovery">Backups &amp; Recovery<a class="headerlink" href="#backups-recovery" title="Permanent link">&para;</a></h1>
-<p>Nobody wants backups. Everybody wants restores. This page is written with that
-distinction in mind: every mechanism below is described in terms of what it can
-actually get back for you, and — more importantly — what it cannot.</p>
+<p>Every mechanism below is described by what it can get back, and by what it
+cannot.</p>
 <h2 id="current-state">Current state<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2444,7 +2401,7 @@ actually get back for you, and — more importantly — what it cannot.</p>
 <tr>
 <td>OpenBao secrets</td>
 <td>Manual</td>
-<td><a href="../../platform/openbao/#backups">Raft snapshot</a></td>
+<td><a href="#openbao">Raft snapshot</a></td>
 </tr>
 <tr>
 <td>OpenBao unseal keys</td>
@@ -2459,35 +2416,27 @@ actually get back for you, and — more importantly — what it cannot.</p>
 <tr>
 <td>Everything in <code>payload/</code></td>
 <td>Yes</td>
-<td>It is in Git; that is the point of GitOps</td>
+<td>It is in Git</td>
 </tr>
 </tbody>
 </table>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
-<p>Alerting is the other half of a backup: a backup that silently stopped running
-is indistinguishable from one that works, right up until the moment you need it,
-which is also the moment you find out. Velero's
-<code>PrometheusRule</code> covers that, but only reaches whoever Alertmanager is
-configured to tell — see
-<a href="../../platform/monitoring/">Monitoring</a> for the state of that.</p>
-<p>The bigger gap is where the backups land.</p>
-<p><strong>Every automated backup here goes into the same cluster's Ceph.</strong> That protects
-against the failures that actually happen — a deleted PVC, a bad <code>prune</code>, a
-corrupted database, a workload that ate its own data. It does not protect
-against losing the cluster, because the backups go with it.</p>
-<p>This is worth sitting with for a moment rather than nodding past. A backup that
-shares a failure domain with its source covers operator error and nothing else.
-Operator error is genuinely the most common cause of data loss, so this is not
-worthless — it is just precisely one half of the job, and it is important to
-know which half you have.</p>
-<p>Off-site replication is the missing piece. RGW supports bucket replication and
-Velero supports a second <code>BackupStorageLocation</code>, so the shape of the fix is
-known; neither is configured. Until then, treat the OpenBao unseal keys plus
-Git as the real disaster-recovery story and these backups as protection against
-mistakes rather than against the building burning down.</p>
+<p><strong>Every automated backup lands in the same cluster's Ceph.</strong> That protects
+against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted database) and
+not against losing the cluster, because the backups go with it. Off-site
+replication is the missing piece: RGW supports bucket replication and Velero a
+second <code>BackupStorageLocation</code>, and neither is configured. Until then, disaster
+recovery is <strong>Git, the OpenBao unseal keys, and a copy of the latest OpenBao
+and etcd snapshots kept off-cluster</strong>; the nightly backups protect against
+mistakes.</p>
+<p>Velero's <code>PrometheusRule</code> (<code>VeleroBackupFailures</code> critical,
+<code>VeleroBackupPartialFailures</code> warning) is what notices a backup that silently
+stopped, and it only reaches whoever Alertmanager is configured to tell — see
+<a href="../../platform/monitoring/">Monitoring</a>.</p>
 <h2 id="velero">Velero<a class="headerlink" href="#velero" title="Permanent link">&para;</a></h2>
 <p><a href="https://velero.io/">Velero</a> backs up Kubernetes objects and volume data
-nightly at 02:00, keeping 14 days.</p>
+nightly. Chart values and why each is set are in
+<a href="../../platform/velero/">Velero</a>.</p>
 <table>
 <thead>
 <tr>
@@ -2502,7 +2451,7 @@ nightly at 02:00, keeping 14 days.</p>
 </tr>
 <tr>
 <td>Scope</td>
-<td>All namespaces except <code>kube-system</code>, minus <code>events</code></td>
+<td>All namespaces except <code>kube-system</code> (rebuilt from Git, and large), minus <code>events</code> (they expire anyway)</td>
 </tr>
 <tr>
 <td>Destination</td>
@@ -2510,98 +2459,26 @@ nightly at 02:00, keeping 14 days.</p>
 </tr>
 <tr>
 <td>Volume data</td>
-<td>CSI snapshot, then moved into the bucket by the data mover (Kopia)</td>
+<td>CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket</td>
 </tr>
 </tbody>
 </table>
-<p><code>kube-system</code> is excluded because it is reconstructed from Git on the next sync
-and is large. <code>events</code> are excluded because they expire anyway.</p>
-<h3 id="why-the-data-mover-matters">Why the data mover matters<a class="headerlink" href="#why-the-data-mover-matters" title="Permanent link">&para;</a></h3>
-<p>A CSI snapshot on its own is a Ceph object. Backing up a PVC by snapshotting it
-would leave the only copy inside the same Ceph cluster the backup exists to
-survive — protection against a deleted PVC, but not against a broken pool. A
-snapshot is a bookmark, not a copy, and confusing the two is one of the more
-expensive mistakes available in storage. With
-<code>defaultSnapshotMoveData</code>, Velero takes the snapshot, streams the data out to
-the object store, and deletes the snapshot. The durable copy is the one in the
-bucket.</p>
-<p>This is why <code>deployNodeAgent</code> is on: the node agent is what reads the snapshot
-and does the streaming.</p>
-<h3 id="two-settings-that-are-not-optional-here">Two settings that are not optional here<a class="headerlink" href="#two-settings-that-are-not-optional-here" title="Permanent link">&para;</a></h3>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">checksumAlgorithm</span><span class="p">:</span><span class="w"> </span><span class="s">""</span><span class="w">      </span><span class="c1"># on the BackupStorageLocation config</span>
+<p>The <code>velero</code> CLI defaults to the <code>velero</code> namespace; this install is in
+<code>backup</code>, so pass <code>-n backup</code> every time.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backupstoragelocation<span class="w">     </span><span class="c1"># should be Available</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
-<p>The AWS plugin's <code>aws-sdk-go-v2</code> sends a trailing checksum that Ceph RGW rejects
-with <code>api error XAmzContentSHA256Mismatch</code>, so <strong>every upload fails</strong> without
-this. The plugin's own README lists Ceph S3 as needing it. "S3-compatible" is
-one of the great load-bearing hyphens of our industry, and this is the sort of
-thing it is carrying.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">velero/velero-plugin-for-aws:v1.14.2</span>
-</span></code></pre></div>
-<p>Plugin <code>v1.14.x</code> pairs with Velero <code>v1.18.x</code>, this chart's appVersion. The
-chart's commented example still shows <code>v1.13.1</code>, which is the v1.17 line.</p>
-<h3 id="other-settings-worth-knowing">Other settings worth knowing<a class="headerlink" href="#other-settings-worth-knowing" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>No credentials file.</strong> <code>credentials.useSecret</code> is <code>false</code>: the AWS plugin
-  reads its keys from the environment, and <code>extraEnvVars</code> feeds that straight
-  from the <code>Secret</code> Rook writes for the <code>velero-bucket</code> claim. The keys are
-  never rendered into a file or into Git.</li>
-<li><strong><code>volumeSnapshotLocation: []</code> must stay empty.</strong> The chart ships a
-  placeholder entry with a null name and provider, renders it as a
-  <code>VolumeSnapshotLocation</code> called <code>default</code>, and the CRD schema rejects it,
-  failing every sync. Helm replaces lists rather than merging them, so the empty
-  list removes it. Nothing here needs one: CSI and the data mover use a
-  <code>VolumeSnapshotClass</code>, and a <code>VolumeSnapshotLocation</code> belongs to the legacy
-  per-provider snapshotter plugins.</li>
-<li><strong>No <code>runAsNonRoot</code>.</strong> The plugin initContainer copies itself into
-  <code>/target</code>, and whether that works as non-root depends on the image's own
-  <code>USER</code>. Confirm it on a real backup before adding it; the seccomp profile,
-  <code>allowPrivilegeEscalation: false</code> and dropped capabilities are set.</li>
-<li><strong>Node agent sizing.</strong> Its limits come from a measured 37Mi peak. It is idle
-  except during a backup, so the headroom is deliberately wide.</li>
-</ul>
-<h3 id="snapshot-plumbing">Snapshot plumbing<a class="headerlink" href="#snapshot-plumbing" title="Permanent link">&para;</a></h3>
-<p>kubeadm does not install the CSI snapshot controller and neither does Rook.
-Without it the <code>VolumeSnapshot</code> CRDs are absent and the RBD driver advertises
-snapshot support nothing can invoke. The <code>snapshot-controller</code> Application
-installs the controller and its CRDs in <code>03-controllers</code>, well ahead of the
-<code>backup</code> Application in <code>08-services</code> and Velero in <code>09-backends</code>.</p>
-<p>The <code>VolumeSnapshotClass</code> for <code>rook-ceph-block</code>, in <code>backup</code>, is what needs that
-order. Applied before its CRD existed, it failed with
-<code>no matches for kind VolumeSnapshotClass</code>; <code>SkipDryRunOnMissingResource</code> does
-not help there, since it is the apply that fails, not the dry run. When the
-snapshot controller was still a child of <code>backup</code>, that failed sync meant the
-snapshot-controller and velero Applications queued behind it were never created
-at all. Its sync wave <code>3</code> inside <code>backup</code> is left over from then and harmless.</p>
-<p>Its <code>deletionPolicy</code> is <code>Delete</code>: the snapshot is only an intermediate step, and
-the durable copy is the one the data mover writes into the object store.</p>
-<h3 id="using-it">Using it<a class="headerlink" href="#using-it" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backupstoragelocation<span class="w">     </span><span class="c1"># should be Available</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># On demand</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>velero<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--include-namespaces<span class="w"> </span>my-app
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># Restore</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>velero<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-20260905020000
-</span></code></pre></div>
-<p>If backups sit in <code>PartiallyFailed</code>, check that a <code>VolumeSnapshotClass</code> labelled
-<code>velero.io/csi-volumesnapshot-class: "true"</code> exists — without it Velero finds no
-class for the RBD driver and skips volumes <strong>silently</strong>, leaving you with a
-backup full of Kubernetes objects and none of the data anybody cared about.</p>
-<h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
-<p>Velero ships a <code>PrometheusRule</code> here: <code>VeleroBackupFailures</code> (critical) and
-<code>VeleroBackupPartialFailures</code> (warning). A backup that silently stopped running
-is the failure mode this exists to prevent — and it is the one that catches
-experienced people, because the dashboard stays green and the CronJob still
-exists and everything looks exactly like it did last month.</p>
+<p>Backups in <code>PartiallyFailed</code> with no volume data mean Velero found no
+<code>VolumeSnapshotClass</code> labelled <code>velero.io/csi-volumesnapshot-class: "true"</code>
+and skipped the volumes silently — check
+<code>payload/platform/backup/volumesnapshotclass.yaml</code> is applied.</p>
 <h2 id="etcd">etcd<a class="headerlink" href="#etcd" title="Permanent link">&para;</a></h2>
-<p>Velero restores objects <em>through the API server</em>. That is the wrong tool for the
-case where there is no API server left to restore through — lost quorum, a
-corrupted data directory, three dead control-plane nodes. For that you need the
-etcd data itself, which Velero does not capture.</p>
-<p>Two backup systems for two genuinely different disasters. It looks like
-redundancy until the day you need the one you skipped.</p>
-<p>A CronJob takes one nightly at 01:00, an hour before Velero runs:</p>
+<p>Velero restores <em>through</em> the API server, which is no use with no API server
+left (lost quorum, a corrupted data directory). For that a CronJob in
+<code>payload/platform/backup/etcd-backup.yaml</code> snapshots etcd nightly, an hour
+before Velero runs.</p>
 <table>
 <thead>
 <tr>
@@ -2616,89 +2493,151 @@ redundancy until the day you need the one you skipped.</p>
 </tr>
 <tr>
 <td>Where it runs</td>
-<td>Any control-plane node — <code>hostNetwork</code>, since etcd listens on <code>127.0.0.1</code> and its client certs are on the node</td>
+<td>Any control-plane node, on the host network: etcd listens on <code>127.0.0.1</code> and its client certs are on the node</td>
 </tr>
 <tr>
 <td>Verification</td>
-<td><code>etcdutl snapshot status</code> before upload, so a truncated snapshot fails the job instead of quietly replacing a good backup</td>
+<td><code>etcdutl snapshot status</code> before upload, so a truncated snapshot fails the job instead of replacing a good backup (<code>etcdctl snapshot status</code> was removed in etcd 3.6)</td>
 </tr>
 <tr>
 <td>Destination</td>
-<td>S3 bucket <code>etcd-backup</code>, newest 14 kept</td>
+<td>S3 bucket <code>etcd-backup</code>, separate from Velero's because it is restored by different means; newest 14 kept</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition note">
-<p class="admonition-title"><code>etcdctl snapshot status</code> no longer exists</p>
-<p>It was removed in etcd 3.6. The verification step uses <code>etcdutl</code>, which
-ships in the same image.</p>
-</div>
-<p>The snapshots go to their own bucket rather than Velero's because they are
-recovered by entirely different means. Two details of the job are easy to undo
-by accident:</p>
-<ul>
-<li><code>dnsPolicy: ClusterFirstWithHostNet</code> — with <code>hostNetwork</code> the default policy
-  uses the node's <code>resolv.conf</code>, which cannot resolve the RGW Service the upload
-  needs.</li>
-<li>The upload writes an AWS CLI config file with <code>addressing_style = path</code>. RGW
-  addresses buckets by path, the CLI defaults to virtual-host style, and there
-  is no environment variable for it.</li>
-</ul>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-backup
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/&lt;most-recent-job&gt;<span class="w"> </span>-c<span class="w"> </span>upload
+<p>Two settings there are easy to undo by accident: the DNS policy for a
+host-network pod (the node's <code>resolv.conf</code> cannot resolve the RGW Service), and
+the AWS CLI config file selecting path-style addressing (no environment
+variable sets it).</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-backup
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/&lt;most-recent-job&gt;<span class="w"> </span>-c<span class="w"> </span>upload
 </span></code></pre></div>
 <h3 id="taking-one-by-hand">Taking one by hand<a class="headerlink" href="#taking-one-by-hand" title="Permanent link">&para;</a></h3>
-<p>Take a snapshot from a control-plane node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>snapshot<span class="w"> </span>save<span class="w"> </span>/var/lib/etcd/snapshot.db
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>kubectl<span class="w"> </span>cp<span class="w"> </span>kube-system/etcd-&lt;node&gt;:/var/lib/etcd/snapshot.db<span class="w"> </span>./etcd-snapshot.db
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>snapshot<span class="w"> </span>save<span class="w"> </span>/var/lib/etcd/snapshot.db
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>kubectl<span class="w"> </span>cp<span class="w"> </span>kube-system/etcd-&lt;node&gt;:/var/lib/etcd/snapshot.db<span class="w"> </span>./etcd-snapshot.db
 </span></code></pre></div>
-<p>Copy it off the cluster. Now. A snapshot stored only on a Ceph PVC does not
-survive the failure it exists for, and "I'll move it later" has never once
-happened in the history of operations.</p>
-<p>Restoring is <code>etcdctl snapshot restore</code> into a fresh data directory on a stopped
-control plane, then restarting kubelet — see the
-<a href="https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster">upstream kubeadm documentation</a>.</p>
+<p>Copy it off the cluster immediately.</p>
 <h2 id="openbao">OpenBao<a class="headerlink" href="#openbao" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
 </span></code></pre></div>
-<p>The snapshot contains all KV data plus policies, roles and mounts. It does
-<strong>not</strong> contain the unseal keys, and it is useless without them — a perfect,
-verified, encrypted brick. Details in
-<a href="../../platform/openbao/#backups">OpenBao &rarr; Backups</a>.</p>
+<p>The snapshot holds all KV data plus policies, roles and mounts. It does <strong>not</strong>
+hold the unseal keys and is useless without them — see
+<a href="../../platform/openbao/">OpenBao</a>.</p>
 <h2 id="ceph-volumes">Ceph volumes<a class="headerlink" href="#ceph-volumes" title="Permanent link">&para;</a></h2>
-<p>Volume data is covered by <a href="#velero">Velero</a>: PVCs are snapshotted nightly and
-the data is moved into the object store, so a deleted PVC is recoverable.</p>
-<p>Ceph's own replication is not a backup and should not be mistaken for one. It
-spreads each block across OSDs, which protects against a disk or a node failing
-and against nothing else — not deletion, not corruption, not a bad <code>prune</code>. That
-last one is not hypothetical: almost every Application runs with <code>prune: true</code>
-— <code>kube-vip</code> and <code>security</code> are the two deliberate exceptions — so removing a
+<p>PVCs are covered by <a href="#velero">Velero</a>. Ceph's own replication is not a backup:
+it spreads each block across OSDs, which survives a disk or node failing and
+nothing else. Almost every Application runs with <code>prune: true</code> (<code>kube-vip</code> and
+<code>security</code> are the deliberate exceptions), so removing a
 <code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
-<p>What is still open is off-cluster replication — see
-<a href="#what-is-not-covered">What is not covered</a>. RBD mirroring to a second cluster
-would close it.</p>
-<h2 id="rebuilding-from-scratch">Rebuilding from scratch<a class="headerlink" href="#rebuilding-from-scratch" title="Permanent link">&para;</a></h2>
-<p>What you need, in order:</p>
+<h2 id="restoring">Restoring<a class="headerlink" href="#restoring" title="Permanent link">&para;</a></h2>
+<p>The commands are the upstream-documented ones for the versions pinned in
+<code>payload/platform/</code>; the etcd sequence has not been exercised on this cluster.</p>
+<h3 id="velero-restore">Velero restore<a class="headerlink" href="#velero-restore" title="Permanent link">&para;</a></h3>
 <ol>
-<li>The Git repository — all platform and workload manifests.</li>
-<li>The OpenBao unseal keys and root token — without these the restored OpenBao
-   is an encrypted brick.</li>
-<li>An OpenBao raft snapshot, or the willingness to re-enter every secret.</li>
-<li>Optionally an etcd snapshot, to skip re-issuing certificates and waiting for
-   the platform to re-converge.</li>
+<li>
+<p>Find the backup.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>get
+</span></code></pre></div>
+</li>
+<li>
+<p>Restore from it, scoped to what was lost; without <code>--include-namespaces</code>
+   everything in the backup is restored, and existing objects are skipped, not
+   overwritten.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
+</span></code></pre></div>
+</li>
+<li>
+<p>Watch it finish and read the warnings.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
+</span></code></pre></div>
+</li>
 </ol>
-<p>Items 1 and 2 are the ones that actually matter, and only one of them lives
-somewhere GitHub keeps a copy. If you take a single action after reading this
-page, make it checking that you still know where those five key shares are.</p>
-<p>The rebuild itself is the <a href="../../quickstart/">Quickstart</a> from step 1. Because
-the platform is declarative, the cluster converges back to its documented state
-once ArgoCD points at the repository and OpenBao is unsealed.</p>
+<h3 id="openbao-snapshot-restore">OpenBao snapshot restore<a class="headerlink" href="#openbao-snapshot-restore" title="Permanent link">&para;</a></h3>
+<p>Needs an initialised, unsealed cluster and the root token. <code>-force</code> is what
+lets a snapshot from a <em>different</em> cluster (a fresh <code>bao operator init</code>) load;
+afterwards the pods seal and want the snapshot's keys, not the new cluster's.</p>
+<ol>
+<li>
+<p>Copy the snapshot in.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>./openbao-snapshot.bao<span class="w"> </span>openbao-0:/tmp/snapshot.bao
+</span></code></pre></div>
+</li>
+<li>
+<p>Restore it.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>env<span class="w"> </span><span class="nv">BAO_TOKEN</span><span class="o">=</span>&lt;root-token&gt;<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>-force<span class="w"> </span>/tmp/snapshot.bao
+</span></code></pre></div>
+</li>
+<li>
+<p>Unseal every replica with the snapshot's key shares and confirm.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>bao-unseal
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
+</span></code></pre></div>
+</li>
+</ol>
+<h3 id="etcd-restore">etcd restore<a class="headerlink" href="#etcd-restore" title="Permanent link">&para;</a></h3>
+<p>Every etcd member restores from the same snapshot, then all three static pods
+come back together. Flatcar ships no <code>etcdutl</code>, so run it from the etcd image
+the CronJob uses. Upstream:
+<a href="https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster">Restoring an etcd cluster</a>.</p>
+<ol>
+<li>Copy the snapshot to every control-plane node as <code>/var/lib/etcd-restore/snapshot.db</code>.</li>
+<li>
+<p>On every control-plane node, stop the API server and etcd by moving their
+   static pod manifests out, and wait until neither container is listed.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/root/manifests-stopped
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/manifests/<span class="o">{</span>etcd,kube-apiserver<span class="o">}</span>.yaml<span class="w"> </span>/root/manifests-stopped/
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span>--name<span class="w"> </span><span class="s1">'etcd|kube-apiserver'</span><span class="w">    </span><span class="c1"># empty</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>On every control-plane node, restore into a new data directory with the
+   <code>--name</code>, <code>--initial-cluster</code> and <code>--initial-advertise-peer-urls</code> values
+   from that node's <code>/etc/kubernetes/manifests/etcd.yaml</code> (the image tag is in
+   <code>payload/platform/backup/etcd-backup.yaml</code>).</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
+</span></code></pre></div>
+</li>
+<li>
+<p>Swap the data directory in, keeping the old one and its ownership.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
+</span></code></pre></div>
+</li>
+<li>
+<p>Put the manifests back on every node, then confirm.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
+</span></code></pre></div>
+</li>
+</ol>
+<h3 id="rebuild-from-scratch">Rebuild from scratch<a class="headerlink" href="#rebuild-from-scratch" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Have the Git repository, the OpenBao unseal keys and root token, and an
+   OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
+   certificates.</li>
+<li>Provision the cluster per the <a href="../../quickstart/">Quickstart</a> from step 1.</li>
+<li>When the rollout pauses at <code>05-secrets</code>, either <code>make bao-init</code> and restore
+   the OpenBao snapshot as above, or <code>make bao-init</code> and re-enter every secret
+   with <code>make bao-secrets</code>.</li>
+<li>Once the platform is Synced and Healthy, restore workloads with a Velero
+   restore from the copied-off backup.</li>
+</ol>
 
 
 

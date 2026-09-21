@@ -6,11 +6,11 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Setting up the repository for development, the checks that run, and what to do before opening a pull request.">
+        <meta name="description" content="Repository setup, the checks to run before a pull request, commit conventions, and how the documentation site is built and published.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/development/contributing/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/development/contributing/">
       
       
         <link rel="prev" href="../">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -370,6 +370,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1476,6 +1476,8 @@
       
         
       
+        
+      
     
     
     
@@ -1688,6 +1690,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1708,8 +1737,6 @@
       
         
           
-        
-      
         
       
         
@@ -1837,10 +1864,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#one-time-setup" class="md-nav__link">
+  <a href="#setup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        One-time setup
+        Setup
       </span>
     </span>
   </a>
@@ -1848,10 +1875,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-checks" class="md-nav__link">
+  <a href="#checks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running the checks
+        Checks
       </span>
     </span>
   </a>
@@ -1870,28 +1897,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#changing-manifests-under-payload" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing manifests under <code>payload/</code>
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing documentation
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#review" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1903,13 +1908,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#agent-assisted-changes" class="md-nav__link">
+  <a href="#documentation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Agent-assisted changes
+        Documentation
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conventions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fonts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fonts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1937,33 +1970,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -2051,10 +2057,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#one-time-setup" class="md-nav__link">
+  <a href="#setup" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        One-time setup
+        Setup
       </span>
     </span>
   </a>
@@ -2062,10 +2068,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-checks" class="md-nav__link">
+  <a href="#checks" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running the checks
+        Checks
       </span>
     </span>
   </a>
@@ -2084,28 +2090,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#changing-manifests-under-payload" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing manifests under <code>payload/</code>
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#changing-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Changing documentation
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#review" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2117,13 +2101,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#agent-assisted-changes" class="md-nav__link">
+  <a href="#documentation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Agent-assisted changes
+        Documentation
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Documentation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Conventions
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fonts" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fonts
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2181,8 +2193,6 @@
       
         
       
-        
-      
     
     
     
@@ -2226,68 +2236,108 @@
 
 
 <h1 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h1>
-<p>Changes here reach real hardware. Not immediately, and not dangerously, but a
-merge to <code>main</code> is a deployment — there is no staging cluster between your
-branch and six machines in a rack. The checks below exist to make that
-comfortable rather than exciting.</p>
-<h2 id="one-time-setup">One-time setup<a class="headerlink" href="#one-time-setup" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>sync<span class="w">                 </span><span class="c1"># virtualenv and dependencies, including dev tools</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install
+<p>A merge to <code>main</code> is a deployment: ArgoCD applies <code>payload/</code> to real hardware,
+and there is no staging cluster in between. The checks below exist to make that
+routine.</p>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>sync<span class="w">                     </span><span class="c1"># virtualenv and dependencies, including dev tools</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install<span class="w">   </span><span class="c1"># the same linters CI runs</span>
 </span></code></pre></div>
-<p>Installing the hooks matters: the same linters run in CI, and every one of them
-is faster to satisfy locally than in a PR. Three round trips through GitHub
-Actions to fix trailing whitespace is a rite of passage you only need once.</p>
-<h2 id="running-the-checks">Running the checks<a class="headerlink" href="#running-the-checks" title="Permanent link">&para;</a></h2>
+<h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files<span class="w">       </span><span class="c1"># ansible-lint, markdownlint, pylint, yamllint</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w"> </span>--clean<span class="w"> </span>--strict<span class="w">  </span><span class="c1"># docs; strict fails on broken links</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w"> </span>--clean<span class="w"> </span>--strict<span class="w">  </span><span class="c1"># docs; strict fails on broken links and orphan pages</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Before touching payload/: valid objects, and what Helm will actually render</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-f<span class="w"> </span>payload/platform/&lt;component&gt;/
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>helm<span class="w"> </span>template<span class="w"> </span>&lt;name&gt;<span class="w"> </span>&lt;repo&gt;/&lt;chart&gt;<span class="w"> </span>--version<span class="w"> </span>&lt;targetRevision&gt;<span class="w"> </span>-f<span class="w"> </span>&lt;values&gt;
 </span></code></pre></div>
-<p><code>--strict</code> is what CI uses, so a local build that passes is a docs build that
-passes. A page that is not registered in <code>nav</code> in <code>zensical.toml</code> fails here —
-which is deliberate, because an unlinked page is a page nobody will ever read.</p>
+<p><code>--strict</code> is what CI uses. A page not registered in <code>nav</code> in <code>zensical.toml</code>
+fails the build, deliberately. On a pull request, the <code>argo-diff-preview</code>
+workflow comments the rendered ArgoCD manifest diff between <code>main</code> and your
+branch; read it, since a three-line values change can render as two hundred
+lines of different objects. The full list of workflows is in
+<a href="../maintenance/#ci-workflows">Maintenance</a>.</p>
 <h2 id="branches-and-commits">Branches and commits<a class="headerlink" href="#branches-and-commits" title="Permanent link">&para;</a></h2>
-<p>Branch names are prefixed by area: <code>docs/</code>, <code>feat/</code>, <code>fix/</code>, <code>chore/</code>.</p>
-<p>Commit messages follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a>,
-matching the existing history:</p>
+<p>Branch names are prefixed by area: <code>docs/</code>, <code>feat/</code>, <code>fix/</code>, <code>chore/</code>. Commit
+messages follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>docs: explain the stack choices and collect the known limitations
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>fix(bootstrap): repoint the install targets at the files that exist
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>chore(deps): update helm release kube-prometheus-stack to v89
 </span></code></pre></div>
-<p>Write the body to explain <em>why</em>, not what — the diff already says what. Six
-months from now, <code>git log</code> is the only place the reasoning survives, and "fix
-bug" helps nobody, least of all you.</p>
-<h2 id="changing-manifests-under-payload">Changing manifests under <code>payload/</code><a class="headerlink" href="#changing-manifests-under-payload" title="Permanent link">&para;</a></h2>
-<p>Everything under <code>payload/</code> is applied by ArgoCD, so a mistake there reaches the
-cluster on merge, automatically, and stays there until another commit says
-otherwise. Two checks before pushing, both of which take seconds:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Valid YAML and valid Kubernetes objects, without touching the cluster</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-f<span class="w"> </span>payload/platform/&lt;component&gt;/
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># What a Helm-sourced Application will actually render</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>helm<span class="w"> </span>template<span class="w"> </span>&lt;name&gt;<span class="w"> </span>&lt;repo&gt;/&lt;chart&gt;<span class="w"> </span>--version<span class="w"> </span>&lt;targetRevision&gt;<span class="w"> </span>-f<span class="w"> </span>&lt;values&gt;
-</span></code></pre></div>
-<p>Opening the PR adds a third: the <code>argo-diff-preview</code> workflow comments the
-rendered ArgoCD manifest diff between <code>main</code> and your branch. Read it. A
-three-line Helm values change routinely renders as two hundred lines of
-different Kubernetes objects, and the diff is the only place that shows up
-before the cluster finds out.</p>
+<p>The body explains <em>why</em>; the diff already says what.</p>
 <div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Do not hand-edit version numbers. <code>targetRevision</code> in the manifests and the versions in <code>ansible/inventory.yaml</code> are owned by Renovate — see <a href="../maintenance/">Maintenance</a>. Hand-bumping one means the next Renovate PR either conflicts with you or quietly reverts you, and neither outcome is fun to debug. There is no exception: the <code>Makefile</code> installs the pre-ArgoCD components from the same <code>targetRevision</code> values rather than pinning its own.</p>
+<p class="admonition-title">Do not hand-edit version numbers</p>
+<p><code>targetRevision</code> in the manifests and the versions in <code>ansible/inventory.yaml</code> are owned by Renovate — see <a href="../maintenance/#renovate">Maintenance</a>. A hand bump conflicts with, or is reverted by, the next Renovate PR. The bootstrap targets in the <code>Makefile</code> read the same <code>targetRevision</code> values rather than pinning their own — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 </div>
-<h2 id="changing-documentation">Changing documentation<a class="headerlink" href="#changing-documentation" title="Permanent link">&para;</a></h2>
-<p>See <a href="../documentation/">Documentation System</a> for the build, the conventions, and
-the two markdownlint rules that most often bite (<code>MD046</code> on multi-paragraph
-admonitions, <code>MD007</code> on nested list indentation).</p>
 <h2 id="review">Review<a class="headerlink" href="#review" title="Permanent link">&para;</a></h2>
-<p><code>.github/CODEOWNERS</code> assigns every path to the repository owner, so all pull
-requests need that review before merging. On a single-maintainer homelab this is
-mostly a speed bump against your own 23:00 enthusiasm, which is exactly the
-enthusiasm most in need of a speed bump. Renovate PRs for patch and minor
-updates automerge, whatever the component; majors always wait for a human.</p>
-<h2 id="agent-assisted-changes">Agent-assisted changes<a class="headerlink" href="#agent-assisted-changes" title="Permanent link">&para;</a></h2>
+<p><code>.github/CODEOWNERS</code> assigns every path to the repository owner, so every pull
+request needs that review. Renovate PRs for patch and minor updates automerge;
+majors wait for a human.</p>
 <p><code>.agent/rules/general-rules.md</code> holds the standing rules for AI coding agents
-working in this repository — GitOps only, docs in <code>docs/</code>, and no hand-edited
-version numbers. Keep it in sync when those conventions change.</p>
+working here: GitOps only, docs in <code>docs/</code>, no hand-edited versions. Keep it in
+sync when those conventions change.</p>
+<h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h2>
+<p>The site is built with <a href="https://zensical.org/">Zensical</a> from <code>docs/</code>,
+configured in <code>zensical.toml</code>, and published to GitHub Pages by
+<code>.github/workflows/docs.yaml</code> at <a href="https://homelab.wlkr.ch/">https://homelab.wlkr.ch/</a>. It is
+deliberately not hosted on the cluster, so it stays readable when the cluster
+is not.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build</td>
+<td>On push to <code>main</code> touching <code>docs/**</code>, <code>overrides/**</code>, <code>zensical.toml</code>, <code>pyproject.toml</code> or <code>uv.lock</code>, <code>docs.yaml</code> runs <code>zensical build --clean --strict</code></td>
+</tr>
+<tr>
+<td>Deploy</td>
+<td>The workflow drops a <code>.nojekyll</code> marker into <code>site/</code> (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes to <code>gh-pages</code>, leaving <code>pr-preview/</code> untouched</td>
+</tr>
+<tr>
+<td>Previews</td>
+<td><code>preview.yaml</code> builds every pull request matching the same paths and publishes it under <code>pr-preview/</code> on <code>gh-pages</code>; closing the PR removes it. Its path filter must match <code>docs.yaml</code>, because this is the only <code>--strict</code> build a PR gets. Fork PRs are skipped: they have no write access</td>
+</tr>
+</tbody>
+</table>
+<p>Locally:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>serve<span class="w">   </span><span class="c1"># http://localhost:8000, rebuilds on save</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w">   </span><span class="c1"># one-off build into site/ (gitignored)</span>
+</span></code></pre></div>
+<h3 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Every page is registered in <code>nav</code>; cross-references are relative Markdown
+    paths (<code>platform/openbao.md</code>, <code>../quickstart.md</code>) so they resolve on the
+    site and on GitHub.</li>
+<li>Diagrams use Mermaid fences; Zensical loads the runtime on pages that contain
+    one.</li>
+<li>Markdown is linted by <code>lint-markdown.yaml</code> and the <code>markdownlint-cli2</code>
+    pre-commit hook. <code>MD046</code>: a blank line followed by an indented line reads as
+    a code block, so keep <code>!!!</code> admonition bodies to a single paragraph.
+    <code>MD007</code>: nested lists indent by four spaces.</li>
+<li>Inline HTML is limited to <code>&lt;div&gt;</code> (<code>MD033</code> in <code>.markdownlint-cli2.yaml</code>),
+    which the card grids on hub pages need.</li>
+<li>Theme templates are overridden by a same-named file under <code>overrides/</code>
+    (<code>theme.custom_dir</code>). Currently only <code>partials/source.html</code>, which drops the
+    repository-facts call that 404s because this repository publishes no
+    releases.</li>
+</ul>
+<h3 id="fonts">Fonts<a class="headerlink" href="#fonts" title="Permanent link">&para;</a></h3>
+<p>Fonts are self-hosted so the site makes no third-party requests:
+<code>theme.font = false</code> in <code>zensical.toml</code>, <code>docs/stylesheets/fonts.css</code> declares
+Inter and JetBrains Mono from the <code>woff2</code> files in <code>docs/assets/fonts/</code>, and
+each SIL OFL licence sits next to them. <code>scripts/update-fonts.sh</code> pins both
+upstream releases (<a href="https://github.com/rsms/inter/releases">Inter</a>,
+<a href="https://github.com/JetBrains/JetBrainsMono/releases">JetBrains Mono</a>) and
+Renovate tracks the pins.</p>
+<div class="admonition warning">
+<p class="admonition-title">A font-pin PR needs a second commit</p>
+<p>Renovate can move the pin but cannot write the binaries, so its PR changes one line and the <code>woff2</code> files are still the old release. Check out the branch, run <code>make fonts</code> to download what the pin now names, and commit the result. <code>make fonts-check</code> (run by <code>fonts-check.yaml</code> on every such PR) diffs the downloads against what is committed and fails the branch until that commit arrives, which is what holds the automerge.</p>
+</div>
 
 
 

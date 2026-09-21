@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/rook-ceph/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/rook-ceph/">
       
       
         <link rel="prev" href="../external-dns/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1256,28 +1229,51 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How It Works
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#disks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disks
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#storage-classes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Storage classes
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
+  <a href="#object-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Object storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1286,26 +1282,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Monitoring">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#cluster-log-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Cluster log level
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#csi-driver" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1314,26 +1293,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="CSI driver">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#serviceaccounts-and-rbac" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ServiceAccounts and RBAC
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#cephx-keys-stay-on-aes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1343,18 +1305,34 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#object-storage" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Object storage
+        Usage
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Object storage">
+    <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requesting-a-volume" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requesting a volume
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#requesting-a-bucket" class="md-nav__link">
@@ -1373,17 +1351,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#requesting-storage" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Requesting Storage
+        Health check
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Health check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#is-storage-ready" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1393,8 +1372,36 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#no-osds-after-reprovisioning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1404,15 +1411,9 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
-      </span>
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1440,6 +1441,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1700,6 +1728,8 @@
       
         
       
+        
+      
     
     
     
@@ -1912,6 +1942,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1930,8 +1987,6 @@
       
         
           
-        
-      
         
       
         
@@ -2051,33 +2106,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2157,28 +2185,51 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How It Works
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#disks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Disks
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#storage-classes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Storage classes
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
+  <a href="#object-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Object storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2187,26 +2238,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Monitoring">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#cluster-log-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Cluster log level
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#csi-driver" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2215,26 +2249,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="CSI driver">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#serviceaccounts-and-rbac" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        ServiceAccounts and RBAC
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#cephx-keys-stay-on-aes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2244,18 +2261,34 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#object-storage" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Object storage
+        Usage
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Object storage">
+    <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requesting-a-volume" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requesting a volume
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#requesting-a-bucket" class="md-nav__link">
@@ -2274,17 +2307,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#requesting-storage" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Requesting Storage
+        Health check
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Health check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#is-storage-ready" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2294,8 +2328,36 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#no-osds-after-reprovisioning" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2305,15 +2367,9 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
-      </span>
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2393,6 +2449,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2436,12 +2496,10 @@
 
 
 <h1 id="rook-ceph">Rook-Ceph<a class="headerlink" href="#rook-ceph" title="Permanent link">&para;</a></h1>
-<p>Distributed block storage using <a href="https://rook.io/">Rook</a> as the Kubernetes operator for <a href="https://ceph.io/">Ceph</a>.</p>
-<p>Ceph is the component in this cluster with the steepest learning curve and the
-longest memory. It is also the one that will still have your data after a node
-dies, which is why it is here. Treat <code>ceph status</code> the way a sysadmin treats
-<code>dmesg</code>: check it more often than seems necessary, and never ignore a <code>WARN</code> on
-the grounds that everything still appears to work.</p>
+<p>Distributed block storage using <a href="https://rook.io/">Rook</a> as the Kubernetes
+operator for <a href="https://ceph.io/">Ceph</a>. It is the component that still has your
+data after a node dies, and the one with the steepest learning curve. Check
+<code>ceph status</code> more often than seems necessary and never ignore a <code>WARN</code>.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2465,7 +2523,7 @@ the grounds that everything still appears to work.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Every pod with a volume. <code>openbao</code> first, and the secret store going with it is what turns a storage problem into a cluster problem</td>
+<td>Every pod with a volume — <code>openbao</code> first, which turns a storage problem into a cluster problem</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2475,124 +2533,144 @@ the grounds that everything still appears to work.</p>
 <td>UI</td>
 <td><code>rook.infra.k8s.wlkr.ch</code></td>
 </tr>
+<tr>
+<td>Files</td>
+<td><code>payload/platform/rook-ceph-operator/</code>, <code>payload/platform/rook-ceph-cluster/</code>, <code>payload/platform/rook-ceph/</code></td>
+</tr>
 </tbody>
 </table>
-<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>Each node has a raw disk partition labeled <code>rook-osd</code> (created by Ignition at provisioning time). Rook detects these partitions and adds them as Ceph OSDs (Object Storage Daemons). Data is replicated across OSDs for redundancy.</p>
-<p><code>rook-osd</code> is the <strong>last</strong> partition on the disk and takes whatever is left after
-Flatcar's own partitions and the 50GB root — 183GB per node on the 256GB disks
-here, so roughly 1.1TB raw and 365GB usable at three replicas across six nodes. It is last for a reason: the
-partition is raw, so its contents are wherever Ceph last wrote them, and
-inserting anything ahead of it shifts its start offset and takes the OSD data
-with it. Changing the partition table above <code>rook-osd</code> is a
-<a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">reinstall</a>, not an edit.</p>
-<div class="admonition note">
-<p class="admonition-title">A rebuild wipes the OSD deliberately</p>
-<p>Ignition declares <code>rook-osd</code> with <code>format: none</code> and <code>wipe_filesystem: true</code> — erase what is there, put nothing back, do not mount it. That is aimed squarely at the failure below: <code>ceph-volume</code> reads the BlueStore <em>signature</em>, not the partition table, so a reinstalled node that left the old bytes in place brings an OSD back into a cluster that has never heard of it. The installer also destroys the GPT and discards the whole device where the hardware supports it, but the <code>format: none</code> entry is the one that is guaranteed to run.</p>
-</div>
-<p>"Raw" is load-bearing there. Ceph wants the block device, not a filesystem on it, and it will politely decline anything that already has one — which is the correct behaviour and also the first thing to check when an OSD refuses to appear. On a node that has been provisioned before, the thing already on it is usually the last cluster's OSD: see <a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a>.</p>
-<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>StorageClass</strong>: <code>rook-ceph-block</code> is set as the cluster default. Any <code>PersistentVolumeClaim</code> without an explicit <code>storageClassName</code> will use it.</li>
-<li><strong>StorageClass</strong>: <code>ceph-bucket</code> provisions S3 buckets from the object store — see <a href="#object-storage">Object storage</a>.</li>
-<li><strong>Dashboard</strong>: Ceph management UI at <a href="https://rook.infra.k8s.wlkr.ch">https://rook.infra.k8s.wlkr.ch</a>.</li>
-<li><strong>Metrics</strong>: the Ceph mgr <code>prometheus</code> module is enabled and the operator maintains a <code>ServiceMonitor</code>, so cluster health reaches Prometheus. Rook's Ceph dashboards are in Grafana — see <a href="../monitoring/#dashboards">Monitoring</a>.</li>
-</ul>
-<h2 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h2>
-<p><code>cephClusterSpec.monitoring.enabled</code> is <code>true</code>, which turns on the mgr
-prometheus module and lets the operator maintain a <code>ServiceMonitor</code>. Without it
-no Ceph metric reaches Prometheus at all, and storage becomes the one thing the
-monitoring stack cannot see: a degraded pool, a down OSD, or a near-full cluster
-would show up only if somebody ran <code>ceph status</code> by hand. A full Ceph cluster
-does not degrade gracefully — it stops accepting writes, and every workload
-finds out simultaneously. This is not a metric to leave unwatched.</p>
-<p><code>monitoring.createPrometheusRules</code> ships Ceph's own alerting rules alongside it
-(<code>CephClusterErrorState</code>, <code>CephOSDDown</code>, <code>CephPGsUnhealthy</code>, the near-full
-warnings, and the rest).</p>
-<div class="admonition note">
-<p class="admonition-title">Sync ordering</p>
-<p>The rules render as a <code>PrometheusRule</code>. Its CRD is the
-<code>prometheus-operator-crds</code> Application in <code>01-crds</code>, not
-kube-prometheus-stack in <code>08-services</code>: a kind that is missing when
-<code>04-storage</code> syncs would fail the sync, and a failed sync never lets the
-stage finish.</p>
-</div>
-<p>The Ceph dashboard's links to Prometheus and Grafana are set through
-<code>cephClusterSpec.cephConfig</code> (<code>mgr/dashboard/PROMETHEUS_API_HOST</code> and friends)
-rather than by running <code>ceph dashboard set-prometheus-api-host</code> from a Job. Those
-commands only write keys into the mon config store, which the operator can do
-directly, and it reapplies them on every reconcile.</p>
-<h3 id="cluster-log-level">Cluster log level<a class="headerlink" href="#cluster-log-level" title="Permanent link">&para;</a></h3>
-<p><code>mon_cluster_log_level</code> is <code>info</code>. The Ceph default is <code>debug</code>, and the mons copy
-the cluster log to stderr, so every <code>mon_status</code> from Rook's mon probes and every
-two-second pgmap from the mgr became a <code>[DBG]</code> line — about 15k of the mons' 20k
-lines per half hour in <a href="../logging/">Loki</a>. The mon applies the level before
-writing to stderr; warnings and errors in the cluster log are unaffected.</p>
-<h2 id="csi-driver">CSI driver<a class="headerlink" href="#csi-driver" title="Permanent link">&para;</a></h2>
-<p>Up to Rook v1.19 the operator chart's <code>csi</code> values deployed the RBD provisioner
-and node plugin directly. From v1.20 that job belongs to the
-ceph-csi-operator, installed as a subchart, which deploys nothing until an
-<code>OperatorConfig</code> and a <code>Driver</code> CR tell it what to run. Neither chart ships
-them — upstream keeps them in <code>deploy/examples/operator.yaml</code> — so they live in
-<code>csi-driver.yaml</code>. Without them no provisioner is registered for
-<code>rook-ceph.rbd.csi.ceph.com</code> and every PVC against <code>rook-ceph-block</code> stays
-<code>Pending</code> on <code>ExternalProvisioning</code>.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="disks">Disks<a class="headerlink" href="#disks" title="Permanent link">&para;</a></h3>
+<p>Each node has a raw partition labelled <code>rook-osd</code>, created by Ignition as the
+<strong>last</strong> partition with whatever the root leaves, which Rook adds as an OSD;
+data is replicated three ways across them. Its contents are wherever Ceph last
+wrote them, so inserting a partition ahead of it shifts its offset and takes
+the OSD data with it: changing the partition table is a
+<a href="../../operations/nodes/">reinstall</a>, not an edit.</p>
+<p>Ignition declares it with <code>format: none</code> and <code>wipe_filesystem: true</code>, because
+<code>ceph-volume</code> reads the BlueStore <em>signature</em>, not the partition table, and a
+reinstalled node that kept the old bytes would present an OSD from a cluster
+that no longer exists. Ceph declines any device that already carries a
+filesystem — the first thing to check when an OSD refuses to appear, see
+<a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a>.</p>
+<h3 id="storage-classes">Storage classes<a class="headerlink" href="#storage-classes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>StorageClass</th>
+<th>Provides</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rook-ceph-block</code></td>
+<td>RBD block volumes, cluster default</td>
+<td><code>ReadWriteOnce</code> only; <code>ReadWriteMany</code> needs CephFS, which is not enabled. Block PVs are deleted with their claim, and every Application prunes, so removing a PVC from Git removes the volume — see <a href="../../operations/backups/">Backups</a></td>
+</tr>
+<tr>
+<td><code>ceph-bucket</code></td>
+<td>S3 buckets from the object store</td>
+<td>Reclaim <code>Retain</code>, so deleting a claim cannot delete the bucket</td>
+</tr>
+</tbody>
+</table>
+<h3 id="object-storage">Object storage<a class="headerlink" href="#object-storage" title="Permanent link">&para;</a></h3>
+<p>A <code>CephObjectStore</code> provides an S3 endpoint at
+<code>http://rook-ceph-rgw-object-store.rook-ceph.svc</code>, so backups and log chunks
+live somewhere other than the block pool they protect. Two RGW instances keep
+a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
+1.5x overhead rather than 3x, safe at <code>failureDomain: host</code> with six nodes.</p>
+<h3 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cephClusterSpec.monitoring.enabled</code></td>
+<td>Turns on the mgr <code>prometheus</code> module and lets the operator maintain a <code>ServiceMonitor</code>. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes</td>
+</tr>
+<tr>
+<td><code>monitoring.createPrometheusRules</code></td>
+<td>Ships Ceph's own alerting rules as a <code>PrometheusRule</code>. Its CRD comes from <code>prometheus-operator-crds</code> in <code>01-crds</code> so the kind exists when <code>04-storage</code> syncs — see <a href="../monitoring/#crds">Monitoring</a></td>
+</tr>
+<tr>
+<td><code>cephClusterSpec.cephConfig</code> <code>mgr/dashboard/*</code></td>
+<td>Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off <code>ceph dashboard set-*</code> Job</td>
+</tr>
+<tr>
+<td><code>mon_cluster_log_level: info</code></td>
+<td>The Ceph default is <code>debug</code>, and the mons copy the cluster log to stderr, so Rook's probes and the mgr's pgmap ticks became most of the mon log volume in <a href="../logging/">Loki</a>. Warnings and errors are unaffected</td>
+</tr>
+</tbody>
+</table>
+<p>Rook's Grafana dashboards are vendored in <code>grafana-dashboards.yaml</code> — see
+<a href="../monitoring/#dashboards">Monitoring &rarr; Dashboards</a>.</p>
+<h3 id="csi-driver">CSI driver<a class="headerlink" href="#csi-driver" title="Permanent link">&para;</a></h3>
+<p>From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart,
+which deploys nothing until an <code>OperatorConfig</code> and a <code>Driver</code> CR tell it what
+to run. Neither chart ships them, so they live in <code>csi-driver.yaml</code>; without
+them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>csi-driver.yaml</code> in <code>rook-ceph</code>, with <code>SkipDryRunOnMissingResource</code></td>
+<td>The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart one stage earlier</td>
+</tr>
+<tr>
+<td><code>OperatorConfig</code> pointing at the chart's image-set <code>ConfigMap</code></td>
+<td>A chart bump moves every sidecar and the cephcsi image together</td>
+</tr>
+<tr>
+<td><code>csi.&lt;sidecar&gt;.tag</code> pins in <code>rook-ceph-operator</code></td>
+<td>The sidecars Rook ships link a gRPC with an authorization bypass; the pins move ahead of the chart under <code># renovate:</code> annotations and go once the chart catches up</td>
+</tr>
+<tr>
+<td>Driver name <code>rook-ceph.rbd.csi.ceph.com</code></td>
+<td>Derived from the namespace and must match the StorageClasses' <code>provisioner</code>. RBD is the only driver; CephFS is not enabled</td>
+</tr>
+<tr>
+<td><code>csi-rbac.yaml</code></td>
+<td>The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by <code>CSI_SERVICE_ACCOUNT_PREFIX</code> (empty here): <code>rbd-ctrlplugin-sa</code> and <code>rbd-nodeplugin-sa</code>. Without them the Deployment and DaemonSet exist but create no pods</td>
+</tr>
+</tbody>
+</table>
 <div class="admonition warning">
 <p class="admonition-title"><code>csi</code> values on the operator chart do nothing, except the images</p>
-<p>Helm accepts values a chart no longer reads without complaint. Driver
-settings go in <code>csi-driver.yaml</code>, not under <code>csi</code> in <code>rook-ceph-operator</code>.
-The one exception is <code>csi.&lt;sidecar&gt;.tag</code>: the chart still renders those
-into the image-set <code>ConfigMap</code> below, which is why the sidecar pins live
-there.</p>
+<p>Helm accepts values a chart no longer reads. Driver settings go in <code>csi-driver.yaml</code>; only <code>csi.&lt;sidecar&gt;.tag</code> still renders into the image-set <code>ConfigMap</code>.</p>
 </div>
-<ul>
-<li><strong>In <code>rook-ceph</code>, at <code>04-storage</code></strong>, with <code>SkipDryRunOnMissingResource</code>: the
-  CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart in
-  <code>03-controllers</code>.</li>
-<li><strong>Image set</strong>: <code>OperatorConfig</code> points at the <code>ConfigMap</code> the chart renders,
-  so a chart bump moves every sidecar and the cephcsi image together and the
-  csi-operator's own image defaults never apply. Three sidecars are pinned
-  ahead of the chart in <code>rook-ceph-operator</code>: <code>csi-provisioner</code> v6.3.0,
-  <code>csi-resizer</code> v2.2.1 and <code>csi-snapshotter</code> v8.6.0, the versions
-  ceph-csi-operator v1.0.5 defaults to. The ones Rook v1.20.7 ships link a
-  gRPC with an authorization bypass (CVE-2026-33186), and Rook has not yet
-  moved to v1.0.5. Renovate tracks the pins through their <code># renovate:</code>
-  annotations; drop them once the chart's own defaults catch up.</li>
-<li><strong>Driver name</strong>: not free to choose. Rook derives the provisioner from its
-  namespace, and it has to match the <code>provisioner</code> of the StorageClasses in
-  <code>rook-ceph-cluster</code>. CephFS is not enabled, so RBD is the only driver.</li>
-</ul>
-<h3 id="serviceaccounts-and-rbac">ServiceAccounts and RBAC<a class="headerlink" href="#serviceaccounts-and-rbac" title="Permanent link">&para;</a></h3>
-<p>The ceph-csi-operator does not create its pods' ServiceAccounts either, and no
-chart renders them. Without <code>csi-rbac.yaml</code> the driver's Deployment and
-DaemonSet exist but create no pods:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Error creating: pods "rook-ceph.rbd.csi.ceph.com-nodeplugin-" is forbidden:
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>error looking up service account rook-ceph/rbd-nodeplugin-sa: not found
+<p><code>csi-rbac.yaml</code> is the RBD half of the ceph-csi-operator's
+<code>deploy/multifile/csi-rbac.yaml</code> at the version the rook-ceph chart pulls in;
+Renovate does not see it. To refresh it:</p>
+<ol>
+<li>
+<p>Fetch and rename:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>curl<span class="w"> </span>-sSfL<span class="w"> </span>https://raw.githubusercontent.com/ceph/ceph-csi-operator/vX.Y.Z/deploy/multifile/csi-rbac.yaml<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-system/rook-ceph/'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-//'</span>
 </span></code></pre></div>
-<p>The names are fixed: the operator derives them from
-<code>CSI_SERVICE_ACCOUNT_PREFIX</code>, which the rook-ceph chart sets to the empty
-string, so they are exactly <code>rbd-ctrlplugin-sa</code> and <code>rbd-nodeplugin-sa</code>.</p>
-<p>The file is a vendored copy of the RBD half of the ceph-csi-operator's
-<code>deploy/multifile/csi-rbac.yaml</code>, at the version the rook-ceph chart pulls in
-(v1.0.4 at the time of writing). Renovate does not see it. To refresh it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-sSfL<span class="w"> </span>https://raw.githubusercontent.com/ceph/ceph-csi-operator/vX.Y.Z/deploy/multifile/csi-rbac.yaml<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-system/rook-ceph/'</span><span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/ceph-csi-operator-//'</span>
-</span></code></pre></div>
-<p>then keep only the rbd documents, re-indent the sequences for yamllint, and
-prefix the cluster-scoped names so they read as ours. CephFS, NFS and NVMe-oF
-are not enabled, so their accounts are left out rather than carried dormant.</p>
-<h2 id="cephx-keys-stay-on-aes">cephx keys stay on aes<a class="headerlink" href="#cephx-keys-stay-on-aes" title="Permanent link">&para;</a></h2>
-<p>Ceph 20 (tentacle) warns about the legacy <code>aes</code> cephx cipher, and every key here
-is deliberately on it. That is a constraint, not a preference.</p>
-<p><code>aes256k</code> is userspace-only. krbd puts the cephx key in the kernel keyring, and
-the kernel ceph client does not implement <code>aes256k</code>. Moving the CSI keys to it
-made every <code>rbd map</code> fail with <code>failed to add secret ... to kernel</code> /
-<code>map failed: (22) Invalid argument</code>, so nothing with an RBD volume could start
-on any node — while Ceph accepted the keys and reported the rotation a success.
-The daemon keys never touch the kernel and could use <code>aes256k</code>, but two ciphers
-in one cluster force the mons to accept both, which is its own warning
-(<code>AUTH_EMERGENCY_CIPHERS_SET</code>) and buys no security. One cipher everywhere, and
-it has to be the one krbd can read.</p>
+</li>
+<li>
+<p>Keep only the rbd documents (CephFS, NFS and NVMe-oF are not enabled).</p>
+</li>
+<li>Re-indent the sequences for yamllint and prefix the cluster-scoped names.</li>
+</ol>
+<h3 id="cephx-keys-stay-on-aes">cephx keys stay on aes<a class="headerlink" href="#cephx-keys-stay-on-aes" title="Permanent link">&para;</a></h3>
+<p>Ceph 20 warns about the legacy <code>aes</code> cipher, and every key here is
+deliberately on it: the kernel client krbd does not implement <code>aes256k</code>, so
+CSI keys moved to it make every <code>rbd map</code> fail with
+<code>map failed: (22) Invalid argument</code> while Ceph reports the rotation a success.
+Two ciphers in one cluster trigger <code>AUTH_EMERGENCY_CIPHERS_SET</code> and buy no
+security.</p>
 <table>
 <thead>
 <tr>
@@ -2610,62 +2688,37 @@ it has to be the one krbd can read.</p>
 <td>Changing <code>keyType</code> alone never rotates existing keys while the policy is <code>Disabled</code></td>
 </tr>
 <tr>
-<td><code>keyGeneration: 3</code></td>
+<td><code>keyGeneration</code></td>
 <td>Rotation only triggers on an increase, so a generation can never be lowered to undo one</td>
 </tr>
 <tr>
 <td><code>healthCheck.muteHealthWarning</code></td>
-<td>The <code>AUTH_*</code> warnings would otherwise keep the Application <code>Degraded</code> while the data is healthy</td>
+<td>The <code>AUTH_*</code> warnings would otherwise keep the Application <code>Degraded</code> while the data is healthy. Temporary: remove once RBD moves to the userspace <code>rbd-nbd</code> mounter and the keys can leave <code>aes</code></td>
 </tr>
 </tbody>
 </table>
-<p>The mutes are temporary: remove them once the keys can leave <code>aes</code>. Getting
-there means moving RBD to the userspace <code>rbd-nbd</code> mounter first, which is a
-genuine trade with its own failure modes rather than a config edit.</p>
-<h2 id="object-storage">Object storage<a class="headerlink" href="#object-storage" title="Permanent link">&para;</a></h2>
-<p>A <code>CephObjectStore</code> provides an S3-compatible endpoint inside the cluster,
-served by two RGW instances, so an RGW restart during a node reboot does not
-stall a backup or drop log ingestion. It exists so that backups and log chunks
-have somewhere to live that is not a PVC on the same block pool they are meant
-to protect. Same cluster, different pool — half a step, but a real one.</p>
-<table>
-<thead>
-<tr>
-<th>Property</th>
-<th>Value</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Store</td>
-<td><code>object-store</code></td>
-</tr>
-<tr>
-<td>StorageClass</td>
-<td><code>ceph-bucket</code></td>
-</tr>
-<tr>
-<td>Metadata pool</td>
-<td>Replicated, size 3</td>
-</tr>
-<tr>
-<td>Data pool</td>
-<td>Erasure coded 2+1 — 1.5x overhead rather than 3x, safe at <code>failureDomain: host</code> with six nodes</td>
-</tr>
-<tr>
-<td>Reclaim policy</td>
-<td><code>Retain</code>, so deleting a claim cannot delete the bucket</td>
-</tr>
-<tr>
-<td>Endpoint</td>
-<td><code>http://rook-ceph-rgw-object-store.rook-ceph.svc</code></td>
-</tr>
-</tbody>
-</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="requesting-a-volume">Requesting a volume<a class="headerlink" href="#requesting-a-volume" title="Permanent link">&para;</a></h3>
+<p>Any workload can claim the default class:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-data</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span>
+</span></code></pre></div>
+<p>Add <code>storageClassName: rook-ceph-block</code> to say so explicitly. A Deployment
+with two replicas sharing one RWO PVC schedules one pod and leaves the other in
+<code>ContainerCreating</code> with a multi-attach error.</p>
 <h3 id="requesting-a-bucket">Requesting a bucket<a class="headerlink" href="#requesting-a-bucket" title="Permanent link">&para;</a></h3>
-<p>Ask for an <code>ObjectBucketClaim</code> rather than a PVC. Rook creates the bucket and
-writes the endpoint and credentials into a <code>ConfigMap</code> and <code>Secret</code> that share
-the claim's name:</p>
+<p>Ask for an <code>ObjectBucketClaim</code>; Rook creates the bucket and writes a
+<code>ConfigMap</code> (<code>BUCKET_NAME</code>, <code>BUCKET_HOST</code>, <code>BUCKET_PORT</code>) and a <code>Secret</code>
+(<code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>) sharing the claim's name:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objectbucket.io/v1alpha1</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ObjectBucketClaim</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">metadata</span><span class="p">:</span>
@@ -2675,45 +2728,14 @@ the claim's name:</p>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">generateBucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
 </span></code></pre></div>
-<p>The resulting <code>Secret</code> holds <code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>;
-the <code>ConfigMap</code> holds <code>BUCKET_NAME</code>, <code>BUCKET_HOST</code> and <code>BUCKET_PORT</code>.</p>
-<h2 id="requesting-storage">Requesting Storage<a class="headerlink" href="#requesting-storage" title="Permanent link">&para;</a></h2>
-<p>Any workload can request a PVC using the default storage class. Note the words
-"default" and "Retain" are doing different jobs here: block PVCs are deleted
-with their claim, and every Application in this repo syncs with <code>prune: true</code>.
-Removing a <code>PersistentVolumeClaim</code> from Git removes the volume. Ask Velero how
-it feels about that in <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PersistentVolumeClaim</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-data</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">accessModes</span><span class="p">:</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ReadWriteOnce</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">resources</span><span class="p">:</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="nt">requests</span><span class="p">:</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">      </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5Gi</span>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<h3 id="is-storage-ready">Is storage ready?<a class="headerlink" href="#is-storage-ready" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
-<p>To use it explicitly:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
-</span></code></pre></div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>ReadWriteOnce</code> (RWO) is the supported access mode. <code>ReadWriteMany</code> (RWX) requires CephFS, which is not configured here — so a Deployment with two replicas sharing one PVC will schedule one pod and leave the other stuck in <code>ContainerCreating</code>, wondering aloud about a multi-attach error.</p>
-</div>
-<h2 id="is-storage-ready">Is storage ready?<a class="headerlink" href="#is-storage-ready" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>storage-check
-</span></code></pre></div>
-<p>Run it after the GitOps handover and before trusting anything that mounts a
-volume. The rollout stages already put Rook ahead of every such workload, and that
-is not the same question: a <code>CephCluster</code> reports <code>Ready</code> with mons and mgrs up
-while having no OSDs to store data on, and a <code>StorageClass</code> exists whether or
-not a CSI driver ever registered for its provisioner. Both failures leave the
-apps in later stages running and their pods <code>Pending</code>, several layers away from
-the cause.</p>
-<p>The script walks the chain instead, in the order it breaks, and stops at the
-first missing link with the command that explains it:</p>
+<p>Run it after the GitOps handover, before trusting anything that mounts a
+volume: a <code>CephCluster</code> reports <code>Ready</code> with no OSDs, and a <code>StorageClass</code>
+exists whether or not a CSI driver registered for it. The script walks the
+chain in the order it breaks and stops at the first missing link:</p>
 <table>
 <thead>
 <tr>
@@ -2748,76 +2770,58 @@ first missing link with the command that explains it:</p>
 </tr>
 </tbody>
 </table>
-<p>The last one is the point of the exercise: it asks for a volume the same way a
-workload would, waits up to <code>TIMEOUT</code> seconds (120 by default) for it to bind,
-and deletes it again. <code>NAMESPACE</code> and <code>CLASS</code> override where it asks and which
-<code>StorageClass</code> it asks for.</p>
-<h2 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h2>
-<p>This used to be the normal outcome of a rebuild. Butane created the <code>rook-osd</code>
-partition only when it was absent and deliberately left it unformatted, so a
-reinstall onto the same hardware inherited the previous cluster's OSDs — and
-Rook will not touch an OSD that belongs to a cluster it does not know.</p>
-<p>The <a href="../../architecture/boot-process/#3-install-bootstrap">installer wipes the disk</a>
-before Flatcar is written, so a rebuilt node now comes back with nothing on it.
-What follows is what the failure looks like if that wipe is ever incomplete —
-<code>blkdiscard</code> declined by the hardware <em>and</em> something <code>wipefs</code> did not catch —
-because the symptom is distinctive and points nowhere near the cause:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-odin<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">skipping osd.3: "629a6636-..." belonging to a different ceph cluster "1c569bbb-..."</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">skipping OSD configuration as no devices matched the storage settings for this node "odin"</span>
-</span></code></pre></div>
-<p>The <code>CephCluster</code> reports <code>Ready</code> with <code>HEALTH_WARN</code> and the mons and mgrs come
-up, so the cluster looks alive; it simply has nowhere to put data. What you
-notice instead is the first workload that wants a volume:</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span><span class="nv">app</span><span class="o">=</span>rook-ceph-osd
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">No resources found in rook-ceph namespace.</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>pvc
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">data-openbao-0   Pending   rook-ceph-block</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="gp">$ </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>describe<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">0/4 nodes are available: pod has unbound immediate PersistentVolumeClaims.</span>
-</span></code></pre></div>
-<p>which in a fresh bootstrap means <a href="../../quickstart/">quickstart</a> step 11 cannot
-start: <code>bao operator init</code> has no pod to exec into.</p>
+<p>The last one asks for a volume the way a workload would and waits <code>TIMEOUT</code>
+seconds (120 by default); <code>NAMESPACE</code> and <code>CLASS</code> override where and what it
+asks for.</p>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Ceph warnings block the rollout</p>
+<p>ArgoCD maps <code>HEALTH_WARN</code> to Degraded, so while Ceph warns no change reaches anything after <code>04-storage</code> — see <a href="../../architecture/gitops/">GitOps</a>.</p>
+</div>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h3 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h3>
+<p>A node whose <code>rook-osd</code> partition still carries a previous cluster's BlueStore
+signature gets no OSD: the <code>CephCluster</code> reports <code>Ready</code> with <code>HEALTH_WARN</code>,
+<code>kubectl -n rook-ceph get pods -l app=rook-ceph-osd</code> is empty, and the first
+PVC — <code>data-openbao-0</code> on a fresh bootstrap — stays <code>Pending</code>.</p>
 <div class="admonition danger">
 <p class="admonition-title">The old cluster's data is already gone</p>
-<p>This is not a choice between keeping and losing it. Once the mons that held
-the cluster map left with the old control plane, those OSDs cannot be
-re-adopted by anything — the bytes are there and nothing can read them.
-Take a backup off the disks <em>before</em> a rebuild if you need one.</p>
+<p>Once the mons that held the cluster map left with the old control plane, those OSDs cannot be re-adopted by anything. Take a backup off the disks <em>before</em> a rebuild if you need one.</p>
 </div>
-<p>The fix is to rebuild the node, which wipes the disk as part of the install:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
+<ol>
+<li>
+<p>Confirm the cause:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-&lt;node&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># skipping osd.3: "..." belonging to a different ceph cluster "..."</span>
 </span></code></pre></div>
-<p>Then network-boot it — see
-<a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Repartitioning the nodes</a>. The
-installer clears filesystem signatures from every partition, zaps the GPT, and
-discards the whole device where the hardware supports it, so the <code>osd-prepare</code>
-job on the rebuilt node finds a blank partition.</p>
-<p>If a node cannot be rebuilt right now, the same thing by hand over SSH is
-<code>wipefs -a</code> followed by a couple of hundred MiB of <code>dd</code> over
-<code>/dev/disk/by-partlabel/rook-osd</code>. <code>wipefs</code> removes the signature that made Rook
-skip the device; the <code>dd</code> removes the BlueStore label and superblock behind it,
-which is what <code>ceph-volume raw list</code> reads. Address it by label, not by name —
-the control-plane nodes present it as a different partition number than the
-worker does, and the label path can only ever be the OSD partition.</p>
-<p>Either way, restart the operator afterwards so it recreates the <code>osd-prepare</code>
-jobs. An OSD appears per node and the pending PVCs bind on the next provisioning
-attempt; <code>make storage-check</code> is the way to confirm that rather than assume it.</p>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>rook-ceph-operator/
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>└── application.yaml   # Rook-Ceph operator
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>rook-ceph-cluster/
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>└── application.yaml   # CephCluster + CephBlockPool + CephObjectStore + StorageClasses
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>rook-ceph/             # Distributed Storage
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>├── application.yaml   # ArgoCD Application
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>├── csi-driver.yaml    # ceph-csi-operator OperatorConfig + RBD Driver
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>├── csi-rbac.yaml      # CSI ServiceAccounts and RBAC, vendored
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>├── grafana-dashboards.yaml  # Rook's Ceph dashboards for Grafana, vendored
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>└── httproute.yaml     # Rook dashboard route
+</li>
+<li>
+<p>Rebuild the node; the <a href="../../architecture/boot-process/">installer</a> wipes
+   the disk:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
 </span></code></pre></div>
+</li>
+<li>
+<p>If the node cannot be rebuilt now, wipe the partition by hand over SSH.
+   <code>wipefs</code> removes the signature Rook skips on; the <code>dd</code> removes the
+   BlueStore label behind it. Address it by label — the partition number
+   differs between control-plane and worker nodes:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>wipefs<span class="w"> </span>-a<span class="w"> </span>/dev/disk/by-partlabel/rook-osd
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>dd<span class="w"> </span><span class="k">if</span><span class="o">=</span>/dev/zero<span class="w"> </span><span class="nv">of</span><span class="o">=</span>/dev/disk/by-partlabel/rook-osd<span class="w"> </span><span class="nv">bs</span><span class="o">=</span>1M<span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">200</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Restart the operator so it recreates the <code>osd-prepare</code> jobs:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/rook-ceph-operator
+</span></code></pre></div>
+</li>
+<li>
+<p>Confirm an OSD per node and a binding PVC:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>storage-check
+</span></code></pre></div>
+</li>
+</ol>
 
 
 

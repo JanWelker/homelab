@@ -6,11 +6,11 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How the cluster is put together: hardware, node roles, networking, and the design decisions behind the homelab.">
+        <meta name="description" content="How the cluster is put together: node roles, networking, the repository layout, and where the design decisions live.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/architecture/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/architecture/">
       
       
         <link rel="prev" href="../adapting/">
@@ -272,10 +272,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -673,10 +673,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -745,33 +741,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="./boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -946,33 +915,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="./directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -991,6 +933,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1221,6 +1194,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1481,6 +1481,8 @@
       
         
       
+        
+      
     
     
     
@@ -1693,6 +1695,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1711,8 +1740,6 @@
       
         
           
-        
-      
         
       
         
@@ -1832,33 +1859,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../development/maintenance/" class="md-nav__link">
         
   
@@ -1938,45 +1938,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Components
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Components">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-deployment-host-local-machine" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        1. Deployment Host (Local Machine)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-target-host-bare-metal-node" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        2. Target Host (Bare Metal Node)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#cluster-layout" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1988,10 +1949,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#technologies" class="md-nav__link">
+  <a href="#repository-layout" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Technologies
+        Repository layout
       </span>
     </span>
   </a>
@@ -2060,10 +2021,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -2107,84 +2064,56 @@
 
 
 <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
-<p>This project deploys a bare metal Kubernetes cluster using Flatcar Container
-Linux and Kubeadm. No cloud provider, no managed control plane, no friendly
-button labelled "create cluster" — just six machines, a network, and a
-deployment host that talks them into existence.</p>
-<p>This page assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
-GitOps are. If any of those is new, <a href="../concepts/">Core Concepts</a> covers all
-five in one page.</p>
+<p>A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: six
+machines, a network, and a deployment host that talks them into existence. The
+stack itself is summarised in <a href="../#the-stack-in-one-table">one table</a>
+on the home page, and the reasoning behind each choice in
+<a href="decisions/">Design Decisions</a>.</p>
+<p>This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and
+GitOps are; <a href="../concepts/">Core Concepts</a> covers all five.</p>
 <h2 id="what-is-in-this-section">What is in this section<a class="headerlink" href="#what-is-in-this-section" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
 <ul>
 <li>
 <p><strong><a href="boot-process/">Boot &amp; Bootstrap Process</a></strong></p>
 <hr />
-<p>One node from power-on to <code>kubectl get nodes</code>, arrow by arrow. The page to
-read when an install stalls, because it turns "it hangs" into "which arrow
-did not happen?"</p>
+<p>One node from power-on to <code>kubectl get nodes</code>, arrow by arrow, and the
+boot server that serves each step. Start here when an install stalls.</p>
 </li>
 <li>
-<p><strong><a href="boot-server/">Boot Server</a></strong> · <strong><a href="ansible/">Ansible</a></strong></p>
+<p><strong><a href="ansible/">Ansible</a></strong></p>
 <hr />
-<p>The two halves of the deployment host: the Python script that serves TFTP
-and HTTP to a booting node, and the playbooks that generate everything it
-serves.</p>
+<p>The playbooks that generate everything the boot server serves. Ansible
+never configures a node.</p>
 </li>
 <li>
 <p><strong><a href="gitops/">GitOps Strategy</a></strong></p>
 <hr />
-<p>The ApplicationSet, and the staged rollout that makes a fresh bootstrap
-converge instead of deadlocking on a CRD that does not exist yet.</p>
+<p>The ApplicationSet, the staged rollout, and the rules that keep a fresh
+bootstrap from deadlocking.</p>
 </li>
 <li>
 <p><strong><a href="decisions/">Design Decisions</a></strong></p>
 <hr />
-<p>Seven choices, each stated as <em>X, not Y</em>, each with the cost it carries.
-Read this before proposing a simpler alternative — it is probably in here.</p>
+<p>Seven choices, each as <em>X, not Y</em>, each with its cost. Read before
+proposing a simpler alternative.</p>
 </li>
 <li>
-<p><strong><a href="security/">Security Posture</a></strong></p>
+<p><strong><a href="security/">Security Posture</a></strong> · <strong><a href="audit-logging/">Audit Logging</a></strong></p>
 <hr />
-<p>The trust boundary this cluster assumes, what is deliberately not enforced,
-and the audit logging that records the rest.</p>
+<p>The trust boundary this cluster assumes, what is deliberately not
+enforced, and what the API server records.</p>
 </li>
 <li>
 <p><strong><a href="limitations/">Known Limitations</a></strong></p>
 <hr />
-<p>What it does not do, written down so it is findable before it is discovered.</p>
-</li>
-<li>
-<p><strong><a href="directory-structure/">Repository Layout</a></strong></p>
-<hr />
-<p>Which of the four top-level directories to be in, and which one never to
-edit by hand.</p>
+<p>What it does not do, in one table.</p>
 </li>
 </ul>
 </div>
-<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<h3 id="1-deployment-host-local-machine">1. Deployment Host (Local Machine)<a class="headerlink" href="#1-deployment-host-local-machine" title="Permanent link">&para;</a></h3>
-<p>The machine where this project is executed. Notably <strong>not</strong> part of the cluster —
-it is a laptop on the same network, and the cluster does not depend on it once
-provisioning is done.</p>
-<ul>
-<li><strong>Ansible</strong>: Responsible for generating the configuration files (Ignition,
-  Kubeadm config) based on templates and variables.</li>
-<li><strong>Python Boot Server</strong>: A custom Python script that runs:</li>
-<li><strong>TFTP Server</strong>: Serves the Bootloader (syslinux.efi/lpxelinux.0) and config.</li>
-<li><strong>HTTP Server</strong>: Serves Ignition configs, Flatcar Kernel/Initrd, and Sysext
-    images (<code>.raw</code>) + configs (<code>.conf</code>).</li>
-<li><strong>Artifacts</strong>: Directory containing downloaded OS images (Flatcar) and
-  generated configs.</li>
-</ul>
-<h3 id="2-target-host-bare-metal-node">2. Target Host (Bare Metal Node)<a class="headerlink" href="#2-target-host-bare-metal-node" title="Permanent link">&para;</a></h3>
-<p>The physical machine to be provisioned.</p>
-<ul>
-<li><strong>PXE Client</strong>: NIC boots via network (DHCP provided externally).</li>
-<li><strong>Flatcar OS</strong>: The operating system loaded into RAM and then installed to disk.</li>
-<li><strong>Kubeadm</strong>: The tool used to bootstrap the Kubernetes cluster.</li>
-</ul>
 <h2 id="cluster-layout">Cluster Layout<a class="headerlink" href="#cluster-layout" title="Permanent link">&para;</a></h2>
+<p>The deployment host — the laptop running Ansible and the boot server — is
+<strong>not</strong> part of the cluster and nothing depends on it once provisioning is done.</p>
 <table>
 <thead>
 <tr>
@@ -2226,73 +2155,68 @@ provisioning is done.</p>
 </tr>
 </tbody>
 </table>
-<p>Three control-plane nodes, because etcd needs an odd number and two is the worst
-possible answer: twice the hardware, and you still lose quorum when one dies.</p>
-<p>The API server is reached through a kube-vip virtual IP (<code>10.9.2.10</code> by
-default) rather than any single node — see
-<a href="../operations/control-plane-vip/">Control Plane VIP</a>. Naming a node as the
-API endpoint works fine right up until that node is the one you need to reboot.</p>
-<p><strong>Networks</strong>: Pod subnet <code>10.244.0.0/16</code>, Service subnet <code>10.96.0.0/12</code></p>
-<h2 id="technologies">Technologies<a class="headerlink" href="#technologies" title="Permanent link">&para;</a></h2>
+<p>Three control-plane nodes because etcd needs an odd number, and two is the
+worst answer: twice the hardware and quorum still lost when one dies. The API
+server is reached through a kube-vip virtual IP (<code>10.9.2.10</code> by default) rather
+than any single node — see
+<a href="../operations/control-plane-vip/">Control Plane VIP</a>.</p>
+<p><strong>Networks</strong>: pod subnet <code>10.244.0.0/16</code>, service subnet <code>10.96.0.0/12</code>.</p>
+<h2 id="repository-layout">Repository layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
+<p><code>ansible/</code> describes the machines, <code>boot_server/</code> hands them their operating
+system, <code>payload/</code> is the platform the cluster runs on, and <code>output/</code> is
+generated — never edit anything in there, the next <code>make config</code> overwrites
+it. The applications the cluster exists to serve live in the separate
+<a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a> repository; see
+<a href="gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── ansible                 # Inventory, playbooks and templates -- see Ansible
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── boot_server
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   └── serve.py            # TFTP + HTTP boot server
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── docs                    # This site
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── output                  # Generated; never edited by hand
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── credentials/        # Bootstrap token, certificate key, etcd
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   │                       # encryption key, OpenBao unseal keys -- 0700
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── http/               # Ignition, Flatcar artifacts, sysext images
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   ├── kubeconfig          # Admin kubeconfig
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   ├── tftp/               # PXE bootloader and menus
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   └── tmp/                # Temporary workspace
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── payload                 # Everything ArgoCD deploys
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   ├── platform/           # One directory per component, each with one
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   │   └── ...             #   application.yaml -- see Platform
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   └── workloads/          # The handover to homelab-apps, stage 12-workloads
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── zensical.toml           # Documentation site configuration
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>└── README.md
+</span></code></pre></div>
+<p><code>ansible/</code> and <code>boot_server/</code> matter only while a node is being built;
+<code>payload/</code> matters every day after that. The exception is
+<code>ansible/templates/kubeadm.yaml.j2</code>, which explains why half the control plane
+is configured the way it is.</p>
+<p><code>output/credentials/</code> is generated once and read back on every later run;
+<code>make config</code> writes new values for anything missing, which a running cluster
+will not accept. <code>make clean</code> therefore prints that inventory and asks before
+deleting, and refuses without a terminal.</p>
 <table>
 <thead>
 <tr>
-<th>Layer</th>
-<th>Tool</th>
-<th>Purpose</th>
+<th>Target</th>
+<th>Removes</th>
+<th>Keeps</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>OS</td>
-<td>Flatcar Container Linux</td>
-<td>Immutable container OS, updated via A/B partitions</td>
+<td><code>make clean-artifacts</code></td>
+<td><code>output/http</code>, <code>output/tftp</code>, <code>output/tmp</code></td>
+<td><code>output/credentials/</code>, <code>output/kubeconfig</code></td>
 </tr>
 <tr>
-<td>Orchestration</td>
-<td>Kubernetes (Kubeadm)</td>
-<td>Container scheduling and management</td>
-</tr>
-<tr>
-<td>CNI</td>
-<td>Cilium (eBPF)</td>
-<td>Networking, kube-proxy replacement</td>
-</tr>
-<tr>
-<td>Ingress</td>
-<td>Gateway API (via Cilium)</td>
-<td>HTTP/HTTPS traffic routing</td>
-</tr>
-<tr>
-<td>GitOps</td>
-<td>ArgoCD</td>
-<td>Declarative cluster state management</td>
-</tr>
-<tr>
-<td>Storage</td>
-<td>Rook-Ceph</td>
-<td>Distributed block storage</td>
-</tr>
-<tr>
-<td>Config Gen</td>
-<td>Ansible + Jinja2</td>
-<td>Per-node config generation</td>
-</tr>
-<tr>
-<td>Boot Serving</td>
-<td>Python (HTTP + TFTP)</td>
-<td>PXE boot artifacts</td>
-</tr>
-<tr>
-<td>API HA</td>
-<td>kube-vip (ARP)</td>
-<td>Virtual IP in front of the API servers</td>
+<td><code>make clean</code></td>
+<td>everything under <code>output/</code></td>
+<td>nothing — it asks first</td>
 </tr>
 </tbody>
 </table>
-<p>Every one of these had a simpler alternative that was rejected on purpose. The
-reasoning, including what each choice costs, is in
-<a href="decisions/">Design Decisions</a>.</p>
 
 
 

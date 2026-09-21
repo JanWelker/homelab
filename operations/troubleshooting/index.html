@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/troubleshooting/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/operations/troubleshooting/">
       
       
         <link rel="prev" href="../">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1464,6 +1464,8 @@
       
         
           
+        
+      
         
       
         
@@ -1762,6 +1764,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1780,8 +1809,6 @@
       
         
           
-        
-      
         
       
         
@@ -1882,33 +1909,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -2077,6 +2077,8 @@
       
         
       
+        
+      
     
     
     
@@ -2120,11 +2122,9 @@
 
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
-<p>Start here, not with <code>kubectl describe</code> on the thing that looks broken. The
-thing that looks broken is usually downstream of something duller, and this
-section is ordered by how often the duller thing turns out to be the answer.</p>
+<p>The thing that looks broken is usually downstream of something duller. Start
+with the table.</p>
 <h2 id="where-to-look-first">Where to look first<a class="headerlink" href="#where-to-look-first" title="Permanent link">&para;</a></h2>
-<p>The table that saves the most time:</p>
 <table>
 <thead>
 <tr>
@@ -2143,7 +2143,7 @@ section is ordered by how often the duller thing turns out to be the answer.</p>
 </tr>
 <tr>
 <td><code>ExternalSecret</code> not syncing</td>
-<td><a href="../../platform/external-secrets/#troubleshooting">External Secrets troubleshooting</a></td>
+<td><a href="../../platform/external-secrets/#pitfalls">External Secrets troubleshooting</a></td>
 </tr>
 <tr>
 <td>PVCs stuck pending</td>
@@ -2157,39 +2157,34 @@ section is ordered by how often the duller thing turns out to be the answer.</p>
 <td>Node not rejoining after reboot</td>
 <td><code>journalctl -u kubelet</code> on the node</td>
 </tr>
+<tr>
+<td>A node will not install, or hangs at a blinking cursor</td>
+<td><a href="../../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a></td>
+</tr>
+<tr>
+<td>A node installs but comes up with no OSD</td>
+<td><a href="../../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after reprovisioning</a></td>
+</tr>
 </tbody>
 </table>
-<p>Two other symptom tables exist, for the phases this one does not cover:</p>
-<ul>
-<li>A node that will not install, or hangs at a blinking cursor:
-  <a href="../../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</li>
-<li>A node that installs but comes up with no OSD:
-  <a href="../../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after reprovisioning</a>.</li>
-</ul>
 <p>Alerts are mailed by Alertmanager — see
-<a href="../../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a>. The checks above
-are still worth running, because the delivery path itself is not monitored. An
-empty inbox means either that nothing is wrong or that the mail stopped working,
-and those two look identical from here.</p>
+<a href="../../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a> — but the
+delivery path itself is not monitored, so an empty inbox does not prove
+anything.</p>
 <h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
-<p>Everything under <code>payload/</code> is applied by ArgoCD from Git, so the durable fix is
-a revert commit. To stop the bleeding first, roll the Application back:</p>
+<p>The durable fix is a revert commit. To stop the bleeding first:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
 </span></code></pre></div>
-<p>Nothing has to be disabled first. The Applications the <code>platform</code> ApplicationSet
-generates already have automated sync switched off — the ApplicationSet
-controller syncs them — so a rollback holds until the next change to that
-Application. Do not patch their <code>spec</code> to pin them: the ApplicationSet copies
-<code>spec</code> wholesale from <code>payload/platform/*/application.yaml</code> on its next
-reconcile and the patch disappears.</p>
-<p>The exception is <code>argocd</code> itself, which is not generated and does run with
-<code>automated</code>. Pinning that one means restoring <code>syncPolicy.automated</code> afterwards,
-and an Application that has quietly stopped tracking Git is a time bomb with a
-three-month fuse, defused only by somebody wondering why their change never took
-effect.</p>
+<p>Nothing has to be disabled: the generated platform Applications have no
+automated sync under <code>RollingSync</code>, so a rollback holds until that
+Application's next change — see
+<a href="../../architecture/gitops/#what-the-staging-costs">what the staging costs</a>.
+Do not patch their <code>spec</code> to pin them; the next reconcile copies the file back
+over it. The exception is <code>argocd</code> itself, which is not generated and runs with
+<code>automated</code>: pinning it means restoring <code>syncPolicy.automated</code> afterwards.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Do not fix a broken workload by editing live objects with <code>kubectl edit</code>. Under the ApplicationSet these edits are worse than useless rather than merely useless: nothing reverts them, so the cluster quietly stops matching Git and the next sync of that Application — whenever its revision happens to change — undoes your fix without warning. Change the manifest instead.</p>
+<p>Do not fix a broken workload with <code>kubectl edit</code>. Under the ApplicationSet nothing reverts the edit, so the cluster quietly stops matching Git and the next sync of that Application undoes your fix without warning. Change the manifest instead.</p>
 </div>
 
 

@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="What the Trivy Operator findings actually amount to, which ones are fixed here, which wait on an upstream release, and which are never going to move.">
+        <meta name="description" content="How to read the Trivy Operator findings, when an upstream issue is warranted, and which pod-level findings are load-bearing by design.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/vulnerabilities/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/operations/vulnerabilities/">
       
       
         <link rel="prev" href="../control-plane-vip/">
       
       
-        <link rel="next" href="../../development/">
+        <link rel="next" href="../triage-2026-09-20/">
       
       
         
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1464,6 +1464,8 @@
       
         
           
+        
+      
         
       
         
@@ -1732,10 +1734,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-to-read-a-report" class="md-nav__link">
+  <a href="#pulling-a-report" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How to read a report
+        Pulling a report
       </span>
     </span>
   </a>
@@ -1743,10 +1745,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-findings-stand" class="md-nav__link">
+  <a href="#reading-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Where the findings stand
+        Reading it
       </span>
     </span>
   </a>
@@ -1754,10 +1756,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-not-filed-and-why" class="md-nav__link">
+  <a href="#filing-policy" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is not filed, and why
+        Filing policy
       </span>
     </span>
   </a>
@@ -1765,74 +1767,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-other-three-report-kinds" class="md-nav__link">
+  <a href="#what-is-load-bearing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The other three report kinds
+        What is load-bearing
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="The other three report kinds">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#infra-the-nodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Infra: the nodes
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#config-audit-the-pods" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Config audit: the pods
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-the-medium-count-is" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What the medium count is
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reports-that-outlive-their-workload" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reports that outlive their workload
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rbac" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        RBAC
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1840,6 +1781,33 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1863,8 +1831,6 @@
       
         
           
-        
-      
         
       
         
@@ -1984,33 +1950,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2079,10 +2018,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-to-read-a-report" class="md-nav__link">
+  <a href="#pulling-a-report" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        How to read a report
+        Pulling a report
       </span>
     </span>
   </a>
@@ -2090,10 +2029,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-the-findings-stand" class="md-nav__link">
+  <a href="#reading-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Where the findings stand
+        Reading it
       </span>
     </span>
   </a>
@@ -2101,10 +2040,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-not-filed-and-why" class="md-nav__link">
+  <a href="#filing-policy" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is not filed, and why
+        Filing policy
       </span>
     </span>
   </a>
@@ -2112,74 +2051,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-other-three-report-kinds" class="md-nav__link">
+  <a href="#what-is-load-bearing" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The other three report kinds
+        What is load-bearing
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="The other three report kinds">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#infra-the-nodes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Infra: the nodes
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#config-audit-the-pods" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Config audit: the pods
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-the-medium-count-is" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What the medium count is
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reports-that-outlive-their-workload" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reports that outlive their workload
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rbac" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        RBAC
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2243,6 +2121,8 @@
       
         
       
+        
+      
     
     
     
@@ -2286,35 +2166,13 @@
 
 
 <h1 id="vulnerability-triage">Vulnerability Triage<a class="headerlink" href="#vulnerability-triage" title="Permanent link">&para;</a></h1>
-<p>Trivy Operator writes one <code>VulnerabilityReport</code> per container, and on a
-cluster this size that is a few thousand findings. Almost all of them warrant
-no action, and the work is in proving that quickly rather than in reading them.
-This page is the result of one such pass, on 2026-09-20, kept so the next one
-starts from the disposition rather than from the raw count.</p>
-<p>The operator itself is a workload, so how it is configured and how to read its
-reports lives with it, in the
+<p>Trivy Operator writes one <code>VulnerabilityReport</code> per container, a few thousand
+findings on a cluster this size. Almost none warrant action, and the work is in
+proving that quickly. The operator is a workload; its configuration is in the
 <a href="https://janwelker.github.io/homelab-apps/trivy-operator/">homelab-apps documentation</a>.
-This page is about what the findings mean for <em>this</em> platform.</p>
-<h2 id="how-to-read-a-report">How to read a report<a class="headerlink" href="#how-to-read-a-report" title="Permanent link">&para;</a></h2>
-<p>Three things before believing a number:</p>
-<ul>
-<li><strong>A missing report is not a clean image.</strong> A scan that failed writes nothing.
-  Reconcile running images against scanned ones before concluding anything;
-  the <code>TrivyContainerNotScanned</code> alert does it continuously. On this pass it
-  named Nextcloud and Authentik, whose scans were dying on a five-minute Job
-  deadline that a longer Trivy timeout could never reach, and whose reports,
-  once a scan finished, were too large for etcd: 2886 Debian findings with no
-  fix in one image. Both are handled in homelab-apps (#26, #28); the second
-  with a per-namespace policy that drops only unfixed findings below HIGH.</li>
-<li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> They are
-  kept on purpose (<code>ignoreUnfixed: false</code>), because a cluster of them in one
-  base image is the signal that the base image is the wrong one.</li>
-<li><strong>The worst findings are usually not the project's code.</strong> The report's
-  <code>target</code> names the binary. Argo CD's criticals are in the <code>kustomize</code> and
-  <code>git-lfs</code> it bundles; dex's are in <code>gomplate</code>; Rook's are in <code>s5cmd</code>.
-  Which binary decides whether anything can be done, and by whom.</li>
-</ul>
-<p>The pull, and the query that separates fixable from not:</p>
+This page is the method; the dispositions from the last pass are in
+<a href="../triage-2026-09-20/">Triage 2026-09-20</a>.</p>
+<h2 id="pulling-a-report">Pulling a report<a class="headerlink" href="#pulling-a-report" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>vr.json
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | .metadata.namespace as $ns</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s1">  | .report.artifact.repository as $img</span>
@@ -2324,263 +2182,83 @@ This page is about what the findings mean for <em>this</em> platform.</p>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s1">     (.fixedVersion // "NO-FIX"), (.packagePath // .target)]</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s1">  | @tsv'</span><span class="w"> </span>vr.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u
 </span></code></pre></div>
-<h2 id="where-the-findings-stand">Where the findings stand<a class="headerlink" href="#where-the-findings-stand" title="Permanent link">&para;</a></h2>
-<p>Every image with a critical finding, or a high one with a fix, and what was
-decided about it. "Waiting on release" means the fix is already merged upstream
-and nothing here can speed it up; Renovate takes the release when it exists.</p>
-<table>
-<thead>
-<tr>
-<th>Image</th>
-<th>Finding</th>
-<th>Disposition</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>CSI sidecars (<code>csi-provisioner</code>, <code>csi-resizer</code>, <code>csi-snapshotter</code>)</td>
-<td>gRPC-Go authorization bypass, CVE-2026-33186</td>
-<td><strong>Fixed here.</strong> Pinned to the versions ceph-csi-operator v1.0.5 defaults to; Rook still ships v1.0.4. See <a href="../../platform/rook-ceph/#csi-driver">Rook-Ceph &rarr; CSI driver</a>.</td>
-</tr>
-<tr>
-<td><code>argoproj/argocd</code> v3.5.3</td>
-<td>Go stdlib and <code>x/net</code> in bundled <code>kustomize</code> (built with Go 1.24.0) and <code>git-lfs</code> 3.7.1; <code>grpc</code>, <code>oras-go</code> in argocd itself</td>
-<td><strong>Waiting on release.</strong> <code>master</code> has git-lfs 3.8.0, grpc 1.83.2 and oras-go 2.6.2. kustomize 5.8.1 is the latest kustomize release; only a new kustomize build fixes that one. Argo CD's <code>SECURITY.md</code> asks not to file scanner findings.</td>
-</tr>
-<tr>
-<td><code>dexidp/dex</code> v2.45.1</td>
-<td>OpenSSL in Alpine 3.23, <code>grpc</code>, <code>goxmldsig</code>, stdlib; a second set in bundled <code>gomplate</code></td>
-<td><strong>Waiting on release.</strong> Everything is fixed on <code>master</code>, nothing has been released since March 2026. Tracked in <a href="https://github.com/dexidp/dex/issues/4948">dexidp/dex#4948</a>, with this cluster's scan data added on 2026-09-18.</td>
-</tr>
-<tr>
-<td><code>rook/ceph</code> v1.20.7</td>
-<td>Go stdlib in bundled <code>s5cmd</code> 2.3.0 (built with Go 1.22.10)</td>
-<td><strong>Not reachable, waiting on release.</strong> Nothing in Rook's Go code invokes <code>s5cmd</code>; it is a CLI for the toolbox. s5cmd 2.3.0 is its latest release; <a href="https://github.com/peak/s5cmd/issues/873">peak/s5cmd#873</a> and <a href="https://github.com/peak/s5cmd/issues/820">#820</a> ask for a new one.</td>
-</tr>
-<tr>
-<td><code>home-assistant/home-assistant</code></td>
-<td>OpenSSH in Alpine 3.24.1, Go stdlib in bundled <code>tempio</code> (Go 1.23.3) and <code>go2rtc</code>, Python <code>anyio</code></td>
-<td><strong>Waiting on release.</strong> Home Assistant's base image already carries tempio 2026.07.0; core is on an older base. Weekly releases. The Open Home Foundation forbids autonomous agents from filing anything, so nothing is filed from here.</td>
-</tr>
-<tr>
-<td><code>library/postgres</code> 17.11 (Authentik)</td>
-<td>Go stdlib in <code>gosu</code> 1.19; <code>libxml2</code> in Debian 13 with no fix</td>
-<td><strong>Not reachable, nothing to do.</strong> The stdlib CVE is TLS session resumption and gosu opens no connections. 17.11 is the latest 17.x; libxml2 waits on Debian.</td>
-</tr>
-<tr>
-<td><code>cloudnative-pg/postgresql</code> 18.6</td>
-<td>31 highs and one critical, none with a fix (Debian 13)</td>
-<td><strong>Nothing to do.</strong> The base is current; every finding waits on Debian.</td>
-</tr>
-<tr>
-<td><code>coredns/coredns</code> v1.14.6</td>
-<td>Two highs fixed in 1.14.7: memory exhaustion and UPDATE forwarding, both on DoH, DoQ and gRPC listeners</td>
-<td><strong>Not reachable.</strong> kubeadm's Corefile serves plain UDP and TCP only. kubeadm 1.37 pins 1.14.6; it moves when kubeadm does.</td>
-</tr>
-<tr>
-<td><code>grafana/grafana</code></td>
-<td><code>grpc</code>, <code>otel</code>, <code>x/net</code> in thirteen bundled datasource plugin binaries</td>
-<td><strong>Waiting on release.</strong> The plugin binaries are rebuilt by Grafana's own release, and 13.2.2 is the current one. Routine churn in a bundled binary, not a report.</td>
-</tr>
-<tr>
-<td><code>ceph/ceph</code> v20.2.4</td>
-<td><code>setuptools</code> 69.2 under Python 3.9</td>
-<td><strong>Not reachable.</strong> The CVEs are in <code>easy_install</code> and <code>package_index</code>, which no Ceph daemon calls.</td>
-</tr>
-<tr>
-<td><code>openbao/openbao</code> 2.6.2</td>
-<td><code>github.com/openbao/openbao</code> "fixed in 2.5.4"</td>
-<td><strong>Scanner artifact.</strong> The binary carries a Go pseudo-version, which sorts below every real tag.</td>
-</tr>
-<tr>
-<td><code>library/nextcloud</code> 34.0.4</td>
-<td>2887 findings, 2886 in Debian packages with no fix; the criticals are <code>libopenexr</code> and <code>libxml2</code>. One fixable, a LOW in the bundled <code>webauthn-lib</code></td>
-<td><strong>Nothing to do here.</strong> The base is current Debian 13; every fix waits on Debian. <code>webauthn-lib</code> is pinned <code>^4.9.1</code> in nextcloud/3rdparty on <code>master</code> too. The report only exists because of the per-namespace policy in homelab-apps.</td>
-</tr>
-<tr>
-<td><code>goauthentik/server</code> 2026.8.3</td>
-<td><code>anyio</code> 4.14.1 (critical, IDNA TLS spoofing), <code>msgpack</code>, <code>setuptools</code>; <code>libxml2</code> with no fix</td>
-<td><strong>Waiting on release.</strong> <code>uv.lock</code> on <code>main</code> already has anyio 4.14.2, msgpack 1.2.2 and setuptools 84. Authentik releases monthly and its bot bumps these; nothing to file.</td>
-</tr>
-<tr>
-<td><code>xperimental/nextcloud-exporter</code> 0.9.1</td>
-<td>Go stdlib, 28 advisories, 7 HIGH, in a release built with Go 1.26.1</td>
-<td><strong>Filed.</strong> No bot bumps the Dockerfile's builder tag; the project's own history is a "update Go and release" cycle. <a href="https://github.com/xperimental/nextcloud-exporter/issues/143">xperimental/nextcloud-exporter#143</a>.</td>
-</tr>
-<tr>
-<td><code>prometheus-config-reloader</code> v0.91.0 (Alloy's sidecar)</td>
-<td>Go stdlib, 4 HIGH</td>
-<td><strong>Waiting on chart release.</strong> The Alloy chart pins it; <code>main</code> already carries v0.94.0. Renovate takes the next chart.</td>
-</tr>
-<tr>
-<td>Everything else</td>
-<td><code>google.golang.org/grpc</code> one or two patches behind, Go stdlib one patch behind</td>
-<td><strong>Routine churn.</strong> Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding.</td>
-</tr>
-</tbody>
-</table>
-<p>The exposed-secret findings are two artifacts. <code>ssl-cert-snakeoil.key</code> in the
-three Postgres pods is the placeholder Debian's <code>ssl-cert</code> package generates
-in every image. The "Azure Storage Account Key" in Nextcloud is the Azurite
-development key that <code>azure-storage-common</code> ships in <code>Resources.php</code>; it is
-public, and the nextcloud namespace's ignore policy drops that rule
-(homelab-apps#31). Neither is a secret.</p>
-<h2 id="what-is-not-filed-and-why">What is not filed, and why<a class="headerlink" href="#what-is-not-filed-and-why" title="Permanent link">&para;</a></h2>
-<p>Filing goes out under a real name, permanently, and most projects have said
-what they want. Checked on this pass:</p>
+<h2 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Argo CD</strong> asks in <code>SECURITY.md</code> not to raise issues found by a scanner,
-  and its own Renovate has already moved the bundled tools on <code>master</code>.</li>
-<li><strong>Home Assistant</strong> (Open Home Foundation) does not allow autonomous agents
-  to open issues or pull requests and closes them on sight.</li>
-<li><strong>Rook</strong> allows AI-assisted contributions with disclosure but requires a
-  human to submit them. The one thing worth asking Rook for, bumping to
-  ceph-csi-operator v1.0.5 so the sidecar pins here can go, is drafted for a
-  person to post.</li>
-<li><strong>Routine Go churn is not a finding.</strong> A dozen "please bump grpc" issues
-  damage standing for the one time something real turns up.</li>
+<li><strong>A missing report is not a clean image.</strong> A failed scan writes nothing;
+    the <code>TrivyContainerNotScanned</code> alert reconciles running images against
+    scanned ones continuously.</li>
+<li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> Unfixed
+    findings are kept (<code>ignoreUnfixed: false</code>) because a cluster of them in one
+    base image says the base image is the wrong one.</li>
+<li><strong>The worst findings are usually not the project's code.</strong> The <code>target</code>
+    names the binary, and which binary decides whether anything can be done and
+    by whom.</li>
 </ul>
-<h2 id="the-other-three-report-kinds">The other three report kinds<a class="headerlink" href="#the-other-three-report-kinds" title="Permanent link">&para;</a></h2>
+<p>Two artifacts recur. A <code>ConfigAuditReport</code> has no TTL and goes only when its
+ReplicaSet is garbage-collected, so superseded revisions keep their findings on
+the dashboard
+(<a href="https://github.com/aquasecurity/trivy-operator/issues/3069">aquasecurity/trivy-operator#3069</a>);
+when a count looks wrong, check whether the ReplicaSet in the report name still
+has replicas. <code>KSV-0125</code> ("untrusted registry") fires on nearly every
+container because the check's built-in list is Azure, ECR and GCR, which Trivy
+Operator does not expose as a parameter; it says nothing about the images.</p>
+<h2 id="filing-policy">Filing policy<a class="headerlink" href="#filing-policy" title="Permanent link">&para;</a></h2>
+<p>Filing goes out under a real name, permanently, and most projects have said
+what they want:</p>
+<ul>
+<li><strong>Argo CD</strong> asks in <code>SECURITY.md</code> not to raise scanner findings.</li>
+<li><strong>Home Assistant</strong> (Open Home Foundation) does not accept issues or PRs from
+    autonomous agents.</li>
+<li><strong>Rook</strong> accepts AI-assisted contributions with disclosure, submitted by a
+    human.</li>
+<li><strong>Routine Go churn is not a finding.</strong> <code>grpc</code> or the stdlib one patch behind
+    is fixed by the next release every project here takes automatically.</li>
+</ul>
+<p>"Waiting on release" means the fix is merged upstream and Renovate takes the
+release when it exists; nothing here speeds it up.</p>
+<h2 id="what-is-load-bearing">What is load-bearing<a class="headerlink" href="#what-is-load-bearing" title="Permanent link">&para;</a></h2>
 <p><code>ConfigAuditReport</code>, <code>RbacAssessmentReport</code> and <code>InfraAssessmentReport</code> are
-fixable here rather than upstream, which makes them worth more per finding and
-also makes it worth being honest about which ones are load-bearing.</p>
-<h3 id="infra-the-nodes">Infra: the nodes<a class="headerlink" href="#infra-the-nodes" title="Permanent link">&para;</a></h3>
-<p>The node collector runs CIS's file checks on every node. Real modes, read on
-a control-plane and a worker node:</p>
-<table>
-<thead>
-<tr>
-<th>Check</th>
-<th>Path it stats</th>
-<th>Was</th>
-<th>Disposition</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>KCV-0077 kubelet config</td>
-<td><code>/var/lib/kubelet/config.yaml</code></td>
-<td>644</td>
-<td><strong>Fixed</strong>, 600</td>
-</tr>
-<tr>
-<td>KCV-0075 CA file</td>
-<td><code>/etc/kubernetes/pki/ca.crt</code></td>
-<td>644</td>
-<td><strong>Fixed</strong>, 600</td>
-</tr>
-<tr>
-<td>KCV-0056 CNI files</td>
-<td><code>/*/cni/*</code>, so <code>/opt/cni/bin</code></td>
-<td>755</td>
-<td><strong>Fixed</strong>, 700</td>
-</tr>
-<tr>
-<td>KCV-0069 kubelet unit</td>
-<td><code>/lib/systemd/system/kubelet.service</code></td>
-<td>644</td>
-<td><strong>Accepted.</strong> The unit ships in the Kubernetes sysext, on a read-only, signed <code>/usr</code>. It holds no secret.</td>
-</tr>
-<tr>
-<td>KCV-0059 etcd data dir</td>
-<td><code>/var/lib/etcd/default.etcd</code></td>
-<td>absent</td>
-<td><strong>Artifact.</strong> kubeadm uses <code>/var/lib/etcd</code>, which is already <code>700 etcd:etcd</code>.</td>
-</tr>
-<tr>
-<td>KCV-0001 and the other API server flags</td>
-<td>static pod args</td>
-<td></td>
-<td><strong>Tracked in #660.</strong> Anonymous auth in particular cannot simply be switched off, because the kubelet's probes rely on it; see #678 for the shape that works.</td>
-</tr>
-</tbody>
-</table>
-<p>kubeadm writes the first three itself, at 644, on every <code>init</code>, <code>join</code> and
-<code>upgrade</code>, so a one-off <code>chmod</code> would not survive. <code>butane_node_config.yaml.j2</code>
-instead drops <code>/etc/tmpfiles.d/kubernetes-cis.conf</code> with three <code>z</code> lines and
-has the kubelet's drop-in run <code>systemd-tmpfiles --create</code> on that file before
-every start. Boot applies it; a kubelet restart, which kubeadm triggers right
-after rewriting the files, applies it again. A path that does not exist yet is
-skipped, so the first boot is unaffected. The change is provisioning-time: a
-node picks it up on its next rebuild.</p>
-<h3 id="config-audit-the-pods">Config audit: the pods<a class="headerlink" href="#config-audit-the-pods" title="Permanent link">&para;</a></h3>
-<p>Two checks are most of the volume. <code>KSV-0014</code> wants a read-only root
-filesystem and <code>KSV-0118</code> fires when the <em>pod-level</em> <code>securityContext</code> is
-empty, whatever the containers set. Where they land:</p>
+fixable here rather than upstream. Two checks are most of the volume:
+<code>KSV-0014</code> (read-only root filesystem) and <code>KSV-0118</code> (empty pod-level
+<code>securityContext</code>, whatever the containers set).</p>
 <table>
 <thead>
 <tr>
 <th>Where</th>
-<th>Disposition</th>
+<th>Why it stays</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured</td>
-<td><strong>Load-bearing.</strong> Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. <code>pod-security.yaml</code> already enforces <code>privileged</code> in those namespaces for this reason.</td>
+<td>Host network, host PID, privileged and added capabilities are what these do; <code>pod-security.yaml</code> enforces <code>privileged</code> in those namespaces for this reason</td>
 </tr>
 <tr>
 <td><code>etcd-backup</code> CronJob</td>
-<td><strong>Own manifest, hardened.</strong> Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are <code>600 root</code>.</td>
+<td>Host network, because etcd listens on the node's loopback; root, because the client certificates are <code>600 root</code></td>
 </tr>
 <tr>
-<td>Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy</td>
-<td><strong><code>KSV-0118</code> only, fixed.</strong> Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's.</td>
+<td>Velero node agent</td>
+<td>Root and capabilities stay: kopia reads every pod volume, whoever owns the files</td>
 </tr>
 <tr>
-<td>Authentik</td>
-<td><strong>Fixed</strong> (#792): non-root, no capabilities, no escalation, runtime seccomp, at pod and container level. Read-only root not attempted, the image writes under <code>/media</code> and <code>/templates</code>.</td>
+<td>Images that start as root by design (Nextcloud, Home Assistant)</td>
+<td><code>runAsNonRoot</code> or a read-only root would change how they run; seccomp is set</td>
 </tr>
 <tr>
-<td>Nextcloud, Home Assistant</td>
-<td><strong>Seccomp only</strong> (homelab-apps#30). Both images start as root by design, Apache dropping to <code>www-data</code> and Home Assistant under s6, so <code>runAsNonRoot</code> and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp.</td>
+<td>Read-only root on charts that write under <code>/</code> at runtime (Grafana sidecars, OpenBao)</td>
+<td>The chart or image decides where; guessing costs an outage (#663)</td>
 </tr>
 <tr>
-<td>Velero</td>
-<td><strong>Node agent and plugin init container confined</strong> (#794). The node agent keeps root and its capabilities, kopia reads every pod volume whoever owns the files. The <code>velero</code> container is left as it was: its image runs as a named user, which <code>runAsNonRoot</code> cannot verify without a <code>runAsUser</code>, and <a href="../backups/#other-settings-worth-knowing">Backups</a> names a real backup as the condition for either.</td>
+<td>Every critical or high <code>ClusterRole</code></td>
+<td>A chart's operator role, or Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>; not narrowable without forking a chart — see <a href="../../architecture/security/#authorization">Security Posture</a></td>
 </tr>
 <tr>
-<td>trivy-server, nextcloud-exporter</td>
-<td><strong>Fixed</strong> (homelab-apps#32, #31): escalation off, capabilities dropped, seccomp; the exporter also read-only.</td>
-</tr>
-<tr>
-<td>Grafana's sidecars, OpenBao</td>
-<td><strong>Read-only root not attempted.</strong> Each writes somewhere under <code>/</code> at runtime; the chart or image decides where, and guessing costs an outage. #663.</td>
+<td>Node file modes kubeadm resets</td>
+<td>Handled at provisioning time — see <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
 </tr>
 </tbody>
 </table>
-<h3 id="what-the-medium-count-is">What the medium count is<a class="headerlink" href="#what-the-medium-count-is" title="Permanent link">&para;</a></h3>
-<p>Two things make up most of it and neither is a finding here:</p>
-<ul>
-<li><strong><code>KSV-0125</code>, "untrusted registry", on nearly every container.</strong> The
-  check's built-in trusted list is Azure, ECR and GCR, and nothing on this
-  cluster is pulled from any of them. The list is a check parameter that
-  Trivy Operator does not expose, so the count stays. It says nothing about
-  the images.</li>
-<li><strong>Root, privilege escalation and unconfined seccomp</strong> are now almost
-  entirely in <code>rook-ceph</code> and <code>kube-system</code>, where the load-bearing table
-  above applies. Outside those two namespaces the remaining rows are the ones
-  named in the pod table.</li>
-</ul>
-<h3 id="reports-that-outlive-their-workload">Reports that outlive their workload<a class="headerlink" href="#reports-that-outlive-their-workload" title="Permanent link">&para;</a></h3>
-<p>A <code>ConfigAuditReport</code> has no TTL; it goes when its owning ReplicaSet is
-garbage-collected, and Kubernetes keeps ten superseded ReplicaSets per
-Deployment. Every old revision therefore keeps its findings on the dashboard,
-nine of them on this pass, five on old trivy-operator revisions. Upstream:
-<a href="https://github.com/aquasecurity/trivy-operator/issues/3069">aquasecurity/trivy-operator#3069</a>.
-The Deployments this repository can set <code>revisionHistoryLimit</code> on keep one or
-two (homelab-apps#33); Nextcloud's chart has no value for it. When a count
-looks wrong, check whether the ReplicaSet in the report name still has
-replicas.</p>
-<h3 id="rbac">RBAC<a class="headerlink" href="#rbac" title="Permanent link">&para;</a></h3>
-<p>Every critical and high is a <code>ClusterRole</code> a chart ships for its operator:
-cert-manager, CloudNativePG, Rook, External Secrets, the Prometheus operator,
-Loki, Alloy and Trivy Operator all manage Secrets because that is their job,
-and <code>argocd-application-controller</code> manages everything because it deploys
-everything. The rest are Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>.
-Nothing here is narrowable without forking a chart, and the exposure is what
-<a href="../../architecture/security/#authorization">Security Posture &rarr; Authorization</a>
-already describes.</p>
 
 
 
@@ -2638,13 +2316,13 @@ already describes.</p>
         
         
           
-          <a href="../../development/" class="md-footer__link md-footer__link--next" aria-label="Next: Development">
+          <a href="../triage-2026-09-20/" class="md-footer__link md-footer__link--next" aria-label="Next: Triage 2026-09-20">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Development
+                Triage 2026-09-20
               </div>
             </div>
             <div class="md-footer__button md-icon">

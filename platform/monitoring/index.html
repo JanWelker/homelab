@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/monitoring/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/monitoring/">
       
       
         <link rel="prev" href="../authentik/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1221,6 +1194,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1391,17 +1391,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Configuration
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#crds" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1411,8 +1412,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#alerting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1421,76 +1422,31 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Alerting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-the-whole-config-comes-from-openbao" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Why the whole config comes from OpenBao
-      </span>
-    </span>
-  </a>
-  
 </li>
         
           <li class="md-nav__item">
-  <a href="#checking-it-works" class="md-nav__link">
+  <a href="#scrape-targets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Checking it works
+        Scrape targets
       </span>
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-scraped" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is scraped
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-grafana" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Accessing Grafana
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Accessing Grafana">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-admin-password" class="md-nav__link">
+  <a href="#grafana" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The admin password
+        Grafana
       </span>
     </span>
   </a>
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#dashboards" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1500,34 +1456,56 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#adding-a-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Adding a Dashboard
+        Adding a dashboard
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#resources-and-rollout" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#resetting-the-grafana-admin-password" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Resources and rollout
+        Resetting the Grafana admin password
       </span>
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Directory Structure
+        Health check
       </span>
     </span>
   </a>
@@ -1669,6 +1647,8 @@
       
         
           
+        
+      
         
       
         
@@ -1895,6 +1875,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1913,8 +1920,6 @@
       
         
           
-        
-      
         
       
         
@@ -2034,33 +2039,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2140,17 +2118,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#components" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Components
+        Configuration
       </span>
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#crds" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2160,8 +2139,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#alerting" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2170,76 +2149,31 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Alerting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#why-the-whole-config-comes-from-openbao" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Why the whole config comes from OpenBao
-      </span>
-    </span>
-  </a>
-  
 </li>
         
           <li class="md-nav__item">
-  <a href="#checking-it-works" class="md-nav__link">
+  <a href="#scrape-targets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Checking it works
+        Scrape targets
       </span>
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-scraped" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is scraped
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accessing-grafana" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Accessing Grafana
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Accessing Grafana">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#the-admin-password" class="md-nav__link">
+  <a href="#grafana" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The admin password
+        Grafana
       </span>
     </span>
   </a>
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#dashboards" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2249,34 +2183,56 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#adding-a-dashboard" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Adding a Dashboard
+        Adding a dashboard
       </span>
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#resources-and-rollout" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#resetting-the-grafana-admin-password" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Resources and rollout
+        Resetting the Grafana admin password
       </span>
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Directory Structure
+        Health check
       </span>
     </span>
   </a>
@@ -2359,6 +2315,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2402,8 +2362,11 @@
 
 
 <h1 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h1>
-<p>Full observability stack based on <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>.</p>
-<p>One chart, five components, and roughly a hundred alerting rules you did not write and should read at least once. The default rule set is genuinely good; the default <em>routing</em> is not, which is what most of this page is about.</p>
+<p>Full observability stack based on
+<a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>:
+Prometheus (10-day retention), Grafana, Alertmanager, node-exporter and
+kube-state-metrics. The chart's default rule set is good; its default routing
+swallows every alert, which is what most of this page is about.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2419,7 +2382,7 @@
 </tr>
 <tr>
 <td>Stage</td>
-<td><code>08-services</code></td>
+<td><code>08-services</code>; the CRDs in <code>01-crds</code></td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2437,227 +2400,151 @@
 <td>UI</td>
 <td><code>monitoring.infra.k8s.wlkr.ch</code> (Grafana), <code>prometheus.</code> and <code>alertmanager.</code></td>
 </tr>
+<tr>
+<td>Files</td>
+<td><code>payload/platform/monitoring/</code>, <code>payload/platform/prometheus-operator-crds/</code></td>
+</tr>
 </tbody>
 </table>
-<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Prometheus</strong>: Metrics collection and storage with 10-day retention.</li>
-<li><strong>Grafana</strong>: Dashboards at <a href="https://monitoring.infra.k8s.wlkr.ch">https://monitoring.infra.k8s.wlkr.ch</a>.</li>
-<li><strong>Alertmanager</strong>: Routes to an <a href="#alerting">email receiver</a>.</li>
-<li><strong>Node Exporter</strong>: Per-node hardware and OS metrics.</li>
-<li><strong>kube-state-metrics</strong>: Kubernetes object metrics (pod status, deployments, etc.).</li>
-</ul>
-<h2 id="crds">CRDs<a class="headerlink" href="#crds" title="Permanent link">&para;</a></h2>
-<p>The <code>monitoring.coreos.com</code> CRDs are not part of this Application. Cilium,
-cert-manager, External Secrets, Rook and OpenBao all render ServiceMonitors or
-PrometheusRules, in stages well ahead of <code>08-services</code>, and a stage only
-finishes once its Applications are Synced — which a missing kind never is. So
-the CRDs are a separate <code>prometheus-operator-crds</code> Application in <code>01-crds</code>,
-from the prometheus-community chart of the same name, and this chart runs with
-<code>crds.enabled: false</code>.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="crds">CRDs<a class="headerlink" href="#crds" title="Permanent link">&para;</a></h3>
+<p>The <code>monitoring.coreos.com</code> CRDs are a separate <code>prometheus-operator-crds</code>
+Application in <code>01-crds</code>, from the prometheus-community chart of that name,
+and this chart runs with <code>crds.enabled: false</code>. Cilium, cert-manager, External
+Secrets, Rook and OpenBao all render ServiceMonitors or PrometheusRules in
+stages ahead of <code>08-services</code>, and a missing kind fails the sync that
+<a href="../../architecture/gitops/">gates the stage</a>. The Application has no resources
+finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus
+and Alertmanager with them, in place.</p>
 <div class="admonition warning">
 <p class="admonition-title">Two versions that have to agree</p>
-<p><code>prometheus-operator-crds</code> must carry the same Prometheus operator version
-as kube-prometheus-stack: chart <code>32.0.0</code> is operator <code>v0.94.0</code>, which is what
-kube-prometheus-stack <code>91.4.1</code> deploys. Renovate bumps the two separately.
-Merge the CRD bump first, or together: an operator newer than its CRDs can
-depend on fields the older CRDs do not define yet.</p>
+<p><code>prometheus-operator-crds</code> must carry the same operator version as kube-prometheus-stack; an operator newer than its CRDs can depend on fields they do not define. Renovate bumps them separately: merge the CRD bump first, or both together — see <a href="../../development/maintenance/">Maintenance</a>.</p>
 </div>
-<p><code>prometheus-operator-crds</code> has no resources finalizer, so deleting the
-Application leaves the CRDs, and every ServiceMonitor, Prometheus and
-Alertmanager with them, in place.</p>
-<h2 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h2>
-<p>Alertmanager routes to email. The chart's default is a <code>null</code> receiver that
-swallows every alert, which is worse than not deploying it at all: the stack
-looks configured, the dashboards are full of data, the rules evaluate correctly,
-and every single alert goes into a bin. Monitoring you believe in but that
-cannot reach you is strictly more dangerous than no monitoring, because it buys
-false confidence. So the route and receiver below are set explicitly.</p>
+<h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
+<p>Alertmanager routes to email. The chart's <code>config</code> is off
+(<code>alertmanagerSpec.useExistingSecret</code>) and <code>alertmanager-config.yaml</code> renders
+the whole <code>alertmanager.yaml</code> through ESO into <code>alertmanagerSpec.configSecret</code>,
+because only the password has a file form (<code>smtp_auth_password_file</code>) and the
+login and recipient are e-mail addresses that do not belong in Git.</p>
 <table>
 <thead>
 <tr>
-<th>Property</th>
-<th>Value</th>
+<th>Setting in <code>alertmanager-config.yaml</code></th>
+<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Receiver</td>
-<td><code>email</code>, to the address in <code>kv/monitoring/smtp</code></td>
+<td><code>smtp_smarthost</code> on port 465</td>
+<td>Implicit TLS, which Alertmanager selects from the port; <code>smtp_require_tls</code> stays on so a move back to 587 cannot fall to plaintext</td>
 </tr>
 <tr>
-<td>Smarthost</td>
-<td><code>smtp.mailbox.org:465</code>, implicit TLS</td>
+<td><code>smtp_from</code> equals the login</td>
+<td>mailbox.org refuses a sender the login does not own</td>
 </tr>
 <tr>
-<td>Login, sender, password</td>
-<td><code>kv/monitoring/smtp</code> in OpenBao; the sender is the login</td>
+<td>Grouping by <code>alertname</code> and <code>namespace</code>, shorter repeat for <code>critical</code>, resolved notifications sent</td>
+<td>One mail per problem, a "back to normal" mail after it</td>
 </tr>
 <tr>
-<td>Grouping</td>
-<td>By <code>alertname</code> and <code>namespace</code></td>
+<td><code>Watchdog</code> routed to <code>null</code></td>
+<td>It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender</td>
 </tr>
 <tr>
-<td>Repeat</td>
-<td>12h, or 3h for <code>severity = critical</code></td>
+<td>Inhibit rules repeated from the chart defaults</td>
+<td>A supplied config replaces the whole document, so nothing is inherited</td>
 </tr>
 <tr>
-<td>Resolved</td>
-<td>Sent — a "back to normal" mail follows the alert</td>
+<td>Every templated value through <code>toJson</code></td>
+<td>A password containing <code>:</code>, <code>#</code> or a quote cannot break the rendered file</td>
 </tr>
 </tbody>
 </table>
-<p><code>Watchdog</code> is routed to <code>null</code> on purpose. It fires continuously by design, as
-proof the pipeline is alive; mailing it every twelve hours would train the
-recipient to filter the sender — and a filtered alert sender is how outages get
-missed. Alert fatigue is not a personal failing, it is a design outcome, and the
-design is under your control.</p>
-<h3 id="why-the-whole-config-comes-from-openbao">Why the whole config comes from OpenBao<a class="headerlink" href="#why-the-whole-config-comes-from-openbao" title="Permanent link">&para;</a></h3>
-<p>Only the password is a credential, but the login and the recipient are email
-addresses, and those are not published in this repository. Alertmanager can
-read the password from a file (<code>smtp_auth_password_file</code>) and nothing else:
-there is no file form for the username, <code>from</code> or <code>to</code>. A config rendered by the
-chart would have to spell them out.</p>
-<p>So the chart's <code>config</code> is off (<code>alertmanagerSpec.useExistingSecret</code>), and
-<code>alertmanager-config.yaml</code> renders the complete <code>alertmanager.yaml</code> with ESO
-into the Secret named by <code>alertmanagerSpec.configSecret</code>. Routes, receivers and
-inhibit rules are still written out in that file's template, so they stay
-reviewable; only the three values below are filled in from OpenBao. The inhibit
-rules are the chart's defaults, repeated: a supplied config replaces the whole
-document, so nothing is inherited. Each templated value goes through <code>toJson</code>,
-which makes it a quoted YAML string — a password containing <code>:</code>, <code>#</code> or a quote
-cannot break the rendered file.</p>
-<table>
-<thead>
-<tr>
-<th>Key in <code>kv/monitoring/smtp</code></th>
-<th>Used as</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>username</code></td>
-<td><code>smtp_auth_username</code> and <code>smtp_from</code> — mailbox.org refuses a sender the login does not own</td>
-</tr>
-<tr>
-<td><code>password</code></td>
-<td><code>smtp_auth_password</code>, the account or an app password</td>
-</tr>
-<tr>
-<td><code>to</code></td>
-<td>The <code>email</code> receiver's recipient</td>
-</tr>
-</tbody>
-</table>
-<p><code>make bao-secrets</code> prompts for all three. By hand:</p>
+<p>The three values come from <code>kv/monitoring/smtp</code> (<code>username</code>, <code>password</code>,
+<code>to</code>); <code>make bao-secrets</code> prompts for them, or by hand:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/monitoring/smtp<span class="w"> </span><span class="nv">username</span><span class="o">=</span>...<span class="w"> </span><span class="nv">password</span><span class="o">=</span>...<span class="w"> </span><span class="nv">to</span><span class="o">=</span>...
 </span></code></pre></div>
-<p>Port 465 is implicit TLS, which Alertmanager selects from the port number;
-<code>smtp_require_tls</code> only applies to STARTTLS and stays on so a move back to 587
-cannot fall to plaintext. For a different mail provider, change
-<code>smtp_smarthost</code> in the template and the three values in OpenBao.</p>
-<h3 id="checking-it-works">Checking it works<a class="headerlink" href="#checking-it-works" title="Permanent link">&para;</a></h3>
-<p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step further.
-Everything between Alertmanager and your inbox — SMTP auth, the provider's spam
-heuristics, a password that expired — is unmonitored. To prove delivery, inspect
-what Alertmanager thinks it is doing, and then, once, actually send yourself a
-test alert and confirm it arrives:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
-</span></code></pre></div>
-<h2 id="what-is-scraped">What is scraped<a class="headerlink" href="#what-is-scraped" title="Permanent link">&para;</a></h2>
-<p>Every <code>ServiceMonitor</code>, <code>PodMonitor</code> and <code>PrometheusRule</code> in every namespace.
-That takes the five <code>*SelectorNilUsesHelmValues: false</code> settings in
-<code>application.yaml</code>, not the empty selectors they replaced: the chart treats
-<code>serviceMonitorSelector: {}</code> as unset and renders
-<code>release: kube-prometheus-stack</code> in its place, which quietly limits Prometheus
-to this chart's own targets. Check the rendered result, not the values:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus<span class="w"> </span>kube-prometheus-stack-prometheus<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.serviceMonitorSelector}'</span><span class="w">   </span><span class="c1"># should print {}</span>
-</span></code></pre></div>
-<p>Ceph reaches Prometheus once <code>monitoring.enabled</code> is <code>true</code> on the
-<code>CephCluster</code> — that switch lives in <a href="../rook-ceph/">Rook-Ceph</a> rather than here.</p>
-<p>kube-scheduler, kube-controller-manager and etcd are scraped too, but only
-because the provisioning config binds them somewhere reachable. kubeadm binds
-the first two to <code>127.0.0.1</code> and gives etcd no metrics listener, which leaves
-their ServiceMonitors permanently down and <code>KubeSchedulerDown</code>,
-<code>KubeControllerManagerDown</code> and the etcd alerts permanently firing. Three alerts
-that are always red is how a team learns to ignore red, so this is worth fixing
-rather than silencing. The
-<code>bind-address</code> and <code>listen-metrics-urls</code> arguments in
-<code>ansible/templates/kubeadm.yaml.j2</code> are what make these targets real.</p>
-<p>The scheduler and controller-manager serve metrics over HTTPS with a
-self-signed certificate for the node address, so their ServiceMonitors set
-<code>insecureSkipVerify</code> — the scrape still authenticates with the ServiceAccount
-token. etcd's metrics listener on port 2381 is plain HTTP and serves only
-<code>/metrics</code> and <code>/health</code>; the client and peer APIs stay on their mTLS
-listeners.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>A cluster provisioned before that change keeps the old flags — they are
-baked into the static pod manifests in <code>/etc/kubernetes/manifests/</code>. Until
-those nodes are reprovisioned or the manifests edited, expect those three
-targets to be down.</p>
-</div>
-<p>kube-proxy is not scraped at all (<code>kubeProxy.enabled: false</code>): Cilium replaces
-it, so there is nothing to scrape, and leaving the chart's default on keeps
-<code>KubeProxyDown</code> firing forever.</p>
-<h2 id="accessing-grafana">Accessing Grafana<a class="headerlink" href="#accessing-grafana" title="Permanent link">&para;</a></h2>
-<p>Grafana is exposed via the <code>infra-gateway</code> at <code>monitoring.infra.k8s.wlkr.ch</code>,
-behind <a href="../authentik/">Authentik</a>. There is no login form: <code>disable_login_form</code>
-and <code>oauth_auto_login</code> are both set, so opening the URL bounces straight to
-Authentik and back.</p>
-<p>Your role comes from group membership, evaluated by <code>role_attribute_path</code>:</p>
+<p>For another provider, change <code>smtp_smarthost</code> in the template and the three
+values in OpenBao.</p>
+<h3 id="scrape-targets">Scrape targets<a class="headerlink" href="#scrape-targets" title="Permanent link">&para;</a></h3>
+<p>Every <code>ServiceMonitor</code>, <code>PodMonitor</code> and <code>PrometheusRule</code> in every namespace,
+through the five <code>*SelectorNilUsesHelmValues: false</code> settings: the chart
+treats an empty selector as unset and renders <code>release: kube-prometheus-stack</code>
+in its place, which limits Prometheus to its own targets.</p>
 <table>
 <thead>
 <tr>
-<th>Authentik group</th>
-<th>Grafana role</th>
+<th>Target</th>
+<th>Made scrapable by</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>grafana-admins</code></td>
-<td><code>Admin</code></td>
+<td>kube-scheduler, kube-controller-manager</td>
+<td><code>bind-address</code> in <code>ansible/templates/kubeadm.yaml.j2</code> (kubeadm binds them to <code>127.0.0.1</code>)</td>
+<td>HTTPS with a self-signed certificate, so the ServiceMonitors set <code>insecureSkipVerify</code>; the ServiceAccount token still authenticates</td>
 </tr>
 <tr>
-<td><code>grafana-editors</code></td>
-<td><code>Editor</code></td>
+<td>etcd</td>
+<td><code>listen-metrics-urls</code> in the same template (kubeadm gives it none)</td>
+<td>Plain HTTP on 2381, serving only <code>/metrics</code> and <code>/health</code>; client and peer APIs stay on mTLS</td>
 </tr>
 <tr>
-<td>neither</td>
-<td><code>Viewer</code></td>
+<td>Ceph</td>
+<td><code>monitoring.enabled</code> on the <code>CephCluster</code> — see <a href="../rook-ceph/#monitoring">Rook-Ceph</a></td>
+<td></td>
+</tr>
+<tr>
+<td>kube-proxy</td>
+<td>Not scraped (<code>kubeProxy.enabled: false</code>)</td>
+<td>Cilium replaces it; the default would keep <code>KubeProxyDown</code> firing forever</td>
 </tr>
 </tbody>
 </table>
-<p>The OIDC client ID and secret are not minted by Grafana. They are generated once
-into OpenBao and materialised as the <code>grafana-oidc</code> Secret by
-<code>grafana-oidc.yaml</code>, then read by both sides — which is what lets a rebuilt
-Grafana and a rebuilt Authentik still agree with each other. See
-<a href="../authentik/#client-secrets-are-generated-up-front">Authentik &rarr; Client secrets are generated up front</a>.</p>
 <div class="admonition note">
-<p class="admonition-title">The admin account still exists</p>
-<p>Disabling the login form hides it, it does not remove it. The local admin remains reachable through the API, which is the break-glass path for when Authentik is down — see <a href="../authentik/#when-authentik-is-down">When Authentik is down</a>. Do not set <code>grafana.adminPassword</code> in <code>application.yaml</code> to make that easier; it would commit a credential to Git.</p>
+<p class="admonition-title">Note</p>
+<p>A cluster provisioned before the kubeadm change keeps the old flags in its static pod manifests; until those nodes are reprovisioned the three control-plane targets stay down.</p>
 </div>
-<h3 id="the-admin-password">The admin password<a class="headerlink" href="#the-admin-password" title="Permanent link">&para;</a></h3>
-<p>The admin password lives in OpenBao at <code>kv/monitoring/grafana-admin</code> and reaches
-Grafana through the <code>grafana-admin</code> Secret, rendered by <code>grafana-admin.yaml</code> and
-named in <code>grafana.admin.existingSecret</code>. <code>make bao-secrets</code> generates it.</p>
-<p>Leaving <code>existingSecret</code> unset is not harmless. The chart then generates a new
-random password on every render, so ArgoCD always sees its Secret as OutOfSync,
-and the <code>checksum/secret</code> annotation on the Deployment changes with it: every
-sync restarts Grafana.</p>
-<p>Grafana reads the password only when it creates its database, and the database
-lives on the PVC. Changing the value in OpenBao later does not change the
-password Grafana checks. Reset it to match:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
-</span></code></pre></div>
-<h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
-<p>Besides the Kubernetes dashboards kube-prometheus-stack ships, each component
-brings its own, from upstream. Where the chart can render one, the chart does;
-only charts without a dashboard get a vendored copy. Renovate does not update
-vendored copies; the header of each file names the upstream tag it came from.</p>
+<h3 id="grafana">Grafana<a class="headerlink" href="#grafana" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>disable_login_form</code> and <code>oauth_auto_login</code></td>
+<td>Opening the URL bounces straight to Authentik and back; <code>role_attribute_path</code> maps <code>grafana-admins</code> to <code>Admin</code>, <code>grafana-editors</code> to <code>Editor</code>, anyone else to <code>Viewer</code></td>
+</tr>
+<tr>
+<td><code>grafana-oidc.yaml</code></td>
+<td>The OIDC client is generated into OpenBao and read by both sides — see <a href="../authentik/#client-secrets">Authentik</a></td>
+</tr>
+<tr>
+<td><code>grafana.admin.existingSecret</code>, from <code>grafana-admin.yaml</code></td>
+<td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and <code>checksum/secret</code> restarts Grafana on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
+</tr>
+<tr>
+<td><code>Recreate</code> strategy</td>
+<td>The dashboard PVC is RWO; under <code>RollingUpdate</code> the new pod waits for a volume the old pod releases only once the new one is Ready, parking on <code>FailedAttachVolume</code></td>
+</tr>
+<tr>
+<td>Prometheus and Grafana uncapped</td>
+<td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding</td>
+</tr>
+<tr>
+<td>Alertmanager <code>automountServiceAccountToken: false</code></td>
+<td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h3>
+<p>Where a chart can render a dashboard, it does; only charts without one get a
+vendored copy, which Renovate does not update — the header of each file names
+its upstream tag.</p>
 <table>
 <thead>
 <tr>
@@ -2685,61 +2572,43 @@ vendored copies; the header of each file names the upstream tag it came from.</p
 <tr>
 <td><a href="../rook-ceph/">Rook-Ceph</a></td>
 <td>Ceph Cluster, Ceph - OSD (Single), Ceph - Pools</td>
-<td>Vendored from Rook: <code>rook-ceph/grafana-dashboards.yaml</code></td>
+<td>Vendored: <code>rook-ceph/grafana-dashboards.yaml</code></td>
 </tr>
 <tr>
 <td><a href="../logging/">Alloy</a></td>
 <td>Alloy / Controller, Alloy / Loki Components, Alloy / Resources</td>
-<td>Vendored from the Alloy mixin: <code>logging/grafana-dashboards.yaml</code></td>
+<td>Vendored: <code>logging/grafana-dashboards.yaml</code></td>
 </tr>
 <tr>
 <td>ArgoCD</td>
 <td>ArgoCD</td>
-<td>Vendored from Argo CD: <code>payload/platform/argocd-config/argocd-dashboard.yaml</code></td>
+<td>Vendored: <code>argocd-config/argocd-dashboard.yaml</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="adding-a-dashboard">Adding a Dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h2>
-<p>Grafana is configured with persistent storage (Rook-Ceph). Dashboards can be added:</p>
-<ul>
-<li><strong>Via the UI</strong>: Changes persist across restarts because of the PVC.</li>
-<li><strong>Via ConfigMap</strong>: Add a ConfigMap with the label <code>grafana_dashboard: "1"</code> next to the component it describes. The sidecar watches every namespace (<code>sidecar.dashboards.searchNamespace: ALL</code>) and imports it.</li>
-<li><strong>Via the component's chart</strong>: Many charts can render that ConfigMap themselves. Prefer it over a vendored copy, since it follows the chart's version.</li>
-</ul>
-<p>Prefer the ConfigMap for anything you would be annoyed to lose. A dashboard
-built in the UI lives in one PVC and nowhere else — it is not in Git, Velero is
-its only copy, and it will not follow you to a rebuilt cluster. Every
-organisation has exactly one irreplaceable dashboard that someone made in the UI
-four years ago, and nobody knows how to recreate it.</p>
-<h2 id="resources-and-rollout">Resources and rollout<a class="headerlink" href="#resources-and-rollout" title="Permanent link">&para;</a></h2>
-<p>Memory limits are sized at roughly 2.5 times the measured peak working set.
-The Grafana sidecars peaked at 89Mi and 92Mi; the operator, its config
-reloader, kube-state-metrics, node-exporter and Alertmanager each have their
-own limits in <code>application.yaml</code>.</p>
-<p>Prometheus and Grafana are deliberately uncapped. Prometheus peaked at 1501Mi
-and grows with series count and retention; Grafana peaked at 680Mi, which is
-high enough for a dashboard renderer that it wants explaining before it is
-capped. Neither can be sized from a day of steady state, and OOMKilling the
-thing that tells you the cluster is unhealthy is the specific failure worth
-avoiding.</p>
-<p>Grafana uses the <code>Recreate</code> deployment strategy. Its dashboard PVC is
-ReadWriteOnce, and under the chart's default <code>RollingUpdate</code> the new pod waits
-for a volume the old pod releases only once the new one is Ready — a rollout
-parks at <code>FailedAttachVolume: Volume is already used by pod(s)</code> until someone
-deletes a pod by hand. A few seconds of downtime is the price of a
-single-replica, single-volume Grafana.</p>
-<p>Alertmanager does not mount a ServiceAccount token
-(<code>automountServiceAccountToken: false</code>). No RoleBinding or ClusterRoleBinding
-names it — the operator talks to the API, not Alertmanager — so the token would
-buy nothing and leave a working credential in a pod reachable from the Gateway.</p>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>monitoring/                  # Observability Stack
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── application.yaml         # kube-prometheus-stack (Helm chart)
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── grafana-admin.yaml       # ExternalSecret: Grafana admin password
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── grafana-oidc.yaml        # ExternalSecret: Grafana OIDC client
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>├── alertmanager-config.yaml # ExternalSecret: the whole Alertmanager config
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>└── httproute.yaml           # Grafana route
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="adding-a-dashboard">Adding a dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h3>
+<p>Add a ConfigMap labelled <code>grafana_dashboard: "1"</code> next to the component it
+describes; the sidecar watches every namespace
+(<code>sidecar.dashboards.searchNamespace: ALL</code>). Prefer the chart's own dashboard
+where it has one. A dashboard built in the UI survives restarts on the PVC but
+lives nowhere else: not in Git, not on a rebuilt cluster.</p>
+<h3 id="resetting-the-grafana-admin-password">Resetting the Grafana admin password<a class="headerlink" href="#resetting-the-grafana-admin-password" title="Permanent link">&para;</a></h3>
+<p>Grafana reads the password only when it creates its database, so changing
+<code>kv/monitoring/grafana-admin</code> later does not change what it checks:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus,alertmanager
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus<span class="w"> </span>kube-prometheus-stack-prometheus<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.serviceMonitorSelector}'</span><span class="w">   </span><span class="c1"># should print {}</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
+</span></code></pre></div>
+<p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step
+further; SMTP auth, spam heuristics and an expired password are unmonitored.
+Send yourself a test alert once and confirm it arrives.</p>
 
 
 

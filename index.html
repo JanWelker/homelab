@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/">
       
       
       
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -370,6 +370,8 @@
       
         
       
+        
+      
     
     
     
@@ -396,8 +398,6 @@
       
         
           
-        
-      
         
       
         
@@ -553,17 +553,6 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         The stack in one table
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-in-each-section" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is in each section
       </span>
     </span>
   </a>
@@ -749,10 +738,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -818,33 +803,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="./architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -1019,33 +977,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="./architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1064,6 +995,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1159,6 +1094,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1294,6 +1256,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1554,6 +1543,8 @@
       
         
       
+        
+      
     
     
     
@@ -1766,6 +1757,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1784,8 +1802,6 @@
       
         
           
-        
-      
         
       
         
@@ -1905,33 +1921,6 @@
   
   
     <li class="md-nav__item">
-      <a href="./development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="./development/maintenance/" class="md-nav__link">
         
   
@@ -2021,17 +2010,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#what-is-in-each-section" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        What is in each section
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2073,11 +2051,9 @@
 
 <h1 id="flatcar-homelab">Flatcar Homelab<a class="headerlink" href="#flatcar-homelab" title="Permanent link">&para;</a></h1>
 <p><img align="right" alt="Homelab Logo" src="assets/images/logo.png" width="150" /></p>
-<p>Six machines in a rack, a pile of YAML, and a stubborn refusal to pay a cloud
-provider for something that fits under a desk. This is a bare metal Kubernetes
-cluster that provisions itself over PXE, keeps its entire state in Git, and is
-documented here mostly so that Future Me, at 02:00, with one hand holding a
-phone flashlight, does not have to re-derive any of it.</p>
+<p>Six machines in a rack and a pile of YAML: a bare metal Kubernetes cluster that
+provisions itself over PXE, keeps its entire state in Git, and is documented
+here so that nothing has to be re-derived at 02:00.</p>
 <p>It is a real cluster doing real work, built the way a production cluster is
 built, at a scale where breaking it is a learning experience rather than an
 incident review.</p>
@@ -2115,6 +2091,9 @@ symptom-to-cause table. If it is a stalled install, the
 </ul>
 </div>
 <h2 id="the-stack-in-one-table">The stack in one table<a class="headerlink" href="#the-stack-in-one-table" title="Permanent link">&para;</a></h2>
+<p>Each choice had a simpler alternative that was rejected on purpose; the
+reasoning and what each one costs is in
+<a href="architecture/decisions/">Design Decisions</a>.</p>
 <table>
 <thead>
 <tr>
@@ -2156,47 +2135,11 @@ symptom-to-cause table. If it is a stalled install, the
 </tr>
 </tbody>
 </table>
-<p>Every one of those had a simpler alternative that was rejected on purpose. The
-reasoning, and what each choice costs, is in
-<a href="architecture/decisions/">Design Decisions</a>.</p>
-<h2 id="what-is-in-each-section">What is in each section<a class="headerlink" href="#what-is-in-each-section" title="Permanent link">&para;</a></h2>
-<div class="grid cards">
-<ul>
-<li>
-<p><strong><a href="quickstart/">Get Started</a></strong></p>
-<hr />
-<p>Concepts, the thirteen-command build, and what to change before pointing
-any of it at your own hardware.</p>
-</li>
-<li>
-<p><strong><a href="architecture/">Architecture</a></strong></p>
-<hr />
-<p>The boot process arrow by arrow, the GitOps strategy, the security posture
-it assumes, and the limitations written down deliberately — because the ones
-you have not admitted to are the ones that page you.</p>
-</li>
-<li>
-<p><strong><a href="platform/">Platform</a></strong></p>
-<hr />
-<p>The nineteen components that make the cluster more than a very expensive way
-to run <code>nginx</code>, with the rollout order that lets a fresh bootstrap
-converge rather than deadlock.</p>
-</li>
-<li>
-<p><strong><a href="operations/">Operations</a></strong></p>
-<hr />
-<p>Health checks, node reboots, how updates actually get applied, and what is
-and is not backed up — the last of which is the only page here that will
-ever matter on your worst day.</p>
-</li>
-<li>
-<p><strong><a href="development/">Development</a></strong></p>
-<hr />
-<p>Working on the repository: the checks that run, how this site is built, what
-Renovate is allowed to merge, and how to add a workload.</p>
-</li>
-</ul>
-</div>
+<p>The sections follow the reader's journey: <a href="quickstart/">Get Started</a> to build
+it, <a href="architecture/">Architecture</a> to understand it,
+<a href="platform/">Platform</a> for each of the components,
+<a href="operations/">Operations</a> to run it, and
+<a href="development/">Development</a> to work on the repository.</p>
 
 
 

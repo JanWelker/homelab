@@ -6,14 +6,14 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How to work on this repository — writing documentation, adding workloads, and the automation that keeps dependencies current.">
+        <meta name="description" content="How to work on this repository: contributing, adding workloads, and the automation that keeps dependencies current.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/development/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/development/">
       
       
-        <link rel="prev" href="../operations/vulnerabilities/">
+        <link rel="prev" href="../operations/triage-2026-09-20/">
       
       
         <link rel="next" href="./contributing/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -370,6 +370,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1476,6 +1476,8 @@
       
         
       
+        
+      
     
     
     
@@ -1688,6 +1690,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1708,8 +1737,6 @@
       
         
           
-        
-      
         
       
         
@@ -1832,33 +1859,6 @@
   
   
     <li class="md-nav__item">
-      <a href="./documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="./maintenance/" class="md-nav__link">
         
   
@@ -1903,11 +1903,6 @@
                       
                     
                     
-                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-                      <div class="md-sidebar-button__wrapper">
-                        <label class="md-sidebar-button" for="__toc"></label>
-                      </div>
-                    
                   
                   <div class="md-sidebar__inner">
                     
@@ -1919,25 +1914,6 @@
   
     
   
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#conventions" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Conventions
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -1991,8 +1967,6 @@
       
         
       
-        
-      
     
     
     
@@ -2036,50 +2010,31 @@
 
 
 <h1 id="development">Development<a class="headerlink" href="#development" title="Permanent link">&para;</a></h1>
-<p>How to work on this repository — and, more to the point, how to change it
-without surprising the cluster.</p>
+<p>How to change this repository without surprising the cluster. Manifests live
+under <code>payload/</code> and are applied by ArgoCD; documentation lives under <code>docs/</code>;
+workloads live in <a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a>.</p>
 <div class="grid cards">
 <ul>
 <li>
 <p><strong><a href="contributing/">Contributing</a></strong></p>
 <hr />
-<p>Repository setup, the checks that run, commit conventions, and how to
-validate a <code>payload/</code> change before you push it at real hardware.</p>
+<p>Repository setup, the checks to run, commit conventions, and how the
+documentation site is built and published.</p>
 </li>
 <li>
 <p><strong><a href="add-workload/">Adding a Workload</a></strong></p>
 <hr />
 <p>Deploying a new application, from the ArgoCD Application through to the
-documentation page the build will fail without.</p>
-</li>
-<li>
-<p><strong><a href="documentation/">Documentation System</a></strong></p>
-<hr />
-<p>How this site is built with Zensical and published, how to preview it
-locally, and the two markdownlint rules that will catch you.</p>
+documentation page the build fails without.</p>
 </li>
 <li>
 <p><strong><a href="maintenance/">Maintenance</a></strong></p>
 <hr />
-<p>The CI workflows that lint the repository, and what Renovate is and is not
-allowed to merge on its own.</p>
+<p>The CI workflows, and what Renovate is and is not allowed to merge on its
+own.</p>
 </li>
 </ul>
 </div>
-<h2 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Kubernetes manifests live under <code>payload/</code>, documentation under <code>docs/</code>.</li>
-<li>Everything in <code>payload/</code> is applied by ArgoCD. Nothing is applied by hand
-    after the initial bootstrap.</li>
-<li>Workloads are not in this repository. They live in
-    <a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a>, which this
-    repository references and never reads back — see
-    <a href="add-workload/">Adding a Workload</a>.</li>
-<li>Do not copy version numbers into prose. <code>targetRevision</code> in the manifests is
-    the single source of truth, and Renovate keeps it current. A version written
-    into a sentence is a version that will be wrong within a month and will stay
-    wrong for a year.</li>
-</ul>
 
 
 
@@ -2120,7 +2075,7 @@ allowed to merge on its own.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../operations/vulnerabilities/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Vulnerability Triage">
+          <a href="../operations/triage-2026-09-20/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Triage 2026-09-20">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2130,7 +2085,7 @@ allowed to merge on its own.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Vulnerability Triage
+                Triage 2026-09-20
               </div>
             </div>
           </a>

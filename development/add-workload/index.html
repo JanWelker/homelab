@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/development/add-workload/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/development/add-workload/">
       
       
         <link rel="prev" href="../contributing/">
       
       
-        <link rel="next" href="../documentation/">
+        <link rel="next" href="../maintenance/">
       
       
         
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -370,6 +370,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1476,6 +1476,8 @@
       
         
       
+        
+      
     
     
     
@@ -1688,6 +1690,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1708,8 +1737,6 @@
       
         
           
-        
-      
         
       
         
@@ -2028,33 +2055,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../maintenance/" class="md-nav__link">
         
   
@@ -2325,8 +2325,6 @@
       
         
       
-        
-      
     
     
     
@@ -2370,19 +2368,12 @@
 
 
 <h1 id="adding-a-workload">Adding a Workload<a class="headerlink" href="#adding-a-workload" title="Permanent link">&para;</a></h1>
-<p>Workloads live in their own repository,
-<a href="https://github.com/JanWelker/homelab-apps"><code>JanWelker/homelab-apps</code></a>, not in
-this one. Adding an application is creating a directory there and pushing it —
-no console, no <code>kubectl apply</code>, no step that exists only in someone's memory.
-<a href="../../architecture/gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>
-covers why the split exists and what it costs.</p>
-<p>The <code>apps</code> ApplicationSet generates one ArgoCD Application per
-<code>*/application.yaml</code> in that repository. There is no list to register a new
-application in; the directory <em>is</em> the registration.</p>
+<p>Workloads live in <a href="https://github.com/JanWelker/homelab-apps"><code>JanWelker/homelab-apps</code></a>,
+not here. The <code>apps</code> ApplicationSet generates one ArgoCD Application per
+<code>*/application.yaml</code> in that repository, so adding an application is creating a
+directory there and pushing it. Why the split exists is in
+<a href="../../architecture/gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>.</p>
 <h2 id="what-the-platform-already-does-for-you">What the platform already does for you<a class="headerlink" href="#what-the-platform-already-does-for-you" title="Permanent link">&para;</a></h2>
-<p>This is the part worth internalising before writing any YAML, because most of
-what an application needs is already handled and duplicating it is the usual
-mistake:</p>
 <table>
 <thead>
 <tr>
@@ -2395,12 +2386,12 @@ mistake:</p>
 <tr>
 <td>A hostname</td>
 <td>An <code>HTTPRoute</code> with <code>hostnames: [app.k8s.wlkr.ch]</code></td>
-<td><a href="../../platform/external-dns/">external-dns</a> publishes the Route53 record from the route</td>
+<td><a href="../../platform/external-dns/">external-dns</a> publishes the Route53 record</td>
 </tr>
 <tr>
 <td>HTTPS</td>
 <td>Nothing</td>
-<td>The <code>apps-gateway</code> already terminates TLS with a <code>*.k8s.wlkr.ch</code> wildcard</td>
+<td><code>apps-gateway</code> terminates TLS with a <code>*.k8s.wlkr.ch</code> wildcard</td>
 </tr>
 <tr>
 <td>Storage</td>
@@ -2410,17 +2401,17 @@ mistake:</p>
 <tr>
 <td>A database</td>
 <td>A CloudNativePG <code>Cluster</code></td>
-<td><a href="../../platform/cloudnative-pg/">The operator</a> generates the credentials and runs the failover</td>
+<td><a href="../../platform/cloudnative-pg/">The operator</a> generates credentials and runs failover</td>
 </tr>
 <tr>
 <td>A secret from outside the cluster</td>
 <td>An <code>ExternalSecret</code></td>
-<td><a href="../../platform/openbao/">OpenBao</a> holds it; ESO renders a native <code>Secret</code></td>
+<td><a href="../../platform/openbao/">OpenBao</a> holds it; ESO renders a <code>Secret</code></td>
 </tr>
 <tr>
 <td>Metrics</td>
 <td>A <code>ServiceMonitor</code> or <code>PodMonitor</code></td>
-<td>Prometheus scrapes it, Grafana can chart it</td>
+<td>Prometheus scrapes it</td>
 </tr>
 <tr>
 <td>Logs</td>
@@ -2430,43 +2421,33 @@ mistake:</p>
 <tr>
 <td>Backups</td>
 <td>Nothing, for a PVC</td>
-<td>Velero snapshots it on the cluster schedule</td>
+<td>Velero snapshots it nightly</td>
 </tr>
 </tbody>
 </table>
 <h2 id="the-rules">The rules<a class="headerlink" href="#the-rules" title="Permanent link">&para;</a></h2>
-<p>Every directory in the workloads repository follows these. They are restated in
-its <code>CONVENTIONS.md</code>, which is the copy to keep current.</p>
+<p>Restated in the workloads repository's <code>CONVENTIONS.md</code>, which is the copy to
+keep current.</p>
 <ol>
-<li><strong>Exactly one <code>application.yaml</code> per directory</strong>, and it is a complete
-   ArgoCD <code>Application</code>, not a fragment. The generator reads the file and
-   copies its labels, annotations, finalizers and <code>spec</code> through unchanged.</li>
-<li><strong><code>project: apps</code>.</strong> The ApplicationSet refuses to generate anything else —
-   a workload in the <code>infra</code> or <code>system</code> project would be authorised against
-   destinations it has no business in, so the whole set fails rather than let
-   one through. The project names the chart repositories workloads may pull
-   from and the cluster-scoped kinds they may create, in
-   <code>payload/platform/argocd-projects/projects.yaml</code>. A workload on a new chart
-   repository extends that list first, in this repository, or ArgoCD rejects
-   its Application.</li>
+<li><strong>Exactly one <code>application.yaml</code> per directory</strong>, a complete ArgoCD
+   <code>Application</code>: the generator copies its labels, annotations, finalizers and
+   <code>spec</code> through unchanged.</li>
+<li><strong><code>project: apps</code>.</strong> Anything else fails the whole ApplicationSet. The
+   project, in <code>payload/platform/argocd-projects/projects.yaml</code>, lists the chart
+   repositories workloads may pull from; a new chart repository extends that
+   list first, in this repository.</li>
 <li><strong>The workload owns its namespace.</strong> Ship a <code>namespace.yaml</code> at sync wave
-   <code>-2</code> carrying the three Pod Security Admission labels, and annotate it
-   <code>Prune=false</code> — pruning a <code>Namespace</code> deletes every PVC inside it. A
-   namespace nobody labelled runs at <code>privileged</code>, which enforces nothing, and
-   that is exactly what <code>CreateNamespace=true</code> on its own leaves behind.</li>
-<li><strong>PostgreSQL is a CloudNativePG <code>Cluster</code>.</strong> Never a chart's bundled
-   database. See <a href="../../platform/cloudnative-pg/#the-contract">the contract</a>.</li>
-<li><strong>Ship a <code>CiliumNetworkPolicy</code></strong>, at sync wave <code>-2</code>. Not a plain
-   <code>NetworkPolicy</code> — a plain one blocks health probes and the pods restart
-   forever. The reasons are in <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security
-   Policies</a>;
-   the wave is in <a href="#the-network-policy">The network policy</a> and matters more
-   than it looks.</li>
-<li><strong>Official upstream sources only.</strong> The vendor's own chart or the vendor's
-   own image. Not a repackager's chart, however convenient — the whole point of
-   pinning a version is knowing who published it.</li>
-<li><strong>Pin every version</strong>, and let Renovate move it. No <code>latest</code>, no floating
-   tags.</li>
+   <code>-2</code> with the three Pod Security Admission labels, annotated <code>Prune=false</code>,
+   because pruning a <code>Namespace</code> deletes every PVC inside it. A namespace
+   created by <code>CreateNamespace=true</code> has no labels and enforces nothing.</li>
+<li><strong>PostgreSQL is a CloudNativePG <code>Cluster</code></strong>, never a chart's bundled
+   database — see <a href="../../platform/cloudnative-pg/#the-contract">the contract</a>.</li>
+<li><strong>Ship a <code>CiliumNetworkPolicy</code></strong> at sync wave <code>-2</code>, not a plain
+   <code>NetworkPolicy</code>, which blocks health probes — see
+   <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security Policies</a>.</li>
+<li><strong>Official upstream sources only</strong>: the vendor's chart or image, not a
+   repackager's.</li>
+<li><strong>Pin every version</strong> and let Renovate move it. No <code>latest</code>.</li>
 </ol>
 <h2 id="step-1-create-the-directory">Step 1: Create the directory<a class="headerlink" href="#step-1-create-the-directory" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:JanWelker/homelab-apps.git
@@ -2503,17 +2484,11 @@ its <code>CONVENTIONS.md</code>, which is the copy to keep current.</p>
 </span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">      </span><span class="c1"># Security labels an implicitly created one would not have.</span>
 </span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServerSideApply=true</span>
 </span></code></pre></div>
-<p>For a Helm chart that also needs manifests of its own — a database, an
-<code>HTTPRoute</code>, a network policy — use a <code>sources</code> list with the chart in one
-entry and this repository in another. <code>nextcloud/application.yaml</code> is the
-worked example.</p>
-<div class="admonition tip">
-<p class="admonition-title">Workloads keep selfHeal</p>
-<p>Platform Applications give up <code>selfHeal</code> to the <code>RollingSync</code> strategy;
-workloads do not. A hand-edited workload Deployment is reverted within
-minutes, which is the behaviour most people expect from ArgoCD in the first
-place.</p>
-</div>
+<p>For a Helm chart that also needs manifests of its own, use a <code>sources</code> list
+with the chart in one entry and this repository in another;
+<code>nextcloud/application.yaml</code> is the worked example. Workloads keep <code>selfHeal</code>,
+unlike platform Applications under <code>RollingSync</code> — see
+<a href="../../architecture/gitops/#what-the-staging-costs">what the staging costs</a>.</p>
 <h2 id="step-3-add-the-manifests">Step 3: Add the manifests<a class="headerlink" href="#step-3-add-the-manifests" title="Permanent link">&para;</a></h2>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>my-app/
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml
@@ -2539,9 +2514,9 @@ place.</p>
 </span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
 </span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
 </span></code></pre></div>
-<p>Set <code>enforce</code> to what the image demonstrably needs — <code>restricted</code> if it runs
-as a non-root user, <code>baseline</code> if it does not — and leave <code>audit</code> and <code>warn</code>
-stricter so the gap stays visible.</p>
+<p>Set <code>enforce</code> to what the image demonstrably needs (<code>restricted</code> if it runs
+non-root, <code>baseline</code> if not) and leave <code>audit</code> and <code>warn</code> stricter so the gap
+stays visible.</p>
 <h3 id="if-it-needs-a-database">If it needs a database<a class="headerlink" href="#if-it-needs-a-database" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nn">---</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql.cnpg.io/v1</span>
@@ -2563,13 +2538,10 @@ stricter so the gap stays visible.</p>
 </span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span></code></pre></div>
-<p>That produces a Secret called <code>my-app-db-app</code> holding <code>username</code>, <code>password</code>,
-<code>host</code>, <code>port</code>, <code>dbname</code> and a ready-assembled <code>uri</code>. Point the application at
-those keys; never copy the value anywhere.</p>
-<p>The operator polls each instance on port <code>8000</code> from <code>cnpg-system</code> to decide
-what the <code>Cluster</code> is doing, so the network policy below has to admit it. That
-rule is not optional and its absence does not look like a network problem —
-see the troubleshooting entry.</p>
+<p>That produces a Secret <code>my-app-db-app</code> holding <code>username</code>, <code>password</code>, <code>host</code>,
+<code>port</code>, <code>dbname</code> and a ready-assembled <code>uri</code>; point the application at those
+keys. The operator polls each instance on port <code>8000</code> from <code>cnpg-system</code>, so
+the network policy below must admit it.</p>
 <h3 id="the-network-policy">The network policy<a class="headerlink" href="#the-network-policy" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nn">---</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cilium.io/v2</span>
@@ -2599,15 +2571,11 @@ see the troubleshooting entry.</p>
 </span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="s">"8000"</span>
 </span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">              </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TCP</span>
 </span></code></pre></div>
-<p>Wave <code>-2</code> is load-bearing, not tidiness. At the default wave the policy is
-applied <em>after</em> the <code>Cluster</code> at <code>-1</code> — and <code>-1</code> is the wave that blocks
-waiting for that <code>Cluster</code> to go Healthy, which it cannot do until the rule
-above exists. The sync parks at <code>-1</code> forever and the rule that would release it
-sits in a wave that never runs. Putting the policy with the namespace also
-closes the window where the workload is running and unprotected.</p>
-<p>Drop <code>ingress</code> from <code>fromEntities</code> if the Gateway does not reach this workload
-directly — a namespace fronted by Authentik's outpost takes its traffic from
-the <code>authentik</code> namespace instead.</p>
+<p>Wave <code>-2</code> is load-bearing: at the default wave the policy is applied after the
+<code>Cluster</code> at <code>-1</code>, which cannot go Healthy until the <code>cnpg-system</code> rule exists,
+so the sync parks at <code>-1</code> forever. Drop <code>ingress</code> from <code>fromEntities</code> if the
+Gateway does not reach this workload directly (a namespace fronted by
+Authentik's outpost takes its traffic from the <code>authentik</code> namespace).</p>
 <h3 id="exposing-it">Exposing it<a class="headerlink" href="#exposing-it" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nn">---</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
@@ -2627,104 +2595,81 @@ the <code>authentik</code> namespace instead.</p>
 </span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
-<p>DNS and TLS need nothing further. See <a href="../../platform/gateway-api/">Gateway API</a>.</p>
+<p>DNS and TLS need nothing further — see <a href="../../platform/gateway-api/">Gateway API</a>.</p>
 <h3 id="putting-a-workload-behind-authentik">Putting a workload behind Authentik<a class="headerlink" href="#putting-a-workload-behind-authentik" title="Permanent link">&para;</a></h3>
-<p>Which of the two shapes applies depends on the application, not on preference:</p>
-<p><strong>It speaks OIDC.</strong> The <code>oauth2provider</code> blueprint goes in the <em>workload's</em> own
-directory, as a ConfigMap targeted at the <code>authentik</code> namespace — see
-<a href="../../platform/authentik/#where-a-blueprint-lives">Where a blueprint lives</a>.
-Two things still come from this repository: its client credentials, generated
-in <code>scripts/bao-secrets.sh</code> under the workload's own <code>kv/&lt;app&gt;/config</code> path —
-never by adding keys to <code>kv/authentik/config</code>, which a <code>bao kv put</code> would
-rewrite wholesale and take Authentik down with it — and one projected-volume
-source in <code>payload/platform/authentik/application.yaml</code> so the worker mounts
-it. Point the application's discovery URI at <strong><code>auth.k8s.wlkr.ch</code></strong>, not the
-<code>infra</code> name: workloads are reachable from outside the local network and that
-one is not. See <a href="../../platform/authentik/#two-hostnames">Two hostnames</a>.</p>
-<p><strong>It does not.</strong> Add a <code>proxyprovider</code> and list it on the embedded outpost, then
-point the workload's <code>HTTPRoute</code> <code>backendRef</code> at <code>authentik-server</code> in the
-<code>authentik</code> namespace instead of at the application. That is a cross-namespace
-reference, so the workload's namespace also has to be added to
-<code>payload/platform/authentik/referencegrant.yaml</code>.</p>
-<p>Both are changes to <strong>this</strong> repository, which means a workload going behind
-SSO is two pull requests. That friction is deliberate: a workload should not be
-able to put itself behind — or quietly take itself out from behind — the
-cluster's authentication layer.</p>
+<ul>
+<li><strong>It speaks OIDC:</strong> the <code>oauth2provider</code> blueprint lives in the workload's
+    directory; its client credentials come from <code>scripts/bao-secrets.sh</code> under
+    <code>kv/&lt;app&gt;/config</code> plus one projected-volume source in
+    <code>payload/platform/authentik/application.yaml</code>; the discovery URI is
+    <code>auth.k8s.wlkr.ch</code>.</li>
+<li><strong>It does not:</strong> add a <code>proxyprovider</code> on the embedded outpost, point the
+    <code>HTTPRoute</code> at <code>authentik-server</code> in the <code>authentik</code> namespace, and add the
+    namespace to <code>payload/platform/authentik/referencegrant.yaml</code>.</li>
+</ul>
+<p>Either way it is two pull requests, one here, because a workload must not be
+able to put itself behind or take itself out from behind the cluster's
+authentication layer. Details in <a href="../../platform/authentik/">Authentik</a>.</p>
 <h2 id="step-4-commit-and-push">Step 4: Commit and push<a class="headerlink" href="#step-4-commit-and-push" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>git<span class="w"> </span>add<span class="w"> </span>my-app/
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">"feat: add my-app"</span>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>git<span class="w"> </span>push
 </span></code></pre></div>
-<p>The ApplicationSet picks the directory up on its next reconcile — within about
-three minutes, or immediately if you hit <strong>Refresh</strong> on the <code>apps</code>
-ApplicationSet in the ArgoCD UI.</p>
+<p>The ApplicationSet picks the directory up within about three minutes, or
+immediately after <strong>Refresh</strong> on the <code>apps</code> ApplicationSet in the ArgoCD UI.</p>
 <h2 id="step-5-document-it">Step 5: Document it<a class="headerlink" href="#step-5-document-it" title="Permanent link">&para;</a></h2>
-<p>Not optional, and not busywork: an undocumented workload is one you will
-rediscover in eighteen months by reading YAML and guessing.</p>
-<p>The page goes in the <strong>workloads</strong> repository, next to the manifests it
-describes, at <code>docs/my-app.md</code> — registered in that repository's own
-<code>zensical.toml</code>, which publishes to
+<p>The page goes in the workloads repository at <code>docs/my-app.md</code>, registered in
+its <code>zensical.toml</code>, which publishes to
 <a href="https://janwelker.github.io/homelab-apps/">janwelker.github.io/homelab-apps</a>.
-Documentation lives with what it documents, so a pull request that changes a
-manifest can change its page in the same diff. Both sites build with
-<code>--strict</code>, so an unregistered page fails CI.</p>
-<p>Say what the application is for, which hostname it answers on, what it stores
-and where, and anything about it that surprised you while deploying it. That
-last category is the one that pays for the page.</p>
+Both sites build with <code>--strict</code>, so an unregistered page fails CI. Say what
+the application is for, which hostname it answers on, what it stores and
+where, and what surprised you while deploying it.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<p><strong>The Application was never generated.</strong> The ApplicationSet only reads files
-matching <code>*/application.yaml</code> — one level deep, exactly that name. Check the
-controller:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>logs<span class="w"> </span>deploy/argocd-applicationset-controller<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-50
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause and check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The Application was never generated</td>
+<td>Only <code>*/application.yaml</code>, one level deep, is read, and a <code>spec.project</code> other than <code>apps</code> fails the whole set naming the file. Read the controller log (below)</td>
+</tr>
+<tr>
+<td>The Application exists but will not sync</td>
+<td>On a fresh cluster <code>12-workloads</code> may not be reached yet; the <code>apps</code> ApplicationSet does not exist before then. Check the stage status in <a href="../../architecture/gitops/#what-the-staging-costs">GitOps Strategy</a></td>
+</tr>
+<tr>
+<td><code>Synced</code>, health <code>Unknown</code>, workload running fine</td>
+<td>A wave is waiting on a resource that will never go Healthy; with a database it is the missing <code>cnpg-system</code> rule (<code>kubectl get cluster</code> says <code>1/1</code>, status reads <code>Instance Status Extraction Error: HTTP communication issue</code>). Confirm with <code>kubectl -n argocd get application my-app -o jsonpath='{.status.operationState.message}'</code> and the Hubble check below</td>
+</tr>
+<tr>
+<td>Rule is in Git, still stuck</td>
+<td>The policy's sync wave is wrong: the applied list has no <code>CiliumNetworkPolicy</code> while <code>Cluster</code> reads <code>Running</code>. Fix the wave, then <code>argocd app terminate-op my-app</code>; a stuck operation does not pick up a new revision</td>
+</tr>
+<tr>
+<td>Pods will not start; events mention a security policy</td>
+<td><code>enforce</code> in <code>namespace.yaml</code> is stricter than the image needs. Loosen <code>enforce</code>, keep <code>audit</code> and <code>warn</code>, so violations stay in the <a href="../../architecture/audit-logging/">audit log</a> — see <a href="../../platform/security-policies/#pod-security-admission">Pod Security Admission</a></td>
+</tr>
+<tr>
+<td>Login redirects in a loop, or every link is <code>http://</code></td>
+<td>Requests arrive from Cilium's Envoy inside the pod CIDR (<code>10.244.0.0/16</code>) with TLS terminated at the Gateway. Set the application's trusted-proxy and "overwrite protocol" settings</td>
+</tr>
+</tbody>
+</table>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Why an Application was not generated</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>logs<span class="w"> </span>deploy/argocd-applicationset-controller<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-50
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Drops from the operator, on the node running the database</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;cilium-pod-on-that-node&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--from-namespace<span class="w"> </span>cnpg-system<span class="w"> </span>--last<span class="w"> </span><span class="m">20</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># What the stuck sync has applied so far</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>application<span class="w"> </span>my-app<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="s1">'{range .status.operationState.syncResult.resources[*]}{.kind}{"\t"}{.hookPhase}{"\n"}{end}'</span>
 </span></code></pre></div>
-<p>A workload whose <code>spec.project</code> is not <code>apps</code> fails the whole set with a
-message naming the file, rather than silently skipping it.</p>
-<p><strong>The Application exists but will not sync.</strong> On a fresh cluster, check that
-<code>12-workloads</code> has been reached at all — the <code>apps</code> ApplicationSet does not
-exist before then:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>platform<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'</span>
-</span></code></pre></div>
-<p><strong>The Application is stuck <code>Synced</code> with health <code>Unknown</code>, and the workload is
-running fine.</strong> A wave is waiting on a resource that will never go Healthy.
-With a database it is almost always the missing <code>cnpg-system</code> rule: Postgres
-serves the application, <code>kubectl get cluster</code> says <code>1/1</code> ready, but the status
-reads <code>Instance Status Extraction Error: HTTP communication issue</code> because the
-operator cannot reach port <code>8000</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>application<span class="w"> </span>my-app<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.operationState.message}'</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="c1"># waiting for healthy state of postgresql.cnpg.io/Cluster/my-app-db</span>
-</span></code></pre></div>
-<p>Health <code>Unknown</code> with no resource naming itself is the signature — a genuinely
-unhealthy workload says which resource is failing. Confirm the drop on the node
-running the database:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;cilium-pod-on-that-node&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--from-namespace<span class="w"> </span>cnpg-system<span class="w"> </span>--last<span class="w"> </span><span class="m">20</span>
-</span></code></pre></div>
-<p>If the rule is already in Git and nothing changes, check the policy's sync wave
-before re-syncing anything. A policy at the default wave is applied after the
-<code>Cluster</code> it unblocks, so every attempt stops in the same place; the applied
-list confirms it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>application<span class="w"> </span>my-app<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="s1">'{range .status.operationState.syncResult.resources[*]}{.kind}{"\t"}{.hookPhase}{"\n"}{end}'</span>
-</span></code></pre></div>
-<p>No <code>CiliumNetworkPolicy</code> in that list while <code>Cluster</code> reads <code>Running</code> means the
-wave is wrong, not the rule. Fix the wave, then <code>argocd app terminate-op
-my-app</code> — the stuck operation does not pick up a new revision on its own.</p>
-<p><strong>The pods will not start, and the events mention a security policy.</strong> The
-<code>enforce</code> level in the workload's own <code>namespace.yaml</code> is stricter than the
-image needs. Both applications deployed so far sit at <code>baseline</code>, because
-neither upstream supports running as a non-root user. Loosen <code>enforce</code> to what
-the image demonstrably needs and leave <code>audit</code> and <code>warn</code> where they are, so
-the violations stay visible in the <a href="../../architecture/audit-logging/">audit
-log</a> — see <a href="../../platform/security-policies/#pod-security-admission">Security
-Policies</a> for why the
-three labels are split that way.</p>
-<p><strong>The login redirects in a loop, or every link is <code>http://</code>.</strong> The application
-is behind the <code>apps-gateway</code>, so requests arrive from Cilium's Envoy inside the
-pod CIDR (<code>10.244.0.0/16</code>) and TLS was terminated at the Gateway. Find the
-application's trusted-proxy and "overwrite protocol" settings; both workloads
-in the repository configure them, and neither works without.</p>
 
 
 
@@ -2782,13 +2727,13 @@ in the repository configure them, and neither works without.</p>
         
         
           
-          <a href="../documentation/" class="md-footer__link md-footer__link--next" aria-label="Next: Documentation System">
+          <a href="../maintenance/" class="md-footer__link md-footer__link--next" aria-label="Next: Maintenance">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Documentation System
+                Maintenance
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/concepts/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/concepts/">
       
       
         <link rel="prev" href="./..">
@@ -272,10 +272,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -778,10 +778,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -847,33 +843,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -1048,33 +1017,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1093,6 +1035,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1188,6 +1134,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1323,6 +1296,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1583,6 +1583,8 @@
       
         
       
+        
+      
     
     
     
@@ -1795,6 +1797,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1813,8 +1842,6 @@
       
         
           
-        
-      
         
       
         
@@ -1915,33 +1942,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -2176,10 +2176,9 @@
 
 
 <h1 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h1>
-<p>Five ideas carry this whole cluster. None of them is Kubernetes; Kubernetes is
-the ordinary part. What makes this project unusual is <em>how the machines
-underneath it come to exist and stay current</em>, and once these five click, the
-rest of this site stops reading like a list of unrelated tools.</p>
+<p>Five ideas carry this cluster, and none of them is Kubernetes; Kubernetes is
+the ordinary part. What makes the project unusual is how the machines
+underneath it come to exist and stay current.</p>
 <p>Read this before the <a href="../quickstart/">Quickstart</a> if any of the names in the
 table are new. Skip it if none of them are.</p>
 <table>
@@ -2222,12 +2221,9 @@ table are new. Skip it if none of them are.</p>
 <p><a href="https://www.flatcar.org/">Flatcar</a> is an immutable, minimal Linux distribution
 designed for running containers. The root filesystem is read-only — you cannot
 install packages or modify system files at runtime — which forces all
-configuration to happen declaratively, at first boot, through Ignition.</p>
-<p>That constraint is the entire point. Anyone who has inherited a fleet of
-"identical" servers knows they are identical the way siblings are: broadly
-similar, differing in ways nobody wrote down, and each carrying one undocumented
-fix applied at 3am by someone who has since left. A read-only <code>/usr</code> makes that
-impossible rather than merely discouraged.</p>
+configuration to happen declaratively, at first boot, through Ignition. A
+read-only <code>/usr</code> makes undocumented drift between "identical" nodes impossible
+rather than merely discouraged.</p>
 <p>Updates are downloaded in the background onto the passive half of an A/B
 partition pair, so a bad one can be rolled back and nothing changes until the
 machine restarts. <strong>Nothing here reboots itself</strong>: this project masks
@@ -2250,12 +2246,9 @@ the boot server serves the result.</p>
 and <code>containerd</code>, in this cluster — arrives as <strong>system extensions</strong>: read-only
 squashfs images overlaid onto <code>/usr</code> at boot, managed by <code>systemd-sysupdate</code>.
 Nodes fetch them from the HTTP boot server on their first boot from disk.</p>
-<p>This is where "immutable OS" stops being an abstract virtue and becomes a thing
-you have to reason about. Upgrading Kubernetes on these nodes is not
-<code>apt upgrade</code>; it is swapping an image and rebooting. See
-<a href="../operations/upgrades/">Updates &amp; Upgrades</a> for how that plays out, including
-why a minor version bump is a deliberate act rather than something that happens
-overnight.</p>
+<p>Upgrading Kubernetes on these nodes is therefore not <code>apt upgrade</code>; it is
+swapping an image and rebooting. See
+<a href="../operations/upgrades/">Updates &amp; Upgrades</a>.</p>
 <h2 id="pxe-boot">PXE boot<a class="headerlink" href="#pxe-boot" title="Permanent link">&para;</a></h2>
 <p><strong>PXE</strong> (Preboot Execution Environment) lets a machine boot from the network
 instead of a local disk. The NIC asks DHCP where to go, fetches a bootloader
@@ -2266,32 +2259,26 @@ over TFTP, and the bootloader fetches everything else. In this project:</p>
 <li>Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition
    config URL as a kernel parameter.</li>
 </ol>
-<p>PXE is a protocol from 1998 that runs over UDP with no error correction worth
-the name, which is why everything larger than the bootloader moves to HTTP as
-fast as possible. Respect it; it has outlived most of the things designed to
-replace it.</p>
-<p>The full sequence, arrow by arrow, is in
-<a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
+<p>TFTP runs over UDP with no error correction worth the name, which is why
+everything larger than the bootloader moves to HTTP as fast as possible. The
+full sequence is in <a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>.</p>
 <h2 id="gitops">GitOps<a class="headerlink" href="#gitops" title="Permanent link">&para;</a></h2>
 <p>Everything the cluster runs is described in this repository under <code>payload/</code>,
 and <a href="https://argo-cd.readthedocs.io/">ArgoCD</a> continuously reconciles the
-cluster to match. The rule is absolute: if it is not in Git, it is not in the
-cluster — and if you put it in the cluster anyway, the next sync of the
-Application that owns it puts Git's version back.</p>
+cluster to match. If it is not in Git, it is not in the cluster — and if you
+put it in the cluster anyway, the next sync of the Application that owns it
+puts Git's version back.</p>
 <p>Two terms recur throughout this site:</p>
 <ul>
 <li><strong>ApplicationSet</strong> — one ArgoCD object that generates an <code>Application</code> per
   matching file in the repository, so adding a component is adding a directory.</li>
 <li><strong>Rollout stage</strong> — a label on each platform <code>Application</code> that orders
   deployment. An ApplicationSet syncs one stage at a time and starts the next
-  only when the last is Synced and Healthy. It is how a fresh cluster installs
-  CRDs before the operators that need them, rather than deadlocking. The full
-  ordering is in <a href="../platform/#rollout-order">Platform</a>.</li>
+  only when the last is Synced and Healthy, so a fresh cluster installs CRDs
+  before the operators that need them. The ordering is in
+  <a href="../platform/#rollout-order">Platform &rarr; Rollout order</a>; the
+  mechanism and what it costs are in <a href="../architecture/gitops/">GitOps Strategy</a>.</li>
 </ul>
-<p>Rollout stages answer the question every GitOps newcomer eventually asks: <em>why did
-my perfectly correct manifest fail on a fresh cluster and work on an existing
-one?</em> On a running cluster, everything it depends on already exists. On a fresh
-one, ordering is the whole game. See <a href="../architecture/gitops/">GitOps Strategy</a>.</p>
 
 
 

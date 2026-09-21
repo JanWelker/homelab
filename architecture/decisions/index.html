@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/architecture/decisions/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/architecture/decisions/">
       
       
         <link rel="prev" href="../gitops/">
@@ -272,10 +272,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -673,10 +673,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -745,33 +741,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -1081,33 +1050,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -1126,6 +1068,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1221,6 +1167,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1356,6 +1329,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1616,6 +1616,8 @@
       
         
       
+        
+      
     
     
     
@@ -1828,6 +1830,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1846,8 +1875,6 @@
       
         
           
-        
-      
         
       
         
@@ -1948,33 +1975,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -2211,10 +2211,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -2258,118 +2254,86 @@
 
 
 <h1 id="design-decisions">Design Decisions<a class="headerlink" href="#design-decisions" title="Permanent link">&para;</a></h1>
-<p>The rest of the architecture section describes <em>what</em> this cluster is. This page
-covers <em>why</em>, including what each choice gives up. Every one of these has a
-reasonable alternative; none of them is the only right answer.</p>
-<p>If you have been doing this long enough, you know that architecture documents
-listing only the benefits of each choice are marketing. The costs below are the
-useful half — they are the things that will actually wake you up.</p>
+<p>The rest of this section describes <em>what</em> the cluster is. This page covers
+<em>why</em>, including what each choice gives up. Every one has a reasonable
+alternative; none is the only right answer.</p>
 <h2 id="flatcar-container-linux-not-talos-or-a-general-purpose-distro">Flatcar Container Linux, not Talos or a general-purpose distro<a class="headerlink" href="#flatcar-container-linux-not-talos-or-a-general-purpose-distro" title="Permanent link">&para;</a></h2>
-<p>Flatcar gives an immutable, minimal, container-focused OS with A/B updates and
+<p>Flatcar is an immutable, minimal, container-focused OS with A/B updates and
 declarative first-boot provisioning through Ignition. Nothing is configured by
-hand on a node, which means a node is disposable and reproducible from
-<code>inventory.yaml</code>.</p>
+hand on a node, so a node is disposable and reproducible from <code>inventory.yaml</code>.</p>
 <p>Talos goes further — no SSH, no shell, an API-driven machine config — and would
-remove a whole class of drift. Flatcar was chosen instead because it keeps a
-conventional Linux underneath: <code>ssh</code>, <code>systemd</code>, <code>journalctl</code> and <code>kubeadm</code> all
-work the way the upstream Kubernetes documentation assumes, which matters more
-for a cluster that is also a learning environment than the extra hardening does.
-When something is broken at midnight, being able to <code>journalctl -u kubelet</code> is
-worth a great deal.</p>
+remove a whole class of drift. Flatcar keeps a conventional Linux underneath:
+<code>ssh</code>, <code>systemd</code>, <code>journalctl</code> and <code>kubeadm</code> work the way the upstream
+Kubernetes documentation assumes, which matters more for a cluster that is
+also a learning environment than the extra hardening does.</p>
 <p>The cost is that Flatcar's read-only <code>/usr</code> forces everything unusual into
-<a href="../../concepts/#systemd-sysexts">sysexts</a> — including Kubernetes and containerd
-themselves — which is the source of the update behaviour described in
+<a href="../../concepts/#systemd-sysexts">sysexts</a>, Kubernetes and containerd included,
+which is the source of the update behaviour in
 <a href="../../operations/upgrades/">Updates &amp; Upgrades</a>.</p>
 <h2 id="kubeadm-not-k3s-or-a-managed-distribution">kubeadm, not k3s or a managed distribution<a class="headerlink" href="#kubeadm-not-k3s-or-a-managed-distribution" title="Permanent link">&para;</a></h2>
 <p>kubeadm produces a stock upstream cluster: real etcd, standard control-plane
-components, and a topology that matches what the Kubernetes documentation
-describes. k3s would have been dramatically less work — a single binary, batteries
-included — at the price of a bundled, non-standard set of components.</p>
-<p>The cost of kubeadm is that everything above the API server is now this
-project's problem: CNI, ingress, storage and certificates are all installed and
-sequenced explicitly. Most of <code>payload/</code> exists because of this choice. Nobody
-picks kubeadm because it is easy; they pick it because when the upstream docs
-say "edit the kube-apiserver manifest", there is one to edit.</p>
+components, and a topology that matches the Kubernetes documentation. k3s would
+have been far less work — a single binary, batteries included — at the price of
+a bundled, non-standard set of components.</p>
+<p>The cost is that everything above the API server is this project's problem:
+CNI, ingress, storage and certificates are all installed and sequenced
+explicitly. Most of <code>payload/</code> exists because of this choice.</p>
 <h2 id="cilium-as-cni-replacing-kube-proxy">Cilium as CNI, replacing kube-proxy<a class="headerlink" href="#cilium-as-cni-replacing-kube-proxy" title="Permanent link">&para;</a></h2>
-<p>Cilium replaces <code>kube-proxy</code> entirely with eBPF, which removes the iptables and
-IPVS service-routing path. Anyone who has ever run <code>iptables-save | wc -l</code> on a
-busy node and watched the number climb past five figures will understand the
-appeal without further argument.</p>
-<p>It also supplies Gateway API, L2 announcements for LoadBalancer addresses,
-WireGuard transparent encryption, and Hubble for flow visibility — four things
-that would otherwise be four separate components on bare metal, where there is
-no cloud load balancer to lean on.</p>
-<p>The cost is a hard bootstrap ordering dependency: with no <code>kube-proxy</code>, Cilium
-cannot reach the API server through a Service, so it needs a literal address in
-<code>k8sServiceHost</code>. That address should be the
-<a href="../../operations/control-plane-vip/">control plane VIP</a>; pointing it at a single
-node is what made that node a
-<a href="../limitations/#single-api-server-endpoint">single point of failure</a>. It is also
-a wonderfully effective way to take down cluster networking everywhere at once,
-should you ever point it at an address that does not answer.</p>
+<p>Cilium replaces <code>kube-proxy</code> with eBPF, removing the iptables and IPVS
+service-routing path. It also supplies Gateway API, L2 announcements for
+LoadBalancer addresses, WireGuard transparent encryption and Hubble for flow
+visibility — four things that would otherwise be four components on bare metal.</p>
+<p>The cost is a hard bootstrap dependency: with no <code>kube-proxy</code>, Cilium needs a
+literal API server address in <code>k8sServiceHost</code>, which should be the
+<a href="../../operations/control-plane-vip/">control plane VIP</a>; pointing it at one
+node makes that node a
+<a href="../limitations/">single point of failure</a>, and pointing it at an address that
+does not answer takes networking down everywhere.</p>
 <h2 id="gateway-api-not-ingress">Gateway API, not Ingress<a class="headerlink" href="#gateway-api-not-ingress" title="Permanent link">&para;</a></h2>
-<p>Ingress is effectively frozen, and its per-controller annotations are the reason
-Ingress manifests are rarely portable — every non-trivial Ingress in existence
-is really a controller-specific config file wearing a standard resource as a
-disguise. Gateway API separates the cluster-owned <code>Gateway</code> from the app-owned
-<code>HTTPRoute</code>, which fits the split between this repository and the
-<a href="../../development/add-workload/">workloads repository</a> exactly — the <code>Gateway</code>
-is platform, and the <code>HTTPRoute</code> ships with the application that needs it, in
-a repository the platform never reads back.</p>
+<p>Ingress is effectively frozen, and its per-controller annotations are why
+Ingress manifests are rarely portable. Gateway API separates the cluster-owned
+<code>Gateway</code> from the app-owned <code>HTTPRoute</code>, which fits the split between this
+repository and the <a href="../../development/add-workload/">workloads repository</a>
+exactly: the <code>Gateway</code> is platform, the <code>HTTPRoute</code> ships with the application.</p>
 <p>The cost is a smaller ecosystem and more moving parts: CRDs must be installed
-before anything that references them, which is why they are the first rollout stage.</p>
+before anything references them, which is why they are the first rollout stage.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
 <p>Every node contributes a raw partition, and Ceph turns them into replicated
 block storage that survives a node failure. Local <code>hostPath</code> volumes would be
-simpler and much faster, but any node reboot would take its workloads' data with
-it — and node reboots are routine here, because that is
-<a href="../../operations/upgrades/">how updates get applied</a>.</p>
-<p>Longhorn is the closer alternative and is easier to operate. Ceph was chosen for
-its maturity and because the same cluster can later serve object and file
-storage, not just block.</p>
-<p>The cost is real, and worth stating plainly: Ceph is the heaviest component in
-the cluster, wants at least three nodes, and has its own failure modes and
-vocabulary. You will learn what a placement group is. You will learn it at an
-inconvenient moment. It also only provides <code>ReadWriteOnce</code> here, since CephFS is
-not deployed.</p>
+simpler and faster, but a node reboot would take its workloads' data with it,
+and reboots are routine here because that is
+<a href="../../operations/upgrades/">how updates get applied</a>. Longhorn is the closer
+alternative and easier to operate; Ceph was chosen for its maturity and because
+the same cluster can later serve object and file storage.</p>
+<p>The cost: Ceph is the heaviest component in the cluster, wants at least three
+nodes, and has its own failure modes and vocabulary. It also only provides
+<code>ReadWriteOnce</code> here, since CephFS is not deployed.</p>
 <h2 id="openbao-not-sealed-secrets-or-sops">OpenBao, not sealed-secrets or SOPS<a class="headerlink" href="#openbao-not-sealed-secrets-or-sops" title="Permanent link">&para;</a></h2>
-<p>Sealed-secrets and SOPS both keep encrypted material in Git, which means
-rotation is a commit and revocation is impossible after the fact — the ciphertext
-is in every clone, forever. OpenBao keeps secrets out of the repository
-entirely and hands them to workloads as ordinary Kubernetes <code>Secret</code> objects
-through the External Secrets Operator, so nothing in Git is sensitive.</p>
-<p>The cost is the sealed-at-startup problem: OpenBao is a stateful dependency of
-cert-manager, and a sealed OpenBao means no <code>ExternalSecret</code> resolves. The seal
-is Shamir and unsealing is manual, so every restart needs an operator with the
-key shares. Auto-unseal against a cloud KMS would remove that step and make a
-service outside the house a hard dependency of the cluster starting up instead;
-the manual step is the side of that trade this cluster takes. See
-<a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>
-and <a href="../limitations/#openbao-needs-an-operator-to-unseal-it">the resulting limitation</a>.</p>
+<p>Sealed-secrets and SOPS keep encrypted material in Git, so rotation is a
+commit and revocation is impossible after the fact — the ciphertext is in every
+clone, forever. OpenBao keeps secrets out of the repository and hands them to
+workloads as ordinary <code>Secret</code> objects through the External Secrets Operator.</p>
+<p>The cost is a manual unseal after every restart, taken deliberately over an
+auto-unseal dependency outside the house — see
+<a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
 <h2 id="argocd-with-an-applicationset-not-flux">ArgoCD with an ApplicationSet, not Flux<a class="headerlink" href="#argocd-with-an-applicationset-not-flux" title="Permanent link">&para;</a></h2>
-<p>Either would work, and anyone claiming otherwise is selling something. ArgoCD
-was chosen mainly for its UI, which makes sync state and drift legible at a
-glance — worth more in a homelab, where the operator is often re-learning the
-system after three months away, than Flux's smaller footprint.</p>
+<p>Either would work. ArgoCD was chosen mainly for its UI, which makes sync state
+and drift legible at a glance — worth more in a homelab, where the operator is
+often re-learning the system after months away, than Flux's smaller footprint.</p>
 <p>Bootstrap is two <code>kubectl apply</code>s — the AppProjects and the self-managing
-<code>argocd</code> Application — and everything else is discovered from the repository by
-an ApplicationSet. See <a href="../gitops/">GitOps Strategy</a>.</p>
+<code>argocd</code> Application — and everything else is discovered from the repository
+by an ApplicationSet. See <a href="../gitops/">GitOps Strategy</a>.</p>
 <h2 id="cloudnativepg-for-every-database-not-the-charts-bundled-one">CloudNativePG for every database, not the chart's bundled one<a class="headerlink" href="#cloudnativepg-for-every-database-not-the-charts-bundled-one" title="Permanent link">&para;</a></h2>
-<p>Almost every application chart worth deploying ships a PostgreSQL subchart, and
-accepting those defaults is how a cluster ends up running four different
-Postgres versions installed by four different maintainers, each upgraded on
-someone else's release schedule. A database is not an implementation detail of
-the application in front of it; it is the part with the data in it.</p>
-<p>So the rule in the <a href="../../development/add-workload/">workloads repository</a> is
-absolute: the subchart is disabled, and the application points at a
+<p>Accepting each chart's PostgreSQL subchart is how a cluster ends up running four
+Postgres versions from four maintainers, each upgraded on someone else's
+schedule. The rule in the <a href="../../development/add-workload/">workloads repository</a>
+is absolute: the subchart is disabled and the application points at a
 CloudNativePG <code>Cluster</code> in its own namespace. The operator generates the
-credentials into a Secret the chart consumes, which also means no database
-password is ever written down — not in Git, and not in OpenBao either.</p>
+credentials into a Secret the chart consumes, so no database password is
+written down — not in Git, not in OpenBao.</p>
 <p>The cost is a controller and a CRD to learn, and a major-version upgrade that
-is now explicitly this project's problem rather than something that arrives
-silently inside a chart bump. That is the trade: the upgrade is more visible
-<em>and</em> more work, which is the correct direction for the only component whose
-failure mode is permanent. See <a href="../../platform/cloudnative-pg/">CloudNativePG</a>.</p>
+is explicitly this project's problem rather than something arriving silently in
+a chart bump — see <a href="../../platform/cloudnative-pg/">CloudNativePG</a>.</p>
 
 
 

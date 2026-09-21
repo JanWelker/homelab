@@ -6,11 +6,11 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How the OS, Kubernetes, and containerd actually get updated on these nodes, and why nothing takes effect until a reboot.">
+        <meta name="description" content="How the OS, Kubernetes, and containerd get updated on these nodes, and why nothing takes effect until a reboot.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/operations/upgrades/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/operations/upgrades/">
       
       
         <link rel="prev" href="../nodes/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -300,6 +296,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -986,6 +928,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1081,6 +1027,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1216,6 +1189,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1464,6 +1464,8 @@
       
         
           
+        
+      
         
       
         
@@ -1801,6 +1803,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1819,8 +1848,6 @@
       
         
           
-        
-      
         
       
         
@@ -1921,33 +1948,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -2155,6 +2155,8 @@
       
         
       
+        
+      
     
     
     
@@ -2198,143 +2200,92 @@
 
 
 <h1 id="updates-upgrades">Updates &amp; Upgrades<a class="headerlink" href="#updates-upgrades" title="Permanent link">&para;</a></h1>
-<p>Three separate mechanisms update a node, and none of them completes on its own.
-All three land their changes on disk and then wait for a reboot.</p>
-<p>This is the part that surprises people coming from a normal distro. Nothing here
-is "installed" in the sense you are used to. The new version is sitting on the
-disk, fully downloaded, politely doing nothing, until the machine is restarted.
-A node can be four patch releases behind while reporting that everything is up
-to date, because from its point of view everything <em>is</em> up to date — just not
-running yet.</p>
+<p>Three mechanisms update a node, and all three land their changes on disk and
+wait for a reboot. A node can be four patch releases behind while reporting
+that everything is up to date.</p>
 <h2 id="os-updates">OS updates<a class="headerlink" href="#os-updates" title="Permanent link">&para;</a></h2>
-<p>Flatcar downloads OS updates in the background and writes them to the passive
-half of its A/B partition pair, so the new image is ready but inactive.
-Normally <code>locksmithd</code> would then coordinate a reboot across the cluster.</p>
-<p><strong>This project masks <code>locksmithd</code></strong> (<code>ansible/templates/butane_node_config.yaml.j2</code>),
-because reboots are meant to be coordinated by something that drains the node
-first. In its place, a <code>flatcar-reboot-sentinel.timer</code> polls
-<code>update_engine_client -status</code> every ten minutes and touches
-<code>/run/reboot-required</code> once an update is staged — the same marker the sysupdate
-drop-ins below already use, and the file a reboot coordinator watches.</p>
-<p><a href="../../platform/kured/">Kured</a> consumes that marker: it drains the node, reboots
-it, and uncordons it, one node at a time and only while Ceph and etcd are
-healthy. Rebooting by hand is still available, and is what to do when you do not
-want to wait for its next 30-minute check — see
-<a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
-<p><code>locksmithd</code> is masked rather than merely disabled, incidentally, because a
-service that reboots a storage node without draining it first is not a feature,
-it is a scheduled outage with good manners.</p>
-<p>Check what a node is running and whether an update is staged:</p>
+<p>Flatcar downloads OS updates in the background into the passive half of its
+A/B partition pair. <code>locksmithd</code>, which would normally coordinate the reboot,
+is masked in <code>ansible/templates/butane_node_config.yaml.j2</code>, because a reboot
+must drain the node first. In its place <code>flatcar-reboot-sentinel.timer</code> polls
+<code>update_engine_client -status</code> and touches <code>/run/reboot-required</code> once an
+update is staged. <a href="../../platform/kured/">Kured</a> consumes that marker: it
+drains, reboots and uncordons, one node at a time and only while Ceph and etcd
+are healthy. To move sooner, see <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
 </span></code></pre></div>
 <h2 id="kubernetes-and-containerd">Kubernetes and containerd<a class="headerlink" href="#kubernetes-and-containerd" title="Permanent link">&para;</a></h2>
-<p>These are delivered as <a href="../../concepts/#systemd-sysexts">systemd sysexts</a>.
-<code>systemd-sysupdate.timer</code> is enabled, and the drop-ins run an update for both
-extensions on every fire. When a new image is fetched, the unit touches
-<code>/run/reboot-required</code> — a marker file that, with <code>locksmithd</code> masked, nothing
-acts on. The new extension takes effect at the next boot.</p>
+<p>Both are <a href="../../concepts/#systemd-sysexts">systemd sysexts</a>.
+<code>systemd-sysupdate.timer</code> runs an update for both on every fire and touches
+the same <code>/run/reboot-required</code> when a new image is fetched.</p>
 <h3 id="nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series<a class="headerlink" href="#nodes-are-pinned-to-a-minor-series" title="Permanent link">&para;</a></h3>
-<p>The sysupdate configs served to the nodes point at
-<code>https://extensions.flatcar.org/extensions/</code>, not at this project's boot server.
-The generated configs pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
+<p>The sysupdate configs point at <code>https://extensions.flatcar.org/extensions/</code>,
+not at the boot server, and pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
 <div class="language-ini highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[Source]</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="na">Type</span><span class="o">=</span><span class="s">url-file</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="na">Path</span><span class="o">=</span><span class="s">https://extensions.flatcar.org/extensions/kubernetes/</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="na">MatchPattern</span><span class="o">=</span><span class="s">kubernetes-v1.37.@v-%a.raw</span>
 </span></code></pre></div>
-<p>Patch releases inside <code>v1.37</code> are still picked up automatically, which is what
-you want — <code>v1.38</code> is not, which is very much the point. An unattended jump to a
-new minor is how a cluster wakes up with kubelets a version ahead of a control
-plane that refuses to talk to them. sysext-bakery publishes exactly
-this file as <code>kubernetes-v1.37.conf</code>, and the generated config is byte-identical
-to it. containerd gets the same treatment even though upstream ships no pinned
-variant for it.</p>
-<p>The alternative sysext-bakery offers is a <em>floating</em> <code>MatchPattern</code>
-(<code>kubernetes-@v-%a.raw</code>). A node on that one tracks whatever upstream publishes
-as newest, which means it can stage a Kubernetes minor kubeadm refuses to skip
-to — and it will do so without asking, on whichever node happens to check
-first.</p>
-<p>The pinning happens in
-<code>ansible/playbooks/tasks/download_sysext.yaml</code>, which asserts that the rewrite
-landed. If sysext-bakery ever changes the format, <code>make download</code> fails rather
-than quietly handing the nodes a floating config.</p>
-<p>Inspect what is currently staged on a node:</p>
+<p>Patch releases inside the series are picked up automatically; the next minor is
+not, because an unattended minor jump leaves kubelets ahead of a control plane
+that refuses to talk to them. sysext-bakery publishes exactly this file as
+<code>kubernetes-v1.37.conf</code>; the floating alternative (<code>kubernetes-@v-%a.raw</code>)
+would stage a minor kubeadm cannot skip to, on whichever node checks first.
+containerd gets the same pin even though upstream ships none.
+<code>ansible/playbooks/tasks/download_sysext.yaml</code> asserts the rewrite landed, so a
+format change upstream fails <code>make download</code> rather than handing the nodes a
+floating config.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
 </span></code></pre></div>
 <h2 id="upgrading-a-minor-version-deliberately">Upgrading a minor version deliberately<a class="headerlink" href="#upgrading-a-minor-version-deliberately" title="Permanent link">&para;</a></h2>
-<p>Changing <code>kubernetes_version</code> to a new minor changes what the nodes track, so
-this is the deliberate path:</p>
+<p><strong>kubeadm allows one minor at a time.</strong> v1.34 to v1.37 is three passes through
+this procedure, each with its release notes read. A newly provisioned node
+skips all of it: it installs <code>kubernetes_version</code> directly and gets the pinned
+sysupdate config from the boot server.</p>
 <ol>
-<li>Confirm the jump is supported. <strong>kubeadm allows one minor version at a
-   time.</strong> Going from v1.34 to v1.37 is three separate passes through this
-   procedure — v1.34 to v1.35, then v1.36, then v1.37 — not one. There is no
-   shortcut, there has never been a shortcut, and the release notes for each
-   intermediate version are not optional reading.</li>
 <li>Update <code>kubernetes_version</code> (and <code>containerd_version</code> if relevant) in
    <code>ansible/inventory.yaml</code>.</li>
-<li><code>make download &amp;&amp; make config</code>. This fetches the new sysext, regenerates the
-   Ignition configs, and regenerates the sysupdate configs with the new pinned
-   <code>MatchPattern</code>.</li>
 <li>
-<p>Serve the new sysupdate config to the running nodes. They read it from
-   <code>/etc/sysupdate.kubernetes.d/kubernetes.conf</code>, which was written at provisioning time,
-   so a node that is not being reprovisioned needs the file replaced:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
+<p>Fetch the new sysext and regenerate the Ignition and sysupdate configs.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>download<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>config
 </span></code></pre></div>
 </li>
 <li>
-<p>Reboot nodes to pick up the new sysext. Kured does this on its own once
-   sysupdate sets the sentinel, one node at a time; to move faster, follow
-   <a href="../nodes/#rebooting-a-node">Rebooting a node</a> instead.</p>
+<p>Replace the sysupdate config on every running node; it was written once at
+   install time and nothing rewrites it. The boot server is not needed: the
+   node reboots from its own disk — see
+   <a href="../../architecture/boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
+</span></code></pre></div>
 </li>
 <li>
-<p>On a control-plane node, run <code>kubeadm upgrade</code> as the Kubernetes release
-   notes require. The sysext swaps the binaries; it does not run the upgrade
-   steps kubeadm needs for control-plane components. Swapping binaries and
-   calling it an upgrade is exactly the kind of thing that works on five nodes
-   and then does not work on the sixth.</p>
-<p>Always pass <code>--skip-phases addon/kube-proxy</code>. A cluster built before
-<code>proxy.disabled</code> was set in <code>kubeadm.yaml.j2</code> still has <code>proxy: {}</code> in its
-stored <code>kubeadm-config</code>, which is what the upgrade reads. Without the flag
-it redeploys <code>kube-proxy</code> beside Cilium, and <code>upgrade apply</code> never writes
-a skipped phase back, so the flag is needed every time. On a cluster built
-since, the flag is redundant and harmless:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy
+<p>Reboot nodes to pick up the sysext: Kured does it once sysupdate sets the
+   sentinel, or follow <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
+</li>
+<li>
+<p>On a control-plane node, run the kubeadm upgrade; the sysext swaps the
+   binaries and nothing else. Always pass <code>--skip-phases addon/kube-proxy</code>,
+   because a cluster built before <code>proxy.disabled</code> was set in <code>kubeadm.yaml.j2</code>
+   still has <code>proxy: {}</code> in its stored <code>kubeadm-config</code>, and without the flag
+   the upgrade redeploys <code>kube-proxy</code> beside Cilium; the flag is harmless on a
+   cluster built since.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy
 </span></code></pre></div>
 </li>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>A <strong>newly provisioned</strong> node skips all of this — it installs
-<code>kubernetes_version</code> directly and gets the pinned sysupdate config from the
-boot server.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Step 5 does not need the boot server</p>
-<p>Flatcar is installed to disk, so a node reboots from its own bootloader with <code>make serve</code> switched off. Step 4 is genuinely required for the same reason it always was: <code>/etc/sysupdate.kubernetes.d/kubernetes.conf</code> was written once at install time and nothing rewrites it. See <a href="../../architecture/boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Renovate keeps <code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code>
-and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, one PR each,
-and patch and minor bumps automerge like everything else. Merging one of
-those PRs changes what a <strong>newly provisioned</strong> node installs; it does not
-change a running node. See <a href="../../development/maintenance/">Maintenance</a>.</p>
+<p>Renovate keeps <code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code> and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, and patch and minor bumps automerge. Merging one changes what a <strong>newly provisioned</strong> node installs, not a running node — see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>.</p>
 </div>
 <h2 id="platform-components">Platform components<a class="headerlink" href="#platform-components" title="Permanent link">&para;</a></h2>
 <p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
-<code>targetRevision</code> and the PR merges. No manual step is involved. See
-<a href="../../development/maintenance/">Maintenance</a>.</p>
-<p>Cilium, the Gateway API CRDs and ArgoCD itself are a little
-different, because <code>make install-cilium</code> and <code>make install-argo</code> install them by
-Helm during bootstrap, before ArgoCD exists to manage them. They are still not
-a second place to bump: those targets read each version out of the same
-<code>Application</code> manifest Renovate updates, so merging a <code>targetRevision</code> bump
-moves the bootstrap install and the running cluster together. A rebuild from
-scratch lands where the cluster already is.</p>
+<code>targetRevision</code> and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are
+installed by <code>make install-cilium</code> and <code>make install-argo</code> before ArgoCD exists,
+but from the same <code>targetRevision</code>, so a rebuild lands where the cluster
+already is — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 
 
 

@@ -10,10 +10,10 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/">
       
       
-        <link rel="prev" href="../architecture/directory-structure/">
+        <link rel="prev" href="../architecture/limitations/">
       
       
         <link rel="next" href="./cilium/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1221,6 +1194,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1481,6 +1481,8 @@
       
         
       
+        
+      
     
     
     
@@ -1693,6 +1695,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1711,8 +1740,6 @@
       
         
           
-        
-      
         
       
         
@@ -1813,33 +1840,6 @@
     
   
   Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
 
     
   </span>
@@ -1960,40 +1960,17 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
+  <a href="#deployment" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Usage
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#bootstrap-before-argocd" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Bootstrap (before ArgoCD)
+        Deployment
       </span>
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#gitops-after-argocd" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        GitOps (after ArgoCD)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#rollout-order" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2001,11 +1978,6 @@
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2085,6 +2057,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2128,16 +2104,13 @@
 
 
 <h1 id="platform">Platform<a class="headerlink" href="#platform" title="Permanent link">&para;</a></h1>
-<p>The core infrastructure components that run the cluster. Everything here is
-managed by ArgoCD; each component's own page documents its directory layout and
-configuration.</p>
-<p>That is a lot of components for a homelab, and every one of them exists because
-bare metal does not come with the thing a cloud provider would have handed you. No load balancer, no managed certificates, no block
-storage API, no identity provider, no backup service. This section is the bill
-for not having those.</p>
+<p>The core infrastructure components that run the cluster, all managed by
+ArgoCD. Every one of them exists because bare metal does not come with the
+thing a cloud provider would have handed you: no load balancer, no managed
+certificates, no block storage API, no identity provider, no backup service.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<p>Alphabetical, with the namespace it lands in and the rollout stage it belongs
-to. The <a href="#usage">stage ordering</a> below explains why each is where it is.</p>
+<p>Alphabetical, with the namespace it lands in and the <a href="#rollout-order">rollout stage</a>
+it belongs to.</p>
 <table>
 <thead>
 <tr>
@@ -2149,10 +2122,16 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
 </thead>
 <tbody>
 <tr>
+<td><a href="argocd/">argocd</a></td>
+<td><code>argocd</code></td>
+<td>hand-applied</td>
+<td>ArgoCD itself and the <code>platform</code> ApplicationSet</td>
+</tr>
+<tr>
 <td>argocd-config</td>
 <td><code>argocd</code></td>
 <td><code>08-services</code></td>
-<td>ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard</td>
+<td>ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see <a href="argocd/">ArgoCD</a></td>
 </tr>
 <tr>
 <td>argocd-projects</td>
@@ -2170,7 +2149,7 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
 <td>backup</td>
 <td><code>backup</code></td>
 <td><code>08-services</code></td>
-<td>Velero, the CSI snapshot controller and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
+<td>The CSI snapshot controller, Velero's buckets and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="cert-manager/">cert-manager</a></td>
@@ -2262,8 +2241,16 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
 <td><code>11-policy</code></td>
 <td>Pod Security Admission levels and default-deny ingress policies</td>
 </tr>
+<tr>
+<td><a href="velero/">velero</a></td>
+<td><code>backup</code></td>
+<td><code>09-backends</code></td>
+<td>Volume and resource backups to the Ceph object store</td>
+</tr>
 </tbody>
 </table>
+<p>Across the platform, memory limits are set at roughly 2.5x the measured peak
+working set and requests at steady state; CPU is requested but never limited.</p>
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     Client([Client]) --&gt; LB[Cilium LoadBalancer]
@@ -2275,10 +2262,10 @@ to. The <a href="#usage">stage ordering</a> below explains why each is where it 
     end
 
     style Client fill:#f9f,stroke:#333</code></pre>
-<p>Four hops, and Cilium is three of them. When a hostname stops answering, the
-question is which hop stopped: does the Gateway still hold its LoadBalancer IP,
-does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have endpoints.
-In that order — the answer is usually the first one.</p>
+<p>Four hops, and Cilium is three of them. When a hostname stops answering, ask
+which hop stopped, in this order: does the Gateway still hold its LoadBalancer
+IP, does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have
+endpoints.</p>
 <h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
 <p>HTTPRoutes are co-located with their respective apps:</p>
 <table>
@@ -2347,51 +2334,21 @@ In that order — the answer is usually the first one.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<h3 id="bootstrap-before-argocd">Bootstrap (before ArgoCD)<a class="headerlink" href="#bootstrap-before-argocd" title="Permanent link">&para;</a></h3>
+<h2 id="deployment">Deployment<a class="headerlink" href="#deployment" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>bootstrap<span class="w">  </span><span class="c1"># Gateway API CRDs + Cilium, ArgoCD, then the handover</span>
 </span></code></pre></div>
-<h3 id="gitops-after-argocd">GitOps (after ArgoCD)<a class="headerlink" href="#gitops-after-argocd" title="Permanent link">&para;</a></h3>
-<p>One Application sits above everything else:</p>
-<table>
-<thead>
-<tr>
-<th>Object</th>
-<th>Role</th>
-<th>Path</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>argocd</code> Application</td>
-<td>Syncs the argo-cd chart and the ApplicationSet. The only Application applied by hand</td>
-<td><code>payload/argocd/application.yaml</code></td>
-</tr>
-<tr>
-<td><code>platform</code> ApplicationSet</td>
-<td>Generates one Application per <code>payload/platform/*/application.yaml</code></td>
-<td><code>payload/argocd/applicationset-platform.yaml</code></td>
-</tr>
-<tr>
-<td><code>apps</code> ApplicationSet</td>
-<td>Generates one Application per <code>&lt;app&gt;/application.yaml</code> in the workloads repository</td>
-<td><code>payload/workloads/applicationset.yaml</code></td>
-</tr>
-</tbody>
-</table>
-<p>The <code>apps</code> ApplicationSet is itself deployed by the <code>workloads</code> Application in
-the last platform stage, which is what keeps workloads from being generated
-before the platform under them exists. See
-<a href="../development/add-workload/">Adding a Workload</a>.</p>
-<p>Each component directory holds exactly one <code>application.yaml</code>; everything else
-in the directory is what that Application deploys, apart from Helm <code>values.yaml</code>
-files, which the Application references instead.</p>
-<h3 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h3>
+<p>After that the <code>argocd</code> Application syncs the <code>platform</code> ApplicationSet, which
+generates one Application per <code>payload/platform/*/application.yaml</code> plus the
+<code>workloads</code> Application that deploys the <code>apps</code> ApplicationSet for the
+<a href="../development/add-workload/">workloads repository</a>. Each component
+directory holds exactly one <code>application.yaml</code>; everything else in it is what
+that Application deploys. <a href="../architecture/gitops/">GitOps Strategy</a> has the
+structure and what the staging costs.</p>
+<h2 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h2>
 <p>The ApplicationSet syncs its Applications in stages, selected by the
-<code>homelab.wlkr.ch/stage</code> label, and starts a stage only when every Application in
-the one before it is Synced and Healthy. This is the dependency graph made
-explicit; <a href="../architecture/gitops/#rollout-order">GitOps Strategy</a> covers how
-the gating works and what it costs.</p>
+<code>homelab.wlkr.ch/stage</code> label, and starts a stage only when every Application
+in the one before it is Synced and Healthy; <a href="../architecture/gitops/#rollout-order">GitOps
+Strategy</a> covers how the gating works.</p>
 <table>
 <thead>
 <tr>
@@ -2468,12 +2425,10 @@ the gating works and what it costs.</p>
 </tr>
 </tbody>
 </table>
-<p>External Secrets is a controller like any other now: its CRDs arrive in
-<code>03-controllers</code>, well ahead of the first <code>ExternalSecret</code>, while the
-<code>ClusterSecretStore</code> that needs a running OpenBao lives with OpenBao in
-<code>05-secrets</code>. The same split takes cert-manager's issuers and certificates out
-of <code>03-controllers</code> into their own <code>certificates</code> Application, because they
-cannot go Ready until OpenBao holds the Route53 credentials.</p>
+<p>The <code>ClusterSecretStore</code> lives with OpenBao in <code>05-secrets</code> rather than with
+External Secrets, and cert-manager's issuers and certificates are their own
+<code>certificates</code> Application, for the same reason: neither can go Ready until
+OpenBao holds what they read.</p>
 
 
 
@@ -2514,7 +2469,7 @@ cannot go Ready until OpenBao holds the Route53 credentials.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../architecture/directory-structure/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Repository Layout">
+          <a href="../architecture/limitations/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Known Limitations">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2524,7 +2479,7 @@ cannot go Ready until OpenBao holds the Route53 credentials.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Repository Layout
+                Known Limitations
               </div>
             </div>
           </a>

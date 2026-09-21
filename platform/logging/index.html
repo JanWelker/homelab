@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/platform/logging/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/logging/">
       
       
         <link rel="prev" href="../monitoring/">
@@ -270,10 +270,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -302,6 +298,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -671,10 +671,6 @@
       
         
       
-        
-      
-        
-      
     
     
     
@@ -740,33 +736,6 @@
     
   
   Boot & Bootstrap Process
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/boot-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Boot Server
 
     
   </span>
@@ -941,33 +910,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/directory-structure/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Repository Layout
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -988,6 +930,10 @@
       
         
           
+        
+      
+        
+      
         
       
         
@@ -1086,6 +1032,33 @@
     
   
   Cilium
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../argocd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ArgoCD
 
     
   </span>
@@ -1221,6 +1194,33 @@
     
   
   CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
 
     
   </span>
@@ -1418,22 +1418,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-collected" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is collected
+        Configuration
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="What is collected">
+    <nav class="md-nav" aria-label="Configuration">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#running-alloy" class="md-nav__link">
+  <a href="#sources" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running Alloy
+        Sources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alloy-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alloy pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
       </span>
     </span>
   </a>
@@ -1446,10 +1479,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Storage
+        Usage
       </span>
     </span>
   </a>
@@ -1457,10 +1490,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#querying" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Querying
+        Health check
       </span>
     </span>
   </a>
@@ -1468,21 +1501,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dashboards" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Dashboards
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -1597,6 +1619,8 @@
       
         
           
+        
+      
         
       
         
@@ -1823,6 +1847,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1841,8 +1892,6 @@
       
         
           
-        
-      
         
       
         
@@ -1962,33 +2011,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -2068,22 +2090,55 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-collected" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is collected
+        Configuration
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="What is collected">
+    <nav class="md-nav" aria-label="Configuration">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#running-alloy" class="md-nav__link">
+  <a href="#sources" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Running Alloy
+        Sources
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alloy-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alloy pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Storage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Dashboards
       </span>
     </span>
   </a>
@@ -2096,10 +2151,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage" class="md-nav__link">
+  <a href="#usage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Storage
+        Usage
       </span>
     </span>
   </a>
@@ -2107,10 +2162,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#querying" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Querying
+        Health check
       </span>
     </span>
   </a>
@@ -2118,21 +2173,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dashboards" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Dashboards
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#directory-structure" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Directory Structure
+        Pitfalls
       </span>
     </span>
   </a>
@@ -2215,6 +2259,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2261,30 +2309,10 @@
 <p><a href="https://grafana.com/oss/loki/">Loki</a> stores logs;
 <a href="https://grafana.com/docs/alloy/latest/">Grafana Alloy</a> collects them. Both are
 queried from the existing Grafana at
-<a href="https://monitoring.infra.k8s.wlkr.ch">monitoring.infra.k8s.wlkr.ch</a>.</p>
-<p>Metrics answer <em>what</em> is happening; logs answer <em>why</em>. Without them, diagnosing
-a crashed pod means racing the scheduler to <code>kubectl logs --previous</code> before the
-evidence is garbage-collected — a game you lose roughly every time it matters.
-Node-level problems are worse: visible only over SSH, on the node that is
-currently misbehaving.</p>
-<div class="admonition note">
-<p class="admonition-title">Not Promtail</p>
-<p>Promtail is the collector most Loki documentation still shows. It was
-deprecated in early 2025 and reached <strong>end of life in March 2026</strong>. Alloy is
-its supported replacement and the one to reach for now.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Not the <code>grafana/loki</code> chart</p>
-<p>Loki comes from <code>grafana-community/loki</code>, not the <code>grafana/loki</code> chart most
-documentation points at. In March 2026 the OSS chart moved to
-<a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a>;
-what stayed behind in <code>grafana/loki</code> is maintained for Grafana Enterprise
-Logs customers. Its 7.x line pins a <code>k8s-sidecar</code> six minor releases behind
-— 2.5.0, carrying ten critical CVEs the current 2.11.2 has none of — and a
-<code>loki.image.tag</code> hardcoded below the chart's own <code>appVersion</code>. Open-source
-pull requests against it are closed with a pointer to the community
-repository.</p>
-</div>
+<a href="https://monitoring.infra.k8s.wlkr.ch">monitoring.infra.k8s.wlkr.ch</a>. Without
+them a crashed pod's logs are gone with the container, and on Flatcar the
+<code>kubelet</code>, <code>containerd</code>, <code>systemd-sysupdate</code> and <code>update-engine</code> logs live in
+journald and are reachable only over SSH to the node that is misbehaving.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2318,14 +2346,23 @@ repository.</p>
 <td>Metrics</td>
 <td>Loki and Alloy, each through its chart's <code>ServiceMonitor</code>; Alloy's dashboards are listed under <a href="../monitoring/#dashboards">Monitoring</a></td>
 </tr>
+<tr>
+<td>Files</td>
+<td><code>payload/platform/logging/</code>, <code>payload/platform/loki/</code>, <code>payload/platform/alloy/</code></td>
+</tr>
 </tbody>
 </table>
-<h2 id="what-is-collected">What is collected<a class="headerlink" href="#what-is-collected" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Not Promtail, and not the <code>grafana/loki</code> chart</p>
+<p>Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from <code>grafana-community/loki</code>: the OSS chart moved to <a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a> in March 2026, and what stayed in <code>grafana/loki</code> is maintained for Grafana Enterprise Logs customers, pins a <code>k8s-sidecar</code> several minor releases behind and closes open-source pull requests with a pointer to the community repository.</p>
+</div>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Source</th>
-<th>Where it comes from</th>
+<th>Path</th>
 <th>Labels</th>
 </tr>
 </thead>
@@ -2347,152 +2384,120 @@ repository.</p>
 </tr>
 </tbody>
 </table>
-<p>The journal matters more here than it would elsewhere. On Flatcar, <code>kubelet</code>,
-<code>containerd</code>, <code>systemd-sysupdate</code> and <code>update-engine</code> log to journald and
-nowhere else. Without collection, the logs explaining a failed boot or a stuck
-sysext are reachable only over SSH — which is exactly the moment SSH is least
-convenient, and occasionally the moment it is not available at all.</p>
-<p>Each Alloy pod discovers <strong>only pods on its own node</strong>, via a
-<code>spec.nodeName</code> field selector. Without it every one of the six agents would
-watch every pod in the cluster and discard all but its own — six times the API
-server load for identical output. Log collectors are famously good at costing
-more than the thing they observe; this is one of the cheap ways to avoid that.</p>
-<p>The audit log is a different case again. It exists only on the three
-control-plane nodes and it is JSON rather than text, so it gets its own pipeline.
-It lives on the root filesystem and survives a reboot there — collecting it is
-still what makes it queryable next to everything else, and what keeps a copy
-when the node itself is the thing that failed. See
-<a href="../../architecture/audit-logging/">Audit logging</a> for what is recorded
-and at which level. Alloy runs on all six nodes and <code>local.file_match</code> simply
-finds nothing on the workers, which is a cheaper way to say "control plane only"
-than any scheduling constraint. It does need a toleration for the
-control-plane <code>NoSchedule</code> taint, though: without one Alloy runs on the workers
-alone, and neither the audit log nor the control-plane kubelets' journals reach
-Loki.</p>
-<p>All three sources Alloy reads — <code>/var/log/pods</code>, <code>/var/log/journal</code> and
-<code>/var/log/kubernetes/audit</code> — are directories on the 50GB root filesystem, so
-one <code>varlog: true</code> mount in the chart covers all three.</p>
-<p>Container logs pass through <code>stage.cri {}</code>. containerd writes
-<code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without that stage the timestamp and
-stream end up inside the log line and Loki stamps everything at ingest time —
-which quietly destroys the one property you actually needed, namely being able
-to line logs up against the incident. Audit events get the same treatment from
-<code>stage.timestamp</code>, which stamps each one with its <code>requestReceivedTimestamp</code>
-rather than the moment Alloy read the file.</p>
-<p>The journal's <code>job="systemd-journal"</code> label is set by a relabel rule, not the
-source's <code>labels</code> argument. <code>loki.source.journal</code> overwrites <code>job</code> with its
-component ID after applying <code>labels</code>, and only the relabel rules run after that.</p>
-<h3 id="running-alloy">Running Alloy<a class="headerlink" href="#running-alloy" title="Permanent link">&para;</a></h3>
-<p>Alloy runs as root (<code>runAsUser: 0</code>). The log files are root-owned with
-restrictive modes, and a non-root Alloy does not fail — it silently collects
-nothing. Everything else is locked down around that: a read-only root
-filesystem, no capabilities, no privilege escalation, and the <code>RuntimeDefault</code>
-seccomp profile, which is worth having precisely because the process is root.</p>
-<p>The read-only root has one side effect. Alloy writes its data directory to
-<code>storagePath</code>, which the chart defaults to <code>/tmp/alloy</code>, and every pod would die
-at startup with <code>mkdir /tmp/alloy: read-only file system</code>. An <code>emptyDir</code> mounted
-at <code>/tmp</code> restores what the chart assumes. It holds file-tailing positions and
-does not survive a restart — nor would the container layer it replaces.</p>
-<h2 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h2>
-<p>Loki runs as a single binary and keeps chunks in the
-<a href="../rook-ceph/#object-storage">Ceph object store</a> rather than on a PVC.</p>
+<p>All three are on the root filesystem, so one <code>varlog: true</code> mount covers them.
+The audit log exists only on the control-plane nodes; Alloy runs everywhere and
+<code>local.file_match</code> finds nothing on the workers. Audit events keep only <code>verb</code>
+and <code>audit_level</code> as labels — small closed sets — while user and resource stay
+in the line where <code>| json</code> can reach them. See
+<a href="../../architecture/audit-logging/">Audit logging</a> for what is recorded.</p>
+<h3 id="alloy-pipeline">Alloy pipeline<a class="headerlink" href="#alloy-pipeline" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Property</th>
-<th>Value</th>
+<th>Stage</th>
+<th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Deployment mode</td>
-<td><code>Monolithic</code>, 1 replica</td>
+<td><code>discovery.kubernetes</code> with a <code>spec.nodeName</code> field selector</td>
+<td>Each agent discovers only its own node's pods; without it six agents watch every pod and discard all but their own</td>
 </tr>
 <tr>
-<td>Chunks + ruler</td>
-<td>S3 bucket <code>loki</code>, via the <code>loki-bucket</code> ObjectBucketClaim</td>
+<td><code>stage.cri {}</code> on container logs</td>
+<td>containerd writes <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without it the timestamp lands inside the line and Loki stamps everything at ingest time</td>
 </tr>
 <tr>
-<td>Endpoint</td>
-<td><code>rook-ceph-rgw-object-store.rook-ceph.svc</code>, path-style, plain HTTP in-cluster</td>
+<td><code>discovery.relabel "journal"</code> sets <code>job</code></td>
+<td><code>loki.source.journal</code> overwrites <code>job</code> with its component ID after applying <code>labels</code>; only relabel rules run after that</td>
 </tr>
 <tr>
-<td>Local PVC</td>
-<td>10Gi on <code>rook-ceph-block</code>, for the WAL and the index being built</td>
-</tr>
-<tr>
-<td>Retention</td>
-<td>30 days, compactor enabled</td>
+<td><code>stage.json</code>, <code>stage.labels</code>, <code>stage.timestamp</code> on audit events</td>
+<td>Stamps each event with its <code>requestReceivedTimestamp</code> rather than when Alloy read the file</td>
 </tr>
 </tbody>
 </table>
-<p>The bucket uses a fixed <code>bucketName</code> rather than <code>generateBucketName</code>. A
-generated name carries a random suffix, which would have to be read back out of
-the ConfigMap and injected at runtime; a fixed name keeps the storage config
-static and, more usefully, keeps it the same after a rebuild.</p>
-<p>Credentials are never written to Git. Rook puts them in a Secret when it
-provisions the claim, Loki reads them as environment variables, and the config
-refers to <code>${AWS_ACCESS_KEY_ID}</code> — which is why <code>-config.expand-env=true</code> is
-set.</p>
-<div class="admonition warning">
-<p class="admonition-title">Those settings belong on <code>singleBinary</code>, not <code>global</code></p>
-<p>The chart's <code>global.extraArgs</code> and <code>global.extraEnvFrom</code> look like the right place — the name says global, the documentation implies global — but the single-binary StatefulSet template reads only <code>singleBinary.extraArgs</code> and <code>singleBinary.extraEnvFrom</code>. Setting them globally renders a config full of unexpanded <code>${...}</code> and a Loki that cannot authenticate to RGW, with an error message that points nowhere near the actual cause.</p>
-</div>
-<p><code>chunksCache</code> and <code>resultsCache</code> are off. They are memcached deployments and
-would add four pods in front of a Loki this size — caching infrastructure larger
-than the thing it caches is a decision best left to people with more logs.</p>
-<p>The chart already runs Loki as UID 10001 with a read-only root and no
-capabilities; <code>loki.podSecurityContext</code> adds the <code>RuntimeDefault</code> seccomp
-profile at pod level, which covers the rules sidecar too. It has to be that key:
-<code>singleBinary.podSecurityContext</code> does not exist, so setting it there is
-silently inert.</p>
-<p>The sidecars have limits of their own: Loki's rules sidecar (measured
-peak 72Mi, limit 192Mi) and Alloy's config reloader (peak 12Mi, given the
-platform's 128Mi floor rather than a measured figure).</p>
-<h2 id="querying">Querying<a class="headerlink" href="#querying" title="Permanent link">&para;</a></h2>
-<p>The Loki datasource is registered with Grafana automatically. In Grafana,
-choose <strong>Loki</strong> as the datasource and query by label:</p>
+<table>
+<thead>
+<tr>
+<th>Setting in <code>alloy/application.yaml</code></th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Control-plane toleration</td>
+<td>Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki</td>
+</tr>
+<tr>
+<td><code>runAsUser: 0</code></td>
+<td>The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and <code>RuntimeDefault</code> seccomp lock the rest down</td>
+</tr>
+<tr>
+<td><code>emptyDir</code> at <code>/tmp</code></td>
+<td>The chart's <code>storagePath</code> defaults to <code>/tmp/alloy</code>, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either</td>
+</tr>
+</tbody>
+</table>
+<h3 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h3>
+<p>Loki runs as a single binary (<code>deploymentMode: Monolithic</code>) and keeps chunks
+in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC on
+<code>rook-ceph-block</code> holds the WAL and the index being built.</p>
+<table>
+<thead>
+<tr>
+<th>Setting in <code>loki/application.yaml</code></th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fixed <code>bucketName</code> on the <code>ObjectBucketClaim</code></td>
+<td>A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild</td>
+</tr>
+<tr>
+<td><code>singleBinary.extraArgs</code> <code>-config.expand-env=true</code> and <code>singleBinary.extraEnvFrom</code></td>
+<td>Rook writes the bucket credentials to a Secret, Loki reads them as <code>${AWS_ACCESS_KEY_ID}</code> — nothing in Git</td>
+</tr>
+<tr>
+<td><code>chunksCache</code> and <code>resultsCache</code> off</td>
+<td>Four memcached pods in front of a Loki this size</td>
+</tr>
+<tr>
+<td><code>loki.podSecurityContext</code></td>
+<td>Adds <code>RuntimeDefault</code> seccomp at pod level, covering the rules sidecar too</td>
+</tr>
+<tr>
+<td>Retention with the compactor enabled</td>
+<td>Old chunks are actually deleted</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h3>
+<p><code>grafana-dashboards.yaml</code> carries three dashboards from the Alloy mixin
+(<code>operations/alloy-mixin/rendered/dashboards/</code>), unmodified; the chart renders
+none and Renovate does not see the copy, so re-copy them when Alloy moves a
+minor version. The mixin's other dashboards cover features this Alloy does not
+use. The Loki datasource in <code>grafana-datasource.yaml</code> declares its namespace
+as <code>monitoring</code>, the only namespace the Grafana sidecar watches for
+<code>grafana_datasource</code> ConfigMaps.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>Choose <strong>Loki</strong> as the datasource in Grafana and query by label:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="rook-ceph"} |= "error"
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{unit="kubelet.service", node="odin"}
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>{namespace="openbao"} |= "sealed"
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
 </span></code></pre></div>
-<p>Audit events keep only <code>verb</code> and <code>audit_level</code> as labels. Both are small closed
-sets, which is what makes a label cheap; user and resource are far more useful
-to query by and far too numerous to label, so they stay in the line where
-<code>| json</code> can reach them.</p>
-<div class="admonition note">
-<p class="admonition-title">Where the datasource lives</p>
-<p><code>grafana-datasource.yaml</code> declares its namespace as <code>monitoring</code>, not
-<code>logging</code>. The kube-prometheus-stack Grafana sidecar only watches its own
-release namespace for <code>grafana_datasource</code> ConfigMaps, so one placed next to
-Loki would never be picked up. It is defined with the component it
-describes and applied where Grafana can see it.</p>
-</div>
-<h2 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h2>
-<p><code>grafana-dashboards.yaml</code> carries three dashboards from the Alloy mixin
-(<code>operations/alloy-mixin/rendered/dashboards/</code> in grafana/alloy), unmodified, at
-the Alloy version the chart deploys. The chart renders none, hence the vendored
-copy — and Renovate does not see it, so re-copy them when Alloy moves a minor
-version.</p>
-<p>The mixin's other dashboards are left out on purpose. Clustering, OpenTelemetry
-and Prometheus remote-write are features this Alloy does not use, and "Logs
-Overview" reads Alloy's own logs by a <code>job</code> label this pipeline never sets. The
-<code>cluster</code> variable on the remaining three has nothing to list, since no scrape
-sets a <code>cluster</code> label; its empty value matches series without one.</p>
-<h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>loki/
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>└── application.yaml          # ArgoCD Application (Helm: grafana-community/loki)
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>alloy/
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>└── application.yaml          # ArgoCD Application (Helm: grafana/alloy)
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>logging/
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>├── application.yaml          # Directory Application (wraps the rest)
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── bucket.yaml               # ObjectBucketClaim for Loki's chunks
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├── grafana-dashboards.yaml   # Alloy mixin dashboards, vendored
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>└── grafana-datasource.yaml   # Loki datasource, applied into monitoring/
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>get<span class="w"> </span>pods
 </span></code></pre></div>
+<p>Then run a <code>{job="kubernetes-audit"}</code> query in Grafana; an empty result with
+healthy pods means the control-plane agents are not reading the file.</p>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Loki settings belong on <code>singleBinary</code>, not <code>global</code></p>
+<p><code>global.extraArgs</code> and <code>global.extraEnvFrom</code> look right, but the single-binary StatefulSet reads only <code>singleBinary.extraArgs</code> and <code>singleBinary.extraEnvFrom</code>. Set globally, the config is full of unexpanded <code>${...}</code> and Loki cannot authenticate to RGW, with an error pointing nowhere near the cause. Likewise <code>singleBinary.podSecurityContext</code> does not exist and is silently inert.</p>
+</div>
 
 
 

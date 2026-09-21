@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Repository layout: where Ansible playbooks, the boot server, documentation, and GitOps manifests live.">
+        <meta name="description" content="Velero backs up Kubernetes objects and PVC data nightly into the Ceph object store; the chart values that make it work against RGW.">
       
       
       
-        <link rel="canonical" href="https://janwelker.github.io/homelab/architecture/directory-structure/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/velero/">
       
       
-        <link rel="prev" href="../limitations/">
+        <link rel="prev" href="../cloudnative-pg/">
       
       
-        <link rel="next" href="../../platform/">
+        <link rel="next" href="../openbao/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Repository Layout - Homelab Documentation</title>
+        <title>Velero - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#directory-structure" class="md-skip">
+        <a href="#velero" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Repository Layout
+              Velero
             
           </span>
         </div>
@@ -248,6 +248,48 @@
   
   
   
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
     
   
   
@@ -256,6 +298,20 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -284,62 +340,6 @@
         <a href="../" class="md-tabs__link">
           
   
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../platform/" class="md-tabs__link">
-          
-  
   Platform
 
         </a>
@@ -358,6 +358,8 @@
       
         
           
+        
+      
         
       
         
@@ -398,8 +400,6 @@
       
         
           
-        
-      
         
       
         
@@ -648,6 +648,279 @@
       
   
   
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../architecture/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Architecture
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Architecture
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/boot-process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Boot & Bootstrap Process
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ansible/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Ansible
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/gitops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  GitOps Strategy
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Design Decisions
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security Posture
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/audit-logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Audit Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Known Limitations
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -657,6 +930,20 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -691,7 +978,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -702,7 +989,7 @@
   <span class="md-ellipsis">
     
   
-  Architecture
+  Platform
 
     
   </span>
@@ -712,18 +999,18 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-  Architecture
+  Platform
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
@@ -737,14 +1024,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-process/" class="md-nav__link">
+      <a href="../cilium/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Boot & Bootstrap Process
+  Cilium
 
     
   </span>
@@ -764,14 +1051,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../boot-server/" class="md-nav__link">
+      <a href="../argocd/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Boot Server
+  ArgoCD
 
     
   </span>
@@ -791,14 +1078,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ansible/" class="md-nav__link">
+      <a href="../gateway-api/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Ansible
+  Gateway API
 
     
   </span>
@@ -818,14 +1105,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../gitops/" class="md-nav__link">
+      <a href="../cert-manager/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  GitOps Strategy
+  cert-manager
 
     
   </span>
@@ -845,14 +1132,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../decisions/" class="md-nav__link">
+      <a href="../external-dns/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Design Decisions
+  External DNS
 
     
   </span>
@@ -872,14 +1159,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../security/" class="md-nav__link">
+      <a href="../rook-ceph/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Security Posture
+  Rook-Ceph
 
     
   </span>
@@ -899,41 +1186,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../audit-logging/" class="md-nav__link">
+      <a href="../cloudnative-pg/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Audit Logging
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../limitations/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Known Limitations
+  CloudNativePG
 
     
   </span>
@@ -969,7 +1229,7 @@
   <span class="md-ellipsis">
     
   
-  Repository Layout
+  Velero
 
     
   </span>
@@ -986,7 +1246,7 @@
   <span class="md-ellipsis">
     
   
-  Repository Layout
+  Velero
 
     
   </span>
@@ -1012,10 +1272,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-workloads-repository" class="md-nav__link">
+  <a href="#at-a-glance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The workloads repository
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
       </span>
     </span>
   </a>
@@ -1031,104 +1335,6 @@
 
               
             
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../../platform/" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Platform
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-  Platform
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
               
                 
   
@@ -1136,169 +1342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/cilium/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Cilium
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/gateway-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Gateway API
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/cert-manager/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  cert-manager
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/external-dns/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  External DNS
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/rook-ceph/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Rook-Ceph
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/cloudnative-pg/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  CloudNativePG
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/openbao/" class="md-nav__link">
+      <a href="../openbao/" class="md-nav__link">
         
   
   
@@ -1325,7 +1369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/external-secrets/" class="md-nav__link">
+      <a href="../external-secrets/" class="md-nav__link">
         
   
   
@@ -1352,7 +1396,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/authentik/" class="md-nav__link">
+      <a href="../authentik/" class="md-nav__link">
         
   
   
@@ -1379,7 +1423,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/monitoring/" class="md-nav__link">
+      <a href="../monitoring/" class="md-nav__link">
         
   
   
@@ -1406,7 +1450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/logging/" class="md-nav__link">
+      <a href="../logging/" class="md-nav__link">
         
   
   
@@ -1433,7 +1477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/metrics-server/" class="md-nav__link">
+      <a href="../metrics-server/" class="md-nav__link">
         
   
   
@@ -1460,7 +1504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/kured/" class="md-nav__link">
+      <a href="../kured/" class="md-nav__link">
         
   
   
@@ -1487,7 +1531,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../platform/security-policies/" class="md-nav__link">
+      <a href="../security-policies/" class="md-nav__link">
         
   
   
@@ -1525,6 +1569,8 @@
       
         
           
+        
+      
         
       
         
@@ -1751,6 +1797,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1769,8 +1842,6 @@
       
         
           
-        
-      
         
       
         
@@ -1890,33 +1961,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/documentation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Documentation System
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../development/maintenance/" class="md-nav__link">
         
   
@@ -1985,10 +2029,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-workloads-repository" class="md-nav__link">
+  <a href="#at-a-glance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The workloads repository
+        At a glance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
       </span>
     </span>
   </a>
@@ -2061,6 +2149,20 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2070,7 +2172,7 @@
           
   
   <span class="md-ellipsis">
-    Architecture
+    Platform
   </span>
 
         </a>
@@ -2087,7 +2189,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/architecture/directory-structure.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/velero.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -2096,142 +2198,118 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/architecture/directory-structure.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/velero.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h1>
-<p>Four directories do the real work, and knowing which is which saves a lot of
-grepping. <code>ansible/</code> describes the machines, <code>boot_server/</code> hands them their
-operating system, <code>payload/</code> is the platform the cluster runs on, and <code>output/</code>
-is generated — never edit anything in there, it will be overwritten by the next
-<code>make config</code> without ceremony.</p>
-<p>The applications the cluster exists to <em>serve</em> are not here at all: they live
-in <a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a>, and
-<a href="../gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a> explains why.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── ansible
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   ├── inventory.yaml       # Host definitions (MAC addresses, IPs, Roles)
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   ├── playbooks
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   │   ├── config.yaml      # Generate configs
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   │   ├── download.yaml    # Orchestrate downloads
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   │   ├── kubeconfig.yaml  # Retrieve kubeconfig from control plane
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   │   ├── reinstall.yaml   # Arm or disarm the generated PXE menus
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   │   └── tasks           # Download Task definitions
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   │       ├── download_flatcar.yaml
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   │       ├── download_sysext.yaml
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   │       └── download_syslinux.yaml
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   └── templates
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│       ├── butane_installer_config.yaml.j2 # PXE environment: wipe, install, reboot
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│       ├── butane_node_config.yaml.j2      # Installed system: partitions, files, units
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│       ├── kubeadm.yaml.j2
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│       └── pxe_config.j2                   # PXE boot menu config
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── boot_server
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   └── serve.py            # Python script for HTTP &amp; TFTP
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>├── docs                    # Documentation sources (this site)
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│   ├── architecture/
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   ├── operations/
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   ├── platform/
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   ├── development/
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│   └── assets/             # Images, fonts and other static files
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>├── output                  # Generated files &amp; Artifacts -- see the warning below
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│   ├── credentials/        # Bootstrap token, certificate key, etcd
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│   │                       # encryption key -- plaintext, 0700
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│   ├── http/               # Ignition, Flatcar artifacts, Sysext images
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│   ├── kubeconfig          # Admin Kubeconfig file
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│   ├── tftp/               # PXE bootloader &amp; configs
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│   └── tmp/                # Temporary workspace
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>├── payload                 # K8s Manifests &amp; Bootstrap scripts
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│   ├── argocd/             # ArgoCD itself (managed by ArgoCD after bootstrap)
-</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│   │   ├── application.yaml     # Self-management Application, applied at bootstrap
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│   │   ├── applicationset-platform.yaml  # One Application per platform/*/application.yaml
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│   │   └── values.yaml
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│   ├── platform/           # Core infrastructure managed by ArgoCD
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│   │   ├── argocd-config/    # ArgoCD's HTTPRoute, OIDC secret, dashboard
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│   │   ├── argocd-projects/  # AppProjects (see Security Posture)
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│   │   ├── cert-manager/     # cert-manager controller
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│   │   ├── certificates/     # Let's Encrypt issuers and TLS certificates
-</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>│   │   ├── cilium/           # CNI + Gateway API
-</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>│   │   ├── external-secrets/ # OpenBao to K8s Secret bridge
-</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│   │   ├── gateway-api/      # Gateway resources
-</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│   │   ├── monitoring/       # Prometheus stack
-</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│   │   ├── openbao/          # Cluster secret store
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   │   ├── rook-ceph/        # Storage operator &amp; cluster
-</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│   │   └── ...               # One directory per component; see Platform
-</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>│   └── workloads/          # NOT platform: the handover to the apps repository
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>│       ├── application.yaml     # Stage 12-workloads, the rollout's last step
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>│       └── applicationset.yaml  # ApplicationSet `apps`, pointed at homelab-apps
-</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>├── zensical.toml           # Documentation site configuration
-</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>└── README.md
-</span></code></pre></div>
-<div class="admonition danger">
-<p class="admonition-title"><code>output/</code> is generated; <code>output/credentials/</code> is not regenerable</p>
-<p>Everything under <code>output/credentials/</code> is generated <em>once</em> and read back on every later run: the kubeadm token, the certificate key, the etcd encryption key that decrypts every Secret in the cluster, and the five OpenBao unseal keys. <code>make config</code> writes <strong>new</strong> values for any that are missing, which a cluster already running on the old ones will not accept. Losing all five unseal keys loses every secret the cluster holds, permanently.</p>
-</div>
-<p><code>make clean</code> empties the whole of <code>output/</code>, so it prints that inventory and
-asks before it does anything; it refuses outright when it is not attached to a
-terminal. <code>make clean-artifacts</code> removes only the regenerable half — <code>http/</code>,
-<code>tftp/</code> and <code>tmp/</code> — and is the one to reach for when you just want a fresh
-download.</p>
+<h1 id="velero">Velero<a class="headerlink" href="#velero" title="Permanent link">&para;</a></h1>
+<p><a href="https://velero.io/">Velero</a> backs up Kubernetes objects and, through CSI
+snapshots and its data mover, the data in every PVC, nightly into a bucket in
+the Ceph object store. What it covers, what it does not, and the restore
+runbooks are in <a href="../../operations/backups/">Backups &amp; Recovery</a>; this page is
+the chart tuning.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Target</th>
-<th>Removes</th>
-<th>Keeps</th>
+<th></th>
+<th></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>make clean-artifacts</code></td>
-<td><code>output/http</code>, <code>output/tftp</code>, <code>output/tmp</code></td>
-<td><code>output/credentials/</code>, <code>output/kubeconfig</code></td>
+<td>Namespace</td>
+<td><code>backup</code></td>
 </tr>
 <tr>
-<td><code>make clean</code></td>
-<td>everything under <code>output/</code></td>
-<td>nothing — it asks first</td>
+<td>Stage</td>
+<td><code>09-backends</code>; the buckets, <code>VolumeSnapshotClass</code> and etcd CronJob in <code>backup</code> at <code>08-services</code>; the CSI snapshot controller at <code>03-controllers</code></td>
+</tr>
+<tr>
+<td>Depends on</td>
+<td><a href="../rook-ceph/">Rook-Ceph</a> for the bucket claims and RBD snapshots</td>
+</tr>
+<tr>
+<td>If it is down</td>
+<td>Nightly backups stop; <code>VeleroBackupFailures</code> fires</td>
+</tr>
+<tr>
+<td>Health check</td>
+<td><code>kubectl -n backup get backupstoragelocation</code> reads <code>Available</code></td>
+</tr>
+<tr>
+<td>Files</td>
+<td><code>payload/platform/velero/</code>, <code>payload/platform/backup/</code>, <code>payload/platform/snapshot-controller/</code></td>
 </tr>
 </tbody>
 </table>
-<p>A useful mental split: <code>ansible/</code> and <code>boot_server/</code> only matter while a node is
-being built. <code>payload/</code> matters every day after that. If you are debugging a
-running cluster and find yourself in <code>ansible/</code>, you are probably in the wrong
-place — with the honourable exception of <code>kubeadm.yaml.j2</code>, which explains why
-half the control plane is configured the way it is.</p>
-<h2 id="the-workloads-repository">The workloads repository<a class="headerlink" href="#the-workloads-repository" title="Permanent link">&para;</a></h2>
-<p><code>homelab-apps</code> is one directory per application, its own documentation, and
-very little else:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── docs                    # Its own site, published separately
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│   ├── index.md
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   ├── conventions.md      # The rules every app directory follows
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│   ├── home-assistant.md
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│   └── nextcloud.md
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>├── zensical.toml
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>├── renovate.json           # Same policy as this repository
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── home-assistant/
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>│   ├── application.yaml    # The ArgoCD Application, read by the `apps` set
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│   ├── namespace.yaml      # Pod Security labels, sync wave -2
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│   ├── database.yaml       # CloudNativePG Cluster, sync wave -1
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│   ├── ...                 # Whatever that application is made of
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>│   ├── httproute.yaml
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>│   └── networkpolicy.yaml
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>└── nextcloud/
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    └── ...
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>checksumAlgorithm: ""</code> on the <code>BackupStorageLocation</code></td>
+<td>The AWS plugin's SDK sends a trailing checksum that Ceph RGW rejects with <code>XAmzContentSHA256Mismatch</code>; every upload fails without it</td>
+</tr>
+<tr>
+<td><code>velero-plugin-for-aws</code> init container</td>
+<td>The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind</td>
+</tr>
+<tr>
+<td><code>credentials.useSecret: false</code> with <code>extraEnvVars</code></td>
+<td>Keys come from the environment, fed by the <code>Secret</code> Rook writes for the <code>velero-bucket</code> claim; nothing is rendered into a file or Git</td>
+</tr>
+<tr>
+<td><code>defaultSnapshotMoveData</code>, <code>deployNodeAgent</code>, <code>uploaderType: kopia</code></td>
+<td>A CSI snapshot is a Ceph object in the same cluster; the data mover (run by the node agent) streams it into the bucket and deletes the snapshot</td>
+</tr>
+<tr>
+<td><code>volumeSnapshotLocation: []</code></td>
+<td>The chart's placeholder renders a <code>VolumeSnapshotLocation</code> the CRD rejects, failing every sync; Helm replaces lists, so the empty list removes it</td>
+</tr>
+<tr>
+<td><code>VolumeSnapshotClass</code> in <code>payload/platform/backup/volumesnapshotclass.yaml</code></td>
+<td>The <code>velero.io/csi-volumesnapshot-class</code> label is how Velero finds the class; without it volumes are skipped silently. <code>deletionPolicy: Delete</code>, because the durable copy is the data mover's</td>
+</tr>
+<tr>
+<td><code>snapshot-controller</code> Application</td>
+<td>Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the <code>VolumeSnapshotClass</code> applies, so it sits in <code>03-controllers</code></td>
+</tr>
+<tr>
+<td>No <code>runAsNonRoot</code> on the <code>velero</code> container</td>
+<td>Whether the plugin init container's copy into <code>/target</code> works non-root depends on the image's <code>USER</code>; confirm on a real backup first</td>
+</tr>
+<tr>
+<td>Node agent <code>containerSecurityContext</code></td>
+<td>Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on</td>
+</tr>
+<tr>
+<td><code>prometheusRule</code></td>
+<td><code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
-<p>The shape is deliberately the same as <code>payload/platform/</code>: exactly one
-<code>application.yaml</code> per directory, and everything beside it is what that
-Application deploys. Adding a directory adds an application; there is no list
-to register it in. See <a href="../../development/add-workload/">Adding a Workload</a>.</p>
-<p>Its documentation is its own site, at
-<a href="https://janwelker.github.io/homelab-apps/">janwelker.github.io/homelab-apps</a>,
-built the same way this one is. Two repositories, two sites: a change to a
-workload and the page describing it belong in one pull request, and neither
-site has to be rebuilt because the other changed.</p>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backupstoragelocation<span class="w">       </span><span class="c1"># Available</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io<span class="w">           </span><span class="c1"># Completed, not PartiallyFailed</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>volumesnapshotclass<span class="w"> </span>rook-ceph-block
+</span></code></pre></div>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">PartiallyFailed with no volume data</p>
+<p>Velero found no labelled <code>VolumeSnapshotClass</code> and skipped every volume without an error. Check the class above exists and carries the label.</p>
+</div>
 
 
 
@@ -2272,7 +2350,7 @@ site has to be rebuilt because the other changed.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../limitations/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Known Limitations">
+          <a href="../cloudnative-pg/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CloudNativePG">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2282,20 +2360,20 @@ site has to be rebuilt because the other changed.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Known Limitations
+                CloudNativePG
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../platform/" class="md-footer__link md-footer__link--next" aria-label="Next: Platform">
+          <a href="../openbao/" class="md-footer__link md-footer__link--next" aria-label="Next: OpenBao">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Platform
+                OpenBao
               </div>
             </div>
             <div class="md-footer__button md-icon">
