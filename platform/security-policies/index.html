@@ -16,7 +16,7 @@
         <link rel="prev" href="../kured/">
       
       
-        <link rel="next" href="../../operations/">
+        <link rel="next" href="../trivy-operator/">
       
       
         
@@ -298,6 +298,8 @@
       
         
           
+        
+      
         
       
         
@@ -932,6 +934,8 @@
       
         
           
+        
+      
         
       
         
@@ -1699,6 +1703,33 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../trivy-operator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Trivy Operator
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2430,6 +2461,8 @@
       
         
       
+        
+      
     
     
     
@@ -2580,6 +2613,11 @@ an informed change.</p>
 <td>Adds <code>IPC_LOCK</code> to keep the root key out of swap, which baseline does not allow</td>
 </tr>
 <tr>
+<td><code>trivy-system</code></td>
+<td><code>privileged</code></td>
+<td>node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks</td>
+</tr>
+<tr>
 <td><code>cert-manager</code>, <code>external-secrets</code>, <code>argocd</code></td>
 <td><code>baseline</code></td>
 <td>—</td>
@@ -2591,7 +2629,7 @@ are still <code>baseline</code> or <code>restricted</code> on all of them. Names
 owned by this Application so the labels stay declarative rather than drifting
 after <code>CreateNamespace=true</code>.</p>
 <h3 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h3>
-<p>Ingress only, in nine namespaces, as <code>CiliumNetworkPolicy</code> in
+<p>Ingress only, in ten namespaces, as <code>CiliumNetworkPolicy</code> in
 <code>network-policies.yaml</code>. Every policy also admits traffic from within the
 namespace and from <code>host</code> and <code>remote-node</code> for probes.</p>
 <h4 id="why-ciliumnetworkpolicy-and-not-networkpolicy">Why CiliumNetworkPolicy and not NetworkPolicy<a class="headerlink" href="#why-ciliumnetworkpolicy-and-not-networkpolicy" title="Permanent link">&para;</a></h4>
@@ -2645,6 +2683,10 @@ Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the ku
 <tr>
 <td><code>cnpg-system</code></td>
 <td>Prometheus; the webhooks are called by the API server from the node</td>
+</tr>
+<tr>
+<td><code>trivy-system</code></td>
+<td>Prometheus; scan jobs reach the Trivy server within the namespace</td>
 </tr>
 </tbody>
 </table>
@@ -2834,13 +2876,13 @@ decisions logged, not enforced — to find the missing rule without an outage:</
         
         
           
-          <a href="../../operations/" class="md-footer__link md-footer__link--next" aria-label="Next: Operations">
+          <a href="../trivy-operator/" class="md-footer__link md-footer__link--next" aria-label="Next: Trivy Operator">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Operations
+                Trivy Operator
               </div>
             </div>
             <div class="md-footer__button md-icon">

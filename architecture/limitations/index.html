@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -981,6 +983,8 @@
       
         
       
+        
+      
     
     
     
@@ -1478,6 +1482,33 @@
     
   
   Security Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/trivy-operator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Trivy Operator
 
     
   </span>
@@ -2103,7 +2134,7 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 </tr>
 <tr>
 <td><strong>Network policy is partial, AppProjects are permissive</strong></td>
-<td>Nine namespaces have default-deny ingress and every platform namespace has Pod Security Admission labels. All egress is unrestricted, other namespaces allow all ingress, the <code>infra</code> AppProject allows every kind in every namespace, and <code>apps</code> permits cluster RBAC because trivy-operator needs it. A pod in <code>authentik</code> can still talk to a pod in <code>kured</code></td>
+<td>Ten namespaces have default-deny ingress and every platform namespace has Pod Security Admission labels. All egress is unrestricted, other namespaces allow all ingress, and the <code>infra</code> AppProject allows every kind in every namespace. A pod in <code>authentik</code> can still talk to a pod in <code>kured</code></td>
 <td>Extend default-deny, then egress; narrow the projects</td>
 <td><a href="../../platform/security-policies/">Security Policies</a>, <a href="../security/#authorization">Security Posture</a></td>
 </tr>

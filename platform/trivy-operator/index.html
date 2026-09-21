@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How to read the Trivy Operator findings, when an upstream issue is warranted, and which pod-level findings are load-bearing by design.">
+        <meta name="description" content="Continuous vulnerability, misconfiguration, secret, RBAC and CIS scanning, with every finding stored as a CRD, and the settings that keep the reports from silently going missing.">
       
       
       
-        <link rel="canonical" href="https://homelab.wlkr.ch/operations/vulnerabilities/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/trivy-operator/">
       
       
-        <link rel="prev" href="../control-plane-vip/">
+        <link rel="prev" href="../security-policies/">
       
       
-        <link rel="next" href="../triage-2026-09-20/">
+        <link rel="next" href="../../operations/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Vulnerability Triage - Homelab Documentation</title>
+        <title>Trivy Operator - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#vulnerability-triage" class="md-skip">
+        <a href="#trivy-operator" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Vulnerability Triage
+              Trivy Operator
             
           </span>
         </div>
@@ -290,70 +290,6 @@
   
   
   
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../platform/" class="md-tabs__link">
-          
-  
-  Platform
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
     
   
   
@@ -362,6 +298,28 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -384,6 +342,48 @@
     
       <li class="md-tabs__item md-tabs__item--active">
         <a href="../" class="md-tabs__link">
+          
+  
+  Platform
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
           
   
   Operations
@@ -925,598 +925,6 @@
       
   
   
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../../platform/" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Platform
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-  Platform
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/cilium/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Cilium
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/argocd/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ArgoCD
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/gateway-api/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Gateway API
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/cert-manager/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  cert-manager
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/external-dns/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  External DNS
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/rook-ceph/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Rook-Ceph
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/cloudnative-pg/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  CloudNativePG
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/velero/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Velero
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/openbao/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  OpenBao
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/external-secrets/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  External Secrets
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/authentik/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Authentik
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/monitoring/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Monitoring
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/logging/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Logging
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/tetragon/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Tetragon
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/metrics-server/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Metrics Server
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/kured/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kured
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/security-policies/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Security Policies
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../platform/trivy-operator/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Trivy Operator
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
@@ -1526,6 +934,28 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1556,7 +986,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -1567,7 +997,7 @@
   <span class="md-ellipsis">
     
   
-  Operations
+  Platform
 
     
   </span>
@@ -1577,18 +1007,18 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-  Operations
+  Platform
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
@@ -1602,14 +1032,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../cilium/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Troubleshooting
+  Cilium
 
     
   </span>
@@ -1629,14 +1059,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../nodes/" class="md-nav__link">
+      <a href="../argocd/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Node Lifecycle
+  ArgoCD
 
     
   </span>
@@ -1656,14 +1086,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../upgrades/" class="md-nav__link">
+      <a href="../gateway-api/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Updates & Upgrades
+  Gateway API
 
     
   </span>
@@ -1683,14 +1113,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../backups/" class="md-nav__link">
+      <a href="../cert-manager/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Backups & Recovery
+  cert-manager
 
     
   </span>
@@ -1710,14 +1140,338 @@
   
   
     <li class="md-nav__item">
-      <a href="../control-plane-vip/" class="md-nav__link">
+      <a href="../external-dns/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Control Plane VIP
+  External DNS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rook-ceph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Rook-Ceph
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloudnative-pg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CloudNativePG
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../velero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Velero
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../openbao/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  OpenBao
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../external-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  External Secrets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentik/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Authentik
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Monitoring
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Metrics Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../kured/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Kured
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-policies/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security Policies
 
     
   </span>
@@ -1753,7 +1507,7 @@
   <span class="md-ellipsis">
     
   
-  Vulnerability Triage
+  Trivy Operator
 
     
   </span>
@@ -1770,7 +1524,7 @@
   <span class="md-ellipsis">
     
   
-  Vulnerability Triage
+  Trivy Operator
 
     
   </span>
@@ -1796,10 +1550,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pulling-a-report" class="md-nav__link">
+  <a href="#at-a-glance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pulling a report
+        At a glance
       </span>
     </span>
   </a>
@@ -1807,10 +1561,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reading-it" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Reading it
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#alerting-on-the-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alerting on the gap
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
       </span>
     </span>
   </a>
@@ -1818,10 +1600,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#filing-policy" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Filing policy
+        Health check
       </span>
     </span>
   </a>
@@ -1829,10 +1611,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-load-bearing" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is load-bearing
+        Pitfalls
       </span>
     </span>
   </a>
@@ -1848,6 +1630,90 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../operations/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Operations
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Operations
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
               
                 
   
@@ -1855,7 +1721,169 @@
   
   
     <li class="md-nav__item">
-      <a href="../triage-2026-09-20/" class="md-nav__link">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/nodes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Updates & Upgrades
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups & Recovery
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/control-plane-vip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/vulnerabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Vulnerability Triage
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
         
   
   
@@ -2080,10 +2108,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pulling-a-report" class="md-nav__link">
+  <a href="#at-a-glance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Pulling a report
+        At a glance
       </span>
     </span>
   </a>
@@ -2091,10 +2119,38 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reading-it" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Reading it
+        Configuration
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#alerting-on-the-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alerting on the gap
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
       </span>
     </span>
   </a>
@@ -2102,10 +2158,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#filing-policy" class="md-nav__link">
+  <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Filing policy
+        Health check
       </span>
     </span>
   </a>
@@ -2113,10 +2169,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-load-bearing" class="md-nav__link">
+  <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What is load-bearing
+        Pitfalls
       </span>
     </span>
   </a>
@@ -2185,6 +2241,28 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
     
     
     
@@ -2194,7 +2272,7 @@
           
   
   <span class="md-ellipsis">
-    Operations
+    Platform
   </span>
 
         </a>
@@ -2211,7 +2289,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/operations/vulnerabilities.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/trivy-operator.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -2220,106 +2298,257 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/operations/vulnerabilities.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/trivy-operator.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="vulnerability-triage">Vulnerability Triage<a class="headerlink" href="#vulnerability-triage" title="Permanent link">&para;</a></h1>
-<p>Trivy Operator writes one <code>VulnerabilityReport</code> per container, a few thousand
-findings on a cluster this size. Almost none warrant action, and the work is in
-proving that quickly. The operator's configuration and failure modes are in
-<a href="../../platform/trivy-operator/">Trivy Operator</a>. This page is the method; the
-dispositions from the last pass are in <a href="../triage-2026-09-20/">Triage 2026-09-20</a>.</p>
-<h2 id="pulling-a-report">Pulling a report<a class="headerlink" href="#pulling-a-report" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>vr.json
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | .metadata.namespace as $ns</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="s1">  | .report.artifact.repository as $img</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s1">  | .report.vulnerabilities[]?</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s1">  | select(.severity=="CRITICAL")</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s1">  | [$ns, $img, .vulnerabilityID, .resource, .installedVersion,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s1">     (.fixedVersion // "NO-FIX"), (.packagePath // .target)]</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s1">  | @tsv'</span><span class="w"> </span>vr.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u
-</span></code></pre></div>
-<h2 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>A missing report is not a clean image.</strong> A failed scan writes nothing;
-    the <code>TrivyContainerNotScanned</code> alert reconciles running images against
-    scanned ones continuously.</li>
-<li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> Unfixed
-    findings are kept (<code>ignoreUnfixed: false</code>) because a cluster of them in one
-    base image says the base image is the wrong one.</li>
-<li><strong>The worst findings are usually not the project's code.</strong> The <code>target</code>
-    names the binary, and which binary decides whether anything can be done and
-    by whom.</li>
-</ul>
-<p>Two artifacts recur. A <code>ConfigAuditReport</code> has no TTL and goes only when its
-ReplicaSet is garbage-collected, so superseded revisions keep their findings on
-the dashboard
-(<a href="https://github.com/aquasecurity/trivy-operator/issues/3069">aquasecurity/trivy-operator#3069</a>);
-when a count looks wrong, check whether the ReplicaSet in the report name still
-has replicas. <code>KSV-0125</code> ("untrusted registry") fires on nearly every
-container because the check's built-in list is Azure, ECR and GCR, which Trivy
-Operator does not expose as a parameter; it says nothing about the images.</p>
-<h2 id="filing-policy">Filing policy<a class="headerlink" href="#filing-policy" title="Permanent link">&para;</a></h2>
-<p>Filing goes out under a real name, permanently, and most projects have said
-what they want:</p>
-<ul>
-<li><strong>Argo CD</strong> asks in <code>SECURITY.md</code> not to raise scanner findings.</li>
-<li><strong>Home Assistant</strong> (Open Home Foundation) does not accept issues or PRs from
-    autonomous agents.</li>
-<li><strong>Rook</strong> accepts AI-assisted contributions with disclosure, submitted by a
-    human.</li>
-<li><strong>Routine Go churn is not a finding.</strong> <code>grpc</code> or the stdlib one patch behind
-    is fixed by the next release every project here takes automatically.</li>
-</ul>
-<p>"Waiting on release" means the fix is merged upstream and Renovate takes the
-release when it exists; nothing here speeds it up.</p>
-<h2 id="what-is-load-bearing">What is load-bearing<a class="headerlink" href="#what-is-load-bearing" title="Permanent link">&para;</a></h2>
-<p><code>ConfigAuditReport</code>, <code>RbacAssessmentReport</code> and <code>InfraAssessmentReport</code> are
-fixable here rather than upstream. Two checks are most of the volume:
-<code>KSV-0014</code> (read-only root filesystem) and <code>KSV-0118</code> (empty pod-level
-<code>securityContext</code>, whatever the containers set).</p>
+<h1 id="trivy-operator">Trivy Operator<a class="headerlink" href="#trivy-operator" title="Permanent link">&para;</a></h1>
+<p>Aqua Security's <a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator</a>
+scans everything the cluster runs and writes every result back as a Kubernetes
+object. Reading those objects is <a href="../../operations/vulnerabilities/">Vulnerability Triage</a>;
+this page is the operator itself.</p>
+<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Where</th>
-<th>Why it stays</th>
+<th></th>
+<th></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured</td>
-<td>Host network, host PID, privileged and added capabilities are what these do; <code>pod-security.yaml</code> enforces <code>privileged</code> in those namespaces for this reason</td>
+<td>Namespace</td>
+<td><code>trivy-system</code></td>
 </tr>
 <tr>
-<td><code>etcd-backup</code> CronJob</td>
-<td>Host network, because etcd listens on the node's loopback; root, because the client certificates are <code>600 root</code></td>
+<td>Stage</td>
+<td><code>11-policy</code>; nothing above it depends on a scan</td>
 </tr>
 <tr>
-<td>Velero node agent</td>
-<td>Root and capabilities stay: kopia reads every pod volume, whoever owns the files</td>
+<td>Depends on</td>
+<td><a href="../monitoring/">Monitoring</a> for the <code>ServiceMonitor</code> and the dashboard, <a href="../rook-ceph/">Rook-Ceph</a> for the vulnerability database volume</td>
 </tr>
 <tr>
-<td>Images that start as root by design (Nextcloud, Home Assistant)</td>
-<td><code>runAsNonRoot</code> or a read-only root would change how they run; seccomp is set</td>
+<td>If it is down</td>
+<td>Reports expire after 24h and are not rebuilt; <code>TrivyContainerNotScanned</code> fires for every container</td>
 </tr>
 <tr>
-<td>Read-only root on charts that write under <code>/</code> at runtime (Grafana sidecars, OpenBao)</td>
-<td>The chart or image decides where; guessing costs an outage (#663)</td>
+<td>Health check</td>
+<td><code>kubectl -n trivy-system get pods,jobs</code>, then the reconciliation below</td>
 </tr>
 <tr>
-<td>Every critical or high <code>ClusterRole</code></td>
-<td>A chart's operator role, or Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>; not narrowable without forking a chart — see <a href="../../architecture/security/#authorization">Security Posture</a></td>
+<td>Dashboard</td>
+<td><a href="https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview">Trivy Operator</a></td>
 </tr>
 <tr>
-<td>Node file modes kubeadm resets</td>
-<td>Handled at provisioning time — see <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
+<td>Files</td>
+<td><code>payload/platform/trivy-operator/</code>: the chart, <code>prometheusrule.yaml</code> and a dashboard written for this cluster. The namespace labels and the default-deny policy are in <a href="../security-policies/">Security Policies</a></td>
 </tr>
 </tbody>
 </table>
+<table>
+<thead>
+<tr>
+<th>Scanner</th>
+<th>Produces</th>
+<th>Answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vulnerability</td>
+<td><code>VulnerabilityReport</code></td>
+<td>Which CVEs are in the images we run</td>
+</tr>
+<tr>
+<td>Exposed secret</td>
+<td><code>ExposedSecretReport</code></td>
+<td>Which images have credentials baked in</td>
+</tr>
+<tr>
+<td>Config audit</td>
+<td><code>ConfigAuditReport</code></td>
+<td>Which workloads are misconfigured</td>
+</tr>
+<tr>
+<td>RBAC assessment</td>
+<td><code>RbacAssessmentReport</code></td>
+<td>Which roles grant too much</td>
+</tr>
+<tr>
+<td>Infra assessment</td>
+<td><code>InfraAssessmentReport</code></td>
+<td>Whether the nodes pass CIS</td>
+</tr>
+<tr>
+<td>Compliance</td>
+<td><code>ClusterComplianceReport</code></td>
+<td>CIS 1.23, NSA/CISA 1.0, PSS baseline and restricted</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>eks-</code> and <code>rke2-</code> compliance specs are for other distributions and are
+left out rather than reported as failing.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>The values in <code>application.yaml</code> that are not defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scannerReportTTL: 24h</code>, <code>scanOnlyCurrentRevisions</code>, <code>scanJobTTL: 10m</code></td>
+<td>Reports live in etcd. A stale report is rebuilt, superseded ReplicaSets are not scanned, and finished jobs do not accumulate</td>
+</tr>
+<tr>
+<td><code>builtInTrivyServer: true</code></td>
+<td><code>ClientServer</code> mode: one <code>trivy-server</code> holds the vulnerability database on the PVC. Standalone mode downloads it in every scan job, which meets registry rate limits, and a rate-limited scan reports zero findings rather than an error</td>
+</tr>
+<tr>
+<td><code>ignoreUnfixed: false</code>, every severity</td>
+<td>A finding with no fix is usually the signal that the base image is wrong, and a finding the scanner could not grade is worth reading</td>
+</tr>
+<tr>
+<td><code>ignorePolicy.nextcloud</code>, <code>ignorePolicy.authentik</code></td>
+<td>Those images carry thousands of unfixed Debian findings and their reports exceed the etcd request limit. The Rego (v0 syntax, <code>object.get</code> because <code>FixedVersion</code> is absent when there is no fix) drops only findings that have no fix <em>and</em> are below HIGH</td>
+</tr>
+<tr>
+<td><code>additionalVulnerabilityReportFields</code> without <code>Description</code> and <code>Links</code></td>
+<td>A report is one API write, capped at 2 MiB; <code>Links</code> alone is over half the payload. An oversized report is rejected with nothing but an operator log line</td>
+</tr>
+<tr>
+<td><code>operator.scanJobTimeout</code> and <code>trivy.timeout</code>, both 20m</td>
+<td>The first is the Job's <code>activeDeadlineSeconds</code> and kills the pod whatever Trivy is doing; the second is Trivy's own flag and only fires if it is the shorter. Raising one alone does nothing</td>
+</tr>
+<tr>
+<td><code>clusterSbomCacheEnabled: false</code></td>
+<td>With the cache, every workload after the first to use an image gets an <code>SbomReport</code> from the cached SBOM and no <code>VulnerabilityReport</code>. Upstream: <a href="https://github.com/aquasecurity/trivy-operator/issues/1668">trivy-operator#1668</a></td>
+</tr>
+<tr>
+<td><code>metricsVulnIdEnabled: false</code></td>
+<td>One series per CVE per container is a six-figure cardinality, and every label is already in the report</td>
+</tr>
+<tr>
+<td><code>compliance.reportType: summary</code></td>
+<td>The collector skips reports in <code>all</code> format, so <code>trivy_compliance_info</code> disappears and the dashboard's failing-controls table empties. The <code>status</code> label is title-cased: <code>Fail</code>, <code>Pass</code></td>
+</tr>
+<tr>
+<td>Control-plane tolerations on <code>nodeCollector</code> and <code>scanJobTolerations</code></td>
+<td>Without them the CIS infra assessment covers only the workers and reports a clean control plane it never looked at</td>
+</tr>
+<tr>
+<td>Namespace <code>enforce: privileged</code>, <code>audit</code>/<code>warn: restricted</code></td>
+<td>node-collector hostPath-mounts <code>/var/lib/etcd</code>, <code>/var/lib/kubelet</code>, <code>/etc/kubernetes</code> and <code>/etc/cni/net.d</code>, which <code>baseline</code> forbids. Scan jobs themselves drop all capabilities and run read-only</td>
+</tr>
+<tr>
+<td><code>logDevMode: false</code></td>
+<td>Its <code>V(1)</code> lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding. Turn it on to debug, then off</td>
+</tr>
+</tbody>
+</table>
+<h3 id="alerting-on-the-gap">Alerting on the gap<a class="headerlink" href="#alerting-on-the-gap" title="Permanent link">&para;</a></h3>
+<p><code>TrivyContainerNotScanned</code> in <code>prometheusrule.yaml</code> compares every running
+container against the containers that have a <code>VulnerabilityReport</code> and names
+the difference:</p>
+<div class="language-promql highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">count</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">container</span><span class="o">)</span><span class="w"> </span><span class="o">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nv">kube_pod_container_info</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="o">*</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="o">(</span><span class="nv">namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">pod</span><span class="o">)</span><span class="w"> </span><span class="k">group_left</span><span class="w"> </span><span class="o">()</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="o">(</span><span class="k">max</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">pod</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="nv">kube_pod_status_phase</span><span class="p">{</span><span class="nl">phase</span><span class="o">=</span><span class="p">"</span><span class="s">Running</span><span class="p">"}</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">1</span><span class="o">))</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="o">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="ow">unless</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="o">(</span><span class="nv">namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">container</span><span class="o">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">count</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">namespace</span><span class="p">,</span><span class="w"> </span><span class="nv">container</span><span class="o">)</span><span class="w"> </span><span class="o">(</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="kr">label_replace</span><span class="o">(</span><span class="nv">trivy_image_info</span><span class="p">,</span><span class="w"> </span><span class="p">"</span><span class="s">container</span><span class="p">",</span><span class="w"> </span><span class="p">"</span><span class="s">$1</span><span class="p">",</span><span class="w"> </span><span class="p">"</span><span class="s">container_name</span><span class="p">",</span><span class="w"> </span><span class="p">"</span><span class="s">(.+)</span><span class="p">"</span><span class="o">)</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="o">)</span>
+</span></code></pre></div>
+<ul>
+<li><strong>Keyed on <code>(namespace, container)</code>, not the digest</strong>: containerd's
+  platform digest and the registry's tag digest differ permanently for
+  mirrored images.</li>
+<li><strong>Restricted to <code>Running</code> pods</strong>, or every completed Job counts as unscanned.</li>
+<li><strong><code>for: 2h</code></strong>, several times a full sweep, so the 24h TTL churn does not page.</li>
+</ul>
+<p>The dashboard's stat and by-severity panels take <code>max by (image_digest)</code>
+before summing, and workload panels join ReplicaSets against
+<code>kube_replicaset_spec_replicas &gt; 0</code>, so a finding counts once per image and a
+superseded revision drops out. The "Worst workloads" table stays per container
+on purpose: it answers where a finding runs.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>The dashboard is a summary; the objects have the detail.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># What has been scanned, worst first</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>--sort-by<span class="o">=</span><span class="s1">'.report.summary.criticalCount'</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># The findings themselves, for one workload</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-n<span class="w"> </span>&lt;ns&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.report.vulnerabilities[]</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="s1">        | select(.severity=="CRITICAL")</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="s1">        | {id: .vulnerabilityID, pkg: .resource,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="s1">           installed: .installedVersion, fixed: .fixedVersion}'</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># Misconfiguration, RBAC and node checks</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>kubectl<span class="w"> </span>get<span class="w"> </span>configauditreports<span class="w"> </span>-A
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>kubectl<span class="w"> </span>get<span class="w"> </span>rbacassessmentreports,clusterrbacassessmentreports<span class="w"> </span>-A
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>kubectl<span class="w"> </span>get<span class="w"> </span>infraassessmentreports<span class="w"> </span>-A
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Which compliance controls are failing</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustercompliancereports<span class="w"> </span>k8s-cis-1.23<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">'.status.summary, (.status.summaryReport.controlCheck[]</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="s1">        | select(.totalFail &gt; 0))'</span>
+</span></code></pre></div>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<p>Reconcile running images against scanned ones; treat a difference as a missing
+scan until proven otherwise:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.containers[].image'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].report.artifact.repository'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+</span></code></pre></div>
+<div class="admonition danger">
+<p class="admonition-title">Zero is not the same as clean</p>
+<p>A report that reads zero may be a clean image or a scan that failed: a rate-limited pull, a timeout, an image the operator could not resolve. Check the object exists and carries a real digest before believing a zero, and look at <code>kubectl -n trivy-system get jobs</code> when one never appears. This is where the <code>vulnerability-triage</code> skill in <code>.claude/skills/</code> starts.</p>
+</div>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<p>Four ways a workload ends up with no <code>VulnerabilityReport</code>, all silent from
+the outside:</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Where to look</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No report, no <code>SbomReport</code>, operator logs <code>ResourceExhausted ... larger than max</code> or <code>etcdserver: request is too large</code></td>
+<td>The report exceeds the API write ceiling</td>
+<td>Operator log. Fix: the fields and ignore policies above</td>
+</tr>
+<tr>
+<td>No report, Job events show <code>DeadlineExceeded</code></td>
+<td><code>scanJobTimeout</code> elapsed on a large image</td>
+<td><code>kubectl -n trivy-system get events --field-selector reason=DeadlineExceeded</code>, before <code>scanJobTTL</code> deletes the Job</td>
+</tr>
+<tr>
+<td>Some containers of a multi-container workload missing; job succeeded; log has <code>failed to analyze layer ... unexpected EOF</code></td>
+<td>A scan container died reading the image and the operator keeps only containers that exited 0. Hits workloads with several containers on one image (Rook, Cilium). Not the shared cache: concurrent scans with it pass</td>
+<td>Scan job pod logs</td>
+</tr>
+<tr>
+<td><code>SbomReport</code> exists, no <code>VulnerabilityReport</code></td>
+<td>SBOM cache reuse path ran <code>trivy sbom</code> and produced nothing</td>
+<td>Confirm <code>clusterSbomCacheEnabled</code> is off</td>
+</tr>
+</tbody>
+</table>
+<p>A completed scan job counts against <code>concurrentScanJobsLimit</code> until
+<code>scanJobTTL</code> deletes it, so a backlog drains in batches of ten every ten
+minutes; that is the expected shape, not a stall.</p>
 
 
 
@@ -2360,7 +2589,7 @@ fixable here rather than upstream. Two checks are most of the volume:
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../control-plane-vip/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Control Plane VIP">
+          <a href="../security-policies/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Security Policies">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2370,20 +2599,20 @@ fixable here rather than upstream. Two checks are most of the volume:
                 Previous
               </span>
               <div class="md-ellipsis">
-                Control Plane VIP
+                Security Policies
               </div>
             </div>
           </a>
         
         
           
-          <a href="../triage-2026-09-20/" class="md-footer__link md-footer__link--next" aria-label="Next: Triage 2026-09-20">
+          <a href="../../operations/" class="md-footer__link md-footer__link--next" aria-label="Next: Operations">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Triage 2026-09-20
+                Operations
               </div>
             </div>
             <div class="md-footer__button md-icon">

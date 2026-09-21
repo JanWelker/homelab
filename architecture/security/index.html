@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -1123,6 +1125,8 @@
       
         
       
+        
+      
     
     
     
@@ -1620,6 +1624,33 @@
     
   
   Security Policies
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/trivy-operator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Trivy Operator
 
     
   </span>
@@ -2454,11 +2485,10 @@ nothing the PR review does not. <code>system</code> is confined to the <code>arg
 repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
 namespace (<code>authentik</code> excepted, for the blueprint ConfigMap a workload ships
-there), and at cluster scope may create namespaces, CRDs, cluster RBAC and
-Trivy's compliance reports — what trivy-operator demonstrably needs.</p>
-<p><strong>Network policy covers nine namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
+there), and at cluster scope may create nothing but namespaces.</p>
+<p><strong>Network policy covers ten namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
 <code>external-secrets</code>, <code>monitoring</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>,
-<code>kured</code>, <code>logging</code> and <code>cnpg-system</code> have default-deny <strong>ingress</strong>
+<code>kured</code>, <code>logging</code>, <code>cnpg-system</code> and <code>trivy-system</code> have default-deny <strong>ingress</strong>
 <code>CiliumNetworkPolicy</code> rules; every other namespace, and all egress everywhere,
 is unrestricted. See <a href="../../platform/security-policies/">Security Policies</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
