@@ -96,7 +96,6 @@ Not yet covered, each for its own reason:
 
 | Namespace | Why not yet |
 | --- | --- |
-| `kube-system` | Holds Cilium itself, the static control-plane pods and kube-vip |
 | `rook-ceph` | Mons, OSDs and CSI plugins have a wide, partly host-level traffic matrix; Ceph health is the verification signal |
 | `backup` | A node-agent doing volume backups through the CSI plugins, and a host-network CronJob reading etcd |
 | `argocd`, `authentik` | Already carry `NetworkPolicy` objects from their own charts |
