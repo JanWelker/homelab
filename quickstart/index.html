@@ -2589,14 +2589,13 @@ see <a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; Whe
 </span></code></pre></div>
 <p>Applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects, then the
 self-managing <code>argocd</code> Application, which brings the <code>platform</code>
-ApplicationSet and with it every component, one
-<a href="../platform/#rollout-order">stage</a> at a time. Watch which stage
-it is on:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applicationset<span class="w"> </span>platform<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
-</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="s1">'{range .status.applicationStatus[*]}{.step}{"\t"}{.status}{"\t"}{.application}{"\n"}{end}'</span>
+ApplicationSet and with it every component at once. They converge in
+the <a href="../platform/#rollout-order">order their dependencies allow</a>;
+watch them settle:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
 </span></code></pre></div>
-<p><strong>The rollout stops at <code>05-secrets</code>, and that is expected.</strong> <code>openbao</code>
-cannot go Healthy until step 11 — see
+<p><strong>Everything that reads a secret stays Degraded, and that is
+expected.</strong> No <code>ExternalSecret</code> resolves until step 11 — see
 <a href="../architecture/gitops/#bootstrap-pauses-at-openbao">Bootstrap pauses at OpenBao</a>.</p>
 </li>
 <li>
@@ -2640,9 +2639,9 @@ Postgres password out from under its database.</p>
 <p class="admonition-title">Paste them at the prompt, not onto a command line</p>
 <p>A secret containing <code>#</code> on a command line is truncated at it, and one containing <code>!</code> is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with <strong>single</strong> quotes.</p>
 </div>
-<p>Once the store validates, <code>certificates</code> issues the gateway certificates
-and the later stages sync. The store is re-checked every few minutes, so
-the next stage can take that long to start.</p>
+<p>Once the store validates, every <code>ExternalSecret</code> resolves, <code>certificates</code>
+issues the gateway certificates and the Gateways come up. The store is
+re-checked every few minutes, so that can take that long to start.</p>
 </li>
 <li>
 <p><strong>Create the first administrator</strong>:

@@ -2151,8 +2151,8 @@ never configures a node.</p>
 <li>
 <p><strong><a href="gitops/">GitOps Strategy</a></strong></p>
 <hr />
-<p>The ApplicationSet, the staged rollout, and the rules that keep a fresh
-bootstrap from deadlocking.</p>
+<p>The ApplicationSet, the sync policy every Application shares, and how a
+fresh bootstrap converges without an order.</p>
 </li>
 <li>
 <p><strong><a href="decisions/">Design Decisions</a></strong></p>
@@ -2246,7 +2246,7 @@ it. The applications the cluster exists to serve live in the separate
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
 </span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   ├── platform/           # One directory per component, each with one
 </span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   │   └── ...             #   application.yaml -- see Platform
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   └── workloads/          # The handover to homelab-apps, stage 12-workloads
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   └── workloads/          # The handover to homelab-apps
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── zensical.toml           # Documentation site configuration
 </span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>└── README.md
 </span></code></pre></div>

@@ -2580,10 +2580,6 @@ data after a node dies, and the one with the steepest learning curve. Check
 <td><code>rook-ceph</code></td>
 </tr>
 <tr>
-<td>Stage</td>
-<td><code>03-controllers</code> for <code>rook-ceph-operator</code>; <code>04-storage</code> for <code>rook-ceph</code> (CSI driver, RBAC, dashboards) and <code>rook-ceph-cluster</code></td>
-</tr>
-<tr>
 <td>Depends on</td>
 <td>A raw <code>rook-osd</code> partition on every node, written at install time</td>
 </tr>
@@ -2691,7 +2687,7 @@ them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.<
 <tbody>
 <tr>
 <td><code>csi-driver.yaml</code> in <code>rook-ceph</code>, with <code>SkipDryRunOnMissingResource</code></td>
-<td>The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart one stage earlier</td>
+<td>The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart</td>
 </tr>
 <tr>
 <td><code>OperatorConfig</code> pointing at the chart's image-set <code>ConfigMap</code></td>

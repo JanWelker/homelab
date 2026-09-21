@@ -2325,10 +2325,6 @@ is.</p>
 <td><code>external-secrets</code></td>
 </tr>
 <tr>
-<td>Stage</td>
-<td><code>03-controllers</code>; the <code>ClusterSecretStore</code> is in <code>openbao</code>, at <code>05-secrets</code> — see <a href="../#rollout-order">why</a></td>
-</tr>
-<tr>
 <td>Depends on</td>
 <td><a href="../openbao/">OpenBao</a> at runtime, though not to be installed</td>
 </tr>
@@ -2375,12 +2371,8 @@ store uses ESO's <code>vault</code> provider unchanged against the in-cluster Se
 </thead>
 <tbody>
 <tr>
-<td>Stage <code>03-controllers</code></td>
-<td>Ahead of every Application that ships an <code>ExternalSecret</code>; a missing kind fails the sync that <a href="../../architecture/gitops/">gates the stage</a></td>
-</tr>
-<tr>
 <td>No <code>ClusterSecretStore</code> here</td>
-<td>It only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>; here it would hold <code>03-controllers</code> for two stages</td>
+<td>It only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>, whose readiness it reports — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
 </tr>
 <tr>
 <td>Webhook ServiceAccount token stays mounted</td>

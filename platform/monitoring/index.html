@@ -2447,10 +2447,6 @@ swallows every alert, which is what most of this page is about.</p>
 <td><code>monitoring</code></td>
 </tr>
 <tr>
-<td>Stage</td>
-<td><code>08-services</code>; the CRDs in <code>01-crds</code></td>
-</tr>
-<tr>
 <td>Depends on</td>
 <td><a href="../rook-ceph/">Rook-Ceph</a> for Prometheus and Grafana volumes, <a href="../authentik/">Authentik</a> for the Grafana login</td>
 </tr>
@@ -2475,11 +2471,12 @@ swallows every alert, which is what most of this page is about.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="crds">CRDs<a class="headerlink" href="#crds" title="Permanent link">&para;</a></h3>
 <p>The <code>monitoring.coreos.com</code> CRDs are a separate <code>prometheus-operator-crds</code>
-Application in <code>01-crds</code>, from the prometheus-community chart of that name,
-and this chart runs with <code>crds.enabled: false</code>. Cilium, cert-manager, External
-Secrets, Rook and OpenBao all render ServiceMonitors or PrometheusRules in
-stages ahead of <code>08-services</code>, and a missing kind fails the sync that
-<a href="../../architecture/gitops/">gates the stage</a>. The Application has no resources
+Application, from the prometheus-community chart of that name, and this chart
+runs with <code>crds.enabled: false</code>. Cilium, cert-manager, External Secrets, Rook
+and OpenBao all render ServiceMonitors or PrometheusRules, and a missing kind
+fails their sync until the CRDs exist — see
+<a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>. The
+Application has no resources
 finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus
 and Alertmanager with them, in place.</p>
 <div class="admonition warning">

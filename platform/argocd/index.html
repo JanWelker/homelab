@@ -2252,7 +2252,7 @@
 <h1 id="argocd">ArgoCD<a class="headerlink" href="#argocd" title="Permanent link">&para;</a></h1>
 <p>ArgoCD is the delivery layer: everything in <code>payload/</code> and in the workloads
 repository reaches the cluster through it. How the Applications are generated
-and staged is in <a href="../../architecture/gitops/">GitOps Strategy</a>; this page covers
+and synced is in <a href="../../architecture/gitops/">GitOps Strategy</a>; this page covers
 the chart values and the supporting resources around ArgoCD itself.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
@@ -2266,10 +2266,6 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <tr>
 <td>Namespace</td>
 <td><code>argocd</code></td>
-</tr>
-<tr>
-<td>Stage</td>
-<td><code>argocd</code> itself is applied by hand at bootstrap and is not staged; <code>argocd-projects</code> is <code>00-projects</code>, <code>argocd-config</code> is <code>08-services</code></td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2328,10 +2324,6 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>Restores health assessment for <code>Application</code> resources, dropped in ArgoCD 1.8, so <code>argocd</code> reports the health of the ApplicationSet rather than a permanent Healthy</td>
 </tr>
 <tr>
-<td><code>applicationsetcontroller.enable.progressive.syncs</code></td>
-<td>Without it a <code>RollingSync</code> strategy is ignored and every Application syncs at once</td>
-</tr>
-<tr>
 <td><code>policy.default: ""</code></td>
 <td>An authenticated user with no matching Authentik group gets no access, not read-only-everything</td>
 </tr>
@@ -2348,9 +2340,9 @@ Renovate does not see it: re-copy it when ArgoCD moves a minor version.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span></code></pre></div>
-<p>Every Application should be <code>Synced</code> and <code>Healthy</code>. Where a platform rollout is
-stuck, the <a href="../../architecture/gitops/#what-the-staging-costs">ApplicationSet status</a>
-names the Application it is waiting for.</p>
+<p>Every Application should be <code>Synced</code> and <code>Healthy</code>. One that stays <code>OutOfSync</code>
+has exhausted its retries and waits for a hand sync — see
+<a href="../../architecture/gitops/#sync-policy">Sync policy</a>.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">The local admin is disabled; Authentik is the login</p>

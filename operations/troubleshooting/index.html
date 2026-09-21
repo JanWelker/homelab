@@ -2234,16 +2234,14 @@ with the table.</p>
 delivery path itself is not monitored, so an empty inbox does not prove
 anything.</p>
 <h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
-<p>The durable fix is a revert commit. To stop the bleeding first:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>app<span class="w"> </span>rollback<span class="w"> </span>&lt;app&gt;
-</span></code></pre></div>
-<p>Nothing has to be disabled: the generated platform Applications have no
-automated sync under <code>RollingSync</code>, so a rollback holds until that
-Application's next change — see
-<a href="../../architecture/gitops/#what-the-staging-costs">what the staging costs</a>.
-Do not patch their <code>spec</code> to pin them; the next reconcile copies the file back
-over it. The exception is <code>argocd</code> itself, which is not generated and runs with
-<code>automated</code>: pinning it means restoring <code>syncPolicy.automated</code> afterwards.</p>
+<p>The only fix is a revert commit. Every Application runs with automated sync,
+so ArgoCD refuses <code>argocd app rollback</code>, and a manual sync to an older revision
+is undone within one polling interval. Do not patch a generated Application's
+<code>spec</code> to switch automated sync off either; the next ApplicationSet reconcile
+copies the file back over it — see
+<a href="../../architecture/gitops/#sync-policy">Sync policy</a>. The exception is
+<code>argocd</code> itself, which is not generated: <code>argocd app set argocd --sync-policy
+none</code> holds a rollback until <code>syncPolicy.automated</code> is restored.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Do not fix a broken workload with <code>kubectl edit</code>. Under the ApplicationSet nothing reverts the edit, so the cluster quietly stops matching Git and the next sync of that Application undoes your fix without warning. Change the manifest instead.</p>

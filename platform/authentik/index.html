@@ -2576,10 +2576,6 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 <td><code>authentik</code></td>
 </tr>
 <tr>
-<td>Stage</td>
-<td><code>08-services</code></td>
-</tr>
-<tr>
 <td>Depends on</td>
 <td><a href="../openbao/">OpenBao</a> for its OIDC client secrets and database password, <a href="../rook-ceph/">Rook-Ceph</a> for Postgres</td>
 </tr>
@@ -2686,7 +2682,7 @@ Prometheus and Alertmanager have no route of their own, so theirs are in
 </tr>
 <tr>
 <td>Workload blueprints as a <code>projected</code> volume, <code>optional: true</code></td>
-<td><code>blueprints.configMaps</code> renders a plain <code>configMap</code> volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive in <code>12-workloads</code>, four stages after Authentik must be Healthy, so a required mount <a href="../../architecture/gitops/">deadlocks the rollout</a></td>
+<td><code>blueprints.configMaps</code> renders a plain <code>configMap</code> volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the <a href="../../architecture/gitops/#workloads-live-in-a-second-repository">workloads</a>, which a fresh cluster may not have yet, so a required mount would keep the worker from starting</td>
 </tr>
 </tbody>
 </table>

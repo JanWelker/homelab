@@ -2291,10 +2291,6 @@ hostname the cluster serves.</p>
 <td><code>cert-manager</code>; the certificates it issues land in <code>kube-system</code></td>
 </tr>
 <tr>
-<td>Stage</td>
-<td><code>03-controllers</code> for the controller; <code>06-certificates</code> for the <code>certificates</code> Application with the ClusterIssuers and Certificates</td>
-</tr>
-<tr>
 <td>Depends on</td>
 <td><a href="../external-secrets/">External Secrets</a> for the Route53 credential, so transitively on <a href="../openbao/">OpenBao</a></td>
 </tr>
@@ -2323,7 +2319,7 @@ hostname the cluster serves.</p>
 <tbody>
 <tr>
 <td>Issuers and certificates in their own <code>certificates</code> Application</td>
-<td>Kept with cert-manager they would hold <code>03-controllers</code> until OpenBao, two stages later, held the Route53 credentials — see <a href="../../architecture/gitops/">GitOps</a></td>
+<td>Kept with cert-manager, the controller would read Degraded until OpenBao held the Route53 credentials — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
 </tr>
 <tr>
 <td>Three sync waves inside <code>certificates</code>: <code>ExternalSecret</code>, then the ClusterIssuers, then the Certificates</td>

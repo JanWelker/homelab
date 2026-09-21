@@ -2175,14 +2175,12 @@ ArgoCD. Every one of them exists because bare metal does not come with the
 thing a cloud provider would have handed you: no load balancer, no managed
 certificates, no block storage API, no identity provider, no backup service.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<p>Alphabetical, with the namespace it lands in and the <a href="#rollout-order">rollout stage</a>
-it belongs to.</p>
+<p>Alphabetical, with the namespace it lands in.</p>
 <table>
 <thead>
 <tr>
 <th>Component</th>
 <th>Namespace</th>
-<th>Stage</th>
 <th>What it does</th>
 </tr>
 </thead>
@@ -2190,139 +2188,116 @@ it belongs to.</p>
 <tr>
 <td><a href="argocd/">argocd</a></td>
 <td><code>argocd</code></td>
-<td>hand-applied</td>
 <td>ArgoCD itself and the <code>platform</code> ApplicationSet</td>
 </tr>
 <tr>
 <td>argocd-config</td>
 <td><code>argocd</code></td>
-<td><code>08-services</code></td>
 <td>ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see <a href="argocd/">ArgoCD</a></td>
 </tr>
 <tr>
 <td>argocd-projects</td>
 <td><code>argocd</code></td>
-<td><code>00-projects</code></td>
 <td>The <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects</td>
 </tr>
 <tr>
 <td><a href="authentik/">authentik</a></td>
 <td><code>authentik</code></td>
-<td><code>08-services</code></td>
 <td>Single sign-on for every platform UI</td>
 </tr>
 <tr>
 <td>backup</td>
 <td><code>backup</code></td>
-<td><code>08-services</code></td>
 <td>The CSI snapshot controller, Velero's buckets and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="cert-manager/">cert-manager</a></td>
 <td><code>cert-manager</code></td>
-<td><code>03-controllers</code>, issuers and certificates <code>06-certificates</code></td>
 <td>Let's Encrypt wildcards over a Route53 DNS-01 challenge</td>
 </tr>
 <tr>
 <td><a href="cilium/">cilium</a></td>
 <td><code>kube-system</code></td>
-<td><code>02-network</code></td>
 <td>CNI, <code>kube-proxy</code> replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble</td>
 </tr>
 <tr>
 <td><a href="cloudnative-pg/">cloudnative-pg</a></td>
 <td><code>cnpg-system</code></td>
-<td><code>03-controllers</code></td>
 <td>The PostgreSQL operator every workload database runs on</td>
 </tr>
 <tr>
 <td><a href="external-dns/">external-dns</a></td>
 <td><code>external-dns</code></td>
-<td><code>06-certificates</code></td>
 <td>Publishes Route53 records from HTTPRoutes</td>
 </tr>
 <tr>
 <td><a href="external-secrets/">external-secrets</a></td>
 <td><code>external-secrets</code></td>
-<td><code>03-controllers</code></td>
 <td>Bridges OpenBao to native Kubernetes Secrets</td>
 </tr>
 <tr>
 <td><a href="gateway-api/">gateway-api</a></td>
 <td><code>gateway-system</code></td>
-<td><code>01-crds</code> CRDs, <code>07-ingress</code> Gateways</td>
 <td>The two Gateways and the HTTP-to-HTTPS redirect</td>
 </tr>
 <tr>
 <td>kube-vip</td>
 <td><code>kube-system</code></td>
-<td><code>02-network</code></td>
 <td>Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see <a href="../operations/control-plane-vip/">Control Plane VIP</a></td>
 </tr>
 <tr>
 <td>kubelet-csr-approver</td>
 <td><code>kubelet-csr-approver</code></td>
-<td><code>03-controllers</code></td>
 <td>Approves <code>kubelet-serving</code> CSRs against the inventory — see <a href="metrics-server/#verifying-the-kubelet-instead-of-trusting-it">Metrics Server</a></td>
 </tr>
 <tr>
 <td><a href="kured/">kured</a></td>
 <td><code>kured</code></td>
-<td><code>11-policy</code></td>
 <td>Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates</td>
 </tr>
 <tr>
 <td><a href="logging/">logging</a></td>
 <td><code>logging</code></td>
-<td><code>08-services</code> to <code>10-agents</code></td>
 <td>Loki and Grafana Alloy, for container, journal and audit logs</td>
 </tr>
 <tr>
 <td><a href="metrics-server/">metrics-server</a></td>
 <td><code>kube-system</code></td>
-<td><code>08-services</code></td>
 <td>The <code>metrics.k8s.io</code> API behind <code>kubectl top</code> and every HPA</td>
 </tr>
 <tr>
 <td><a href="monitoring/">monitoring</a></td>
 <td><code>monitoring</code></td>
-<td><code>01-crds</code> CRDs, <code>08-services</code> stack</td>
 <td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics</td>
 </tr>
 <tr>
 <td><a href="openbao/">openbao</a></td>
 <td><code>openbao</code></td>
-<td><code>05-secrets</code></td>
 <td>Cluster-wide secret store</td>
 </tr>
 <tr>
 <td><a href="rook-ceph/">rook-ceph</a></td>
 <td><code>rook-ceph</code></td>
-<td><code>03-controllers</code> operator, <code>04-storage</code> cluster</td>
 <td>Replicated block storage and an S3 object store</td>
 </tr>
 <tr>
 <td><a href="tetragon/">tetragon</a></td>
 <td><code>kube-system</code></td>
-<td><code>10-agents</code></td>
 <td>Runtime detection: execs, credential changes and sensitive file reads from the kernel</td>
 </tr>
 <tr>
 <td><a href="security-policies/">security policies</a></td>
 <td><code>kube-system</code></td>
-<td><code>11-policy</code></td>
 <td>Pod Security Admission levels, default-deny ingress policies and image admission policies</td>
 </tr>
 <tr>
 <td><a href="trivy-operator/">trivy-operator</a></td>
 <td><code>trivy-system</code></td>
-<td><code>11-policy</code></td>
 <td>Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD</td>
 </tr>
 <tr>
 <td><a href="velero/">velero</a></td>
 <td><code>backup</code></td>
-<td><code>09-backends</code></td>
 <td>Volume and resource backups to the Ceph object store</td>
 </tr>
 </tbody>
@@ -2421,92 +2396,88 @@ generates one Application per <code>payload/platform/*/application.yaml</code> p
 <a href="../development/add-workload/">workloads repository</a>. Each component
 directory holds exactly one <code>application.yaml</code>; everything else in it is what
 that Application deploys. <a href="../architecture/gitops/">GitOps Strategy</a> has the
-structure and what the staging costs.</p>
+structure and the sync policy.</p>
 <h2 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h2>
-<p>The ApplicationSet syncs its Applications in stages, selected by the
-<code>homelab.wlkr.ch/stage</code> label, and starts a stage only when every Application
-in the one before it is Synced and Healthy; <a href="../architecture/gitops/#rollout-order">GitOps
-Strategy</a> covers how the gating works.</p>
+<p>Nothing enforces an order: every Application syncs as soon as it exists and
+converges by retry and health, as <a href="../architecture/gitops/#bootstrap-convergence">GitOps
+Strategy</a> explains. This is
+the order a fresh cluster settles in, and what each layer is waiting for
+while it is not yet Healthy.</p>
 <table>
 <thead>
 <tr>
-<th>Stage</th>
+<th>Layer</th>
 <th>Applications</th>
 <th>Waits for</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>00-projects</code></td>
-<td><code>argocd-projects</code></td>
+<td>Projects and CRDs</td>
+<td><code>argocd-projects</code>, <code>gateway-api-crds</code>, <code>prometheus-operator-crds</code></td>
 <td>—</td>
 </tr>
 <tr>
-<td><code>01-crds</code></td>
-<td><code>gateway-api-crds</code>, <code>prometheus-operator-crds</code></td>
-<td>the AppProjects every Application names</td>
-</tr>
-<tr>
-<td><code>02-network</code></td>
+<td>Network</td>
 <td><code>cilium</code>, <code>kube-vip</code></td>
 <td>the Gateway API CRDs Cilium's operator reads at startup</td>
 </tr>
 <tr>
-<td><code>03-controllers</code></td>
+<td>Controllers</td>
 <td><code>cert-manager</code>, <code>cloudnative-pg</code>, <code>external-secrets</code>, <code>kubelet-csr-approver</code>, <code>rook-ceph-operator</code>, <code>snapshot-controller</code></td>
 <td>a network; each brings its own CRDs</td>
 </tr>
 <tr>
-<td><code>04-storage</code></td>
+<td>Storage</td>
 <td><code>rook-ceph</code>, <code>rook-ceph-cluster</code></td>
 <td>the Rook operator and its CRDs</td>
 </tr>
 <tr>
-<td><code>05-secrets</code></td>
+<td>Secrets</td>
 <td><code>openbao</code></td>
 <td><code>rook-ceph-block</code> for its volumes. <strong>Bootstrap pauses here</strong> until OpenBao is initialised and unsealed</td>
 </tr>
 <tr>
-<td><code>06-certificates</code></td>
+<td>Certificates</td>
 <td><code>certificates</code>, <code>external-dns</code></td>
 <td>a working <code>ClusterSecretStore</code> and the Route53 credentials in OpenBao</td>
 </tr>
 <tr>
-<td><code>07-ingress</code></td>
+<td>Ingress</td>
 <td><code>gateway-api</code></td>
 <td>the wildcard certificates the Gateways terminate TLS with</td>
 </tr>
 <tr>
-<td><code>08-services</code></td>
+<td>Services</td>
 <td><code>argocd-config</code>, <code>authentik</code>, <code>backup</code>, <code>kube-prometheus-stack</code>, <code>logging</code>, <code>metrics-server</code></td>
 <td>secrets, storage, the Gateways, and approved kubelet certificates</td>
 </tr>
 <tr>
-<td><code>09-backends</code></td>
+<td>Backends</td>
 <td><code>loki</code>, <code>velero</code></td>
 <td>the buckets <code>logging</code> and <code>backup</code> claim</td>
 </tr>
 <tr>
-<td><code>10-agents</code></td>
-<td><code>alloy</code></td>
+<td>Agents</td>
+<td><code>alloy</code>, <code>tetragon</code></td>
 <td>Loki, so the collector has somewhere to ship</td>
 </tr>
 <tr>
-<td><code>11-policy</code></td>
-<td><code>kured</code>, <code>security</code></td>
-<td>everything else, so policies label namespaces that exist and kured reboots a converged cluster</td>
+<td>Policy</td>
+<td><code>kured</code>, <code>security</code>, <code>trivy-operator</code></td>
+<td>namespaces to label and a Prometheus to scrape; kured reboots only on a staged update, never on a fresh install</td>
 </tr>
 <tr>
-<td><code>12-workloads</code></td>
+<td>Workloads</td>
 <td><code>workloads</code></td>
-<td>the whole platform. It deploys the <code>apps</code> ApplicationSet, and nothing in the <a href="../development/add-workload/">workloads repository</a> is generated before it</td>
+<td>nothing on its own; the workloads it generates wait for the platform resources they reference — see the <a href="../development/add-workload/">workloads repository</a></td>
 </tr>
 </tbody>
 </table>
-<p>The <code>ClusterSecretStore</code> lives with OpenBao in <code>05-secrets</code> rather than with
-External Secrets, and cert-manager's issuers and certificates are their own
-<code>certificates</code> Application, for the same reason: neither can go Ready until
-OpenBao holds what they read.</p>
+<p>The <code>ClusterSecretStore</code> lives with OpenBao rather than with External Secrets,
+and cert-manager's issuers and certificates are their own <code>certificates</code>
+Application, so that the controllers report Healthy on their own and the
+resources that wait for OpenBao are the ones that say so.</p>
 
 
 
