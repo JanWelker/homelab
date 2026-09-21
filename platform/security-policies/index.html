@@ -2666,13 +2666,12 @@ Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the ku
 <p>A rule that is word-for-word the same in every namespace file is lifted
 into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace and
 with <code>enableDefaultDeny</code> off in both directions. The selector is not <code>{}</code>
-because that also takes the Gateway's <code>reserved:ingress</code> endpoint, and any
-rule on it makes the Gateway's Envoy answer <code>403 Access denied</code> to every
-caller from inside the cluster. Default deny is off because a cluster-wide
-egress rule would otherwise put every pod in a namespace without policies
-into egress default-deny. DNS is the only rule lifted; the intra-namespace
-and node-probe rules would qualify but change what a namespace file says,
-so they stay.</p>
+because that also takes the Gateway's <code>reserved:ingress</code> endpoint and the
+health endpoint, which then carry a policy they have no use for. Default
+deny is off because a cluster-wide egress rule would otherwise put every
+pod in a namespace without policies into egress default-deny. DNS is the
+only rule lifted; the intra-namespace and node-probe rules would qualify
+but change what a namespace file says, so they stay.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -2699,8 +2698,8 @@ so they stay.</p>
 <td>The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else</td>
 </tr>
 <tr>
-<td>Egress within the namespace, to kube-dns with a DNS rule, and to <code>kube-apiserver</code> where there is a Kubernetes client</td>
-<td><code>toFQDNs</code> only works when the DNS proxy sees the answers; <code>matchPattern: "*"</code> refuses nothing and makes every lookup visible in Hubble. The <code>kube-apiserver</code> entity is the endpoints behind <code>kubernetes.default</code>; no pod uses the kube-vip address</td>
+<td>Egress within the namespace, and to <code>kube-apiserver</code> where there is a Kubernetes client</td>
+<td>The <code>kube-apiserver</code> entity is the endpoints behind <code>kubernetes.default</code>; no pod uses the kube-vip address. DNS is not repeated: the cluster-wide rule above sends every lookup through the proxy, which is what makes <code>toFQDNs</code> work and every lookup visible in Hubble</td>
 </tr>
 <tr>
 <td>Egress to external names as <code>toFQDNs</code></td>
