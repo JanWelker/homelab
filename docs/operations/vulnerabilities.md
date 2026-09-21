@@ -73,9 +73,12 @@ and nothing here can speed it up; Renovate takes the release when it exists.
 | `prometheus-config-reloader` v0.91.0 (Alloy's sidecar) | Go stdlib, 4 HIGH | **Waiting on chart release.** The Alloy chart pins it; `main` already carries v0.94.0. Renovate takes the next chart. |
 | Everything else | `google.golang.org/grpc` one or two patches behind, Go stdlib one patch behind | **Routine churn.** Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding. |
 
-The three exposed-secret findings are the same one: `ssl-cert-snakeoil.key`,
-the placeholder Debian's `ssl-cert` package generates in every Postgres image.
-It is not a secret.
+The exposed-secret findings are two artifacts. `ssl-cert-snakeoil.key` in the
+three Postgres pods is the placeholder Debian's `ssl-cert` package generates
+in every image. The "Azure Storage Account Key" in Nextcloud is the Azurite
+development key that `azure-storage-common` ships in `Resources.php`; it is
+public, and the nextcloud namespace's ignore policy drops that rule
+(homelab-apps#31). Neither is a secret.
 
 ## What is not filed, and why
 
@@ -135,7 +138,35 @@ empty, whatever the containers set. Where they land:
 | Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy | **`KSV-0118` only, fixed.** Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's. |
 | Authentik | **Fixed** (#792): non-root, no capabilities, no escalation, runtime seccomp, at pod and container level. Read-only root not attempted, the image writes under `/media` and `/templates`. |
 | Nextcloud, Home Assistant | **Seccomp only** (homelab-apps#30). Both images start as root by design, Apache dropping to `www-data` and Home Assistant under s6, so `runAsNonRoot` and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp. |
-| Grafana's sidecars, Velero, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. #663. |
+| Velero | **Node agent and plugin init container confined** (#794). The node agent keeps root and its capabilities, kopia reads every pod volume whoever owns the files. The `velero` container is left as it was: its image runs as a named user, which `runAsNonRoot` cannot verify without a `runAsUser`, and [Backups](backups.md#other-settings-worth-knowing) names a real backup as the condition for either. |
+| trivy-server, nextcloud-exporter | **Fixed** (homelab-apps#32, #31): escalation off, capabilities dropped, seccomp; the exporter also read-only. |
+| Grafana's sidecars, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. #663. |
+
+### What the medium count is
+
+Two things make up most of it and neither is a finding here:
+
+- **`KSV-0125`, "untrusted registry", on nearly every container.** The
+  check's built-in trusted list is Azure, ECR and GCR, and nothing on this
+  cluster is pulled from any of them. The list is a check parameter that
+  Trivy Operator does not expose, so the count stays. It says nothing about
+  the images.
+- **Root, privilege escalation and unconfined seccomp** are now almost
+  entirely in `rook-ceph` and `kube-system`, where the load-bearing table
+  above applies. Outside those two namespaces the remaining rows are the ones
+  named in the pod table.
+
+### Reports that outlive their workload
+
+A `ConfigAuditReport` has no TTL; it goes when its owning ReplicaSet is
+garbage-collected, and Kubernetes keeps ten superseded ReplicaSets per
+Deployment. Every old revision therefore keeps its findings on the dashboard,
+nine of them on this pass, five on old trivy-operator revisions. Upstream:
+[aquasecurity/trivy-operator#3069](https://github.com/aquasecurity/trivy-operator/issues/3069).
+The Deployments this repository can set `revisionHistoryLimit` on keep one or
+two (homelab-apps#33); Nextcloud's chart has no value for it. When a count
+looks wrong, check whether the ReplicaSet in the report name still has
+replicas.
 
 ### RBAC
 
