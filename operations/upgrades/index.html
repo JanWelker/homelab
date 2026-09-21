@@ -2212,6 +2212,11 @@ must drain the node first. In its place <code>flatcar-reboot-sentinel.timer</cod
 update is staged. <a href="../../platform/kured/">Kured</a> consumes that marker: it
 drains, reboots and uncordons, one node at a time and only while Ceph and etcd
 are healthy. To move sooner, see <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
+<p>Three alerts in <code>monitoring/node-update-rules.yaml</code> watch that this actually
+happens, because Trivy scans containers and not the host: <code>NodeRebootPending</code>
+when a node has carried the marker for two days, <code>NodeOsVersionDrift</code> and
+<code>NodeKubeletVersionDrift</code> when the nodes have run different Flatcar or kubelet
+versions for three.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
 </span></code></pre></div>
 <h2 id="kubernetes-and-containerd">Kubernetes and containerd<a class="headerlink" href="#kubernetes-and-containerd" title="Permanent link">&para;</a></h2>
