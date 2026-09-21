@@ -56,24 +56,13 @@ metadata:
 spec:
   description: >-
     Default-deny egress for OpenBao. Raft, retry_join and standby forwarding
-    stay within the namespace and need the headless names resolved before
-    a pod can start. The API server answers the TokenReview behind every
-    Kubernetes-auth login and receives the pod's own active/sealed labels.
+    stay within the namespace. The API server answers the TokenReview
+    behind every Kubernetes-auth login and receives the pod's own
+    active/sealed labels.
     Shamir seal, file audit: nothing outside the cluster.
   endpointSelector: {}
   egress:
     - toEndpoints:
         - {}
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s:k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
     - toEntities:
         - kube-apiserver

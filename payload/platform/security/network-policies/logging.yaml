@@ -52,22 +52,11 @@ spec:
   description: >-
     Default-deny egress for the logging stack. Alloy discovers the pods on
     its node through the API server, and Loki's rules sidecar watches
-    ConfigMaps there. Loki resolves names over TCP as well as UDP.
+    ConfigMaps there.
   endpointSelector: {}
   egress:
     - toEndpoints:
         - {}
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s:k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
     - toEntities:
         - kube-apiserver
 ---

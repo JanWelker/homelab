@@ -94,24 +94,12 @@ metadata:
 spec:
   description: >-
     Default-deny egress for Argo CD. Everything may reach its peers in the
-    namespace and resolve names; the Redis and HAProxy init containers do
-    not start without DNS. The API server and the outside world are per
-    workload below.
+    namespace. The API server and the outside world are per workload
+    below.
   endpointSelector: {}
   egress:
     - toEndpoints:
         - {}
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s:k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

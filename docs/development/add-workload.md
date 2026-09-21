@@ -214,20 +214,11 @@ metadata:
 spec:
   endpointSelector: {}
   egress:
-    # Within the namespace, and DNS through the proxy so toFQDNs works.
+    # Within the namespace. DNS is not listed: the cluster-wide policy in
+    # payload/platform/security/network-policies/ sends every pod's
+    # lookups through the proxy, which is what makes toFQDNs work.
     - toEndpoints:
         - {}
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s:k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
     # Every name the application dials, by name. Authentik counts: its
     # hostname resolves to the Gateway's own address, which is world.
     - toFQDNs:
