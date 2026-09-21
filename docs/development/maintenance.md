@@ -105,3 +105,15 @@ found and why it skipped any. The rules, each of which is written into
     prerelease and is dropped from every range that does not name one.
 - **Check that the currently pinned version passes its own rule.** A filter
     that excludes what is deployed excludes everything, silently.
+
+## Language statistics
+
+GitHub's language bar comes from
+[Linguist](https://github.com/github-linguist/linguist), which counts bytes of
+files it classifies as a *language*. YAML is classified as data and Markdown as
+prose, so both are excluded by default and the bar reported this repository as
+Shell and Jinja. `.gitattributes` marks YAML detectable, and marks the three
+vendored Grafana dashboards as vendored, because their upstream JSON blobs are
+more than half the repository's YAML bytes and would otherwise be most of the
+bar. A vendored dashboard added later needs its own line there; GitHub
+recalculates on the next push to `main`.
