@@ -147,6 +147,91 @@ data:
                 External Secrets Operator. Day to day, ESO is the only reader;
                 anything else is a person with the root token, or a token that
                 should not exist.
+      - name: tetragon
+        # Detections that need only Tetragon's exec events, which carry the
+        # binary's setuid bits, file capabilities and link count. The export
+        # deny list keeps host, cilium and kube-system execs out of this
+        # stream; the node journal covers the host. See docs/platform/tetragon.md
+        rules:
+          - alert: TetragonSudoInContainer
+            expr: |
+              sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
+                count_over_time(
+                  {namespace="kube-system", container="export-stdout"}
+                    |= "process_exec"
+                    |= "/sudo"
+                    | json
+                    | process_exec_process_binary=~".*/sudo"
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                sudo ran in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
+              description: >-
+                No image here has a reason to ship sudo, let alone run it. The
+                exec event carries the arguments and the parent process.
+          - alert: TetragonPrivilegedExec
+            expr: |
+              sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
+                count_over_time(
+                  {namespace="kube-system", container="export-stdout"}
+                    |= "process_exec"
+                    |= "PRIVILEGES_RAISED_EXEC_FILE"
+                    | json
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.process_exec_process_binary }} raised privileges on exec in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
+              description: >-
+                A setuid, setgid or file-capability binary ran in a container
+                and came out with more privileges than its caller. That is
+                what enableProcessCred records binary_properties for.
+          - alert: TetragonFilelessExec
+            expr: |
+              sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
+                count_over_time(
+                  {namespace="kube-system", container="export-stdout"}
+                    |= "process_exec"
+                    | json
+                    | process_exec_process_binary=~"^/(memfd:|proc/self/fd/).*"
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                Fileless exec in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
+              description: >-
+                The binary exists only in memory, through memfd_create or an
+                anonymous file descriptor. Nothing legitimate here does that.
+          - alert: TetragonDeletedBinaryExec
+            expr: |
+              sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
+                count_over_time(
+                  {namespace="kube-system", container="export-stdout"}
+                    |= "process_exec"
+                    |= "inode"
+                    | json
+                    | process_exec_process_binary_properties_file_inode_links="0"
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.process_exec_process_binary }} ran after being deleted in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
+              description: >-
+                The binary's inode has no links left: opened, unlinked, then
+                executed, to leave nothing on disk for a scanner.
       - name: systemd-journal
         rules:
           - alert: NodeSshLogin
