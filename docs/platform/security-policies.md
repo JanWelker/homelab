@@ -45,6 +45,7 @@ an informed change.
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap, which baseline does not allow |
+| `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
 | `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
 
 `privileged` here means "not yet reduced", not "unexamined": `audit` and `warn`
@@ -54,7 +55,7 @@ after `CreateNamespace=true`.
 
 ### Network policies
 
-Ingress only, in nine namespaces, as `CiliumNetworkPolicy` in
+Ingress only, in ten namespaces, as `CiliumNetworkPolicy` in
 `network-policies.yaml`. Every policy also admits traffic from within the
 namespace and from `host` and `remote-node` for probes.
 
@@ -80,6 +81,7 @@ Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 | `kured` | Prometheus |
 | `logging` | Prometheus and Grafana, both in `monitoring` |
 | `cnpg-system` | Prometheus; the webhooks are called by the API server from the node |
+| `trivy-system` | Prometheus; scan jobs reach the Trivy server within the namespace |
 
 The `monitoring` callers are easy to lose: Kured blocks every reboot when its
 Prometheus query fails, the Authentik outpost is what `prometheus.infra` and

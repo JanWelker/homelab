@@ -15,7 +15,6 @@ spec:
   sourceRepos:
     - https://github.com/JanWelker/homelab-apps.git
     - https://nextcloud.github.io/helm/
-    - https://aquasecurity.github.io/helm-charts/
   # Any namespace but the platform's. authentik stays open: a workload ships
   # its Authentik blueprint as a ConfigMap there, which is the one thing the
   # platform asks workloads to write into it.
@@ -56,21 +55,12 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: "!cilium-secrets"
       server: https://kubernetes.default.svc
-  # What the workloads demonstrably need at cluster scope: their namespaces,
-  # and the CRDs, cluster RBAC and compliance reports the trivy-operator chart
-  # renders. Cluster RBAC is still cluster RBAC; the boundary this draws is
-  # which repositories may define it and which namespaces it may not touch.
+    - namespace: "!trivy-system"
+      server: https://kubernetes.default.svc
+  # What the workloads demonstrably need at cluster scope: their namespaces.
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
-    - group: apiextensions.k8s.io
-      kind: CustomResourceDefinition
-    - group: rbac.authorization.k8s.io
-      kind: ClusterRole
-    - group: rbac.authorization.k8s.io
-      kind: ClusterRoleBinding
-    - group: aquasecurity.github.io
-      kind: "*"
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject

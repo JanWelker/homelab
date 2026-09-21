@@ -1,0 +1,238 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 11-policy
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # yamllint disable-line rule:line-length
+    link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    # Aqua Security's own chart, from the repository Aqua publishes.
+    - repoURL: https://aquasecurity.github.io/helm-charts/
+      chart: trivy-operator
+      targetRevision: 0.36.0
+      helm:
+        valuesObject:
+          # Every namespace, including this one. Scan jobs are cheap and an
+          # exclusion list is one more thing to keep in step with reality.
+          targetNamespaces: ""
+          excludeNamespaces: ""
+
+          operator:
+            replicas: 1
+            # A superseded ReplicaSet keeps its ConfigAuditReport until the
+            # ReplicaSet itself is garbage-collected (trivy-operator#3069),
+            # and this Deployment rolls on every values change. One old
+            # revision is enough to roll back to.
+            revisionHistoryLimit: 1
+
+            # All six scanners. Between them they cover what kube-bench,
+            # kubesec and a CVE scanner would each do separately.
+            vulnerabilityScannerEnabled: true
+            exposedSecretScannerEnabled: true
+            configAuditScannerEnabled: true
+            rbacAssessmentScannerEnabled: true
+            infraAssessmentScannerEnabled: true
+            clusterComplianceEnabled: true
+
+            # SBOMs are what make ClusterVulnerabilityReports possible.
+            sbomGenerationEnabled: true
+
+            # The cache is off: reusing a cached SBOM writes the SbomReport
+            # and then loses the VulnerabilityReport, which cost 80 containers
+            # their CVE data. Redundant scans are the cheaper mistake. See
+            # docs/platform/trivy-operator.md.
+            clusterSbomCacheEnabled: false
+
+            # Reports are rebuilt from the cluster, so a stale one is worse
+            # than a missing one. This also bounds what etcd has to hold:
+            # every report is a CRD object, and there is one per workload.
+            scannerReportTTL: "24h"
+            scanJobTTL: "10m"
+            scanSecretTTL: "10m"
+
+            # The Job's activeDeadlineSeconds. It is the outer limit, so the
+            # trivy.timeout below is only reachable when this is at least as
+            # long. The chart's 5m killed every Nextcloud and Authentik scan.
+            # See docs/platform/trivy-operator.md.
+            scanJobTimeout: "20m"
+
+            # Only the live ReplicaSet of a Deployment, not every old one.
+            vulnerabilityScannerScanOnlyCurrentRevisions: true
+            configAuditScannerScanOnlyCurrentRevisions: true
+
+            # One shared Trivy server instead of every scan job downloading
+            # the vulnerability database for itself; see trivy.mode below.
+            builtInTrivyServer: true
+
+            # Lets a scan job reuse a namespace's imagePullSecrets, which is
+            # how an image from a private registry gets scanned at all.
+            accessGlobalSecretsAndServiceAccount: true
+
+            metricsFindingsEnabled: true
+            # Per-finding series: these are what the dashboard's tables read.
+            metricsExposedSecretInfo: true
+            metricsConfigAuditInfo: true
+            metricsRbacAssessmentInfo: true
+            metricsInfraAssessmentInfo: true
+            metricsImageInfo: true
+            metricsClusterComplianceInfo: true
+            # One series per CVE per container. Off on purpose: it is the only
+            # one of these that can add six figures of series by itself.
+            # `kubectl get vulnerabilityreports` has the same detail.
+            metricsVulnIdEnabled: false
+
+          serviceMonitor:
+            enabled: true
+
+          # Pod-level, for the operator itself. The image runs as uid 10000
+          # and the chart's container context drops the rest; the pod-level
+          # field is the one the config audit keys on (KSV-0118).
+          podSecurityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+
+          trivyOperator:
+            # Scan jobs may land on a control-plane node like anything else.
+            scanJobTolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
+
+          trivy:
+            # Set by builtInTrivyServer; spelled out so the mode is readable
+            # here rather than only in the rendered output.
+            mode: ClientServer
+
+            storageClassEnabled: true
+            storageClassName: rook-ceph-block
+            storageSize: 5Gi
+
+            # Unfixed findings stay in the report. They are the ones that
+            # decide whether a base image is the wrong one.
+            ignoreUnfixed: false
+            severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+
+            # CVSS and the package path, so a report can be triaged without
+            # going back to the registry for context. Description and Links
+            # are deliberately absent -- they were 73% of the payload and
+            # cost two workloads their reports entirely. See
+            # docs/platform/trivy-operator.md.
+            additionalVulnerabilityReportFields: CVSS,Target,Class,PackagePath,PackageType
+
+            # Per-namespace Rego, evaluated by Trivy as Rego v0. Only for the
+            # two Debian-based application images whose full report exceeds
+            # the etcd request limit; see docs/platform/trivy-operator.md.
+            ignorePolicy.nextcloud: |
+              package trivy
+
+              default ignore = false
+
+              # Debian has no fix for almost every finding in this image, and
+              # a report that lists them all is too large for etcd. Keep every
+              # HIGH and CRITICAL, and everything that has a fix.
+              ignore {
+                object.get(input, "FixedVersion", "") == ""
+                input.Severity != "HIGH"
+                input.Severity != "CRITICAL"
+              }
+
+              # The Azurite development key shipped in every copy of
+              # azure-storage-common, matched by the secret scanner as a real
+              # Azure account key. It is public, and it is not ours.
+              ignore {
+                input.RuleID == "azure-storage-account-key"
+              }
+            ignorePolicy.authentik: |
+              package trivy
+
+              default ignore = false
+
+              # Debian has no fix for almost every finding in this image, and
+              # a report that lists them all is too large for etcd. Keep every
+              # HIGH and CRITICAL, and everything that has a fix.
+              ignore {
+                object.get(input, "FixedVersion", "") == ""
+                input.Severity != "HIGH"
+                input.Severity != "CRITICAL"
+              }
+
+            # The chart already runs the server as 65534 with a read-only
+            # root; this adds what it leaves out. Scan jobs get theirs from
+            # trivyOperator.scanJobPodTemplateContainerSecurityContext.
+            server:
+              securityContext:
+                privileged: false
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+
+            # Trades scan wall-clock for a smaller resident set.
+            slow: true
+            # Kept equal to operator.scanJobTimeout above.
+            timeout: "20m0s"
+
+          nodeCollector:
+            # One job per node, control plane included, so the CIS node checks
+            # cover the nodes that matter most.
+            tolerations:
+              - key: node-role.kubernetes.io/control-plane
+                operator: Exists
+                effect: NoSchedule
+
+          compliance:
+            # Every spec the chart ships that applies to a kubeadm cluster;
+            # eks- and rke2- are for other distributions.
+            specs:
+              - k8s-cis-1.23
+              - k8s-nsa-1.0
+              - k8s-pss-baseline-0.1
+              - k8s-pss-restricted-0.1
+            # summary, not all. The collector skips a report whose format is
+            # `all` outright, so `trivy_compliance_info` -- the per-control
+            # series the dashboard's failing-controls table is built on -- is
+            # never emitted for one. `all` buys a detailReport in the CRD and
+            # costs the metric; the dashboard is worth more here.
+            reportType: summary
+            cron: 0 */6 * * *
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/trivy-operator
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trivy-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      # The namespace's labels and policy are the security component's.
+      - CreateNamespace=true
+      - ServerSideApply=true

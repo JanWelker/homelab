@@ -240,3 +240,30 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: trivy-system
+spec:
+  description: >-
+    Default-deny ingress for Trivy Operator. The operator serves only metrics
+    and the built-in Trivy server answers scan jobs inside the namespace, so
+    the callers are the scan jobs, the node for probes and Prometheus. Egress
+    stays open: a scanner that cannot reach a registry reports zero findings
+    rather than an error.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
