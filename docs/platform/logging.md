@@ -58,6 +58,7 @@ in the line where `| json` can reach them. See
 | Setting in `alloy/application.yaml` | Why |
 | --- | --- |
 | Control-plane toleration | Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki |
+| `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
 | `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
 
@@ -71,6 +72,7 @@ in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
 | --- | --- |
 | Fixed `bucketName` on the `ObjectBucketClaim` | A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild |
 | `singleBinary.extraArgs` `-config.expand-env=true` and `singleBinary.extraEnvFrom` | Rook writes the bucket credentials to a Secret, Loki reads them as `${AWS_ACCESS_KEY_ID}` — nothing in Git |
+| `loki.analytics.reporting_enabled: false` | Loki otherwise sends usage statistics to `stats.grafana.org` a few times a day; same reason as Alloy's switch above |
 | `chunksCache` and `resultsCache` off | Four memcached pods in front of a Loki this size |
 | `loki.podSecurityContext` | Adds `RuntimeDefault` seccomp at pod level, covering the rules sidecar too |
 | Retention with the compactor enabled | Old chunks are actually deleted |
