@@ -118,6 +118,35 @@ data:
                 The health endpoints are the only anonymous paths, and the
                 audit policy drops them. Anything else anonymous that succeeded
                 should not have.
+      - name: openbao-audit
+        rules:
+          # The audit device on stdout writes one JSON object per request and
+          # response; the server's own log lines share the stream, so the
+          # line filters come first and the parser is confined to matches.
+          - alert: OpenBaoSecretReadOutsideEso
+            expr: |
+              sum by (auth_display_name, request_path) (
+                count_over_time(
+                  {namespace="openbao", container="openbao"}
+                    |= `"type":"response"`
+                    |= `kv/data/`
+                    != `external-secrets`
+                    | json
+                    | __error__=""
+                    | request_operation="read"
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.auth_display_name }} read {{ $labels.request_path }} from OpenBao
+              description: >-
+                A secret was read out of OpenBao by something other than the
+                External Secrets Operator. Day to day, ESO is the only reader;
+                anything else is a person with the root token, or a token that
+                should not exist.
       - name: systemd-journal
         rules:
           - alert: NodeSshLogin
