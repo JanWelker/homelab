@@ -100,7 +100,8 @@ spec:
             description: >-
               A process without CAP_SYS_ADMIN created a user namespace, in
               which it is root; most kernel privilege-escalation chains start
-              there. Nothing here does that on purpose. The policy's setuid
+              there. Nothing here does that on purpose, and the
+              kill-unprivileged-user-namespace policy killed it. The policy's setuid
               hooks are a record only: root re-asserting root is routine
               (runc, busybox applets, logrotate). Loki:
               {container="export-stdout"} | json |

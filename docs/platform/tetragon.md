@@ -55,6 +55,7 @@ what it is without a lookup here.
 | `dns-outside-cluster` | `ip_output` | A port 53 packet from a container to anything but the kube-dns ClusterIP; the alert leaves out `kube-system`, where CoreDNS forwards upstream | Yes: `TetragonDnsOutsideCluster` |
 | `mount-in-container` | `security_sb_mount` | Any mount from a container except by `runc`; the alert leaves out `rook-ceph`, `cilium` and `kube-system`, which mount by design | Yes: `TetragonMountInContainer` |
 | `ptrace-in-container` | `security_ptrace_access_check` | An attach-mode access to another process from a container: ptrace, `process_vm_writev`, `/proc/<pid>/mem`. The read mode `ps` uses is left alone | Yes: `TetragonPtraceInContainer` |
+| `kill-unprivileged-user-namespace` | `create_user_ns` | The same event as above, with `Sigkill`. The only policy in `enforce` mode | Through `TetragonUserNamespaceCreated` |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
 The allow list in the first policy is the set of things that read key material
@@ -103,6 +104,19 @@ kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compac
 kubectl -n kube-system get ds tetragon
 kubectl get tracingpolicies -o wide     # STATE should be enabled
 ```
+
+### Enforcement
+
+Every policy but one only records. `kill-unprivileged-user-namespace`
+carries `policy-mode: enforce` and a `Sigkill`, because nothing here
+creates user namespaces and most kernel escalation chains start with one.
+The limits, both checked on the running nodes: `Override` and enforcers
+need `CONFIG_FUNCTION_ERROR_INJECTION`, which Flatcar's kernel does not
+set, and BPF LSM hooks need `bpf` in the `lsm=` boot argument, which
+Flatcar does not pass. That leaves `Sigkill`, which upstream warns does
+not stop an operation already in flight. A policy without `policy-mode`
+loads in monitor mode and its kill actions are elided, so an enforcing
+policy has to say so.
 
 ## Pitfalls
 
