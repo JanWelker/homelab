@@ -2609,6 +2609,10 @@ in its place, which limits Prometheus to its own targets.</p>
 <td>Opening the URL bounces straight to Authentik and back; <code>role_attribute_path</code> maps <code>grafana-admins</code> to <code>Admin</code>, <code>grafana-editors</code> to <code>Editor</code>, anyone else to <code>Viewer</code></td>
 </tr>
 <tr>
+<td><code>analytics.*</code> off and <code>disable_gravatar</code></td>
+<td>Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches every user's avatar from Gravatar; the Grafana network policy names none of those and the policy audit showed the Gravatar call. Telemetry is off in every component here</td>
+</tr>
+<tr>
 <td><code>grafana-oidc.yaml</code></td>
 <td>The OIDC client is generated into OpenBao and read by both sides — see <a href="../authentik/#client-secrets">Authentik</a></td>
 </tr>
