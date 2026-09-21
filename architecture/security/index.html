@@ -332,6 +332,8 @@
       
         
       
+        
+      
     
     
     
@@ -950,6 +952,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Runtime
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#audit-logging" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1074,6 +1087,8 @@
       
         
           
+        
+      
         
       
         
@@ -1497,6 +1512,33 @@
     
   
   Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
 
     
   </span>
@@ -2118,6 +2160,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Runtime
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#audit-logging" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2381,6 +2434,11 @@ exists, once the API servers have restarted:</p>
 the kubeadm token and certificate key — that directory is what decrypts etcd.
 A KMS provider would remove the static key at the cost of a dependency the
 cluster must reach before it can serve Secrets.</p>
+<h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
+<p><a href="../../platform/tetragon/">Tetragon</a> records every exec in every pod and
+alerts when anything but the control plane reads the cluster's key material.
+It is detection, not prevention: nothing is killed, and a policy that fails to
+load on a new kernel watches nothing until its alert fires.</p>
 <h2 id="audit-logging">Audit logging<a class="headerlink" href="#audit-logging" title="Permanent link">&para;</a></h2>
 <p>The API server records who did what, to which object, and whether it was
 allowed; the <code>audit</code> half of the Pod Security Admission labels has nowhere to

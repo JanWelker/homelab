@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Loki and Grafana Alloy: what is collected, where it is stored, and why Promtail is not used.">
+        <meta name="description" content="Runtime detection with Tetragon: what it records from every node, which two policies it enforces, and how the events reach Loki and Alertmanager.">
       
       
       
-        <link rel="canonical" href="https://homelab.wlkr.ch/platform/logging/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/platform/tetragon/">
       
       
-        <link rel="prev" href="../monitoring/">
+        <link rel="prev" href="../logging/">
       
       
-        <link rel="next" href="../tetragon/">
+        <link rel="next" href="../metrics-server/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Logging - Homelab Documentation</title>
+        <title>Tetragon - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#logging" class="md-skip">
+        <a href="#tetragon" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Logging
+              Tetragon
             
           </span>
         </div>
@@ -1349,6 +1349,33 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1368,7 +1395,7 @@
   <span class="md-ellipsis">
     
   
-  Logging
+  Tetragon
 
     
   </span>
@@ -1385,7 +1412,7 @@
   <span class="md-ellipsis">
     
   
-  Logging
+  Tetragon
 
     
   </span>
@@ -1434,54 +1461,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sources" class="md-nav__link">
+  <a href="#policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Sources
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alloy-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alloy pipeline
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Storage
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alerting
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboards" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Dashboards
+        Policies
       </span>
     </span>
   </a>
@@ -1530,33 +1513,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../tetragon/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Tetragon
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2144,54 +2100,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#sources" class="md-nav__link">
+  <a href="#policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Sources
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alloy-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alloy pipeline
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Storage
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#alerting" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alerting
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dashboards" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Dashboards
+        Policies
       </span>
     </span>
   </a>
@@ -2344,7 +2256,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/logging.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/tetragon.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -2353,21 +2265,19 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/logging.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/tetragon.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="logging">Logging<a class="headerlink" href="#logging" title="Permanent link">&para;</a></h1>
-<p><a href="https://grafana.com/oss/loki/">Loki</a> stores logs;
-<a href="https://grafana.com/docs/alloy/latest/">Grafana Alloy</a> collects them. Both are
-queried from the existing Grafana at
-<a href="https://monitoring.infra.k8s.wlkr.ch">monitoring.infra.k8s.wlkr.ch</a>. Without
-them a crashed pod's logs are gone with the container, and on Flatcar the
-<code>kubelet</code>, <code>containerd</code>, <code>systemd-sysupdate</code> and <code>update-engine</code> logs live in
-journald and are reachable only over SSH to the node that is misbehaving.</p>
+<h1 id="tetragon">Tetragon<a class="headerlink" href="#tetragon" title="Permanent link">&para;</a></h1>
+<p><a href="https://tetragon.io/">Tetragon</a> watches processes at the kernel, with eBPF,
+on every node. Trivy says what an image <em>could</em> do; Tetragon records what a
+process <em>did</em>: every exec and exit in a pod, and, where a <code>TracingPolicy</code>
+says so, file opens and credential changes. It is the only thing here that
+sees a shell spawned in a running container.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2379,247 +2289,109 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 <tbody>
 <tr>
 <td>Namespace</td>
-<td><code>logging</code></td>
+<td><code>kube-system</code></td>
 </tr>
 <tr>
 <td>Stage</td>
-<td><code>08-services</code> for <code>logging</code> (bucket, dashboards), <code>09-backends</code> for Loki, <code>10-agents</code> for Alloy — the collector last, so it has somewhere to ship</td>
+<td><code>10-agents</code>, with Alloy; nothing depends on it</td>
 </tr>
 <tr>
 <td>Depends on</td>
-<td><a href="../rook-ceph/">Rook-Ceph</a> object storage for chunks, <a href="../monitoring/">Monitoring</a> for the Grafana that queries it</td>
+<td>Kernel BTF at <code>/sys/kernel/btf/vmlinux</code>, which Flatcar ships; <a href="../logging/">Logging</a> for the events, <a href="../monitoring/">Monitoring</a> for the alerts</td>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/audit-logging/">audit log</a> loses its durable copy, and the <a href="#alerting">log alerts</a> stop</td>
+<td>No runtime record and no runtime alerts; nothing else notices</td>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl -n logging get pods</code>, then a <code>{job="kubernetes-audit"}</code> query in Grafana</td>
-</tr>
-<tr>
-<td>Metrics</td>
-<td>Loki and Alloy, each through its chart's <code>ServiceMonitor</code>; Alloy's dashboards are listed under <a href="../monitoring/#dashboards">Monitoring</a></td>
+<td><code>kubectl get tracingpolicies -o wide</code>; <code>TetragonPolicyNotLoaded</code> and <code>TetragonEventsLost</code> otherwise</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/logging/</code>, <code>payload/platform/loki/</code>, <code>payload/platform/alloy/</code></td>
+<td><code>payload/platform/tetragon/</code></td>
 </tr>
 </tbody>
 </table>
-<div class="admonition note">
-<p class="admonition-title">Not Promtail, and not the <code>grafana/loki</code> chart</p>
-<p>Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from <code>grafana-community/loki</code>: the OSS chart moved to <a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a> in March 2026, and what stayed in <code>grafana/loki</code> is maintained for Grafana Enterprise Logs customers, pins a <code>k8s-sidecar</code> several minor releases behind and closes open-source pull requests with a pointer to the community repository.</p>
-</div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
+<p>Cilium's own chart, from <code>helm.cilium.io</code>; Tetragon does not depend on Cilium
+and runs privileged on the host network by the chart's default.</p>
 <table>
 <thead>
 <tr>
-<th>Source</th>
-<th>Path</th>
-<th>Labels</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Container logs</td>
-<td><code>/var/log/pods/&lt;ns&gt;_&lt;pod&gt;_&lt;uid&gt;/&lt;container&gt;/*.log</code></td>
-<td><code>namespace</code>, <code>pod</code>, <code>container</code>, <code>node</code>, <code>app</code></td>
-</tr>
-<tr>
-<td>Node journal</td>
-<td><code>/var/log/journal</code></td>
-<td><code>unit</code>, <code>node</code>, <code>job="systemd-journal"</code></td>
-</tr>
-<tr>
-<td>API server audit log</td>
-<td><code>/var/log/kubernetes/audit/audit.log</code></td>
-<td><code>verb</code>, <code>audit_level</code>, <code>node</code>, <code>job="kubernetes-audit"</code></td>
-</tr>
-<tr>
-<td>Hubble policy verdicts</td>
-<td><code>/var/run/cilium/hubble/events.log</code></td>
-<td><code>verdict</code>, <code>node</code>, <code>job="hubble"</code></td>
-</tr>
-</tbody>
-</table>
-<p>The first three are on the root filesystem, so one <code>varlog: true</code> mount covers
-them; the Hubble export is a separate read-only hostPath — see
-<a href="../cilium/#configuration">Cilium</a>.
-The audit log exists only on the control-plane nodes; Alloy runs everywhere and
-<code>local.file_match</code> finds nothing on the workers. Audit events keep only <code>verb</code>
-and <code>audit_level</code> as labels — small closed sets — while user and resource stay
-in the line where <code>| json</code> can reach them. See
-<a href="../../architecture/audit-logging/">Audit logging</a> for what is recorded.</p>
-<h3 id="alloy-pipeline">Alloy pipeline<a class="headerlink" href="#alloy-pipeline" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Stage</th>
+<th>Setting</th>
 <th>Why</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>discovery.kubernetes</code> with a <code>spec.nodeName</code> field selector</td>
-<td>Each agent discovers only its own node's pods; without it six agents watch every pod and discard all but their own</td>
+<td>Export to stdout</td>
+<td>The chart runs a sidecar that tails Tetragon's JSON file to stdout, so <a href="../logging/">Alloy</a> collects it as any container log: <code>{namespace="kube-system", container="export-stdout"}</code></td>
 </tr>
 <tr>
-<td><code>stage.cri {}</code> on container logs</td>
-<td>containerd writes <code>&lt;timestamp&gt; &lt;stream&gt; &lt;flags&gt; &lt;message&gt;</code>; without it the timestamp lands inside the line and Loki stamps everything at ingest time</td>
+<td><code>exportDenyList</code></td>
+<td>Exec and exit events from the host, <code>cilium</code> and <code>kube-system</code> stay out of the export; they are the bulk of the volume and the least interesting. Policy hits from those namespaces still pass, which is the point of the <code>event_set</code> field</td>
 </tr>
 <tr>
-<td><code>discovery.relabel "journal"</code> sets <code>job</code></td>
-<td><code>loki.source.journal</code> overwrites <code>job</code> with its component ID after applying <code>labels</code>; only relabel rules run after that</td>
+<td><code>enableProcessCred</code></td>
+<td>Capabilities and <code>privileges_changed</code> on every exec, so a setuid binary or a file-capability escalation is visible without a policy</td>
 </tr>
 <tr>
-<td><code>stage.json</code>, <code>stage.labels</code>, <code>stage.timestamp</code> on audit events</td>
-<td>Stamps each event with its <code>requestReceivedTimestamp</code> rather than when Alloy read the file</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr>
-<th>Setting in <code>alloy/application.yaml</code></th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Control-plane toleration</td>
-<td>Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki</td>
-</tr>
-<tr>
-<td><code>runAsUser: 0</code></td>
-<td>The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and <code>RuntimeDefault</code> seccomp lock the rest down</td>
-</tr>
-<tr>
-<td><code>emptyDir</code> at <code>/tmp</code></td>
-<td>The chart's <code>storagePath</code> defaults to <code>/tmp/alloy</code>, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either</td>
+<td>Two <code>ServiceMonitor</code>s</td>
+<td><code>tetragon_policy_events_total</code> is what the alert reads; <code>tetragon_tracingpolicy_loaded</code> and the ring-buffer counters are its health</td>
 </tr>
 </tbody>
 </table>
-<h3 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h3>
-<p>Loki runs as a single binary (<code>deploymentMode: Monolithic</code>) and keeps chunks
-in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC on
-<code>rook-ceph-block</code> holds the WAL and the index being built.</p>
+<h3 id="policies">Policies<a class="headerlink" href="#policies" title="Permanent link">&para;</a></h3>
+<p><code>tracingpolicies.yaml</code> carries two cluster-scoped <code>TracingPolicy</code> objects.
+Both post at most one event per minute per selector.</p>
 <table>
 <thead>
 <tr>
-<th>Setting in <code>loki/application.yaml</code></th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Fixed <code>bucketName</code> on the <code>ObjectBucketClaim</code></td>
-<td>A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild</td>
-</tr>
-<tr>
-<td><code>singleBinary.extraArgs</code> <code>-config.expand-env=true</code> and <code>singleBinary.extraEnvFrom</code></td>
-<td>Rook writes the bucket credentials to a Secret, Loki reads them as <code>${AWS_ACCESS_KEY_ID}</code> — nothing in Git</td>
-</tr>
-<tr>
-<td><code>chunksCache</code> and <code>resultsCache</code> off</td>
-<td>Four memcached pods in front of a Loki this size</td>
-</tr>
-<tr>
-<td><code>loki.podSecurityContext</code></td>
-<td>Adds <code>RuntimeDefault</code> seccomp at pod level, covering the rules sidecar too</td>
-</tr>
-<tr>
-<td>Retention with the compactor enabled</td>
-<td>Old chunks are actually deleted</td>
-</tr>
-<tr>
-<td><code>rulerConfig</code></td>
-<td>The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of <code>loki_rule</code> ConfigMaps, so <code>storage.type</code> is <code>local</code> rather than the bucket the chart would pick; <code>rule_path</code> is the ruler's scratch directory and must not be the rules directory</td>
-</tr>
-</tbody>
-</table>
-<h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
-<p>Alerts over logs live in <code>logging/loki-rules.yaml</code>, a ConfigMap labelled
-<code>loki_rule</code> in the same format as a <code>PrometheusRule</code> group with LogQL
-expressions. The <code>k8s-sidecar-target-directory: fake</code> annotation puts the
-file under the tenant directory the ruler reads (<code>fake</code> is the tenant when
-<code>auth_enabled</code> is off). Prometheus-side rules stay with their components;
-these are the events only a log carries.</p>
-<table>
-<thead>
-<tr>
-<th>Alert</th>
+<th>Policy</th>
+<th>Hook</th>
 <th>Fires on</th>
-<th>Why it is a log alert</th>
+<th>Alerted</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>KubernetesAuditExecIntoPod</code></td>
-<td>A successful <code>exec</code> or <code>attach</code></td>
-<td>Only the <a href="../../architecture/audit-logging/">audit log</a> records who ran what in which pod</td>
+<td><code>sensitive-file-access</code></td>
+<td><code>security_file_permission</code></td>
+<td>A read under <code>/etc/kubernetes/pki/</code>, <code>/etc/kubernetes/enc/</code>, <code>/var/lib/etcd/</code> or <code>/var/lib/kubelet/pki/</code> by anything but the control-plane binaries, <code>kubeadm</code> and <code>kube-vip</code>; any read of <code>/etc/shadow</code> or the admin kubeconfigs by anything but <code>kube-vip</code> and <code>kubeadm</code></td>
+<td>Yes: <code>TetragonSensitiveFileAccess</code></td>
 </tr>
 <tr>
-<td><code>KubernetesAuditSecretReadByUser</code></td>
-<td>A Secret read by a user, not a <code>system:</code> identity</td>
-<td>Every controller reads through a ServiceAccount; a user is a person with a kubeconfig</td>
-</tr>
-<tr>
-<td><code>KubernetesAuditRbacBindingChanged</code></td>
-<td>A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a <code>kube-system</code> controller</td>
-<td>Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously</td>
-</tr>
-<tr>
-<td><code>KubernetesAuditForbiddenBurst</code></td>
-<td>More than ten 403s from one identity in ten minutes</td>
-<td>What RBAC probing from a compromised pod looks like</td>
-</tr>
-<tr>
-<td><code>KubernetesAuditAnonymousRequest</code></td>
-<td>A successful anonymous request</td>
-<td>The audit policy drops the health endpoints, the only legitimate anonymous paths</td>
-</tr>
-<tr>
-<td><code>NodeSshLogin</code></td>
-<td>An accepted SSH login on a node</td>
-<td>Nothing routine logs in after provisioning</td>
-</tr>
-<tr>
-<td><code>NodeSshAuthFailures</code></td>
-<td>More than five failed SSH attempts on a node in ten minutes</td>
-<td>Password authentication is off; repeats are a scan or a retried key</td>
+<td><code>process-creds-changed</code></td>
+<td><code>commit_creds</code></td>
+<td>Any credential change in a container, from the upstream example</td>
+<td>No; a record for the exec alert to be read against</td>
 </tr>
 </tbody>
 </table>
-<p>To confirm the ruler loaded a rule:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>port-forward<span class="w"> </span>svc/loki<span class="w"> </span><span class="m">3100</span>:3100
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:3100/loki/api/v1/rules
-</span></code></pre></div>
-<h3 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h3>
-<p><code>grafana-dashboards.yaml</code> carries three dashboards from the Alloy mixin
-(<code>operations/alloy-mixin/rendered/dashboards/</code>), unmodified; the chart renders
-none and Renovate does not see the copy, so re-copy them when Alloy moves a
-minor version. The mixin's other dashboards cover features this Alloy does not
-use. The Loki datasource in <code>grafana-datasource.yaml</code> declares its namespace
-as <code>monitoring</code>, the only namespace the Grafana sidecar watches for
-<code>grafana_datasource</code> ConfigMaps.</p>
+<p>The allow list in the first policy is the set of things that read key material
+in steady state, found by listing what fired. Add a binary there only after
+confirming it in the export; a person running <code>cat</code> on a node is exactly what
+the policy is for.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>Choose <strong>Loki</strong> as the datasource in Grafana and query by label:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{namespace="rook-ceph"} |= "error"
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{unit="kubelet.service", node="odin"}
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>{namespace="openbao"} |= "sealed"
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Everything a policy caught
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{namespace="kube-system", container="export-stdout"} | json | process_kprobe_policy_name!=""
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a># Every exec in one namespace, with arguments
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>{namespace="kube-system", container="export-stdout"} | json | process_exec_process_pod_namespace="nextcloud"
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  | line_format "{{.process_exec_process_binary}} {{.process_exec_process_arguments}}"
+</span></code></pre></div>
+<p>The <code>tetra</code> CLI in the agent pod does the same live:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>getevents<span class="w"> </span>-o<span class="w"> </span>compact<span class="w"> </span>--namespaces<span class="w"> </span>nextcloud
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>get<span class="w"> </span>pods
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>ds<span class="w"> </span>tetragon
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>tracingpolicies<span class="w"> </span>-o<span class="w"> </span>wide<span class="w">     </span><span class="c1"># STATE should be enabled</span>
 </span></code></pre></div>
-<p>Then run a <code>{job="kubernetes-audit"}</code> query in Grafana; an empty result with
-healthy pods means the control-plane agents are not reading the file.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
-<p class="admonition-title">Loki settings belong on <code>singleBinary</code>, not <code>global</code></p>
-<p><code>global.extraArgs</code> and <code>global.extraEnvFrom</code> look right, but the single-binary StatefulSet reads only <code>singleBinary.extraArgs</code> and <code>singleBinary.extraEnvFrom</code>. Set globally, the config is full of unexpanded <code>${...}</code> and Loki cannot authenticate to RGW, with an error pointing nowhere near the cause. Likewise <code>singleBinary.podSecurityContext</code> does not exist and is silently inert.</p>
+<p class="admonition-title">A policy that does not load is silent</p>
+<p>A <code>TracingPolicy</code> naming a kernel function this kernel does not export sits in state <code>error</code> and watches nothing. <code>TetragonPolicyNotLoaded</code> fires after ten minutes; check <code>kubectl get tracingpolicies -o wide</code> after every Flatcar release that moves the kernel.</p>
 </div>
 
 
@@ -2661,7 +2433,7 @@ healthy pods means the control-plane agents are not reading the file.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../monitoring/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Monitoring">
+          <a href="../logging/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Logging">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2671,20 +2443,20 @@ healthy pods means the control-plane agents are not reading the file.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Monitoring
+                Logging
               </div>
             </div>
           </a>
         
         
           
-          <a href="../tetragon/" class="md-footer__link md-footer__link--next" aria-label="Next: Tetragon">
+          <a href="../metrics-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Metrics Server">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Tetragon
+                Metrics Server
               </div>
             </div>
             <div class="md-footer__button md-icon">

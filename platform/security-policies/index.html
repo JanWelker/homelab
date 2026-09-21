@@ -332,6 +332,8 @@
       
         
       
+        
+      
     
     
     
@@ -964,6 +966,8 @@
       
         
       
+        
+      
     
     
     
@@ -1356,6 +1360,33 @@
     
   
   Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
 
     
   </span>
@@ -2397,6 +2428,8 @@
       
         
       
+        
+      
     
     
     
@@ -2727,6 +2760,8 @@ still refused.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
 </span></code></pre></div>
+<p>Drops are also kept in Loki, so a policy that broke something overnight can
+be read back: <code>{job="hubble", verdict="DROPPED"}</code> — see <a href="../cilium/#health-check">Cilium</a>.</p>
 <p>If something legitimate is dropped, put a single endpoint into audit mode —
 decisions logged, not enforced — to find the missing rule without an outage:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
