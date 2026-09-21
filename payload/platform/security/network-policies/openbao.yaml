@@ -1,0 +1,33 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: openbao
+spec:
+  description: >-
+    Default-deny ingress for OpenBao, allowing only the cluster's own traffic:
+    peers within the namespace for Raft, the Gateway for the UI, Prometheus for
+    the metrics endpoint, ESO for secret reads, and the node for health probes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: external-secrets
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP

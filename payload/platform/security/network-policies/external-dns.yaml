@@ -1,0 +1,22 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: external-dns
+spec:
+  description: >-
+    Default-deny ingress for external-dns. It is a pure client -- it reads
+    HTTPRoutes from the API server and writes records to Route53 -- and the
+    only thing that connects *to* it is Prometheus, on the metrics port its
+    ServiceMonitor scrapes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring

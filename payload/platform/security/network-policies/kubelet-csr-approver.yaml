@@ -1,0 +1,22 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: kubelet-csr-approver
+spec:
+  description: >-
+    Default-deny ingress for kubelet-csr-approver. Two replicas that watch
+    CertificateSigningRequests and lease-elect between themselves through the
+    API server rather than directly, so nothing needs to reach them except
+    Prometheus and the kubelet's probes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring

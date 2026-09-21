@@ -1,0 +1,22 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: logging
+spec:
+  description: >-
+    Default-deny ingress for the logging stack. Alloy pushes to Loki and Loki's
+    memberlist gossips, both within the namespace; from outside it, Grafana
+    queries http://loki.logging.svc.cluster.local:3100 and Prometheus scrapes
+    Alloy. Both of those live in monitoring.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring

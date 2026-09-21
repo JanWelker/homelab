@@ -163,7 +163,7 @@ so putting it behind Authentik would be a loop.
 Roughly in order of value against effort:
 
 1. Extend default-deny ingress to the namespaces
-   [not yet covered](../platform/security-policies.md#scope), then start on
+   [not yet covered](../platform/security-policies.md#network-policies), then start on
    egress — the larger and more breakable half.
 2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.

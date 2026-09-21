@@ -4,9 +4,9 @@ description: "Pod Security Admission levels per namespace and the first default-
 
 # Security Policies
 
-Four cluster-wide controls: Pod Security Admission, default-deny ingress
-network policy, no API token on the `default` ServiceAccount, and two
-admission policies on image references. Each is easy to turn on and hard to
+Four cluster-wide controls: Pod Security Admission, default-deny network
+policy in both directions, no API token on the `default` ServiceAccount, and
+two admission policies on image references. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.
 
@@ -19,7 +19,7 @@ enforce second, one namespace at a time.
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |
 | Pruning | **Disabled.** Pruning a Namespace deletes everything inside it, PVCs included |
-| Files | `payload/platform/security/` |
+| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/` |
 
 ## Configuration
 
@@ -54,9 +54,12 @@ after `CreateNamespace=true`.
 
 ### Network policies
 
-Ingress only, in ten namespaces, as `CiliumNetworkPolicy` in
-`network-policies.yaml`. Every policy also admits traffic from within the
-namespace and from `host` and `remote-node` for probes.
+One file per namespace in `network-policies/`, holding that namespace's
+`CiliumNetworkPolicy` objects. A namespace gets two whole-namespace policies,
+`default-ingress` and `default-egress`, so every pod in it is default-deny in
+both directions, plus one policy per workload that needs more than the rest
+of the namespace does. Each policy's `description` is the record of who may
+connect and why; the rules are not repeated here.
 
 #### Why CiliumNetworkPolicy and not NetworkPolicy
 
@@ -67,31 +70,29 @@ ingress *and* probes, and the pods restart forever in a way that looks like an
 application fault. Cilium's `fromEntities` names them: `ingress` for
 Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 
-#### Scope
+#### What every policy contains
 
-| Namespace | Who may connect from outside it |
+| Rule | Why |
 | --- | --- |
-| `openbao` | The Gateway (UI), Prometheus and ESO, on `8200` |
-| `cert-manager` | Prometheus; the webhook is called by the API server from the node |
-| `external-secrets` | Prometheus; the webhook is called by the API server from the node |
-| `monitoring` | The Gateway (Grafana); kured on `9090`; the Authentik outpost on `9090` and `9093`; the Ceph mgr on `9090` and `3000`; Loki's ruler on `9093` |
-| `external-dns` | Prometheus |
-| `kubelet-csr-approver` | Prometheus |
-| `kured` | Prometheus |
-| `logging` | Prometheus and Grafana, both in `monitoring` |
-| `cnpg-system` | Prometheus; the webhooks are called by the API server from the node |
-| `trivy-system` | Prometheus; scan jobs reach the Trivy server within the namespace |
+| Ingress from within the namespace | Replicas, sidecars and a workload's own database talk to each other on ports that change with the chart |
+| Ingress from `host` and `remote-node` | Kubelet probes come from the node, and so do the API server's webhook calls, the aggregation layer and `kubectl port-forward`; all of them carry the node's identity, on a control-plane node with the `kube-apiserver` label as well |
+| Ingress from `ingress` | Only where an HTTPRoute sends the Gateway's Envoy straight at the namespace; a namespace behind the Authentik outpost admits `authentik` instead. Kept at L4: the HTTPRoute is already the L7 filter for that traffic |
+| Ingress from `monitoring` on the scraped port, `GET /metrics` | The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else |
+| Egress within the namespace, to kube-dns with a DNS rule, and to `kube-apiserver` where there is a Kubernetes client | `toFQDNs` only works when the DNS proxy sees the answers; `matchPattern: "*"` refuses nothing and makes every lookup visible in Hubble. The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address |
+| Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
+| HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them |
 
-The `monitoring` callers are easy to lose: Kured blocks every reboot when its
-Prometheus query fails, the Authentik outpost is what `prometheus.infra` and
-`alertmanager.infra` resolve to, and the Ceph dashboard pulls from both.
-`cnpg-system` covers the operator only; each database lives in its workload's
-namespace, so the rule admitting the operator on port `8000` belongs to that
-namespace's policy — see [Adding a Workload](../development/add-workload.md).
+Host-networked pods (Cilium, kube-vip, the control plane, node-exporter,
+Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
+selected; to everything else they are `host` or `remote-node`. `kube-system`
+therefore covers only its pod-networked workloads, each selected by label.
 
-Egress is untouched: a default-deny there also needs DNS, the API server and
-every external endpoint, and getting it wrong takes the component down rather
-than leaving it exposed. Not covered, each for its own reason:
+Where a chart ships `NetworkPolicy` objects of its own (`argocd`,
+`authentik`) they are switched off in its values: Cilium unions the two
+kinds, so a chart rule that allows everything would silently override the
+default-deny.
+
+Not yet covered, each for its own reason:
 
 | Namespace | Why not yet |
 | --- | --- |
