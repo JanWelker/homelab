@@ -95,6 +95,7 @@ so they stay.
 | Ingress from `monitoring` on the scraped port, `GET /metrics` | The one port a ServiceMonitor or PodMonitor names, at L7, so the scraper can open nothing else |
 | Egress within the namespace, to kube-dns with a DNS rule, and to `kube-apiserver` where there is a Kubernetes client | `toFQDNs` only works when the DNS proxy sees the answers; `matchPattern: "*"` refuses nothing and makes every lookup visible in Hubble. The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address |
 | Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
+| Egress to the backend pod as well, when the name is one the Gateway serves | The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers `403 Access denied` itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules |
 | HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them |
 
 Host-networked pods (Cilium, kube-vip, the control plane, node-exporter,
@@ -232,7 +233,7 @@ kubectl get validatingadmissionpolicy
 ## Pitfalls
 
 !!! note "Audit mode stops at the proxy"
-    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`, and check `cilium-dbg endpoint list` for a policy on the `reserved:ingress` endpoint.
+    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity.
 
 !!! note "The token change is not retroactive"
     The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.

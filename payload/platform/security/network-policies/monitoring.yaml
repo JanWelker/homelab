@@ -164,10 +164,12 @@ metadata:
   namespace: monitoring
 spec:
   description: >-
-    Grafana queries Loki for the log panels, exchanges every login's code
-    for a token at Authentik through its public name, which resolves to
-    the infra Gateway's own address and is world to Cilium, and asks
-    grafana.com every ten minutes whether its plugins are current.
+    Grafana queries Loki for the log panels and exchanges every login's
+    code for a token at Authentik through its public name. That name is
+    the infra Gateway's own address, world to Cilium, and the Gateway's
+    Envoy then checks this policy against the Authentik server pod it
+    picks, so both the name and the pod are listed. grafana.com is asked
+    every ten minutes whether the plugins are current.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: grafana
@@ -179,6 +181,15 @@ spec:
       toPorts:
         - ports:
             - port: "3100"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: authentik
+            k8s:app.kubernetes.io/name: authentik
+            k8s:app.kubernetes.io/component: server
+      toPorts:
+        - ports:
+            - port: "9000"
               protocol: TCP
     - toFQDNs:
         - matchName: auth.infra.k8s.wlkr.ch
