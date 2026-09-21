@@ -418,7 +418,9 @@ spec:
 ---
 # What fires an alert: a container loading a kernel module, by name through
 # the autoloader or as a file. From the upstream policy library's modules.yaml,
-# restricted to containers: the host loads its own at boot.
+# restricted to containers: the host loads its own at boot. The third hook
+# records every load's signature check, host included: Flatcar signs its
+# modules but does not enforce it (CONFIG_MODULE_SIG without _FORCE).
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -473,6 +475,23 @@ spec:
               values:
                 - host_ns
           matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: find_module_sections
+      syscall: false
+      message: Kernel module loaded, with its signature status
+      tags:
+        - observability.kernel
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: load_info
+      # Inlined on some kernels; then the other two hooks still work.
+      ignore:
+        callNotFound: true
+      selectors:
+        - matchActions:
             - action: Post
               rateLimit: 1m
 ---

@@ -232,6 +232,26 @@ data:
               description: >-
                 The binary's inode has no links left: opened, unlinked, then
                 executed, to leave nothing on disk for a scanner.
+          - alert: TetragonUnsignedKernelModule
+            expr: |
+              sum by (node) (
+                count_over_time(
+                  {namespace="kube-system", container="export-stdout"}
+                    |= "find_module_sections"
+                    |~ `"signature_ok":\s*false`
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                An unsigned kernel module was loaded on {{ $labels.node }}
+              description: >-
+                Flatcar signs every module it ships and the kernel checks
+                but does not enforce the signature. An unsigned module is
+                not Flatcar's, on the host or from a container. The event
+                names it.
       - name: systemd-journal
         rules:
           - alert: NodeSshLogin

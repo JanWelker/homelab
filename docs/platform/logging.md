@@ -98,6 +98,7 @@ these are the events only a log carries.
 | `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec | The `binary_properties` field exists only in the exec event |
 | `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor | Same |
 | `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](tetragon.md#policies) |
+| `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The signature result is an argument of the kprobe event, not a metric label |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
 | `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
 
