@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -1073,6 +1075,8 @@
       
         
       
+        
+      
     
     
     
@@ -1462,6 +1466,33 @@
     
   
   Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
 
     
   </span>
@@ -2361,7 +2392,9 @@ reach it:</p>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
 </span></code></pre></div>
 <p>The last query answers "what would break if I tightened <code>enforce</code> on this
-namespace" from evidence, for the whole retention window.</p>
+namespace" from evidence, for the whole retention window. Exec, Secret reads
+by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts
+from Loki's ruler — see <a href="../../platform/logging/#alerting">Logging</a>.</p>
 <h2 id="applying-it-to-a-running-cluster">Applying it to a running cluster<a class="headerlink" href="#applying-it-to-a-running-cluster" title="Permanent link">&para;</a></h2>
 <p>Changing the templates changes what a <strong>newly provisioned</strong> node gets. A
 running control-plane node keeps the <code>kube-apiserver.yaml</code> static pod manifest

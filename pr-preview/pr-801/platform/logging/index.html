@@ -16,7 +16,7 @@
         <link rel="prev" href="../monitoring/">
       
       
-        <link rel="next" href="../metrics-server/">
+        <link rel="next" href="../tetragon/">
       
       
         
@@ -298,6 +298,8 @@
       
         
           
+        
+      
         
       
         
@@ -968,6 +970,8 @@
       
         
       
+        
+      
     
     
     
@@ -1467,6 +1471,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alerting
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dashboards" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1519,6 +1534,33 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2166,6 +2208,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alerting
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dashboards" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2296,6 +2349,8 @@
       
         
       
+        
+      
     
     
     
@@ -2369,7 +2424,7 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/audit-logging/">audit log</a> loses its durable copy</td>
+<td>Logs stop being collected and are not backfilled. The <a href="../../architecture/audit-logging/">audit log</a> loses its durable copy, and the <a href="#alerting">log alerts</a> stop</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2415,9 +2470,16 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 <td><code>/var/log/kubernetes/audit/audit.log</code></td>
 <td><code>verb</code>, <code>audit_level</code>, <code>node</code>, <code>job="kubernetes-audit"</code></td>
 </tr>
+<tr>
+<td>Hubble policy verdicts</td>
+<td><code>/var/run/cilium/hubble/events.log</code></td>
+<td><code>verdict</code>, <code>node</code>, <code>job="hubble"</code></td>
+</tr>
 </tbody>
 </table>
-<p>All three are on the root filesystem, so one <code>varlog: true</code> mount covers them.
+<p>The first three are on the root filesystem, so one <code>varlog: true</code> mount covers
+them; the Hubble export is a separate read-only hostPath — see
+<a href="../cilium/#configuration">Cilium</a>.
 The audit log exists only on the control-plane nodes; Alloy runs everywhere and
 <code>local.file_match</code> finds nothing on the workers. Audit events keep only <code>verb</code>
 and <code>audit_level</code> as labels — small closed sets — while user and resource stay
@@ -2505,11 +2567,77 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 <td>Old chunks are actually deleted</td>
 </tr>
 <tr>
+<td><code>rulerConfig</code></td>
+<td>The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of <code>loki_rule</code> ConfigMaps, so <code>storage.type</code> is <code>local</code> rather than the bucket the chart would pick; <code>rule_path</code> is the ruler's scratch directory and must not be the rules directory</td>
+</tr>
+<tr>
 <td><code>retention_stream</code> for the <code>findings-history</code> container</td>
 <td>The daily <a href="../trivy-operator/#history">Trivy summary</a> is a few lines and the only long-range record of findings, so that one stream stays a year</td>
 </tr>
 </tbody>
 </table>
+<h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
+<p>Alerts over logs live in <code>logging/loki-rules.yaml</code>, a ConfigMap labelled
+<code>loki_rule</code> in the same format as a <code>PrometheusRule</code> group with LogQL
+expressions. The <code>k8s-sidecar-target-directory: fake</code> annotation puts the
+file under the tenant directory the ruler reads (<code>fake</code> is the tenant when
+<code>auth_enabled</code> is off). Prometheus-side rules stay with their components;
+these are the events only a log carries.</p>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Fires on</th>
+<th>Why it is a log alert</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KubernetesAuditExecIntoPod</code></td>
+<td>A successful <code>exec</code> or <code>attach</code></td>
+<td>Only the <a href="../../architecture/audit-logging/">audit log</a> records who ran what in which pod</td>
+</tr>
+<tr>
+<td><code>KubernetesAuditSecretReadByUser</code></td>
+<td>A Secret read by a user, not a <code>system:</code> identity</td>
+<td>Every controller reads through a ServiceAccount; a user is a person with a kubeconfig</td>
+</tr>
+<tr>
+<td><code>KubernetesAuditRbacBindingChanged</code></td>
+<td>A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a <code>kube-system</code> controller</td>
+<td>Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously</td>
+</tr>
+<tr>
+<td><code>KubernetesAuditForbiddenBurst</code></td>
+<td>More than ten 403s from one identity in ten minutes</td>
+<td>What RBAC probing from a compromised pod looks like</td>
+</tr>
+<tr>
+<td><code>KubernetesAuditAnonymousRequest</code></td>
+<td>A successful anonymous request</td>
+<td>The audit policy drops the health endpoints, the only legitimate anonymous paths</td>
+</tr>
+<tr>
+<td><code>OpenBaoSecretReadOutsideEso</code></td>
+<td>A <code>kv/data/</code> read from OpenBao by anything but the External Secrets Operator</td>
+<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader</td>
+</tr>
+<tr>
+<td><code>NodeSshLogin</code></td>
+<td>An accepted SSH login on a node</td>
+<td>Nothing routine logs in after provisioning</td>
+</tr>
+<tr>
+<td><code>NodeSshAuthFailures</code></td>
+<td>More than five failed SSH attempts on a node in ten minutes</td>
+<td>Password authentication is off; repeats are a scan or a retried key</td>
+</tr>
+</tbody>
+</table>
+<p>To confirm the ruler loaded a rule:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>port-forward<span class="w"> </span>svc/loki<span class="w"> </span><span class="m">3100</span>:3100
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:3100/loki/api/v1/rules
+</span></code></pre></div>
 <h3 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h3>
 <p><code>grafana-dashboards.yaml</code> carries three dashboards from the Alloy mixin
 (<code>operations/alloy-mixin/rendered/dashboards/</code>), unmodified; the chart renders
@@ -2520,13 +2648,13 @@ as <code>monitoring</code>, the only namespace the Grafana sidecar watches for
 <code>grafana_datasource</code> ConfigMaps.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Choose <strong>Loki</strong> as the datasource in Grafana and query by label:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="rook-ceph"} |= "error"
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{unit="kubelet.service", node="odin"}
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>{namespace="openbao"} |= "sealed"
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{namespace="rook-ceph"} |= "error"
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>{unit="kubelet.service", node="odin"}
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>{namespace="openbao"} |= "sealed"
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>get<span class="w"> </span>pods
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>get<span class="w"> </span>pods
 </span></code></pre></div>
 <p>Then run a <code>{job="kubernetes-audit"}</code> query in Grafana; an empty result with
 healthy pods means the control-plane agents are not reading the file.</p>
@@ -2592,13 +2720,13 @@ healthy pods means the control-plane agents are not reading the file.</p>
         
         
           
-          <a href="../metrics-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Metrics Server">
+          <a href="../tetragon/" class="md-footer__link md-footer__link--next" aria-label="Next: Tetragon">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Metrics Server
+                Tetragon
               </div>
             </div>
             <div class="md-footer__button md-icon">

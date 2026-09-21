@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -968,6 +970,8 @@
       
         
       
+        
+      
     
     
     
@@ -1462,6 +1466,33 @@
     
   
   Logging
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
 
     
   </span>
@@ -2196,6 +2227,8 @@
       
         
       
+        
+      
     
     
     
@@ -2321,6 +2354,14 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. The agent reads the list at startup, so a change lands on reboot or upgrade, not on sync</td>
 </tr>
 <tr>
+<td><code>hubble.export.static</code></td>
+<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities and ports and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and it costs nothing while nothing is dropped. Forwarded flows are not exported: thousands a second on a cluster this size. Like the metrics list, the agent reads it at startup</td>
+</tr>
+<tr>
+<td><code>prometheusrule.yaml</code></td>
+<td><code>HubblePolicyDrops</code>: fifteen minutes of <code>POLICY_DENIED</code> drops between two namespaces, above a trickle. <code>VLAN_FILTERED</code> and <code>STALE_OR_UNROUTABLE_IP</code> dominate the raw counter and are the LAN, not a policy</td>
+</tr>
+<tr>
 <td><code>cilium-agent</code> without a memory limit</td>
 <td>It is the one process whose death takes pod networking with it, and it cannot be sized from a day of steady state</td>
 </tr>
@@ -2348,6 +2389,9 @@ the monitors back on adoption, rolling the agent and operator once.</p>
 <p>Hubble answers <em>what did I just break?</em> during a network policy rollout — see
 <a href="../security-policies/#usage">Security Policies</a>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
+</span></code></pre></div>
+<p>The same verdicts, for the whole Loki retention window, in Grafana:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">

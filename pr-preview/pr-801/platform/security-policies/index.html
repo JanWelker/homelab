@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -968,6 +970,8 @@
       
         
       
+        
+      
     
     
     
@@ -1379,6 +1383,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../tetragon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tetragon
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../metrics-server/" class="md-nav__link">
         
   
@@ -1575,6 +1606,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#admission-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Admission policies
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1591,6 +1633,17 @@
   
     <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promoting-the-registry-allowlist" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Promoting the registry allowlist
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#tightening-a-namespace" class="md-nav__link">
@@ -2238,6 +2291,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#admission-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Admission policies
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2254,6 +2318,17 @@
   
     <nav class="md-nav" aria-label="Usage">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promoting-the-registry-allowlist" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Promoting the registry allowlist
+      </span>
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#tightening-a-namespace" class="md-nav__link">
@@ -2386,6 +2461,8 @@
       
         
       
+        
+      
     
     
     
@@ -2429,10 +2506,11 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Three cluster-wide controls: Pod Security Admission, default-deny ingress
-network policy, and no API token on the <code>default</code> ServiceAccount. Each is
-easy to turn on and hard to turn on safely, so the pattern is the same for
-all three: measure first, enforce second, one namespace at a time.</p>
+<p>Four cluster-wide controls: Pod Security Admission, default-deny ingress
+network policy, no API token on the <code>default</code> ServiceAccount, and two
+admission policies on image references. Each is easy to turn on and hard to
+turn on safely, so the pattern is the same for all of them: measure first,
+enforce second, one namespace at a time.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2460,7 +2538,7 @@ all three: measure first, enforce second, one namespace at a time.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl get ns -L pod-security.kubernetes.io/enforce</code></td>
+<td><code>kubectl get ns -L pod-security.kubernetes.io/enforce</code>, <code>kubectl get validatingadmissionpolicy</code></td>
 </tr>
 <tr>
 <td>Pruning</td>
@@ -2584,7 +2662,7 @@ Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the ku
 </tr>
 <tr>
 <td><code>monitoring</code></td>
-<td>The Gateway (Grafana); kured on <code>9090</code>; the Authentik outpost on <code>9090</code> and <code>9093</code>; the Ceph mgr on <code>9090</code> and <code>3000</code></td>
+<td>The Gateway (Grafana); kured on <code>9090</code>; the Authentik outpost on <code>9090</code> and <code>9093</code>; the Ceph mgr on <code>9090</code> and <code>3000</code>; Loki's ruler on <code>9093</code></td>
 </tr>
 <tr>
 <td><code>external-dns</code></td>
@@ -2657,20 +2735,62 @@ out: <code>kube-system</code>, where the control plane authenticates with client
 certificates and "very likely fine" is not the standard, and <code>authentik</code>,
 where <code>authentik-server</code> sets no <code>serviceAccountName</code> — an upstream chart
 default, to be fixed at the source.</p>
+<h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
+<p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
+refuses or records it at admission, with the built-in
+<code>ValidatingAdmissionPolicy</code> rather than a policy engine. Both match Pods and
+every controller that produces them, so a bad Deployment is rejected at
+<code>kubectl apply</code> rather than failing quietly in its ReplicaSet.</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Action</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image-tag-pinned</code></td>
+<td><code>Deny</code></td>
+<td>A tag other than <code>latest</code>, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back</td>
+</tr>
+<tr>
+<td><code>image-registry-allowed</code></td>
+<td><code>Audit</code> and <code>Warn</code></td>
+<td>The registries the cluster pulls from today; a reference with no registry counts as <code>docker.io</code>. Recorded to the <a href="../../architecture/audit-logging/">audit log</a> and shown to whoever applies, not enforced, until the record is clean</td>
+</tr>
+</tbody>
+</table>
+<p>Both carry <code>failurePolicy: Ignore</code>: an expression that errors lets the request
+through rather than stopping every pod in the cluster. A real violation is
+still refused.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="promoting-the-registry-allowlist">Promoting the registry allowlist<a class="headerlink" href="#promoting-the-registry-allowlist" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Confirm nothing running would be refused, over the full Loki retention:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{job="kubernetes-audit"} |= "validation.policy.admission.k8s.io/validation_failure" |= "image-registry-allowed"
+</span></code></pre></div>
+</li>
+<li>
+<p>Change <code>validationActions</code> on the binding in <code>admission-policies.yaml</code> to
+   <code>["Deny"]</code>.</p>
+</li>
+</ol>
 <h3 id="tightening-a-namespace">Tightening a namespace<a class="headerlink" href="#tightening-a-namespace" title="Permanent link">&para;</a></h3>
 <ol>
 <li>
 <p>See what running pods a stricter level would reject, without changing
    anything:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>--overwrite<span class="w"> </span>ns<span class="w"> </span>cert-manager<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>pod-security.kubernetes.io/enforce<span class="o">=</span>restricted
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>--dry-run<span class="o">=</span>server<span class="w"> </span>--overwrite<span class="w"> </span>ns<span class="w"> </span>cert-manager<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>pod-security.kubernetes.io/enforce<span class="o">=</span>restricted
 </span></code></pre></div>
 </li>
 <li>
 <p>Catch what is not running right now — a nightly CronJob, say — from the
    <code>audit</code> label's records over the full Loki retention window, in Grafana:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
 </span></code></pre></div>
 </li>
 <li>
@@ -2679,17 +2799,20 @@ default, to be fixed at the source.</p>
 </ol>
 <h3 id="rolling-out-a-network-policy">Rolling out a network policy<a class="headerlink" href="#rolling-out-a-network-policy" title="Permanent link">&para;</a></h3>
 <p>One namespace at a time, watching Hubble between each:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-relay<span class="w"> </span><span class="m">4245</span>:80
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--namespace<span class="w"> </span>openbao<span class="w"> </span>--follow
 </span></code></pre></div>
+<p>Drops are also kept in Loki, so a policy that broke something overnight can
+be read back: <code>{job="hubble", verdict="DROPPED"}</code> — see <a href="../cilium/#health-check">Cilium</a>.</p>
 <p>If something legitimate is dropped, put a single endpoint into audit mode —
 decisions logged, not enforced — to find the missing rule without an outage:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>cilium<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
