@@ -67,6 +67,10 @@ and nothing here can speed it up; Renovate takes the release when it exists.
 | `grafana/grafana` | `grpc`, `otel`, `x/net` in thirteen bundled datasource plugin binaries | **Waiting on release.** The plugin binaries are rebuilt by Grafana's own release, and 13.2.2 is the current one. Routine churn in a bundled binary, not a report. |
 | `ceph/ceph` v20.2.4 | `setuptools` 69.2 under Python 3.9 | **Not reachable.** The CVEs are in `easy_install` and `package_index`, which no Ceph daemon calls. |
 | `openbao/openbao` 2.6.2 | `github.com/openbao/openbao` "fixed in 2.5.4" | **Scanner artifact.** The binary carries a Go pseudo-version, which sorts below every real tag. |
+| `library/nextcloud` 34.0.4 | 2887 findings, 2886 in Debian packages with no fix; the criticals are `libopenexr` and `libxml2`. One fixable, a LOW in the bundled `webauthn-lib` | **Nothing to do here.** The base is current Debian 13; every fix waits on Debian. `webauthn-lib` is pinned `^4.9.1` in nextcloud/3rdparty on `master` too. The report only exists because of the per-namespace policy in homelab-apps. |
+| `goauthentik/server` 2026.8.3 | `anyio` 4.14.1 (critical, IDNA TLS spoofing), `msgpack`, `setuptools`; `libxml2` with no fix | **Waiting on release.** `uv.lock` on `main` already has anyio 4.14.2, msgpack 1.2.2 and setuptools 84. Authentik releases monthly and its bot bumps these; nothing to file. |
+| `xperimental/nextcloud-exporter` 0.9.1 | Go stdlib, 28 advisories, 7 HIGH, in a release built with Go 1.26.1 | **Filed.** No bot bumps the Dockerfile's builder tag; the project's own history is a "update Go and release" cycle. [xperimental/nextcloud-exporter#143](https://github.com/xperimental/nextcloud-exporter/issues/143). |
+| `prometheus-config-reloader` v0.91.0 (Alloy's sidecar) | Go stdlib, 4 HIGH | **Waiting on chart release.** The Alloy chart pins it; `main` already carries v0.94.0. Renovate takes the next chart. |
 | Everything else | `google.golang.org/grpc` one or two patches behind, Go stdlib one patch behind | **Routine churn.** Fixed upstream in late August; every project here has a bot that takes the next release. Not a finding. |
 
 The three exposed-secret findings are the same one: `ssl-cert-snakeoil.key`,
@@ -129,7 +133,9 @@ empty, whatever the containers set. Where they land:
 | Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | **Load-bearing.** Host network, host PID, privileged and the added capabilities are what these do. kube-vip in particular is left exactly as the static pod it replaced: untested hardening there drops the API VIP. `pod-security.yaml` already enforces `privileged` in those namespaces for this reason. |
 | `etcd-backup` CronJob | **Own manifest, hardened.** Seccomp, no capabilities, no privilege escalation, read-only root. Host network stays, because etcd listens on the node's loopback, and root stays, because the client certificates are `600 root`. |
 | Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy | **`KSV-0118` only, fixed.** Each container already ran non-root with capabilities dropped; the pod-level context was what was empty, and each chart has a value for it (#791, and homelab-apps#27 for Trivy Operator). kured's chart has no pod-level value and is privileged regardless; CoreDNS is kubeadm's. |
-| Authentik, Nextcloud, Home Assistant, Grafana's sidecars, Velero, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. Also #663. |
+| Authentik | **Fixed** (#792): non-root, no capabilities, no escalation, runtime seccomp, at pod and container level. Read-only root not attempted, the image writes under `/media` and `/templates`. |
+| Nextcloud, Home Assistant | **Seccomp only** (homelab-apps#30). Both images start as root by design, Apache dropping to `www-data` and Home Assistant under s6, so `runAsNonRoot` and a read-only root would change how they run. The runtime profile is Docker's default and was missing because the kubelet does not default seccomp. |
+| Grafana's sidecars, Velero, OpenBao | **Read-only root not attempted.** Each writes somewhere under `/` at runtime; the chart or image decides where, and guessing costs an outage. #663. |
 
 ### RBAC
 
