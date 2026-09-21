@@ -1,0 +1,167 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: authentik
+spec:
+  description: >-
+    Default-deny ingress for Authentik. The server and worker reach their
+    PostgreSQL within the namespace and the node runs the probes. Every
+    hostname the Gateway serves for it, its own two and the five it proxies
+    for other applications, lands on the server's plaintext port. Nothing in
+    the cluster dials Authentik by its Service name: every OIDC client goes
+    through the Gateway and arrives as ingress. Prometheus reads the metrics
+    port of the server and the worker.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9300"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: authentik
+spec:
+  description: >-
+    Default-deny egress for Authentik. PostgreSQL is within the namespace.
+    The server and the worker have a Kubernetes client for the outpost
+    discovery tasks; the database does not.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  description: >-
+    The server and the worker share a Kubernetes client for the embedded
+    outpost's discovery and connection-monitor tasks.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: authentik-server
+  namespace: authentik
+spec:
+  description: >-
+    The embedded outpost is a reverse proxy inside the server: it connects
+    to the five applications it fronts, all plaintext inside the cluster.
+    The server also checks Gravatar for avatars, and may call its own public
+    names for an OAuth callback; both Gateway addresses are world to Cilium.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: server
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: hubble-ui
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+            k8s:app: rook-ceph-mgr
+      toPorts:
+        - ports:
+            - port: "7000"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: alertmanager
+      toPorts:
+        - ports:
+            - port: "9093"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: home-assistant
+            k8s:app.kubernetes.io/name: home-assistant
+      toPorts:
+        - ports:
+            - port: "8123"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: www.gravatar.com
+        - matchName: auth.infra.k8s.wlkr.ch
+        - matchName: auth.k8s.wlkr.ch
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: authentik-worker
+  namespace: authentik
+spec:
+  description: >-
+    The worker's periodic update check. Its other outbound work, mail and
+    error reporting, is not configured.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: authentik
+      app.kubernetes.io/component: worker
+  egress:
+    - toFQDNs:
+        - matchName: version.goauthentik.io
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
