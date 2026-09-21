@@ -6,9 +6,10 @@ metadata:
   namespace: kured
 spec:
   description: >-
-    Default-deny ingress for kured. The DaemonSet talks outward -- to the API
-    server for the lock annotation and to Prometheus to ask whether rebooting is
-    safe -- and serves only its own metrics endpoint.
+    Default-deny ingress for kured. The DaemonSet talks outward, to the API
+    server for the lock annotation and to Prometheus to ask whether
+    rebooting is safe, and serves only its metrics endpoint, which the
+    probes hit too.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -19,3 +20,48 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: kured
+spec:
+  description: >-
+    Default-deny egress for kured. The API server carries the lock, the
+    cordon and the drain. Prometheus answers the alert query that gates
+    every reboot: kured blocks when that query fails, so this rule only
+    shows its worth on the next Flatcar update.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
