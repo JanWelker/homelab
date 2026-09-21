@@ -1,0 +1,83 @@
+---
+# What fires an alert: a read of the cluster's key material by anything that is
+# not the control plane. See docs/platform/tetragon.md
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: sensitive-file-access
+spec:
+  kprobes:
+    - call: security_file_permission
+      syscall: false
+      return: true
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          # 4 is MAY_READ, 2 is MAY_WRITE
+          type: int
+      returnArg:
+        index: 0
+        type: int
+      selectors:
+        # The control plane's own binaries, and kube-vip, read these
+        # continuously; everything else is a person or an intruder.
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /etc/kubernetes/pki/
+                - /etc/kubernetes/enc/
+                - /var/lib/etcd/
+                - /var/lib/kubelet/pki/
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/local/bin/kube-apiserver
+                - /usr/local/bin/kube-controller-manager
+                - /usr/local/bin/kube-scheduler
+                - /usr/local/bin/etcd
+                - /usr/bin/kubelet
+                - /usr/bin/kubeadm
+                - /kube-vip
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - /etc/shadow
+                - /etc/kubernetes/admin.conf
+                - /etc/kubernetes/super-admin.conf
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /kube-vip
+                - /usr/bin/kubeadm
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+# A record, not an alert: every credential change inside a container. From
+# the upstream example process-creds-installed.yaml.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: process-creds-changed
+spec:
+  kprobes:
+    - call: commit_creds
+      syscall: false
+      args:
+        - index: 0
+          type: cred
+      selectors:
+        - matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

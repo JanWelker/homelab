@@ -1,0 +1,72 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tetragon
+  namespace: argocd
+  labels:
+    homelab.wlkr.ch/stage: 10-agents
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://helm.cilium.io/
+      chart: tetragon
+      targetRevision: 1.7.1
+      helm:
+        valuesObject:
+          tetragon:
+            # Capabilities and privilege changes on exec and kprobe events.
+            enableProcessCred: true
+
+            # The chart's export sidecar tails the JSON file to stdout, so
+            # Alloy collects it as an ordinary container log. The deny list
+            # keeps exec and exit noise from the host, Cilium and kube-system
+            # out of that file; policy hits from them still pass. See
+            # docs/platform/tetragon.md
+            exportDenyList: |
+              {"health_check":true}
+              {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["","cilium","kube-system"]}
+
+            prometheus:
+              serviceMonitor:
+                enabled: true
+
+            # Unmeasured: a first deployment. Revisit against the working set.
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+
+          tetragonOperator:
+            prometheus:
+              serviceMonitor:
+                enabled: true
+            # The chart's own defaults, restated: see docs/platform/index.md
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/tetragon
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      # The TracingPolicy CRD is installed by the operator on first sync.
+      - SkipDryRunOnMissingResource=true
