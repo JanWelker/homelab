@@ -1,0 +1,40 @@
+---
+# Scans only the images a pull request changes and fails on a fixable CRITICAL
+# the replaced image did not carry. Existing findings that wait on a release
+# do not block the bump that gets closer to it. See docs/development/maintenance.md
+name: Image Scan
+permissions:
+  contents: read
+
+"on":
+  pull_request:
+    paths:
+      - "payload/**"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    name: trivy on changed images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: head
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          path: base
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.74.0
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Scan changed images
+        run: python3 head/scripts/image-scan-diff.py base head

@@ -20,6 +20,7 @@ All in `.github/workflows/`.
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation) |
 | `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/`; fork PRs skipped |
 | `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped |
+| `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `fonts-check.yaml` | `scripts/update-fonts.sh`, `docs/assets/fonts/**` | `make fonts-check`: the committed `woff2` files match the pinned releases — see [Fonts](contributing.md#fonts) |
 
@@ -34,6 +35,10 @@ so a failing update never holds up an unrelated one.
 - **Patch and minor updates automerge; majors wait for a human.** One rule for
     everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
     the same way a Grafana chart patch does.
+- **Three days between a release and its PR** for images and charts
+    (`minimumReleaseAge`): long enough for an upstream to pull a broken or
+    compromised tag, short enough that a fix arrives the same week. Renovate
+    lifts it for its own vulnerability-alert PRs.
 - **`prometheus-operator-crds` must not lag `kube-prometheus-stack`.** Merge
     the CRD bump first, or both together.
 - **Flatcar, Kubernetes and containerd bumps change what a newly provisioned
