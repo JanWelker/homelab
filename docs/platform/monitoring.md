@@ -92,6 +92,7 @@ in its place, which limits Prometheus to its own targets.
 | `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](authentik.md#when-authentik-is-down); never set `grafana.adminPassword` in Git |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
 | Prometheus and Grafana uncapped | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding |
+| Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway |
 
 ### Dashboards
@@ -120,6 +121,47 @@ describes; the sidecar watches every namespace
 (`sidecar.dashboards.searchNamespace: ALL`). Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.
+
+### Growing the Prometheus volume
+
+Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the
+request in `payload/platform/monitoring/application.yaml` on its own leaves the
+PVC at its old size and wedges the operator on an immutable field. Merge that
+change, then:
+
+1. Read the new size out of the manifest.
+
+    ```bash
+    SIZE=$(awk '/prometheusSpec:/{f=1} f&&/storage: /{print $2; exit}' \
+      payload/platform/monitoring/application.yaml)
+    ```
+
+2. Patch the claim. Rook grows the RBD image and the filesystem while they are
+    mounted, so the pod keeps scraping.
+
+    ```bash
+    kubectl -n monitoring patch pvc \
+      prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0 \
+      --patch "{\"spec\": {\"resources\": {\"requests\": {\"storage\": \"$SIZE\"}}}}"
+    ```
+
+3. Delete the StatefulSet so the operator rebuilds it from the new template.
+    `--cascade=orphan` leaves the pod and the claim behind, so there is no gap
+    in the metrics.
+
+    ```bash
+    kubectl -n monitoring delete statefulset \
+      -l operator.prometheus.io/name=kube-prometheus-stack-prometheus --cascade=orphan
+    ```
+
+4. Confirm the claim reports the new capacity.
+
+    ```bash
+    kubectl -n monitoring get pvc -o custom-columns=NAME:.metadata.name,CAP:.status.capacity.storage
+    ```
+
+The same four steps fit Alertmanager and Grafana; only the claim name and the
+`-l` selector change.
 
 ### Resetting the Grafana admin password
 

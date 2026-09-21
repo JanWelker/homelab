@@ -89,8 +89,10 @@ spec:
                     accessModes: ["ReadWriteOnce"]
                     resources:
                       requests:
-                        storage: 10Gi
+                        storage: 30Gi
               retention: 10d
+              # Floor under the volume: blocks are dropped before it fills.
+              retentionSize: 21GiB
 
           alertmanager:
             # Nothing binds Alertmanager to RBAC; the token is only exposure.
