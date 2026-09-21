@@ -121,10 +121,10 @@ because several steps can leave you unable to open a new one.
    kubelet.
 
 6. **Only now** change `k8sServiceHost` in `payload/platform/cilium/values.yaml`
-   to the VIP, commit, let ArgoCD sync, and restart Cilium.
+   to the VIP and commit. The merge rolls every agent, so the VIP must
+   answer before it lands; watch the rollout.
 
     ```bash
-    kubectl -n kube-system rollout restart ds/cilium
     kubectl -n kube-system rollout status ds/cilium
     ```
 

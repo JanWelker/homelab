@@ -159,13 +159,13 @@ A new policy is not enforced on arrival. `policyAuditMode` in
 `payload/platform/cilium/values.yaml` makes every agent evaluate each verdict
 and log it with `AUDIT` instead of dropping, and those verdicts reach Loki the
 way drops do. The mode is cluster-wide, so while it is on the older policies
-are not enforced either, and the agent reads it at startup.
+are not enforced either.
 
-1. Merge the values change and restart the agents; `Enabled` on every node
-   before anything else merges:
+1. Merge the values change; the agents roll on their own. `Enabled` on
+   every node before anything else merges:
 
     ```bash
-    kubectl -n kube-system rollout restart ds/cilium
+    kubectl -n kube-system rollout status ds/cilium
     kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg config get PolicyAuditMode
     ```
 
@@ -192,7 +192,7 @@ are not enforced either, and the agent reads it at startup.
     ```
 
 4. Tighten each `http: [{}]` to the methods and paths seen, set
-   `policyAuditMode: false` and restart the agents again. From then on the
+   `policyAuditMode: false`, which rolls the agents again. From then on the
    verdict to watch is `DROPPED`, live or from Loki — see
    [Cilium](cilium.md#health-check) — and the `HubblePolicyDrops` alert
    fires on a sustained one.
