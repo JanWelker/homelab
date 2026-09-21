@@ -86,11 +86,11 @@ spec:
         - alert: TetragonUserNamespaceCreated
           expr: |
             sum by (namespace, pod, binary) (
-                increase(tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"}[10m]) > 0
+                increase(tetragon_policy_events_total{policy="kill-unprivileged-user-namespace"}[10m]) > 0
               or
-                tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"}
+                tetragon_policy_events_total{policy="kill-unprivileged-user-namespace"}
               unless
-                tetragon_policy_events_total{policy="privileges-raise", hook="kprobe:create_user_ns"} offset 10m
+                tetragon_policy_events_total{policy="kill-unprivileged-user-namespace"} offset 10m
             ) > 0
           labels:
             severity: warning
@@ -100,12 +100,9 @@ spec:
             description: >-
               A process without CAP_SYS_ADMIN created a user namespace, in
               which it is root; most kernel privilege-escalation chains start
-              there. Nothing here does that on purpose, and the
-              kill-unprivileged-user-namespace policy killed it. The policy's setuid
-              hooks are a record only: root re-asserting root is routine
-              (runc, busybox applets, logrotate). Loki:
-              {container="export-stdout"} | json |
-              process_kprobe_policy_name="privileges-raise".
+              there. Nothing here does that on purpose, and the policy killed
+              it. Loki: {container="export-stdout"} | json |
+              process_kprobe_policy_name="kill-unprivileged-user-namespace".
         - alert: TetragonBpfProgramLoaded
           expr: |
             sum by (namespace, pod, binary) (

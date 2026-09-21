@@ -186,9 +186,11 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container raising its privileges. From the upstream
-# policy library's privileges-raise.yaml, minus capset, which every container
-# start performs, and restricted to containers.
+# A record, not an alert: the setuid family to root inside a container, from
+# the upstream policy library's privileges-raise.yaml, minus capset, which
+# every container start performs. The user namespace hook lives in
+# kill-unprivileged-user-namespace, which has no podSelector: a policy with
+# one misses a pod's first seconds, before the filter has learnt it.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -204,30 +206,6 @@ spec:
         values:
           - redis-ha
   kprobes:
-    # An unprivileged process creating a user namespace is root inside it;
-    # most kernel privilege-escalation chains start here.
-    - call: create_user_ns
-      syscall: false
-      message: User namespace created without CAP_SYS_ADMIN
-      tags:
-        - observability.privilege_escalation
-      args:
-        - index: 0
-          type: nop
-      selectors:
-        - matchCapabilities:
-            - type: Effective
-              operator: NotIn
-              values:
-                - CAP_SYS_ADMIN
-          matchNamespaces:
-            - namespace: Pid
-              operator: NotIn
-              values:
-                - host_ns
-          matchActions:
-            - action: Post
-              rateLimit: 1m
     # The setuid family, when the target is root.
     - call: __sys_setuid
       syscall: false

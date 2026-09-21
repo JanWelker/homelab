@@ -49,13 +49,13 @@ what it is without a lookup here.
 | `process-creds-changed` | `commit_creds` | A container process that moved into another mount, pid, network or user namespace after its exec, except `runc`. The hook runs on every execve and fork; the selector keeps the escape signal. Upstream's `matchCapabilityChanges` is not used: it matches a change in either direction, so every entrypoint that drops root fires it | Yes: `TetragonCredentialsEscalated` |
 | `exec-from-writable-path` | `security_bprm_check` | A container executing a file under `/tmp/`, `/var/tmp/`, `/dev/shm/`, `/run/`, `/var/run/`, `/shared/`, `/controller/` or `/plugins/`, except the three binaries an init container copies there | Yes: `TetragonExecFromWritablePath` |
 | `library-from-writable-path` | `security_mmap_file` | The same paths mapped with `PROT_EXEC`, which is how a dropped shared library loads | Yes: `TetragonLibraryFromWritablePath` |
-| `privileges-raise` | `create_user_ns`, the `__sys_set*uid` and `__sys_set*gid` family | A user namespace created without `CAP_SYS_ADMIN`; any setuid or setgid to root. Only the first alerts: root re-asserting root is routine (`logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec`. `runc`, which sets the ids on every container start, and the redis-ha pods, whose busybox calls setgid on every applet, are dropped in the kernel with `matchBinaries` and a `podSelector` | Yes: `TetragonUserNamespaceCreated` |
+| `privileges-raise` | The `__sys_set*uid` and `__sys_set*gid` family | Any setuid or setgid to root inside a container. A record: root re-asserting root is routine (`logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec`. `runc`, which sets the ids on every container start, and the redis-ha pods, whose busybox calls setgid on every applet, are dropped in the kernel with `matchBinaries` and a `podSelector` | No |
 | `bpf-program-load` | `bpf_check` | Any BPF program load from a container; the alert leaves out `cilium` and `kube-system` | Yes: `TetragonBpfProgramLoaded` |
 | `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file`, `find_module_sections` | A module requested or read from a container; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd` after a boot. The third hook records every load's signature check, host included | Yes: `TetragonKernelModuleLoaded`; `TetragonUnsignedKernelModule` from Loki |
 | `dns-outside-cluster` | `ip_output` | A port 53 packet from a container to anything but the kube-dns ClusterIP; the alert leaves out `kube-system`, where CoreDNS forwards upstream | Yes: `TetragonDnsOutsideCluster` |
 | `mount-in-container` | `security_sb_mount` | Any mount from a container except by `runc`; the alert leaves out `rook-ceph`, `cilium` and `kube-system`, which mount by design | Yes: `TetragonMountInContainer` |
 | `ptrace-in-container` | `security_ptrace_access_check` | An attach-mode access to another process from a container: ptrace, `process_vm_writev`, `/proc/<pid>/mem`. The read mode `ps` uses is left alone | Yes: `TetragonPtraceInContainer` |
-| `kill-unprivileged-user-namespace` | `create_user_ns` | The same event as above, with `Sigkill`. The only policy in `enforce` mode | Through `TetragonUserNamespaceCreated` |
+| `kill-unprivileged-user-namespace` | `create_user_ns` | A user namespace created without `CAP_SYS_ADMIN` in a container, killed. The only policy in `enforce` mode | Yes: `TetragonUserNamespaceCreated` |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
 The allow list in the first policy is the set of things that read key material
@@ -119,6 +119,13 @@ loads in monitor mode and its kill actions are elided, so an enforcing
 policy has to say so.
 
 ## Pitfalls
+
+!!! warning "A `podSelector` misses a pod's first seconds"
+    The policy filter learns pods from the API and maps their cgroups; a
+    process that runs the moment a container starts is not yet selected,
+    and the test pod's `unshare` went unrecorded by the filtered policy
+    while the unfiltered one killed it. Put the hook an alert depends on in
+    a policy without a `podSelector`, and do exclusions in PromQL.
 
 !!! warning "A first hit is a new series, and `increase()` of one sample is zero"
     `tetragon_policy_events_total` has a pod label, so the first hit from a
