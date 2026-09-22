@@ -56,6 +56,11 @@ gatewayAPI:
 
 l2announcements:
   enabled: true
+  # Failover of a Gateway IP takes one leaseDuration after the announcing
+  # node dies; the Cilium defaults are 15s/2s/1s.
+  leaseDuration: 3s
+  leaseRenewDeadline: 1s
+  leaseRetryPeriod: 200ms
 
 k8sClientRateLimit:
   qps: 50
