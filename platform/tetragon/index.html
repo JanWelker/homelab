@@ -2433,13 +2433,13 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>sensitive-file-access</code></td>
 <td><code>security_file_permission</code></td>
-<td>A read under <code>/etc/kubernetes/pki/</code>, <code>/etc/kubernetes/enc/</code>, <code>/var/lib/etcd/</code> or <code>/var/lib/kubelet/pki/</code> by anything but the control-plane binaries, <code>kubeadm</code> and <code>kube-vip</code>; any read of <code>/etc/shadow</code> or the admin kubeconfigs by anything but <code>kube-vip</code> and <code>kubeadm</code>; any write, host or container, to <code>/etc/passwd</code>, <code>/etc/shadow</code>, <code>/etc/group</code>, <code>/etc/sudoers</code>, <code>/etc/ld.so.preload</code>, or under <code>/etc/sudoers.d/</code>, <code>/etc/cron.d/</code> and <code>/root/.ssh/</code></td>
+<td>A read under <code>/etc/kubernetes/pki/</code>, <code>/etc/kubernetes/enc/</code>, <code>/var/lib/etcd/</code> or <code>/var/lib/kubelet/pki/</code> by anything but the control-plane binaries, <code>kubeadm</code> and <code>kube-vip</code>; any read of the admin kubeconfigs by anything but <code>kube-vip</code> and <code>kubeadm</code>; a read of <code>/etc/shadow</code> on the host, which is a login or a <code>sudo</code> (in a container it is PAM in the image, so only writes count there); any write, host or container, to <code>/etc/passwd</code>, <code>/etc/shadow</code>, <code>/etc/group</code>, <code>/etc/sudoers</code>, <code>/etc/ld.so.preload</code>, or under <code>/etc/sudoers.d/</code>, <code>/etc/cron.d/</code> and <code>/root/.ssh/</code></td>
 <td>Yes: <code>TetragonSensitiveFileAccess</code></td>
 </tr>
 <tr>
 <td><code>process-creds-changed</code></td>
 <td><code>commit_creds</code></td>
-<td>A container process that moved into another mount, pid, network or user namespace after its exec, except <code>runc</code>. The hook runs on every execve and fork; the selector keeps the escape signal. Upstream's <code>matchCapabilityChanges</code> is not used: it matches a change in either direction, so every entrypoint that drops root fires it</td>
+<td>A container process that moved into another mount, pid, network or user namespace after its exec, except <code>runc</code>; the alert leaves out <code>kube-system</code> and <code>rook-ceph</code>, where Cilium's init containers and Rook's OSD prepare Jobs <code>nsenter</code> into the host by design. The hook runs on every execve and fork; the selector keeps the escape signal. Upstream's <code>matchCapabilityChanges</code> is not used: it matches a change in either direction, so every entrypoint that drops root fires it</td>
 <td>Yes: <code>TetragonCredentialsEscalated</code></td>
 </tr>
 <tr>
@@ -2451,7 +2451,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>library-from-writable-path</code></td>
 <td><code>security_mmap_file</code></td>
-<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads</td>
+<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads, except the cgo library Alloy's bundled Snowflake driver unpacks under <code>/tmp/gosnowflake-cgo*</code> on every start</td>
 <td>Yes: <code>TetragonLibraryFromWritablePath</code></td>
 </tr>
 <tr>
@@ -2469,7 +2469,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>kernel-module-load</code></td>
 <td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>find_module_sections</code></td>
-<td>A module requested or read from a container; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included</td>
+<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> request every Go binary makes when it probes MPTCP at start; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included</td>
 <td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
