@@ -5,6 +5,9 @@ kind: Gateway
 metadata:
   name: apps-gateway
   namespace: kube-system
+  annotations:
+    # The cluster sits behind NAT; see docs/platform/external-dns.md
+    external-dns.kubernetes.io/target: "212.51.149.132"
 spec:
   gatewayClassName: cilium
   addresses:

@@ -25,6 +25,7 @@ record pointing at nothing when the workload goes.
 | Setting | Why |
 | --- | --- |
 | Source `gateway-httproute` | `HTTPRoute` is the only thing here that publishes a hostname; the address comes from the route's parent `Gateway`, so nothing is written down twice |
+| `target` annotation on `apps-gateway` | The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every `*.k8s.wlkr.ch` record gets it once. `infra-gateway` has none: those names stay LAN-only on purpose |
 | Domain filter | Nothing outside that subtree is touched |
 | TXT registry with an owner id | A companion `_externaldns.*` TXT record stamps every record it creates, and it only modifies or deletes records carrying that stamp. Hand-made records in the same zone are invisible to it |
 | Policy `sync` | Deleting an HTTPRoute removes its record. Safe only because of the registry; without it `sync` would happily delete your MX records |
