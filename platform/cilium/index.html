@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Cilium as the CNI, providing Gateway API, WireGuard encryption, L2 announcements, and Hubble observability.">
+        <meta name="description" content="Cilium as the CNI, providing Gateway API, WireGuard encryption, L2 and BGP announcements, and Hubble observability.">
       
       
       
@@ -2338,6 +2338,10 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them</td>
 </tr>
 <tr>
+<td><code>bgp.yaml</code></td>
+<td>The same two addresses as <code>/32</code> routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the 9s hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The router side is FRR on the UDM Pro peering with the three node IPs, ASN 65000 against 65001</td>
+</tr>
+<tr>
 <td><code>encryption.type: wireguard</code></td>
 <td>Transparent node-to-node encryption</td>
 </tr>
@@ -2390,12 +2394,16 @@ the monitors back on adoption, rolling the agent and operator once.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
 </span></code></pre></div>
+<p>The BGP session on each control-plane node, <code>established</code> with two routes
+advertised:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
+</span></code></pre></div>
 <p>Hubble answers <em>what did I just break?</em> during a network policy rollout — see
 <a href="../security-policies/#usage">Security Policies</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
 </span></code></pre></div>
 <p>The same verdicts, for the whole Loki retention window, in Grafana:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">
