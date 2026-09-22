@@ -1,0 +1,36 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: default
+spec:
+  description: >-
+    Default-deny ingress for the default namespace. Nothing is meant to run
+    here; the policy exists so that a pod someone starts by hand, a debug
+    shell or a leftover from a tutorial, is reachable only from its own
+    namespace and from the node for probes, the same as everything else.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: default
+spec:
+  description: >-
+    Default-deny egress for the default namespace. A pod started here by
+    hand reaches its own namespace and DNS, through the cluster-wide rule,
+    and nothing else: not the API server, not the other namespaces, not
+    the Internet. A workload that needs more gets its own namespace and
+    its own file here.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
