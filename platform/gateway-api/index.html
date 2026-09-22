@@ -2323,19 +2323,22 @@ L2 pool, defined in <code>gateways.yaml</code>:</p>
 <tr>
 <td><code>apps-gateway</code></td>
 <td><code>*.k8s.wlkr.ch</code></td>
-<td>User-facing workloads</td>
+<td>User-facing workloads, published under the router's public address</td>
 </tr>
 <tr>
 <td><code>infra-gateway</code></td>
 <td><code>*.infra.k8s.wlkr.ch</code></td>
-<td>Platform services (Grafana, Hubble, etc.)</td>
+<td>Platform services (Grafana, Hubble, etc.), LAN only</td>
 </tr>
 </tbody>
 </table>
 <p>Both terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Port 80 is
 accepted from all namespaces only so the central rule in <code>http-redirect.yaml</code>
-can send it to HTTPS.</p>
+can send it to HTTPS. <code>apps-gateway</code> carries the annotation that makes
+<a href="../external-dns/#configuration">external-dns</a> publish the router's public
+address instead of the Gateway's LAN one; the router forwards ports 80 and
+443 to that LAN address.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Create an <code>HTTPRoute</code> in the app's namespace referencing the right Gateway;
 <a href="../external-dns/">external-dns</a> creates the record and the wildcard covers the

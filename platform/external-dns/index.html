@@ -2322,6 +2322,10 @@ record pointing at nothing when the workload goes.</p>
 <td><code>HTTPRoute</code> is the only thing here that publishes a hostname; the address comes from the route's parent <code>Gateway</code>, so nothing is written down twice</td>
 </tr>
 <tr>
+<td><code>target</code> annotation on <code>apps-gateway</code></td>
+<td>The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every <code>*.k8s.wlkr.ch</code> record gets it once. <code>infra-gateway</code> has none: those names stay LAN-only on purpose</td>
+</tr>
+<tr>
 <td>Domain filter</td>
 <td>Nothing outside that subtree is touched</td>
 </tr>
