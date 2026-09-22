@@ -1,0 +1,57 @@
+---
+# eBGP with the router: every control-plane node announces the Gateway
+# LoadBalancer IPs as /32 routes so the router forwards to all three at once
+# and drops a dead node after the hold time; see docs/platform/cilium.md.
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: router
+spec:
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+  bgpInstances:
+    - name: cluster
+      localASN: 65001
+      peers:
+        - name: router
+          peerASN: 65000
+          peerAddress: 10.9.0.1
+          peerConfigRef:
+            name: router
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: router
+spec:
+  # A dead node's routes are gone after one hold time; the Cilium defaults
+  # are 90s/30s. No graceful restart: it would keep them on the router longer.
+  timers:
+    holdTimeSeconds: 9
+    keepAliveTimeSeconds: 3
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: gateway
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: gateway-ips
+  labels:
+    advertise: gateway
+spec:
+  advertisements:
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      # The Services Cilium creates for the Gateways in gateway-api/.
+      selector:
+        matchExpressions:
+          - key: io.cilium.gateway/owning-gateway
+            operator: Exists
