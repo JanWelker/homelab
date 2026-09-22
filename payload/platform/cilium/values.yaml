@@ -54,6 +54,11 @@ envoy:
 gatewayAPI:
   enabled: true
 
+# The Gateway IPs are announced twice: over L2 for the LAN they sit in, and
+# over BGP to the router for everything it forwards; see docs/platform/cilium.md.
+bgpControlPlane:
+  enabled: true
+
 l2announcements:
   enabled: true
   # Failover of a Gateway IP takes one leaseDuration after the announcing
