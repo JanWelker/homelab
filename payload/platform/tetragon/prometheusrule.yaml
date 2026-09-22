@@ -44,11 +44,11 @@ spec:
         - alert: TetragonCredentialsEscalated
           expr: |
             sum by (namespace, pod, binary) (
-                increase(tetragon_policy_events_total{policy="process-creds-changed"}[10m]) > 0
+                increase(tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"}[10m]) > 0
               or
-                tetragon_policy_events_total{policy="process-creds-changed"}
+                tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"}
               unless
-                tetragon_policy_events_total{policy="process-creds-changed"} offset 10m
+                tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"} offset 10m
             ) > 0
           keep_firing_for: 15m
           labels:
@@ -60,7 +60,9 @@ spec:
               A process in the container moved into another mount, pid,
               network or user namespace after it was executed: nsenter,
               setns, or an escape. runc, which does this on every start, is
-              dropped in the kernel. Loki:
+              dropped in the kernel; Cilium's init containers and Rook's OSD
+              prepare Jobs nsenter into the host by design, so kube-system
+              and rook-ceph are left out. Loki:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="process-creds-changed".
         - alert: TetragonExecFromWritablePath

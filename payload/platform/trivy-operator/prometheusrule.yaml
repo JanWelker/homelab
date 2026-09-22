@@ -57,8 +57,8 @@ spec:
             count by (namespace, container_name, secret_rule_id, secret_target) (
               trivy_exposedsecrets_info
             )
-            unless
-            count by (namespace, container_name, secret_rule_id, secret_target) (
+            unless on (secret_rule_id, secret_target)
+            count by (secret_rule_id, secret_target) (
               trivy_exposedsecrets_info offset 2d
             )
             and on ()
@@ -72,7 +72,10 @@ spec:
             description: >-
               Trivy found a {{ $labels.secret_rule_id }} at {{ $labels.secret_target }}
               in container {{ $labels.container_name }} of namespace
-              {{ $labels.namespace }} that was not in any report two days ago.
+              {{ $labels.namespace }} that no report in the cluster carried
+              two days ago. The same rule at the same path in another
+              container, such as Debian's snake-oil key in every Postgres
+              image, is not new.
         - alert: TrivyRbacCriticalNew
           expr: |
             (

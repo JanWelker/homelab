@@ -61,7 +61,7 @@ than from the previous scrape, and every rule waits longer than a rebuild.
 | Alert | Fires when | Why this shape |
 | --- | --- | --- |
 | `TrivyContainerNotScanned` | A running container has had no `VulnerabilityReport` for 2h | A rejected report is never written, so it looks identical to a clean one; only reconciling against what runs finds it |
-| `TrivyExposedSecretNew` | A secret finding, keyed by container, rule and path, was not reported two days ago | The known findings (snake-oil keys, a vendored SDK's public test key) never clear, so an absolute rule would fire forever |
+| `TrivyExposedSecretNew` | A secret finding, by rule and path, was in no report two days ago, whichever container carried it | The known findings (snake-oil keys, a vendored SDK's public test key) never clear, so an absolute rule would fire forever; and the snake-oil key in a new Postgres pod is not new |
 | `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have two days ago | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](../operations/vulnerabilities.md#what-is-load-bearing); what matters is a new one |
 | `TrivyConfigAuditCritical` | Any workload fails a critical config-audit check for 2h | Nothing does today, so the rule is absolute |
 | `TrivyComplianceRegression` | A framework has more failing controls than a day ago, for 12h | Compliance is recomputed every six hours; two runs above yesterday is drift, not a rebuild |
