@@ -51,7 +51,6 @@ spec:
             - index: 0
               operator: Equal
               values:
-                - /etc/shadow
                 - /etc/kubernetes/admin.conf
                 - /etc/kubernetes/super-admin.conf
           matchBinaries:
@@ -59,6 +58,22 @@ spec:
               values:
                 - /kube-vip
                 - /usr/bin/kubeadm
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+        # Host only: a read of the node's shadow file is a login or a sudo.
+        # In a container it is PAM in the image (sudo, su); writes to the
+        # container's copy are still caught below.
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - /etc/shadow
+          matchNamespaces:
+            - namespace: Pid
+              operator: In
+              values:
+                - host_ns
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -439,7 +454,15 @@ spec:
         index: 0
         type: int
       selectors:
-        - matchNamespaces:
+        # Every Go binary probes MPTCP once at start; on a kernel without it
+        # the socket() asks the autoloader for net-pf-2-proto-262. Nothing
+        # loads, and a request by module name still posts.
+        - matchArgs:
+            - index: 0
+              operator: NotPrefix
+              values:
+                - net-pf-2-proto-262
+          matchNamespaces:
             - namespace: Pid
               operator: NotIn
               values:
@@ -534,6 +557,12 @@ spec:
                 - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
+            # Alloy's bundled Snowflake driver unpacks its cgo library here
+            # on every start and maps it; the image does that, not an intruder.
+            - index: 0
+              operator: NotPrefix
+              values:
+                - /tmp/gosnowflake-cgo
             - index: 1
               operator: Mask
               values:
