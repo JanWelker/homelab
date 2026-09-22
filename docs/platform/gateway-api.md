@@ -27,13 +27,16 @@ L2 pool, defined in `gateways.yaml`:
 
 | Gateway | Hostname pattern | Used for |
 | --- | --- | --- |
-| `apps-gateway` | `*.k8s.wlkr.ch` | User-facing workloads |
-| `infra-gateway` | `*.infra.k8s.wlkr.ch` | Platform services (Grafana, Hubble, etc.) |
+| `apps-gateway` | `*.k8s.wlkr.ch` | User-facing workloads, published under the router's public address |
+| `infra-gateway` | `*.infra.k8s.wlkr.ch` | Platform services (Grafana, Hubble, etc.), LAN only |
 
 Both terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Port 80 is
 accepted from all namespaces only so the central rule in `http-redirect.yaml`
-can send it to HTTPS.
+can send it to HTTPS. `apps-gateway` carries the annotation that makes
+[external-dns](external-dns.md#configuration) publish the router's public
+address instead of the Gateway's LAN one; the router forwards ports 80 and
+443 to that LAN address.
 
 ## Usage
 
