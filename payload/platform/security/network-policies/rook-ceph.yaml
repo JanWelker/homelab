@@ -82,8 +82,10 @@ metadata:
 spec:
   description: >-
     The operator, the CSI operator and the CSI controller plugin's sidecars
-    reconcile through the API server. The Ceph daemons themselves never
-    touch it.
+    reconcile through the API server, and so do the two kinds of Job the
+    operator starts on every reconcile: detect-version and the per-node
+    osd-prepare report their result in a ConfigMap. The Ceph daemons
+    themselves never touch it.
   endpointSelector:
     matchExpressions:
       - key: app
@@ -91,6 +93,8 @@ spec:
         values:
           - rook-ceph-operator
           - rook-ceph.rbd.csi.ceph.com-ctrlplugin
+          - rook-ceph-detect-version
+          - rook-ceph-osd-prepare
   egress:
     - toEntities:
         - kube-apiserver
