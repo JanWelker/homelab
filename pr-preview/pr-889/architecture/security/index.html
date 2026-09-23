@@ -2533,7 +2533,8 @@ verifier would exempt nearly everything. See
 <a href="../../platform/security-policies/#admission-policies">Security Policies</a>.</p>
 <p><strong>Both Gateways admit routes from every namespace</strong>
 (<code>allowedRoutes.namespaces.from: All</code>). Any namespace can attach an <code>HTTPRoute</code>
-to <code>infra-gateway</code> and claim a hostname under <code>*.infra.k8s.wlkr.ch</code>.</p>
+to either Gateway and claim a hostname inside its listener's pattern — see
+<a href="../../platform/gateway-api/#configuration">Gateway API</a>.</p>
 <h2 id="exposed-interfaces">Exposed interfaces<a class="headerlink" href="#exposed-interfaces" title="Permanent link">&para;</a></h2>
 <p>Every platform UI on the infra gateway is behind
 <a href="../../platform/authentik/">Authentik</a>:</p>

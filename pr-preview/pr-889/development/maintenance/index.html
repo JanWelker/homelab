@@ -2374,19 +2374,27 @@ everything, and Renovate, which chases dependencies.</p>
 </table>
 <h2 id="renovate">Renovate<a class="headerlink" href="#renovate" title="Permanent link">&para;</a></h2>
 <p>Configured in <code>renovate.json</code>. It runs at any time with no hourly or
-concurrency limit and no grouping: every component gets its own pull request,
-so a failing update never holds up an unrelated one.</p>
+concurrency limit, and every component gets its own pull request so a failing
+update never holds up an unrelated one. The only groups are the pairs below
+that must move together.</p>
 <h3 id="automerge-policy">Automerge policy<a class="headerlink" href="#automerge-policy" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Patch and minor updates automerge; majors wait for a human.</strong> One rule for
     everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
     the same way a Grafana chart patch does.</li>
-<li><strong>Three days between a release and its PR</strong> for images and charts
-    (<code>minimumReleaseAge</code>): long enough for an upstream to pull a broken or
-    compromised tag, short enough that a fix arrives the same week. Renovate
-    lifts it for its own vulnerability-alert PRs.</li>
-<li><strong><code>prometheus-operator-crds</code> must not lag <code>kube-prometheus-stack</code>.</strong> Merge
-    the CRD bump first, or both together.</li>
+<li><strong>Three days between a release and its PR</strong> for every datasource that pins
+    something a node installs or the cluster runs (<code>minimumReleaseAge</code>): long
+    enough for an upstream to pull a broken or compromised tag, short enough
+    that a fix arrives the same week. Renovate lifts it for its own
+    vulnerability-alert PRs.</li>
+<li><strong>Pairs that must move together are grouped into one PR:</strong>
+    <code>prometheus-operator-crds</code> with <code>kube-prometheus-stack</code>, because the CRDs
+    must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
+    Rook requires both charts on the same version; and <code>markdownlint-cli2</code> in
+    the workflow with its pre-commit hook, because the two must lint alike.</li>
+<li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new
+    release already satisfies; <code>rangeStrategy: bump</code> is what makes Renovate
+    open a PR for the linters and the docs generator at all.</li>
 <li><strong>Flatcar, Kubernetes and containerd bumps change what a newly provisioned
     node installs, not what a running node runs.</strong> kubeadm cannot skip a minor,
     so a cluster left unrebuilt across two automerged Kubernetes minors has to be

@@ -2696,6 +2696,10 @@ Prometheus and Alertmanager have no route of their own, so theirs are in
 </thead>
 <tbody>
 <tr>
+<td><code>authentik.disable_update_check</code> and <code>authentik.avatars</code></td>
+<td>Telemetry and Gravatar lookups are switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy</td>
+</tr>
+<tr>
 <td><code>authentik.web.base_url</code></td>
 <td>Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click</td>
 </tr>
