@@ -51,8 +51,8 @@ The reasoning is in `docs/architecture/gitops.md`.
   component. The `Makefile` reads `targetRevision` out of those manifests for
   the bootstrap installs — never add a second pin.
 - Renovate opens one PR per component and automerges patch and minor.
-  `prometheus-operator-crds` must not lag `kube-prometheus-stack`: merge the CRD
-  bump first, or both together.
+  `prometheus-operator-crds` must not lag `kube-prometheus-stack`, so the two
+  are grouped and arrive as one PR, as are the two Rook charts.
 - Long explanations belong in `docs/`, not in YAML comments.
 - Changes land through PRs off `main`.
 

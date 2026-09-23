@@ -20,7 +20,7 @@
   },
   "packageRules": [
     {
-      "description": "One policy for everything: patch and minor automerge, majors wait for a human. No groups -- every component gets its own PR.",
+      "description": "One policy for everything: patch and minor automerge, majors wait for a human. Every component gets its own PR, except the three pairs grouped below that must move together.",
       "matchUpdateTypes": [
         "patch",
         "minor"
@@ -35,23 +35,66 @@
       "automerge": false
     },
     {
-      "description": "Three days between a release and its PR. Long enough for an upstream to pull a broken or compromised tag, short enough that a fix still arrives the same week. Renovate lifts this for its own vulnerability-alert PRs.",
+      "description": "Three days between a release and its PR, for every datasource that pins something a node installs or the cluster runs. Long enough for an upstream to pull a broken or compromised tag, short enough that a fix still arrives the same week. Renovate lifts this for its own vulnerability-alert PRs.",
       "matchDatasources": [
         "docker",
-        "helm"
+        "helm",
+        "github-releases",
+        "github-tags",
+        "npm",
+        "pypi",
+        "custom.flatcar-stable",
+        "custom.syslinux-kernelorg"
       ],
       "minimumReleaseAge": "3 days"
     },
     {
+      "description": "pyproject.toml declares >= ranges, which every new release already satisfies; without bump Renovate never opens a PR for the linters or the docs generator.",
+      "matchManagers": [
+        "pep621"
+      ],
+      "rangeStrategy": "bump"
+    },
+    {
+      "description": "The CRDs must not lag the operator chart: one PR for both, so the pair cannot automerge separately.",
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchDepNames": [
+        "prometheus-operator-crds",
+        "kube-prometheus-stack"
+      ],
+      "groupName": "prometheus operator"
+    },
+    {
+      "description": "Rook requires the operator and cluster charts on the same version.",
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchDepNames": [
+        "rook-ceph",
+        "rook-ceph-cluster"
+      ],
+      "groupName": "rook-ceph"
+    },
+    {
+      "description": "The Lint Markdown workflow and the pre-commit hook must run the same markdownlint-cli2, or a commit passes locally and fails CI.",
+      "matchDepNames": [
+        "markdownlint-cli2",
+        "DavidAnson/markdownlint-cli2"
+      ],
+      "groupName": "markdownlint-cli2"
+    },
+    {
       "description": "Strip kubernetes- prefix from sysext-bakery release tags",
-      "matchPackageNames": [
+      "matchDepNames": [
         "kubernetes"
       ],
       "extractVersion": "^kubernetes-(?<version>.+)$"
     },
     {
       "description": "Strip containerd- prefix from sysext-bakery release tags",
-      "matchPackageNames": [
+      "matchDepNames": [
         "containerd"
       ],
       "extractVersion": "^containerd-(?<version>.+)$"
@@ -191,7 +234,7 @@
       "autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
     },
     {
-      "description": "markdownlint-cli2 installed by the Lint Markdown workflow. Kept on the same version as the pre-commit hook, which the pre-commit manager tracks separately.",
+      "description": "markdownlint-cli2 installed by the Lint Markdown workflow. Grouped with the pre-commit hook, which the pre-commit manager tracks separately.",
       "customType": "regex",
       "managerFilePatterns": [
         "/^\\.github/workflows/lint-markdown\\.yaml$/"
@@ -201,6 +244,31 @@
       ],
       "depNameTemplate": "markdownlint-cli2",
       "datasourceTemplate": "npm"
+    },
+    {
+      "description": "renovate-config-validator is only as good as the Renovate it ships with; the validate workflow pins that version.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/renovate-validate\\.yaml$/"
+      ],
+      "matchStrings": [
+        "renovate@(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
+    },
+    {
+      "description": "Trivy version installed by setup-trivy. The github-actions manager tracks the action's SHA, not its `version:` input.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/image-scan\\.yaml$/"
+      ],
+      "matchStrings": [
+        "uses: aquasecurity/setup-trivy@[^\\n]*\\n\\s+with:\\n\\s+version:\\s*['\"]?(?<currentValue>v[0-9.]+)['\"]?"
+      ],
+      "depNameTemplate": "trivy",
+      "packageNameTemplate": "aquasecurity/trivy",
+      "datasourceTemplate": "github-releases"
     },
     {
       "description": "Webfont releases vendored into docs/assets/fonts by scripts/update-fonts.sh",
