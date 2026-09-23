@@ -136,7 +136,8 @@ verifier would exempt nearly everything. See
 
 **Both Gateways admit routes from every namespace**
 (`allowedRoutes.namespaces.from: All`). Any namespace can attach an `HTTPRoute`
-to `infra-gateway` and claim a hostname under `*.infra.k8s.wlkr.ch`.
+to either Gateway and claim a hostname inside its listener's pattern — see
+[Gateway API](../platform/gateway-api.md#configuration).
 
 ## Exposed interfaces
 

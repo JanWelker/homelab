@@ -80,6 +80,7 @@ Prometheus and Alertmanager have no route of their own, so theirs are in
 
 | Setting | Why |
 | --- | --- |
+| `authentik.disable_update_check` and `authentik.avatars` | Telemetry and Gravatar lookups are switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy |
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.image.tag` with its `# renovate:` annotation | The chart hardcodes a Debian 12 tag nothing tracks. The annotation lets Renovate move it (`versioning=docker`, so the `-trixie` suffix is a constraint, not a prerelease); an `allowedVersions` rule holds the major, because a Postgres major is a dump and restore — see [Renovate](../development/maintenance.md) |

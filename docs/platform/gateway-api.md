@@ -31,7 +31,12 @@ L2 pool, defined in `gateways.yaml`:
 | `infra-gateway` | `*.infra.k8s.wlkr.ch` | Platform services (Grafana, Hubble, etc.), LAN only |
 
 Both terminate TLS with cert-manager's wildcard certificates, so a new
-hostname needs no certificate of its own and nothing to renew. Port 80 is
+hostname needs no certificate of its own and nothing to renew. Each HTTPS
+listener pins its hostname pattern, so a route can only claim a name inside
+its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still
+admits an `infra` name; such a route gets no traffic, because the infra
+names resolve to the other Gateway and the apps certificate covers one label
+only. Port 80 is
 accepted from all namespaces only so the central rule in `http-redirect.yaml`
 can send it to HTTPS. `apps-gateway` carries the annotation that makes
 [external-dns](external-dns.md#configuration) publish the router's public
@@ -81,4 +86,4 @@ kubectl get gateway infra-gateway -n kube-system \
     A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is `Accepted`.
 
 !!! warning "Nothing stops two apps claiming the same hostname"
-    Both Gateways admit routes from every namespace, so a stray `HTTPRoute` can attach itself to `infra-gateway` and claim a name — see [Security Posture](../architecture/security.md).
+    Both Gateways admit routes from every namespace, so a stray `HTTPRoute` can attach itself to either Gateway and claim a name inside its hostname pattern — see [Security Posture](../architecture/security.md).

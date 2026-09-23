@@ -41,8 +41,12 @@ spec:
 
             web:
               base_url: https://auth.infra.k8s.wlkr.ch
+            # No phone-home: the update check and Gravatar lookups are config
+            # switches, not network-policy allowances.
             error_reporting:
               enabled: false
+            disable_update_check: true
+            avatars: initials
             postgresql:
               host: authentik-postgresql
               name: authentik
