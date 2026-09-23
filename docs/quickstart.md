@@ -159,7 +159,10 @@ the same L2 network segment as the nodes.
     make kubeconfig
     ```
 
-    Verify the cluster answers. `NotReady` is expected at this point:
+    Every `make` target that touches the cluster reads `output/kubeconfig`
+    (`make KUBECONFIG=<file> <target>` picks another); only `kubectl` in
+    your own shell needs the export. Verify the cluster answers. `NotReady`
+    is expected at this point:
 
     ```bash
     export KUBECONFIG="$PWD/output/kubeconfig"

@@ -1,4 +1,10 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
+
+# Every target that touches the cluster reads the kubeconfig make kubeconfig
+# wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
+# Override per call: make KUBECONFIG=~/.kube/config bao-unseal
+KUBECONFIG ?= $(CURDIR)/output/kubeconfig
+export KUBECONFIG
 
 chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}' $(1))
 CILIUM_VERSION      := $(call chart_version,payload/platform/cilium/application.yaml)
@@ -26,14 +32,18 @@ kubeconfig:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml
 	@echo "Kubeconfig saved to output/kubeconfig"
 
-untaint:
+check-context:
+	@test -f "$(KUBECONFIG)" || { echo "ERROR: $(KUBECONFIG) not found -- run make kubeconfig first, or pass KUBECONFIG=<file>"; exit 1; }
+	@echo "Using context $$(kubectl config current-context) from $(KUBECONFIG)"
+
+untaint: check-context
 	@echo "WARNING: Only run this task in a single node cluster setup!"
 	kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 # --overwrite: without it this fails on any node that is already tainted, so
 # re-tainting a partly untainted cluster takes two tries and a reading of the
 # error message.
-taint:
+taint: check-context
 	@echo "Re-applying control-plane taints..."
 	kubectl taint nodes --overwrite \
 		-l node-role.kubernetes.io/control-plane \
@@ -51,7 +61,7 @@ bootstrap: install-cilium install-argo bootstrap-apps
 # ServiceMonitors off: their CRDs arrive with the prometheus-operator-crds
 # Application, and ArgoCD adds the monitors when it adopts the release. The
 # flags leave cilium-config untouched.
-install-cilium:
+install-cilium: check-context
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
@@ -68,7 +78,7 @@ install-cilium:
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
 
-install-argo:
+install-argo: check-context
 	$(call require,ARGOCD_VERSION,payload/argocd/application.yaml)
 	helm upgrade --install argocd argo-cd \
 		--repo https://argoproj.github.io/argo-helm \
@@ -80,7 +90,7 @@ install-argo:
 
 # The AppProjects go first: an Application naming a project that does not
 # exist is rejected, and the argocd Application names one.
-bootstrap-apps:
+bootstrap-apps: check-context
 	@echo "Handing the cluster over to ArgoCD..."
 	kubectl apply -f payload/platform/argocd-projects/projects.yaml
 	kubectl apply -f payload/argocd/application.yaml
@@ -88,16 +98,16 @@ bootstrap-apps:
 	@echo "ArgoCD now syncs the platform ApplicationSet and everything under it."
 	@echo "Every ExternalSecret stays Degraded until make bao-init and make bao-unseal run."
 
-storage-check:
+storage-check: check-context
 	scripts/storage-check.sh
 
-bao-init:
+bao-init: check-context
 	scripts/bao-init.sh
 
-bao-unseal:
+bao-unseal: check-context
 	scripts/bao-unseal.sh
 
-bao-secrets:
+bao-secrets: check-context
 	scripts/bao-secrets.sh
 
 # Without LIMIT this arms every node, and the firmware boots network-first: a
@@ -151,6 +161,7 @@ clean:
 	  '    output/http/   Flatcar image, kernel, initrd, sysexts   make download' \
 	  '    output/tftp/   bootloader and PXE menus                 make config' \
 	  '    output/tmp/    scratch space                            make config' \
+	  '    output/router/ FRR BGP config for the router            make config' \
 	  '' \
 	  '  Copy output/credentials/ somewhere safe first, or run make clean-artifacts' \
 	  '  to remove only the regenerable half.' \
@@ -167,5 +178,5 @@ clean:
 	esac
 
 clean-artifacts:
-	rm -rf output/http output/tftp output/tmp
+	rm -rf output/http output/tftp output/tmp output/router
 	@echo "Downloaded and generated artifacts removed. output/credentials/ kept."

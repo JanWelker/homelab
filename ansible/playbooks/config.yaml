@@ -5,6 +5,7 @@
   gather_facts: false
   vars:
     output_dir: "{{ playbook_dir }}/../../output"
+    pxe_menu: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
     # One template per environment, one Ignition config per template.
     ignition_configs:
       - template: butane_node_config
@@ -61,6 +62,17 @@
         - "{{ output_dir }}/http"
         - "{{ output_dir }}/tftp"
         - "{{ output_dir }}/tftp/pxelinux.cfg"
+        - "{{ output_dir }}/router"
+
+    # The router side of the eBGP session in payload/platform/cilium/bgp.yaml,
+    # rendered from the inventory so a firmware reset is recovered by pasting.
+    - name: Generate the router's FRR BGP config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/frr_bgp.conf.j2" # noqa: no-relative-paths
+        dest: "{{ output_dir }}/router/frr-bgp.conf"
+        mode: "0644"
+      run_once: true # noqa: run-once
+      delegate_to: localhost
 
     # The nodes fetch these over plain HTTP on first boot. Ignition checks each
     # against the hash of the file the boot server was given, so a substituted
@@ -135,8 +147,20 @@
         label: "{{ inventory_hostname }}{{ item.suffix }}"
       changed_when: true
 
+    # make reinstall arms a node by setting DEFAULT install in its menu. A
+    # regenerated menu keeps that, or make config would silently disarm it.
+    - name: Check for an existing PXE menu
+      ansible.builtin.stat:
+        path: "{{ pxe_menu }}"
+      register: pxe_menu_stat
+
+    - name: Keep the existing PXE default
+      ansible.builtin.set_fact:
+        pxe_default: "{{ lookup('file', pxe_menu) | regex_search('(?m)^DEFAULT (\\S+)$', '\\1') | default(['localboot'], true) | first }}"
+      when: pxe_default is not defined and pxe_menu_stat.stat.exists
+
     - name: Generate PXE Config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/pxe_config.j2" # noqa: no-relative-paths
-        dest: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
+        dest: "{{ pxe_menu }}"
         mode: "0755"
