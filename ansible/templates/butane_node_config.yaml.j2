@@ -67,8 +67,9 @@ storage:
           z /etc/kubernetes/pki/ca.crt 0600 root root -
           z /opt/cni/bin 0700 root root -
 
+    # Carries the bootstrap token and the certificate key; kubeadm runs as root.
     - path: /opt/kubeadm-config.yaml
-      mode: 0644
+      mode: 0600
       contents:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}

@@ -239,8 +239,9 @@ echo
 
 # --- Write -----------------------------------------------------------------
 
-# Values reach the pod as JSON on stdin rather than as arguments, so they stay
-# out of both this shell's history and the pod's process list.
+# Values travel on stdin at both ends: NUL-separated into the local interpreter
+# that builds the JSON, and as JSON into the pod. Neither process list shows
+# them, and this shell's history never sees them.
 #
 # The JSON is built into a variable before anything is piped. `kubectl exec -i`
 # reads stdin once, as the remote command starts: a producer that is not ready
@@ -251,10 +252,11 @@ echo
 put() {
   local path="$1" json
   shift
-  json="$(uv run python -c '
+  json="$(printf '%s\0' "$@" | uv run python -c '
 import json, sys
-print(json.dumps(dict(pair.split("=", 1) for pair in sys.argv[1:])))
-' "$@")"
+pairs = sys.stdin.buffer.read().split(b"\0")[:-1]
+print(json.dumps(dict(p.decode().split("=", 1) for p in pairs)))
+')"
   printf '%s' "$json" | bao_in kv put -mount=kv "$path" - >/dev/null
   printf '  %-24s written\n' "kv/${path}"
 }
