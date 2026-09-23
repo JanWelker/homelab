@@ -11,11 +11,7 @@ spec:
   groups:
     - name: trivy-operator.coverage
       rules:
-        # A report the API server refuses to store leaves no object behind, so
-        # every trivy_* metric stays silent and the workload is
-        # indistinguishable from one that is clean. The only way to see it is
-        # to compare what is running against what was scanned.
-        # See docs/platform/trivy-operator.md.
+        # A rejected report leaves no object and no metric; see docs/platform/trivy-operator.md#alerting
         - alert: TrivyContainerNotScanned
           expr: |
             count by (namespace, container) (
@@ -27,9 +23,7 @@ spec:
             count by (namespace, container) (
               label_replace(trivy_image_info, "container", "$1", "container_name", "(.+)")
             )
-          # A full sweep after an operator restart clears in about 30 minutes,
-          # and the 24h report TTL recycles every report in the same window.
-          # Two hours is several times either, so only a lasting gap fires.
+          # Several times a full sweep, so only a lasting gap fires.
           for: 2h
           labels:
             severity: warning
@@ -45,11 +39,7 @@ spec:
               with no findings. Check the operator log for a ResourceExhausted
               write rejection, which means the report exceeded the 2 MiB API
               server limit.
-    # Findings that should page. Reports expire every 24h and are rebuilt, so
-    # "new" is compared against two days ago rather than against the previous
-    # sample, only once the operator has two days of history, and every rule
-    # waits long enough for a rebuild to complete.
-    # See docs/platform/trivy-operator.md.
+    # "New" is against two days ago, past a report rebuild; see docs/platform/trivy-operator.md#alerting
     - name: trivy-operator.findings
       rules:
         - alert: TrivyExposedSecretNew
@@ -131,8 +121,7 @@ spec:
             sum by (title) (trivy_cluster_compliance{status="Fail"})
             >
             sum by (title) (trivy_cluster_compliance{status="Fail"} offset 1d)
-          # Compliance is recomputed every six hours; two runs above
-          # yesterday's count is drift, not a rebuild in progress.
+          # Two six-hourly runs above yesterday is drift, not a rebuild.
           for: 12h
           labels:
             severity: warning

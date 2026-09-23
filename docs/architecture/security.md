@@ -47,6 +47,25 @@ in plaintext. The directory is `0700` and `output/` is gitignored, but the
 values are reused across `make config` runs — the Ansible `password` lookup
 reads back an existing file. Delete them to force new ones.
 
+## Node hardening
+
+`ansible/templates/kubeadm.yaml.j2` and `ansible/templates/butane_node_config.yaml.j2`
+carry the settings below. They land at provisioning time and change only on
+`make reinstall`.
+
+| Setting | Why |
+| --- | --- |
+| `proxy.disabled: true` | Cilium replaces `kube-proxy`. The field lands in the `kubeadm-config` ConfigMap that `kubeadm upgrade apply` reads; a `skipPhases` on init alone leaves `proxy: {}` stored, and every upgrade puts `kube-proxy` back beside Cilium |
+| `--kubelet-certificate-authority` | The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. It can, because `serverTLSBootstrap` makes the kubelet request its certificate from the cluster CA and [kubelet-csr-approver](../platform/metrics-server.md) approves the CSR; metrics-server verifies the same certificates |
+| `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any address on every node, with no ownership check. Nothing here uses it: LoadBalancer addresses come from Cilium's pools. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
+| `--tls-cipher-suites` and `--tls-min-version` | Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1 |
+| `protectKernelDefaults: true` | The kubelet no longer rewrites `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` at start and refuses to start unless they are already right. `/etc/sysctl.d/k8s.conf` in the node config sets them, and the two travel together: without the drop-in a fresh node comes up at the kernel defaults, the kubelet exits and the node never joins, which shows at the next `make reinstall`, not on merge |
+| `kernel.panic` with `kernel.panic_on_oops` | An oops reboots the node after a few seconds instead of leaving it wedged, so Ceph and etcd start recovering without a hand power-cycle |
+| `podPidsLimit` | Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. Well above anything running here, well below `kernel.pid_max` |
+| `/etc/tmpfiles.d/kubernetes-cis.conf` | kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and a kubelet `ExecStartPre` re-applies them before every start, when kubeadm has just rewritten them. See [Triage 2026-09-20](../operations/triage-2026-09-20.md#infra-the-nodes) |
+| `systemd-sysupdate-reboot.timer` masked | Flatcar ships a vendor symlink that runs it despite a disabled preset. It would reboot on its own schedule, behind [Kured](../platform/kured.md) and without a drain, and it fails every run anyway: it acts on the default sysupdate component, which holds only `noop.conf` |
+| `noop.conf` in `/etc/sysupdate.d/` | The unsuffixed directory is the default component that `systemd-sysupdate.service` acts on; the no-op transfer keeps that run from failing while the real transfers sit in the `kubernetes.d` and `containerd.d` components |
+
 ## Secrets
 
 Secrets live in [OpenBao](../platform/openbao.md) and reach workloads as native

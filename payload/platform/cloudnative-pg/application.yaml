@@ -25,9 +25,7 @@ spec:
 
           monitoring:
             podMonitorEnabled: true
-            # The chart renders upstream's dashboard, so nothing is vendored
-            # here and Renovate keeps it current with the chart. It stays in
-            # this namespace; Grafana's sidecar searches all of them.
+            # Upstream's dashboard, rendered by the chart; Grafana's sidecar finds it here.
             grafanaDashboard:
               create: true
 

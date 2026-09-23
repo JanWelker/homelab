@@ -9,15 +9,11 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false
 spec:
   description: User-facing applications
-  # The workloads repository and the chart repositories its Applications pull
-  # from. A workload on a new chart repository is added here first, or its
-  # Application is rejected. See docs/development/add-workload.md
+  # A workload on a new chart repository is added here first; see docs/development/add-workload.md
   sourceRepos:
     - https://github.com/JanWelker/homelab-apps.git
     - https://nextcloud.github.io/helm/
-  # Any namespace but the platform's. authentik stays open: a workload ships
-  # its Authentik blueprint as a ConfigMap there, which is the one thing the
-  # platform asks workloads to write into it.
+  # authentik stays open: workloads ship their blueprint as a ConfigMap there.
   destinations:
     - namespace: "*"
       server: https://kubernetes.default.svc

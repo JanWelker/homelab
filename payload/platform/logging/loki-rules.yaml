@@ -120,9 +120,7 @@ data:
                 should not have.
       - name: openbao-audit
         rules:
-          # The audit device on stdout writes one JSON object per request and
-          # response; the server's own log lines share the stream, so the
-          # line filters come first and the parser is confined to matches.
+          # The server's own log lines share the stream: filter before parsing.
           - alert: OpenBaoSecretReadOutsideEso
             expr: |
               sum by (auth_display_name, request_path) (
@@ -148,10 +146,7 @@ data:
                 anything else is a person with the root token, or a token that
                 should not exist.
       - name: tetragon
-        # Detections that need only Tetragon's exec events, which carry the
-        # binary's setuid bits, file capabilities and link count. The export
-        # deny list keeps host, cilium and kube-system execs out of this
-        # stream; the node journal covers the host. See docs/platform/tetragon.md
+        # Detections from Tetragon's exec events alone; see docs/platform/tetragon.md#policies
         rules:
           - alert: TetragonSudoInContainer
             expr: |

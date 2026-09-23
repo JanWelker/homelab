@@ -16,9 +16,8 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        # Since v1.20 only the image set is read from `csi`; the rest is
-        # ignored, use csi-driver.yaml. Pinned ahead of the chart until Rook
-        # ships ceph-csi-operator >= v1.0.5. See docs/platform/rook-ceph.md
+        # Only the image set is read from `csi`; the rest is csi-driver.yaml.
+        # Pinned ahead of the chart until Rook ships ceph-csi-operator >= v1.0.5.
         csi:
           provisioner:
             # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-provisioner versioning=docker

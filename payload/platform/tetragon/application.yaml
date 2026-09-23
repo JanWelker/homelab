@@ -7,8 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
     link.argocd.argoproj.io/external-link: https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview
-    # The TracingPolicy CRD defaults maxData, resolve, returnCopy and
-    # followChildren on every hook; a client-side diff reads those as drift.
+    # CRD defaults on every hook read as drift otherwise.
     argocd.argoproj.io/compare-options: ServerSideDiff=true
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -24,11 +23,7 @@ spec:
             # Capabilities and privilege changes on exec and kprobe events.
             enableProcessCred: true
 
-            # The chart's export sidecar tails the JSON file to stdout, so
-            # Alloy collects it as an ordinary container log. The deny list
-            # keeps exec and exit noise from the host, Cilium and kube-system
-            # out of that file; policy hits from them still pass. See
-            # docs/platform/tetragon.md
+            # Alloy reads the sidecar's stdout; see docs/platform/tetragon.md#configuration
             exportDenyList: |
               {"health_check":true}
               {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["","cilium","kube-system"]}
@@ -37,8 +32,7 @@ spec:
               serviceMonitor:
                 enabled: true
 
-            # 2.5x the busiest agent's working set with the policy library
-            # loaded: see docs/platform/tetragon.md
+            # 2.5x the measured peak; see docs/platform/tetragon.md#configuration
             resources:
               requests:
                 cpu: 50m

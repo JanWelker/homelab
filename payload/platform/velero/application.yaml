@@ -128,9 +128,7 @@ spec:
             memory: 1Gi
 
         nodeAgent:
-          # Root and the capability set stay: kopia reads every pod volume
-          # under /var/lib/kubelet/pods, whoever owns the files. What is
-          # dropped is escalation and the unconfined syscall table.
+          # Root stays: kopia reads every pod volume; see docs/platform/velero.md
           containerSecurityContext:
             allowPrivilegeEscalation: false
             seccompProfile:

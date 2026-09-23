@@ -1,13 +1,10 @@
 ---
 global:
   domain: argo.infra.k8s.wlkr.ch
-  # The chart's NetworkPolicy objects union with the CiliumNetworkPolicy in
-  # payload/platform/security/network-policies/argocd.yaml, and one of them
-  # allows the server every ingress. Off, so only the Cilium policy counts.
+  # Would union with the Cilium policy and allow the server every ingress.
   networkPolicy:
     create: false
-  # Pod-level; every container already sets the same, this closes the gap
-  # the config audit keys on (KSV-0118). See docs/operations/vulnerabilities.md
+  # Pod-level; the config audit keys on it (KSV-0118).
   securityContext:
     runAsNonRoot: true
     seccompProfile:
@@ -15,8 +12,7 @@ global:
 
 redis-ha:
   enabled: true
-  # Ahead of the chart's 8.6.4-alpine, frozen at its June build and so short of
-  # the OpenSSL fix. Renovate keeps this on the newest patch; see gitops docs.
+  # Ahead of the chart's frozen tag; see docs/platform/argocd.md#configuration
   image:
     # renovate: datasource=docker depName=ecr-public.aws.com/docker/library/redis versioning=docker
     tag: 8.10.1-alpine
@@ -35,12 +31,11 @@ redis-ha:
       limits:
         memory: 128Mi
   haproxy:
-    # Ahead of the chart's 3.3.10-alpine, which carries three critical CVEs.
     # Drop once argo-cd vendors redis-ha >= 4.39.1 (DandyDeveloper/charts#424).
     image:
       # renovate: datasource=docker depName=ecr-public.aws.com/docker/library/haproxy versioning=docker
       tag: 3.4.4-alpine
-    # maxSurge 0: 3 pods, hard anti-affinity, 3 nodes; see gitops docs.
+    # 3 pods, hard anti-affinity, 3 nodes; see docs/platform/argocd.md#configuration
     deploymentStrategy:
       type: RollingUpdate
       rollingUpdate:
@@ -129,8 +124,7 @@ configs:
   cm:
     url: https://argo.infra.k8s.wlkr.ch
 
-    # No webhook can reach a private address; poll instead. Must not exceed
-    # the ApplicationSets' requeueAfterSeconds, see docs/platform/argocd.md
+    # Must not exceed the ApplicationSets' requeueAfterSeconds; see docs/platform/argocd.md
     timeout.reconciliation: 60s
 
     # Break-glass if Authentik is down: see docs/platform/argocd.md

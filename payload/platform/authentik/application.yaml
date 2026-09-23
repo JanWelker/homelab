@@ -22,15 +22,11 @@ spec:
               # From secrets.yaml; the blueprints read it via !Env.
               - secretRef:
                   name: authentik-secrets
-              # From secrets-nextcloud.yaml. Optional: without it the pods
-              # would refuse to start on a cluster that has no Nextcloud.
+              # From secrets-nextcloud.yaml; optional so a cluster without Nextcloud starts.
               - secretRef:
                   name: authentik-secrets-nextcloud
                   optional: true
-            # Pod-level for server and worker. The image runs as uid 1000 and
-            # binds unprivileged ports; the per-deployment container contexts
-            # below drop the rest. Read-only root is not attempted: the image
-            # writes under /media and /templates at start.
+            # No read-only root: the image writes under /media and /templates at start.
             securityContext:
               runAsNonRoot: true
               seccompProfile:
@@ -41,8 +37,7 @@ spec:
 
             web:
               base_url: https://auth.infra.k8s.wlkr.ch
-            # No phone-home: the update check and Gravatar lookups are config
-            # switches, not network-policy allowances.
+            # No phone-home.
             error_reporting:
               enabled: false
             disable_update_check: true
@@ -85,8 +80,7 @@ spec:
               seccompProfile:
                 type: RuntimeDefault
 
-            # Bump whenever authentik-secrets gains a key: envFrom is read once
-            # at pod start, see docs/platform/authentik.md#pitfalls
+            # Bump when authentik-secrets gains a key; see docs/platform/authentik.md#pitfalls
             podAnnotations:
               homelab.wlkr.ch/secret-generation: "2"
             metrics:
@@ -100,8 +94,7 @@ spec:
               limits:
                 memory: 1Gi
 
-            # Workload blueprints, one optional source per workload; not
-            # `blueprints.configMaps`, see docs/platform/authentik.md#chart-values
+            # One optional source per workload; see docs/platform/authentik.md#chart-values
             volumes:
               - name: blueprints-workloads
                 projected:
@@ -116,14 +109,11 @@ spec:
 
           postgresql:
             enabled: true
-            # The subchart's NetworkPolicy allows the database every egress,
-            # and Cilium unions it with the policy in
-            # payload/platform/security/network-policies/authentik.yaml.
+            # Would union with the Cilium policy and allow every egress.
             networkPolicy:
               enabled: false
             image:
-              # Same 17.11, Debian 13 base. The chart's own default is
-              # -bookworm and nothing tracks it.
+              # The chart's -bookworm default is tracked by nothing.
               # renovate: datasource=docker depName=docker.io/library/postgres versioning=docker
               tag: "17.11-trixie"
             auth:

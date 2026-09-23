@@ -133,8 +133,9 @@ and the ArgoCD and Grafana client pairs; `scripts/bao-secrets.sh` is the
 list of keys. A workload's client credentials go in the workload's own path
 (Nextcloud's in `kv/nextcloud/config`, read by `secrets-nextcloud.yaml`,
 mounted `optional`): rewriting `kv/authentik/config` would rotate the
-Postgres password out from under the database, and a cluster without the
-workload still gets a working Authentik.
+Postgres password out from under the database, and External Secrets fails
+an `ExternalSecret` whole when one key is missing, so a shared one would
+leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
 Then log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
 `akadmin` with `bootstrap-password` and create the groups above.

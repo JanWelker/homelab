@@ -29,8 +29,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           auth_enabled: false
-          # Loki otherwise reports usage to stats.grafana.org every few
-          # hours; see docs/platform/logging.md
+          # No phone-home.
           analytics:
             reporting_enabled: false
           commonConfig:
@@ -58,8 +57,7 @@ spec:
               insecure: true
           limits_config:
             retention_period: 30d
-            # The daily Trivy summary is a few lines; a year of it is the
-            # only long-range record of findings. See docs/platform/trivy-operator.md
+            # A year of the daily Trivy summary; see docs/platform/trivy-operator.md#history
             retention_stream:
               - selector: '{namespace="trivy-system", container="findings-history"}'
                 priority: 1
@@ -74,9 +72,7 @@ spec:
             tsdb_shipper:
               active_index_directory: /var/loki/tsdb-index
               cache_location: /var/loki/tsdb-cache
-          # Alerts from logs: the audit log and the journal have nowhere else
-          # to fire from. Rules are ConfigMaps labelled loki_rule in this
-          # namespace, loaded by the chart's sidecar. See docs/platform/logging.md
+          # Rules are ConfigMaps labelled loki_rule; see docs/platform/logging.md
           rulerConfig:
             alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
             enable_alertmanager_v2: true

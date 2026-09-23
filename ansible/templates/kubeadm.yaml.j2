@@ -23,52 +23,18 @@ timeouts:
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 controlPlaneEndpoint: "{{ control_plane_endpoint }}"
-# Cilium replaces kube-proxy, so kubeadm must never deploy it. This used to be
-# `skipPhases: [addon/kube-proxy]` nested under nodeRegistration, where v1beta4
-# has no such field: kubeadm ignored it, installed kube-proxy anyway, and the
-# Makefile deleted the DaemonSet after the fact. Worse, the stored config then
-# said `proxy: {}`, and `kubeadm upgrade apply` only skips the addon when
-# Proxy.Disabled is set -- so every upgrade would have put kube-proxy back
-# beside Cilium. Setting it here is what lands in the kubeadm-config ConfigMap
-# that upgrade reads; init derives the skipped phase from it.
+# Cilium replaces kube-proxy; the flags below are explained in
+# docs/architecture/security.md#node-hardening
 proxy:
   disabled: true
 apiServer:
   extraArgs:
-    # Verify the kubelet's serving certificate instead of trusting whatever
-    # answers on port 10250. Without this the API server accepts any certificate
-    # for exec, logs, attach and port-forward, so anything able to intercept
-    # that connection can impersonate a kubelet -- and those are exactly the
-    # calls carrying command output and log contents.
-    #
-    # Most clusters cannot turn this on, because the kubelet self-signs by
-    # default and no CA can verify it. This one can: serverTLSBootstrap below
-    # makes the kubelet request a real certificate from the cluster CA, and
-    # kubelet-csr-approver approves those CSRs against a node-name regex and the
-    # 10.9.2.0/24 prefix. The result is signed by CN=kubernetes with the node's
-    # InternalIP in its SANs, which is the address
-    # --kubelet-preferred-address-types=InternalIP makes the API server dial.
-    #
-    # metrics-server already does the same verification against the same
-    # certificates and has been healthy, which is the practical proof this
-    # works rather than an argument that it should.
+    # Needs serverTLSBootstrap below and kubelet-csr-approver.
     - name: kubelet-certificate-authority
       value: /etc/kubernetes/pki/ca.crt
-    # spec.externalIPs on a Service lets whoever can create it hijack traffic to
-    # an arbitrary address on every node -- there is no ownership check on the
-    # address at all. Nothing here uses the field: LoadBalancer addresses come
-    # from Cilium's LB pools, and `kubectl get svc -A` finds zero Services with
-    # externalIPs set. This makes that a rule rather than a fact.
-    #
-    # NodeRestriction is kubeadm's default and has to be repeated: naming the
-    # flag replaces the default list rather than adding to it.
+    # NodeRestriction is kubeadm's default; the flag replaces the list.
     - name: enable-admission-plugins
       value: NodeRestriction,DenyServiceExternalIPs
-    # Go's defaults still include CBC and 3DES suites. Restricted to AEAD
-    # constructions on ECDHE, which every client here speaks -- kubectl, the
-    # controllers and the kubelets are all Go. TLS 1.3 negotiates its own suites
-    # and ignores this list; the floor below is what stops a downgrade to 1.0
-    # or 1.1.
     - name: tls-cipher-suites
       # yamllint disable-line rule:line-length
       value: "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
@@ -132,22 +98,7 @@ apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
 serverTLSBootstrap: true
-# Stop the kubelet rewriting the host's kernel parameters behind your back. With
-# this false -- the default -- it silently sets vm.overcommit_memory,
-# kernel.panic, kernel.panic_on_oops and vm.panic_on_oom at startup. With it
-# true it sets nothing and refuses to start if they are not already right.
-#
-# That inversion is the whole point and also the hazard: it moves responsibility
-# for those four values onto the node image. They are set in
-# /etc/sysctl.d/k8s.conf by butane_node_config.yaml.j2, and the two changes have
-# to travel together. Without the sysctl drop-in a fresh node comes up at the
-# kernel's own defaults -- overcommit_memory 0, panic 0 -- the kubelet finds
-# them wrong and exits, and the node never joins. That failure would not show up
-# on merge either, only at the next `make reinstall`.
+# Needs the sysctls in butane_node_config.yaml.j2, or the kubelet refuses to
+# start; see docs/architecture/security.md#node-hardening
 protectKernelDefaults: true
-# Nothing capped PIDs per pod, so one pod could exhaust the node's PID space and
-# take the kubelet and every other pod on that node with it. The dramatic
-# version is a fork bomb; the realistic one is a process that stops reaping its
-# children. 4096 is well above anything running here and well below the node's
-# kernel.pid_max.
 podPidsLimit: 4096

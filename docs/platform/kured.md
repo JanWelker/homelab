@@ -77,6 +77,11 @@ or scale the DaemonSet to zero. To force a node to reboot on the next pass:
 ssh core@<node> sudo touch /run/reboot-required
 ```
 
+`NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml`
+fires when the sentinel has been there for two days: Kured reboots one node
+at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is
+a blocked node, not a queued one.
+
 ## Health check
 
 ```bash

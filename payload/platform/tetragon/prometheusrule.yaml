@@ -10,12 +10,7 @@ spec:
   groups:
     - name: tetragon
       rules:
-        # A policy hit from a pod that never hit before is a new counter
-        # series, and increase() over one sample is zero. The "unless offset"
-        # branch catches those; the "> 0" before "or" matters, since "or"
-        # keeps a zero-valued left side over the right. keep_firing_for holds
-        # the alert when the pod exits and takes its series with it. See
-        # docs/platform/tetragon.md
+        # The "unless offset" branch catches a first hit; see docs/platform/tetragon.md#pitfalls
         - alert: TetragonSensitiveFileAccess
           expr: |
             sum by (namespace, pod, binary) (

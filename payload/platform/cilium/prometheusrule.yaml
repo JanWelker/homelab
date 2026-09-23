@@ -12,9 +12,7 @@ spec:
   groups:
     - name: cilium.policy
       rules:
-        # Only policy verdicts: the reasons that dominate the drop counter are
-        # VLAN_FILTERED and STALE_OR_UNROUTABLE_IP, which are the LAN, not a
-        # policy. Fifteen minutes outlasts a rollout's first few retries.
+        # Only policy verdicts: VLAN_FILTERED and STALE_OR_UNROUTABLE_IP are the LAN.
         - alert: HubblePolicyDrops
           expr: |
             sum by (source_namespace, destination_namespace) (
