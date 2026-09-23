@@ -17,7 +17,7 @@ without it, findings at the stricter audit level go nowhere.
 | Log file | `/var/log/kubernetes/audit/audit.log` on each control-plane node |
 | Durable copy | [Loki](../platform/logging.md), via Alloy, on Ceph |
 | Query it with | `{job="kubernetes-audit"}` in Grafana |
-| Worst-case disk | ~1.1 GB per control-plane node |
+| Worst-case disk | About 1 GB per control-plane node — see [Where the log lives](#where-the-log-lives) |
 
 ## The policy decides everything
 
@@ -43,11 +43,8 @@ and **the first match wins**, so the order is the design:
 | Property | Value |
 | --- | --- |
 | Path | `/var/log/kubernetes/audit/audit.log` |
-| Filesystem | root, ext4, 50 GB |
-| `--audit-log-maxsize` | `100` (MB) |
-| `--audit-log-maxbackup` | `10` |
-| `--audit-log-maxage` | `30` (days) |
-| Worst-case footprint | ~1.1 GB per control-plane node |
+| Filesystem | root, ext4 |
+| Rotation | The `--audit-log-maxsize`, `--audit-log-maxbackup` and `--audit-log-maxage` flags in `ansible/templates/kubeadm.yaml.j2`; the product of size and backups bounds the footprint to about 1 GB, and the age cap keeps a quiet cluster from holding a month-old rotation forever |
 
 The root filesystem persists across reboots, so the log survives on the node.
 Alloy still tails it into Loki, which is the copy that matters: a log stored

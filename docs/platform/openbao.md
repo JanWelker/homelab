@@ -35,7 +35,7 @@ flowchart LR
 
 | Property | Value |
 | --- | --- |
-| Mode | HA, 3 replicas, integrated Raft on a Ceph PVC per replica |
+| Mode | HA, integrated Raft on a Ceph PVC per replica; the replica count is in `application.yaml` |
 | Audit storage | Separate PVC on `rook-ceph-block`, written by the `file` audit device — see [Audit devices](#audit-devices) |
 | TLS | Terminates at the Gateway; plain HTTP at `http://openbao.openbao.svc.cluster.local:8200` |
 | Seal | Shamir, 5 shares, threshold 3, unsealed by hand |

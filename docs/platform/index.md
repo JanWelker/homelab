@@ -118,7 +118,7 @@ while it is not yet Healthy.
 | Network | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
 | Controllers | `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | Storage | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
-| Secrets | `openbao` | `rook-ceph-block` for its volumes. **Bootstrap pauses here** until OpenBao is initialised and unsealed |
+| Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](../architecture/gitops.md#bootstrap-pauses-at-openbao) |
 | Certificates | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
 | Ingress | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
 | Services | `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
@@ -127,7 +127,6 @@ while it is not yet Healthy.
 | Policy | `kured`, `security`, `trivy-operator` | namespaces to label and a Prometheus to scrape; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](../development/add-workload.md) |
 
-The `ClusterSecretStore` lives with OpenBao rather than with External Secrets,
-and cert-manager's issuers and certificates are their own `certificates`
-Application, so that the controllers report Healthy on their own and the
-resources that wait for OpenBao are the ones that say so.
+Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own
+Application is in
+[Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence).

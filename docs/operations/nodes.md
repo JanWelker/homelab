@@ -14,7 +14,8 @@ act, wait for Ceph, move on.
 
 [Kured](../platform/kured.md) reboots nodes on its own once an update is
 staged, one at a time, and refuses while Ceph or etcd is unhealthy. The
-procedure below is for rebooting ahead of its next 30-minute check, or for a
+procedure below is for rebooting ahead of its next check (`period` in
+`payload/platform/kured/application.yaml`), or for a
 reason nothing set a sentinel for. Flatcar is installed to disk, so the node
 boots without the boot server and keeps `/etc/kubernetes`, `/var/lib/etcd` and
 `/var/lib/rook`. A change made with `make config` is *not* picked up by a
