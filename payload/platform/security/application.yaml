@@ -23,8 +23,8 @@ spec:
     namespace: kube-system
   syncPolicy:
     automated:
-      # Never prune: this Application owns Namespaces (and all they contain).
-      prune: false
+      # Namespaces carry Prune=false themselves; see docs/platform/security-policies.md
+      prune: true
       selfHeal: true
     retry:
       limit: 10
