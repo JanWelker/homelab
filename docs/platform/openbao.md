@@ -83,6 +83,7 @@ adds itself. The `bao kv put` for each path sits in a comment at the top of the
 | `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
 | `monitoring/grafana-admin` | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
+| `nextcloud/config` | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's
 key only writes `_acme-challenge` TXT records, so stolen it can issue
@@ -129,7 +130,7 @@ bao write auth/kubernetes/role/external-secrets \
     !!! danger "Move the unseal keys before you do anything else"
         `make bao-init` writes the 5 unseal keys and the root token to `output/credentials/openbao-init.json` (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](../architecture/security.md). Copy them into a password manager that does not need this cluster to be running, then delete the file. Losing all five means the data is unrecoverable: no support line, no recovery flow.
 
-2. Populate the five paths the cluster reads — the prompts follow
+2. Populate the paths in the [KV layout](#kv-layout) — the prompts follow
    [Quickstart step 11](../quickstart.md):
 
     ```bash
@@ -157,6 +158,33 @@ bao kv put kv/cert-manager/route53 access-key-id='AKIA...' secret-access-key='..
 bao kv put -mount=kv cert-manager/route53 @/tmp/secret.json   # what make bao-secrets does
 bao kv get kv/cert-manager/route53
 ```
+
+### Rotating a credential
+
+`make bao-secrets` is also the rotation tool: it asks, per existing path,
+whether to overwrite it.
+
+1. Run it and answer `y` for the path to rotate; the others are left alone.
+   `FORCE=1 make bao-secrets` overwrites every ordinary path without asking.
+   `authentik/config` and `nextcloud/config` are excepted: they only rewrite
+   after a typed `OVERWRITE`, even under `FORCE=1`, because other live
+   components authenticate against their contents and a rewrite is an outage
+   rather than an inconvenience. Without a terminal every existing path is
+   left alone.
+
+    ```bash
+    make bao-secrets
+    ```
+
+2. Push the new value into the `Secret` now rather than at the next hourly
+   refresh — see [External Secrets](external-secrets.md#usage):
+
+    ```bash
+    kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --overwrite
+    ```
+
+3. Restart whatever read the old value into an environment variable; a
+   rotated `Secret` reaches a running pod only through a rollout.
 
 ## Health check
 

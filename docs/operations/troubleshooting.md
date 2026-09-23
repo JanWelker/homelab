@@ -11,7 +11,9 @@ with the table.
 
 | Symptom | First check |
 | --- | --- |
-| Secrets missing, certificates not renewing | OpenBao sealed — `bao status` |
+| Secrets missing, certificates not renewing | OpenBao sealed — `kubectl -n openbao exec openbao-0 -- bao status`; if so, `make bao-unseal` |
+| An Application is Degraded, OutOfSync or stuck Progressing | `argocd app get <app>` for the failing resource; a failed sync [retries itself for about forty minutes](../architecture/gitops.md#sync-policy), after that `argocd app sync <app>` — see [ArgoCD](../platform/argocd.md#health-check) |
+| A node is down | [Rebooting a node](nodes.md#rebooting-a-node); if it does not come back, [Replacing a failed node](nodes.md#replacing-a-failed-node) |
 | Pods pending on a fresh node | Node still `NotReady`; check Cilium is running on it |
 | `ExternalSecret` not syncing | [External Secrets troubleshooting](../platform/external-secrets.md#pitfalls) |
 | PVCs stuck pending | `ceph status`, then the [Rook dashboard](../platform/rook-ceph.md) |
