@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How the OS, Kubernetes, and containerd get updated on these nodes, and why nothing takes effect until a reboot.">
+        <meta name="description" content="Add a component to payload/platform/: the Application, the security labels and policies, the version pin and the documentation page it needs before its first sync.">
       
       
       
-        <link rel="canonical" href="https://homelab.wlkr.ch/operations/upgrades/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/development/add-platform-component/">
       
       
-        <link rel="prev" href="../nodes/">
+        <link rel="prev" href="../add-workload/">
       
       
-        <link rel="next" href="../backups/">
+        <link rel="next" href="../maintenance/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Updates & Upgrades - Homelab Documentation</title>
+        <title>Adding a Platform Component - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#updates-upgrades" class="md-skip">
+        <a href="#adding-a-platform-component" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Updates & Upgrades
+              Adding a Platform Component
             
           </span>
         </div>
@@ -354,8 +354,6 @@
   
   
   
-    
-  
   
     
       
@@ -368,6 +366,44 @@
       
         
       
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/" class="md-tabs__link">
+          
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+      
+      
+        
+          
         
       
         
@@ -384,42 +420,6 @@
     
       <li class="md-tabs__item md-tabs__item--active">
         <a href="../" class="md-tabs__link">
-          
-  
-  Operations
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../development/" class="md-tabs__link">
           
   
   Development
@@ -1525,8 +1525,6 @@
       
   
   
-    
-  
   
   
     
@@ -1554,21 +1552,18 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../operations/" class="md-nav__link ">
               
   
   
@@ -1585,14 +1580,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
         
-          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
             <label class="md-nav__title" for="__nav_5">
               <span class="md-nav__icon md-icon"></span>
               
@@ -1611,7 +1606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
         
   
   
@@ -1638,7 +1633,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../nodes/" class="md-nav__link">
+      <a href="../../operations/nodes/" class="md-nav__link">
         
   
   
@@ -1646,6 +1641,280 @@
     
   
   Node Lifecycle
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/upgrades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Updates & Upgrades
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backups/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Backups & Recovery
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/control-plane-vip/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/vulnerabilities/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Vulnerability Triage
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-09-20/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Development
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_6">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Development
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../add-workload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Workload
 
     
   </span>
@@ -1681,7 +1950,7 @@
   <span class="md-ellipsis">
     
   
-  Updates & Upgrades
+  Adding a Platform Component
 
     
   </span>
@@ -1698,7 +1967,7 @@
   <span class="md-ellipsis">
     
   
-  Updates & Upgrades
+  Adding a Platform Component
 
     
   </span>
@@ -1724,60 +1993,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#os-updates" class="md-nav__link">
+  <a href="#steps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        OS updates
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubernetes-and-containerd" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Kubernetes and containerd
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubernetes and containerd">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#nodes-are-pinned-to-a-minor-series" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Nodes are pinned to a minor series
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#upgrading-a-minor-version-deliberately" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Upgrading a minor version deliberately
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-components" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Platform components
+        Steps
       </span>
     </span>
   </a>
@@ -1800,276 +2019,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../backups/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Backups & Recovery
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../control-plane-vip/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Control Plane VIP
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../vulnerabilities/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Vulnerability Triage
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../triage-2026-09-20/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Triage 2026-09-20
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-            </ul>
-          </nav>
-        
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../../development/" class="md-nav__link ">
-              
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Development
-
-    
-  </span>
-  
-  
-
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        
-          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
-            <label class="md-nav__title" for="__nav_6">
-              <span class="md-nav__icon md-icon"></span>
-              
-  
-  Development
-
-            </label>
-            <ul class="md-nav__list" data-md-scrollfix>
-              
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/contributing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Contributing
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/add-workload/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Adding a Workload
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/add-platform-component/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Adding a Platform Component
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/maintenance/" class="md-nav__link">
+      <a href="../maintenance/" class="md-nav__link">
         
   
   
@@ -2138,60 +2088,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#os-updates" class="md-nav__link">
+  <a href="#steps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        OS updates
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubernetes-and-containerd" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Kubernetes and containerd
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubernetes and containerd">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#nodes-are-pinned-to-a-minor-series" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Nodes are pinned to a minor series
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#upgrading-a-minor-version-deliberately" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Upgrading a minor version deliberately
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#platform-components" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Platform components
+        Steps
       </span>
     </span>
   </a>
@@ -2254,12 +2154,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
     
     
     
@@ -2269,7 +2163,7 @@
           
   
   <span class="md-ellipsis">
-    Operations
+    Development
   </span>
 
         </a>
@@ -2286,7 +2180,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/operations/upgrades.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/development/add-platform-component.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -2295,105 +2189,83 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/operations/upgrades.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/development/add-platform-component.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="updates-upgrades">Updates &amp; Upgrades<a class="headerlink" href="#updates-upgrades" title="Permanent link">&para;</a></h1>
-<p>Three mechanisms update a node, and all three land their changes on disk and
-wait for a reboot. A node can be four patch releases behind while reporting
-that everything is up to date.</p>
-<h2 id="os-updates">OS updates<a class="headerlink" href="#os-updates" title="Permanent link">&para;</a></h2>
-<p>Flatcar downloads OS updates in the background into the passive half of its
-A/B partition pair. <code>locksmithd</code>, which would normally coordinate the reboot,
-is masked in <code>ansible/templates/butane_node_config.yaml.j2</code>, because a reboot
-must drain the node first. In its place <code>flatcar-reboot-sentinel.timer</code> polls
-<code>update_engine_client -status</code> and touches <code>/run/reboot-required</code> once an
-update is staged. <a href="../../platform/kured/">Kured</a> consumes that marker: it
-drains, reboots and uncordons, one node at a time and only while Ceph and etcd
-are healthy. To move sooner, see <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
-<p>Three alerts in <code>monitoring/node-update-rules.yaml</code> watch that this actually
-happens, because Trivy scans containers and not the host: <code>NodeRebootPending</code>
-when a node has carried the marker for two days, <code>NodeOsVersionDrift</code> and
-<code>NodeKubeletVersionDrift</code> when the nodes have run different Flatcar or kubelet
-versions for three.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
-</span></code></pre></div>
-<h2 id="kubernetes-and-containerd">Kubernetes and containerd<a class="headerlink" href="#kubernetes-and-containerd" title="Permanent link">&para;</a></h2>
-<p>Both are <a href="../../concepts/#systemd-sysexts">systemd sysexts</a>.
-<code>systemd-sysupdate.timer</code> runs an update for both on every fire and touches
-the same <code>/run/reboot-required</code> when a new image is fetched.</p>
-<h3 id="nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series<a class="headerlink" href="#nodes-are-pinned-to-a-minor-series" title="Permanent link">&para;</a></h3>
-<p>The sysupdate configs point at <code>https://extensions.flatcar.org/extensions/</code>,
-not at the boot server, and pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
-<div class="language-ini highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">[Source]</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="na">Type</span><span class="o">=</span><span class="s">url-file</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="na">Path</span><span class="o">=</span><span class="s">https://extensions.flatcar.org/extensions/kubernetes/</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="na">MatchPattern</span><span class="o">=</span><span class="s">kubernetes-v1.37.@v-%a.raw</span>
-</span></code></pre></div>
-<p>Patch releases inside the series are picked up automatically; the next minor is
-not, because an unattended minor jump leaves kubelets ahead of a control plane
-that refuses to talk to them. sysext-bakery publishes exactly this file as
-<code>kubernetes-v1.37.conf</code>; the floating alternative (<code>kubernetes-@v-%a.raw</code>)
-would stage a minor kubeadm cannot skip to, on whichever node checks first.
-containerd gets the same pin even though upstream ships none.
-<code>ansible/playbooks/tasks/download_sysext.yaml</code> asserts the rewrite landed, so a
-format change upstream fails <code>make download</code> rather than handing the nodes a
-floating config.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
-</span></code></pre></div>
-<h2 id="upgrading-a-minor-version-deliberately">Upgrading a minor version deliberately<a class="headerlink" href="#upgrading-a-minor-version-deliberately" title="Permanent link">&para;</a></h2>
-<p><strong>kubeadm allows one minor at a time.</strong> v1.34 to v1.37 is three passes through
-this procedure, each with its release notes read. A newly provisioned node
-skips all of it: it installs <code>kubernetes_version</code> directly and gets the pinned
-sysupdate config from the boot server.</p>
+<h1 id="adding-a-platform-component">Adding a Platform Component<a class="headerlink" href="#adding-a-platform-component" title="Permanent link">&para;</a></h1>
+<p>A platform component is a directory under <code>payload/platform/</code> with exactly one
+<code>application.yaml</code>; the <code>platform</code> ApplicationSet turns it into an ArgoCD
+Application on the next poll. Workloads go in the
+<a href="../add-workload/">other repository</a>. Why the platform is shaped this way is in
+<a href="../../architecture/gitops/">GitOps Strategy</a>.</p>
+<h2 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Update <code>kubernetes_version</code> (and <code>containerd_version</code> if relevant) in
-   <code>ansible/inventory.yaml</code>.</li>
 <li>
-<p>Fetch the new sysext and regenerate the Ignition and sysupdate configs.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>download<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>config
-</span></code></pre></div>
+<p><strong>Create the directory</strong> with a complete <code>application.yaml</code> copied from a
+   sibling: the generator copies its labels, annotations, finalizers and
+   <code>spec</code> verbatim, so a fragment is not an Application. Keep the
+   <a href="../../architecture/gitops/#sync-policy">sync policy</a> as it is — every
+   component carries the same one, <code>retry</code> included, and a chart that lands
+   before its CRDs stays failed without it.</p>
 </li>
 <li>
-<p>Replace the sysupdate config on every running node; it was written once at
-   install time and nothing rewrites it. The boot server is not needed: the
-   node reboots from its own disk — see
-   <a href="../../architecture/boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
-</span></code></pre></div>
+<p><strong>Pin the version once</strong>, as <code>targetRevision</code> in that file. The <code>Makefile</code>
+   reads the bootstrap versions out of these manifests and Renovate bumps
+   them there — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 </li>
 <li>
-<p>Reboot nodes to pick up the sysext: Kured does it once sysupdate sets the
-   sentinel, or follow <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
+<p><strong>Put each resource with what it needs, not with what it configures.</strong>
+   Nothing orders the Applications, so a <code>ClusterSecretStore</code> sits with
+   OpenBao and the issuers are their own component — see
+   <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>.
+   A resource whose CRD comes from another component gets
+   <code>argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true</code>.</p>
 </li>
 <li>
-<p>On a control-plane node, run the kubeadm upgrade; the sysext swaps the
-   binaries and nothing else. Always pass <code>--skip-phases addon/kube-proxy</code>,
-   because a cluster built before <code>proxy.disabled</code> was set in <code>kubeadm.yaml.j2</code>
-   still has <code>proxy: {}</code> in its stored <code>kubeadm-config</code>, and without the flag
-   the upgrade redeploys <code>kube-proxy</code> beside Cilium; the flag is harmless on a
-   cluster built since.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy
-</span></code></pre></div>
+<p><strong>Label the namespace</strong> in <code>payload/platform/security/pod-security.yaml</code>
+   with the Pod Security Admission level it demonstrably needs, one sentence
+   of why next to any <code>privileged</code> — see
+   <a href="../../platform/security-policies/#pod-security-admission">Security Policies</a>.</p>
+</li>
+<li>
+<p><strong>Write its network policy</strong> as
+   <code>payload/platform/security/network-policies/&lt;namespace&gt;.yaml</code>: the
+   <code>default-ingress</code> and <code>default-egress</code> deny pair plus one policy per
+   workload that needs more, copied from the namespace most like it. New
+   HTTP rules start as <code>http: [{}]</code> until the
+   <a href="../../platform/security-policies/#rollout">rollout</a> has recorded a week
+   of requests.</p>
+</li>
+<li>
+<p><strong>Expose a UI</strong> with an <code>HTTPRoute</code> on <code>infra-gateway</code> next to the
+   component, and put it behind Authentik — see
+   <a href="../../platform/gateway-api/#usage">Gateway API</a> and
+   <a href="../../platform/authentik/">Authentik</a>. A route that crosses namespaces
+   needs a <code>ReferenceGrant</code> in the target namespace.</p>
+</li>
+<li>
+<p><strong>Check Renovate sees the pin.</strong> Chart versions are covered; an image tag
+   inside <code>valuesObject</code> needs a <code># renovate:</code> comment — see
+   <a href="../maintenance/">Maintenance</a>.</p>
+</li>
+<li>
+<p><strong>Write the page</strong> under <code>docs/platform/</code> with the shared skeleton — intro,
+   At a glance, Configuration, Usage, Health check, Pitfalls, Recovery only
+   with a real runbook — add it to the nav in <code>zensical.toml</code> and to the
+   <a href="../../platform/#components">Components table</a>. The strict docs build
+   fails on a page the nav does not list.</p>
+</li>
+<li>
+<p><strong>Open the PR</strong> and run the checks in <a href="../contributing/">Contributing</a>.
+   After the merge the Application appears within one polling interval; a
+   Degraded one is usually waiting on a CRD, a Secret or OpenBao — see
+   <a href="../../operations/troubleshooting/">Troubleshooting</a>.</p>
 </li>
 </ol>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Renovate keeps <code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code> and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, and patch and minor bumps automerge. Merging one changes what a <strong>newly provisioned</strong> node installs, not a running node — see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>.</p>
-</div>
-<h2 id="platform-components">Platform components<a class="headerlink" href="#platform-components" title="Permanent link">&para;</a></h2>
-<p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
-<code>targetRevision</code> and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are
-installed by <code>make install-cilium</code> and <code>make install-argo</code> before ArgoCD exists,
-but from the same <code>targetRevision</code>, so a rebuild lands where the cluster
-already is — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 
 
 
@@ -2434,7 +2306,7 @@ already is — see <a href="../../architecture/gitops/#version-pins">Version pin
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../nodes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Node Lifecycle">
+          <a href="../add-workload/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Adding a Workload">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2444,20 +2316,20 @@ already is — see <a href="../../architecture/gitops/#version-pins">Version pin
                 Previous
               </span>
               <div class="md-ellipsis">
-                Node Lifecycle
+                Adding a Workload
               </div>
             </div>
           </a>
         
         
           
-          <a href="../backups/" class="md-footer__link md-footer__link--next" aria-label="Next: Backups &amp; Recovery">
+          <a href="../maintenance/" class="md-footer__link md-footer__link--next" aria-label="Next: Maintenance">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Backups & Recovery
+                Maintenance
               </div>
             </div>
             <div class="md-footer__button md-icon">

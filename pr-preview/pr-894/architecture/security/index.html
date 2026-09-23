@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1970,6 +1972,8 @@
       
         
       
+        
+      
     
     
     
@@ -2063,6 +2067,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2496,11 +2527,11 @@ repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
 namespace (<code>authentik</code> excepted, for the blueprint ConfigMap a workload ships
 there), and at cluster scope may create nothing but namespaces.</p>
-<p><strong>Network policy covers ten namespaces.</strong> <code>openbao</code>, <code>cert-manager</code>,
-<code>external-secrets</code>, <code>monitoring</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>,
-<code>kured</code>, <code>logging</code>, <code>cnpg-system</code> and <code>trivy-system</code> have default-deny <strong>ingress</strong>
-<code>CiliumNetworkPolicy</code> rules; every other namespace, and all egress everywhere,
-is unrestricted. See <a href="../../platform/security-policies/">Security Policies</a>.</p>
+<p><strong>Every platform namespace is default-deny in both directions</strong>, one
+<code>CiliumNetworkPolicy</code> file per namespace plus the cluster-wide rules, and the
+policies are still in audit mode until the observation week ends — see
+<a href="../../platform/security-policies/#network-policies">Security Policies</a> and
+<a href="../../platform/security-policies/#rollout">Rollout</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
 carries <code>enforce</code> at the level it demonstrably needs and <code>warn</code>/<code>audit</code> at a
 stricter one, so violations are visible without breaking what runs: measure
@@ -2512,7 +2543,8 @@ verifier would exempt nearly everything. See
 <a href="../../platform/security-policies/#admission-policies">Security Policies</a>.</p>
 <p><strong>Both Gateways admit routes from every namespace</strong>
 (<code>allowedRoutes.namespaces.from: All</code>). Any namespace can attach an <code>HTTPRoute</code>
-to <code>infra-gateway</code> and claim a hostname under <code>*.infra.k8s.wlkr.ch</code>.</p>
+to either Gateway and claim a hostname inside its listener's pattern — see
+<a href="../../platform/gateway-api/#configuration">Gateway API</a>.</p>
 <h2 id="exposed-interfaces">Exposed interfaces<a class="headerlink" href="#exposed-interfaces" title="Permanent link">&para;</a></h2>
 <p>Every platform UI on the infra gateway is behind
 <a href="../../platform/authentik/">Authentik</a>:</p>
@@ -2561,9 +2593,9 @@ so putting it behind Authentik would be a loop.</p>
 <h2 id="what-would-tighten-this-up">What would tighten this up<a class="headerlink" href="#what-would-tighten-this-up" title="Permanent link">&para;</a></h2>
 <p>Roughly in order of value against effort:</p>
 <ol>
-<li>Extend default-deny ingress to the namespaces
-   <a href="../../platform/security-policies/#network-policies">not yet covered</a>, then start on
-   egress — the larger and more breakable half.</li>
+<li>Finish the <a href="../../platform/security-policies/#rollout">network policy rollout</a>:
+   tighten the <code>http: [{}]</code> rules to what the audit week recorded, then turn
+   <code>policyAuditMode</code> off.</li>
 <li>Narrow <code>sourceRepos</code> on the AppProjects to this repository and the Helm
    repositories actually in use.</li>
 <li>Restrict <code>allowedRoutes</code> on <code>infra-gateway</code> to the platform namespaces, and

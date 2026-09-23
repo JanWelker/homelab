@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1828,6 +1830,8 @@
       
         
       
+        
+      
     
     
     
@@ -1921,6 +1925,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2143,9 +2174,9 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <td><a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>, <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">upgrading a minor deliberately</a>, <a href="../../platform/kured/">Kured</a></td>
 </tr>
 <tr>
-<td><strong>Network policy is partial, AppProjects are permissive</strong></td>
-<td>Ten namespaces have default-deny ingress and every platform namespace has Pod Security Admission labels. All egress is unrestricted, other namespaces allow all ingress, and the <code>infra</code> AppProject allows every kind in every namespace. A pod in <code>authentik</code> can still talk to a pod in <code>kured</code></td>
-<td>Extend default-deny, then egress; narrow the projects</td>
+<td><strong>Network policy is auditing, AppProjects are permissive</strong></td>
+<td>Every platform namespace has default-deny policy in both directions and Pod Security Admission labels, but <code>policyAuditMode</code> is still on, so a verdict is logged rather than enforced, and the <code>infra</code> AppProject allows every kind in every namespace</td>
+<td>Finish the <a href="../../platform/security-policies/#rollout">rollout</a>; narrow the projects</td>
 <td><a href="../../platform/security-policies/">Security Policies</a>, <a href="../security/#authorization">Security Posture</a></td>
 </tr>
 <tr>

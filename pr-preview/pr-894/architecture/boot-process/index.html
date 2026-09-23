@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1970,6 +1972,8 @@
       
         
       
+        
+      
     
     
     
@@ -2063,6 +2067,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2542,7 +2573,9 @@ charge.</p>
 <h2 id="boot-server">Boot server<a class="headerlink" href="#boot-server" title="Permanent link">&para;</a></h2>
 <p><code>boot_server/serve.py</code> is a TFTP server and an HTTP server. <code>make serve</code> starts
 it from the repository root (the document roots are relative to the working
-directory) and needs <code>sudo</code> for port 69. Both servers bind <code>boot_server_ip</code>
+directory) and needs <code>sudo</code> for port 69; once both ports are bound it drops
+back to the user who ran <code>sudo</code>, so nothing under <code>output/</code> ends up owned by
+root. Both servers bind <code>boot_server_ip</code>
 from <code>ansible/inventory.yaml</code> — the address <code>make config</code> baked into every
 generated URL — and nothing else. If no interface holds that address it says so
 and names the variable; if port 8000 is taken it exits.</p>

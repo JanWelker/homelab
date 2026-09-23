@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1818,6 +1820,8 @@
       
         
       
+        
+      
     
     
     
@@ -1911,6 +1915,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2185,7 +2216,9 @@ ArgoCD. Every one of them exists because bare metal does not come with the
 thing a cloud provider would have handed you: no load balancer, no managed
 certificates, no block storage API, no identity provider, no backup service.</p>
 <h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
-<p>Alphabetical, with the namespace it lands in.</p>
+<p>One row per directory under <code>payload/platform/</code>, with the Application name
+where it differs from the directory — that is the name <code>kubectl -n argocd get
+applications</code> shows — and the namespace it lands in.</p>
 <table>
 <thead>
 <tr>
@@ -2195,6 +2228,11 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>alloy</td>
+<td><code>logging</code></td>
+<td>Grafana Alloy, the log shipper — see <a href="logging/">Logging</a></td>
+</tr>
 <tr>
 <td><a href="argocd/">argocd</a></td>
 <td><code>argocd</code></td>
@@ -2218,12 +2256,17 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 <tr>
 <td>backup</td>
 <td><code>backup</code></td>
-<td>The CSI snapshot controller, Velero's buckets and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
+<td>Velero's buckets, the <code>VolumeSnapshotClass</code> and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="cert-manager/">cert-manager</a></td>
 <td><code>cert-manager</code></td>
-<td>Let's Encrypt wildcards over a Route53 DNS-01 challenge</td>
+<td>The cert-manager chart</td>
+</tr>
+<tr>
+<td>certificates</td>
+<td><code>cert-manager</code></td>
+<td>The Let's Encrypt issuers and the two Gateway wildcards — see <a href="cert-manager/">cert-manager</a></td>
 </tr>
 <tr>
 <td><a href="cilium/">cilium</a></td>
@@ -2247,8 +2290,13 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 </tr>
 <tr>
 <td><a href="gateway-api/">gateway-api</a></td>
-<td><code>gateway-system</code></td>
+<td><code>kube-system</code></td>
 <td>The two Gateways and the HTTP-to-HTTPS redirect</td>
+</tr>
+<tr>
+<td>gateway-api-crds</td>
+<td><code>kube-system</code></td>
+<td>The Gateway API CRDs — see <a href="gateway-api/">Gateway API</a></td>
 </tr>
 <tr>
 <td>kube-vip</td>
@@ -2268,7 +2316,12 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 <tr>
 <td><a href="logging/">logging</a></td>
 <td><code>logging</code></td>
-<td>Loki and Grafana Alloy, for container, journal and audit logs</td>
+<td>Loki's bucket, rules, dashboards and Grafana datasource</td>
+</tr>
+<tr>
+<td>loki</td>
+<td><code>logging</code></td>
+<td>The Loki chart — see <a href="logging/">Logging</a></td>
 </tr>
 <tr>
 <td><a href="metrics-server/">metrics-server</a></td>
@@ -2276,9 +2329,9 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 <td>The <code>metrics.k8s.io</code> API behind <code>kubectl top</code> and every HPA</td>
 </tr>
 <tr>
-<td><a href="monitoring/">monitoring</a></td>
+<td>monitoring, Application <code>kube-prometheus-stack</code></td>
 <td><code>monitoring</code></td>
-<td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics</td>
+<td>Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics — see <a href="monitoring/">Monitoring</a></td>
 </tr>
 <tr>
 <td><a href="openbao/">openbao</a></td>
@@ -2286,19 +2339,39 @@ certificates, no block storage API, no identity provider, no backup service.</p>
 <td>Cluster-wide secret store</td>
 </tr>
 <tr>
+<td>prometheus-operator-crds</td>
+<td><code>monitoring</code></td>
+<td>The Prometheus operator CRDs, separate so every chart that ships a <code>ServiceMonitor</code> can sync — see <a href="monitoring/#crds">Monitoring</a></td>
+</tr>
+<tr>
 <td><a href="rook-ceph/">rook-ceph</a></td>
 <td><code>rook-ceph</code></td>
-<td>Replicated block storage and an S3 object store</td>
+<td>The CSI driver, dashboards and HTTPRoute</td>
+</tr>
+<tr>
+<td>rook-ceph-cluster</td>
+<td><code>rook-ceph</code></td>
+<td>The <code>CephCluster</code>, pools and storage classes — see <a href="rook-ceph/">Rook-Ceph</a></td>
+</tr>
+<tr>
+<td>rook-ceph-operator</td>
+<td><code>rook-ceph</code></td>
+<td>The Rook operator chart — see <a href="rook-ceph/">Rook-Ceph</a></td>
+</tr>
+<tr>
+<td>security</td>
+<td><code>kube-system</code></td>
+<td>Pod Security Admission levels, the network policies and image admission policies — see <a href="security-policies/">Security Policies</a></td>
+</tr>
+<tr>
+<td>snapshot-controller</td>
+<td><code>backup</code></td>
+<td>The CSI snapshot controller Velero's volume snapshots need — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="tetragon/">tetragon</a></td>
 <td><code>kube-system</code></td>
 <td>Runtime detection: execs, credential changes and sensitive file reads from the kernel</td>
-</tr>
-<tr>
-<td><a href="security-policies/">security policies</a></td>
-<td><code>kube-system</code></td>
-<td>Pod Security Admission levels, default-deny ingress policies and image admission policies</td>
 </tr>
 <tr>
 <td><a href="trivy-operator/">trivy-operator</a></td>
