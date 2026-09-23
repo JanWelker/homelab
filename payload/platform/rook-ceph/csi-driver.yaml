@@ -6,7 +6,6 @@ metadata:
   name: ceph-csi-operator-config
   namespace: rook-ceph
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   driverSpecDefaults:
@@ -35,7 +34,6 @@ metadata:
   name: rook-ceph.rbd.csi.ceph.com
   namespace: rook-ceph
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   fsGroupPolicy: File

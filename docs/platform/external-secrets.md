@@ -71,8 +71,8 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
       name: my-app-credentials
       namespace: my-app
       annotations:
-        # ESO and its CRDs install in 03-controllers; this covers a sync
-        # before they have landed.
+        # ESO's CRDs arrive with the external-secrets Application; this
+        # covers a sync before they have landed.
         argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     spec:
       refreshInterval: 1h

@@ -49,8 +49,8 @@ fonts-check:
 bootstrap: install-cilium install-argo bootstrap-apps
 
 # ServiceMonitors off: their CRDs arrive with the prometheus-operator-crds
-# Application in 01-crds, and ArgoCD adds the monitors when it adopts the
-# release. The flags leave cilium-config untouched.
+# Application, and ArgoCD adds the monitors when it adopts the release. The
+# flags leave cilium-config untouched.
 install-cilium:
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
@@ -86,7 +86,7 @@ bootstrap-apps:
 	kubectl apply -f payload/argocd/application.yaml
 	@echo "AppProjects and the self-managing argocd Application created."
 	@echo "ArgoCD now syncs the platform ApplicationSet and everything under it."
-	@echo "It stops at 05-secrets until make bao-init and make bao-unseal run."
+	@echo "Every ExternalSecret stays Degraded until make bao-init and make bao-unseal run."
 
 storage-check:
 	scripts/storage-check.sh

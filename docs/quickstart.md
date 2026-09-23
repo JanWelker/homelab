@@ -251,14 +251,14 @@ the same L2 network segment as the nodes.
         ```
 
         A `StorageClass` exists whether or not a CSI driver registered for it,
-        so `04-storage` can finish with no working provisioner. This asks for
+        so `rook-ceph-cluster` can go Healthy with no working provisioner. This asks for
         a volume the way a workload would and names the first broken link —
         see [Rook-Ceph &rarr; Is storage ready?](platform/rook-ceph.md#is-storage-ready).
 
 11. **Initialise the secret store**:
-    OpenBao starts uninitialised, sealed and empty; the rollout holds at
-    `05-secrets` until it is unsealed and at `06-certificates` until it is
-    populated, then resumes on its own.
+    OpenBao starts uninitialised, sealed and empty; every `ExternalSecret`
+    stays Degraded until it is unsealed and `certificates` until it is
+    populated, then everything converges on its own.
 
     ```bash
     make bao-init

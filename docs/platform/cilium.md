@@ -38,7 +38,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | `rollOutCiliumPods` and the four `rollOutPods` | The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to `cilium-config` is a rolling restart of the CNI on all six nodes: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the [`k8sServiceHost` pitfall](#pitfalls) bites at merge, not later |
 | `prometheusrule.yaml` | `HubblePolicyDrops`: fifteen minutes of `POLICY_DENIED` drops between two namespaces, above a trickle. `VLAN_FILTERED` and `STALE_OR_UNROUTABLE_IP` dominate the raw counter and are the LAN, not a policy |
 | `cilium-agent` without a memory limit | It is the one process whose death takes pod networking with it, and it cannot be sized from a day of steady state |
-| `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `01-crds` has synced, and the diff preview's throwaway cluster |
+| `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `prometheus-operator-crds` has synced, and the diff preview's throwaway cluster |
 
 ## Installation
 

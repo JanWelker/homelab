@@ -229,7 +229,7 @@ the CronJob uses. Upstream:
    OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
    certificates.
 2. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.
-3. When the rollout pauses at `05-secrets`, either `make bao-init` and restore
+3. When every `ExternalSecret` is Degraded, either `make bao-init` and restore
    the OpenBao snapshot as above, or `make bao-init` and re-enter every secret
    with `make bao-secrets`.
 4. Once the platform is Synced and Healthy, restore workloads with a Velero
