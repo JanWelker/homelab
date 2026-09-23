@@ -1,29 +1,38 @@
 repos:
+  # Local hooks run through uv so they use the versions in uv.lock and the
+  # project's dependencies: the same tool, at the same version, as the
+  # commands in CLAUDE.md and the CI workflows.
   - repo: local
     hooks:
       - id: ansible-lint
         name: Ansible Lint
-        entry: ansible-lint
+        entry: bash -c 'cd ansible && uv run ansible-lint'
         language: system
         files: ^ansible/
+        pass_filenames: false
+
+      - id: pylint
+        name: Pylint
+        entry: uv run pylint
+        language: system
+        files: ^(boot_server|scripts)/.*\.py$
+
+      - id: yamllint
+        name: YAML Lint
+        entry: uv run yamllint -f github
+        language: system
+        files: \.ya?ml$
+
+      - id: zensical
+        name: Docs build (strict)
+        entry: uv run zensical build --clean --strict
+        language: system
+        files: ^(docs/|overrides/|zensical\.toml$)
+        pass_filenames: false
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.23.3
     hooks:
       - id: markdownlint-cli2
         files: \.md$
-        exclude: ^\.venv/
-
-  - repo: https://github.com/pycqa/pylint
-    rev: v4.0.9
-    hooks:
-      - id: pylint
-        files: ^boot_server/.*\.py$
-        # The hook's isolated env lacks the project's dependencies.
-        args: ["--disable=import-error"]
-
-  - repo: https://github.com/adrienverge/yamllint
-    rev: v1.38.0
-    hooks:
-      - id: yamllint
-        files: \.ya?ml$
+        exclude: ^(\.venv|\.agent)/

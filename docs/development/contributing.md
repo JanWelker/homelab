@@ -18,8 +18,8 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # ansible-lint, markdownlint, pylint, yamllint
-uv run zensical build --clean --strict  # docs; strict fails on broken links and orphan pages
+uv run pre-commit run --all-files       # ansible-lint, markdownlint, pylint, yamllint, docs build
+uv run zensical build --clean --strict  # docs alone; strict fails on broken links and orphan pages
 
 # Before touching payload/: valid objects, and what Helm will actually render
 kubectl apply --dry-run=client -f payload/platform/<component>/
@@ -71,7 +71,7 @@ is not.
 | --- | --- |
 | Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
 | Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes to `gh-pages`, leaving `pr-preview/` untouched |
-| Previews | `preview.yaml` builds every pull request matching the same paths and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Fork PRs are skipped: they have no write access |
+| Previews | `preview.yaml` builds every pull request matching the same paths, forks included, and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Only the publish step is skipped for fork PRs: they have no write access |
 
 Locally:
 
