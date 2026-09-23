@@ -127,19 +127,14 @@ is bound to the application in Authentik itself.
 The OIDC client IDs and secrets are generated once into OpenBao and read by
 both sides — Authentik through `!Env`, ArgoCD and Grafana through their own
 `ExternalSecret` — so a rebuilt Authentik gets the same credentials and
-nothing is copied out of a UI. `make bao-secrets` does this; by hand:
-
-```bash
-bao kv put kv/authentik/config \
-  secret-key="$(openssl rand -base64 60 | tr -d '\n')" \
-  postgres-password="$(openssl rand -base64 32 | tr -d '\n')" \
-  bootstrap-password="$(openssl rand -base64 24 | tr -d '\n')" \
-  bootstrap-token="$(openssl rand -hex 32)" \
-  argocd-client-id="$(openssl rand -hex 16)" \
-  argocd-client-secret="$(openssl rand -base64 48 | tr -d '\n')" \
-  grafana-client-id="$(openssl rand -hex 16)" \
-  grafana-client-secret="$(openssl rand -base64 48 | tr -d '\n')"
-```
+nothing is copied out of a UI. `make bao-secrets` writes `kv/authentik/config`
+with the secret key, the Postgres password, the bootstrap password and token
+and the ArgoCD and Grafana client pairs; `scripts/bao-secrets.sh` is the
+list of keys. A workload's client credentials go in the workload's own path
+(Nextcloud's in `kv/nextcloud/config`, read by `secrets-nextcloud.yaml`,
+mounted `optional`): rewriting `kv/authentik/config` would rotate the
+Postgres password out from under the database, and a cluster without the
+workload still gets a working Authentik.
 
 Then log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
 `akadmin` with `bootstrap-password` and create the groups above.
@@ -155,6 +150,35 @@ Then log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
 4. For a proxied application, point its `HTTPRoute` at `authentik-server` and
    add its namespace to `referencegrant.yaml`.
 5. Bind the groups or policies that may reach it, in Authentik.
+
+## Health check
+
+When every login fails, in this order:
+
+1. Server, worker and Postgres are Ready:
+
+    ```bash
+    kubectl -n authentik get pods
+    ```
+
+2. The server answers on both hostnames with a discovery document whose
+   `issuer` matches the name asked for:
+
+    ```bash
+    curl -s https://auth.infra.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration | jq .issuer
+    ```
+
+3. The embedded outpost is healthy (`Outposts` in the admin UI, or):
+
+    ```bash
+    kubectl -n authentik logs deploy/authentik-server | grep -i outpost | tail
+    ```
+
+4. The worker applied the blueprints — a failed one names its file:
+
+    ```bash
+    kubectl -n authentik logs deploy/authentik-worker | grep -i blueprint | tail
+    ```
 
 ## Pitfalls
 

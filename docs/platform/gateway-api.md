@@ -14,7 +14,7 @@ termination. The improvement is the split in ownership: the cluster owns the
 
 | | |
 | --- | --- |
-| Namespace | `gateway-system` for the Application, `kube-system` for the Gateways themselves |
+| Namespace | `kube-system`, where Cilium runs |
 | Depends on | [Cilium](cilium.md) to implement it, [cert-manager](cert-manager.md) for the wildcard certificates |
 | If it is down | Nothing reaches any hostname. Running pods keep running |
 | Health check | `kubectl -n kube-system get gateway` &rarr; both `PROGRAMMED=True` with an address |
@@ -42,6 +42,11 @@ can send it to HTTPS. `apps-gateway` carries the annotation that makes
 [external-dns](external-dns.md#configuration) publish the router's public
 address instead of the Gateway's LAN one; the router forwards ports 80 and
 443 to that LAN address.
+
+`payload/platform/cilium/rbac-gateway-fix.yaml` grants the operator read
+access to Ingresses and IngressClasses: its Gateway API controller lists them
+too, and the chart grants that only with the Ingress controller enabled. Its
+header names the chart version last checked; retry removing it on a major.
 
 ## Usage
 

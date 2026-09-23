@@ -109,16 +109,17 @@ its upstream tag.
 | [External Secrets](external-secrets.md) | External Secrets Operator | Chart: `grafanaDashboard` |
 | [Rook-Ceph](rook-ceph.md) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored: `rook-ceph/grafana-dashboards.yaml` |
 | [Alloy](logging.md) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored: `logging/grafana-dashboards.yaml` |
-| ArgoCD | ArgoCD | Vendored: `argocd-config/argocd-dashboard.yaml` |
-| [Tetragon](tetragon.md) | Tetragon | Written for this cluster: `tetragon/grafana-dashboard.yaml`; upstream ships none |
-| [Trivy Operator](trivy-operator.md) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboard.yaml` |
+| ArgoCD | ArgoCD | Vendored: `argocd-config/grafana-dashboards.yaml` |
+| [Tetragon](tetragon.md) | Tetragon | Written for this cluster: `tetragon/grafana-dashboards.yaml`; upstream ships none |
+| [Trivy Operator](trivy-operator.md) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboards.yaml` |
 
 ## Usage
 
 ### Adding a dashboard
 
 Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it
-describes; the sidecar watches every namespace
+describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named
+`<component>-grafana-dashboards`; the sidecar watches every namespace
 (`sidecar.dashboards.searchNamespace: ALL`). Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.

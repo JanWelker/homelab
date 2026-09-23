@@ -20,7 +20,7 @@ ConfigMap with the upstream tag in the file header so Renovate's silence is
 documented.
 
 Write a dashboard here only when upstream ships none. Say so in the file's
-first comment line, as `tetragon/grafana-dashboard.yaml` does.
+first comment line, as `tetragon/grafana-dashboards.yaml` does.
 
 ## 2. Where it lives
 
