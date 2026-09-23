@@ -162,6 +162,7 @@ data:
                     |= "/sudo"
                     | json
                     | process_exec_process_binary=~".*/sudo"
+                    | process_exec_parent_binary != "/usr/bin/ceph-osd" or process_exec_process_arguments !~ "(smartctl|nvme) .*"
                   [10m]
                 )
               ) > 0
@@ -171,8 +172,10 @@ data:
               summary: >-
                 sudo ran in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
               description: >-
-                No image here has a reason to ship sudo, let alone run it. The
-                exec event carries the arguments and the parent process.
+                Ceph's OSD runs sudo smartctl and sudo nvme once a day for
+                its device health report and is left out; no other image
+                here has a reason to ship sudo, let alone run it. The exec
+                event carries the arguments and the parent process.
           - alert: TetragonPrivilegedExec
             expr: |
               sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
@@ -181,6 +184,7 @@ data:
                     |= "process_exec"
                     |= "PRIVILEGES_RAISED_EXEC_FILE"
                     | json
+                    | process_exec_parent_binary != "/usr/bin/ceph-osd" or process_exec_process_arguments !~ "(smartctl|nvme) .*"
                   [10m]
                 )
               ) > 0
@@ -192,7 +196,8 @@ data:
               description: >-
                 A setuid, setgid or file-capability binary ran in a container
                 and came out with more privileges than its caller. That is
-                what enableProcessCred records binary_properties for.
+                what enableProcessCred records binary_properties for. The
+                OSD's daily sudo smartctl and sudo nvme are left out.
           - alert: TetragonFilelessExec
             expr: |
               sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (
