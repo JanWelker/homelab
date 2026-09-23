@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1912,6 +1914,8 @@
       
         
       
+        
+      
     
     
     
@@ -2004,6 +2008,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2311,6 +2342,10 @@ password manager, each pod wants 3 of the 5 shares by hand, per
    files.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
 </span></code></pre></div>
+<p>In the same commit, add the node name to <code>providerRegex</code> in
+<code>payload/platform/kubelet-csr-approver/application.yaml</code>: a node the regex
+does not name has its kubelet certificate denied and
+<a href="../../platform/metrics-server/#pitfalls">silently drops out of <code>kubectl top</code></a>.</p>
 </li>
 <li>
 <p>On a control-plane node, generate a fresh join command; the provisioning

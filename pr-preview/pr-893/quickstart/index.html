@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1962,6 +1964,8 @@
       
         
       
+        
+      
     
     
     
@@ -2054,6 +2058,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2632,9 +2663,9 @@ outside the cluster: two Route53 IAM key pairs (why two is in
 <a href="../platform/openbao/">OpenBao</a>), and the SMTP login, password and alert
 recipient. Everything under <code>kv/authentik/config</code>, including the OIDC
 client credentials ArgoCD and Grafana read back, is generated, as is
-Grafana's break-glass admin password. Existing paths are left alone;
-rewriting <code>kv/authentik/config</code> on a running cluster rotates Authentik's
-Postgres password out from under its database.</p>
+Grafana's break-glass admin password. On a fresh cluster nothing exists
+yet; on a running one it asks per path before overwriting — see
+<a href="../platform/openbao/#rotating-a-credential">Rotating a credential</a>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Paste them at the prompt, not onto a command line</p>
 <p>A secret containing <code>#</code> on a command line is truncated at it, and one containing <code>!</code> is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with <strong>single</strong> quotes.</p>
