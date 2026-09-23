@@ -85,21 +85,8 @@ spec:
               seccompProfile:
                 type: RuntimeDefault
 
-            # Bump this whenever authentik-secrets gains a key.
-            #
-            # envFrom injects a Secret's contents as environment variables
-            # once, when the pod starts. External Secrets updating that Secret
-            # afterwards changes nothing a running worker can see -- so a
-            # blueprint reading a newly added client credential through !Env
-            # gets an empty string and quietly creates a provider that does not
-            # work. That is not hypothetical: Nextcloud's first rollout missed
-            # it by two seconds, and the resulting OIDC application answered
-            # 404 on its discovery endpoint.
-            #
-            # Changing this annotation changes the pod template, so ArgoCD
-            # restarts the worker as part of the same sync that adds the
-            # credential. A `kubectl rollout restart` would do it too, and
-            # would be undone by the next person who reads only the repository.
+            # Bump whenever authentik-secrets gains a key: envFrom is read once
+            # at pod start, see docs/platform/authentik.md#pitfalls
             podAnnotations:
               homelab.wlkr.ch/secret-generation: "2"
             metrics:
@@ -113,22 +100,8 @@ spec:
               limits:
                 memory: 1Gi
 
-            # Blueprints owned by the workloads that need them, mounted beside
-            # the platform's own. Not `blueprints.configMaps`: that renders a
-            # plain configMap volume, which the kubelet refuses to mount until
-            # the ConfigMap exists -- and these arrive with the workloads,
-            # which may not exist yet, or ever, on a fresh cluster.
-            #
-            # A projected volume takes `optional`, so the worker starts either
-            # way and the blueprint appears when its workload lands.
-            # blueprints_discovery runs on startup, hourly, and on a file
-            # watcher, so nothing needs restarting to pick it up.
-            #
-            # One entry per workload, and only the mount: the provider itself
-            # lives in the workloads repository, next to the application it
-            # authenticates. The embedded outpost's provider list stays in
-            # blueprints.yaml -- it replaces one global object, so two
-            # repositories writing it would overwrite each other.
+            # Workload blueprints, one optional source per workload; not
+            # `blueprints.configMaps`, see docs/platform/authentik.md#chart-values
             volumes:
               - name: blueprints-workloads
                 projected:

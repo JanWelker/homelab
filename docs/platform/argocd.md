@@ -41,7 +41,7 @@ path Authentik's blueprint reads. `argocd-cm` refers to them as
 a Secret labelled `app.kubernetes.io/part-of: argocd`, which the
 `ExternalSecret` template sets.
 
-The Grafana dashboard in `argocd-dashboard.yaml` is upstream's
+The Grafana dashboard in `grafana-dashboards.yaml` is upstream's
 `examples/dashboard.json`, unmodified, at the ArgoCD version the chart deploys.
 Renovate does not see it: re-copy it when ArgoCD moves a minor version.
 

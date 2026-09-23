@@ -20,7 +20,9 @@ no app-of-apps tree.
   fragment.
 - Every `application.yaml` carries the same `syncPolicy`: `automated` with
   `prune` and `selfHeal`, plus the `retry` block (limit 10, 30s backoff up to
-  5m). Copy it from any sibling. ArgoCD never re-attempts a failed sync of the
+  5m). Copy it from any sibling except `kube-vip` and `security`, whose
+  `prune: false` is deliberate: one holds the API VIP, the other owns
+  Namespaces. ArgoCD never re-attempts a failed sync of the
   same revision without `retry`, so a component that lands a minute before
   its CRDs stays failed until `argocd app sync <app>`.
 - **Nothing orders the Applications.** All of them sync at once and converge:
