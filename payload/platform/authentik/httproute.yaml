@@ -76,6 +76,11 @@ kind: HTTPRoute
 metadata:
   name: prometheus
   namespace: authentik
+  annotations:
+    # First half of the move to payload/platform/monitoring/httproute.yaml;
+    # see CLAUDE.md, "Moving a resource between Applications".
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   parentRefs:
     - name: infra-gateway
@@ -105,6 +110,11 @@ kind: HTTPRoute
 metadata:
   name: alertmanager
   namespace: authentik
+  annotations:
+    # First half of the move to payload/platform/monitoring/httproute.yaml;
+    # see CLAUDE.md, "Moving a resource between Applications".
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   parentRefs:
     - name: infra-gateway
