@@ -2698,16 +2698,16 @@ points at <code>authentik-server</code>, so the whole flow happens on their own 
 <p>The <code>iss</code> claim is the hostname the token was issued through. A discovery URI on one name and a redirect on the other fails every login with an error that blames the token. Pin each client to exactly one name.</p>
 </div>
 <h3 id="where-the-proxied-routes-point">Where the proxied routes point<a class="headerlink" href="#where-the-proxied-routes-point" title="Permanent link">&para;</a></h3>
-<p>Hubble's route stays in <code>payload/platform/cilium/</code>, Rook's in
-<code>payload/platform/rook-ceph/</code> and Home Assistant's in the
-<a href="../../development/add-workload/">workloads repository</a>, each with
-<code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a cross-namespace
-<code>backendRef</code> unless the target namespace grants it, so <code>referencegrant.yaml</code>
-allows <code>HTTPRoute</code> objects from exactly those namespaces to that Service only.
-A proxied workload is therefore two pull requests, by design: a workload
-cannot take itself out from behind the authentication layer on its own.
-Prometheus and Alertmanager have no route of their own, so theirs are in
-<code>httproute.yaml</code> here; the outpost is their only authentication.</p>
+<p>A proxied application's route lives with the application: Hubble's in
+<code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
+Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code> and Home
+Assistant's in the <a href="../../development/add-workload/">workloads repository</a>,
+each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
+cross-namespace <code>backendRef</code> unless the target namespace grants it, so
+<code>referencegrant.yaml</code> here allows <code>HTTPRoute</code> objects from exactly those
+namespaces to that Service only. A proxied workload is therefore two pull
+requests, by design: a workload cannot take itself out from behind the
+authentication layer on its own.</p>
 <h3 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
