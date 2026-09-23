@@ -2628,12 +2628,12 @@ these are the events only a log carries.</p>
 </tr>
 <tr>
 <td><code>TetragonSudoInContainer</code></td>
-<td><code>sudo</code> executed in a container</td>
+<td><code>sudo</code> executed in a container, except the <code>smartctl</code> and <code>nvme</code> calls <code>ceph-osd</code> makes once a day for its device health report</td>
 <td>Only the exec event carries the binary and its parent</td>
 </tr>
 <tr>
 <td><code>TetragonPrivilegedExec</code></td>
-<td>A setuid, setgid or file-capability binary raised privileges on exec</td>
+<td>A setuid, setgid or file-capability binary raised privileges on exec, with the same <code>ceph-osd</code> exception</td>
 <td>The <code>binary_properties</code> field exists only in the exec event</td>
 </tr>
 <tr>
