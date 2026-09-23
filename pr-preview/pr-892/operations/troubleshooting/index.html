@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1879,6 +1881,8 @@
       
         
       
+        
+      
     
     
     
@@ -1971,6 +1975,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2197,7 +2228,15 @@ with the table.</p>
 <tbody>
 <tr>
 <td>Secrets missing, certificates not renewing</td>
-<td>OpenBao sealed — <code>bao status</code></td>
+<td>OpenBao sealed — <code>kubectl -n openbao exec openbao-0 -- bao status</code>; if so, <code>make bao-unseal</code></td>
+</tr>
+<tr>
+<td>An Application is Degraded, OutOfSync or stuck Progressing</td>
+<td><code>argocd app get &lt;app&gt;</code> for the failing resource; a failed sync <a href="../../architecture/gitops/#sync-policy">retries itself for about forty minutes</a>, after that <code>argocd app sync &lt;app&gt;</code> — see <a href="../../platform/argocd/#health-check">ArgoCD</a></td>
+</tr>
+<tr>
+<td>A node is down</td>
+<td><a href="../nodes/#rebooting-a-node">Rebooting a node</a>; if it does not come back, <a href="../nodes/#replacing-a-failed-node">Replacing a failed node</a></td>
 </tr>
 <tr>
 <td>Pods pending on a fresh node</td>
