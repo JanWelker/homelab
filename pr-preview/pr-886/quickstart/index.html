@@ -412,6 +412,8 @@
       
         
       
+        
+      
     
     
     
@@ -1962,6 +1964,8 @@
       
         
       
+        
+      
     
     
     
@@ -2054,6 +2058,33 @@
     
   
   Adding a Workload
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/add-platform-component/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
 
     
   </span>
@@ -2603,7 +2634,7 @@ expected.</strong> No <code>ExternalSecret</code> resolves until step 11 — see
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>A <code>StorageClass</code> exists whether or not a CSI driver registered for it,
-so <code>04-storage</code> can finish with no working provisioner. This asks for
+so <code>rook-ceph-cluster</code> can go Healthy with no working provisioner. This asks for
 a volume the way a workload would and names the first broken link —
 see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storage ready?</a>.</p>
 </li>
@@ -2611,9 +2642,9 @@ see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storag
 </li>
 <li>
 <p><strong>Initialise the secret store</strong>:
-    OpenBao starts uninitialised, sealed and empty; the rollout holds at
-    <code>05-secrets</code> until it is unsealed and at <code>06-certificates</code> until it is
-    populated, then resumes on its own.</p>
+    OpenBao starts uninitialised, sealed and empty; every <code>ExternalSecret</code>
+    stays Degraded until it is unsealed and <code>certificates</code> until it is
+    populated, then everything converges on its own.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>bao-init
 </span></code></pre></div>
 <p>Initialises and unseals OpenBao, enables the <code>kv</code> v2 engine and the
@@ -2632,9 +2663,9 @@ outside the cluster: two Route53 IAM key pairs (why two is in
 <a href="../platform/openbao/">OpenBao</a>), and the SMTP login, password and alert
 recipient. Everything under <code>kv/authentik/config</code>, including the OIDC
 client credentials ArgoCD and Grafana read back, is generated, as is
-Grafana's break-glass admin password. Existing paths are left alone;
-rewriting <code>kv/authentik/config</code> on a running cluster rotates Authentik's
-Postgres password out from under its database.</p>
+Grafana's break-glass admin password. On a fresh cluster nothing exists
+yet; on a running one it asks per path before overwriting — see
+<a href="../platform/openbao/#rotating-a-credential">Rotating a credential</a>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Paste them at the prompt, not onto a command line</p>
 <p>A secret containing <code>#</code> on a command line is truncated at it, and one containing <code>!</code> is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with <strong>single</strong> quotes.</p>
