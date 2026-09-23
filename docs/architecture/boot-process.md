@@ -154,7 +154,9 @@ The node boots from its own disk; the boot server should be off.
 
 `boot_server/serve.py` is a TFTP server and an HTTP server. `make serve` starts
 it from the repository root (the document roots are relative to the working
-directory) and needs `sudo` for port 69. Both servers bind `boot_server_ip`
+directory) and needs `sudo` for port 69; once both ports are bound it drops
+back to the user who ran `sudo`, so nothing under `output/` ends up owned by
+root. Both servers bind `boot_server_ip`
 from `ansible/inventory.yaml` — the address `make config` baked into every
 generated URL — and nothing else. If no interface holds that address it says so
 and names the variable; if port 8000 is taken it exits.

@@ -354,6 +354,51 @@ class BootHandler(SimpleHTTPRequestHandler):
                     'reboot lands on the disk', tint='ok')
 
 
+def sudo_ids():
+    """uid and gid of whoever ran sudo, or None when this is not a sudo session."""
+    try:
+        return int(os.environ['SUDO_UID']), int(os.environ['SUDO_GID'])
+    except (KeyError, ValueError):
+        return None, None
+
+
+def ensure_directory(path):
+    """Create the directory if missing, owned by the sudo user rather than root.
+
+    Both servers are started as root, and a directory root creates under
+    output/ is one the next make config cannot write into.
+    """
+    missing = []
+    probe = path
+    while not os.path.isdir(probe):
+        missing.append(probe)
+        probe = os.path.dirname(probe)
+    os.makedirs(path, exist_ok=True)
+    uid, gid = sudo_ids()
+    if uid is not None:
+        for made in missing:
+            os.chown(made, uid, gid)
+
+
+def drop_root():
+    """Become the sudo user. Only port 69 needed root, and that is bound by now."""
+    uid, gid = sudo_ids()
+    if uid is None or os.getuid() != 0:
+        return
+    os.setgroups([])
+    os.setgid(gid)
+    os.setuid(uid)
+    say('server', 'ports bound -- dropped root, running as uid %s', uid)
+
+
+def drop_root_once_bound(server):
+    """tftpy binds inside listen() and never returns, so watch for the bind."""
+    def watch():
+        server.is_running.wait()
+        drop_root()
+    threading.Thread(target=watch, daemon=True).start()
+
+
 def bind_http():
     """Bind the HTTP server on the boot address, or exit.
 
@@ -364,7 +409,7 @@ def bind_http():
     TFTP and then fails on the kernel fetch is far harder to read than a server
     that refused to start.
     """
-    os.makedirs(HTTP_DIR, exist_ok=True)
+    ensure_directory(HTTP_DIR)
     try:
         return ThreadingHTTPServer((BIND_IP, HTTP_PORT), BootHandler)
     except OSError as error:
@@ -380,9 +425,11 @@ def bind_http():
 
 def run_tftp():
     """Serve output/tftp until the process is killed. Blocks the main thread."""
-    os.makedirs(TFTP_DIR, exist_ok=True)
+    ensure_directory(TFTP_DIR)
     sys.modules['tftpy.TftpServer'].TftpContextServer = NarratingContext
-    tftpy.TftpServer(TFTP_DIR).listen(BIND_IP, TFTP_PORT)
+    server = tftpy.TftpServer(TFTP_DIR)
+    drop_root_once_bound(server)
+    server.listen(BIND_IP, TFTP_PORT)
 
 
 def armed_hosts():
