@@ -6,17 +6,17 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Kured drains and reboots nodes to apply staged OS, Kubernetes and containerd updates, one at a time and only when Ceph and etcd are healthy.">
+        <meta name="description" content="Add a component to payload/platform/: the Application, the security labels and policies, the version pin and the documentation page it needs before its first sync.">
       
       
       
-        <link rel="canonical" href="https://homelab.wlkr.ch/platform/kured/">
+        <link rel="canonical" href="https://homelab.wlkr.ch/development/add-platform-component/">
       
       
-        <link rel="prev" href="../metrics-server/">
+        <link rel="prev" href="../add-workload/">
       
       
-        <link rel="next" href="../security-policies/">
+        <link rel="next" href="../maintenance/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Kured - Homelab Documentation</title>
+        <title>Adding a Platform Component - Homelab Documentation</title>
       
     
     
@@ -81,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#kured" class="md-skip">
+        <a href="#adding-a-platform-component" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Kured
+              Adding a Platform Component
             
           </span>
         </div>
@@ -290,8 +290,6 @@
   
   
   
-    
-  
   
     
       
@@ -340,8 +338,8 @@
     
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../platform/" class="md-tabs__link">
           
   
   Platform
@@ -398,6 +396,8 @@
   
   
   
+    
+  
   
     
       
@@ -418,8 +418,8 @@
     
     
     
-      <li class="md-tabs__item">
-        <a href="../../development/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Development
@@ -927,8 +927,6 @@
       
   
   
-    
-  
   
   
     
@@ -978,21 +976,18 @@
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../platform/" class="md-nav__link ">
               
   
   
@@ -1009,13 +1004,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1034,7 +1029,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cilium/" class="md-nav__link">
+      <a href="../../platform/cilium/" class="md-nav__link">
         
   
   
@@ -1061,7 +1056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../argocd/" class="md-nav__link">
+      <a href="../../platform/argocd/" class="md-nav__link">
         
   
   
@@ -1088,7 +1083,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../gateway-api/" class="md-nav__link">
+      <a href="../../platform/gateway-api/" class="md-nav__link">
         
   
   
@@ -1115,7 +1110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cert-manager/" class="md-nav__link">
+      <a href="../../platform/cert-manager/" class="md-nav__link">
         
   
   
@@ -1142,7 +1137,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../external-dns/" class="md-nav__link">
+      <a href="../../platform/external-dns/" class="md-nav__link">
         
   
   
@@ -1169,7 +1164,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../rook-ceph/" class="md-nav__link">
+      <a href="../../platform/rook-ceph/" class="md-nav__link">
         
   
   
@@ -1196,7 +1191,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cloudnative-pg/" class="md-nav__link">
+      <a href="../../platform/cloudnative-pg/" class="md-nav__link">
         
   
   
@@ -1223,7 +1218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../velero/" class="md-nav__link">
+      <a href="../../platform/velero/" class="md-nav__link">
         
   
   
@@ -1250,7 +1245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../openbao/" class="md-nav__link">
+      <a href="../../platform/openbao/" class="md-nav__link">
         
   
   
@@ -1277,7 +1272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../external-secrets/" class="md-nav__link">
+      <a href="../../platform/external-secrets/" class="md-nav__link">
         
   
   
@@ -1304,7 +1299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../authentik/" class="md-nav__link">
+      <a href="../../platform/authentik/" class="md-nav__link">
         
   
   
@@ -1331,7 +1326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../monitoring/" class="md-nav__link">
+      <a href="../../platform/monitoring/" class="md-nav__link">
         
   
   
@@ -1358,7 +1353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logging/" class="md-nav__link">
+      <a href="../../platform/logging/" class="md-nav__link">
         
   
   
@@ -1385,7 +1380,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../tetragon/" class="md-nav__link">
+      <a href="../../platform/tetragon/" class="md-nav__link">
         
   
   
@@ -1412,7 +1407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../metrics-server/" class="md-nav__link">
+      <a href="../../platform/metrics-server/" class="md-nav__link">
         
   
   
@@ -1436,36 +1431,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Kured
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../platform/kured/" class="md-nav__link">
         
   
   
@@ -1480,71 +1449,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#at-a-glance" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        At a glance
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Configuration
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Usage
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Health check
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1557,7 +1461,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../security-policies/" class="md-nav__link">
+      <a href="../../platform/security-policies/" class="md-nav__link">
         
   
   
@@ -1584,7 +1488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../trivy-operator/" class="md-nav__link">
+      <a href="../../platform/trivy-operator/" class="md-nav__link">
         
   
   
@@ -1888,6 +1792,8 @@
       
   
   
+    
+  
   
   
     
@@ -1909,18 +1815,21 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../development/" class="md-nav__link ">
+            <a href="../" class="md-nav__link ">
               
   
   
@@ -1937,13 +1846,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1962,7 +1871,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1989,7 +1898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/add-workload/" class="md-nav__link">
+      <a href="../add-workload/" class="md-nav__link">
         
   
   
@@ -2013,10 +1922,36 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../development/add-platform-component/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adding a Platform Component
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2031,6 +1966,38 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Steps
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2043,7 +2010,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/maintenance/" class="md-nav__link">
+      <a href="../maintenance/" class="md-nav__link">
         
   
   
@@ -2111,43 +2078,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#at-a-glance" class="md-nav__link">
+  <a href="#steps" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        At a glance
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Configuration
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Usage
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#health-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Health check
+        Steps
       </span>
     </span>
   </a>
@@ -2210,34 +2144,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -2247,7 +2153,7 @@
           
   
   <span class="md-ellipsis">
-    Platform
+    Development
   </span>
 
         </a>
@@ -2264,7 +2170,7 @@
                 
                   
   
-    <a href="https://github.com/JanWelker/homelab/edit/main/docs/platform/kured.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/JanWelker/homelab/edit/main/docs/development/add-platform-component.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-pen" viewBox="0 0 24 24"><path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z"/></svg>
     </a>
@@ -2273,152 +2179,83 @@
     
       
     
-    <a href="https://github.com/JanWelker/homelab/raw/main/docs/platform/kured.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/JanWelker/homelab/raw/main/docs/development/add-platform-component.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="kured">Kured<a class="headerlink" href="#kured" title="Permanent link">&para;</a></h1>
-<p><a href="https://kured.dev/">Kured</a> applies the updates the nodes have staged. It
-watches every node for a sentinel file and, when it finds one, takes a
-cluster-wide lock, cordons and drains the node, reboots it and uncordons it
-when it is back. Flatcar's own <code>locksmithd</code> is masked because it reboots
-without draining, on a cluster where every node is a storage node.</p>
-<h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Namespace</td>
-<td><code>kured</code></td>
-</tr>
-<tr>
-<td>Depends on</td>
-<td><a href="../monitoring/">Monitoring</a> for the alerts it gates on</td>
-</tr>
-<tr>
-<td>If it is down</td>
-<td>Nothing visible: staged OS and sysext updates simply never get applied</td>
-</tr>
-<tr>
-<td>Health check</td>
-<td><code>kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50</code></td>
-</tr>
-<tr>
-<td>Files</td>
-<td><code>payload/platform/kured/application.yaml</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p>Three mechanisms stage an update on disk, and all three signal it by touching
-<code>/run/reboot-required</code>, Kured's default sentinel. <code>/run</code> is tmpfs, so the
-marker clears itself on reboot.</p>
-<table>
-<thead>
-<tr>
-<th>Mechanism</th>
-<th>Stages</th>
-<th>Signals by</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Flatcar OS (update-engine)</td>
-<td>New image on the passive A/B partition</td>
-<td><code>flatcar-reboot-sentinel.timer</code></td>
-</tr>
-<tr>
-<td>Kubernetes sysext</td>
-<td>New <code>.raw</code> under <code>/opt/extensions/kubernetes</code></td>
-<td><code>systemd-sysupdate</code> drop-in</td>
-</tr>
-<tr>
-<td>containerd sysext</td>
-<td>New <code>.raw</code> under <code>/opt/extensions/containerd</code></td>
-<td>Same</td>
-</tr>
-</tbody>
-</table>
-<pre class="mermaid"><code>flowchart TD
-    OS["update-engine&lt;br/&gt;OS image on the passive partition"] --&gt; SEN
-    KUBE["systemd-sysupdate&lt;br/&gt;kubernetes sysext"] --&gt; SEN
-    CTR["systemd-sysupdate&lt;br/&gt;containerd sysext"] --&gt; SEN
-
-    SEN["/run/reboot-required&lt;br/&gt;sentinel, on tmpfs"] --&gt; TICK{"Kured checks&lt;br/&gt;every period"}
-
-    TICK --&gt;|"no sentinel"| SLEEP["Nothing to do until&lt;br/&gt;an update stages one"]
-    TICK --&gt;|"sentinel present"| ALERT{"Blocking alert firing?&lt;br/&gt;Ceph, etcd, node, API"}
-    ALERT --&gt;|"yes"| HELD["Reboot deferred while&lt;br/&gt;the cluster is unhealthy"]
-    ALERT --&gt;|"no"| LOCK{"Cluster lock free?"}
-    LOCK --&gt;|"another node&lt;br/&gt;is rebooting"| TAINT["Taint PreferNoSchedule,&lt;br/&gt;wait for the lock"]
-    LOCK --&gt;|"acquired"| DRAIN["Cordon and drain"]
-    DRAIN --&gt;|"drain fails"| GIVEUP["No reboot: uncordon,&lt;br/&gt;release the lock, retry"]
-    DRAIN --&gt;|"drained"| BOOT["systemctl reboot;&lt;br/&gt;new partition and&lt;br/&gt;sysexts take effect"]
-    BOOT --&gt; UP["Node comes back,&lt;br/&gt;sentinel gone with tmpfs"]
-    UP --&gt; DONE["Uncordon, drop the annotation,&lt;br/&gt;release the lock after a delay"]
-
-    style SEN stroke-width:3px</code></pre>
-<p>The values are in <code>payload/platform/kured/application.yaml</code>; the reasoning:</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>No reboot window</td>
-<td>Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock</td>
-</tr>
-<tr>
-<td><code>concurrency</code> of one and <code>lockReleaseDelay</code></td>
-<td>One node down at a time, with breathing room for Ceph to backfill before the next</td>
-</tr>
-<tr>
-<td><code>forceReboot: false</code></td>
-<td>A node that will not drain is a node worth looking at</td>
-</tr>
-<tr>
-<td><code>preferNoScheduleTaint</code></td>
-<td>A node pending reboot stops attracting pods about to be evicted again</td>
-</tr>
-<tr>
-<td><code>annotateNodes: true</code></td>
-<td><code>kubectl get node -o yaml</code> shows why a node is cordoned</td>
-</tr>
-<tr>
-<td><code>alertFilterRegexp</code> with <code>alertFilterMatchOnly: true</code></td>
-<td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from <a href="../../operations/nodes/">Rebooting a node</a>: a second reboot during a backfill can take a placement group below its minimum replica count</td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="admonition-title">The regex means the opposite of what it looks like</p>
-<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it.</p>
-</div>
-<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>To stop Kured rebooting anything without uninstalling it, remove the sentinel
-or scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
-</span></code></pre></div>
-<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Which nodes want a reboot</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Whether a node has staged anything</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /run/reboot-required; update_engine_client -status'</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
-</span></code></pre></div>
+<h1 id="adding-a-platform-component">Adding a Platform Component<a class="headerlink" href="#adding-a-platform-component" title="Permanent link">&para;</a></h1>
+<p>A platform component is a directory under <code>payload/platform/</code> with exactly one
+<code>application.yaml</code>; the <code>platform</code> ApplicationSet turns it into an ArgoCD
+Application on the next poll. Workloads go in the
+<a href="../add-workload/">other repository</a>. Why the platform is shaped this way is in
+<a href="../../architecture/gitops/">GitOps Strategy</a>.</p>
+<h2 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Create the directory</strong> with a complete <code>application.yaml</code> copied from a
+   sibling: the generator copies its labels, annotations, finalizers and
+   <code>spec</code> verbatim, so a fragment is not an Application. Keep the
+   <a href="../../architecture/gitops/#sync-policy">sync policy</a> as it is — every
+   component carries the same one, <code>retry</code> included, and a chart that lands
+   before its CRDs stays failed without it.</p>
+</li>
+<li>
+<p><strong>Pin the version once</strong>, as <code>targetRevision</code> in that file. The <code>Makefile</code>
+   reads the bootstrap versions out of these manifests and Renovate bumps
+   them there — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
+</li>
+<li>
+<p><strong>Put each resource with what it needs, not with what it configures.</strong>
+   Nothing orders the Applications, so a <code>ClusterSecretStore</code> sits with
+   OpenBao and the issuers are their own component — see
+   <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>.
+   A resource whose CRD comes from another component gets
+   <code>argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true</code>.</p>
+</li>
+<li>
+<p><strong>Label the namespace</strong> in <code>payload/platform/security/pod-security.yaml</code>
+   with the Pod Security Admission level it demonstrably needs, one sentence
+   of why next to any <code>privileged</code> — see
+   <a href="../../platform/security-policies/#pod-security-admission">Security Policies</a>.</p>
+</li>
+<li>
+<p><strong>Write its network policy</strong> as
+   <code>payload/platform/security/network-policies/&lt;namespace&gt;.yaml</code>: the
+   <code>default-ingress</code> and <code>default-egress</code> deny pair plus one policy per
+   workload that needs more, copied from the namespace most like it. New
+   HTTP rules start as <code>http: [{}]</code> until the
+   <a href="../../platform/security-policies/#rollout">rollout</a> has recorded a week
+   of requests.</p>
+</li>
+<li>
+<p><strong>Expose a UI</strong> with an <code>HTTPRoute</code> on <code>infra-gateway</code> next to the
+   component, and put it behind Authentik — see
+   <a href="../../platform/gateway-api/#usage">Gateway API</a> and
+   <a href="../../platform/authentik/">Authentik</a>. A route that crosses namespaces
+   needs a <code>ReferenceGrant</code> in the target namespace.</p>
+</li>
+<li>
+<p><strong>Check Renovate sees the pin.</strong> Chart versions are covered; an image tag
+   inside <code>valuesObject</code> needs a <code># renovate:</code> comment — see
+   <a href="../maintenance/">Maintenance</a>.</p>
+</li>
+<li>
+<p><strong>Write the page</strong> under <code>docs/platform/</code> with the shared skeleton — intro,
+   At a glance, Configuration, Usage, Health check, Pitfalls, Recovery only
+   with a real runbook — add it to the nav in <code>zensical.toml</code> and to the
+   <a href="../../platform/#components">Components table</a>. The strict docs build
+   fails on a page the nav does not list.</p>
+</li>
+<li>
+<p><strong>Open the PR</strong> and run the checks in <a href="../contributing/">Contributing</a>.
+   After the merge the Application appears within one polling interval; a
+   Degraded one is usually waiting on a CRD, a Secret or OpenBao — see
+   <a href="../../operations/troubleshooting/">Troubleshooting</a>.</p>
+</li>
+</ol>
 
 
 
@@ -2459,7 +2296,7 @@ or scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../metrics-server/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Metrics Server">
+          <a href="../add-workload/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Adding a Workload">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2469,20 +2306,20 @@ or scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Metrics Server
+                Adding a Workload
               </div>
             </div>
           </a>
         
         
           
-          <a href="../security-policies/" class="md-footer__link md-footer__link--next" aria-label="Next: Security Policies">
+          <a href="../maintenance/" class="md-footer__link md-footer__link--next" aria-label="Next: Maintenance">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Security Policies
+                Maintenance
               </div>
             </div>
             <div class="md-footer__button md-icon">
