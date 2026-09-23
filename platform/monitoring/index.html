@@ -2710,24 +2710,25 @@ its upstream tag.</p>
 <tr>
 <td>ArgoCD</td>
 <td>ArgoCD</td>
-<td>Vendored: <code>argocd-config/argocd-dashboard.yaml</code></td>
+<td>Vendored: <code>argocd-config/grafana-dashboards.yaml</code></td>
 </tr>
 <tr>
 <td><a href="../tetragon/">Tetragon</a></td>
 <td>Tetragon</td>
-<td>Written for this cluster: <code>tetragon/grafana-dashboard.yaml</code>; upstream ships none</td>
+<td>Written for this cluster: <code>tetragon/grafana-dashboards.yaml</code>; upstream ships none</td>
 </tr>
 <tr>
 <td><a href="../trivy-operator/">Trivy Operator</a></td>
 <td>Trivy Operator</td>
-<td>Written for this cluster: <code>trivy-operator/grafana-dashboard.yaml</code></td>
+<td>Written for this cluster: <code>trivy-operator/grafana-dashboards.yaml</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="adding-a-dashboard">Adding a dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h3>
 <p>Add a ConfigMap labelled <code>grafana_dashboard: "1"</code> next to the component it
-describes; the sidecar watches every namespace
+describes, in a file named <code>grafana-dashboards.yaml</code> and a ConfigMap named
+<code>&lt;component&gt;-grafana-dashboards</code>; the sidecar watches every namespace
 (<code>sidecar.dashboards.searchNamespace: ALL</code>). Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
