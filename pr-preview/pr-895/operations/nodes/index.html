@@ -2421,8 +2421,9 @@ the space.</p>
 </li>
 <li>
 <p>Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
-   no prompt), and the boot server disarms a node once it has the image, so the
-   reboot at the end of the install does not start a second one — see
+   no prompt), a later <code>make config</code> keeps a node armed, and the boot server
+   disarms it once it has the image, so the reboot at the end of the install
+   does not start a second one — see
    <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
