@@ -2333,7 +2333,12 @@ L2 pool, defined in <code>gateways.yaml</code>:</p>
 </tbody>
 </table>
 <p>Both terminate TLS with cert-manager's wildcard certificates, so a new
-hostname needs no certificate of its own and nothing to renew. Port 80 is
+hostname needs no certificate of its own and nothing to renew. Each HTTPS
+listener pins its hostname pattern, so a route can only claim a name inside
+its Gateway's tree. A wildcard is a suffix match, so <code>*.k8s.wlkr.ch</code> still
+admits an <code>infra</code> name; such a route gets no traffic, because the infra
+names resolve to the other Gateway and the apps certificate covers one label
+only. Port 80 is
 accepted from all namespaces only so the central rule in <code>http-redirect.yaml</code>
 can send it to HTTPS. <code>apps-gateway</code> carries the annotation that makes
 <a href="../external-dns/#configuration">external-dns</a> publish the router's public
@@ -2374,7 +2379,7 @@ exactly <code>1</code>:</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Nothing stops two apps claiming the same hostname</p>
-<p>Both Gateways admit routes from every namespace, so a stray <code>HTTPRoute</code> can attach itself to <code>infra-gateway</code> and claim a name — see <a href="../../architecture/security/">Security Posture</a>.</p>
+<p>Both Gateways admit routes from every namespace, so a stray <code>HTTPRoute</code> can attach itself to either Gateway and claim a name inside its hostname pattern — see <a href="../../architecture/security/">Security Posture</a>.</p>
 </div>
 
 
