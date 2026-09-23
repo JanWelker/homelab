@@ -2483,7 +2483,7 @@
 <h1 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h1>
 <p>Full observability stack based on
 <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>:
-Prometheus (10-day retention), Grafana, Alertmanager, node-exporter and
+Prometheus, Grafana, Alertmanager, node-exporter and
 kube-state-metrics. The chart's default rule set is good; its default routing
 swallows every alert, which is what most of this page is about.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2710,24 +2710,25 @@ its upstream tag.</p>
 <tr>
 <td>ArgoCD</td>
 <td>ArgoCD</td>
-<td>Vendored: <code>argocd-config/argocd-dashboard.yaml</code></td>
+<td>Vendored: <code>argocd-config/grafana-dashboards.yaml</code></td>
 </tr>
 <tr>
 <td><a href="../tetragon/">Tetragon</a></td>
 <td>Tetragon</td>
-<td>Written for this cluster: <code>tetragon/grafana-dashboard.yaml</code>; upstream ships none</td>
+<td>Written for this cluster: <code>tetragon/grafana-dashboards.yaml</code>; upstream ships none</td>
 </tr>
 <tr>
 <td><a href="../trivy-operator/">Trivy Operator</a></td>
 <td>Trivy Operator</td>
-<td>Written for this cluster: <code>trivy-operator/grafana-dashboard.yaml</code></td>
+<td>Written for this cluster: <code>trivy-operator/grafana-dashboards.yaml</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="adding-a-dashboard">Adding a dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h3>
 <p>Add a ConfigMap labelled <code>grafana_dashboard: "1"</code> next to the component it
-describes; the sidecar watches every namespace
+describes, in a file named <code>grafana-dashboards.yaml</code> and a ConfigMap named
+<code>&lt;component&gt;-grafana-dashboards</code>; the sidecar watches every namespace
 (<code>sidecar.dashboards.searchNamespace: ALL</code>). Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
