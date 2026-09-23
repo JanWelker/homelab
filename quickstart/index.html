@@ -2564,7 +2564,10 @@ menu the server recognises.</p>
     Once the control plane node responds to SSH:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
-<p>Verify the cluster answers. <code>NotReady</code> is expected at this point:</p>
+<p>Every <code>make</code> target that touches the cluster reads <code>output/kubeconfig</code>
+(<code>make KUBECONFIG=&lt;file&gt; &lt;target&gt;</code> picks another); only <code>kubectl</code> in
+your own shell needs the export. Verify the cluster answers. <code>NotReady</code>
+is expected at this point:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/output/kubeconfig"</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
 </span></code></pre></div>
