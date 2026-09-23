@@ -85,7 +85,7 @@ for pod in $pods; do
     [ "$initialized" = "True" ] && break
     [ "$SECONDS" -lt "$deadline" ] || {
       echo "  ${pod}: still reports Initialized=false after ${TIMEOUT}s -- it has not"
-      echo "           joined the raft cluster. See docs/platform/openbao.md#2-unseal-each-replica"
+      echo "           joined the raft cluster. See docs/platform/openbao.md#unsealing-after-a-restart"
       continue 2
     }
     sleep 3

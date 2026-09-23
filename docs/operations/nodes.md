@@ -147,8 +147,9 @@ the space.
     ```
 
 4. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
-   no prompt), and the boot server disarms a node once it has the image, so the
-   reboot at the end of the install does not start a second one — see
+   no prompt), a later `make config` keeps a node armed, and the boot server
+   disarms it once it has the image, so the reboot at the end of the install
+   does not start a second one — see
    [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot).
 
     ```bash

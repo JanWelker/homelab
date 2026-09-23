@@ -1,7 +1,8 @@
 ---
 # eBGP with the router: every control-plane node announces the Gateway
 # LoadBalancer IPs as /32 routes so the router forwards to all three at once
-# and drops a dead node after the hold time; see docs/platform/cilium.md.
+# and drops a dead node after the hold time; the router side is
+# router/frr-bgp.conf, see docs/platform/cilium.md.
 apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
