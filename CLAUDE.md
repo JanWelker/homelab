@@ -89,9 +89,9 @@ The reasoning is in `docs/architecture/gitops.md`.
 Application). `make` installs only what ArgoCD needs in order to run; cert-manager,
 the LoadBalancer pools and the Prometheus operator CRDs all arrive through ArgoCD.
 
-A fresh cluster **pauses at `05-secrets`** until `make bao-init` and
-`make bao-unseal`, then again at `06-certificates` until `make bao-secrets`.
-That is the design, not a hang.
+A fresh cluster **looks stuck at OpenBao**: every `ExternalSecret` stays
+Degraded until `make bao-init` and `make bao-unseal`, and `certificates` until
+`make bao-secrets`. That is the design, not a hang.
 
 `make kubeconfig` writes `output/kubeconfig`. `output/credentials/` holds the
 OpenBao unseal keys and the etcd encryption key: generated once, never

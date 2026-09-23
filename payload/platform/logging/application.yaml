@@ -26,8 +26,7 @@ spec:
       prune: true
       selfHeal: true
     # grafana-datasource.yaml lands in `monitoring`, which kube-prometheus-stack
-    # creates in this same stage. If this sync runs first the apply fails on a
-    # missing namespace, and under RollingSync a failed sync waits for a person.
+    # creates; a sync before that namespace exists fails and is retried.
     retry:
       limit: 10
       backoff:

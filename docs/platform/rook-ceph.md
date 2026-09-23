@@ -58,7 +58,7 @@ a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
 | Setting | Why |
 | --- | --- |
 | `cephClusterSpec.monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
-| `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from `prometheus-operator-crds` in `01-crds` so the kind exists when `04-storage` syncs — see [Monitoring](monitoring.md#crds) |
+| `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](monitoring.md#crds) |
 | `cephClusterSpec.cephConfig` `mgr/dashboard/*` | Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off `ceph dashboard set-*` Job |
 | `mon_cluster_log_level: info` | The Ceph default is `debug`, and the mons copy the cluster log to stderr, so Rook's probes and the mgr's pgmap ticks became most of the mon log volume in [Loki](logging.md). Warnings and errors are unaffected |
 
@@ -182,8 +182,8 @@ asks for.
 
 ## Pitfalls
 
-!!! warning "Ceph warnings block the rollout"
-    ArgoCD maps `HEALTH_WARN` to Degraded, so while Ceph warns no change reaches anything after `04-storage` — see [GitOps](../architecture/gitops.md).
+!!! warning "Ceph warnings show as Degraded"
+    ArgoCD maps `HEALTH_WARN` to Degraded, so `rook-ceph-cluster` reports Degraded for the whole of a warning; nothing else waits on it — see [GitOps](../architecture/gitops.md).
 
 ## Recovery
 
