@@ -102,6 +102,7 @@ Edit `ansible/inventory.yaml`; the variables are listed under
 | host entries | Replace the six hosts with yours. Each needs `ansible_host` (static IP) and `mac_address` (the NIC that PXE boots). |
 | `control_plane` / `workers` | Group membership decides the node role. |
 | `pod_subnet`, `service_subnet` | Only change if they collide with your LAN. |
+| `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory. `make config` renders the router's FRR config into `output/router/` — see [Cilium](platform/cilium.md#configuration). |
 
 Then update `payload/platform/cilium/values.yaml`:
 

@@ -62,6 +62,17 @@
         - "{{ output_dir }}/http"
         - "{{ output_dir }}/tftp"
         - "{{ output_dir }}/tftp/pxelinux.cfg"
+        - "{{ output_dir }}/router"
+
+    # The router side of the eBGP session in payload/platform/cilium/bgp.yaml,
+    # rendered from the inventory so a firmware reset is recovered by pasting.
+    - name: Generate the router's FRR BGP config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/frr_bgp.conf.j2" # noqa: no-relative-paths
+        dest: "{{ output_dir }}/router/frr-bgp.conf"
+        mode: "0644"
+      run_once: true # noqa: run-once
+      delegate_to: localhost
 
     # The nodes fetch these over plain HTTP on first boot. Ignition checks each
     # against the hash of the file the boot server was given, so a substituted

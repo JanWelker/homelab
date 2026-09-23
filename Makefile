@@ -161,6 +161,7 @@ clean:
 	  '    output/http/   Flatcar image, kernel, initrd, sysexts   make download' \
 	  '    output/tftp/   bootloader and PXE menus                 make config' \
 	  '    output/tmp/    scratch space                            make config' \
+	  '    output/router/ FRR BGP config for the router            make config' \
 	  '' \
 	  '  Copy output/credentials/ somewhere safe first, or run make clean-artifacts' \
 	  '  to remove only the regenerable half.' \
@@ -177,5 +178,5 @@ clean:
 	esac
 
 clean-artifacts:
-	rm -rf output/http output/tftp output/tmp
+	rm -rf output/http output/tftp output/tmp output/router
 	@echo "Downloaded and generated artifacts removed. output/credentials/ kept."
