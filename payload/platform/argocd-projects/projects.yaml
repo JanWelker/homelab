@@ -5,8 +5,8 @@ metadata:
   name: apps
   namespace: argocd
   annotations:
+    # Pruning an AppProject orphans every Application in it.
     argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: User-facing applications
   # The workloads repository and the chart repositories its Applications pull
@@ -68,8 +68,8 @@ metadata:
   name: infra
   namespace: argocd
   annotations:
+    # Pruning an AppProject orphans every Application in it.
     argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: Core infrastructure (Cilium, Rook-Ceph, Monitoring, Certificates)
   sourceRepos:
@@ -87,8 +87,8 @@ metadata:
   name: system
   namespace: argocd
   annotations:
+    # Pruning an AppProject orphans every Application in it.
     argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   description: System components (ArgoCD, ApplicationSets, etc.)
   sourceRepos:

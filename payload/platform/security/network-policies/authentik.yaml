@@ -78,8 +78,8 @@ spec:
   description: >-
     The embedded outpost is a reverse proxy inside the server: it connects
     to the five applications it fronts, all plaintext inside the cluster.
-    The server also checks Gravatar for avatars, and may call its own public
-    names for an OAuth callback; both Gateway addresses are world to Cilium.
+    The server may call its own public names for an OAuth callback; both
+    Gateway addresses are world to Cilium.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: authentik
@@ -126,30 +126,8 @@ spec:
             - port: "8123"
               protocol: TCP
     - toFQDNs:
-        - matchName: www.gravatar.com
         - matchName: auth.infra.k8s.wlkr.ch
         - matchName: auth.k8s.wlkr.ch
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: authentik-worker
-  namespace: authentik
-spec:
-  description: >-
-    The worker's periodic update check. Its other outbound work, mail and
-    error reporting, is not configured.
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: authentik
-      app.kubernetes.io/component: worker
-  egress:
-    - toFQDNs:
-        - matchName: version.goauthentik.io
       toPorts:
         - ports:
             - port: "443"
