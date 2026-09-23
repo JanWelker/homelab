@@ -6,7 +6,7 @@ description: "The kube-prometheus-stack observability setup, accessing Grafana, 
 
 Full observability stack based on
 [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack):
-Prometheus (10-day retention), Grafana, Alertmanager, node-exporter and
+Prometheus, Grafana, Alertmanager, node-exporter and
 kube-state-metrics. The chart's default rule set is good; its default routing
 swallows every alert, which is what most of this page is about.
 

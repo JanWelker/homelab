@@ -323,7 +323,7 @@ where, and what surprised you while deploying it.
 | `Synced`, health `Unknown`, workload running fine | A wave is waiting on a resource that will never go Healthy; with a database it is the missing `cnpg-system` rule (`kubectl get cluster` says `1/1`, status reads `Instance Status Extraction Error: HTTP communication issue`). Confirm with `kubectl -n argocd get application my-app -o jsonpath='{.status.operationState.message}'` and the Hubble check below |
 | Rule is in Git, still stuck | The policy's sync wave is wrong: the applied list has no `CiliumNetworkPolicy` while `Cluster` reads `Running`. Fix the wave, then `argocd app terminate-op my-app`; a stuck operation does not pick up a new revision |
 | Pods will not start; events mention a security policy | `enforce` in `namespace.yaml` is stricter than the image needs. Loosen `enforce`, keep `audit` and `warn`, so violations stay in the [audit log](../architecture/audit-logging.md) — see [Pod Security Admission](../platform/security-policies.md#pod-security-admission) |
-| Login redirects in a loop, or every link is `http://` | Requests arrive from Cilium's Envoy inside the pod CIDR (`10.244.0.0/16`) with TLS terminated at the Gateway. Set the application's trusted-proxy and "overwrite protocol" settings |
+| Login redirects in a loop, or every link is `http://` | Requests arrive from Cilium's Envoy inside the [pod subnet](../architecture/index.md#cluster-layout) with TLS terminated at the Gateway. Set the application's trusted-proxy and "overwrite protocol" settings |
 
 ```bash
 # Why an Application was not generated

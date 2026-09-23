@@ -11,13 +11,13 @@ cannot.
 
 | Data | Backed up | How |
 | --- | --- | --- |
-| Kubernetes objects | Nightly, 02:00 | [Velero](#velero) to the Ceph object store, 14 day TTL |
-| Ceph RBD volumes (PVCs) | Nightly, 02:00 | Velero CSI snapshot, moved into the object store |
+| Kubernetes objects | Nightly | [Velero](#velero) to the Ceph object store |
+| Ceph RBD volumes (PVCs) | Nightly | Velero CSI snapshot, moved into the object store |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
-| etcd (raw) | Nightly, 01:00 | [CronJob](#etcd) to the object store, last 14 kept |
+| etcd (raw) | Nightly | [CronJob](#etcd) to the object store |
 | OpenBao secrets | Manual | [Raft snapshot](#openbao) |
 | OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
-| Prometheus metrics | **No** | 10 day retention, then gone |
+| Prometheus metrics | **No** | Kept for the `retention` in `payload/platform/monitoring/application.yaml`, then gone |
 | Everything in `payload/` | Yes | It is in Git |
 
 ## What is not covered
@@ -44,7 +44,7 @@ nightly. Chart values and why each is set are in
 
 | Property | Value |
 | --- | --- |
-| Schedule | `0 2 * * *`, TTL `336h` |
+| Schedule | The `schedules` block in `payload/platform/velero/application.yaml`: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires |
 | Scope | All namespaces except `kube-system` (rebuilt from Git, and large), minus `events` (they expire anyway) |
 | Destination | S3 bucket `velero` in the [Ceph object store](../platform/rook-ceph.md) |
 | Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
@@ -73,10 +73,10 @@ before Velero runs.
 
 | Property | Value |
 | --- | --- |
-| Schedule | `0 1 * * *` |
+| Schedule | `payload/platform/backup/etcd-backup.yaml`: nightly, before Velero |
 | Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node |
 | Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup (`etcdctl snapshot status` was removed in etcd 3.6) |
-| Destination | S3 bucket `etcd-backup`, separate from Velero's because it is restored by different means; newest 14 kept |
+| Destination | S3 bucket `etcd-backup`, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
 
 Two settings there are easy to undo by accident: the DNS policy for a
 host-network pod (the node's `resolv.conf` cannot resolve the RGW Service), and

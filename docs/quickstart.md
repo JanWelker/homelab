@@ -310,16 +310,9 @@ the same L2 network segment as the nodes.
     ```
 
     Log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
-    `akadmin`, then create the four groups under *Directory &rarr; Groups*
-    and add yourself — see
-    [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles):
-
-    | Group | Grants |
-    | --- | --- |
-    | `argocd-admins` | ArgoCD `role:admin` |
-    | `argocd-viewers` | ArgoCD `role:readonly` |
-    | `grafana-admins` | Grafana `Admin` |
-    | `grafana-editors` | Grafana `Editor` |
+    `akadmin`, then create the four groups listed in
+    [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles)
+    under *Directory &rarr; Groups* and add yourself.
 
     ArgoCD's `policy.default` is empty, so an SSO login that lands on an
     ArgoCD with no applications means a missing group, not a broken
