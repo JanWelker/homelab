@@ -65,16 +65,16 @@ points at `authentik-server`, so the whole flow happens on their own hostname.
 
 ### Where the proxied routes point
 
-Hubble's route stays in `payload/platform/cilium/`, Rook's in
-`payload/platform/rook-ceph/` and Home Assistant's in the
-[workloads repository](../development/add-workload.md), each with
-`authentik-server` as `backendRef`. Gateway API forbids a cross-namespace
-`backendRef` unless the target namespace grants it, so `referencegrant.yaml`
-allows `HTTPRoute` objects from exactly those namespaces to that Service only.
-A proxied workload is therefore two pull requests, by design: a workload
-cannot take itself out from behind the authentication layer on its own.
-Prometheus and Alertmanager have no route of their own, so theirs are in
-`httproute.yaml` here; the outpost is their only authentication.
+A proxied application's route lives with the application: Hubble's in
+`payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
+Prometheus's and Alertmanager's in `payload/platform/monitoring/` and Home
+Assistant's in the [workloads repository](../development/add-workload.md),
+each with `authentik-server` as `backendRef`. Gateway API forbids a
+cross-namespace `backendRef` unless the target namespace grants it, so
+`referencegrant.yaml` here allows `HTTPRoute` objects from exactly those
+namespaces to that Service only. A proxied workload is therefore two pull
+requests, by design: a workload cannot take itself out from behind the
+authentication layer on its own.
 
 ### Chart values
 
