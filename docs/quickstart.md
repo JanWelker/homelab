@@ -283,9 +283,9 @@ the same L2 network segment as the nodes.
     [OpenBao](platform/openbao.md)), and the SMTP login, password and alert
     recipient. Everything under `kv/authentik/config`, including the OIDC
     client credentials ArgoCD and Grafana read back, is generated, as is
-    Grafana's break-glass admin password. Existing paths are left alone;
-    rewriting `kv/authentik/config` on a running cluster rotates Authentik's
-    Postgres password out from under its database.
+    Grafana's break-glass admin password. On a fresh cluster nothing exists
+    yet; on a running one it asks per path before overwriting — see
+    [Rotating a credential](platform/openbao.md#rotating-a-credential).
 
     !!! tip "Paste them at the prompt, not onto a command line"
         A secret containing `#` on a command line is truncated at it, and one containing `!` is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with **single** quotes.

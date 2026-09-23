@@ -117,11 +117,11 @@ the chart repositories the workloads use, may not write into any platform
 namespace (`authentik` excepted, for the blueprint ConfigMap a workload ships
 there), and at cluster scope may create nothing but namespaces.
 
-**Network policy covers ten namespaces.** `openbao`, `cert-manager`,
-`external-secrets`, `monitoring`, `external-dns`, `kubelet-csr-approver`,
-`kured`, `logging`, `cnpg-system` and `trivy-system` have default-deny **ingress**
-`CiliumNetworkPolicy` rules; every other namespace, and all egress everywhere,
-is unrestricted. See [Security Policies](../platform/security-policies.md).
+**Every platform namespace is default-deny in both directions**, one
+`CiliumNetworkPolicy` file per namespace plus the cluster-wide rules, and the
+policies are still in audit mode until the observation week ends — see
+[Security Policies](../platform/security-policies.md#network-policies) and
+[Rollout](../platform/security-policies.md#rollout).
 
 **Pod Security Admission is on, but mostly auditing.** Every platform namespace
 carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a
@@ -163,9 +163,9 @@ so putting it behind Authentik would be a loop.
 
 Roughly in order of value against effort:
 
-1. Extend default-deny ingress to the namespaces
-   [not yet covered](../platform/security-policies.md#network-policies), then start on
-   egress — the larger and more breakable half.
+1. Finish the [network policy rollout](../platform/security-policies.md#rollout):
+   tighten the `http: [{}]` rules to what the audit week recorded, then turn
+   `policyAuditMode` off.
 2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
 3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and

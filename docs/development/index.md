@@ -24,6 +24,14 @@ workloads live in [`homelab-apps`](https://github.com/JanWelker/homelab-apps).
     Deploying a new application, from the ArgoCD Application through to the
     documentation page the build fails without.
 
+- **[Adding a Platform Component](add-platform-component.md)**
+
+    ---
+
+    A new directory under `payload/platform/`, and everything a component
+    needs before its first sync: the Application, the policies, the pin and
+    the page.
+
 - **[Maintenance](maintenance.md)**
 
     ---

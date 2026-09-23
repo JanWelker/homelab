@@ -75,6 +75,11 @@ password manager, each pod wants 3 of the 5 shares by hand, per
     make config && make serve
     ```
 
+    In the same commit, add the node name to `providerRegex` in
+    `payload/platform/kubelet-csr-approver/application.yaml`: a node the regex
+    does not name has its kubelet certificate denied and
+    [silently drops out of `kubectl top`](../platform/metrics-server.md#pitfalls).
+
 2. On a control-plane node, generate a fresh join command; the provisioning
    token has a 24 hour TTL and has long expired.
 
