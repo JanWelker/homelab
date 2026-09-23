@@ -2370,7 +2370,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>bgp.yaml</code></td>
-<td>The same two addresses as <code>/32</code> routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the 9s hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The router side is FRR on the UDM Pro peering with the three node IPs, ASN 65000 against 65001</td>
+<td>The same two addresses as <code>/32</code> routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the 9s hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The router side is FRR on the UDM Pro: <code>make config</code> renders it from the inventory's <code>router_*</code> variables into <code>output/router/frr-bgp.conf</code>, so a firmware reset is recovered by pasting that file</td>
 </tr>
 <tr>
 <td><code>encryption.type: wireguard</code></td>

@@ -2458,6 +2458,10 @@ and adjust the credential path in OpenBao accordingly.</p>
 <td><code>pod_subnet</code>, <code>service_subnet</code></td>
 <td>Only change if they collide with your LAN.</td>
 </tr>
+<tr>
+<td><code>router_ip</code>, <code>router_asn</code>, <code>cluster_asn</code></td>
+<td>The eBGP peer for the Gateway addresses; <code>payload/platform/cilium/bgp.yaml</code> must name the same values, since the payload cannot read the inventory. <code>make config</code> renders the router's FRR config into <code>output/router/</code> — see <a href="../platform/cilium/#configuration">Cilium</a>.</td>
+</tr>
 </tbody>
 </table>
 <p>Then update <code>payload/platform/cilium/values.yaml</code>:</p>
