@@ -1496,6 +1496,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2383,6 +2394,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#health-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Health check
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2676,16 +2698,16 @@ points at <code>authentik-server</code>, so the whole flow happens on their own 
 <p>The <code>iss</code> claim is the hostname the token was issued through. A discovery URI on one name and a redirect on the other fails every login with an error that blames the token. Pin each client to exactly one name.</p>
 </div>
 <h3 id="where-the-proxied-routes-point">Where the proxied routes point<a class="headerlink" href="#where-the-proxied-routes-point" title="Permanent link">&para;</a></h3>
-<p>Hubble's route stays in <code>payload/platform/cilium/</code>, Rook's in
-<code>payload/platform/rook-ceph/</code> and Home Assistant's in the
-<a href="../../development/add-workload/">workloads repository</a>, each with
-<code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a cross-namespace
-<code>backendRef</code> unless the target namespace grants it, so <code>referencegrant.yaml</code>
-allows <code>HTTPRoute</code> objects from exactly those namespaces to that Service only.
-A proxied workload is therefore two pull requests, by design: a workload
-cannot take itself out from behind the authentication layer on its own.
-Prometheus and Alertmanager have no route of their own, so theirs are in
-<code>httproute.yaml</code> here; the outpost is their only authentication.</p>
+<p>A proxied application's route lives with the application: Hubble's in
+<code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
+Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code> and Home
+Assistant's in the <a href="../../development/add-workload/">workloads repository</a>,
+each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
+cross-namespace <code>backendRef</code> unless the target namespace grants it, so
+<code>referencegrant.yaml</code> here allows <code>HTTPRoute</code> objects from exactly those
+namespaces to that Service only. A proxied workload is therefore two pull
+requests, by design: a workload cannot take itself out from behind the
+authentication layer on its own.</p>
 <h3 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2805,17 +2827,14 @@ is bound to the application in Authentik itself.</p>
 <p>The OIDC client IDs and secrets are generated once into OpenBao and read by
 both sides — Authentik through <code>!Env</code>, ArgoCD and Grafana through their own
 <code>ExternalSecret</code> — so a rebuilt Authentik gets the same credentials and
-nothing is copied out of a UI. <code>make bao-secrets</code> does this; by hand:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/authentik/config<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>secret-key<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">60</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>postgres-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">32</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>bootstrap-password<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">24</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span>bootstrap-token<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span>argocd-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span>argocd-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span>grafana-client-id<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="k">)</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span>grafana-client-secret<span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-base64<span class="w"> </span><span class="m">48</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span>
-</span></code></pre></div>
+nothing is copied out of a UI. <code>make bao-secrets</code> writes <code>kv/authentik/config</code>
+with the secret key, the Postgres password, the bootstrap password and token
+and the ArgoCD and Grafana client pairs; <code>scripts/bao-secrets.sh</code> is the
+list of keys. A workload's client credentials go in the workload's own path
+(Nextcloud's in <code>kv/nextcloud/config</code>, read by <code>secrets-nextcloud.yaml</code>,
+mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the
+Postgres password out from under the database, and a cluster without the
+workload still gets a working Authentik.</p>
 <p>Then log in at <a href="https://auth.infra.k8s.wlkr.ch">auth.infra.k8s.wlkr.ch</a> as
 <code>akadmin</code> with <code>bootstrap-password</code> and create the groups above.</p>
 <h3 id="adding-an-application">Adding an application<a class="headerlink" href="#adding-an-application" title="Permanent link">&para;</a></h3>
@@ -2829,6 +2848,31 @@ nothing is copied out of a UI. <code>make bao-secrets</code> does this; by hand:
 <li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code> and
    add its namespace to <code>referencegrant.yaml</code>.</li>
 <li>Bind the groups or policies that may reach it, in Authentik.</li>
+</ol>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<p>When every login fails, in this order:</p>
+<ol>
+<li>
+<p>Server, worker and Postgres are Ready:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>get<span class="w"> </span>pods
+</span></code></pre></div>
+</li>
+<li>
+<p>The server answers on both hostnames with a discovery document whose
+   <code>issuer</code> matches the name asked for:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://auth.infra.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.issuer
+</span></code></pre></div>
+</li>
+<li>
+<p>The embedded outpost is healthy (<code>Outposts</code> in the admin UI, or):</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>outpost<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+</span></code></pre></div>
+</li>
+<li>
+<p>The worker applied the blueprints — a failed one names its file:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>blueprint<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+</span></code></pre></div>
+</li>
 </ol>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">
@@ -2852,27 +2896,27 @@ nothing is copied out of a UI. <code>make bao-secrets</code> does this; by hand:
 <p>Single sign-on is a single point of failure for logging in at all. The ArgoCD
 path needs a working <code>kubectl</code>, so keep a kubeconfig off-cluster.</p>
 <p><strong>ArgoCD</strong> — re-enable the local admin account:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
 </span></code></pre></div>
 <p><strong>Grafana</strong> — the login form is hidden, not removed: the admin account works
 through the API, and <code>GF_AUTH_DISABLE_LOGIN_FORM=false</code> brings the form back.</p>
 <p><strong>Proxied dashboards</strong> have no bypass; port-forward instead:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
 </span></code></pre></div>
 <h3 id="argocds-api-key-account">ArgoCD's API key account<a class="headerlink" href="#argocds-api-key-account" title="Permanent link">&para;</a></h3>
 <p>Disabling the local admin also removes its <code>apiKey</code> capability. If a token is
 needed, add an account scoped to what the token is for rather than
 re-enabling admin:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">configs</span><span class="p">:</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">configs</span><span class="p">:</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
 </span></code></pre></div>
 
 

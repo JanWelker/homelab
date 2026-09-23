@@ -2290,7 +2290,8 @@ act, wait for Ceph, move on.</p>
 <h2 id="rebooting-a-node">Rebooting a node<a class="headerlink" href="#rebooting-a-node" title="Permanent link">&para;</a></h2>
 <p><a href="../../platform/kured/">Kured</a> reboots nodes on its own once an update is
 staged, one at a time, and refuses while Ceph or etcd is unhealthy. The
-procedure below is for rebooting ahead of its next 30-minute check, or for a
+procedure below is for rebooting ahead of its next check (<code>period</code> in
+<code>payload/platform/kured/application.yaml</code>), or for a
 reason nothing set a sentinel for. Flatcar is installed to disk, so the node
 boots without the boot server and keeps <code>/etc/kubernetes</code>, <code>/var/lib/etcd</code> and
 <code>/var/lib/rook</code>. A change made with <code>make config</code> is <em>not</em> picked up by a
@@ -2421,8 +2422,9 @@ the space.</p>
 </li>
 <li>
 <p>Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
-   no prompt), and the boot server disarms a node once it has the image, so the
-   reboot at the end of the install does not start a second one — see
+   no prompt), a later <code>make config</code> keeps a node armed, and the boot server
+   disarms it once it has the image, so the reboot at the end of the install
+   does not start a second one — see
    <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
