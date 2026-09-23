@@ -2518,7 +2518,7 @@ while it is not yet Healthy.</p>
 <tr>
 <td>Secrets</td>
 <td><code>openbao</code></td>
-<td><code>rook-ceph-block</code> for its volumes. <strong>Bootstrap pauses here</strong> until OpenBao is initialised and unsealed</td>
+<td><code>rook-ceph-block</code> for its volumes, then an operator — see <a href="../architecture/gitops/#bootstrap-pauses-at-openbao">Bootstrap pauses at OpenBao</a></td>
 </tr>
 <tr>
 <td>Certificates</td>
@@ -2557,10 +2557,9 @@ while it is not yet Healthy.</p>
 </tr>
 </tbody>
 </table>
-<p>The <code>ClusterSecretStore</code> lives with OpenBao rather than with External Secrets,
-and cert-manager's issuers and certificates are their own <code>certificates</code>
-Application, so that the controllers report Healthy on their own and the
-resources that wait for OpenBao are the ones that say so.</p>
+<p>Why the <code>ClusterSecretStore</code> sits with OpenBao and the issuers are their own
+Application is in
+<a href="../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>.</p>
 
 
 

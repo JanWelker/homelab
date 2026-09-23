@@ -2483,12 +2483,12 @@ cannot.</p>
 <tbody>
 <tr>
 <td>Kubernetes objects</td>
-<td>Nightly, 02:00</td>
-<td><a href="#velero">Velero</a> to the Ceph object store, 14 day TTL</td>
+<td>Nightly</td>
+<td><a href="#velero">Velero</a> to the Ceph object store</td>
 </tr>
 <tr>
 <td>Ceph RBD volumes (PVCs)</td>
-<td>Nightly, 02:00</td>
+<td>Nightly</td>
 <td>Velero CSI snapshot, moved into the object store</td>
 </tr>
 <tr>
@@ -2498,8 +2498,8 @@ cannot.</p>
 </tr>
 <tr>
 <td>etcd (raw)</td>
-<td>Nightly, 01:00</td>
-<td><a href="#etcd">CronJob</a> to the object store, last 14 kept</td>
+<td>Nightly</td>
+<td><a href="#etcd">CronJob</a> to the object store</td>
 </tr>
 <tr>
 <td>OpenBao secrets</td>
@@ -2514,7 +2514,7 @@ cannot.</p>
 <tr>
 <td>Prometheus metrics</td>
 <td><strong>No</strong></td>
-<td>10 day retention, then gone</td>
+<td>Kept for the <code>retention</code> in <code>payload/platform/monitoring/application.yaml</code>, then gone</td>
 </tr>
 <tr>
 <td>Everything in <code>payload/</code></td>
@@ -2550,7 +2550,7 @@ nightly. Chart values and why each is set are in
 <tbody>
 <tr>
 <td>Schedule</td>
-<td><code>0 2 * * *</code>, TTL <code>336h</code></td>
+<td>The <code>schedules</code> block in <code>payload/platform/velero/application.yaml</code>: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires</td>
 </tr>
 <tr>
 <td>Scope</td>
@@ -2592,7 +2592,7 @@ before Velero runs.</p>
 <tbody>
 <tr>
 <td>Schedule</td>
-<td><code>0 1 * * *</code></td>
+<td><code>payload/platform/backup/etcd-backup.yaml</code>: nightly, before Velero</td>
 </tr>
 <tr>
 <td>Where it runs</td>
@@ -2604,7 +2604,7 @@ before Velero runs.</p>
 </tr>
 <tr>
 <td>Destination</td>
-<td>S3 bucket <code>etcd-backup</code>, separate from Velero's because it is restored by different means; newest 14 kept</td>
+<td>S3 bucket <code>etcd-backup</code>, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest</td>
 </tr>
 </tbody>
 </table>

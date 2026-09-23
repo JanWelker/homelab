@@ -2698,35 +2698,9 @@ re-checked every few minutes, so that can take that long to start.</p>
 </span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
 </span></code></pre></div>
 <p>Log in at <a href="https://auth.infra.k8s.wlkr.ch">auth.infra.k8s.wlkr.ch</a> as
-<code>akadmin</code>, then create the four groups under <em>Directory &rarr; Groups</em>
-and add yourself — see
-<a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>:</p>
-<table>
-<thead>
-<tr>
-<th>Group</th>
-<th>Grants</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>argocd-admins</code></td>
-<td>ArgoCD <code>role:admin</code></td>
-</tr>
-<tr>
-<td><code>argocd-viewers</code></td>
-<td>ArgoCD <code>role:readonly</code></td>
-</tr>
-<tr>
-<td><code>grafana-admins</code></td>
-<td>Grafana <code>Admin</code></td>
-</tr>
-<tr>
-<td><code>grafana-editors</code></td>
-<td>Grafana <code>Editor</code></td>
-</tr>
-</tbody>
-</table>
+<code>akadmin</code>, then create the four groups listed in
+<a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>
+under <em>Directory &rarr; Groups</em> and add yourself.</p>
 <p>ArgoCD's <code>policy.default</code> is empty, so an SSO login that lands on an
 ArgoCD with no applications means a missing group, not a broken
 integration. Then create a personal account in <em>Directory &rarr; Users</em>,

@@ -2322,7 +2322,7 @@ without it, findings at the stricter audit level go nowhere.</p>
 </tr>
 <tr>
 <td>Worst-case disk</td>
-<td>~1.1 GB per control-plane node</td>
+<td>About 1 GB per control-plane node — see <a href="#where-the-log-lives">Where the log lives</a></td>
 </tr>
 </tbody>
 </table>
@@ -2395,23 +2395,11 @@ and <strong>the first match wins</strong>, so the order is the design:</p>
 </tr>
 <tr>
 <td>Filesystem</td>
-<td>root, ext4, 50 GB</td>
+<td>root, ext4</td>
 </tr>
 <tr>
-<td><code>--audit-log-maxsize</code></td>
-<td><code>100</code> (MB)</td>
-</tr>
-<tr>
-<td><code>--audit-log-maxbackup</code></td>
-<td><code>10</code></td>
-</tr>
-<tr>
-<td><code>--audit-log-maxage</code></td>
-<td><code>30</code> (days)</td>
-</tr>
-<tr>
-<td>Worst-case footprint</td>
-<td>~1.1 GB per control-plane node</td>
+<td>Rotation</td>
+<td>The <code>--audit-log-maxsize</code>, <code>--audit-log-maxbackup</code> and <code>--audit-log-maxage</code> flags in <code>ansible/templates/kubeadm.yaml.j2</code>; the product of size and backups bounds the footprint to about 1 GB, and the age cap keeps a quiet cluster from holding a month-old rotation forever</td>
 </tr>
 </tbody>
 </table>
