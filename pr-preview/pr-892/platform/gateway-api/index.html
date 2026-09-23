@@ -2319,7 +2319,7 @@ termination. The improvement is the split in ownership: the cluster owns the
 <tbody>
 <tr>
 <td>Namespace</td>
-<td><code>gateway-system</code> for the Application, <code>kube-system</code> for the Gateways themselves</td>
+<td><code>kube-system</code>, where Cilium runs</td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2375,6 +2375,10 @@ can send it to HTTPS. <code>apps-gateway</code> carries the annotation that make
 <a href="../external-dns/#configuration">external-dns</a> publish the router's public
 address instead of the Gateway's LAN one; the router forwards ports 80 and
 443 to that LAN address.</p>
+<p><code>payload/platform/cilium/rbac-gateway-fix.yaml</code> grants the operator read
+access to Ingresses and IngressClasses: its Gateway API controller lists them
+too, and the chart grants that only with the Ingress controller enabled. Its
+header names the chart version last checked; retry removing it on a major.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Create an <code>HTTPRoute</code> in the app's namespace referencing the right Gateway;
 <a href="../external-dns/">external-dns</a> creates the record and the wildcard covers the
