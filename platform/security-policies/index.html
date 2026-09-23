@@ -2601,7 +2601,7 @@ enforce second, one namespace at a time.</p>
 </tr>
 <tr>
 <td>Pruning</td>
-<td><strong>Disabled.</strong> Pruning a Namespace deletes everything inside it, PVCs included</td>
+<td>Enabled, except for the Namespaces: each carries <code>argocd.argoproj.io/sync-options: Prune=false</code>, because pruning a Namespace deletes everything inside it, PVCs included. Anything else removed from Git is pruned, so the Application does not sit OutOfSync on leftovers</td>
 </tr>
 <tr>
 <td>Files</td>
