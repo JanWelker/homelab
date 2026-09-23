@@ -2603,7 +2603,7 @@ expected.</strong> No <code>ExternalSecret</code> resolves until step 11 — see
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>A <code>StorageClass</code> exists whether or not a CSI driver registered for it,
-so <code>04-storage</code> can finish with no working provisioner. This asks for
+so <code>rook-ceph-cluster</code> can go Healthy with no working provisioner. This asks for
 a volume the way a workload would and names the first broken link —
 see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storage ready?</a>.</p>
 </li>
@@ -2611,9 +2611,9 @@ see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storag
 </li>
 <li>
 <p><strong>Initialise the secret store</strong>:
-    OpenBao starts uninitialised, sealed and empty; the rollout holds at
-    <code>05-secrets</code> until it is unsealed and at <code>06-certificates</code> until it is
-    populated, then resumes on its own.</p>
+    OpenBao starts uninitialised, sealed and empty; every <code>ExternalSecret</code>
+    stays Degraded until it is unsealed and <code>certificates</code> until it is
+    populated, then everything converges on its own.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>bao-init
 </span></code></pre></div>
 <p>Initialises and unseals OpenBao, enables the <code>kv</code> v2 engine and the

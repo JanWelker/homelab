@@ -2658,7 +2658,7 @@ a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
 </tr>
 <tr>
 <td><code>monitoring.createPrometheusRules</code></td>
-<td>Ships Ceph's own alerting rules as a <code>PrometheusRule</code>. Its CRD comes from <code>prometheus-operator-crds</code> in <code>01-crds</code> so the kind exists when <code>04-storage</code> syncs — see <a href="../monitoring/#crds">Monitoring</a></td>
+<td>Ships Ceph's own alerting rules as a <code>PrometheusRule</code>. Its CRD comes from the <code>prometheus-operator-crds</code> Application; a sync before it lands fails and is retried — see <a href="../monitoring/#crds">Monitoring</a></td>
 </tr>
 <tr>
 <td><code>cephClusterSpec.cephConfig</code> <code>mgr/dashboard/*</code></td>
@@ -2837,8 +2837,8 @@ seconds (120 by default); <code>NAMESPACE</code> and <code>CLASS</code> override
 asks for.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
-<p class="admonition-title">Ceph warnings block the rollout</p>
-<p>ArgoCD maps <code>HEALTH_WARN</code> to Degraded, so while Ceph warns no change reaches anything after <code>04-storage</code> — see <a href="../../architecture/gitops/">GitOps</a>.</p>
+<p class="admonition-title">Ceph warnings show as Degraded</p>
+<p>ArgoCD maps <code>HEALTH_WARN</code> to Degraded, so <code>rook-ceph-cluster</code> reports Degraded for the whole of a warning; nothing else waits on it — see <a href="../../architecture/gitops/">GitOps</a>.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h3>
