@@ -27,20 +27,28 @@ All in `.github/workflows/`.
 ## Renovate
 
 Configured in `renovate.json`. It runs at any time with no hourly or
-concurrency limit and no grouping: every component gets its own pull request,
-so a failing update never holds up an unrelated one.
+concurrency limit, and every component gets its own pull request so a failing
+update never holds up an unrelated one. The only groups are the pairs below
+that must move together.
 
 ### Automerge policy
 
 - **Patch and minor updates automerge; majors wait for a human.** One rule for
     everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
     the same way a Grafana chart patch does.
-- **Three days between a release and its PR** for images and charts
-    (`minimumReleaseAge`): long enough for an upstream to pull a broken or
-    compromised tag, short enough that a fix arrives the same week. Renovate
-    lifts it for its own vulnerability-alert PRs.
-- **`prometheus-operator-crds` must not lag `kube-prometheus-stack`.** Merge
-    the CRD bump first, or both together.
+- **Three days between a release and its PR** for every datasource that pins
+    something a node installs or the cluster runs (`minimumReleaseAge`): long
+    enough for an upstream to pull a broken or compromised tag, short enough
+    that a fix arrives the same week. Renovate lifts it for its own
+    vulnerability-alert PRs.
+- **Pairs that must move together are grouped into one PR:**
+    `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
+    must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
+    Rook requires both charts on the same version; and `markdownlint-cli2` in
+    the workflow with its pre-commit hook, because the two must lint alike.
+- **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new
+    release already satisfies; `rangeStrategy: bump` is what makes Renovate
+    open a PR for the linters and the docs generator at all.
 - **Flatcar, Kubernetes and containerd bumps change what a newly provisioned
     node installs, not what a running node runs.** kubeadm cannot skip a minor,
     so a cluster left unrebuilt across two automerged Kubernetes minors has to be
