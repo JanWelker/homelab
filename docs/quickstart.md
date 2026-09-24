@@ -309,7 +309,7 @@ the same L2 network segment as the nodes.
       bao kv get -mount=kv -field=bootstrap-password authentik/config
     ```
 
-    Log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
+    Log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
     `akadmin`, then create the four groups listed in
     [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles)
     under *Directory &rarr; Groups* and add yourself.

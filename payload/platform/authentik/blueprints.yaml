@@ -227,6 +227,9 @@ data:
           name: authentik Embedded Outpost
         attrs:
           type: proxy
+          # Where the browser is sent to log in; see docs/platform/authentik.md#one-hostname
+          config:
+            authentik_host: https://auth.k8s.wlkr.ch
           providers:
             - !KeyOf hubble-provider
             - !KeyOf rook-provider
