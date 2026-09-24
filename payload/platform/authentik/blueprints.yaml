@@ -198,6 +198,28 @@ data:
           meta_launch_url: https://home.k8s.wlkr.ch
           meta_description: Home automation
 
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        id: flowscape-provider
+        identifiers:
+          name: flowscape
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: https://flowscape.k8s.wlkr.ch
+          internal_host: http://flowscape.flowscape.svc.cluster.local:80
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: flowscape
+        attrs:
+          name: Flowscape
+          provider: !KeyOf flowscape-provider
+          meta_launch_url: https://flowscape.k8s.wlkr.ch
+          meta_description: Cluster network traffic in 3D
+
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
@@ -211,3 +233,4 @@ data:
             - !KeyOf prometheus-provider
             - !KeyOf alertmanager-provider
             - !KeyOf home-assistant-provider
+            - !KeyOf flowscape-provider

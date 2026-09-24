@@ -18,7 +18,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | Depends on | The Gateway API and Prometheus operator CRDs it renders against, and a `k8sServiceHost` that answers |
 | If it is down | Everything. No CNI, no service routing, no ingress, no LoadBalancer addresses |
 | Health check | `kubectl -n kube-system exec ds/cilium -- cilium status --brief` |
-| UI | `hubble.infra.k8s.wlkr.ch` (Hubble) |
+| UI | `hubble.infra.k8s.wlkr.ch` (Hubble); the same flows in 3D across namespaces at [Flowscape](https://homelab-apps.wlkr.ch/flowscape/) |
 | Files | `payload/platform/cilium/` |
 
 ## Configuration

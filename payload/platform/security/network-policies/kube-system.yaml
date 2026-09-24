@@ -53,10 +53,10 @@ metadata:
   namespace: kube-system
 spec:
   description: >-
-    Hubble Relay serves the flows API to the UI and to the hubble CLI
-    through a port-forward, which arrives from the node. It reads the flows
-    from the agent on every node over mTLS, after finding them through the
-    hubble-peer Service.
+    Hubble Relay serves the flows API to the UI, to Flowscape in the
+    workloads repository, and to the hubble CLI through a port-forward,
+    which arrives from the node. It reads the flows from the agent on every
+    node over mTLS, after finding them through the hubble-peer Service.
   endpointSelector:
     matchLabels:
       k8s-app: hubble-relay
@@ -64,6 +64,9 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s-app: hubble-ui
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: flowscape
+            k8s:app.kubernetes.io/name: flowscape
       toPorts:
         - ports:
             - port: "4245"
