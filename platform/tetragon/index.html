@@ -2510,19 +2510,19 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>kernel-module-load</code></td>
 <td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>find_module_sections</code></td>
-<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> request every Go binary makes when it probes MPTCP at start; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included</td>
+<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> request every Go binary makes when it probes MPTCP at start; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included: Flatcar signs its modules but does not enforce it (<code>CONFIG_MODULE_SIG</code> without <code>_FORCE</code>)</td>
 <td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
 <td><code>dns-outside-cluster</code></td>
 <td><code>ip_output</code></td>
-<td>A port 53 packet from a container to anything but the kube-dns ClusterIP; the alert leaves out <code>kube-system</code>, where CoreDNS forwards upstream</td>
+<td>A port 53 packet from a container to anything but the kube-dns ClusterIP, which is a hard-coded resolver in an image, a tunnel or exfiltration. The hook sees TCP and UDP alike, so musl's unconnected sends count too; the alert leaves out <code>kube-system</code>, where CoreDNS forwards upstream</td>
 <td>Yes: <code>TetragonDnsOutsideCluster</code></td>
 </tr>
 <tr>
 <td><code>mount-in-container</code></td>
 <td><code>security_sb_mount</code></td>
-<td>Any mount from a container except by <code>runc</code>; the alert leaves out <code>rook-ceph</code>, <code>cilium</code> and <code>kube-system</code>, which mount by design</td>
+<td>Any mount from a container except by <code>runc</code>, which mounts the rootfs, proc and sysfs on every start. Escapes start with a mount of the host's disk, cgroup or proc; the alert leaves out <code>rook-ceph</code>, <code>cilium</code> and <code>kube-system</code>, which mount by design</td>
 <td>Yes: <code>TetragonMountInContainer</code></td>
 </tr>
 <tr>
@@ -2583,6 +2583,8 @@ binary raising privileges, a fileless exec and a deleted binary. They are
 <p>Every policy but one only records. <code>kill-unprivileged-user-namespace</code>
 carries <code>policy-mode: enforce</code> and a <code>Sigkill</code>, because nothing here
 creates user namespaces and most kernel escalation chains start with one.
+It stays scoped to containers: a sysctl would cover the host too, where
+systemd's <code>PrivateUsers=</code> needs them.
 The limits, both checked on the running nodes: <code>Override</code> and enforcers
 need <code>CONFIG_FUNCTION_ERROR_INJECTION</code>, which Flatcar's kernel does not
 set, and BPF LSM hooks need <code>bpf</code> in the <code>lsm=</code> boot argument, which

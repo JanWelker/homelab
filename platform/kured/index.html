@@ -2420,6 +2420,10 @@ marker clears itself on reboot.</p>
 or scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
 </span></code></pre></div>
+<p><code>NodeRebootPending</code> in <code>payload/platform/monitoring/node-update-rules.yaml</code>
+fires when the sentinel has been there for two days: Kured reboots one node
+at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is
+a blocked node, not a queued one.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Which nodes want a reboot</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'</span>

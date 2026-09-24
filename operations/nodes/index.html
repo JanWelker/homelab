@@ -2441,7 +2441,10 @@ the space.</p>
 </li>
 <li>
 <p>Network-boot the node. The installer wipes the disk, runs <code>flatcar-install</code>,
-   and reboots into the installed system, which then runs <code>kubeadm</code>.</p>
+   and reboots into the installed system, which then runs <code>kubeadm</code>. The node
+   comes back with a new SSH host key; <code>make reinstall</code> already forgot the
+   old one, or <code>StrictHostKeyChecking=accept-new</code> would refuse the first
+   <code>make kubeconfig</code>.</p>
 </li>
 <li>Leave the boot server up until the node is <code>Ready</code> (the sysext images are
    fetched from it on that first boot), then stop it.</li>

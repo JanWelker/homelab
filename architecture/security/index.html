@@ -931,6 +931,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#node-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Node hardening
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#secrets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2204,6 +2215,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#node-hardening" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Node hardening
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#secrets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2451,6 +2473,60 @@ nothing needs it after a build — see
 in plaintext. The directory is <code>0700</code> and <code>output/</code> is gitignored, but the
 values are reused across <code>make config</code> runs — the Ansible <code>password</code> lookup
 reads back an existing file. Delete them to force new ones.</p>
+<h2 id="node-hardening">Node hardening<a class="headerlink" href="#node-hardening" title="Permanent link">&para;</a></h2>
+<p><code>ansible/templates/kubeadm.yaml.j2</code> and <code>ansible/templates/butane_node_config.yaml.j2</code>
+carry the settings below. They land at provisioning time and change only on
+<code>make reinstall</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>proxy.disabled: true</code></td>
+<td>Cilium replaces <code>kube-proxy</code>. The field lands in the <code>kubeadm-config</code> ConfigMap that <code>kubeadm upgrade apply</code> reads; a <code>skipPhases</code> on init alone leaves <code>proxy: {}</code> stored, and every upgrade puts <code>kube-proxy</code> back beside Cilium</td>
+</tr>
+<tr>
+<td><code>--kubelet-certificate-authority</code></td>
+<td>The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. It can, because <code>serverTLSBootstrap</code> makes the kubelet request its certificate from the cluster CA and <a href="../../platform/metrics-server/">kubelet-csr-approver</a> approves the CSR; metrics-server verifies the same certificates</td>
+</tr>
+<tr>
+<td><code>DenyServiceExternalIPs</code></td>
+<td><code>spec.externalIPs</code> lets whoever can create a Service claim traffic to any address on every node, with no ownership check. Nothing here uses it: LoadBalancer addresses come from Cilium's pools. <code>NodeRestriction</code> is repeated because the flag replaces kubeadm's default list</td>
+</tr>
+<tr>
+<td><code>--tls-cipher-suites</code> and <code>--tls-min-version</code></td>
+<td>Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1</td>
+</tr>
+<tr>
+<td><code>protectKernelDefaults: true</code></td>
+<td>The kubelet no longer rewrites <code>vm.overcommit_memory</code>, <code>vm.panic_on_oom</code>, <code>kernel.panic</code> and <code>kernel.panic_on_oops</code> at start and refuses to start unless they are already right. <code>/etc/sysctl.d/k8s.conf</code> in the node config sets them, and the two travel together: without the drop-in a fresh node comes up at the kernel defaults, the kubelet exits and the node never joins, which shows at the next <code>make reinstall</code>, not on merge</td>
+</tr>
+<tr>
+<td><code>kernel.panic</code> with <code>kernel.panic_on_oops</code></td>
+<td>An oops reboots the node after a few seconds instead of leaving it wedged, so Ceph and etcd start recovering without a hand power-cycle</td>
+</tr>
+<tr>
+<td><code>podPidsLimit</code></td>
+<td>Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. Well above anything running here, well below <code>kernel.pid_max</code></td>
+</tr>
+<tr>
+<td><code>/etc/tmpfiles.d/kubernetes-cis.conf</code></td>
+<td>kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and a kubelet <code>ExecStartPre</code> re-applies them before every start, when kubeadm has just rewritten them. See <a href="../../operations/triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
+</tr>
+<tr>
+<td><code>systemd-sysupdate-reboot.timer</code> masked</td>
+<td>Flatcar ships a vendor symlink that runs it despite a disabled preset. It would reboot on its own schedule, behind <a href="../../platform/kured/">Kured</a> and without a drain, and it fails every run anyway: it acts on the default sysupdate component, which holds only <code>noop.conf</code></td>
+</tr>
+<tr>
+<td><code>noop.conf</code> in <code>/etc/sysupdate.d/</code></td>
+<td>The unsuffixed directory is the default component that <code>systemd-sysupdate.service</code> acts on; the no-op transfer keeps that run from failing while the real transfers sit in the <code>kubernetes.d</code> and <code>containerd.d</code> components</td>
+</tr>
+</tbody>
+</table>
 <h2 id="secrets">Secrets<a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h2>
 <p>Secrets live in <a href="../../platform/openbao/">OpenBao</a> and reach workloads as native
 Kubernetes <code>Secret</code> objects through the
