@@ -86,9 +86,7 @@ spec:
 
                   service_registration "kubernetes" {}
 
-                  # Two devices: a request no enabled device can log is refused,
-                  # so the PVC and stdout back each other. Read at start-up and on
-                  # SIGHUP, not on sync; see docs/platform/openbao.md#audit-devices
+                  # Two devices back each other; see docs/platform/openbao.md#audit-devices
                   audit "file" "file" {
                     description = "Durable copy on the audit volume."
                     options {

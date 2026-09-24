@@ -64,8 +64,7 @@
         - "{{ output_dir }}/tftp/pxelinux.cfg"
         - "{{ output_dir }}/router"
 
-    # The router side of the eBGP session in payload/platform/cilium/bgp.yaml,
-    # rendered from the inventory so a firmware reset is recovered by pasting.
+    # The router side of payload/platform/cilium/bgp.yaml, ready to paste after a firmware reset.
     - name: Generate the router's FRR BGP config
       ansible.builtin.template:
         src: "{{ playbook_dir }}/../templates/frr_bgp.conf.j2" # noqa: no-relative-paths
@@ -74,10 +73,7 @@
       run_once: true # noqa: run-once
       delegate_to: localhost
 
-    # The nodes fetch these over plain HTTP on first boot. Ignition checks each
-    # against the hash of the file the boot server was given, so a substituted
-    # image fails instead of running as root. That needs the files: make
-    # download first.
+    # Ignition verifies each sysext against these hashes; needs make download first.
     - name: Checksum the sysext images the nodes fetch on first boot
       ansible.builtin.stat:
         path: "{{ output_dir }}/http/{{ item.name }}-{{ item.version }}-x86-64.raw"
@@ -106,9 +102,7 @@
       ansible.builtin.set_fact:
         sysext_sha256: "{{ dict(sysext_stat.results | map(attribute='item.name') | zip(sysext_stat.results | map(attribute='stat.checksum'))) }}"
 
-    # 0700/0600: the renders below hold the join token, the certificate key and
-    # the etcd encryption key in plaintext. The Ignition JSON in output/http is
-    # the copy the nodes read and stays world-readable by necessity.
+    # The renders hold the join token, certificate key and etcd key in plaintext.
     - name: Ensure tmp kubeadm directory exists
       ansible.builtin.file:
         path: "{{ output_dir }}/tmp/kubeadm"
@@ -147,8 +141,7 @@
         label: "{{ inventory_hostname }}{{ item.suffix }}"
       changed_when: true
 
-    # make reinstall arms a node by setting DEFAULT install in its menu. A
-    # regenerated menu keeps that, or make config would silently disarm it.
+    # Keeps the DEFAULT install that make reinstall armed.
     - name: Check for an existing PXE menu
       ansible.builtin.stat:
         path: "{{ pxe_menu }}"

@@ -170,11 +170,7 @@ data:
           provider: !KeyOf alertmanager-provider
           meta_launch_url: https://alertmanager.infra.k8s.wlkr.ch
 
-      # Home Assistant is the one proxied application that has a login of its
-      # own: upstream ships no OIDC provider (only `homeassistant`,
-      # `command_line`, `trusted_networks` and an insecure example), so this
-      # gate sits in front of that login rather than replacing it. Browser
-      # users authenticate twice, deliberately; see docs/platform/authentik.md
+      # Sits in front of Home Assistant's own login; see docs/platform/authentik.md#pitfalls
       - model: authentik_providers_proxy.proxyprovider
         state: present
         id: home-assistant-provider
@@ -187,11 +183,7 @@ data:
           external_host: https://home.k8s.wlkr.ch
           internal_host: http://home-assistant.home-assistant.svc.cluster.local:8123
           internal_host_ssl_validation: false
-          # The companion apps and every webhook authenticate with a
-          # long-lived token against these paths and cannot complete an
-          # interactive Authentik login. Gating them would not make the API
-          # safer -- it would make the phones stop working and push people
-          # back to exposing Home Assistant some other way.
+          # The companion apps and webhooks hold a long-lived token and cannot log in interactively.
           skip_path_regex: |-
             ^/api/.*
             ^/auth/token$

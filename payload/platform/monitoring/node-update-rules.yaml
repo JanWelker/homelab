@@ -10,9 +10,7 @@ spec:
   groups:
     - name: node-updates
       rules:
-        # Kured reboots one node at a time and refuses while Ceph or etcd is
-        # unhealthy, so a marker that stays for two days is a node that is
-        # blocked, not one that is queued.
+        # Two days is a blocked node, not a queued one; see docs/platform/kured.md
         - alert: NodeRebootPending
           expr: kured_reboot_required == 1
           for: 2d

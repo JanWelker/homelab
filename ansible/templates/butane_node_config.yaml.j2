@@ -7,13 +7,10 @@ passwd:
         - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 storage:
   disks:
-    # wipe_table stays false: this runs on the disk it would be wiping, and
-    # Ignition refuses anyway. The installer does the wiping --
-    # see docs/architecture/boot-process.md#wiping-the-disk.
+    # The installer wipes; see docs/architecture/boot-process.md#wiping-the-disk
     - device: {{ install_disk }}
       wipe_table: false
       partitions:
-        # Everything the node writes. Only /usr is read-only on Flatcar.
         - label: ROOT
           number: 9
           size_mib: 50000
@@ -22,8 +19,7 @@ storage:
           number: 10
           size_mib: 0
   filesystems:
-    # Erases the previous cluster's BlueStore signature, which ceph-volume
-    # reads instead of the partition table. See docs/platform/rook-ceph.md.
+    # Erases the previous cluster's BlueStore signature; see docs/platform/rook-ceph.md
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
       wipe_filesystem: true
@@ -35,7 +31,6 @@ storage:
       mode: 0700
     - path: /etc/kubernetes/audit
       mode: 0700
-    # Alloy tails this into Loki. See docs/architecture/security.md.
     - path: /var/log/kubernetes/audit
       mode: 0700
 {% endif %}
@@ -54,11 +49,7 @@ storage:
       contents:
         inline: "{{ inventory_hostname }}"
 
-    # kubeadm writes these 0644 and Cilium creates the CNI directory 0755;
-    # CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and
-    # the kubelet drop-in below re-applies them before every kubelet start,
-    # which is when kubeadm has just rewritten them. A path that does not
-    # exist yet is skipped. See docs/operations/vulnerabilities.md.
+    # CIS file modes; see docs/architecture/security.md#node-hardening
     - path: /etc/tmpfiles.d/kubernetes-cis.conf
       mode: 0644
       contents:
@@ -67,7 +58,6 @@ storage:
           z /etc/kubernetes/pki/ca.crt 0600 root root -
           z /opt/cni/bin 0700 root root -
 
-    # Carries the bootstrap token and the certificate key; kubeadm runs as root.
     - path: /opt/kubeadm-config.yaml
       mode: 0600
       contents:
@@ -141,9 +131,8 @@ storage:
               verbs: ["get", "list", "watch"]
             - level: Metadata
 
-    # Bootstrap copy. kubeadm init needs the VIP before ArgoCD exists; the
-    # DaemonSet in payload/platform/kube-vip/ removes this file when it adopts
-    # the node. Keep the env below in step with that DaemonSet.
+    # Bootstrap copy; the DaemonSet in payload/platform/kube-vip/ replaces it.
+    # Keep the env in step with that DaemonSet.
     - path: /etc/kubernetes/manifests/kube-vip.yaml
       mode: 0644
       contents:
@@ -219,19 +208,8 @@ storage:
           net.bridge.bridge-nf-call-ip6tables = 1
           net.ipv4.ip_forward = 1
 
-          # The four below are the kubelet's own required values. It used to set
-          # them itself at startup, which is what protectKernelDefaults: false
-          # means -- kubeadm.yaml.j2 now sets that to true, so the kubelet no
-          # longer writes them and instead refuses to start unless they are
-          # already correct. Declaring them here is what makes that safe: drop
-          # these lines and a freshly provisioned node comes up at the kernel
-          # defaults (overcommit_memory 0, panic 0), the kubelet exits, and the
-          # node never joins.
-          #
-          # kernel.panic and kernel.panic_on_oops together mean a kernel oops
-          # reboots the node after ten seconds rather than leaving it wedged and
-          # unreachable, which on this cluster is what lets Ceph and etcd start
-          # recovering without someone power-cycling a machine by hand.
+          # Required by protectKernelDefaults in kubeadm.yaml.j2; see
+          # docs/architecture/security.md#node-hardening
           vm.overcommit_memory = 1
           vm.panic_on_oom = 0
           kernel.panic = 10
@@ -257,9 +235,8 @@ storage:
         source: http://{{ boot_server_ip }}:8000/containerd-{{ containerd_version }}-x86-64.raw
         verification:
           hash: sha256-{{ sysext_sha256.containerd }}
-    # Stays in the unsuffixed directory on purpose. That is the default
-    # component, which the unit's own ExecStart acts on; this no-op transfer is
-    # what keeps that run from failing.
+    # Keeps the default sysupdate component from failing; see
+    # docs/architecture/security.md#node-hardening
     - path: /etc/sysupdate.d/noop.conf
       contents:
         source: http://{{ boot_server_ip }}:8000/noop.conf
@@ -304,17 +281,13 @@ systemd:
             [Unit]
 
             [Service]
-            # Re-apply the CIS file modes kubeadm resets; see /etc/tmpfiles.d
+            # Re-apply the CIS file modes kubeadm resets.
             ExecStartPre=-/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/kubernetes-cis.conf
             ExecStart=
             ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
     - name: systemd-sysupdate.timer
       enabled: true
-    # Flatcar ships a vendor symlink in timers.target.wants, so this timer runs
-    # even though its preset is "disabled". Left alone it reboots the node on
-    # its own schedule, behind Kured's back and without a drain -- and it fails
-    # every run anyway, because it acts on the default component, which holds
-    # nothing but noop.conf.
+    # Would reboot behind Kured's back; see docs/architecture/security.md#node-hardening
     - name: systemd-sysupdate-reboot.timer
       mask: true
     - name: systemd-sysupdate.service
@@ -376,8 +349,7 @@ systemd:
         Type=oneshot
         {% if role == 'control-plane' %}
         {% if inventory_hostname == groups['control_plane'][0] %}
-        # admin.conf is unusable until init completes (1.29+), so kube-vip reads
-        # super-admin.conf for the duration. Only the hostPath changes.
+        # kube-vip reads super-admin.conf until init completes; see docs/operations/control-plane-vip.md
         ExecStartPre=/usr/bin/sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml

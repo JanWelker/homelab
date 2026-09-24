@@ -1,7 +1,5 @@
 ---
-# What fires an alert: a read of the cluster's key material by anything that is
-# not the control plane, or a write to the files that grant a login, root or
-# code in every process. See docs/platform/tetragon.md
+# What each policy watches, and why, is the table in docs/platform/tetragon.md#policies
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -24,8 +22,7 @@ spec:
         index: 0
         type: int
       selectors:
-        # The control plane's own binaries, and kube-vip, read these
-        # continuously; everything else is a person or an intruder.
+        # Key material: the control plane and kube-vip read it continuously.
         - matchArgs:
             - index: 0
               operator: Prefix
@@ -61,9 +58,7 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
-        # Host only: a read of the node's shadow file is a login or a sudo.
-        # In a container it is PAM in the image (sudo, su); writes to the
-        # container's copy are still caught below.
+        # Host only: in a container a shadow read is PAM in the image.
         - matchArgs:
             - index: 0
               operator: Equal
@@ -77,8 +72,7 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
-        # Persistence: a user, a sudo rule, a preloaded library or a cron job.
-        # 2 is MAY_WRITE; Mask so an append counts too.
+        # Persistence. 2 is MAY_WRITE; Mask so an append counts too.
         - matchArgs:
             - index: 0
               operator: Equal
@@ -110,12 +104,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container process that moved into another namespace
-# after it started, which is what nsenter, setns and an escape leave behind.
-# commit_creds runs on every execve, fork and setuid; the selector keeps only
-# the namespace change. Upstream's matchCapabilityChanges is not used here
-# because it matches a change in either direction, and every entrypoint that
-# drops root would fire it.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -143,7 +131,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc joins the container's namespaces on every start.
           matchBinaries:
             - operator: NotIn
               values:
@@ -152,10 +139,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container executing a binary that was not in its
-# image. A dropped binary has to live somewhere writable, and the image layer
-# is not, so this watches the writable paths every container has plus the
-# emptyDirs this cluster mounts binaries into. See docs/platform/tetragon.md
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -183,9 +166,7 @@ spec:
                 - /shared/
                 - /controller/
                 - /plugins/
-            # The three binaries an init container legitimately copies into
-            # an emptyDir: Argo CD's dex, CloudNativePG's manager and
-            # Velero's AWS plugin.
+            # Copied into an emptyDir by an init container.
             - index: 0
               operator: NotEqual
               values:
@@ -201,19 +182,12 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# A record, not an alert: the setuid family to root inside a container, from
-# the upstream policy library's privileges-raise.yaml, minus capset, which
-# every container start performs. The user namespace hook lives in
-# kill-unprivileged-user-namespace, which has no podSelector: a policy with
-# one misses a pod's first seconds, before the filter has learnt it.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: privileges-raise
 spec:
-  # The redis-ha pods run an Alpine busybox that calls setgid(0) on every
-  # applet, a hundred times a minute. The policy filter keeps them out in the
-  # kernel; every other pod is selected.
+  # redis-ha's busybox calls setgid(0) on every applet.
   podSelector:
     matchExpressions:
       - key: app
@@ -221,7 +195,6 @@ spec:
         values:
           - redis-ha
   kprobes:
-    # The setuid family, when the target is root.
     - call: __sys_setuid
       syscall: false
       message: setuid to root
@@ -241,8 +214,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -269,8 +240,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -299,8 +268,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -329,8 +296,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -351,7 +316,6 @@ spec:
         - index: 2
           type: int
       selectors:
-        # The effective id is the one that matters.
         - matchArgs:
             - index: 1
               operator: Equal
@@ -362,8 +326,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -394,8 +356,6 @@ spec:
               operator: NotIn
               values:
                 - host_ns
-          # runc sets the container's ids on every start; logrotate in
-          # Ceph re-asserts root, which is the record this policy keeps.
           matchBinaries:
             - operator: NotIn
               values:
@@ -404,8 +364,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container loading a BPF program. Cilium and Tetragon
-# are the only things here that should, and the alert leaves them out.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -430,11 +388,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container loading a kernel module, by name through
-# the autoloader or as a file. From the upstream policy library's modules.yaml,
-# restricted to containers: the host loads its own at boot. The third hook
-# records every load's signature check, host included: Flatcar signs its
-# modules but does not enforce it (CONFIG_MODULE_SIG without _FORCE).
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -454,9 +407,7 @@ spec:
         index: 0
         type: int
       selectors:
-        # Every Go binary probes MPTCP once at start; on a kernel without it
-        # the socket() asks the autoloader for net-pf-2-proto-262. Nothing
-        # loads, and a request by module name still posts.
+        # Every Go binary's MPTCP probe at start.
         - matchArgs:
             - index: 0
               operator: NotPrefix
@@ -509,7 +460,7 @@ spec:
           type: nop
         - index: 1
           type: load_info
-      # Inlined on some kernels; then the other two hooks still work.
+      # Inlined on some kernels.
       ignore:
         callNotFound: true
       selectors:
@@ -517,10 +468,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container mapping a file from a writable path as
-# executable, which is how a dropped shared library gets loaded. Same paths
-# and exceptions as exec-from-writable-path; the kernel maps a binary the
-# same way before it runs it.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -557,8 +504,7 @@ spec:
                 - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
-            # Alloy's bundled Snowflake driver unpacks its cgo library here
-            # on every start and maps it; the image does that, not an intruder.
+            # Alloy's Snowflake driver unpacks its cgo library here at start.
             - index: 0
               operator: NotPrefix
               values:
@@ -576,11 +522,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# A record, not an alert: every connection a container opens to an address
-# outside the pod, service and LAN ranges. Too much of it is routine (ACME,
-# S3, the Trivy database, Home Assistant) for an alert; the dashboard and
-# Loki show who talks out. The LSM hook sees TCP and connected UDP alike.
-# The ranges are the kubeadm subnets and the site network the nodes sit in.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -619,12 +560,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container resolving names anywhere but CoreDNS.
-# Every pod is handed the cluster resolver; a query to another server is
-# a hard-coded resolver in an image, a tunnel, or exfiltration. ip_output
-# sees TCP and UDP alike, so the unconnected sends musl makes count too.
-# The address is the kube-dns ClusterIP; CoreDNS itself forwards upstream
-# from kube-system and the alert leaves that out.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -663,11 +598,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a mount from inside a container. Escapes start with a
-# mount of the host's disk, cgroup or proc; a running container has no
-# reason to mount anything. runc mounts the rootfs, proc and sysfs on every
-# start and is dropped here; Cilium, Tetragon and Rook's CSI plugin mount by
-# design and the alert leaves their namespaces out.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -700,10 +630,6 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# What fires an alert: a container process attaching to another. ptrace,
-# process_vm_writev and /proc/<pid>/mem are how code is injected into a
-# running process and how credentials are read out of one. Mode 2 is
-# PTRACE_MODE_ATTACH; the read mode that ps and top use is left alone.
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -735,13 +661,7 @@ spec:
             - action: Post
               rateLimit: 1m
 ---
-# The one policy that enforces: an unprivileged container process that
-# creates a user namespace is killed. Nothing here uses them and most kernel
-# privilege-escalation chains start with one. A sysctl would do the same for
-# the host, where systemd's PrivateUsers= needs them, so this stays scoped to
-# containers. Override is not available on Flatcar's kernel, so the namespace
-# may exist for the instant before the process dies. See
-# docs/platform/tetragon.md
+# The one enforcing policy; see docs/platform/tetragon.md#enforcement
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:

@@ -7,9 +7,7 @@ all:
     # Interface kube-vip advertises the VIP on
     control_plane_vip_interface: "eno1"
     install_disk: "/dev/nvme0n1"
-    # eBGP peer for the Gateway addresses. The cluster side is
-    # payload/platform/cilium/bgp.yaml and must name the same ASNs and address;
-    # make config renders the router side into output/router/frr-bgp.conf.
+    # eBGP peer; payload/platform/cilium/bgp.yaml must match. See docs/adapting.md
     router_ip: "10.9.0.1"
     router_asn: 65000
     cluster_asn: 65001

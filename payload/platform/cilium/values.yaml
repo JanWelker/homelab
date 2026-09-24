@@ -5,9 +5,7 @@ ipam:
 # Explicitly set device to avoid auto-detection issues
 devices: "en+"
 
-# Every pod that reads cilium-config or cilium-envoy-config at startup rolls
-# when it changes, so a merged value is live without a hand restart, and a
-# bad one fails at merge time; see docs/platform/cilium.md.
+# Pods roll on a config change; see docs/platform/cilium.md.
 rollOutCiliumPods: true
 
 kubeProxyReplacement: true
@@ -54,15 +52,13 @@ envoy:
 gatewayAPI:
   enabled: true
 
-# The Gateway IPs are announced twice: over L2 for the LAN they sit in, and
-# over BGP to the router for everything it forwards; see docs/platform/cilium.md.
+# Gateway IPs are announced over L2 and BGP; see docs/platform/cilium.md.
 bgpControlPlane:
   enabled: true
 
 l2announcements:
   enabled: true
-  # Failover of a Gateway IP takes one leaseDuration after the announcing
-  # node dies; the Cilium defaults are 15s/2s/1s.
+  # Failover takes one leaseDuration; the defaults are 15s/2s/1s.
   leaseDuration: 3s
   leaseRenewDeadline: 1s
   leaseRetryPeriod: 200ms
@@ -75,9 +71,7 @@ encryption:
   enabled: true
   type: wireguard
 
-# Every policy is evaluated and logged, none enforced, for the observation week
-# of the egress rollout; see docs/platform/security-policies.md#rollout.
-# L7 rules are never audited.
+# Audit week of the egress rollout; see docs/platform/security-policies.md#rollout
 policyAuditMode: true
 
 hubble:
