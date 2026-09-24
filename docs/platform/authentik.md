@@ -67,8 +67,9 @@ points at `authentik-server`, so the whole flow happens on their own hostname.
 
 A proxied application's route lives with the application: Hubble's in
 `payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
-Prometheus's and Alertmanager's in `payload/platform/monitoring/` and Home
-Assistant's in the [workloads repository](../development/add-workload.md),
+Prometheus's and Alertmanager's in `payload/platform/monitoring/`, and Home
+Assistant's and Flowscape's in the
+[workloads repository](../development/add-workload.md),
 each with `authentik-server` as `backendRef`. Gateway API forbids a
 cross-namespace `backendRef` unless the target namespace grants it, so
 `referencegrant.yaml` here allows `HTTPRoute` objects from exactly those

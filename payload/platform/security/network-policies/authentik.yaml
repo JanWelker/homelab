@@ -95,6 +95,14 @@ spec:
               protocol: TCP
     - toEndpoints:
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: flowscape
+            k8s:app.kubernetes.io/name: flowscape
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
             k8s:io.kubernetes.pod.namespace: rook-ceph
             k8s:app: rook-ceph-mgr
       toPorts:
