@@ -79,8 +79,7 @@ HTTPRoutes are co-located with their respective apps:
 | Service          | URL                              | HTTPRoute Location                                                                           |
 |------------------|----------------------------------|----------------------------------------------------------------------------------------------|
 | ArgoCD           | `argo.infra.k8s.wlkr.ch`         | `payload/platform/argocd-config/httproute.yaml`                                              |
-| Authentik (apps) | `auth.k8s.wlkr.ch`               | `payload/platform/authentik/httproute.yaml`                                                  |
-| Authentik        | `auth.infra.k8s.wlkr.ch`         | `payload/platform/authentik/httproute.yaml`                                                  |
+| Authentik        | `auth.k8s.wlkr.ch`               | `payload/platform/authentik/httproute.yaml`                                                  |
 | Prometheus       | `prometheus.infra.k8s.wlkr.ch`   | `payload/platform/authentik/httproute.yaml`                                                  |
 | Alertmanager     | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml`                                                  |
 | Grafana          | `monitoring.infra.k8s.wlkr.ch`   | `payload/platform/monitoring/httproute.yaml`                                                 |

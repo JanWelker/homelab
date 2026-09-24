@@ -1,39 +1,10 @@
 ---
+# One hostname on the apps Gateway, reachable from the LAN and outside; see
+# docs/platform/authentik.md#one-hostname
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: authentik
-  namespace: authentik
-spec:
-  parentRefs:
-    - name: infra-gateway
-      namespace: kube-system
-      sectionName: https
-  hostnames:
-    - "auth.infra.k8s.wlkr.ch"
-  rules:
-    - filters:
-        - type: ResponseHeaderModifier
-          responseHeaderModifier:
-            add:
-              - name: Strict-Transport-Security
-                value: "max-age=31536000; includeSubDomains"
-              - name: X-Content-Type-Options
-                value: "nosniff"
-              - name: X-Frame-Options
-                value: "SAMEORIGIN"
-              - name: Referrer-Policy
-                value: "strict-origin-when-cross-origin"
-      backendRefs:
-        - name: authentik-server
-          port: 80
----
-# The same Authentik on the apps Gateway, for OIDC clients used from outside
-# the local network; see docs/platform/authentik.md#two-hostnames
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: authentik-apps
   namespace: authentik
 spec:
   parentRefs:

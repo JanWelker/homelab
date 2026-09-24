@@ -6,7 +6,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
-    link.argocd.argoproj.io/external-link: https://auth.infra.k8s.wlkr.ch
+    link.argocd.argoproj.io/external-link: https://auth.k8s.wlkr.ch
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -36,7 +36,7 @@ spec:
             log_level: info
 
             web:
-              base_url: https://auth.infra.k8s.wlkr.ch
+              base_url: https://auth.k8s.wlkr.ch
             # No phone-home.
             error_reporting:
               enabled: false

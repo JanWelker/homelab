@@ -25,7 +25,7 @@ every network flow in the cluster to anyone who could reach the hostname.
 | Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
 | If it is down | Every platform UI loses its only login — see [When Authentik is down](#when-authentik-is-down) |
 | Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |
-| UI | `auth.infra.k8s.wlkr.ch` |
+| UI | `auth.k8s.wlkr.ch` |
 | Files | `payload/platform/authentik/` |
 
 ## Configuration
@@ -40,28 +40,31 @@ application and protects exactly as far as nothing else can reach the backend.
 
 ```mermaid
 flowchart LR
-    U([Browser]) --> GW[infra-gateway]
+    U([Browser]) --> GW[infra-gateway / apps-gateway]
     GW -->|argo, monitoring| APP[ArgoCD / Grafana]
-    APP -.->|OIDC redirect| AK[Authentik]
-    GW -->|hubble, rook, prometheus, alertmanager| AK
+    APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
+    GW -->|hubble, rook, prometheus, home, flowscape| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
-### Two hostnames
+### One hostname
 
-| Hostname | Gateway | Reachable from | Used by |
-| --- | --- | --- | --- |
-| `auth.infra.k8s.wlkr.ch` | `infra-gateway` | the local network | ArgoCD, Grafana, break-glass `akadmin` login |
-| `auth.k8s.wlkr.ch` | `apps-gateway` | outside it too | Nextcloud |
+Authentik answers on `auth.k8s.wlkr.ch` only, on `apps-gateway`, which the
+LAN reaches through the router's local record and the outside through
+Route53. Every OIDC client and the embedded outpost use that one name.
 
-An OIDC client used from outside the local network needs an authorize
-endpoint that resolves there. Authentik builds every published URL from the
-request, so each name serves a self-consistent OpenID configuration with no
-configuration. Proxied applications never redirect to either: their route
-points at `authentik-server`, so the whole flow happens on their own hostname.
+The outpost is why there is only one. A proxied application's route points
+at `authentik-server`, but the login itself is an OAuth dance: the outpost
+sends the browser to the outpost's `authentik_host` to authenticate and gets
+it back on the application's own hostname. With Authentik on two names and
+`authentik_host` on the LAN-only one, an application on `apps-gateway`
+worked at home and redirected outside users to a name that does not
+resolve. `blueprints.yaml` pins `authentik_host` because the embedded
+outpost otherwise fills it from `web.base_url` on first start and never
+updates it.
 
-!!! warning "A client must never mix the two"
-    The `iss` claim is the hostname the token was issued through. A discovery URI on one name and a redirect on the other fails every login with an error that blames the token. Pin each client to exactly one name.
+!!! warning "A client must never mix names"
+    The `iss` claim is the hostname the token was issued through. A discovery URI on one name and a redirect on another fails every login with an error that blames the token. Should a second hostname ever come back, pin each client to exactly one.
 
 ### Where the proxied routes point
 
@@ -138,7 +141,7 @@ Postgres password out from under the database, and External Secrets fails
 an `ExternalSecret` whole when one key is missing, so a shared one would
 leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
-Then log in at [auth.infra.k8s.wlkr.ch](https://auth.infra.k8s.wlkr.ch) as
+Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
 `akadmin` with `bootstrap-password` and create the groups above.
 
 ### Adding an application
@@ -163,11 +166,10 @@ When every login fails, in this order:
     kubectl -n authentik get pods
     ```
 
-2. The server answers on both hostnames with a discovery document whose
-   `issuer` matches the name asked for:
+2. The discovery document names the one hostname as `issuer`:
 
     ```bash
-    curl -s https://auth.infra.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration | jq .issuer
+    curl -s https://auth.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration | jq .issuer
     ```
 
 3. The embedded outpost is healthy (`Outposts` in the admin UI, or):
