@@ -2710,8 +2710,9 @@ points at <code>authentik-server</code>, so the whole flow happens on their own 
 <h3 id="where-the-proxied-routes-point">Where the proxied routes point<a class="headerlink" href="#where-the-proxied-routes-point" title="Permanent link">&para;</a></h3>
 <p>A proxied application's route lives with the application: Hubble's in
 <code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
-Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code> and Home
-Assistant's in the <a href="../../development/add-workload/">workloads repository</a>,
+Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code>, and Home
+Assistant's and Flowscape's in the
+<a href="../../development/add-workload/">workloads repository</a>,
 each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
 cross-namespace <code>backendRef</code> unless the target namespace grants it, so
 <code>referencegrant.yaml</code> here allows <code>HTTPRoute</code> objects from exactly those
