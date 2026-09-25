@@ -79,10 +79,10 @@ spec:
               A process in {{ $labels.namespace }}/{{ $labels.pod }} executed
               a file under /tmp, /var/tmp, /dev/shm, /run or one of the
               emptyDirs that carry binaries here, and it is not one an init
-              container is known to put there. Nothing in an image lives on
-              those paths, so the binary was written after the container
-              started. The event, with the path and the parent process, is in
-              Loki: {container="export-stdout"} | json |
+              container or s6-overlay is known to put there. Nothing in an
+              image lives on those paths, so the binary was written after
+              the container started. The event, with the path and the parent
+              process, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="exec-from-writable-path".
         - alert: TetragonUserNamespaceCreated
           expr: |
@@ -183,10 +183,10 @@ spec:
               {{ $labels.binary }} in {{ $labels.namespace }}/{{ $labels.pod }} sent DNS past CoreDNS
             description: >-
               A query on port 53 to something other than the cluster
-              resolver. CoreDNS forwards upstream from kube-system and is
-              left out; anything else has a resolver of its own, which is
-              how DNS tunnels and exfiltration look. The event carries the
-              destination: {container="export-stdout"} | json |
+              resolver or a pod-range address. CoreDNS forwards upstream from
+              kube-system and is left out; anything else has a resolver of
+              its own, which is how DNS tunnels and exfiltration look. The
+              event carries the destination: {container="export-stdout"} | json |
               process_kprobe_policy_name="dns-outside-cluster".
         - alert: TetragonMountInContainer
           expr: |

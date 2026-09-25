@@ -173,6 +173,12 @@ spec:
                 - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
+            # s6-overlay writes its init and service scripts here at start.
+            - index: 0
+              operator: NotPrefix
+              values:
+                - /run/s6
+                - /run/service/
           matchNamespaces:
             - namespace: Pid
               operator: NotIn
@@ -407,12 +413,14 @@ spec:
         index: 0
         type: int
       selectors:
-        # Every Go binary's MPTCP probe at start.
+        # Every Go binary's MPTCP probe at start, and Home Assistant's
+        # Bluetooth adapter probe.
         - matchArgs:
             - index: 0
               operator: NotPrefix
               values:
                 - net-pf-2-proto-262
+                - net-pf-31
           matchNamespaces:
             - namespace: Pid
               operator: NotIn
@@ -585,10 +593,13 @@ spec:
               operator: DPort
               values:
                 - "53"
+            # The pod range covers each node's Cilium router address, which
+            # Home Assistant's dhcp integration asks for PTR records at start.
             - index: 2
               operator: NotDAddr
               values:
                 - 10.96.0.10
+                - 10.244.0.0/16
           matchNamespaces:
             - namespace: Pid
               operator: NotIn
