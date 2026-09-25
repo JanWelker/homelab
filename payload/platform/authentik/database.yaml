@@ -1,6 +1,5 @@
 ---
-# Three instances and the import from the bundled chart database:
-# docs/platform/authentik.md#database
+# Why three instances: docs/platform/authentik.md#database
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -22,23 +21,6 @@ spec:
     initdb:
       database: authentik
       owner: authentik
-      # Runs once, on first start: pg_dump from the chart's bundled Postgres.
-      import:
-        type: microservice
-        databases:
-          - authentik
-        source:
-          externalCluster: bundled
-
-  externalClusters:
-    - name: bundled
-      connectionParameters:
-        host: authentik-postgresql.authentik.svc
-        user: authentik
-        dbname: authentik
-      password:
-        name: authentik-secrets
-        key: postgres-password
 
   postgresql:
     parameters:

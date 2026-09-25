@@ -110,7 +110,9 @@ found and why it skipped any. The rules, each of which is written into
 - **Hold a major with a regex, not a range.** `"allowedVersions": "/^17\\./"`
     is matched before version parsing; a range like `<18` is graded by npm
     semver, where a three-part tag such as `17.11.1-trixie` parses as a
-    prerelease and is dropped from every range that does not name one.
+    prerelease and is dropped from every range that does not name one. No
+    rule needs this today: the CloudNativePG images carry a major bump as
+    a `major` update, which the first rule already keeps from automerging.
 - **Check that the currently pinned version passes its own rule.** A filter
     that excludes what is deployed excludes everything, silently.
 
