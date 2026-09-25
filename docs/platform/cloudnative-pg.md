@@ -38,7 +38,8 @@ before merging one.
 Databases claim `rook-ceph-block`, so Ceph's three copies already sit under
 every database and a single-instance `Cluster` is a defensible default: the
 data survives a node loss even when the process does not. Where a workload
-cannot tolerate the restart, `instances: 3` is the change.
+cannot tolerate the restart, `instances: 3` is the change, as
+[Authentik](authentik.md#database) shows.
 
 ## Usage
 

@@ -26,6 +26,13 @@ spec:
               - secretRef:
                   name: authentik-secrets-nextcloud
                   optional: true
+            # CloudNativePG generates the database password; nothing copies it.
+            env:
+              - name: AUTHENTIK_POSTGRESQL__PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-db-app
+                    key: password
             # No read-only root: the image writes under /media and /templates at start.
             securityContext:
               runAsNonRoot: true
@@ -43,7 +50,7 @@ spec:
             disable_update_check: true
             avatars: initials
             postgresql:
-              host: authentik-postgresql
+              host: authentik-db-rw
               name: authentik
               user: authentik
 
@@ -107,32 +114,9 @@ spec:
                 mountPath: /blueprints/mounted/workloads
                 readOnly: true
 
+          # The database is database.yaml; see docs/platform/cloudnative-pg.md#the-contract
           postgresql:
-            enabled: true
-            # Would union with the Cilium policy and allow every egress.
-            networkPolicy:
-              enabled: false
-            image:
-              # The chart's -bookworm default is tracked by nothing.
-              # renovate: datasource=docker depName=docker.io/library/postgres versioning=docker
-              tag: "17.11-trixie"
-            auth:
-              username: authentik
-              database: authentik
-              existingSecret: authentik-secrets
-              secretKeys:
-                userPasswordKey: postgres-password
-            primary:
-              persistence:
-                enabled: true
-                storageClass: rook-ceph-block
-                size: 8Gi
-              resources:
-                requests:
-                  cpu: 50m
-                  memory: 320Mi
-                limits:
-                  memory: 704Mi
+            enabled: false
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/authentik

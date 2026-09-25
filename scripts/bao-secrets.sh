@@ -279,7 +279,6 @@ fi
 if [ "$WRITE_AUTHENTIK" = "1" ]; then
   put authentik/config \
     "secret-key=$(rand_b64 60)" \
-    "postgres-password=$(rand_b64 32)" \
     "bootstrap-password=$(rand_b64 24)" \
     "bootstrap-token=$(rand_hex 32)" \
     "argocd-client-id=$(rand_hex 16)" \

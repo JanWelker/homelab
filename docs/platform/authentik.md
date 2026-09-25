@@ -22,9 +22,9 @@ every network flow in the cluster to anyone who could reach the hostname.
 | | |
 | --- | --- |
 | Namespace | `authentik` |
-| Depends on | [OpenBao](openbao.md) for its OIDC client secrets and database password, [Rook-Ceph](rook-ceph.md) for Postgres |
+| Depends on | [OpenBao](openbao.md) for its OIDC client secrets, [CloudNativePG](cloudnative-pg.md) for the database, [Rook-Ceph](rook-ceph.md) under it |
 | If it is down | Every platform UI loses its only login — see [When Authentik is down](#when-authentik-is-down) |
-| Health check | `kubectl -n authentik get pods` &rarr; server, worker and Postgres all Ready |
+| Health check | `kubectl -n authentik get pods,clusters` &rarr; server and worker Ready, `authentik-db` healthy |
 | UI | `auth.k8s.wlkr.ch` |
 | Files | `payload/platform/authentik/` |
 
@@ -80,6 +80,16 @@ namespaces to that Service only. A proxied workload is therefore two pull
 requests, by design: a workload cannot take itself out from behind the
 authentication layer on its own.
 
+### Database
+
+`database.yaml` is a CloudNativePG `Cluster` with three instances, the only
+one on the cluster with more than one. Every login on every platform UI
+goes through Authentik, so its database must survive a node drain: with one
+instance the operator's PodDisruptionBudget blocks the drain and a reboot
+kills the database; with three, the primary switches over and the drain
+proceeds. The chart's own Postgres subchart is off — see
+[the contract](cloudnative-pg.md#the-contract).
+
 ### Chart values
 
 | Setting | Why |
@@ -87,7 +97,7 @@ authentication layer on its own.
 | `authentik.disable_update_check` and `authentik.avatars` | Telemetry and Gravatar lookups are switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy |
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
-| `postgresql.image.tag` with its `# renovate:` annotation | The chart hardcodes a Debian 12 tag nothing tracks. The annotation lets Renovate move it (`versioning=docker`, so the `-trixie` suffix is a constraint, not a prerelease); an `allowedVersions` rule holds the major, because a Postgres major is a dump and restore — see [Renovate](../development/maintenance.md) |
+| `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
 | Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](../architecture/gitops.md#workloads-live-in-a-second-repository), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 
@@ -132,14 +142,14 @@ The OIDC client IDs and secrets are generated once into OpenBao and read by
 both sides — Authentik through `!Env`, ArgoCD and Grafana through their own
 `ExternalSecret` — so a rebuilt Authentik gets the same credentials and
 nothing is copied out of a UI. `make bao-secrets` writes `kv/authentik/config`
-with the secret key, the Postgres password, the bootstrap password and token
-and the ArgoCD and Grafana client pairs; `scripts/bao-secrets.sh` is the
-list of keys. A workload's client credentials go in the workload's own path
-(Nextcloud's in `kv/nextcloud/config`, read by `secrets-nextcloud.yaml`,
-mounted `optional`): rewriting `kv/authentik/config` would rotate the
-Postgres password out from under the database, and External Secrets fails
-an `ExternalSecret` whole when one key is missing, so a shared one would
-leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
+with the secret key, the bootstrap password and token and the ArgoCD and
+Grafana client pairs; `scripts/bao-secrets.sh` is the list of keys. A
+workload's client credentials go in the workload's own path (Nextcloud's in
+`kv/nextcloud/config`, read by `secrets-nextcloud.yaml`, mounted
+`optional`): rewriting `kv/authentik/config` would rotate the secret key
+that signs every session and token, and External Secrets fails an
+`ExternalSecret` whole when one key is missing, so a shared one would leave
+a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
 Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
 `akadmin` with `bootstrap-password` and create the groups above.
@@ -160,10 +170,10 @@ Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
 
 When every login fails, in this order:
 
-1. Server, worker and Postgres are Ready:
+1. Server and worker are Ready and the database is healthy:
 
     ```bash
-    kubectl -n authentik get pods
+    kubectl -n authentik get pods,clusters
     ```
 
 2. The discovery document names the one hostname as `issuer`:

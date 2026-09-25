@@ -105,7 +105,6 @@
         "docker"
       ],
       "matchPackageNames": [
-        "docker.io/library/postgres",
         "ecr-public.aws.com/docker/library/haproxy",
         "ecr-public.aws.com/docker/library/redis",
         "registry.k8s.io/sig-storage/csi-provisioner",
@@ -113,16 +112,6 @@
         "registry.k8s.io/sig-storage/csi-snapshotter"
       ],
       "pinDigests": false
-    },
-    {
-      "description": "Authentik's bundled Postgres stays on major 17 until upstream moves it: a Postgres major is a dump and restore, not an image bump. Written as a regex so Renovate matches the tag directly -- a range like `<18` is graded by npm semver, where a three-part tag such as 17.11.1-trixie parses as a prerelease and is dropped from any range that does not name one. The `-trixie` suffix is held separately by docker versioning, not by this rule. See docs/development/maintenance.md",
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchPackageNames": [
-        "docker.io/library/postgres"
-      ],
-      "allowedVersions": "/^17\\./"
     },
     {
       "description": "A PostgreSQL major version is an offline migration that takes the workload down while it runs, and it is not reversible. It waits for a human even though the image tag makes it look like any other bump. Same rule as the workloads repository -- see docs/platform/cloudnative-pg.md",
