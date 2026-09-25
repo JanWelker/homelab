@@ -123,6 +123,23 @@
         "docker.io/library/postgres"
       ],
       "allowedVersions": "/^17\\./"
+    },
+    {
+      "description": "A PostgreSQL major version is an offline migration that takes the workload down while it runs, and it is not reversible. It waits for a human even though the image tag makes it look like any other bump. Same rule as the workloads repository -- see docs/platform/cloudnative-pg.md",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "database-major"
+      ]
     }
   ],
   "pre-commit": {
@@ -290,6 +307,19 @@
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?[^\\n]*\\n\\s*[\\w.-]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      "description": "CloudNativePG names its operand image in `imageName`, which holds a complete image reference rather than a bare tag, so neither the kubernetes manager nor the `# renovate:` comment manager reads it. `autoReplaceStringTemplate` is what lets config:best-practices write the digest: a custom manager rewrites the matched string verbatim, so without a template naming `newDigest` the pin has nowhere to go and fails the whole shared pin branch. Same manager as the workloads repository -- see docs/development/maintenance.md",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^payload/.+\\.yaml$/"
+      ],
+      "matchStrings": [
+        "imageName:\\s*[\"']?(?<depName>[^\\s:\"']+):(?<currentValue>[^\\s\"'@]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "autoReplaceStringTemplate": "imageName: {{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
     }
   ]
 }
