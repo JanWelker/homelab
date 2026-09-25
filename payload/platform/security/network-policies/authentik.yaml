@@ -12,7 +12,8 @@ spec:
     for other applications, lands on the server's plaintext port. Nothing in
     the cluster dials Authentik by its Service name: every OIDC client goes
     through the Gateway and arrives as ingress. Prometheus reads the metrics
-    port of the server and the worker.
+    port of the server, the worker and the database; the CloudNativePG
+    operator polls each instance on its status port.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -45,9 +46,9 @@ metadata:
   namespace: authentik
 spec:
   description: >-
-    Default-deny egress for Authentik. PostgreSQL is within the namespace.
-    The server and the worker have a Kubernetes client for the outpost
-    discovery tasks; the database does not.
+    Default-deny egress for Authentik. PostgreSQL is within the namespace,
+    replication between its instances included. What leaves the namespace
+    is per workload below.
   endpointSelector: {}
   egress:
     - toEndpoints:
@@ -65,6 +66,23 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: authentik
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: database
+  namespace: authentik
+spec:
+  description: >-
+    Every pod of the database cluster, the bootstrap and join jobs
+    included, reads its Cluster from the API server; the instance manager
+    reports its status there and its liveness check fails without it.
+  endpointSelector:
+    matchLabels:
+      cnpg.io/cluster: authentik-db
   egress:
     - toEntities:
         - kube-apiserver
