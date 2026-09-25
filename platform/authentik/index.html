@@ -1402,10 +1402,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#two-hostnames" class="md-nav__link">
+  <a href="#one-hostname" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Two hostnames
+        One hostname
       </span>
     </span>
   </a>
@@ -2305,10 +2305,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#two-hostnames" class="md-nav__link">
+  <a href="#one-hostname" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Two hostnames
+        One hostname
       </span>
     </span>
   </a>
@@ -2652,7 +2652,7 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 </tr>
 <tr>
 <td>UI</td>
-<td><code>auth.infra.k8s.wlkr.ch</code></td>
+<td><code>auth.k8s.wlkr.ch</code></td>
 </tr>
 <tr>
 <td>Files</td>
@@ -2668,44 +2668,27 @@ Authentik's embedded outpost, a reverse proxy that authenticates the request
 and only then forwards it to the backend. It needs nothing from the
 application and protects exactly as far as nothing else can reach the backend.</p>
 <pre class="mermaid"><code>flowchart LR
-    U([Browser]) --&gt; GW[infra-gateway]
+    U([Browser]) --&gt; GW[infra-gateway / apps-gateway]
     GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
-    APP -.-&gt;|OIDC redirect| AK[Authentik]
-    GW --&gt;|hubble, rook, prometheus, alertmanager| AK
+    APP -.-&gt;|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
+    GW --&gt;|hubble, rook, prometheus, home, flowscape| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
-<h3 id="two-hostnames">Two hostnames<a class="headerlink" href="#two-hostnames" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Hostname</th>
-<th>Gateway</th>
-<th>Reachable from</th>
-<th>Used by</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>auth.infra.k8s.wlkr.ch</code></td>
-<td><code>infra-gateway</code></td>
-<td>the local network</td>
-<td>ArgoCD, Grafana, break-glass <code>akadmin</code> login</td>
-</tr>
-<tr>
-<td><code>auth.k8s.wlkr.ch</code></td>
-<td><code>apps-gateway</code></td>
-<td>outside it too</td>
-<td>Nextcloud</td>
-</tr>
-</tbody>
-</table>
-<p>An OIDC client used from outside the local network needs an authorize
-endpoint that resolves there. Authentik builds every published URL from the
-request, so each name serves a self-consistent OpenID configuration with no
-configuration. Proxied applications never redirect to either: their route
-points at <code>authentik-server</code>, so the whole flow happens on their own hostname.</p>
+<h3 id="one-hostname">One hostname<a class="headerlink" href="#one-hostname" title="Permanent link">&para;</a></h3>
+<p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
+LAN reaches through the router's local record and the outside through
+Route53. Every OIDC client and the embedded outpost use that one name.</p>
+<p>The outpost is why there is only one. A proxied application's route points
+at <code>authentik-server</code>, but the login itself is an OAuth dance: the outpost
+sends the browser to the outpost's <code>authentik_host</code> to authenticate and gets
+it back on the application's own hostname. With Authentik on two names and
+<code>authentik_host</code> on the LAN-only one, an application on <code>apps-gateway</code>
+worked at home and redirected outside users to a name that does not
+resolve. <code>blueprints.yaml</code> pins <code>authentik_host</code> because the embedded
+outpost otherwise fills it from <code>web.base_url</code> on first start and never
+updates it.</p>
 <div class="admonition warning">
-<p class="admonition-title">A client must never mix the two</p>
-<p>The <code>iss</code> claim is the hostname the token was issued through. A discovery URI on one name and a redirect on the other fails every login with an error that blames the token. Pin each client to exactly one name.</p>
+<p class="admonition-title">A client must never mix names</p>
+<p>The <code>iss</code> claim is the hostname the token was issued through. A discovery URI on one name and a redirect on another fails every login with an error that blames the token. Should a second hostname ever come back, pin each client to exactly one.</p>
 </div>
 <h3 id="where-the-proxied-routes-point">Where the proxied routes point<a class="headerlink" href="#where-the-proxied-routes-point" title="Permanent link">&para;</a></h3>
 <p>A proxied application's route lives with the application: Hubble's in
@@ -2847,7 +2830,7 @@ mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would
 Postgres password out from under the database, and External Secrets fails
 an <code>ExternalSecret</code> whole when one key is missing, so a shared one would
 leave a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
-<p>Then log in at <a href="https://auth.infra.k8s.wlkr.ch">auth.infra.k8s.wlkr.ch</a> as
+<p>Then log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
 <code>akadmin</code> with <code>bootstrap-password</code> and create the groups above.</p>
 <h3 id="adding-an-application">Adding an application<a class="headerlink" href="#adding-an-application" title="Permanent link">&para;</a></h3>
 <ol>
@@ -2870,9 +2853,8 @@ leave a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> e
 </span></code></pre></div>
 </li>
 <li>
-<p>The server answers on both hostnames with a discovery document whose
-   <code>issuer</code> matches the name asked for:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://auth.infra.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.issuer
+<p>The discovery document names the one hostname as <code>issuer</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://auth.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.issuer
 </span></code></pre></div>
 </li>
 <li>
