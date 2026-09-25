@@ -1424,6 +1424,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#chart-values" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2327,6 +2338,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#chart-values" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2640,7 +2662,7 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td><a href="../openbao/">OpenBao</a> for its OIDC client secrets and database password, <a href="../rook-ceph/">Rook-Ceph</a> for Postgres</td>
+<td><a href="../openbao/">OpenBao</a> for its OIDC client secrets, <a href="../cloudnative-pg/">CloudNativePG</a> for the database, <a href="../rook-ceph/">Rook-Ceph</a> under it</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2648,7 +2670,7 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl -n authentik get pods</code> &rarr; server, worker and Postgres all Ready</td>
+<td><code>kubectl -n authentik get pods,clusters</code> &rarr; server and worker Ready, <code>authentik-db</code> healthy</td>
 </tr>
 <tr>
 <td>UI</td>
@@ -2702,6 +2724,14 @@ cross-namespace <code>backendRef</code> unless the target namespace grants it, s
 namespaces to that Service only. A proxied workload is therefore two pull
 requests, by design: a workload cannot take itself out from behind the
 authentication layer on its own.</p>
+<h3 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h3>
+<p><code>database.yaml</code> is a CloudNativePG <code>Cluster</code> with three instances, the only
+one on the cluster with more than one. Every login on every platform UI
+goes through Authentik, so its database must survive a node drain: with one
+instance the operator's PodDisruptionBudget blocks the drain and a reboot
+kills the database; with three, the primary switches over and the drain
+proceeds. The chart's own Postgres subchart is off — see
+<a href="../cloudnative-pg/#the-contract">the contract</a>.</p>
 <h3 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2724,8 +2754,8 @@ authentication layer on its own.</p>
 <td>The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there</td>
 </tr>
 <tr>
-<td><code>postgresql.image.tag</code> with its <code># renovate:</code> annotation</td>
-<td>The chart hardcodes a Debian 12 tag nothing tracks. The annotation lets Renovate move it (<code>versioning=docker</code>, so the <code>-trixie</code> suffix is a constraint, not a prerelease); an <code>allowedVersions</code> rule holds the major, because a Postgres major is a dump and restore — see <a href="../../development/maintenance/">Renovate</a></td>
+<td><code>postgresql.enabled: false</code>, <code>authentik.postgresql.host: authentik-db-rw</code> and the <code>global.env</code> entry</td>
+<td>The database is the <code>Cluster</code> above. The password is the one CloudNativePG generated into <code>authentik-db-app</code>, read as <code>AUTHENTIK_POSTGRESQL__PASSWORD</code> from that Secret; it is never copied into OpenBao or Git</td>
 </tr>
 <tr>
 <td><code>worker.podAnnotations</code> <code>homelab.wlkr.ch/secret-generation</code></td>
@@ -2822,14 +2852,14 @@ is bound to the application in Authentik itself.</p>
 both sides — Authentik through <code>!Env</code>, ArgoCD and Grafana through their own
 <code>ExternalSecret</code> — so a rebuilt Authentik gets the same credentials and
 nothing is copied out of a UI. <code>make bao-secrets</code> writes <code>kv/authentik/config</code>
-with the secret key, the Postgres password, the bootstrap password and token
-and the ArgoCD and Grafana client pairs; <code>scripts/bao-secrets.sh</code> is the
-list of keys. A workload's client credentials go in the workload's own path
-(Nextcloud's in <code>kv/nextcloud/config</code>, read by <code>secrets-nextcloud.yaml</code>,
-mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the
-Postgres password out from under the database, and External Secrets fails
-an <code>ExternalSecret</code> whole when one key is missing, so a shared one would
-leave a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
+with the secret key, the bootstrap password and token and the ArgoCD and
+Grafana client pairs; <code>scripts/bao-secrets.sh</code> is the list of keys. A
+workload's client credentials go in the workload's own path (Nextcloud's in
+<code>kv/nextcloud/config</code>, read by <code>secrets-nextcloud.yaml</code>, mounted
+<code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the secret key
+that signs every session and token, and External Secrets fails an
+<code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
+a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
 <p>Then log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
 <code>akadmin</code> with <code>bootstrap-password</code> and create the groups above.</p>
 <h3 id="adding-an-application">Adding an application<a class="headerlink" href="#adding-an-application" title="Permanent link">&para;</a></h3>
@@ -2848,8 +2878,8 @@ leave a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> e
 <p>When every login fails, in this order:</p>
 <ol>
 <li>
-<p>Server, worker and Postgres are Ready:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>get<span class="w"> </span>pods
+<p>Server and worker are Ready and the database is healthy:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>get<span class="w"> </span>pods,clusters
 </span></code></pre></div>
 </li>
 <li>

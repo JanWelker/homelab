@@ -2420,7 +2420,8 @@ before merging one.</p>
 <p>Databases claim <code>rook-ceph-block</code>, so Ceph's three copies already sit under
 every database and a single-instance <code>Cluster</code> is a defensible default: the
 data survives a node loss even when the process does not. Where a workload
-cannot tolerate the restart, <code>instances: 3</code> is the change.</p>
+cannot tolerate the restart, <code>instances: 3</code> is the change, as
+<a href="../authentik/#database">Authentik</a> shows.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="the-contract">The contract<a class="headerlink" href="#the-contract" title="Permanent link">&para;</a></h3>
 <p><strong>Every workload that needs PostgreSQL gets a CloudNativePG <code>Cluster</code>. No

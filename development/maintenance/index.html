@@ -2460,7 +2460,9 @@ found and why it skipped any. The rules, each of which is written into
 <li><strong>Hold a major with a regex, not a range.</strong> <code>"allowedVersions": "/^17\\./"</code>
     is matched before version parsing; a range like <code>&lt;18</code> is graded by npm
     semver, where a three-part tag such as <code>17.11.1-trixie</code> parses as a
-    prerelease and is dropped from every range that does not name one.</li>
+    prerelease and is dropped from every range that does not name one. No
+    rule needs this today: the CloudNativePG images carry a major bump as
+    a <code>major</code> update, which the first rule already keeps from automerging.</li>
 <li><strong>Check that the currently pinned version passes its own rule.</strong> A filter
     that excludes what is deployed excludes everything, silently.</li>
 </ul>
