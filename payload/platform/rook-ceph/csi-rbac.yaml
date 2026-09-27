@@ -196,6 +196,9 @@ rules:
       - get
       - list
       - watch
+      # Not upstream yet: csi-provisioner v6 puts a finalizer on the source
+      # snapshot of every clone. https://github.com/ceph/ceph-csi-operator/issues/624
+      - update
   - apiGroups:
       - snapshot.storage.k8s.io
     resources:

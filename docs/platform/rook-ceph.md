@@ -96,6 +96,10 @@ Renovate does not see it. To refresh it:
 
 2. Keep only the rbd documents (CephFS, NFS and NVMe-oF are not enabled).
 3. Re-indent the sequences for yamllint and prefix the cluster-scoped names.
+4. Re-add `update` on `volumesnapshots` to the ctrlplugin ClusterRole until
+   [ceph-csi-operator#624](https://github.com/ceph/ceph-csi-operator/issues/624)
+   lands: csi-provisioner v6 puts a finalizer on the source snapshot of every
+   clone, and without the verb each nightly Velero run logs one 403 per volume.
 
 ### cephx keys stay on aes
 
