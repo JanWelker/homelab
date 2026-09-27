@@ -1,0 +1,77 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: etcd-defrag
+  namespace: backup
+spec:
+  # Sunday 03:30: clear of the etcd backup at 01:00 and Velero at 02:00
+  schedule: "30 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # etcd listens on 127.0.0.1 of the control-plane node
+          hostNetwork: true
+          nodeSelector:
+            node-role.kubernetes.io/control-plane: ""
+          tolerations:
+            - key: node-role.kubernetes.io/control-plane
+              operator: Exists
+              effect: NoSchedule
+          # Root, because the client certificates are 600 root on the host;
+          # nothing else is granted.
+          securityContext:
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: etcd-certs
+              hostPath:
+                path: /etc/kubernetes/pki/etcd
+                type: Directory
+          containers:
+            - name: defrag
+              image: registry.k8s.io/etcd:3.7.1-0@sha256:a9983dd6d9283138ab926daa307c6c25623636703ecf5645d5df4d666ce9eba2
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  # --cluster walks the member list, so every member is
+                  # defragmented one after another from this one pod
+                  etcdctl endpoint status --cluster -w table
+                  etcdctl defrag --cluster --command-timeout=60s
+                  etcdctl endpoint status --cluster -w table
+              env:
+                - name: ETCDCTL_API
+                  value: "3"
+                - name: ETCDCTL_ENDPOINTS
+                  value: https://127.0.0.1:2379
+                - name: ETCDCTL_CACERT
+                  value: /pki/ca.crt
+                - name: ETCDCTL_CERT
+                  value: /pki/healthcheck-client.crt
+                - name: ETCDCTL_KEY
+                  value: /pki/healthcheck-client.key
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: etcd-certs
+                  mountPath: /pki
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi

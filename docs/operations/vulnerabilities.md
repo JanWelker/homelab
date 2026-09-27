@@ -72,7 +72,7 @@ fixable here rather than upstream. Two checks are most of the volume:
 | Where | Why it stays |
 | --- | --- |
 | Cilium, cilium-envoy, kube-vip, the kubeadm static pods, Rook OSDs and mons, node-exporter, Kured | Host network, host PID, privileged and added capabilities are what these do; `pod-security.yaml` enforces `privileged` in those namespaces for this reason |
-| `etcd-backup` CronJob | Host network, because etcd listens on the node's loopback; root, because the client certificates are `600 root` |
+| `etcd-backup` and `etcd-defrag` CronJobs | Host network, because etcd listens on the node's loopback; root, because the client certificates are `600 root` |
 | Velero node agent | Root and capabilities stay: kopia reads every pod volume, whoever owns the files |
 | Images that start as root by design (Nextcloud, Home Assistant) | `runAsNonRoot` or a read-only root would change how they run; seccomp is set |
 | Read-only root on charts that write under `/` at runtime (Grafana sidecars, OpenBao) | The chart or image decides where; guessing costs an outage (#663) |
