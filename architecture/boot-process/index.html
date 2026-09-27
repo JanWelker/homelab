@@ -2633,14 +2633,17 @@ charge.</p>
 <p><code>PROMPT 0</code> boots whatever <code>DEFAULT</code> names, and the template always emits <code>DEFAULT localboot</code>, so a node that network-boots for any reason lands on its own disk. <code>make reinstall</code> rewrites that one line to arm it; see <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Rebuilding or repartitioning a node</a>. Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.</p>
 </div>
 <h2 id="boot-server">Boot server<a class="headerlink" href="#boot-server" title="Permanent link">&para;</a></h2>
-<p><code>boot_server/serve.py</code> is a TFTP server and an HTTP server. <code>make serve</code> starts
-it from the repository root (the document roots are relative to the working
-directory) and needs <code>sudo</code> for port 69; once both ports are bound it drops
-back to the user who ran <code>sudo</code>, so nothing under <code>output/</code> ends up owned by
-root. Both servers bind <code>boot_server_ip</code>
+<p><code>boot_server/serve.py</code> is a TFTP server and an HTTP server, installed by
+<code>uv sync</code> as the <code>boot-server</code> command. <code>make serve</code> runs it under <code>sudo</code> from
+the repository root (the document roots hang off <code>--root</code>, which defaults to
+the working directory), because port 69 needs root; once both ports are bound
+it drops back to the user who ran <code>sudo</code>, so nothing under <code>output/</code> ends up
+owned by root. Both servers bind <code>boot_server_ip</code>
 from <code>ansible/inventory.yaml</code> — the address <code>make config</code> baked into every
 generated URL — and nothing else. If no interface holds that address it says so
-and names the variable; if port 8000 is taken it exits.</p>
+and names the variable; if port 8000 is taken it exits. <code>--bind</code>, <code>--http-port</code>
+and <code>--tftp-port</code> override all three, which is how the tests and a dry run on
+a laptop avoid the privileged port.</p>
 <table>
 <thead>
 <tr>
