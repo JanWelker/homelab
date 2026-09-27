@@ -64,6 +64,7 @@ COLOURS = {'ok': '\033[1;32m', 'warn': '\033[1;33m', 'error': '\033[1;31m'}
 RESET = '\033[0m'
 WARNING_MARK = '\u26a0'
 
+
 def _boot_server_ip():
     """The address to answer on, read from the inventory that generated the menus.
 
@@ -76,8 +77,9 @@ def _boot_server_ip():
         with open(INVENTORY, encoding='utf-8') as handle:
             inventory = yaml.safe_load(handle) or {}
     except FileNotFoundError:
-        sys.exit(f'{INVENTORY} not found -- run make serve from the repository '
-                 'root, or pass --root')
+        sys.exit(
+            f'{INVENTORY} not found -- run make serve from the repository root, or pass --root'
+        )
     except yaml.YAMLError as error:
         sys.exit(f'{INVENTORY} is not valid YAML: {error}')
 
@@ -95,7 +97,7 @@ def configure(root, bind=None, http_port=None, tftp_port=None):
     boot_server_ip, the one every generated menu points at; a port left out
     keeps its well-known value.
     """
-    global BIND_IP, HTTP_DIR, TFTP_DIR, PXE_DIR, INVENTORY, HTTP_PORT, TFTP_PORT  # pylint: disable=global-statement
+    global BIND_IP, HTTP_DIR, TFTP_DIR, PXE_DIR, INVENTORY, HTTP_PORT, TFTP_PORT  # noqa: PLW0603
     HTTP_DIR = os.path.join(root, 'output', 'http')
     TFTP_DIR = os.path.join(root, 'output', 'tftp')
     PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
@@ -113,7 +115,7 @@ roles_by_host = {}
 menu_lock = threading.Lock()
 
 
-class DropKnownTftpNoise(logging.Filter):  # pylint: disable=too-few-public-methods
+class DropKnownTftpNoise(logging.Filter):
     """Keep tftpy's warnings and errors, minus the ones every PXE boot causes."""
 
     def filter(self, record):
@@ -140,8 +142,8 @@ class Console(logging.Formatter):
         if record.levelno > logging.INFO:
             message = f'{record.levelname.lower()}: {message}'
         return self.paint(
-            record,
-            f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}')
+            record, f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}'
+        )
 
     def paint(self, record, line):
         """Colour the line, or leave it alone if this is not going to a terminal."""
@@ -163,15 +165,16 @@ def node_role(host):
     if host not in roles_by_host:
         role = None
         try:
-            with open(os.path.join(HTTP_DIR, f'ignition-{host}.json'),
-                      encoding='utf-8') as config:
+            with open(os.path.join(HTTP_DIR, f'ignition-{host}.json'), encoding='utf-8') as config:
                 units = json.load(config).get('systemd', {}).get('units', [])
             unit = next(u for u in units if u['name'] == 'bootstrap-k8s.service')
             contents = unit.get('contents', '')
-            role = ('control-plane'
-                    if 'kubeadm init' in contents or '--control-plane' in contents
-                    else 'worker')
-        except (OSError, ValueError, KeyError, StopIteration):
+            role = (
+                'control-plane'
+                if 'kubeadm init' in contents or '--control-plane' in contents
+                else 'worker'
+            )
+        except OSError, ValueError, KeyError, StopIteration:
             pass
         roles_by_host[host] = role
     return roles_by_host[host]
@@ -181,25 +184,23 @@ def node_mac(host):
     """The MAC the node's menu is named after, colon-separated as the inventory has it."""
     for name, (menu_host, _) in pxe_menus().items():
         if menu_host == host:
-            return name[len('01-'):].replace('-', ':')
+            return name[len('01-') :].replace('-', ':')
     return None
 
 
 def identity(ip):
     """The who column: role, name, address and MAC, as far as they are known."""
     host = hosts_by_ip.get(ip)
-    fields = (node_role(host) if host else None, host, ip,
-              node_mac(host) if host else None)
-    return ' '.join(f'{value or "-":<{width}}'
-                    for value, width in zip(fields, COLUMNS)).rstrip()
+    fields = (node_role(host) if host else None, host, ip, node_mac(host) if host else None)
+    return ' '.join(
+        f'{value or "-":<{width}}' for value, width in zip(fields, COLUMNS, strict=True)
+    ).rstrip()
 
 
 def banner(headline, *body, tint='warn'):
     """A message worth the whole width, rather than a line in the node column."""
-    lines = [f'  {WARNING_MARK}  {headline}', ''] + [f'     {line}'.rstrip()
-                                                     for line in body]
-    logger.warning('\n%s\n', '\n'.join(lines),
-                   extra={'banner': True, 'tint': tint})
+    lines = [f'  {WARNING_MARK}  {headline}', ''] + [f'     {line}'.rstrip() for line in body]
+    logger.warning('\n%s\n', '\n'.join(lines), extra={'banner': True, 'tint': tint})
 
 
 def say(ip, message, *args, level=logging.INFO, tint=None):
@@ -264,13 +265,12 @@ def switch_to_local_boot(host):
             lines = menu.readlines()
         with open(path, 'w', encoding='utf-8') as menu:
             menu.writelines(
-                'DEFAULT localboot\n' if line.startswith('DEFAULT ') else line
-                for line in lines
+                'DEFAULT localboot\n' if line.startswith('DEFAULT ') else line for line in lines
             )
     return True
 
 
-class NarratingContext(TftpContextServer):  # pylint: disable=too-few-public-methods
+class NarratingContext(TftpContextServer):
     """tftpy offers no per-request hook; the session context is the narrowest wrap."""
 
     def start(self, buffer):
@@ -291,13 +291,16 @@ def announce_tftp(ip, requested):
         host, path = menu
         hosts_by_ip[ip] = host
         if pxe_default(path) == 'install':
-            say(ip, 'collecting its boot menu -- armed, so it will install',
-                tint='warn')
+            say(ip, 'collecting its boot menu -- armed, so it will install', tint='warn')
         else:
             say(ip, 'collecting its boot menu -- booting from its local disk')
     elif MENU_NAME.match(name):
-        say(ip, 'asked for %s -- no generated menu has that MAC, check '
-                'mac_address in inventory.yaml', name, level=logging.WARNING)
+        say(
+            ip,
+            'asked for %s -- no generated menu has that MAC, check mac_address in inventory.yaml',
+            name,
+            level=logging.WARNING,
+        )
     elif os.path.basename(os.path.dirname(requested)) != MENU_SUBDIR:
         say(ip, 'collecting the bootloader (%s)', name)
 
@@ -358,11 +361,13 @@ class BootHandler(SimpleHTTPRequestHandler):
         super().do_GET()
 
         if self.status == HTTPStatus.FORBIDDEN:
-            say(ip, 'asked for a directory listing -- refused; files are '
-                    'served by name only', level=logging.WARNING)
-        elif self.status != 200:
-            say(ip, '%s is not in output/http -- run make artifacts',
-                name, level=logging.WARNING)
+            say(
+                ip,
+                'asked for a directory listing -- refused; files are served by name only',
+                level=logging.WARNING,
+            )
+        elif self.status != HTTPStatus.OK:
+            say(ip, '%s is not in output/http -- run make artifacts', name, level=logging.WARNING)
         elif name == OS_IMAGE:
             self.disarm(ip)
 
@@ -370,19 +375,26 @@ class BootHandler(SimpleHTTPRequestHandler):
         """The node has the image and is about to reboot: send it to its disk."""
         host = hosts_by_ip.get(ip)
         if host is None:
-            say(ip, 'took the OS image but never asked for an Ignition config, '
-                    'so I cannot tell which node it is. To cancel before it '
-                    'reboots, run: make reinstall-cancel', level=logging.WARNING)
+            say(
+                ip,
+                'took the OS image but never asked for an Ignition config, '
+                'so I cannot tell which node it is. To cancel before it '
+                'reboots, run: make reinstall-cancel',
+                level=logging.WARNING,
+            )
         elif switch_to_local_boot(host):
-            say(ip, 'OS image delivered -- switching to local boot, so the '
-                    'reboot lands on the disk', tint='ok')
+            say(
+                ip,
+                'OS image delivered -- switching to local boot, so the reboot lands on the disk',
+                tint='ok',
+            )
 
 
 def sudo_ids():
     """uid and gid of whoever ran sudo, or None when this is not a sudo session."""
     try:
         return int(os.environ['SUDO_UID']), int(os.environ['SUDO_GID'])
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return None, None
 
 
@@ -417,9 +429,11 @@ def drop_root():
 
 def drop_root_once_bound(server):
     """tftpy binds inside listen() and never returns, so watch for the bind."""
+
     def watch():
         server.is_running.wait()
         drop_root()
+
     threading.Thread(target=watch, daemon=True).start()
 
 
@@ -438,12 +452,22 @@ def bind_http():
         return ThreadingHTTPServer((BIND_IP, HTTP_PORT), BootHandler)
     except OSError as error:
         if error.errno == errno.EADDRINUSE:
-            say('server', 'port %s is already in use -- another make serve, or '
-                          'something else on the deployment host, holds it',
-                HTTP_PORT, level=logging.ERROR)
+            say(
+                'server',
+                'port %s is already in use -- another make serve, or '
+                'something else on the deployment host, holds it',
+                HTTP_PORT,
+                level=logging.ERROR,
+            )
         else:
-            say('server', 'HTTP failed to bind %s:%s: %s', BIND_IP, HTTP_PORT,
-                error, level=logging.ERROR)
+            say(
+                'server',
+                'HTTP failed to bind %s:%s: %s',
+                BIND_IP,
+                HTTP_PORT,
+                error,
+                level=logging.ERROR,
+            )
         sys.exit(1)
 
 
@@ -458,8 +482,7 @@ def run_tftp():
 
 def armed_hosts():
     """Every host whose generated menu will install on its next boot."""
-    return sorted(h for h, path in pxe_menus().values()
-                  if pxe_default(path) == 'install')
+    return sorted(h for h, path in pxe_menus().values() if pxe_default(path) == 'install')
 
 
 def offer_to_disarm():
@@ -469,27 +492,36 @@ def offer_to_disarm():
         say('server', 'nothing is left armed', tint='ok')
         return
 
-    banner(f'STILL ARMED: {", ".join(armed)}',
-           'Leaving them armed means the next time any of them powers on it',
-           'installs, wipes its disk, and does not ask first. The boot server',
-           'does not have to be running for that -- the menu is already on disk.',
-           '',
-           'To cancel later, run:  make reinstall-cancel')
+    banner(
+        f'STILL ARMED: {", ".join(armed)}',
+        'Leaving them armed means the next time any of them powers on it',
+        'installs, wipes its disk, and does not ask first. The boot server',
+        'does not have to be running for that -- the menu is already on disk.',
+        '',
+        'To cancel later, run:  make reinstall-cancel',
+    )
 
     if not sys.stdin.isatty():
-        say('server', 'not a terminal, so leaving them armed. To cancel, run: '
-                      'make reinstall-cancel', level=logging.WARNING)
+        say(
+            'server',
+            'not a terminal, so leaving them armed. To cancel, run: make reinstall-cancel',
+            level=logging.WARNING,
+        )
         return
 
     try:
         answer = input(f'  Disarm {len(armed)} node(s) now? [Y/n] ').strip().lower()
-    except (EOFError, KeyboardInterrupt):
+    except EOFError, KeyboardInterrupt:
         print()
         answer = 'n'
 
     if answer not in ('', 'y', 'yes'):
-        say('server', 'left armed: %s. To cancel, run: make reinstall-cancel',
-            ', '.join(armed), level=logging.WARNING)
+        say(
+            'server',
+            'left armed: %s. To cancel, run: make reinstall-cancel',
+            ', '.join(armed),
+            level=logging.WARNING,
+        )
         return
 
     for host in armed:
@@ -504,8 +536,11 @@ def announce_start():
 
     menus = pxe_menus()
     if not menus:
-        say('server', 'no PXE menus in output/tftp/pxelinux.cfg -- run make '
-                      'config, or no node can boot', level=logging.WARNING)
+        say(
+            'server',
+            'no PXE menus in output/tftp/pxelinux.cfg -- run make config, or no node can boot',
+            level=logging.WARNING,
+        )
         return
 
     armed = sorted(h for h, p in menus.values() if pxe_default(p) == 'install')
@@ -518,10 +553,10 @@ def announce_start():
             'nothing asks for confirmation at the console.',
             '',
             'To cancel, run:  make reinstall-cancel',
-            '                 make reinstall-cancel LIMIT=<node>  for one')
+            '                 make reinstall-cancel LIMIT=<node>  for one',
+        )
     else:
-        say('server', 'nothing is armed -- every menu says local boot, '
-                      'make reinstall arms one')
+        say('server', 'nothing is armed -- every menu says local boot, make reinstall arms one')
     if local:
         say('server', 'booting from disk: %s', ', '.join(local))
 
@@ -529,19 +564,33 @@ def announce_start():
 def parse_args(argv=None):
     """The command line: where to answer, on which ports, from which checkout."""
     parser = argparse.ArgumentParser(
-        prog='boot-server',
-        description='TFTP and HTTP boot server for the bare metal nodes.')
+        prog='boot-server', description='TFTP and HTTP boot server for the bare metal nodes.'
+    )
     parser.add_argument(
-        '--bind', metavar='IP',
-        help='address to answer on (default: boot_server_ip from the inventory)')
-    parser.add_argument('--http-port', type=int, default=HTTP_PORT, metavar='PORT',
-                        help='HTTP port (default: %(default)s)')
-    parser.add_argument('--tftp-port', type=int, default=TFTP_PORT, metavar='PORT',
-                        help='TFTP port (default: %(default)s)')
+        '--bind',
+        metavar='IP',
+        help='address to answer on (default: boot_server_ip from the inventory)',
+    )
     parser.add_argument(
-        '--root', default=os.getcwd(), metavar='DIR',
-        help='repository checkout holding ansible/ and output/ '
-             '(default: the working directory)')
+        '--http-port',
+        type=int,
+        default=HTTP_PORT,
+        metavar='PORT',
+        help='HTTP port (default: %(default)s)',
+    )
+    parser.add_argument(
+        '--tftp-port',
+        type=int,
+        default=TFTP_PORT,
+        metavar='PORT',
+        help='TFTP port (default: %(default)s)',
+    )
+    parser.add_argument(
+        '--root',
+        default=os.getcwd(),
+        metavar='DIR',
+        help='repository checkout holding ansible/ and output/ (default: the working directory)',
+    )
     return parser.parse_args(argv)
 
 
@@ -570,20 +619,25 @@ def main(argv=None):
         say('server', 'stopping')
         offer_to_disarm()
     except PermissionError:
-        say('server', 'cannot bind port %s -- make serve needs sudo',
-            TFTP_PORT, level=logging.ERROR)
+        say(
+            'server', 'cannot bind port %s -- make serve needs sudo', TFTP_PORT, level=logging.ERROR
+        )
         sys.exit(1)
     except OSError as error:
         if error.errno == errno.EADDRNOTAVAIL:
-            say('server', 'no interface on this machine holds %s -- that is '
-                          'boot_server_ip in ansible/inventory.yaml, and the '
-                          'address every generated PXE menu points at. Fix it '
-                          'there and re-run make config',
-                BIND_IP, level=logging.ERROR)
+            say(
+                'server',
+                'no interface on this machine holds %s -- that is '
+                'boot_server_ip in ansible/inventory.yaml, and the '
+                'address every generated PXE menu points at. Fix it '
+                'there and re-run make config',
+                BIND_IP,
+                level=logging.ERROR,
+            )
         else:
             say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
         sys.exit(1)
-    except Exception as error:  # pylint: disable=broad-exception-caught
+    except Exception as error:
         say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
         sys.exit(1)
 

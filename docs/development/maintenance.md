@@ -14,7 +14,7 @@ All in `.github/workflows/`.
 | Workflow | Trigger | What it checks |
 | --- | --- | --- |
 | `lint-ansible.yaml` | `ansible/**` | `ansible-lint` |
-| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `pylint` and `pytest` on the boot server and the scripts |
+| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check` and `pytest` on the boot server and the scripts |
 | `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation) |
