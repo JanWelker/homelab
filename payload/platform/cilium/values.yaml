@@ -23,7 +23,14 @@ prometheus:
 dashboards:
   enabled: true
 
-# cilium-agent has no memory limit on purpose; see docs/platform/cilium.md.
+# Limits ~2.5x the measured 7-day peak; see docs/platform/index.md
+resources:
+  requests:
+    cpu: 100m
+    memory: 384Mi
+  limits:
+    memory: 1Gi
+
 operator:
   replicas: 1
   rollOutPods: true
@@ -138,9 +145,9 @@ hubble:
       resources:
         requests:
           cpu: 10m
-          memory: 32Mi
+          memory: 64Mi
         limits:
-          memory: 128Mi
+          memory: 256Mi
     frontend:
       resources:
         requests:
