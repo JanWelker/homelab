@@ -1800,6 +1800,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#defragmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Defragmentation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#taking-one-by-hand" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2297,6 +2308,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#defragmentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Defragmentation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#taking-one-by-hand" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2648,19 +2670,33 @@ variable sets it).</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-backup
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/&lt;most-recent-job&gt;<span class="w"> </span>-c<span class="w"> </span>upload
 </span></code></pre></div>
+<h3 id="defragmentation">Defragmentation<a class="headerlink" href="#defragmentation" title="Permanent link">&para;</a></h3>
+<p>The API server compacts etcd's history every five minutes, but compaction
+only frees pages inside the database file; the file itself never shrinks until
+a member is defragmented, and once less than half of it is in use
+<code>etcdDatabaseHighFragmentationRatio</code> fires. A second CronJob in
+<code>payload/platform/backup/etcd-defrag.yaml</code> runs <code>etcdctl defrag --cluster</code>
+weekly from the same kind of host-network pod as the backup, one member after
+another, and prints <code>endpoint status</code> before and after so the log shows the
+size reclaimed. Each member blocks for well under a second at this database
+size, so leadership is not a concern.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-defrag
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>--from<span class="o">=</span>cronjob/etcd-defrag<span class="w"> </span>etcd-defrag-manual
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/etcd-defrag-manual
+</span></code></pre></div>
 <h3 id="taking-one-by-hand">Taking one by hand<a class="headerlink" href="#taking-one-by-hand" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>snapshot<span class="w"> </span>save<span class="w"> </span>/var/lib/etcd/snapshot.db
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>kubectl<span class="w"> </span>cp<span class="w"> </span>kube-system/etcd-&lt;node&gt;:/var/lib/etcd/snapshot.db<span class="w"> </span>./etcd-snapshot.db
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>snapshot<span class="w"> </span>save<span class="w"> </span>/var/lib/etcd/snapshot.db
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>kubectl<span class="w"> </span>cp<span class="w"> </span>kube-system/etcd-&lt;node&gt;:/var/lib/etcd/snapshot.db<span class="w"> </span>./etcd-snapshot.db
 </span></code></pre></div>
 <p>Copy it off the cluster immediately.</p>
 <h2 id="openbao">OpenBao<a class="headerlink" href="#openbao" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
 </span></code></pre></div>
 <p>The snapshot holds all KV data plus policies, roles and mounts. It does <strong>not</strong>
 hold the unseal keys and is useless without them — see
@@ -2678,21 +2714,21 @@ nothing else. Almost every Application runs with <code>prune: true</code> (<code
 <ol>
 <li>
 <p>Find the backup.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>get
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>get
 </span></code></pre></div>
 </li>
 <li>
 <p>Restore from it, scoped to what was lost; without <code>--include-namespaces</code>
    everything in the backup is restored, and existing objects are skipped, not
    overwritten.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
 </li>
 <li>
 <p>Watch it finish and read the warnings.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
 </span></code></pre></div>
 </li>
 </ol>
@@ -2703,19 +2739,19 @@ afterwards the pods seal and want the snapshot's keys, not the new cluster's.</p
 <ol>
 <li>
 <p>Copy the snapshot in.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>./openbao-snapshot.bao<span class="w"> </span>openbao-0:/tmp/snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>./openbao-snapshot.bao<span class="w"> </span>openbao-0:/tmp/snapshot.bao
 </span></code></pre></div>
 </li>
 <li>
 <p>Restore it.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>env<span class="w"> </span><span class="nv">BAO_TOKEN</span><span class="o">=</span>&lt;root-token&gt;<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>-force<span class="w"> </span>/tmp/snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>env<span class="w"> </span><span class="nv">BAO_TOKEN</span><span class="o">=</span>&lt;root-token&gt;<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>-force<span class="w"> </span>/tmp/snapshot.bao
 </span></code></pre></div>
 </li>
 <li>
 <p>Unseal every replica with the snapshot's key shares and confirm.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>bao-unseal
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>bao-unseal
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
 </span></code></pre></div>
 </li>
 </ol>
@@ -2729,9 +2765,9 @@ the CronJob uses. Upstream:
 <li>
 <p>On every control-plane node, stop the API server and etcd by moving their
    static pod manifests out, and wait until neither container is listed.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/root/manifests-stopped
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/manifests/<span class="o">{</span>etcd,kube-apiserver<span class="o">}</span>.yaml<span class="w"> </span>/root/manifests-stopped/
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span>--name<span class="w"> </span><span class="s1">'etcd|kube-apiserver'</span><span class="w">    </span><span class="c1"># empty</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/root/manifests-stopped
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/manifests/<span class="o">{</span>etcd,kube-apiserver<span class="o">}</span>.yaml<span class="w"> </span>/root/manifests-stopped/
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span>--name<span class="w"> </span><span class="s1">'etcd|kube-apiserver'</span><span class="w">    </span><span class="c1"># empty</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2739,26 +2775,26 @@ the CronJob uses. Upstream:
    <code>--name</code>, <code>--initial-cluster</code> and <code>--initial-advertise-peer-urls</code> values
    from that node's <code>/etc/kubernetes/manifests/etcd.yaml</code> (the image tag is in
    <code>payload/platform/backup/etcd-backup.yaml</code>).</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
 </span></code></pre></div>
 </li>
 <li>
 <p>Swap the data directory in, keeping the old one and its ownership.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
 </span></code></pre></div>
 </li>
 <li>
 <p>Put the manifests back on every node, then confirm.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
 </span></code></pre></div>
 </li>
 </ol>
