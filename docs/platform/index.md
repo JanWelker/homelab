@@ -51,6 +51,11 @@ applications` shows — and the namespace it lands in.
 
 Across the platform, memory limits are set at roughly 2.5x the measured peak
 working set and requests at steady state; CPU is requested but never limited.
+The control-plane static pods get their memory requests through the kubeadm
+patches in `ansible/templates/butane_node_config.yaml.j2`, applied at
+`kubeadm init`, `join` and `upgrade`, so a running node picks them up at its
+next reinstall; they carry no limits, because a limit on the API server or
+etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.
 
 ## Traffic Flow
 

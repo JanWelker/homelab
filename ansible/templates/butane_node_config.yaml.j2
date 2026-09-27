@@ -33,6 +33,8 @@ storage:
       mode: 0700
     - path: /var/log/kubernetes/audit
       mode: 0700
+    - path: /etc/kubernetes/patches
+      mode: 0700
 {% endif %}
   files:
     - path: /etc/containerd/config.toml
@@ -130,6 +132,52 @@ storage:
             - level: None
               verbs: ["get", "list", "watch"]
             - level: Metadata
+
+    # Memory requests for the static pods, applied by kubeadm init, join and
+    # upgrade; see docs/platform/index.md#components
+    - path: /etc/kubernetes/patches/kube-apiserver+strategic.yaml
+      mode: 0600
+      contents:
+        inline: |
+          spec:
+            containers:
+              - name: kube-apiserver
+                resources:
+                  requests:
+                    memory: 4Gi
+
+    - path: /etc/kubernetes/patches/etcd+strategic.yaml
+      mode: 0600
+      contents:
+        inline: |
+          spec:
+            containers:
+              - name: etcd
+                resources:
+                  requests:
+                    memory: 320Mi
+
+    - path: /etc/kubernetes/patches/kube-controller-manager+strategic.yaml
+      mode: 0600
+      contents:
+        inline: |
+          spec:
+            containers:
+              - name: kube-controller-manager
+                resources:
+                  requests:
+                    memory: 192Mi
+
+    - path: /etc/kubernetes/patches/kube-scheduler+strategic.yaml
+      mode: 0600
+      contents:
+        inline: |
+          spec:
+            containers:
+              - name: kube-scheduler
+                resources:
+                  requests:
+                    memory: 96Mi
 
     # Bootstrap copy; the DaemonSet in payload/platform/kube-vip/ replaces it.
     # Keep the env in step with that DaemonSet.
@@ -354,7 +402,7 @@ systemd:
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         {% else %}
-        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }} --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }} --patches /etc/kubernetes/patches --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         {% endif %}
         {% else %}
         ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification
