@@ -95,10 +95,13 @@ sysupdate config from the boot server.
    because a cluster built before `proxy.disabled` was set in `kubeadm.yaml.j2`
    still has `proxy: {}` in its stored `kubeadm-config`, and without the flag
    the upgrade redeploys `kube-proxy` beside Cilium; the flag is harmless on a
-   cluster built since.
+   cluster built since. Always pass `--patches /etc/kubernetes/patches` too:
+   the static pods' memory requests come from that directory and an upgrade
+   rewrites the manifests without them otherwise. The other control-plane
+   nodes follow with `kubeadm upgrade node` and the same `--patches` flag.
 
     ```bash
-    sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy
+    sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
     ```
 
 !!! note
