@@ -17,7 +17,7 @@ API is an aggregated Kubernetes API that core controllers read directly.
 | --- | --- |
 | Namespace | `kube-system`; kubelet-csr-approver in `kubelet-csr-approver` |
 | Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued |
-| If it is down | `kubectl top` and every HPA. Nothing else notices |
+| If it is down | `kubectl top`, every HPA and the [descheduler](descheduler.md)'s node usage. Nothing else notices |
 | Health check | `kubectl top nodes` &rarr; a row per node |
 | Files | `payload/platform/metrics-server/`, `payload/platform/kubelet-csr-approver/` |
 

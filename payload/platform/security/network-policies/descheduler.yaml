@@ -1,0 +1,37 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: descheduler
+spec:
+  description: >-
+    Default-deny ingress for the descheduler. A CronJob pod that lives for
+    one pass and serves nothing but its health endpoint, which only the
+    kubelet's probe reaches; metrics are off because a Service in front of
+    a pod that exists for seconds every two hours has nothing to scrape.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: descheduler
+spec:
+  description: >-
+    Default-deny egress for the descheduler. The API server is its only
+    peer: pods, nodes and PodDisruptionBudgets to read, evictions to post,
+    and the node and pod usage it reads from metrics-server through the
+    aggregation layer rather than from the metrics-server pod.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEntities:
+        - kube-apiserver
