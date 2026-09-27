@@ -2774,7 +2774,7 @@ proceeds. The chart's own Postgres subchart is off — see
 <tbody>
 <tr>
 <td><code>authentik.disable_update_check</code>, <code>authentik.disable_startup_analytics</code> and <code>authentik.avatars</code></td>
-<td>Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. <code>avatars</code> only seeds a fresh database: since 2024.2 the setting lives in <strong>System → Settings</strong>, and an existing install keeps calling Gravatar until it is set to <code>initials</code> there. Blueprints cannot set it; an upstream ask for a config-level opt-out is drafted</td>
+<td>Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. <code>avatars</code> only seeds a fresh database: since 2024.2 the setting lives in <strong>System → Settings</strong>, and an existing install keeps calling Gravatar until it is set to <code>initials</code> there. Blueprints cannot set it; the ask for a config-level opt-out is <a href="https://github.com/goauthentik/authentik/issues/26470">goauthentik/authentik#26470</a></td>
 </tr>
 <tr>
 <td><code>authentik.web.base_url</code></td>
