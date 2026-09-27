@@ -207,7 +207,8 @@ are not enforced either.
     ```
 
 4. Tighten each `http: [{}]` to the methods and paths seen, set
-   `policyAuditMode: false`, which rolls the agents again. From then on the
+   `policyAuditMode: false`, which rolls the agents again. The first
+   week's reading is [Network Policy Audit 2026-09-27](../operations/network-policy-audit-2026-09-27.md). From then on the
    verdict to watch is `DROPPED`, live or from Loki — see
    [Cilium](cilium.md#health-check) — and the `HubblePolicyDrops` alert
    fires on a sustained one.
@@ -233,6 +234,9 @@ kubectl get validatingadmissionpolicy
 
 !!! note "Audit mode stops at the proxy"
     `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity.
+
+!!! note "A name rule audits one SYN in twenty"
+    A `toFQDNs` rule admits the addresses the DNS proxy has seen for the name, and the proxy releases the answer after at most 100ms whether or not every datapath has the new address. About one connection in twenty to a CDN name is recorded `AUDIT` with a `world` destination; under enforcement that `SYN` drops and the retransmit a second later goes through. A run of drops on one source port is different: the application connected to an address it cached past the DNS TTL.
 
 !!! note "The token change is not retroactive"
     The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.
