@@ -13,8 +13,9 @@ spec:
     from the host and the CSI node plugin runs there, so mons, mgr and OSDs
     see them as host and remote-node. From other namespaces: Prometheus
     reads the mgr and the exporters, the Authentik outpost proxies the
-    dashboard, and Loki and Velero write to the object store. S3 carries
-    every backup and log chunk, so it stays at L4.
+    dashboard, Loki writes to the object store directly and Velero through
+    the infra Gateway, which arrives as ingress. S3 carries every backup
+    and log chunk, so it stays at L4.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -53,6 +54,12 @@ spec:
             k8s:app.kubernetes.io/name: loki
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: backup
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - fromEntities:
+        - ingress
       toPorts:
         - ports:
             - port: "8080"

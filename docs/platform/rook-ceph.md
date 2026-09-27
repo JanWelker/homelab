@@ -49,7 +49,10 @@ filesystem — the first thing to check when an OSD refuses to appear, see
 
 A `CephObjectStore` provides an S3 endpoint at
 `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks
-live somewhere other than the block pool they protect. Two RGW instances keep
+live somewhere other than the block pool they protect. The infra Gateway
+publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for
+[Velero](velero.md#configuration), whose S3 client only signs cleanly over
+TLS. Two RGW instances keep
 a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
 1.5x overhead rather than 3x, safe at `failureDomain: host` with six nodes.
 
