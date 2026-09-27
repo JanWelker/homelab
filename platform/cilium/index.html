@@ -2442,8 +2442,8 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td><code>HubblePolicyDrops</code>: fifteen minutes of <code>POLICY_DENIED</code> drops between two namespaces, above a trickle. <code>VLAN_FILTERED</code> and <code>STALE_OR_UNROUTABLE_IP</code> dominate the raw counter and are the LAN, not a policy</td>
 </tr>
 <tr>
-<td><code>cilium-agent</code> without a memory limit</td>
-<td>It is the one process whose death takes pod networking with it, and it cannot be sized from a day of steady state</td>
+<td><code>cilium-agent</code> memory limit</td>
+<td>It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, not a day, before the <a href="../">platform rule</a> applied</td>
 </tr>
 <tr>
 <td><code>trustCRDsExist: true</code></td>
