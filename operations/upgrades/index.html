@@ -2412,8 +2412,11 @@ sysupdate config from the boot server.</p>
    because a cluster built before <code>proxy.disabled</code> was set in <code>kubeadm.yaml.j2</code>
    still has <code>proxy: {}</code> in its stored <code>kubeadm-config</code>, and without the flag
    the upgrade redeploys <code>kube-proxy</code> beside Cilium; the flag is harmless on a
-   cluster built since.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy
+   cluster built since. Always pass <code>--patches /etc/kubernetes/patches</code> too:
+   the static pods' memory requests come from that directory and an upgrade
+   rewrites the manifests without them otherwise. The other control-plane
+   nodes follow with <code>kubeadm upgrade node</code> and the same <code>--patches</code> flag.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 </li>
 </ol>

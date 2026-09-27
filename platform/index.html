@@ -2417,7 +2417,12 @@ applications</code> shows — and the namespace it lands in.</p>
 </tbody>
 </table>
 <p>Across the platform, memory limits are set at roughly 2.5x the measured peak
-working set and requests at steady state; CPU is requested but never limited.</p>
+working set and requests at steady state; CPU is requested but never limited.
+The control-plane static pods get their memory requests through the kubeadm
+patches in <code>ansible/templates/butane_node_config.yaml.j2</code>, applied at
+<code>kubeadm init</code>, <code>join</code> and <code>upgrade</code>, so a running node picks them up at its
+next reinstall; they carry no limits, because a limit on the API server or
+etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.</p>
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     Client([Client]) --&gt; LB[Cilium LoadBalancer]
