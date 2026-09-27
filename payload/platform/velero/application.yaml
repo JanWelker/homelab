@@ -58,7 +58,8 @@ spec:
               config:
                 region: eu-central-1
                 s3ForcePathStyle: "true"
-                s3Url: http://rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
+                # TLS through the infra Gateway: RGW refuses kopia's plain-HTTP signature
+                s3Url: https://s3.infra.k8s.wlkr.ch
                 # Required: RGW rejects the SDK's trailing checksum otherwise
                 checksumAlgorithm: ""
 

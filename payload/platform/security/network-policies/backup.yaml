@@ -39,7 +39,8 @@ spec:
     Default-deny egress for the backup namespace. Everything here
     reconciles through the API server. Velero checks its store every
     minute and the data-mover pods the node agent starts each night carry
-    the volume data to it: plaintext S3 to the RGW pods in rook-ceph. The
+    the volume data to it: S3 over TLS through the infra Gateway, whose
+    address the datapath classifies as world, hence the name rule. The
     movers are created with Velero's own labels, so the rule is for the
     namespace. The etcd CronJob is host-networked and outside any policy.
   endpointSelector: {}
@@ -48,11 +49,9 @@ spec:
         - {}
     - toEntities:
         - kube-apiserver
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: rook-ceph
-            k8s:app: rook-ceph-rgw
+    - toFQDNs:
+        - matchName: s3.infra.k8s.wlkr.ch
       toPorts:
         - ports:
-            - port: "8080"
+            - port: "443"
               protocol: TCP
