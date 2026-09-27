@@ -10,7 +10,8 @@ spec:
     Loki dials its own ClusterIP for the compactor and memberlist, all
     within the namespace. From outside it, Prometheus scrapes Loki and
     every Alloy, and Grafana queries Loki. Loki's scrape and query share
-    one port, so the L7 rule is what tells them apart.
+    one port, so the L7 rule is what tells them apart: Prometheus gets
+    GET /metrics, Grafana the query API.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -30,7 +31,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /metrics$
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
@@ -41,7 +43,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /loki/api/v1/.*
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
