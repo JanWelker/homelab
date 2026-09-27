@@ -12,8 +12,9 @@ spec:
     for other applications, lands on the server's plaintext port. Nothing in
     the cluster dials Authentik by its Service name: every OIDC client goes
     through the Gateway and arrives as ingress. Prometheus reads the metrics
-    port of the server, the worker and the database; the CloudNativePG
-    operator polls each instance on its status port.
+    port of the server, the worker and the database, GET /metrics and nothing
+    else; the CloudNativePG operator polls each instance on its status port,
+    TLS, so that rule stays at L4.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -35,9 +36,19 @@ spec:
         - ports:
             - port: "9300"
               protocol: TCP
+            - port: "9187"
+              protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /metrics$
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: cnpg-system
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
