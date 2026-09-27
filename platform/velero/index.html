@@ -2363,6 +2363,10 @@ the chart tuning.</p>
 <td>The AWS plugin's SDK sends a trailing checksum that Ceph RGW rejects with <code>XAmzContentSHA256Mismatch</code>; every upload fails without it</td>
 </tr>
 <tr>
+<td><code>s3Url: https://s3.infra.k8s.wlkr.ch</code>, not the RGW Service</td>
+<td>kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph 20.2.4 rejects as unsigned headers (<a href="https://docs.ceph.com/en/latest/security/CVE-2026-54330/">CVE-2026-54330</a>); over TLS it sends <code>UNSIGNED-PAYLOAD</code> and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers</td>
+</tr>
+<tr>
 <td><code>velero-plugin-for-aws</code> init container</td>
 <td>The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind</td>
 </tr>
@@ -2412,6 +2416,10 @@ the chart tuning.</p>
 <div class="admonition warning">
 <p class="admonition-title">PartiallyFailed with no volume data</p>
 <p>Velero found no labelled <code>VolumeSnapshotClass</code> and skipped every volume without an error. Check the class above exists and carries the label.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>Access Denied</code> on <code>kopia.blobcfg</code></p>
+<p>Objects upload, volume data does not: the RGW log shows <code>PUT /velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
 </div>
 
 
