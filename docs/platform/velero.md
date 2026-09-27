@@ -25,6 +25,7 @@ the chart tuning.
 | Setting | Why |
 | --- | --- |
 | `checksumAlgorithm: ""` on the `BackupStorageLocation` | The AWS plugin's SDK sends a trailing checksum that Ceph RGW rejects with `XAmzContentSHA256Mismatch`; every upload fails without it |
+| `s3Url: https://s3.infra.k8s.wlkr.ch`, not the RGW Service | kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph 20.2.4 rejects as unsigned headers ([CVE-2026-54330](https://docs.ceph.com/en/latest/security/CVE-2026-54330/)); over TLS it sends `UNSIGNED-PAYLOAD` and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers |
 | `velero-plugin-for-aws` init container | The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind |
 | `credentials.useSecret: false` with `extraEnvVars` | Keys come from the environment, fed by the `Secret` Rook writes for the `velero-bucket` claim; nothing is rendered into a file or Git |
 | `defaultSnapshotMoveData`, `deployNodeAgent`, `uploaderType: kopia` | A CSI snapshot is a Ceph object in the same cluster; the data mover (run by the node agent) streams it into the bucket and deletes the snapshot |
@@ -53,3 +54,6 @@ kubectl -n backup get volumesnapshotclass rook-ceph-block
 
 !!! warning "PartiallyFailed with no volume data"
     Velero found no labelled `VolumeSnapshotClass` and skipped every volume without an error. Check the class above exists and carries the label.
+
+!!! warning "Every `BackupRepository` NotReady, `Access Denied` on `kopia.blobcfg`"
+    Objects upload, volume data does not: the RGW log shows `PUT /velero/kopia/...` from `minio-go` with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the `s3Url` row above.
