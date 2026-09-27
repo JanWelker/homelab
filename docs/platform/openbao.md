@@ -63,7 +63,11 @@ pod next restarts — see [Unsealing after a restart](#unsealing-after-a-restart
 
 `OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](logging.md#alerting)
 fires on a `kv/data/` read by anything but the External Secrets Operator's
-policy: a person with the root token, or a token that should not exist.
+policy: a person with the root token, or a token that should not exist. A
+standby audits a request before it resolves the token, so its
+`please forward to the active node` rejections carry no identity; the rule
+drops them, and the `ClusterSecretStore` targets the `openbao-active`
+Service so ESO never produces one.
 
 ```logql
 {namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
