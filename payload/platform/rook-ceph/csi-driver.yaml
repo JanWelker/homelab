@@ -55,3 +55,34 @@ spec:
           memory: 512Mi
   controllerPlugin:
     replicas: 1
+    resources:
+      plugin:
+        requests:
+          memory: 64Mi
+          cpu: 50m
+        limits:
+          memory: 512Mi
+      provisioner:
+        requests:
+          memory: 48Mi
+          cpu: 10m
+        limits:
+          memory: 128Mi
+      attacher:
+        requests:
+          memory: 48Mi
+          cpu: 10m
+        limits:
+          memory: 128Mi
+      resizer:
+        requests:
+          memory: 48Mi
+          cpu: 10m
+        limits:
+          memory: 128Mi
+      snapshotter:
+        requests:
+          memory: 48Mi
+          cpu: 10m
+        limits:
+          memory: 128Mi
