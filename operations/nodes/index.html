@@ -334,6 +334,8 @@
       
         
       
+        
+      
     
     
     
@@ -978,6 +980,8 @@
       
         
       
+        
+      
     
     
     
@@ -1449,6 +1453,33 @@
     
   
   Kured
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/descheduler/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Descheduler
 
     
   </span>
@@ -2355,6 +2386,9 @@ reboot; that takes a <a href="#rebuilding-or-repartitioning-a-node">rebuild</a>.
 <p>Uncordon it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>uncordon<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
+<p>The pods that moved stay where they are; the
+<a href="../../platform/descheduler/">descheduler</a> spreads them back out on its
+next pass.</p>
 </li>
 <li>
 <p><strong>Wait for Ceph</strong> before touching the next node: draining a second node
