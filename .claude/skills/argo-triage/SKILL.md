@@ -1,6 +1,6 @@
 ---
 name: argo-triage
-description: Diagnose an unhealthy Argo CD Application or a broken platform component on this cluster and fix it in the repository, never on the cluster. Use when the user says "what is wrong with kube-prometheus-stack", "what is going on with my openbao deployment", "some argo apps are still unhappy", "rook is still unhappy", "the two argo apps are hanging", "alerts for nextcloud are firing, investigate", "I see no logs in Loki", "refresh the argo app so it syncs now", "merge it and watch the rollout", or reports any Degraded, OutOfSync, Progressing-forever or Missing state. Covers reading Application status, the ExternalSecret and OpenBao chain, events and logs, the declarative fix, and watching the sync land.
+description: Diagnose an unhealthy Argo CD Application or a broken platform component on this cluster and fix it in the repository, never on the cluster. Use when the user says "what is wrong with kube-prometheus-stack", "what is going on with my openbao deployment", "some argo apps are still unhappy", "rook is still unhappy", "the two argo apps are hanging", "alerts for nextcloud are firing, investigate", pastes an alert's summary or description with no question ("X was refused 18 times in ten minutes", "A burst of 403s from one identity is what probing RBAC looks like"), "why is this alert firing", "I see no logs in Loki", "refresh the argo app so it syncs now", "merge it and watch the rollout", or reports any Degraded, OutOfSync, Progressing-forever or Missing state. Covers reading Application status, tracing an alert back to its rule and the job behind it, the ExternalSecret and OpenBao chain, events and logs, the declarative fix, and watching the sync land.
 ---
 
 # argo-triage
@@ -37,6 +37,37 @@ Sort the state into one of five buckets before reading anything else:
 Every Application auto-syncs with `selfHeal` and `prune`, so a state that
 persists is not waiting for a person to click Sync. A hand-applied fix is
 undone within one poll.
+
+## 1a. From an alert
+
+A pasted alert is a symptom with an identity attached; the job it fired
+during is usually the patient.
+
+1. Find the rule: Loki-ruler alerts live in
+   `payload/platform/logging/loki-rules.yaml`, Prometheus rules under
+   `payload/platform/monitoring/`. Grep a phrase from the description.
+2. Re-run the rule's query for that identity with the raw lines, and count
+   the previous days before calling anything new:
+
+    ```bash
+    kubectl -n logging port-forward svc/loki 3100:3100 &
+    curl -sG http://127.0.0.1:3100/loki/api/v1/query_range \
+      --data-urlencode 'query={job="kubernetes-audit"} | json | responseStatus_code = 403 | user_username="system:serviceaccount:<ns>:<sa>"' \
+      --data-urlencode "start=$(( $(date +%s) - 86400 ))000000000" --data-urlencode "end=$(date +%s)000000000" \
+      | jq -r '.data.result[].values[][1]' | jq -r '[.userAgent, .verb, .requestURI, .responseStatus.message] | @tsv'
+    ```
+
+    An audit entry names the client in `userAgent` (`csi-provisioner`, not
+    the pod), the object, and why it was refused. A `count_over_time(...[1d])`
+    with `step=86400` shows whether it fires every night.
+3. Line the timestamps up with the schedules: 01:00 is the etcd CronJob,
+   02:00 is Velero. Read that job's own result before the alert's: a
+   nightly 403 burst turned out to be noise beside a backup that had never
+   moved volume data.
+4. Streams worth knowing: `{job="kubernetes-audit"}`, `{job="hubble"}` (fields
+   under `flow.`), and pod logs by `{namespace="..."}`. RGW's access log is
+   `{namespace="rook-ceph"} |= "/velero/"`; a `-` in its user column is a
+   request that failed authentication, not authorization.
 
 ## 2. The secrets chain is the usual root
 
@@ -78,6 +109,13 @@ Known shapes on this cluster:
   Prometheus and Alertmanager in `payload/platform/monitoring`.
 - **No logs in Loki**: check Alloy's targets and the `job` label before the
   Loki config; the dashboards filter on it.
+- **Velero PartiallyFailed, every `BackupRepository` NotReady, DataUploads
+  `Access Denied`**: `kubectl get backup` is CloudNativePG's kind; Velero's
+  is `backups.velero.io`, then `backuprepositories` and `datauploads`. The
+  RGW cause and the TLS fix are in `docs/platform/velero.md` (Pitfalls).
+- **403 burst from `rbd-ctrlplugin-sa` at 02:01**: csi-provisioner's clone
+  finalizer, `docs/platform/rook-ceph.md` (CSI driver). The local verb goes
+  once ceph/ceph-csi-operator#625 ships in a release Rook pulls in.
 - **Workload Applications in `homelab-apps`** follow the same rules; the
   fix goes in that repository, with the same syncPolicy block.
 
@@ -89,8 +127,21 @@ resource. Ship it through `pr-batch`, one PR per cause. Say in the PR body
 whether the user must restart or unseal something after merge.
 
 Do not `kubectl edit`, `patch`, `delete` or `helm upgrade` on a running
-cluster. Read-only commands, `argocd app sync` on an exhausted retry, and
-`argocd app get --refresh` are the whole imperative toolbox.
+cluster. Read-only commands, `argocd app sync` on an exhausted retry,
+`argocd app get --refresh`, and a throwaway probe pod are the whole
+imperative toolbox:
+
+```bash
+kubectl -n <ns> run probe --rm -i --restart=Never --image=curlimages/curl:8.11.1 \
+  --command -- curl -sS -o /dev/null -w '%{http_code} %{ssl_verify_result}\n' https://<host>/
+```
+
+Reproduce a connection or lookup from the namespace in question before
+blaming a policy; Hubble then shows the verdict and the destination
+identity (a Gateway address is `world`, so its rule is `toFQDNs`, see
+`docs/platform/security-policies.md`). While
+`policy-audit-mode` in the `cilium-config` ConfigMap is `true`, a
+`DROPPED` verdict in Loki is what would happen, not what did.
 
 ## 5. Watch it land
 
@@ -100,6 +151,10 @@ resource that was broken, rather than repeated `get` calls:
 ```bash
 kubectl -n argocd get application <app> -o jsonpath='{.status.sync.status} {.status.health.status} {.status.sync.revision}'
 ```
+
+A PR that adds an HTTPRoute is done when the route reports `Accepted` and
+external-dns has published the name (`dig`); a PR that points a client at
+that name waits for both before it merges.
 
 Report the revision Argo reached, the health state, and what is still
 pending on the user (unseal, restart, credentials). If the state did not
