@@ -40,6 +40,10 @@ reboot; that takes a [rebuild](#rebuilding-or-repartitioning-a-node).
     kubectl uncordon <node>
     ```
 
+    The pods that moved stay where they are; the
+    [descheduler](../platform/descheduler.md) spreads them back out on its
+    next pass.
+
 4. **Wait for Ceph** before touching the next node: draining a second node
    while the first is still backfilling can take a placement group below its
    minimum replica count.

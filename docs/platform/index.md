@@ -27,6 +27,7 @@ applications` shows — and the namespace it lands in.
 | certificates | `cert-manager` | The Let's Encrypt issuers and the two Gateway wildcards — see [cert-manager](cert-manager.md) |
 | [cilium](cilium.md) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](cloudnative-pg.md) | `cnpg-system` | The PostgreSQL operator every workload database runs on |
+| [descheduler](descheduler.md) | `descheduler` | Evicts pods a drain or reboot left piled on the surviving nodes |
 | [external-dns](external-dns.md) | `external-dns` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](external-secrets.md) | `external-secrets` | Bridges OpenBao to native Kubernetes Secrets |
 | [gateway-api](gateway-api.md) | `kube-system` | The two Gateways and the HTTP-to-HTTPS redirect |
@@ -123,7 +124,7 @@ while it is not yet Healthy.
 | Services | `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
-| Policy | `kured`, `security`, `trivy-operator` | namespaces to label and a Prometheus to scrape; kured reboots only on a staged update, never on a fresh install |
+| Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](../development/add-workload.md) |
 
 Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own

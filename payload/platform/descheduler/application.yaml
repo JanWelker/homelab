@@ -1,0 +1,96 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: descheduler
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    repoURL: https://kubernetes-sigs.github.io/descheduler/
+    chart: descheduler
+    targetRevision: 0.36.0
+    helm:
+      valuesObject:
+        kind: CronJob
+        schedule: "0 */2 * * *"
+        successfulJobsHistoryLimit: 1
+        failedJobsHistoryLimit: 1
+
+        cmdOptions:
+          v: 3
+
+        deschedulerPolicy:
+          maxNoOfPodsToEvictPerNode: 5
+          metricsProviders:
+            - source: KubernetesMetrics
+          profiles:
+            - name: default
+              pluginConfig:
+                - name: DefaultEvictor
+                  args:
+                    nodeFit: true
+                - name: RemoveDuplicates
+                - name: RemovePodsViolatingTopologySpreadConstraint
+                  args:
+                    constraints:
+                      - DoNotSchedule
+                      - ScheduleAnyway
+                - name: RemovePodsHavingTooManyRestarts
+                  args:
+                    podRestartThreshold: 20
+                    includingInitContainers: true
+                - name: LowNodeUtilization
+                  args:
+                    thresholds:
+                      cpu: 40
+                      memory: 40
+                    targetThresholds:
+                      cpu: 70
+                      memory: 70
+                    metricsUtilization:
+                      source: KubernetesMetrics
+                    evictionLimits:
+                      node: 5
+              plugins:
+                balance:
+                  enabled:
+                    - RemoveDuplicates
+                    - RemovePodsViolatingTopologySpreadConstraint
+                    - LowNodeUtilization
+                deschedule:
+                  enabled:
+                    - RemovePodsHavingTooManyRestarts
+
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: null
+            memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: descheduler
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
