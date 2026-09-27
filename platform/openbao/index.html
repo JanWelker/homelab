@@ -2689,7 +2689,11 @@ start-up, and the StatefulSet updates <code>OnDelete</code>, so a change lands w
 pod next restarts — see <a href="#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
 <p><code>OpenBaoSecretReadOutsideEso</code> in <a href="../logging/#alerting"><code>loki-rules.yaml</code></a>
 fires on a <code>kv/data/</code> read by anything but the External Secrets Operator's
-policy: a person with the root token, or a token that should not exist.</p>
+policy: a person with the root token, or a token that should not exist. A
+standby audits a request before it resolves the token, so its
+<code>please forward to the active node</code> rejections carry no identity; the rule
+drops them, and the <code>ClusterSecretStore</code> targets the <code>openbao-active</code>
+Service so ESO never produces one.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
 </span></code></pre></div>
 <h3 id="kv-layout">KV layout<a class="headerlink" href="#kv-layout" title="Permanent link">&para;</a></h3>
