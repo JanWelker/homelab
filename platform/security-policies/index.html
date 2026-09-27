@@ -378,6 +378,8 @@
       
         
       
+        
+      
     
     
     
@@ -1783,6 +1785,8 @@
       
         
       
+        
+      
     
     
     
@@ -2011,6 +2015,33 @@
     
   
   Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/network-policy-audit-2026-09-27/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Network Policy Audit 2026-09-27
 
     
   </span>
@@ -2869,7 +2900,8 @@ are not enforced either.</p>
 </li>
 <li>
 <p>Tighten each <code>http: [{}]</code> to the methods and paths seen, set
-   <code>policyAuditMode: false</code>, which rolls the agents again. From then on the
+   <code>policyAuditMode: false</code>, which rolls the agents again. The first
+   week's reading is <a href="../../operations/network-policy-audit-2026-09-27/">Network Policy Audit 2026-09-27</a>. From then on the
    verdict to watch is <code>DROPPED</code>, live or from Loki — see
    <a href="../cilium/#health-check">Cilium</a> — and the <code>HubblePolicyDrops</code> alert
    fires on a sustained one.</p>
@@ -2890,6 +2922,10 @@ it alone, until the agent restarts:</p>
 <div class="admonition note">
 <p class="admonition-title">Audit mode stops at the proxy</p>
 <p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">A name rule audits one SYN in twenty</p>
+<p>A <code>toFQDNs</code> rule admits the addresses the DNS proxy has seen for the name, and the proxy releases the answer after at most 100ms whether or not every datapath has the new address. About one connection in twenty to a CDN name is recorded <code>AUDIT</code> with a <code>world</code> destination; under enforcement that <code>SYN</code> drops and the retransmit a second later goes through. A run of drops on one source port is different: the application connected to an address it cached past the DNS TTL.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">The token change is not retroactive</p>
