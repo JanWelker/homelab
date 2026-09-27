@@ -72,6 +72,14 @@ spec:
             deploymentStrategy:
               type: Recreate
 
+            # Limits ~2.5x measured peak, see docs/platform/index.md
+            resources:
+              requests:
+                cpu: 50m
+                memory: 512Mi
+              limits:
+                memory: 2304Mi
+
             persistence:
               enabled: true
               type: pvc
@@ -101,6 +109,14 @@ spec:
               retention: 10d
               # Floor under the volume: blocks are dropped before it fills.
               retentionSize: 21GiB
+              # 2.5x peak is ~6.7Gi; 6Gi keeps it under an 8 GiB node's
+              # allocatable memory, see docs/platform/index.md
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 2304Mi
+                limits:
+                  memory: 6Gi
 
           alertmanager:
             # Nothing binds Alertmanager to RBAC; the token is only exposure.
