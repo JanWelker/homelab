@@ -21,7 +21,7 @@ verdicts, 21k of them one missing pair of rules.
 | Flow | Disposition |
 | --- | --- |
 | Authentik server to `goauthentik.io`, twice per pod start | **Switched off.** `disable_startup_analytics`: #929 |
-| Authentik server to `www.gravatar.com`, 117 times | **Not a switch the repository holds.** `AUTHENTIK_AVATARS` seeds the tenant once; the live value is a system setting and the database still says `gravatar,initials`. Set `initials` under System → Settings; an upstream ask for a config-level opt-out is drafted |
+| Authentik server to `www.gravatar.com`, 117 times | **Not a switch the repository holds.** `AUTHENTIK_AVATARS` seeds the tenant once; the live value is a system setting and the database still says `gravatar,initials`. Set `initials` under System → Settings; the upstream ask is [goauthentik/authentik#26470](https://github.com/goauthentik/authentik/issues/26470) |
 | Nextcloud to `updates.nextcloud.com` and `pushfeed.nextcloud.com` | **Switched off** in the startup hook: apps #60 |
 | Trivy scan jobs to `check.trivy.dev`, Authentik worker to `version.goauthentik.io`, Alloy and Loki to `stats.grafana.org`, Grafana to `grafana.com` and `secure.gravatar.com` | **Already off**, by #861, #883 and the values that predate the week; every record is from before the switch landed |
 
