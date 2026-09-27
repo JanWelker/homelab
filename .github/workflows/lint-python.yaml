@@ -39,8 +39,10 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run pylint
-        run: uv run pylint boot_server/*.py scripts/*.py tests/*.py
+      - name: Run ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
 
       - name: Run tests
         run: uv run pytest -q

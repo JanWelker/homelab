@@ -18,7 +18,7 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # ansible-lint, markdownlint, pylint, pytest, yamllint, docs build
+uv run pre-commit run --all-files       # ansible-lint, markdownlint, ruff, pytest, yamllint, docs build
 uv run zensical build --clean --strict  # docs alone; strict fails on broken links and orphan pages
 
 # Before touching payload/: valid objects, and what Helm will actually render

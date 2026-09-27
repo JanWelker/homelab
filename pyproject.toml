@@ -27,10 +27,26 @@ module-root = ""
 [dependency-groups]
 dev = [
     "zensical>=0.0.65",
-    "pylint>=4.0.9",
     "pytest>=9.0.0",
+    "ruff>=0.16.9",
     "yamllint>=1.38.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+# The skill helper was never linted; the project code is boot_server/, scripts/ and tests/.
+extend-exclude = [".claude"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "PL", "SIM", "RUF"]
+ignore = [
+    "PLR2004", # a size threshold or a port number reads better inline than as a named constant
+    "SIM300",  # tests assert MODULE.CONSTANT == expected; ruff reads the upper-case name as the constant
+]
+
+[tool.ruff.format]
+quote-style = "single"

@@ -11,9 +11,15 @@ repos:
         files: ^ansible/
         pass_filenames: false
 
-      - id: pylint
-        name: Pylint
-        entry: uv run pylint
+      - id: ruff-check
+        name: Ruff check
+        entry: uv run ruff check
+        language: system
+        files: ^(boot_server|scripts|tests)/.*\.py$
+
+      - id: ruff-format
+        name: Ruff format
+        entry: uv run ruff format --check
         language: system
         files: ^(boot_server|scripts|tests)/.*\.py$
 
