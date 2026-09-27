@@ -27,7 +27,6 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `redis-ha.haproxy` `maxSurge: 0` | Three replicas with hard per-host anti-affinity on three schedulable nodes. The default surges a fourth pod with nowhere to land and wedges every rollout; retiring first frees the node |
 | `redis-ha.image.tag`, `redis-ha.haproxy.image.tag` | Both run ahead of the chart, whose exact patch tags stop being rebuilt once the next one lands and so miss base-image security fixes. Renovate carries them forward; each bare `tag:` must be listed under the `pinDigests: false` rule in `renovate.json` |
 | Memory limits, no CPU limits | A CPU limit throttles even on an idle node; memory is not compressible. Sizing is in [Platform](index.md) |
-| `controller` has no resources | The application-controller grows with the number of managed resources and is not yet sized |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
 | `server.extraArgs: --insecure` | TLS terminates at the Gateway |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |

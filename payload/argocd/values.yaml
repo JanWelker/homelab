@@ -55,13 +55,18 @@ redis-ha:
       limits:
         memory: 128Mi
 
-# controller has no resources yet: it grows with managed resources.
 controller:
   replicas: 1
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1280Mi
+    limits:
+      memory: 4352Mi
 
 server:
   replicas: 3
