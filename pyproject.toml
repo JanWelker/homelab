@@ -12,9 +12,25 @@ dependencies = [
     "tftpy==0.8.7",
 ]
 
+[project.scripts]
+boot-server = "boot_server.serve:main"
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13"]
+build-backend = "uv_build"
+
+# The package sits at the repository root, not under src/.
+[tool.uv.build-backend]
+module-name = "boot_server"
+module-root = ""
+
 [dependency-groups]
 dev = [
     "zensical>=0.0.65",
     "pylint>=4.0.9",
+    "pytest>=9.0.0",
     "yamllint>=1.38.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

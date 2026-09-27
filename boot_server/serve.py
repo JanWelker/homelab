@@ -6,6 +6,7 @@ switches a node's PXE menu back to local boot once it has the OS image -- so the
 reboot at the end of an install boots the disk instead of the installer again.
 """
 
+import argparse
 import errno
 import json
 import logging
@@ -22,12 +23,16 @@ from tftpy.TftpContexts import TftpContextServer
 
 TFTP_PORT = 69
 HTTP_PORT = 8000
-
-HTTP_DIR = os.path.join(os.getcwd(), 'output', 'http')
-TFTP_DIR = os.path.join(os.getcwd(), 'output', 'tftp')
-INVENTORY = os.path.join(os.getcwd(), 'ansible', 'inventory.yaml')
 MENU_SUBDIR = 'pxelinux.cfg'
-PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
+
+# Where the servers answer and what they serve. configure() fills these in
+# from the command line; until then importing the module touches nothing,
+# which is what the tests rely on.
+BIND_IP = None
+HTTP_DIR = None
+TFTP_DIR = None
+PXE_DIR = None
+INVENTORY = None
 
 
 OS_IMAGE = 'flatcar_production_image.bin.bz2'
@@ -71,7 +76,8 @@ def _boot_server_ip():
         with open(INVENTORY, encoding='utf-8') as handle:
             inventory = yaml.safe_load(handle) or {}
     except FileNotFoundError:
-        sys.exit(f'{INVENTORY} not found -- run make serve from the repository root')
+        sys.exit(f'{INVENTORY} not found -- run make serve from the repository '
+                 'root, or pass --root')
     except yaml.YAMLError as error:
         sys.exit(f'{INVENTORY} is not valid YAML: {error}')
 
@@ -81,7 +87,25 @@ def _boot_server_ip():
     return str(address)
 
 
-BIND_IP = _boot_server_ip()
+def configure(root, bind=None, http_port=None, tftp_port=None):
+    """Point the servers at a checkout, an address and two ports.
+
+    The document roots and the inventory all hang off the checkout, so one
+    --root moves them together. The address defaults to the inventory's
+    boot_server_ip, the one every generated menu points at; a port left out
+    keeps its well-known value.
+    """
+    global BIND_IP, HTTP_DIR, TFTP_DIR, PXE_DIR, INVENTORY, HTTP_PORT, TFTP_PORT  # pylint: disable=global-statement
+    HTTP_DIR = os.path.join(root, 'output', 'http')
+    TFTP_DIR = os.path.join(root, 'output', 'tftp')
+    PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
+    INVENTORY = os.path.join(root, 'ansible', 'inventory.yaml')
+    if http_port is not None:
+        HTTP_PORT = http_port
+    if tftp_port is not None:
+        TFTP_PORT = tftp_port
+    BIND_IP = bind or _boot_server_ip()
+
 
 logger = logging.getLogger('bootserver')
 hosts_by_ip = {}
@@ -502,7 +526,30 @@ def announce_start():
         say('server', 'booting from disk: %s', ', '.join(local))
 
 
-if __name__ == '__main__':
+def parse_args(argv=None):
+    """The command line: where to answer, on which ports, from which checkout."""
+    parser = argparse.ArgumentParser(
+        prog='boot-server',
+        description='TFTP and HTTP boot server for the bare metal nodes.')
+    parser.add_argument(
+        '--bind', metavar='IP',
+        help='address to answer on (default: boot_server_ip from the inventory)')
+    parser.add_argument('--http-port', type=int, default=HTTP_PORT, metavar='PORT',
+                        help='HTTP port (default: %(default)s)')
+    parser.add_argument('--tftp-port', type=int, default=TFTP_PORT, metavar='PORT',
+                        help='TFTP port (default: %(default)s)')
+    parser.add_argument(
+        '--root', default=os.getcwd(), metavar='DIR',
+        help='repository checkout holding ansible/ and output/ '
+             '(default: the working directory)')
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    """Serve until Ctrl-C, then offer to disarm whatever is still armed."""
+    args = parse_args(argv)
+    configure(args.root, args.bind, args.http_port, args.tftp_port)
+
     console = logging.StreamHandler()
     console.setFormatter(Console(tint=in_colour(console.stream)))
     console.addFilter(DropKnownTftpNoise())
@@ -539,3 +586,7 @@ if __name__ == '__main__':
     except Exception as error:  # pylint: disable=broad-exception-caught
         say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
         sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

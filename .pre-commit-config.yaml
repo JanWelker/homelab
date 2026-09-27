@@ -15,7 +15,14 @@ repos:
         name: Pylint
         entry: uv run pylint
         language: system
-        files: ^(boot_server|scripts)/.*\.py$
+        files: ^(boot_server|scripts|tests)/.*\.py$
+
+      - id: pytest
+        name: Pytest
+        entry: uv run pytest -q
+        language: system
+        files: ^(boot_server|scripts|tests)/.*\.py$
+        pass_filenames: false
 
       - id: yamllint
         name: YAML Lint

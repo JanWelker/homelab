@@ -152,14 +152,17 @@ The node boots from its own disk; the boot server should be off.
 
 ## Boot server
 
-`boot_server/serve.py` is a TFTP server and an HTTP server. `make serve` starts
-it from the repository root (the document roots are relative to the working
-directory) and needs `sudo` for port 69; once both ports are bound it drops
-back to the user who ran `sudo`, so nothing under `output/` ends up owned by
-root. Both servers bind `boot_server_ip`
+`boot_server/serve.py` is a TFTP server and an HTTP server, installed by
+`uv sync` as the `boot-server` command. `make serve` runs it under `sudo` from
+the repository root (the document roots hang off `--root`, which defaults to
+the working directory), because port 69 needs root; once both ports are bound
+it drops back to the user who ran `sudo`, so nothing under `output/` ends up
+owned by root. Both servers bind `boot_server_ip`
 from `ansible/inventory.yaml` — the address `make config` baked into every
 generated URL — and nothing else. If no interface holds that address it says so
-and names the variable; if port 8000 is taken it exits.
+and names the variable; if port 8000 is taken it exits. `--bind`, `--http-port`
+and `--tftp-port` override all three, which is how the tests and a dry run on
+a laptop avoid the privileged port.
 
 | Server | Root | Serves |
 | --- | --- | --- |

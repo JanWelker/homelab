@@ -105,6 +105,7 @@ regenerated identically, and `make clean` deletes them.
 uv run yamllint -f github .
 uv run zensical build --clean --strict        # docs site
 markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
-uv run pylint boot_server/*.py scripts/*.py   # python only
+uv run pylint boot_server/*.py scripts/*.py tests/*.py   # python only
+uv run pytest -q                              # python only
 cd ansible && uv run ansible-lint             # ansible only
 ```
