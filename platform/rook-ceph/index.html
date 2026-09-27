@@ -2766,6 +2766,10 @@ Renovate does not see it. To refresh it:</p>
 <p>Keep only the rbd documents (CephFS, NFS and NVMe-oF are not enabled).</p>
 </li>
 <li>Re-indent the sequences for yamllint and prefix the cluster-scoped names.</li>
+<li>Re-add <code>update</code> on <code>volumesnapshots</code> to the ctrlplugin ClusterRole until
+   <a href="https://github.com/ceph/ceph-csi-operator/issues/624">ceph-csi-operator#624</a>
+   lands: csi-provisioner v6 puts a finalizer on the source snapshot of every
+   clone, and without the verb each nightly Velero run logs one 403 per volume.</li>
 </ol>
 <h3 id="cephx-keys-stay-on-aes">cephx keys stay on aes<a class="headerlink" href="#cephx-keys-stay-on-aes" title="Permanent link">&para;</a></h3>
 <p>Ceph 20 warns about the legacy <code>aes</code> cipher, and every key here is
