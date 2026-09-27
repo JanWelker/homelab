@@ -10,12 +10,14 @@ permissions:
     paths:
       - "boot_server/*.py"
       - "scripts/*.py"
+      - "tests/*.py"
       - "pyproject.toml"
       - "uv.lock"
   pull_request:
     paths:
       - "boot_server/*.py"
       - "scripts/*.py"
+      - "tests/*.py"
       - "pyproject.toml"
       - "uv.lock"
   workflow_dispatch:
@@ -38,4 +40,7 @@ jobs:
         run: uv sync --locked --all-extras --dev
 
       - name: Run pylint
-        run: uv run pylint boot_server/*.py scripts/*.py
+        run: uv run pylint boot_server/*.py scripts/*.py tests/*.py
+
+      - name: Run tests
+        run: uv run pytest -q
