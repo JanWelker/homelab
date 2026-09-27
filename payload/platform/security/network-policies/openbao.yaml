@@ -11,7 +11,8 @@ spec:
     Gateway for the UI, Prometheus for the metrics endpoint on the active
     pod, the External Secrets controller for logins and kv reads, and the
     node for health probes. The API is plaintext behind the Gateway, so the
-    last two are at L7.
+    last two are at L7: External Secrets logs in, checks and revokes its
+    token and reads under kv/data, nothing else.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -35,7 +36,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /v1/sys/metrics$
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
@@ -46,7 +48,14 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /v1/auth/token/lookup-self$
+              - method: PUT
+                path: /v1/auth/kubernetes/login$
+              - method: PUT
+                path: /v1/auth/token/revoke-self$
+              - method: GET
+                path: /v1/kv/data/.*
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

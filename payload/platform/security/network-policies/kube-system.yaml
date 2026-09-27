@@ -35,7 +35,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /metrics$
   egress:
     - toEntities:
         - world
@@ -187,7 +188,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /metrics$
   egress:
     - toEntities:
         - kube-apiserver

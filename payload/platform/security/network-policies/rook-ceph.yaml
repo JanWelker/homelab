@@ -35,7 +35,8 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /metrics$
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: authentik
