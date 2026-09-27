@@ -88,6 +88,24 @@ kubectl -n backup get cronjob etcd-backup
 kubectl -n backup logs job/<most-recent-job> -c upload
 ```
 
+### Defragmentation
+
+The API server compacts etcd's history every five minutes, but compaction
+only frees pages inside the database file; the file itself never shrinks until
+a member is defragmented, and once less than half of it is in use
+`etcdDatabaseHighFragmentationRatio` fires. A second CronJob in
+`payload/platform/backup/etcd-defrag.yaml` runs `etcdctl defrag --cluster`
+weekly from the same kind of host-network pod as the backup, one member after
+another, and prints `endpoint status` before and after so the log shows the
+size reclaimed. Each member blocks for well under a second at this database
+size, so leadership is not a concern.
+
+```bash
+kubectl -n backup get cronjob etcd-defrag
+kubectl -n backup create job --from=cronjob/etcd-defrag etcd-defrag-manual
+kubectl -n backup logs job/etcd-defrag-manual
+```
+
 ### Taking one by hand
 
 ```bash
