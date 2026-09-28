@@ -2454,7 +2454,10 @@ access to Ingresses and IngressClasses: its Gateway API controller lists them
 too, and the chart grants that only with the Ingress controller enabled. Its
 header names the chart version last checked; retry removing it on a major.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>Create an <code>HTTPRoute</code> in the app's namespace referencing the right Gateway;
+<p>Where the chart renders an <code>HTTPRoute</code> (Argo CD, OpenBao, Grafana), enable
+it in the values; a route only becomes a file of its own when it targets
+something the chart does not own, such as the Authentik outpost. Otherwise
+create an <code>HTTPRoute</code> in the app's namespace referencing the right Gateway;
 <a href="../external-dns/">external-dns</a> creates the record and the wildcard covers the
 name:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gateway.networking.k8s.io/v1</span>
