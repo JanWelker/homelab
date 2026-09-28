@@ -2407,10 +2407,12 @@ the boot server serves the result.</p>
 <p>It is not a configuration management system and it converges nothing on the second boot. Change a template and the node has to be <em>reprovisioned</em> to care — which here means arming it with <code>make reinstall</code> and network-booting it, wiping the disk on the way in. The config is embedded into the OEM partition at install time, so an installed node reads it from its own disk rather than from the network.</p>
 </div>
 <h2 id="systemd-sysexts">Systemd sysexts<a class="headerlink" href="#systemd-sysexts" title="Permanent link">&para;</a></h2>
-<p>Because <code>/usr</code> is read-only, software the base image does not ship — <code>kubernetes</code>
-and <code>containerd</code>, in this cluster — arrives as <strong>system extensions</strong>: read-only
-squashfs images overlaid onto <code>/usr</code> at boot, managed by <code>systemd-sysupdate</code>.
-Nodes fetch them from the HTTP boot server on their first boot from disk.</p>
+<p>Because <code>/usr</code> is read-only, software the base image does not ship — only
+<code>kubernetes</code>, in this cluster — arrives as a <strong>system extension</strong>: a read-only
+squashfs image overlaid onto <code>/usr</code> at boot, managed by <code>systemd-sysupdate</code>.
+Nodes fetch it from the HTTP boot server on their first boot from disk.
+containerd is part of the base image and is deliberately not replaced: a
+sysext-bakery build would run a containerd Flatcar has not tested.</p>
 <p>Upgrading Kubernetes on these nodes is therefore not <code>apt upgrade</code>; it is
 swapping an image and rebooting. See
 <a href="../operations/upgrades/">Updates &amp; Upgrades</a>.</p>

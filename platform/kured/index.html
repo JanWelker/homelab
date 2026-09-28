@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Kured drains and reboots nodes to apply staged OS, Kubernetes and containerd updates, one at a time and only when Ceph and etcd are healthy.">
+        <meta name="description" content="Kured drains and reboots nodes to apply staged OS and Kubernetes updates, one at a time and only when Ceph and etcd are healthy.">
       
       
       
@@ -2414,17 +2414,11 @@ marker clears itself on reboot.</p>
 <td>New <code>.raw</code> under <code>/opt/extensions/kubernetes</code></td>
 <td><code>systemd-sysupdate</code> drop-in</td>
 </tr>
-<tr>
-<td>containerd sysext</td>
-<td>New <code>.raw</code> under <code>/opt/extensions/containerd</code></td>
-<td>Same</td>
-</tr>
 </tbody>
 </table>
 <pre class="mermaid"><code>flowchart TD
     OS["update-engine&lt;br/&gt;OS image on the passive partition"] --&gt; SEN
     KUBE["systemd-sysupdate&lt;br/&gt;kubernetes sysext"] --&gt; SEN
-    CTR["systemd-sysupdate&lt;br/&gt;containerd sysext"] --&gt; SEN
 
     SEN["/run/reboot-required&lt;br/&gt;sentinel, on tmpfs"] --&gt; TICK{"Kured checks&lt;br/&gt;every period"}
 

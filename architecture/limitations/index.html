@@ -2231,7 +2231,7 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 </tr>
 <tr>
 <td><strong>Automatic updates stop at patch releases</strong></td>
-<td>Sysupdate is pinned to the Kubernetes and containerd major.minor in <code>ansible/inventory.yaml</code>; Kured drains and reboots one node at a time to apply what is staged, and refuses while Ceph or etcd is unhealthy. A minor Kubernetes upgrade is manual: change the inventory, push the sysupdate config to running nodes, run <code>kubeadm upgrade</code>. Kured blocks only on the alerts named in its config; anything outside that list does not stop a reboot</td>
+<td>Sysupdate is pinned to the Kubernetes major.minor in <code>ansible/inventory.yaml</code>; Kured drains and reboots one node at a time to apply what is staged, and refuses while Ceph or etcd is unhealthy. A minor Kubernetes upgrade is manual: change the inventory, push the sysupdate config to running nodes, run <code>kubeadm upgrade</code>. Kured blocks only on the alerts named in its config; anything outside that list does not stop a reboot</td>
 <td>By design</td>
 <td><a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>, <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">upgrading a minor deliberately</a>, <a href="../../platform/kured/">Kured</a></td>
 </tr>

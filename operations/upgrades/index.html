@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="How the OS, Kubernetes, and containerd get updated on these nodes, and why nothing takes effect until a reboot.">
+        <meta name="description" content="How the OS and Kubernetes get updated on these nodes, and why nothing takes effect until a reboot.">
       
       
       
@@ -1770,15 +1770,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#kubernetes-and-containerd" class="md-nav__link">
+  <a href="#kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Kubernetes and containerd
+        Kubernetes
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Kubernetes and containerd">
+    <nav class="md-nav" aria-label="Kubernetes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2211,15 +2211,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#kubernetes-and-containerd" class="md-nav__link">
+  <a href="#kubernetes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Kubernetes and containerd
+        Kubernetes
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Kubernetes and containerd">
+    <nav class="md-nav" aria-label="Kubernetes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2386,10 +2386,11 @@ when a node has carried the marker for two days, <code>NodeOsVersionDrift</code>
 versions for three.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
 </span></code></pre></div>
-<h2 id="kubernetes-and-containerd">Kubernetes and containerd<a class="headerlink" href="#kubernetes-and-containerd" title="Permanent link">&para;</a></h2>
-<p>Both are <a href="../../concepts/#systemd-sysexts">systemd sysexts</a>.
-<code>systemd-sysupdate.timer</code> runs an update for both on every fire and touches
-the same <code>/run/reboot-required</code> when a new image is fetched.</p>
+<h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
+<p>Kubernetes is a <a href="../../concepts/#systemd-sysexts">systemd sysext</a>.
+<code>systemd-sysupdate.timer</code> runs an update for it on every fire and touches
+the same <code>/run/reboot-required</code> when a new image is fetched. containerd is
+part of the OS image and updates with it.</p>
 <h3 id="nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series<a class="headerlink" href="#nodes-are-pinned-to-a-minor-series" title="Permanent link">&para;</a></h3>
 <p>The sysupdate configs point at <code>https://extensions.flatcar.org/extensions/</code>,
 not at the boot server, and pin the major.minor from <code>ansible/inventory.yaml</code>:</p>
@@ -2403,7 +2404,6 @@ not, because an unattended minor jump leaves kubelets ahead of a control plane
 that refuses to talk to them. sysext-bakery publishes exactly this file as
 <code>kubernetes-v1.37.conf</code>; the floating alternative (<code>kubernetes-@v-%a.raw</code>)
 would stage a minor kubeadm cannot skip to, on whichever node checks first.
-containerd gets the same pin even though upstream ships none.
 <code>ansible/playbooks/tasks/download_sysext.yaml</code> asserts the rewrite landed, so a
 format change upstream fails <code>make download</code> rather than handing the nodes a
 floating config.</p>
@@ -2416,7 +2416,7 @@ this procedure, each with its release notes read. A newly provisioned node
 skips all of it: it installs <code>kubernetes_version</code> directly and gets the pinned
 sysupdate config from the boot server.</p>
 <ol>
-<li>Update <code>kubernetes_version</code> (and <code>containerd_version</code> if relevant) in
+<li>Update <code>kubernetes_version</code> in
    <code>ansible/inventory.yaml</code>.</li>
 <li>
 <p>Fetch the new sysext and regenerate the Ignition and sysupdate configs.</p>
@@ -2453,7 +2453,7 @@ sysupdate config from the boot server.</p>
 </ol>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Renovate keeps <code>kubernetes_version</code>, <code>containerd_version</code>, <code>flatcar_version</code> and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, and patch and minor bumps automerge. Merging one changes what a <strong>newly provisioned</strong> node installs, not a running node — see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>.</p>
+<p>Renovate keeps <code>kubernetes_version</code>, <code>flatcar_version</code> and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>, and patch and minor bumps automerge. Merging one changes what a <strong>newly provisioned</strong> node installs, not a running node — see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>.</p>
 </div>
 <h2 id="platform-components">Platform components<a class="headerlink" href="#platform-components" title="Permanent link">&para;</a></h2>
 <p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
