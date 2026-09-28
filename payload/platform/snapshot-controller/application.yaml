@@ -22,8 +22,9 @@ spec:
       kustomize:
         namespace: backup
         patches:
-          # Replace: the chart this replaced used another selector, which a
-          # Deployment cannot change in place. Drop it after the first sync.
+          # Force+Replace: the chart this replaced used another selector,
+          # which a Deployment cannot change in place; Replace alone is a PUT
+          # and still refuses it. Drop both after the first sync.
           - target:
               kind: Deployment
               name: snapshot-controller
@@ -31,7 +32,7 @@ spec:
               - op: add
                 path: /metadata/annotations
                 value:
-                  argocd.argoproj.io/sync-options: Replace=true
+                  argocd.argoproj.io/sync-options: Force=true,Replace=true
               - op: add
                 path: /spec/template/spec/securityContext
                 value:
