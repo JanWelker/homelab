@@ -140,6 +140,14 @@ spec:
           # The chart relabels `job` to logging/loki.
           serviceMonitor:
             enabled: true
+          # The Loki mixin: dashboards, the recording rules they read and
+          # the alerts; see docs/platform/logging.md#alerting
+          dashboards:
+            enabled: true
+          rules:
+            enabled: true
+          alerts:
+            enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: logging

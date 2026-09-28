@@ -110,6 +110,7 @@ its upstream tag.
 | [External Secrets](external-secrets.md) | External Secrets Operator | Chart: `grafanaDashboard` |
 | [Rook-Ceph](rook-ceph.md) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored: `rook-ceph/grafana-dashboards.yaml` |
 | [Alloy](logging.md) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored: `logging/grafana-dashboards.yaml` |
+| [Loki](logging.md) | The Loki mixin: Reads, Writes, Operational, Chunks, Retention and the rest | Chart: `monitoring.dashboards`, with `monitoring.rules` for the recording rules they read |
 | ArgoCD | ArgoCD | Vendored: `argocd-config/grafana-dashboards.yaml` |
 | [Tetragon](tetragon.md) | Tetragon | Written for this cluster: `tetragon/grafana-dashboards.yaml`; upstream ships none |
 | [Trivy Operator](trivy-operator.md) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboards.yaml` |
