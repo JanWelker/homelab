@@ -87,6 +87,7 @@ adds itself. The `bao kv put` for each path sits in a comment at the top of the
 | `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
 | `monitoring/grafana-admin` | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
+| `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
 | `nextcloud/config` | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's

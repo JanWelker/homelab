@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the six kv paths the cluster reads through ExternalSecrets.
+# Populates the seven kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -40,6 +40,11 @@
 # would make adding the next one an Authentik outage. Authentik reads the two
 # OIDC keys from here through the same ExternalSecret it reads its own config
 # with; Nextcloud reads all four. See payload/platform/authentik/secrets.yaml.
+#
+# kv/kneadtime/config holds the VAPID private key the Knead Time reminder
+# service signs its pushes with. Rewriting it retires every push subscription
+# ever taken with the old key -- the push services answer 401/403 and the
+# service deletes them -- so every phone has to tap "Remind me" again.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -164,6 +169,10 @@ AUTHENTIK_DANGER="  Rewriting it rotates Authentik's Postgres password while Pos
   still using the old one, and invalidates the OIDC client secrets ArgoCD
   and Grafana authenticate with. On a running cluster that is an outage."
 
+KNEADTIME_DANGER="  Rewriting it replaces the VAPID key every push subscription was taken
+  with. The push services refuse the new key for the old subscriptions, the
+  reminder service deletes them, and every phone has to tap Remind me again."
+
 NEXTCLOUD_DANGER="  Rewriting it issues a new OIDC client secret. Authentik and Nextcloud
   read it from here through two different ExternalSecrets that refresh
   independently, so signing in with Authentik fails until both have caught
@@ -178,11 +187,13 @@ decide WRITE_AUTHENTIK    authentik/config "$AUTHENTIK_DANGER"
 decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_GRAFANA      monitoring/grafana-admin
 decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
+decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
-  && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ]; then
+  && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
+  && [ "$WRITE_KNEADTIME" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -312,6 +323,13 @@ if [ "$WRITE_NEXTCLOUD" = "1" ]; then
     "password=$(rand_b64 24)" \
     "oidc-client-id=$(rand_hex 16)" \
     "oidc-client-secret=$(rand_b64 48)"
+fi
+
+# A P-256 key in PEM, which py_vapid reads directly; the service derives the
+# public half at startup. See homelab-apps/kneadtime/secrets.yaml.
+if [ "$WRITE_KNEADTIME" = "1" ]; then
+  put kneadtime/config \
+    "vapid-private-key=$(openssl ecparam -name prime256v1 -genkey -noout)"
 fi
 
 cat <<'EOF'
