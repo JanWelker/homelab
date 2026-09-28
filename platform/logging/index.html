@@ -2533,7 +2533,7 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 </tr>
 <tr>
 <td>Metrics</td>
-<td>Loki and Alloy, each through its chart's <code>ServiceMonitor</code>; Alloy's dashboards are listed under <a href="../monitoring/#dashboards">Monitoring</a></td>
+<td>Loki and Alloy, each through its chart's <code>ServiceMonitor</code>; both sets of dashboards are listed under <a href="../monitoring/#dashboards">Monitoring</a></td>
 </tr>
 <tr>
 <td>Files</td>
@@ -2691,7 +2691,9 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 expressions. The <code>k8s-sidecar-target-directory: fake</code> annotation puts the
 file under the tenant directory the ruler reads (<code>fake</code> is the tenant when
 <code>auth_enabled</code> is off). Prometheus-side rules stay with their components;
-these are the events only a log carries.</p>
+these are the events only a log carries. Loki's own health alerts (request
+errors, latency, panics, the compactor) are the chart's <code>monitoring.alerts</code>,
+the mixin Grafana maintains, not rules written here.</p>
 <table>
 <thead>
 <tr>
