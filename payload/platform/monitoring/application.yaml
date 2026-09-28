@@ -88,6 +88,30 @@ spec:
                 - ReadWriteOnce
               size: 2Gi
 
+            # The chart's route to Grafana; Prometheus and Alertmanager go
+            # through Authentik and stay in httproute.yaml.
+            route:
+              main:
+                enabled: true
+                hostnames:
+                  - monitoring.infra.k8s.wlkr.ch
+                parentRefs:
+                  - name: infra-gateway
+                    namespace: kube-system
+                    sectionName: https
+                filters:
+                  - type: ResponseHeaderModifier
+                    responseHeaderModifier:
+                      add:
+                        - name: Strict-Transport-Security
+                          value: "max-age=31536000; includeSubDomains"
+                        - name: X-Content-Type-Options
+                          value: "nosniff"
+                        - name: X-Frame-Options
+                          value: "SAMEORIGIN"
+                        - name: Referrer-Policy
+                          value: "strict-origin-when-cross-origin"
+
           prometheus:
             prometheusSpec:
               # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting

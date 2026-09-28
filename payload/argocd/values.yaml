@@ -74,8 +74,28 @@ server:
     enabled: true
     serviceMonitor:
       enabled: true
-  extraArgs:
-    - --insecure
+  # The chart's route to argocd-server; see docs/platform/argocd.md#configuration
+  httproute:
+    enabled: true
+    parentRefs:
+      - name: infra-gateway
+        namespace: kube-system
+        sectionName: https
+    hostnames:
+      - argo.infra.k8s.wlkr.ch
+    rules:
+      - filters:
+          - type: ResponseHeaderModifier
+            responseHeaderModifier:
+              add:
+                - name: Strict-Transport-Security
+                  value: "max-age=31536000; includeSubDomains"
+                - name: X-Content-Type-Options
+                  value: "nosniff"
+                - name: X-Frame-Options
+                  value: "SAMEORIGIN"
+                - name: Referrer-Policy
+                  value: "strict-origin-when-cross-origin"
   resources:
     requests:
       cpu: 25m
@@ -126,6 +146,9 @@ notifications:
       memory: 128Mi
 
 configs:
+  params:
+    # TLS terminates at the Gateway; the chart routes to the plaintext port.
+    server.insecure: true
   cm:
     url: https://argo.infra.k8s.wlkr.ch
 

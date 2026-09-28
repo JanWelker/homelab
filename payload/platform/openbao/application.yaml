@@ -25,6 +25,28 @@ spec:
             enabled: false
 
           server:
+            # The chart's route to the active replica; see docs/platform/openbao.md
+            gateway:
+              httpRoute:
+                enabled: true
+                hosts:
+                  - vault.infra.k8s.wlkr.ch
+                parentRefs:
+                  - name: infra-gateway
+                    namespace: kube-system
+                    sectionName: https
+                filters:
+                  - type: ResponseHeaderModifier
+                    responseHeaderModifier:
+                      add:
+                        - name: Strict-Transport-Security
+                          value: "max-age=31536000; includeSubDomains"
+                        - name: X-Content-Type-Options
+                          value: "nosniff"
+                        - name: X-Frame-Options
+                          value: "SAMEORIGIN"
+                        - name: Referrer-Policy
+                          value: "strict-origin-when-cross-origin"
             # Keep uid/gid: this block replaces the chart's. See openbao docs.
             statefulSet:
               securityContext:
@@ -131,10 +153,6 @@ spec:
               limits:
                 cpu: 500m
                 memory: 512Mi
-
-          ui:
-            enabled: true
-            serviceType: ClusterIP
 
           serverTelemetry:
             serviceMonitor:

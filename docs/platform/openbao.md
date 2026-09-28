@@ -48,6 +48,7 @@ flowchart LR
 | `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200 |
 | `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it as they start. `service_registration "kubernetes"` only labels pods `active` and `standby` |
 | `serverTelemetry.grafanaDashboard` | Renders OpenBao's upstream dashboard (grafana.com 23725) |
+| `server.gateway.httpRoute` | The chart renders the UI's `HTTPRoute`, to the `active` Service so the browser never lands on a standby; the chart's warning about terminating TLS before the server concerns certificate authentication, which nothing here uses |
 
 ### Audit devices
 
