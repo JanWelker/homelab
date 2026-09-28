@@ -48,6 +48,12 @@ access to Ingresses and IngressClasses: its Gateway API controller lists them
 too, and the chart grants that only with the Ingress controller enabled. Its
 header names the chart version last checked; retry removing it on a major.
 
+The CRDs arrive twice from one tag: `make install-cilium` applies the release
+bundle `standard-install.yaml` before ArgoCD exists, and the
+`gateway-api-crds` Application applies `config/crd/standard`, the directory
+that bundle is generated from. The Makefile reads the tag out of the
+Application, so the two cannot drift apart.
+
 ## Usage
 
 Where the chart renders an `HTTPRoute` (Argo CD, OpenBao, Grafana), enable
