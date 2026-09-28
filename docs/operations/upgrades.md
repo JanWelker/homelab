@@ -52,7 +52,10 @@ not, because an unattended minor jump leaves kubelets ahead of a control plane
 that refuses to talk to them. sysext-bakery publishes exactly this file as
 `kubernetes-v1.37.conf`; the floating alternative (`kubernetes-@v-%a.raw`)
 would stage a minor kubeadm cannot skip to, on whichever node checks first.
-containerd gets the same pin even though upstream ships none.
+containerd gets the same pin even though upstream ships none, and its version
+tracks what the Flatcar stable channel ships, so the sysext never runs a
+containerd the base image has not been tested with — see
+[Maintenance](../development/maintenance.md#manager-rules).
 `ansible/playbooks/tasks/download_sysext.yaml` asserts the rewrite landed, so a
 format change upstream fails `make download` rather than handing the nodes a
 floating config.

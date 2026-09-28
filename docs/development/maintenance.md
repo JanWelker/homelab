@@ -115,6 +115,13 @@ found and why it skipped any. The rules, each of which is written into
     a `major` update, which the first rule already keeps from automerging.
 - **Check that the currently pinned version passes its own rule.** A filter
     that excludes what is deployed excludes everything, silently.
+- **`containerd` follows the Flatcar stable channel, not sysext-bakery.** The
+    sysext replaces the containerd the base image ships, so the version comes
+    from Flatcar's `releases.json` (the `custom.flatcar-stable-containerd`
+    datasource) and the bakery is only where `make download` fetches that
+    build; a bakery release list would automerge the nodes onto a containerd
+    Flatcar has not tested. `make download` fails on a version the bakery never
+    built — pick the nearest patch the bakery has and note it in the PR.
 
 ## Language statistics
 

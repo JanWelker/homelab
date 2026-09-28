@@ -44,7 +44,8 @@
         "npm",
         "pypi",
         "custom.flatcar-stable",
-        "custom.syslinux-kernelorg"
+        "custom.syslinux-kernelorg",
+        "custom.flatcar-stable-containerd"
       ],
       "minimumReleaseAge": "3 days"
     },
@@ -91,13 +92,6 @@
         "kubernetes"
       ],
       "extractVersion": "^kubernetes-(?<version>.+)$"
-    },
-    {
-      "description": "Strip containerd- prefix from sysext-bakery release tags",
-      "matchDepNames": [
-        "containerd"
-      ],
-      "extractVersion": "^containerd-(?<version>.+)$"
     },
     {
       "description": "A Helm `tag:` override holds a bare tag, so docker:pinDigests has nowhere to write a digest and fails the whole shared pin branch. Add a bare-tag docker pin here or the Dependency Dashboard reports `Error updating branch: update failure`. Images written as a full reference keep their digests -- see docs/development/maintenance.md",
@@ -163,6 +157,13 @@
       "transformTemplates": [
         "{ \"releases\": [releases[$contains(version, \"syslinux-\") and $contains(version, \".tar.xz\")].{ \"version\": $match(version, /syslinux-([0-9.]+)\\.tar\\.xz/)[0].groups[0] }] }"
       ]
+    },
+    "flatcar-stable-containerd": {
+      "defaultRegistryUrlTemplate": "https://www.flatcar.org/releases-json/releases.json",
+      "format": "json",
+      "transformTemplates": [
+        "{ \"releases\": $each($, function($r, $k) { $k != \"current\" and $r.channel = \"stable\" and $exists($r.major_software.containerd) ? { \"version\": $r.major_software.containerd[0], \"releaseTimestamp\": $replace($substringBefore($r.release_date, \" +\"), \" \", \"T\") & \"Z\" } }) }"
+      ]
     }
   },
   "customManagers": [
@@ -198,8 +199,7 @@
         "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "containerd",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "flatcar/sysext-bakery"
+      "datasourceTemplate": "custom.flatcar-stable-containerd"
     },
     {
       "customType": "regex",
