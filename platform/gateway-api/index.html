@@ -2453,6 +2453,11 @@ address instead of the Gateway's LAN one; the router forwards ports 80 and
 access to Ingresses and IngressClasses: its Gateway API controller lists them
 too, and the chart grants that only with the Ingress controller enabled. Its
 header names the chart version last checked; retry removing it on a major.</p>
+<p>The CRDs arrive twice from one tag: <code>make install-cilium</code> applies the release
+bundle <code>standard-install.yaml</code> before ArgoCD exists, and the
+<code>gateway-api-crds</code> Application applies <code>config/crd/standard</code>, the directory
+that bundle is generated from. The Makefile reads the tag out of the
+Application, so the two cannot drift apart.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Where the chart renders an <code>HTTPRoute</code> (Argo CD, OpenBao, Grafana), enable
 it in the values; a route only becomes a file of its own when it targets

@@ -2489,7 +2489,9 @@ intermittent, host-dependent failures.</p>
 <h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">&para;</a></h2>
 <p>The static pod is only the bootstrap: once ArgoCD syncs
 <code>payload/platform/kube-vip/</code>, a DaemonSet takes over, so upgrading kube-vip is
-a merged PR rather than a file rewritten on each node. A DaemonSet can hold the
+a merged PR rather than a file rewritten on each node. kube-vip publishes a
+chart; it is not used because the handover below needs the <code>adopt</code> init
+container, which the chart has no hook for. A DaemonSet can hold the
 VIP here because the control-plane kubelets use their own node's API server
 (<code>server:</code> in <code>/etc/kubernetes/kubelet.conf</code>) and so does kube-vip
 (<code>KUBERNETES_SERVICE_HOST</code> is the host IP, which is in the certificate SANs),

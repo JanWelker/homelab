@@ -2706,6 +2706,10 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 <td>Proxy outpost <strong>in front of</strong> its own login — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
 <tr>
+<td>Umami</td>
+<td>Proxy outpost <strong>in front of</strong> its own login; the tracker paths pass through — see <a href="#pitfalls">Pitfalls</a></td>
+</tr>
+<tr>
 <td>Rook dashboard, Hubble UI, Prometheus, Alertmanager</td>
 <td>Proxy outpost</td>
 </tr>
@@ -2757,7 +2761,7 @@ application and protects exactly as far as nothing else can reach the backend.</
     U([Browser]) --&gt; GW[infra-gateway / apps-gateway]
     GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.-&gt;|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW --&gt;|hubble, rook, prometheus, home, flowscape| AK
+    GW --&gt;|hubble, rook, prometheus, home, flowscape, analytics| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
 <h3 id="one-hostname">One hostname<a class="headerlink" href="#one-hostname" title="Permanent link">&para;</a></h3>
 <p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
@@ -2780,7 +2784,7 @@ updates it.</p>
 <p>A proxied application's route lives with the application: Hubble's in
 <code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
 Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code>, and Home
-Assistant's and Flowscape's in the
+Assistant's, Flowscape's and Umami's in the
 <a href="../../development/add-workload/">workloads repository</a>,
 each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
 cross-namespace <code>backendRef</code> unless the target namespace grants it, so
@@ -2976,8 +2980,8 @@ a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.
 <p><code>authentik_outposts.outpost</code> sets <code>providers</code> wholesale. Every proxied application must be listed there; adding one and forgetting the list silently unassigns the others, which fail open.</p>
 </div>
 <div class="admonition note">
-<p class="admonition-title">Home Assistant is the exception</p>
-<p>It has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits <em>in front of</em> it: browser users authenticate twice, which is defence in depth rather than single sign-on. The companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so <code>skip_path_regex</code> lets <code>/api/</code>, <code>/auth/token</code> and the external-auth callback through. Home Assistant's own accounts are the only thing guarding those paths; revoking an Authentik account does not revoke a Home Assistant token.</p>
+<p class="admonition-title">Home Assistant and Umami are the exceptions</p>
+<p>Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits <em>in front of</em> it: browser users authenticate twice, which is defence in depth rather than single sign-on. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so <code>skip_path_regex</code> lets <code>/api/</code>, <code>/auth/token</code> and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so <code>/script.js</code> and <code>/api/send</code> pass the same way; the rest of the dashboard and API stays behind the login.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="when-authentik-is-down">When Authentik is down<a class="headerlink" href="#when-authentik-is-down" title="Permanent link">&para;</a></h3>

@@ -2824,10 +2824,9 @@ but change what a namespace file says, so they stay.</p>
 Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
 selected; to everything else they are <code>host</code> or <code>remote-node</code>. <code>kube-system</code>
 therefore covers only its pod-networked workloads, each selected by label.</p>
-<p>Where a chart ships <code>NetworkPolicy</code> objects of its own (<code>argocd</code>,
-<code>authentik</code>) they are switched off in its values: Cilium unions the two
-kinds, so a chart rule that allows everything would silently override the
-default-deny.</p>
+<p>Where a chart ships <code>NetworkPolicy</code> objects of its own (<code>argocd</code>) they are
+switched off in its values: Cilium unions the two kinds, so a chart rule
+that allows everything would silently override the default-deny.</p>
 <h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
 <p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code>, which nothing
 configures, and gets an API token it has no use for. A workload reaching the
