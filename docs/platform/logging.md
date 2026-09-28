@@ -20,7 +20,7 @@ journald and are reachable only over SSH to the node that is misbehaving.
 | Depends on | [Rook-Ceph](rook-ceph.md) object storage for chunks, [Monitoring](monitoring.md) for the Grafana that queries it |
 | If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy, and the [log alerts](#alerting) stop |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
-| Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; Alloy's dashboards are listed under [Monitoring](monitoring.md#dashboards) |
+| Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; both sets of dashboards are listed under [Monitoring](monitoring.md#dashboards) |
 | Files | `payload/platform/logging/`, `payload/platform/loki/`, `payload/platform/alloy/` |
 
 !!! note "Not Promtail, and not the `grafana/loki` chart"
@@ -86,7 +86,9 @@ Alerts over logs live in `logging/loki-rules.yaml`, a ConfigMap labelled
 expressions. The `k8s-sidecar-target-directory: fake` annotation puts the
 file under the tenant directory the ruler reads (`fake` is the tenant when
 `auth_enabled` is off). Prometheus-side rules stay with their components;
-these are the events only a log carries.
+these are the events only a log carries. Loki's own health alerts (request
+errors, latency, panics, the compactor) are the chart's `monitoring.alerts`,
+the mixin Grafana maintains, not rules written here.
 
 | Alert | Fires on | Why it is a log alert |
 | --- | --- | --- |
