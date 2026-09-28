@@ -10,38 +10,53 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
-    repoURL: https://piraeus.io/helm-charts
-    chart: snapshot-controller
-    targetRevision: 5.3.0
-    helm:
-      valuesObject:
-        installCRDs: true
-        controller:
-          enabled: true
-          replicaCount: 2
-          # Pod-level; the container below already matches.
-          podSecurityContext:
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
-          resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
-        webhook:
-          enabled: false
+  # The owning project ships kustomize directories, not a chart: the CRDs and
+  # the controller from one tag. Renovate moves both; see docs/platform/velero.md
+  sources:
+    - repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
+      targetRevision: v8.6.0
+      path: client/config/crd
+    - repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
+      targetRevision: v8.6.0
+      path: deploy/kubernetes/snapshot-controller
+      kustomize:
+        namespace: backup
+        patches:
+          # Replace: the chart this replaced used another selector, which a
+          # Deployment cannot change in place. Drop it after the first sync.
+          - target:
+              kind: Deployment
+              name: snapshot-controller
+            patch: |-
+              - op: add
+                path: /metadata/annotations
+                value:
+                  argocd.argoproj.io/sync-options: Replace=true
+              - op: add
+                path: /spec/template/spec/securityContext
+                value:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+              - op: add
+                path: /spec/template/spec/containers/0/securityContext
+                value:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+              - op: add
+                path: /spec/template/spec/containers/0/resources
+                value:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                  limits:
+                    memory: 256Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: backup
