@@ -50,12 +50,12 @@ MatchPattern=kubernetes-v1.37.@v-%a.raw
 
 Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
-that refuses to talk to them. sysext-bakery publishes exactly this file as
-`kubernetes-v1.37.conf`; the floating alternative (`kubernetes-@v-%a.raw`)
-would stage a minor kubeadm cannot skip to, on whichever node checks first.
-`ansible/playbooks/tasks/download_sysext.yaml` asserts the rewrite landed, so a
-format change upstream fails `make download` rather than handing the nodes a
-floating config.
+that refuses to talk to them. sysext-bakery publishes this file as
+`kubernetes-v1.37.conf` next to the floating `kubernetes.conf`
+(`kubernetes-@v-%a.raw`), which would stage a minor kubeadm cannot skip to, on
+whichever node checks first. `ansible/playbooks/tasks/download_sysext.yaml`
+fetches the series file, so a release without one fails `make download`
+rather than handing the nodes a floating config.
 
 ```bash
 ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'

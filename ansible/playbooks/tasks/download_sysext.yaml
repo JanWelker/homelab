@@ -16,32 +16,11 @@
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
 
-- name: "Download Upstream Sysupdate Config for {{ item.name | capitalize }}"
+# The release ships one sysupdate config per minor series next to the floating
+# one; the series-pinned file is what the nodes get.
+- name: "Download Series-Pinned Sysupdate Config for {{ item.name | capitalize }}"
   ansible.builtin.get_url:
-    url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}.conf"
-    dest: "{{ output_dir }}/tmp/sysext/{{ item.name }}.conf"
+    url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}-{{ item.series }}.conf"
+    dest: "{{ http_dir }}/{{ item.name }}.conf"
     force: true
     mode: "0644"
-
-- name: "Publish Series-Pinned Sysupdate Config for {{ item.name | capitalize }}"
-  ansible.builtin.copy:
-    content: "{{ upstream_conf | regex_replace(floating_pattern, pinned_pattern) }}\n"
-    dest: "{{ http_dir }}/{{ item.name }}.conf"
-    mode: "0644"
-  vars:
-    upstream_conf: "{{ lookup('file', output_dir + '/tmp/sysext/' + item.name + '.conf') }}"
-    floating_pattern: "(?m)^MatchPattern={{ item.name }}-@v-"
-    pinned_pattern: "MatchPattern={{ item.name }}-{{ item.series }}.@v-"
-
-- name: "Assert Sysupdate Config Is Series-Pinned for {{ item.name | capitalize }}"
-  ansible.builtin.assert:
-    that:
-      - "'MatchPattern=' + item.name + '-' + item.series + '.@v-' in published_conf"
-    fail_msg: >-
-      {{ item.name }}.conf from sysext-bakery did not carry the expected
-      floating MatchPattern, so it could not be pinned to {{ item.series }}.
-      Nodes provisioned from it would track the newest {{ item.name }} upstream
-      publishes instead of the version pinned in inventory.yaml.
-    quiet: true
-  vars:
-    published_conf: "{{ lookup('file', http_dir + '/' + item.name + '.conf') }}"
