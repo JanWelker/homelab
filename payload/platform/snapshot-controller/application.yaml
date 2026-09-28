@@ -36,7 +36,10 @@ spec:
               - op: add
                 path: /spec/template/spec/securityContext
                 value:
+                  # The image declares no user, so runAsNonRoot needs an id.
                   runAsNonRoot: true
+                  runAsUser: 1000
+                  runAsGroup: 1000
                   seccompProfile:
                     type: RuntimeDefault
               - op: add
