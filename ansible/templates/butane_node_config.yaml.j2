@@ -37,15 +37,6 @@ storage:
       mode: 0700
 {% endif %}
   files:
-    - path: /etc/containerd/config.toml
-      mode: 0644
-      contents:
-        inline: |
-          version = 3
-          [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
-            runtime_type = "io.containerd.runc.v2"
-          [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
-            SystemdCgroup = true
     - path: /etc/hostname
       mode: 0644
       contents:
@@ -312,13 +303,9 @@ systemd:
       dropins:
         - name: 20-kubelet.conf
           contents: |
-            [Unit]
-
             [Service]
             # Re-apply the CIS file modes kubeadm resets.
             ExecStartPre=-/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/kubernetes-cis.conf
-            ExecStart=
-            ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
     - name: systemd-sysupdate.timer
       enabled: true
     # Would reboot behind Kured's back; see docs/architecture/security.md#node-hardening
@@ -333,12 +320,6 @@ systemd:
             ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C kubernetes update
             ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/kubernetes.raw > /tmp/kubernetes-new"
             ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
-    - name: containerd.service
-      dropins:
-        - name: 10-config.conf
-          contents: |
-            [Service]
-            Environment=CONTAINERD_CONFIG=/etc/containerd/config.toml
     - name: locksmithd.service
       mask: true
     - name: flatcar-reboot-sentinel.service
