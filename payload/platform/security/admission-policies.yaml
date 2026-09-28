@@ -81,11 +81,12 @@ spec:
         (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : [])
   validations:
     # A first component without a dot or a port is not a registry: the
-    # runtime reads such a reference from docker.io.
+    # runtime reads such a reference from docker.io. ECR Public answers to
+    # both of its names.
     - expression: >-
         variables.images.all(i,
           !i.matches('^[^/]*[.:][^/]*/') ||
-          i.matches('^(docker[.]io|ecr-public[.]aws[.]com|ghcr[.]io|mirror[.]gcr[.]io|quay[.]io|registry[.]k8s[.]io)/'))
+          i.matches('^(docker[.]io|ecr-public[.]aws[.]com|public[.]ecr[.]aws|ghcr[.]io|mirror[.]gcr[.]io|quay[.]io|registry[.]k8s[.]io)/'))
       message: >-
         Container image comes from a registry outside the allowlist.
       reason: Forbidden
