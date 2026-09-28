@@ -50,7 +50,10 @@ header names the chart version last checked; retry removing it on a major.
 
 ## Usage
 
-Create an `HTTPRoute` in the app's namespace referencing the right Gateway;
+Where the chart renders an `HTTPRoute` (Argo CD, OpenBao, Grafana), enable
+it in the values; a route only becomes a file of its own when it targets
+something the chart does not own, such as the Authentik outpost. Otherwise
+create an `HTTPRoute` in the app's namespace referencing the right Gateway;
 [external-dns](external-dns.md) creates the record and the wildcard covers the
 name:
 

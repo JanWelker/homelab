@@ -16,7 +16,7 @@ the chart values and the supporting resources around ArgoCD itself.
 | Namespace | `argocd` |
 | Depends on | [OpenBao](openbao.md) for the OIDC client secret, [Gateway API](gateway-api.md) for its route, [Authentik](authentik.md) for every login |
 | If it is down | Nothing syncs. Running workloads are unaffected |
-| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (HTTPRoute, OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
+| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
 
 ## Configuration
 
@@ -28,7 +28,9 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `redis-ha.image.tag`, `redis-ha.haproxy.image.tag` | Both run ahead of the chart, whose exact patch tags stop being rebuilt once the next one lands and so miss base-image security fixes. Renovate carries them forward; each bare `tag:` must be listed under the `pinDigests: false` rule in `renovate.json` |
 | Memory limits, no CPU limits | A CPU limit throttles even on an idle node; memory is not compressible. Sizing is in [Platform](index.md) |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
-| `server.extraArgs: --insecure` | TLS terminates at the Gateway |
+| `configs.params` `server.insecure: true` | TLS terminates at the Gateway. The chart reads this parameter, not `extraArgs`, to point its route at the plaintext port |
+| `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](gateway-api.md#usage) |
+| `resource.customizations` for `HTTPRoute` | Cilium defaults `group`, `kind`, `weight` and the empty `matches` onto every route; without the ignore list each one is permanently OutOfSync |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
 | `resource.customizations.health.argoproj.io_Application` | Restores health assessment for `Application` resources, dropped in ArgoCD 1.8, so `argocd` reports the health of the ApplicationSet rather than a permanent Healthy |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
