@@ -93,13 +93,6 @@
       "extractVersion": "^kubernetes-(?<version>.+)$"
     },
     {
-      "description": "Strip containerd- prefix from sysext-bakery release tags",
-      "matchDepNames": [
-        "containerd"
-      ],
-      "extractVersion": "^containerd-(?<version>.+)$"
-    },
-    {
       "description": "A Helm `tag:` override holds a bare tag, so docker:pinDigests has nowhere to write a digest and fails the whole shared pin branch. Add a bare-tag docker pin here or the Dependency Dashboard reports `Error updating branch: update failure`. Images written as a full reference keep their digests -- see docs/development/maintenance.md",
       "matchDatasources": [
         "docker"
@@ -186,18 +179,6 @@
         "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
       ],
       "depNameTemplate": "kubernetes",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "flatcar/sysext-bakery"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^ansible/inventory\\.yaml$/"
-      ],
-      "matchStrings": [
-        "containerd_version:\\s*['\"]?(?<currentValue>[0-9.]+)['\"]?"
-      ],
-      "depNameTemplate": "containerd",
       "datasourceTemplate": "github-releases",
       "packageNameTemplate": "flatcar/sysext-bakery"
     },

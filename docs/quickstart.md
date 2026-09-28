@@ -69,7 +69,7 @@ the same L2 network segment as the nodes.
     | `mac_address` (per host) | Selects which generated PXE menu a node picks up |
     | `ansible_host` (per host) | The static IP the node is given |
     | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default). **Wiped completely** — partitions, GPT and a device-level discard — before the install |
-    | `kubernetes_version`, `containerd_version`, `flatcar_version` | Artifact versions to download |
+    | `kubernetes_version`, `flatcar_version` | Artifact versions to download |
 
 3. **Initialize Environment**:
     Creates the `uv` virtual environment and installs dependencies:
@@ -79,7 +79,7 @@ the same L2 network segment as the nodes.
     ```
 
 4. **Download Artifacts**:
-    Fetches Flatcar, Syslinux and the Kubernetes and containerd sysext images
+    Fetches Flatcar, Syslinux and the Kubernetes sysext image
     into `output/http`:
 
     ```bash

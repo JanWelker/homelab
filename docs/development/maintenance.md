@@ -49,7 +49,7 @@ that must move together.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new
     release already satisfies; `rangeStrategy: bump` is what makes Renovate
     open a PR for the linters and the docs generator at all.
-- **Flatcar, Kubernetes and containerd bumps change what a newly provisioned
+- **Flatcar and Kubernetes bumps change what a newly provisioned
     node installs, not what a running node runs.** kubeadm cannot skip a minor,
     so a cluster left unrebuilt across two automerged Kubernetes minors has to be
     walked forward one at a time — see [Upgrades](../operations/upgrades.md).

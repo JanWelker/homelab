@@ -40,9 +40,6 @@
         - name: kubernetes
           version: "{{ kubernetes_version }}"
           series: "{{ kubernetes_version.split('.')[:2] | join('.') }}"
-        - name: containerd
-          version: "{{ containerd_version }}"
-          series: "{{ containerd_version.split('.')[:2] | join('.') }}"
 
     - name: Download Noop Sysext Config
       ansible.builtin.get_url:

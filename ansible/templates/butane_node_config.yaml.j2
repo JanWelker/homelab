@@ -275,14 +275,6 @@ storage:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
         verification:
           hash: sha256-{{ sysext_sha256.kubernetes }}
-    - path: /etc/sysupdate.containerd.d/containerd.conf
-      contents:
-        source: http://{{ boot_server_ip }}:8000/containerd.conf
-    - path: /opt/extensions/containerd/containerd-{{ containerd_version }}-x86-64.raw
-      contents:
-        source: http://{{ boot_server_ip }}:8000/containerd-{{ containerd_version }}-x86-64.raw
-        verification:
-          hash: sha256-{{ sysext_sha256.containerd }}
     # Keeps the default sysupdate component from failing; see
     # docs/architecture/security.md#node-hardening
     - path: /etc/sysupdate.d/noop.conf
@@ -291,12 +283,6 @@ storage:
   links:
     - path: /etc/extensions/docker-flatcar.raw
       target: /dev/null
-      overwrite: true
-    - path: /etc/extensions/containerd-flatcar.raw
-      target: /dev/null
-      overwrite: true
-    - path: /etc/extensions/containerd.raw
-      target: /opt/extensions/containerd/containerd-{{ containerd_version }}-x86-64.raw
       overwrite: true
     - path: /etc/extensions/kubernetes.raw
       target: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
@@ -340,14 +326,6 @@ systemd:
       mask: true
     - name: systemd-sysupdate.service
       dropins:
-        - name: containerd.conf
-          contents: |
-            [Service]
-            ExecStartPre=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/containerd.raw > /tmp/containerd"
-            ExecStartPre=/usr/lib/systemd/systemd-sysupdate -C containerd update
-            ExecStartPost=/usr/bin/sh -c "readlink --canonicalize /etc/extensions/containerd.raw > /tmp/containerd-new"
-            ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/containerd /tmp/containerd-new; then touch /run/reboot-required; fi"
-
         - name: kubernetes.conf
           contents: |
             [Service]

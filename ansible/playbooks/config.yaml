@@ -80,7 +80,6 @@
         checksum_algorithm: sha256
       loop:
         - {name: kubernetes, version: "{{ kubernetes_version }}"}
-        - {name: containerd, version: "{{ containerd_version }}"}
       loop_control:
         label: "{{ item.name }}-{{ item.version }}"
       register: sysext_stat
@@ -89,7 +88,7 @@
 
     - name: Require the sysext images before rendering the configs that verify them
       ansible.builtin.assert:
-        that: sysext_stat.results | map(attribute='stat.exists') | select | list | length == 2
+        that: sysext_stat.results | map(attribute='stat.exists') | reject | list | length == 0
         fail_msg: >-
           output/http is missing a sysext image. The Ignition configs pin the
           sha256 of the served file, so run make download (or make artifacts)

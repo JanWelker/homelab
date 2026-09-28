@@ -35,7 +35,7 @@ is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
 | Playbook | Does |
 | --- | --- |
 | `config.yaml` | Generates the bootstrap token, certificate key and etcd encryption key into `output/credentials/` (mode `0700`); renders the Ignition configs via Butane into `output/http`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, and a readable copy of the kubeadm config into `output/tmp/` (the copy that runs is inlined into Ignition) |
-| `download.yaml` | Fetches the Flatcar kernel, initrd, OS image and its detached signature; the Kubernetes and containerd sysext images with their sysupdate configs, rewritten to pin the major.minor from the inventory; and the syslinux bootloader files |
+| `download.yaml` | Fetches the Flatcar kernel, initrd, OS image and its detached signature; the Kubernetes sysext image with its sysupdate config, rewritten to pin the major.minor from the inventory; and the syslinux bootloader files |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. It touches only `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe default. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600` |
 
