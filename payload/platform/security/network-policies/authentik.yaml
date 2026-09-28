@@ -106,7 +106,7 @@ metadata:
 spec:
   description: >-
     The embedded outpost is a reverse proxy inside the server: it connects
-    to the five applications it fronts, all plaintext inside the cluster.
+    to the six applications it fronts, all plaintext inside the cluster.
     The server may call its own public names for an OAuth callback; both
     Gateway addresses are world to Cilium.
   endpointSelector:
@@ -129,6 +129,14 @@ spec:
       toPorts:
         - ports:
             - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: umami
+            k8s:app.kubernetes.io/name: umami
+      toPorts:
+        - ports:
+            - port: "3000"
               protocol: TCP
     - toEndpoints:
         - matchLabels:

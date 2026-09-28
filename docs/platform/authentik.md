@@ -15,6 +15,7 @@ every network flow in the cluster to anyone who could reach the hostname.
 | Grafana | OIDC, login form disabled |
 | Nextcloud | OIDC, login form hidden, local admin break-glass |
 | Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](#pitfalls) |
+| Umami | Proxy outpost **in front of** its own login; the tracker paths pass through — see [Pitfalls](#pitfalls) |
 | Rook dashboard, Hubble UI, Prometheus, Alertmanager | Proxy outpost |
 
 ## At a glance
@@ -43,7 +44,7 @@ flowchart LR
     U([Browser]) --> GW[infra-gateway / apps-gateway]
     GW -->|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW -->|hubble, rook, prometheus, home, flowscape| AK
+    GW -->|hubble, rook, prometheus, home, flowscape, analytics| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
@@ -71,7 +72,7 @@ updates it.
 A proxied application's route lives with the application: Hubble's in
 `payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
 Prometheus's and Alertmanager's in `payload/platform/monitoring/`, and Home
-Assistant's and Flowscape's in the
+Assistant's, Flowscape's and Umami's in the
 [workloads repository](../development/add-workload.md),
 each with `authentik-server` as `backendRef`. Gateway API forbids a
 cross-namespace `backendRef` unless the target namespace grants it, so
@@ -205,8 +206,8 @@ When every login fails, in this order:
 !!! warning "The outpost entry replaces its provider list"
     `authentik_outposts.outpost` sets `providers` wholesale. Every proxied application must be listed there; adding one and forgetting the list silently unassigns the others, which fail open.
 
-!!! note "Home Assistant is the exception"
-    It has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice, which is defence in depth rather than single sign-on. The companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through. Home Assistant's own accounts are the only thing guarding those paths; revoking an Authentik account does not revoke a Home Assistant token.
+!!! note "Home Assistant and Umami are the exceptions"
+    Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice, which is defence in depth rather than single sign-on. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so `/script.js` and `/api/send` pass the same way; the rest of the dashboard and API stays behind the login.
 
 ## Recovery
 
