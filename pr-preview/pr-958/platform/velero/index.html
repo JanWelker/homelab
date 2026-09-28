@@ -2452,7 +2452,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>snapshot-controller</code> Application</td>
-<td>Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the <code>VolumeSnapshotClass</code> applies, so it is its own Application</td>
+<td>Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the <code>VolumeSnapshotClass</code> applies, so it is its own Application. It applies the two kustomize directories <a href="https://github.com/kubernetes-csi/external-snapshotter">kubernetes-csi/external-snapshotter</a> publishes at each tag, the owning project's only packaging, namespaced into <code>backup</code> with the hardening as a patch; the Deployment at a tag runs the previous release's image, which is how upstream cuts releases</td>
 </tr>
 <tr>
 <td>No <code>runAsNonRoot</code> on the <code>velero</code> container</td>

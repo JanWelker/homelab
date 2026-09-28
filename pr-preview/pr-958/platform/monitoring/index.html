@@ -2722,6 +2722,10 @@ in its place, which limits Prometheus to its own targets.</p>
 <td>The OIDC client is generated into OpenBao and read by both sides — see <a href="../authentik/#client-secrets">Authentik</a></td>
 </tr>
 <tr>
+<td><code>grafana.route.main</code></td>
+<td>The chart renders Grafana's <code>HTTPRoute</code>. Prometheus and Alertmanager stay in <code>httproute.yaml</code>: their routes point at Authentik's outpost, which no chart template can express</td>
+</tr>
+<tr>
 <td><code>grafana.admin.existingSecret</code>, from <code>grafana-admin.yaml</code></td>
 <td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and <code>checksum/secret</code> restarts Grafana on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
 </tr>

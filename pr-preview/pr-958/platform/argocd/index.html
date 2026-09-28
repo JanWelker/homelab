@@ -2382,7 +2382,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (HTTPRoute, OIDC <code>ExternalSecret</code>, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects)</td>
+<td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (OIDC <code>ExternalSecret</code>, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects)</td>
 </tr>
 </tbody>
 </table>
@@ -2413,8 +2413,16 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>Creates the <code>&lt;component&gt;-metrics</code> Services whose names are the <code>job</code> label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so <code>make install-argo</code> still works first</td>
 </tr>
 <tr>
-<td><code>server.extraArgs: --insecure</code></td>
-<td>TLS terminates at the Gateway</td>
+<td><code>configs.params</code> <code>server.insecure: true</code></td>
+<td>TLS terminates at the Gateway. The chart reads this parameter, not <code>extraArgs</code>, to point its route at the plaintext port</td>
+</tr>
+<tr>
+<td><code>server.httproute</code></td>
+<td>The chart renders the <code>HTTPRoute</code> to <code>argocd-server</code>, so it is not a file of its own; the response-header filters are the same every UI route carries — see <a href="../gateway-api/#usage">Gateway API</a></td>
+</tr>
+<tr>
+<td><code>resource.customizations</code> for <code>HTTPRoute</code></td>
+<td>Cilium defaults <code>group</code>, <code>kind</code>, <code>weight</code> and the empty <code>matches</code> onto every route; without the ignore list each one is permanently OutOfSync</td>
 </tr>
 <tr>
 <td><code>admin.enabled: "false"</code></td>

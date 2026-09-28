@@ -2739,6 +2739,10 @@ unrelated things breaking at once.</p>
 <td><code>serverTelemetry.grafanaDashboard</code></td>
 <td>Renders OpenBao's upstream dashboard (grafana.com 23725)</td>
 </tr>
+<tr>
+<td><code>server.gateway.httpRoute</code></td>
+<td>The chart renders the UI's <code>HTTPRoute</code>, to the <code>active</code> Service so the browser never lands on a standby; the chart's warning about terminating TLS before the server concerns certificate authentication, which nothing here uses</td>
+</tr>
 </tbody>
 </table>
 <h3 id="audit-devices">Audit devices<a class="headerlink" href="#audit-devices" title="Permanent link">&para;</a></h3>
@@ -2798,6 +2802,11 @@ adds itself. The <code>bao kv put</code> for each path sits in a comment at the 
 <td><code>monitoring/smtp</code></td>
 <td><code>username</code>, <code>password</code>, <code>to</code></td>
 <td>Alertmanager</td>
+</tr>
+<tr>
+<td><code>kneadtime/config</code></td>
+<td><code>vapid-private-key</code></td>
+<td>The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one</td>
 </tr>
 <tr>
 <td><code>nextcloud/config</code></td>
