@@ -66,8 +66,8 @@ sequenceDiagram
     Node->>Node: 10. Wipe disk, flatcar-install, reboot
     Note over Node: Now booting from disk, not the network
     Node->>Node: 11. Ignition partitions and writes /etc
-    Node->>Server: 12. HTTP sysext images
-    Server-->>Node: 13. kubernetes, containerd
+    Node->>Server: 12. HTTP sysext image
+    Server-->>Node: 13. kubernetes
     Node->>Node: 14. systemd unit runs kubeadm
     Note over Node: Node is NotReady - no CNI yet
 ```

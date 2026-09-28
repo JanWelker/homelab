@@ -34,7 +34,7 @@ applications` shows — and the namespace it lands in.
 | gateway-api-crds | `kube-system` | The Gateway API CRDs — see [Gateway API](gateway-api.md) |
 | kube-vip | `kube-system` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
 | kubelet-csr-approver | `kubelet-csr-approver` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
-| [kured](kured.md) | `kured` | Drains and reboots nodes to apply staged OS, Kubernetes and containerd updates |
+| [kured](kured.md) | `kured` | Drains and reboots nodes to apply staged OS and Kubernetes updates |
 | [logging](logging.md) | `logging` | Loki's bucket, rules, dashboards and Grafana datasource |
 | loki | `logging` | The Loki chart — see [Logging](logging.md) |
 | [metrics-server](metrics-server.md) | `kube-system` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |

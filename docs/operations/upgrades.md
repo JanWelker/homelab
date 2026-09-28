@@ -1,5 +1,5 @@
 ---
-description: "How the OS, Kubernetes, and containerd get updated on these nodes, and why nothing takes effect until a reboot."
+description: "How the OS and Kubernetes get updated on these nodes, and why nothing takes effect until a reboot."
 ---
 
 # Updates & Upgrades
@@ -29,11 +29,12 @@ versions for three.
 ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
 ```
 
-## Kubernetes and containerd
+## Kubernetes
 
-Both are [systemd sysexts](../concepts.md#systemd-sysexts).
-`systemd-sysupdate.timer` runs an update for both on every fire and touches
-the same `/run/reboot-required` when a new image is fetched.
+Kubernetes is a [systemd sysext](../concepts.md#systemd-sysexts).
+`systemd-sysupdate.timer` runs an update for it on every fire and touches
+the same `/run/reboot-required` when a new image is fetched. containerd is
+part of the OS image and updates with it.
 
 ### Nodes are pinned to a minor series
 
@@ -52,7 +53,6 @@ not, because an unattended minor jump leaves kubelets ahead of a control plane
 that refuses to talk to them. sysext-bakery publishes exactly this file as
 `kubernetes-v1.37.conf`; the floating alternative (`kubernetes-@v-%a.raw`)
 would stage a minor kubeadm cannot skip to, on whichever node checks first.
-containerd gets the same pin even though upstream ships none.
 `ansible/playbooks/tasks/download_sysext.yaml` asserts the rewrite landed, so a
 format change upstream fails `make download` rather than handing the nodes a
 floating config.
@@ -69,7 +69,7 @@ this procedure, each with its release notes read. A newly provisioned node
 skips all of it: it installs `kubernetes_version` directly and gets the pinned
 sysupdate config from the boot server.
 
-1. Update `kubernetes_version` (and `containerd_version` if relevant) in
+1. Update `kubernetes_version` in
    `ansible/inventory.yaml`.
 2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
 
@@ -105,7 +105,7 @@ sysupdate config from the boot server.
     ```
 
 !!! note
-    Renovate keeps `kubernetes_version`, `containerd_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`, and patch and minor bumps automerge. Merging one changes what a **newly provisioned** node installs, not a running node — see [Maintenance](../development/maintenance.md#automerge-policy).
+    Renovate keeps `kubernetes_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`, and patch and minor bumps automerge. Merging one changes what a **newly provisioned** node installs, not a running node — see [Maintenance](../development/maintenance.md#automerge-policy).
 
 ## Platform components
 

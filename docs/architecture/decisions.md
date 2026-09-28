@@ -21,7 +21,7 @@ Kubernetes documentation assumes, which matters more for a cluster that is
 also a learning environment than the extra hardening does.
 
 The cost is that Flatcar's read-only `/usr` forces everything unusual into
-[sysexts](../concepts.md#systemd-sysexts), Kubernetes and containerd included,
+[sysexts](../concepts.md#systemd-sysexts), Kubernetes included,
 which is the source of the update behaviour in
 [Updates & Upgrades](../operations/upgrades.md).
 

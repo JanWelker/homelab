@@ -50,10 +50,12 @@ the boot server serves the result.
 
 ## Systemd sysexts
 
-Because `/usr` is read-only, software the base image does not ship — `kubernetes`
-and `containerd`, in this cluster — arrives as **system extensions**: read-only
-squashfs images overlaid onto `/usr` at boot, managed by `systemd-sysupdate`.
-Nodes fetch them from the HTTP boot server on their first boot from disk.
+Because `/usr` is read-only, software the base image does not ship — only
+`kubernetes`, in this cluster — arrives as a **system extension**: a read-only
+squashfs image overlaid onto `/usr` at boot, managed by `systemd-sysupdate`.
+Nodes fetch it from the HTTP boot server on their first boot from disk.
+containerd is part of the base image and is deliberately not replaced: a
+sysext-bakery build would run a containerd Flatcar has not tested.
 
 Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is
 swapping an image and rebooting. See

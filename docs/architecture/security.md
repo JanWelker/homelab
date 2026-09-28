@@ -64,7 +64,7 @@ carry the settings below. They land at provisioning time and change only on
 | `podPidsLimit` | Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. Well above anything running here, well below `kernel.pid_max` |
 | `/etc/tmpfiles.d/kubernetes-cis.conf` | kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and a kubelet `ExecStartPre` re-applies them before every start, when kubeadm has just rewritten them. See [Triage 2026-09-20](../operations/triage-2026-09-20.md#infra-the-nodes) |
 | `systemd-sysupdate-reboot.timer` masked | Flatcar ships a vendor symlink that runs it despite a disabled preset. It would reboot on its own schedule, behind [Kured](../platform/kured.md) and without a drain, and it fails every run anyway: it acts on the default sysupdate component, which holds only `noop.conf` |
-| `noop.conf` in `/etc/sysupdate.d/` | The unsuffixed directory is the default component that `systemd-sysupdate.service` acts on; the no-op transfer keeps that run from failing while the real transfers sit in the `kubernetes.d` and `containerd.d` components |
+| `noop.conf` in `/etc/sysupdate.d/` | The unsuffixed directory is the default component that `systemd-sysupdate.service` acts on; the no-op transfer keeps that run from failing while the real transfer sits in the `kubernetes.d` component |
 
 ## Secrets
 

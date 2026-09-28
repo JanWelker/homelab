@@ -1,5 +1,5 @@
 ---
-description: "Kured drains and reboots nodes to apply staged OS, Kubernetes and containerd updates, one at a time and only when Ceph and etcd are healthy."
+description: "Kured drains and reboots nodes to apply staged OS and Kubernetes updates, one at a time and only when Ceph and etcd are healthy."
 ---
 
 # Kured
@@ -30,13 +30,11 @@ marker clears itself on reboot.
 | --- | --- | --- |
 | Flatcar OS (update-engine) | New image on the passive A/B partition | `flatcar-reboot-sentinel.timer` |
 | Kubernetes sysext | New `.raw` under `/opt/extensions/kubernetes` | `systemd-sysupdate` drop-in |
-| containerd sysext | New `.raw` under `/opt/extensions/containerd` | Same |
 
 ```mermaid
 flowchart TD
     OS["update-engine<br/>OS image on the passive partition"] --> SEN
     KUBE["systemd-sysupdate<br/>kubernetes sysext"] --> SEN
-    CTR["systemd-sysupdate<br/>containerd sysext"] --> SEN
 
     SEN["/run/reboot-required<br/>sentinel, on tmpfs"] --> TICK{"Kured checks<br/>every period"}
 
