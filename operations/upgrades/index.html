@@ -2401,12 +2401,12 @@ not at the boot server, and pin the major.minor from <code>ansible/inventory.yam
 </span></code></pre></div>
 <p>Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
-that refuses to talk to them. sysext-bakery publishes exactly this file as
-<code>kubernetes-v1.37.conf</code>; the floating alternative (<code>kubernetes-@v-%a.raw</code>)
-would stage a minor kubeadm cannot skip to, on whichever node checks first.
-<code>ansible/playbooks/tasks/download_sysext.yaml</code> asserts the rewrite landed, so a
-format change upstream fails <code>make download</code> rather than handing the nodes a
-floating config.</p>
+that refuses to talk to them. sysext-bakery publishes this file as
+<code>kubernetes-v1.37.conf</code> next to the floating <code>kubernetes.conf</code>
+(<code>kubernetes-@v-%a.raw</code>), which would stage a minor kubeadm cannot skip to, on
+whichever node checks first. <code>ansible/playbooks/tasks/download_sysext.yaml</code>
+fetches the series file, so a release without one fails <code>make download</code>
+rather than handing the nodes a floating config.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>cat<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
 </span></code></pre></div>
