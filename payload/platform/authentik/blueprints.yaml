@@ -220,6 +220,33 @@ data:
           meta_launch_url: https://flowscape.k8s.wlkr.ch
           meta_description: Cluster network traffic in 3D
 
+      # The tracker and its collect endpoint are what every visitor of every site loads,
+      # so those two paths pass unauthenticated; the dashboard does not.
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        id: umami-provider
+        identifiers:
+          name: umami
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: https://analytics.k8s.wlkr.ch
+          internal_host: http://umami.umami.svc.cluster.local:3000
+          internal_host_ssl_validation: false
+          skip_path_regex: |-
+            ^/script\.js$
+            ^/api/send$
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: umami
+        attrs:
+          name: Umami
+          provider: !KeyOf umami-provider
+          meta_launch_url: https://analytics.k8s.wlkr.ch
+          meta_description: Web analytics
+
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
@@ -237,3 +264,4 @@ data:
             - !KeyOf alertmanager-provider
             - !KeyOf home-assistant-provider
             - !KeyOf flowscape-provider
+            - !KeyOf umami-provider

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the seven kv paths the cluster reads through ExternalSecrets.
+# Populates the eight kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -45,6 +45,10 @@
 # service signs its pushes with. Rewriting it retires every push subscription
 # ever taken with the old key -- the push services answer 401/403 and the
 # service deletes them -- so every phone has to tap "Remind me" again.
+#
+# kv/umami/config holds the key Umami signs its dashboard sessions with and the
+# one it encrypts TOTP secrets with. Both go in at once because a `bao kv put`
+# replaces the path: adding the second later would have rotated the first.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -173,6 +177,10 @@ KNEADTIME_DANGER="  Rewriting it replaces the VAPID key every push subscription 
   with. The push services refuse the new key for the old subscriptions, the
   reminder service deletes them, and every phone has to tap Remind me again."
 
+UMAMI_DANGER="  Rewriting it rotates the key every Umami dashboard session is signed
+  with, so everyone is logged out, and the key the TOTP secrets are encrypted
+  with, so every second factor enrolled in Umami stops verifying."
+
 NEXTCLOUD_DANGER="  Rewriting it issues a new OIDC client secret. Authentik and Nextcloud
   read it from here through two different ExternalSecrets that refresh
   independently, so signing in with Authentik fails until both have caught
@@ -188,12 +196,13 @@ decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_GRAFANA      monitoring/grafana-admin
 decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
+decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
-  && [ "$WRITE_KNEADTIME" = "0" ]; then
+  && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -330,6 +339,14 @@ fi
 if [ "$WRITE_KNEADTIME" = "1" ]; then
   put kneadtime/config \
     "vapid-private-key=$(openssl ecparam -name prime256v1 -genkey -noout)"
+fi
+
+# APP_SECRET and TWO_FACTOR_ENCRYPTION_KEY, both as Umami documents them: 64 hex
+# characters. See homelab-apps/umami/secrets.yaml.
+if [ "$WRITE_UMAMI" = "1" ]; then
+  put umami/config \
+    "app-secret=$(rand_hex 32)" \
+    "two-factor-encryption-key=$(rand_hex 32)"
 fi
 
 cat <<'EOF'
