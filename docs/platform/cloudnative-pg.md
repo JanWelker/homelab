@@ -63,6 +63,11 @@ registry terms keep changing. The rule for the
 3. Put the `Cluster` in the workload's namespace, not `cnpg-system`, so the
    namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the
    namespace takes the database with it.
+4. Set `enablePDB: false`. The operator's `<cluster>-primary`
+   PodDisruptionBudget refuses the primary's eviction outright, so a node
+   drain hangs on it until [Kured](kured.md) gives up and the node is never
+   rebooted. Without the budget a single instance is down for the move to
+   another node and a three-instance cluster fails over within a minute.
 
 ## Health check
 

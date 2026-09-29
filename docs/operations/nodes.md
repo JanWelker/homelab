@@ -27,6 +27,11 @@ reboot; that takes a [rebuild](#rebuilding-or-repartitioning-a-node).
     kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
     ```
 
+    A drain that loops on `Cannot evict pod as it would violate the pod's
+    disruption budget` for a `<name>-db-<n>` pod is a CloudNativePG cluster
+    with its budget still on — see
+    [the contract](../platform/cloudnative-pg.md#the-contract).
+
 2. Reboot it and wait for `Ready`.
 
     ```bash
