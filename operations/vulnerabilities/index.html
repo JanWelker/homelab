@@ -389,6 +389,8 @@
       
         
       
+        
+      
     
     
     
@@ -1592,6 +1594,8 @@
       
         
       
+        
+      
     
     
     
@@ -1914,6 +1918,33 @@
     
   
   Triage 2026-09-20
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-09-29/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-09-29
 
     
   </span>
@@ -2297,6 +2328,8 @@
       
         
       
+        
+      
     
     
     
@@ -2344,7 +2377,8 @@
 findings on a cluster this size. Almost none warrant action, and the work is in
 proving that quickly. The operator's configuration and failure modes are in
 <a href="../../platform/trivy-operator/">Trivy Operator</a>. This page is the method; the
-dispositions from the last pass are in <a href="../triage-2026-09-20/">Triage 2026-09-20</a>.</p>
+dispositions are in <a href="../triage-2026-09-20/">Triage 2026-09-20</a> and, for the
+Dependency-Track portfolio, <a href="../triage-2026-09-29/">Triage 2026-09-29</a>.</p>
 <h2 id="pulling-a-report">Pulling a report<a class="headerlink" href="#pulling-a-report" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span>&gt;<span class="w"> </span>vr.json
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | .metadata.namespace as $ns</span>
@@ -2366,6 +2400,11 @@ dispositions from the last pass are in <a href="../triage-2026-09-20/">Triage 20
 <li><strong>The worst findings are usually not the project's code.</strong> The <code>target</code>
     names the binary, and which binary decides whether anything can be done and
     by whom.</li>
+<li><strong>Severity is an opinion, and the two sources hold different ones.</strong>
+    <a href="https://homelab-apps.wlkr.ch/dependency-track/">Dependency-Track</a> rates
+    by the advisory's score and Trivy by the distribution's; a finding Trivy
+    has at <code>UNKNOWN</code> can be critical there. Use it for which images share a
+    component and for what changed between two tags.</li>
 <li><strong>Ten days of Prometheus is not a trend.</strong> The daily summary the operator
     ships to Loki is: see <a href="../../platform/trivy-operator/#history">History</a>.</li>
 </ul>
