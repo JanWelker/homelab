@@ -18,7 +18,7 @@ this page is the operator itself.
 | If it is down | Reports expire after 24h and are not rebuilt; `TrivyContainerNotScanned` fires for every container |
 | Health check | `kubectl -n trivy-system get pods,jobs`, then the reconciliation below |
 | Dashboard | [Trivy Operator](https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview) |
-| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` CronJob and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
+| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` CronJob, the `sbom-readers.yaml` grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
 
 | Scanner | Produces | Answers |
 | --- | --- | --- |
@@ -110,6 +110,17 @@ dashboard applies.
 ```logql
 {namespace="trivy-system", container="findings-history"} | json | kind="vulnerabilities" | namespace="argocd"
 ```
+
+### SBOM export
+
+`sbomGenerationEnabled` makes the operator write one CycloneDX `SbomReport`
+per container next to the `VulnerabilityReport`. Nothing here reads them;
+[Dependency-Track](https://homelab-apps.wlkr.ch/dependency-track/) in the
+workloads repository uploads every one of them nightly and keeps the
+history Trivy's 24h reports cannot. `sbom-readers.yaml` is the
+`ClusterRole` and binding that let its upload job list them: the `apps`
+project may not create cluster-scoped RBAC, and which workload reads the
+operator's findings is decided here.
 
 ## Usage
 

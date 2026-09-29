@@ -26,6 +26,10 @@ spec:
               - secretRef:
                   name: authentik-secrets-nextcloud
                   optional: true
+              # From secrets-dependency-track.yaml; optional for the same reason.
+              - secretRef:
+                  name: authentik-secrets-dependency-track
+                  optional: true
             # CloudNativePG generates the database password; nothing copies it.
             env:
               - name: AUTHENTIK_POSTGRESQL__PASSWORD
@@ -90,7 +94,7 @@ spec:
 
             # Bump when authentik-secrets gains a key; see docs/platform/authentik.md#pitfalls
             podAnnotations:
-              homelab.wlkr.ch/secret-generation: "2"
+              homelab.wlkr.ch/secret-generation: "3"
             metrics:
               enabled: true
               serviceMonitor:
@@ -109,6 +113,9 @@ spec:
                   sources:
                     - configMap:
                         name: authentik-blueprint-nextcloud
+                        optional: true
+                    - configMap:
+                        name: authentik-blueprint-dependency-track
                         optional: true
             volumeMounts:
               - name: blueprints-workloads
