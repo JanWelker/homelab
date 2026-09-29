@@ -3,13 +3,14 @@
 #
 #   make bao-secrets
 #
-# Seven of the values cannot be generated -- they belong to accounts outside this
+# Eight of the values cannot be generated -- they belong to accounts outside this
 # cluster -- and are prompted for, one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
+#   OPENCLAW_ANTHROPIC_KEY                          the model the OpenClaw agent thinks with
 #
 # One more is optional, because the thing that issues it runs on the cluster
 # and does not exist on a fresh one. Enter writes the path with an empty value
@@ -60,6 +61,11 @@
 # Wollbi-Fescht with -- the same value the seed hook authenticates with -- and the
 # password of the first editor, which Payload reads only while its database
 # is still empty.
+#
+# kv/openclaw/config holds the shared secret the OpenClaw control UI is
+# reached with, behind the outpost, and the model API key the agent thinks
+# with. Everything else OpenClaw holds -- channel credentials, tool tokens --
+# it stores itself on its volume, which is the only copy.
 #
 # kv/dependency-track/config holds the key Dependency-Track encrypts its stored
 # secrets with and its OIDC client ID, which Authentik reads through
@@ -209,6 +215,10 @@ FEST_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wollb
   only reads that while the database is empty, so on a running site the new
   value is written down and the old one is still what logs you in."
 
+OPENCLAW_DANGER="  Rewriting it replaces the token the control UI is reached with, so anything
+  already paired with the gateway stops authenticating until it is given the
+  new one, and rotates the model API key out from under the running agent."
+
 DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
   database is encrypted with -- feed tokens, notification credentials -- so
   those become unreadable, and issues a new OIDC client ID that Authentik and
@@ -231,6 +241,7 @@ decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
 decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
+decide WRITE_OPENCLAW     openclaw/config "$OPENCLAW_DANGER"
 decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
@@ -240,6 +251,7 @@ if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
   && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
   && [ "$WRITE_FEST_WOLLBI" = "0" ] \
+  && [ "$WRITE_OPENCLAW" = "0" ] \
   && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -320,6 +332,9 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_USERNAME           "SMTP login for Alertmanager, also the sender address"
   prompt_secret SMTP_PASSWORD           "  ...and its password"
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
+fi
+if [ "$WRITE_OPENCLAW" = "1" ]; then
+  prompt_secret OPENCLAW_ANTHROPIC_KEY  "Anthropic API key for the OpenClaw agent"
 fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
@@ -423,6 +438,13 @@ if [ "$WRITE_FEST_WOLLBI" = "1" ]; then
   put fest-wollbi/config \
     "payload-secret=$(rand_b64 48)" \
     "admin-password=$(rand_b64 24)"
+fi
+
+# One generated, one typed. See homelab-apps/openclaw/secrets.yaml.
+if [ "$WRITE_OPENCLAW" = "1" ]; then
+  put openclaw/config \
+    "gateway-token=$(rand_hex 32)" \
+    "anthropic-api-key=${OPENCLAW_ANTHROPIC_KEY}"
 fi
 
 # The key encryption key as the chart documents it, 32 random bytes in base64,
