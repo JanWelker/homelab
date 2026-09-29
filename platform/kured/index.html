@@ -2455,8 +2455,8 @@ marker clears itself on reboot.</p>
 <td>Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock</td>
 </tr>
 <tr>
-<td><code>concurrency</code> of one and <code>lockReleaseDelay</code></td>
-<td>One node down at a time, with breathing room for Ceph to backfill before the next</td>
+<td><code>concurrency</code> of one and <code>lockReleaseDelay</code> of five minutes</td>
+<td>One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the <em>next</em> node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as <code>CephOSDDown</code>'s <code>for</code>, so an OSD that did not come back is a firing alert before the next drain</td>
 </tr>
 <tr>
 <td><code>forceReboot: false</code></td>
@@ -2478,7 +2478,7 @@ marker clears itself on reboot.</p>
 </table>
 <div class="admonition note">
 <p class="admonition-title">The regex means the opposite of what it looks like</p>
-<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it.</p>
+<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no <code>PrometheusRule</code> defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under <a href="#health-check">Health check</a>.</p>
 </div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>To stop Kured rebooting anything without uninstalling it, remove the sentinel
@@ -2497,6 +2497,9 @@ a blocked node, not a queued one.</p>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /run/reboot-required; update_engine_client -status'</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># The alert names the gate may use: every entry in alertFilterRegexp must be here</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>kubectl<span class="w"> </span>get<span class="w"> </span>prometheusrule<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.groups[].rules[] | select(.alert) | .alert'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'Ceph|etcd|KubeNode|KubeAPI'</span>
 </span></code></pre></div>
 
 
