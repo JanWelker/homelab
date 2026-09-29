@@ -2843,6 +2843,10 @@ sharing a node stay there until something restarts them.</p>
 <td>The database is the <code>Cluster</code> above. The password is the one CloudNativePG generated into <code>authentik-db-app</code>, read as <code>AUTHENTIK_POSTGRESQL__PASSWORD</code> from that Secret; it is never copied into OpenBao or Git</td>
 </tr>
 <tr>
+<td><code>server.topologySpreadConstraints</code></td>
+<td>Two replicas on one node are no redundancy. The chart's <code>podAntiAffinity</code> preset is <code>soft</code>, the same preference the scheduler traded away for the <a href="#database">database</a>; the constraint scores the placement instead. The worker runs a single replica, so it needs none</td>
+</tr>
+<tr>
 <td><code>worker.podAnnotations</code> <code>homelab.wlkr.ch/secret-generation</code></td>
 <td>Bumped whenever <code>authentik-secrets</code> or <code>authentik-secrets-nextcloud</code> gains a key, so ArgoCD restarts the worker in the same sync — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
