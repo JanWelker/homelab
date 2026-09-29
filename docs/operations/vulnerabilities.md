@@ -8,7 +8,8 @@ Trivy Operator writes one `VulnerabilityReport` per container, a few thousand
 findings on a cluster this size. Almost none warrant action, and the work is in
 proving that quickly. The operator's configuration and failure modes are in
 [Trivy Operator](../platform/trivy-operator.md). This page is the method; the
-dispositions from the last pass are in [Triage 2026-09-20](triage-2026-09-20.md).
+dispositions are in [Triage 2026-09-20](triage-2026-09-20.md) and, for the
+Dependency-Track portfolio, [Triage 2026-09-29](triage-2026-09-29.md).
 
 ## Pulling a report
 
@@ -34,6 +35,11 @@ jq -r '.items[] | .metadata.namespace as $ns
 - **The worst findings are usually not the project's code.** The `target`
     names the binary, and which binary decides whether anything can be done and
     by whom.
+- **Severity is an opinion, and the two sources hold different ones.**
+    [Dependency-Track](https://homelab-apps.wlkr.ch/dependency-track/) rates
+    by the advisory's score and Trivy by the distribution's; a finding Trivy
+    has at `UNKNOWN` can be critical there. Use it for which images share a
+    component and for what changed between two tags.
 - **Ten days of Prometheus is not a trend.** The daily summary the operator
     ships to Loki is: see [History](../platform/trivy-operator.md#history).
 
