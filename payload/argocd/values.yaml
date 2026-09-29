@@ -9,6 +9,14 @@ global:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
+  # Applies to every component of this chart, not the redis-ha subchart, which
+  # brings its own required rule. The chart fills in each component's own
+  # labelSelector. See docs/platform/index.md#replica-placement
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      nodeTaintsPolicy: Honor
 
 redis-ha:
   enabled: true
