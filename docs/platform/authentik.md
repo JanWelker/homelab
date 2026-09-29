@@ -91,6 +91,17 @@ within a minute, once `enablePDB: false` lets the drain evict the primary.
 The chart's own Postgres subchart is off — both rules are in
 [the contract](cloudnative-pg.md#the-contract).
 
+Three instances only survive a node loss while they sit on three nodes, and
+the operator's own anti-affinity is `preferred`: a weight the scheduler trades
+away against free memory, which put two instances on the one 16&nbsp;GB worker.
+The `topologySpreadConstraints` block scores the placement instead. It stays
+`ScheduleAnyway` because the cluster has exactly three schedulable workers —
+`DoNotSchedule` would leave the replacement instance `Pending` for as long as a
+worker is down or draining. `nodeTaintsPolicy: Honor` keeps the tainted control
+planes out of the count, so the skew is measured over the nodes the pod can
+actually reach. Placement is only scored at scheduling time: pods already
+sharing a node stay there until something restarts them.
+
 ### Chart values
 
 | Setting | Why |

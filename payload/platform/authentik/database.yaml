@@ -14,6 +14,18 @@ spec:
   # without it the operator fails over. See docs/platform/authentik.md#database
   enablePDB: false
 
+  # The operator's own anti-affinity is a preference the scheduler outweighs on
+  # unequal nodes; this keeps the spread. See docs/platform/authentik.md#database
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: authentik-db
+          cnpg.io/podRole: instance
+
   imageName: ghcr.io/cloudnative-pg/postgresql:18.6-system-trixie@sha256:fee233b6d388273e61313f93ac5bfb75449ecd6e107b804b19583526db0f5760
 
   storage:
