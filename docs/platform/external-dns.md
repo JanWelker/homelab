@@ -30,6 +30,7 @@ record pointing at nothing when the workload goes.
 | TXT registry with an owner id | A companion `_externaldns.*` TXT record stamps every record it creates, and it only modifies or deletes records carrying that stamp. Hand-made records in the same zone are invisible to it |
 | Policy `sync` | Deleting an HTTPRoute removes its record. Safe only because of the registry; without it `sync` would happily delete your MX records |
 | `--aws-zone-match-parent` | The records live in the `wlkr.ch` zone, not a zone of their own |
+| A second entry in `domainFilters` | `wollbi.ch` is a zone of its own in the same account, for the neighbourhood sites. Without it their routes are ignored rather than refused, which reads as external-dns being down |
 | Credentials as a file (`AWS_SHARED_CREDENTIALS_FILE`), not environment variables | The environment puts a key that can repoint every hostname into `kubectl describe pod`, crash dumps and every child process. The `ExternalSecret` templates an INI `credentials` key, the only key mounted; the original keys stay in the Secret so nothing still reading them breaks |
 
 The credential is a separate IAM user and OpenBao path from cert-manager's —

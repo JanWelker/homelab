@@ -30,6 +30,11 @@ L2 pool, defined in `gateways.yaml`:
 | `apps-gateway` | `*.k8s.wlkr.ch` | User-facing workloads, published under the router's public address |
 | `infra-gateway` | `*.infra.k8s.wlkr.ch` | Platform services (Grafana, Hubble, etc.), LAN only |
 
+`apps-gateway` has a second HTTPS listener for `*.wollbi.ch`, the
+neighbourhood sites. A listener pins one hostname pattern and a wildcard
+certificate covers one zone, so a second domain is a second listener and a
+second `Certificate` rather than a name added to the first.
+
 Both terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
