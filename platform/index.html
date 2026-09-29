@@ -2143,6 +2143,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#replica-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Replica placement
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rollout-order" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2556,6 +2567,35 @@ generates one Application per <code>payload/platform/*/application.yaml</code> p
 directory holds exactly one <code>application.yaml</code>; everything else in it is what
 that Application deploys. <a href="../architecture/gitops/">GitOps Strategy</a> has the
 structure and the sync policy.</p>
+<h2 id="replica-placement">Replica placement<a class="headerlink" href="#replica-placement" title="Permanent link">&para;</a></h2>
+<p>Two replicas on one node are not redundancy. Every chart's default is a single
+<code>preferredDuringSchedulingIgnoredDuringExecution</code> anti-affinity term — one
+weight among the scheduler's scores, and on a cluster of one 16&nbsp;GB worker
+against two 8&nbsp;GB ones, free memory outscores it. So every component with
+more than one replica carries an explicit rule:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>topologySpreadConstraints</code>, <code>maxSkew: 1</code>, <code>whenUnsatisfiable: ScheduleAnyway</code></td>
+<td>the component runs on the three workers only, where a hard rule would leave a replica <code>Pending</code> through a Kured drain</td>
+</tr>
+<tr>
+<td><code>podAntiAffinity</code> <code>requiredDuringSchedulingIgnoredDuringExecution</code></td>
+<td>the component tolerates the control planes, so six nodes always leave room — or its chart exposes no spread constraint</td>
+</tr>
+</tbody>
+</table>
+<p>Constraints carry <code>nodeTaintsPolicy: Honor</code>, so the skew is measured over the
+nodes the pod can reach rather than over the tainted control planes. Placement
+is scored once, at scheduling time: pods already sharing a node stay there
+until something restarts them, and the <a href="descheduler/">descheduler</a> moves
+them back only if its evictor is allowed to touch them.</p>
 <h2 id="rollout-order">Rollout order<a class="headerlink" href="#rollout-order" title="Permanent link">&para;</a></h2>
 <p>Nothing enforces an order: every Application syncs as soon as it exists and
 converges by retry and health, as <a href="../architecture/gitops/#bootstrap-convergence">GitOps

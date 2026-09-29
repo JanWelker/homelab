@@ -2756,8 +2756,11 @@ live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as <code>https://s3.infra.k8s.wlkr.ch</code> for
 <a href="../velero/#configuration">Velero</a>, whose S3 client only signs cleanly over
 TLS. Two RGW instances keep
-a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
-1.5x overhead rather than 3x, safe at <code>failureDomain: host</code> with six nodes.</p>
+a node reboot from stalling a backup, which only holds while they sit on
+separate nodes: <code>gateway.placement</code> carries the spread constraint, because the
+<code>placement.all</code> block belongs to the <code>CephCluster</code> and never reaches this CR.
+The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at
+<code>failureDomain: host</code> with six nodes.</p>
 <h3 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h3>
 <table>
 <thead>

@@ -2446,6 +2446,10 @@ reasoning:</p>
 <td><code>emptyDir</code> pods are protected because their data goes with them; PVC pods are not, because Ceph volumes follow the pod to any node</td>
 </tr>
 <tr>
+<td>System-critical pods at the default</td>
+<td><code>evictSystemCriticalPods</code> stays off, so nothing with <code>priorityClassName: system-cluster-critical</code> is ever moved. Those components hold their own placement rule instead — see <a href="../#replica-placement">Replica placement</a></td>
+</tr>
+<tr>
 <td><code>maxNoOfPodsToEvictPerNode</code> and <code>evictionLimits.node</code></td>
 <td>A few pods per node per pass: one Kured reboot already moved everything on a node once, a second mass move is what this component is meant to avoid</td>
 </tr>
