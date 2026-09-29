@@ -1,6 +1,7 @@
 ---
 # Who may read the SBOMs the operator writes. Dependency-Track's upload job
-# in the workloads repository lists them nightly; the apps project cannot
+# in the workloads repository lists them nightly, and the ReplicaSets, to
+# leave out the reports of revisions scaled to zero; the apps project cannot
 # create cluster-scoped RBAC, and which workload reads Trivy's findings is a
 # platform decision either way. See docs/platform/trivy-operator.md#sbom-export
 apiVersion: rbac.authorization.k8s.io/v1
@@ -11,6 +12,10 @@ rules:
   - apiGroups: ["aquasecurity.github.io"]
     resources:
       - sbomreports
+    verbs: ["list"]
+  - apiGroups: ["apps"]
+    resources:
+      - replicasets
     verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

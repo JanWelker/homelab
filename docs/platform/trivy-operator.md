@@ -118,7 +118,8 @@ per container next to the `VulnerabilityReport`. Nothing here reads them;
 [Dependency-Track](https://homelab-apps.wlkr.ch/dependency-track/) in the
 workloads repository uploads every one of them nightly and keeps the
 history Trivy's 24h reports cannot. `sbom-readers.yaml` is the
-`ClusterRole` and binding that let its upload job list them: the `apps`
+`ClusterRole` and binding that let its upload job list them, and the
+ReplicaSets, so it can skip the reports of superseded revisions: the `apps`
 project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.
 
