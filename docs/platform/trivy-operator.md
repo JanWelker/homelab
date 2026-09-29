@@ -50,6 +50,7 @@ The values in `application.yaml` that are not defaults:
 | `compliance.reportType: summary` | The collector skips reports in `all` format, so `trivy_compliance_info` disappears and the dashboard's failing-controls table empties. The `status` label is title-cased: `Fail`, `Pass` |
 | Control-plane tolerations on `nodeCollector` and `scanJobTolerations` | Without them the CIS infra assessment covers only the workers and reports a clean control plane it never looked at |
 | Namespace `enforce: privileged`, `audit`/`warn: restricted` | node-collector hostPath-mounts `/var/lib/etcd`, `/var/lib/kubelet`, `/etc/kubernetes` and `/etc/cni/net.d`, which `baseline` forbids. Scan jobs themselves drop all capabilities and run read-only |
+| `resources` on the operator | Its cache holds every report in the cluster, and the `SbomReport`s are most of that. At the limit it is OOM-killed mid-write, which shows as reports that never appear rather than as an error |
 | `logDevMode: false` | Its `V(1)` lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding. Turn it on to debug, then off |
 
 ### Alerting
@@ -173,6 +174,7 @@ the outside:
 | No report, no `SbomReport`, operator logs `ResourceExhausted ... larger than max` or `etcdserver: request is too large` | The report exceeds the API write ceiling | Operator log. Fix: the fields and ignore policies above |
 | No report, Job events show `DeadlineExceeded` | `scanJobTimeout` elapsed on a large image | `kubectl -n trivy-system get events --field-selector reason=DeadlineExceeded`, before `scanJobTTL` deletes the Job |
 | Some containers of a multi-container workload missing; job succeeded; log has `failed to analyze layer ... unexpected EOF` | A scan container died reading the image and the operator keeps only containers that exited 0. Hits workloads with several containers on one image (Rook, Cilium). Not the shared cache: concurrent scans with it pass | Scan job pod logs |
+| Reports missing at random, operator restart count climbing, last state `OOMKilled` | The report cache outgrew the memory limit | `kubectl -n trivy-system get pod -l app.kubernetes.io/name=trivy-operator -o jsonpath='{..lastState}'`. Fix: `resources` in `application.yaml` |
 | `SbomReport` exists, no `VulnerabilityReport` | SBOM cache reuse path ran `trivy sbom` and produced nothing | Confirm `clusterSbomCacheEnabled` is off |
 
 A completed scan job counts against `concurrentScanJobsLimit` until
