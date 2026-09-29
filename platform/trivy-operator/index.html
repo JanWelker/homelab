@@ -1641,6 +1641,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#sbom-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SBOM export
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2273,6 +2284,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#sbom-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SBOM export
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2475,7 +2497,7 @@ this page is the operator itself.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/trivy-operator/</code>: the chart, <code>prometheusrule.yaml</code>, the <code>findings-history</code> CronJob and a dashboard written for this cluster. The namespace labels and the default-deny policy are in <a href="../security-policies/">Security Policies</a></td>
+<td><code>payload/platform/trivy-operator/</code>: the chart, <code>prometheusrule.yaml</code>, the <code>findings-history</code> CronJob, the <code>sbom-readers.yaml</code> grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in <a href="../security-policies/">Security Policies</a></td>
 </tr>
 </tbody>
 </table>
@@ -2663,6 +2685,15 @@ reads it. Images are counted once per digest per namespace, the same rule the
 dashboard applies.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{namespace="trivy-system", container="findings-history"} | json | kind="vulnerabilities" | namespace="argocd"
 </span></code></pre></div>
+<h3 id="sbom-export">SBOM export<a class="headerlink" href="#sbom-export" title="Permanent link">&para;</a></h3>
+<p><code>sbomGenerationEnabled</code> makes the operator write one CycloneDX <code>SbomReport</code>
+per container next to the <code>VulnerabilityReport</code>. Nothing here reads them;
+<a href="https://homelab-apps.wlkr.ch/dependency-track/">Dependency-Track</a> in the
+workloads repository uploads every one of them nightly and keeps the
+history Trivy's 24h reports cannot. <code>sbom-readers.yaml</code> is the
+<code>ClusterRole</code> and binding that let its upload job list them: the <code>apps</code>
+project may not create cluster-scoped RBAC, and which workload reads the
+operator's findings is decided here.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is a summary; the objects have the detail.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># What has been scanned, worst first</span>
