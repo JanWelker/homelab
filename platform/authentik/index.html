@@ -2807,6 +2807,16 @@ instance a reboot kills the database; with three, a replica takes over
 within a minute, once <code>enablePDB: false</code> lets the drain evict the primary.
 The chart's own Postgres subchart is off — both rules are in
 <a href="../cloudnative-pg/#the-contract">the contract</a>.</p>
+<p>Three instances only survive a node loss while they sit on three nodes, and
+the operator's own anti-affinity is <code>preferred</code>: a weight the scheduler trades
+away against free memory, which put two instances on the one 16&nbsp;GB worker.
+The <code>topologySpreadConstraints</code> block scores the placement instead. It stays
+<code>ScheduleAnyway</code> because the cluster has exactly three schedulable workers —
+<code>DoNotSchedule</code> would leave the replacement instance <code>Pending</code> for as long as a
+worker is down or draining. <code>nodeTaintsPolicy: Honor</code> keeps the tainted control
+planes out of the count, so the skew is measured over the nodes the pod can
+actually reach. Placement is only scored at scheduling time: pods already
+sharing a node stay there until something restarts them.</p>
 <h3 id="chart-values">Chart values<a class="headerlink" href="#chart-values" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
