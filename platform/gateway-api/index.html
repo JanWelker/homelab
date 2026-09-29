@@ -2475,6 +2475,10 @@ L2 pool, defined in <code>gateways.yaml</code>:</p>
 </tr>
 </tbody>
 </table>
+<p><code>apps-gateway</code> has a second HTTPS listener for <code>*.wollbi.ch</code>, the
+neighbourhood sites. A listener pins one hostname pattern and a wildcard
+certificate covers one zone, so a second domain is a second listener and a
+second <code>Certificate</code> rather than a name added to the first.</p>
 <p>Both terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside

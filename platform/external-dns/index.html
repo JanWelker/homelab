@@ -2485,6 +2485,10 @@ record pointing at nothing when the workload goes.</p>
 <td>The records live in the <code>wlkr.ch</code> zone, not a zone of their own</td>
 </tr>
 <tr>
+<td>A second entry in <code>domainFilters</code></td>
+<td><code>wollbi.ch</code> is a zone of its own in the same account, for the neighbourhood sites. Without it their routes are ignored rather than refused, which reads as external-dns being down</td>
+</tr>
+<tr>
 <td>Credentials as a file (<code>AWS_SHARED_CREDENTIALS_FILE</code>), not environment variables</td>
 <td>The environment puts a key that can repoint every hostname into <code>kubectl describe pod</code>, crash dumps and every child process. The <code>ExternalSecret</code> templates an INI <code>credentials</code> key, the only key mounted; the original keys stay in the Secret so nothing still reading them breaks</td>
 </tr>

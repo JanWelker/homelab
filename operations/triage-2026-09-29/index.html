@@ -2418,7 +2418,7 @@ severity more often than on presence.</p>
 <tr>
 <td><code>library/nextcloud</code></td>
 <td><code>MAL-2022-3033</code>, <code>MAL-2022-3056</code>, "malicious package"</td>
-<td><strong>Scanner artifact.</strong> Nextcloud's own <code>files_pdfviewer</code> and <code>firstrunwizard</code> apps share a name with two npm packages. Marked false positive in Dependency-Track by hand, again for every new tag</td>
+<td><strong>Scanner artifact.</strong> Nextcloud's own <code>files_pdfviewer</code> and <code>firstrunwizard</code> apps share a name with two npm packages. <strong>Fixed</strong> (homelab-apps#78): the upload job suppresses them for every new tag</td>
 </tr>
 <tr>
 <td><code>goauthentik/server</code>, <code>cloudnative-pg/postgresql</code></td>
@@ -2433,7 +2433,7 @@ severity more often than on presence.</p>
 <tr>
 <td><code>janwelker/knead-time-push</code></td>
 <td>OpenSSL, and in Trivy also <code>perl</code>, <code>sqlite</code> and <code>zlib</code>, none fixed in Debian 12</td>
-<td><strong>Fixed</strong> (knead-time#371). The image moves to a distroless base, which has none of the four packages but OpenSSL's libraries</td>
+<td><strong>Fixed</strong> (knead-time#371, homelab-apps#79). The image moves to a distroless base, which has none of the four packages but OpenSSL's libraries</td>
 </tr>
 </tbody>
 </table>
