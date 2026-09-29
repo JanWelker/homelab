@@ -2603,6 +2603,10 @@ left out rather than reported as failing.</p>
 <td>node-collector hostPath-mounts <code>/var/lib/etcd</code>, <code>/var/lib/kubelet</code>, <code>/etc/kubernetes</code> and <code>/etc/cni/net.d</code>, which <code>baseline</code> forbids. Scan jobs themselves drop all capabilities and run read-only</td>
 </tr>
 <tr>
+<td><code>resources</code> on the operator</td>
+<td>Its cache holds every report in the cluster, and the <code>SbomReport</code>s are most of that. At the limit it is OOM-killed mid-write, which shows as reports that never appear rather than as an error</td>
+</tr>
+<tr>
 <td><code>logDevMode: false</code></td>
 <td>Its <code>V(1)</code> lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding. Turn it on to debug, then off</td>
 </tr>
@@ -2755,6 +2759,11 @@ the outside:</p>
 <td>Some containers of a multi-container workload missing; job succeeded; log has <code>failed to analyze layer ... unexpected EOF</code></td>
 <td>A scan container died reading the image and the operator keeps only containers that exited 0. Hits workloads with several containers on one image (Rook, Cilium). Not the shared cache: concurrent scans with it pass</td>
 <td>Scan job pod logs</td>
+</tr>
+<tr>
+<td>Reports missing at random, operator restart count climbing, last state <code>OOMKilled</code></td>
+<td>The report cache outgrew the memory limit</td>
+<td><code>kubectl -n trivy-system get pod -l app.kubernetes.io/name=trivy-operator -o jsonpath='{..lastState}'</code>. Fix: <code>resources</code> in <code>application.yaml</code></td>
 </tr>
 <tr>
 <td><code>SbomReport</code> exists, no <code>VulnerabilityReport</code></td>
