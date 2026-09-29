@@ -86,10 +86,12 @@ authentication layer on its own.
 `database.yaml` is a CloudNativePG `Cluster` with three instances, the only
 one on the cluster with more than one. Every login on every platform UI
 goes through Authentik, so its database must survive a node drain: with one
-instance the operator's PodDisruptionBudget blocks the drain and a reboot
-kills the database; with three, the primary switches over and the drain
-proceeds. The chart's own Postgres subchart is off — see
-[the contract](cloudnative-pg.md#the-contract).
+instance a reboot kills the database; with three, a replica takes over.
+`enablePDB: false`, because the operator's `authentik-db-primary` budget
+refuses the primary's eviction outright and the drain hangs until Kured's
+timeout, with the node's OSD down meanwhile; without it the eviction
+lands and the operator fails over to a replica within seconds. The chart's
+own Postgres subchart is off — see [the contract](cloudnative-pg.md#the-contract).
 
 ### Chart values
 
