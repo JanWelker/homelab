@@ -109,6 +109,25 @@ directory holds exactly one `application.yaml`; everything else in it is what
 that Application deploys. [GitOps Strategy](../architecture/gitops.md) has the
 structure and the sync policy.
 
+## Replica placement
+
+Two replicas on one node are not redundancy. Every chart's default is a single
+`preferredDuringSchedulingIgnoredDuringExecution` anti-affinity term — one
+weight among the scheduler's scores, and on a cluster of one 16&nbsp;GB worker
+against two 8&nbsp;GB ones, free memory outscores it. So every component with
+more than one replica carries an explicit rule:
+
+| Rule | When |
+| --- | --- |
+| `topologySpreadConstraints`, `maxSkew: 1`, `whenUnsatisfiable: ScheduleAnyway` | the component runs on the three workers only, where a hard rule would leave a replica `Pending` through a Kured drain |
+| `podAntiAffinity` `requiredDuringSchedulingIgnoredDuringExecution` | the component tolerates the control planes, so six nodes always leave room — or its chart exposes no spread constraint |
+
+Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the
+nodes the pod can reach rather than over the tainted control planes. Placement
+is scored once, at scheduling time: pods already sharing a node stay there
+until something restarts them, and the [descheduler](descheduler.md) moves
+them back only if its evictor is allowed to touch them.
+
 ## Rollout order
 
 Nothing enforces an order: every Application syncs as soon as it exists and

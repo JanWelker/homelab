@@ -91,16 +91,10 @@ within a minute, once `enablePDB: false` lets the drain evict the primary.
 The chart's own Postgres subchart is off — both rules are in
 [the contract](cloudnative-pg.md#the-contract).
 
-Three instances only survive a node loss while they sit on three nodes, and
-the operator's own anti-affinity is `preferred`: a weight the scheduler trades
-away against free memory, which put two instances on the one 16&nbsp;GB worker.
-The `topologySpreadConstraints` block scores the placement instead. It stays
-`ScheduleAnyway` because the cluster has exactly three schedulable workers —
-`DoNotSchedule` would leave the replacement instance `Pending` for as long as a
-worker is down or draining. `nodeTaintsPolicy: Honor` keeps the tainted control
-planes out of the count, so the skew is measured over the nodes the pod can
-actually reach. Placement is only scored at scheduling time: pods already
-sharing a node stay there until something restarts them.
+Three instances only survive a node loss while they sit on three nodes, which
+the operator's own `preferred` anti-affinity does not guarantee — hence the
+`topologySpreadConstraints` block, under the rule in [Replica
+placement](index.md#replica-placement).
 
 ### Chart values
 
@@ -110,7 +104,7 @@ sharing a node stay there until something restarts them.
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
-| `server.topologySpreadConstraints` | Two replicas on one node are no redundancy. The chart's `podAntiAffinity` preset is `soft`, the same preference the scheduler traded away for the [database](#database); the constraint scores the placement instead. The worker runs a single replica, so it needs none |
+| `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold two replicas apart — see [Replica placement](index.md#replica-placement). The worker runs a single replica and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
 | Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](../architecture/gitops.md#workloads-live-in-a-second-repository), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 

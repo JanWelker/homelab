@@ -53,8 +53,11 @@ live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for
 [Velero](velero.md#configuration), whose S3 client only signs cleanly over
 TLS. Two RGW instances keep
-a node reboot from stalling a backup; the data pool is erasure coded 2+1 —
-1.5x overhead rather than 3x, safe at `failureDomain: host` with six nodes.
+a node reboot from stalling a backup, which only holds while they sit on
+separate nodes: `gateway.placement` carries the spread constraint, because the
+`placement.all` block belongs to the `CephCluster` and never reaches this CR.
+The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at
+`failureDomain: host` with six nodes.
 
 ### Monitoring
 
