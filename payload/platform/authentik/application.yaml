@@ -65,6 +65,18 @@ spec:
 
           server:
             replicas: 2
+            # The chart's anti-affinity is a preference the scheduler outweighs
+            # on unequal nodes; see docs/platform/authentik.md#database
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: kubernetes.io/hostname
+                whenUnsatisfiable: ScheduleAnyway
+                nodeTaintsPolicy: Honor
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: authentik
+                    app.kubernetes.io/instance: authentik
+                    app.kubernetes.io/component: server
             containerSecurityContext:
               allowPrivilegeEscalation: false
               capabilities:
