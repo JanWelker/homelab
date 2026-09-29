@@ -12,7 +12,8 @@
 #   SMTP_TO                                         where alert mail is delivered
 #
 # One more is optional, because the thing that issues it runs on the cluster
-# and does not exist on a fresh one; Enter skips it and its path stays unwritten:
+# and does not exist on a fresh one. Enter writes the path with an empty value
+# rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #
@@ -61,7 +62,10 @@
 # kv/dependency-track/sbom-upload is the API key its upload job authenticates
 # with. Dependency-Track issues that key after its first start, so it is its
 # own path: writing it into dependency-track/config later would have rotated
-# the encryption key.
+# the encryption key. The path is always written, empty when there is no key
+# yet, because External Secrets fails an ExternalSecret whose path does not
+# exist and ArgoCD stops the sync on it -- which would leave Dependency-Track
+# waiting for a key only a running Dependency-Track can issue.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -263,8 +267,8 @@ prompt_secret() {
 }
 
 # The same, for a value that may not exist yet: an empty answer, or no
-# terminal and nothing in the environment, leaves the variable empty and the
-# caller skips the path rather than writing an empty key into it.
+# terminal and nothing in the environment, leaves the variable empty, and the
+# caller decides what an empty value means for its path.
 prompt_optional() {
   local var="$1" description="$2" value=""
 
@@ -274,7 +278,7 @@ prompt_optional() {
   fi
 
   if [ ! -t 0 ]; then
-    printf '  %-24s not set and no terminal to ask at, skipped\n' "$var"
+    printf '  %-24s not set and no terminal to ask at, left empty\n' "$var"
     eval "$var="
     return
   fi
@@ -285,7 +289,7 @@ prompt_optional() {
   if [ -n "$value" ]; then
     printf '  %-24s read (%d characters)\n' "$var" "${#value}"
   else
-    printf '  %-24s skipped\n' "$var"
+    printf '  %-24s left empty\n' "$var"
   fi
   eval "$var=\$value"
 }
@@ -305,8 +309,7 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
 fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
-  prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter to skip until it has issued one)"
-  [ -n "${SBOM_UPLOAD_API_KEY:-}" ] || WRITE_SBOM_UPLOAD=0
+  prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
 fi
 echo
 
@@ -410,10 +413,13 @@ if [ "$WRITE_DTRACK" = "1" ]; then
     "oidc-client-id=$(rand_hex 16)"
 fi
 
-# Only when a key was typed above; see homelab-apps/docs/dependency-track.md#secrets
+# Written even when the answer was empty: the upload job reads the empty value
+# and says so, where a missing path stops the whole sync. Rewriting this path
+# costs nothing, which is why it is not a key under dependency-track/config.
+# See homelab-apps/docs/dependency-track.md#secrets
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   put dependency-track/sbom-upload \
-    "api-key=${SBOM_UPLOAD_API_KEY}"
+    "api-key=${SBOM_UPLOAD_API_KEY:-}"
 fi
 
 cat <<'EOF'
