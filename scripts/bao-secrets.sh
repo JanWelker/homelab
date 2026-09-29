@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the ten kv paths the cluster reads through ExternalSecrets.
+# Populates the eleven kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -55,6 +55,11 @@
 # kv/umami/config holds the key Umami signs its dashboard sessions with and the
 # one it encrypts TOTP secrets with. Both go in at once because a `bao kv put`
 # replaces the path: adding the second later would have rotated the first.
+#
+# kv/fest-wollbi/config holds the key Payload signs the editor sessions of
+# Wollbi-Fescht with -- the same value the seed hook authenticates with -- and the
+# password of the first editor, which Payload reads only while its database
+# is still empty.
 #
 # kv/dependency-track/config holds the key Dependency-Track encrypts its stored
 # secrets with and its OIDC client ID, which Authentik reads through
@@ -198,6 +203,12 @@ UMAMI_DANGER="  Rewriting it rotates the key every Umami dashboard session is si
   with, so everyone is logged out, and the key the TOTP secrets are encrypted
   with, so every second factor enrolled in Umami stops verifying."
 
+FEST_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wollbi-Fescht is signed
+  with, so the editors are logged out, and the token the seed hook
+  authenticates with. The first editor's password changes too -- and Payload
+  only reads that while the database is empty, so on a running site the new
+  value is written down and the old one is still what logs you in."
+
 DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
   database is encrypted with -- feed tokens, notification credentials -- so
   those become unreadable, and issues a new OIDC client ID that Authentik and
@@ -219,6 +230,7 @@ decide WRITE_GRAFANA      monitoring/grafana-admin
 decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
+decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
 decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
@@ -227,6 +239,7 @@ if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
   && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
+  && [ "$WRITE_FEST_WOLLBI" = "0" ] \
   && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -403,6 +416,13 @@ if [ "$WRITE_UMAMI" = "1" ]; then
   put umami/config \
     "app-secret=$(rand_hex 32)" \
     "two-factor-encryption-key=$(rand_hex 32)"
+fi
+
+# Both generated. See homelab-apps/fest-wollbi/secrets.yaml.
+if [ "$WRITE_FEST_WOLLBI" = "1" ]; then
+  put fest-wollbi/config \
+    "payload-secret=$(rand_b64 48)" \
+    "admin-password=$(rand_b64 24)"
 fi
 
 # The key encryption key as the chart documents it, 32 random bytes in base64,
