@@ -47,6 +47,18 @@ spec:
                   seccompProfile:
                     type: RuntimeDefault
               - op: add
+                path: /spec/template/spec/topologySpreadConstraints
+                value:
+                  # Worker-only, so ScheduleAnyway; see
+                  # docs/platform/index.md#replica-placement
+                  - maxSkew: 1
+                    topologyKey: kubernetes.io/hostname
+                    whenUnsatisfiable: ScheduleAnyway
+                    nodeTaintsPolicy: Honor
+                    labelSelector:
+                      matchLabels:
+                        app.kubernetes.io/name: snapshot-controller
+              - op: add
                 path: /spec/template/spec/containers/0/resources
                 value:
                   requests:
