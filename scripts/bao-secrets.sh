@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Populates the eight kv paths the cluster reads through ExternalSecrets.
+# Populates the ten kv paths the cluster reads through ExternalSecrets.
 #
 #   make bao-secrets
 #
@@ -10,6 +10,11 @@
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
+#
+# One more is optional, because the thing that issues it runs on the cluster
+# and does not exist on a fresh one; Enter skips it and its path stays unwritten:
+#
+#   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -49,6 +54,14 @@
 # kv/umami/config holds the key Umami signs its dashboard sessions with and the
 # one it encrypts TOTP secrets with. Both go in at once because a `bao kv put`
 # replaces the path: adding the second later would have rotated the first.
+#
+# kv/dependency-track/config holds the key Dependency-Track encrypts its stored
+# secrets with and its OIDC client ID, which Authentik reads through
+# secrets-dependency-track.yaml; a public client, so there is no secret.
+# kv/dependency-track/sbom-upload is the API key its upload job authenticates
+# with. Dependency-Track issues that key after its first start, so it is its
+# own path: writing it into dependency-track/config later would have rotated
+# the encryption key.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -181,6 +194,11 @@ UMAMI_DANGER="  Rewriting it rotates the key every Umami dashboard session is si
   with, so everyone is logged out, and the key the TOTP secrets are encrypted
   with, so every second factor enrolled in Umami stops verifying."
 
+DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
+  database is encrypted with -- feed tokens, notification credentials -- so
+  those become unreadable, and issues a new OIDC client ID that Authentik and
+  both Dependency-Track Deployments read through separate ExternalSecrets."
+
 NEXTCLOUD_DANGER="  Rewriting it issues a new OIDC client secret. Authentik and Nextcloud
   read it from here through two different ExternalSecrets that refresh
   independently, so signing in with Authentik fails until both have caught
@@ -197,12 +215,15 @@ decide WRITE_GRAFANA      monitoring/grafana-admin
 decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
+decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
+decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
-  && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ]; then
+  && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
+  && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -241,6 +262,34 @@ prompt_secret() {
   eval "$var=\$value"
 }
 
+# The same, for a value that may not exist yet: an empty answer, or no
+# terminal and nothing in the environment, leaves the variable empty and the
+# caller skips the path rather than writing an empty key into it.
+prompt_optional() {
+  local var="$1" description="$2" value=""
+
+  if [ -n "${!var:-}" ]; then
+    printf '  %-24s from the environment\n' "$var"
+    return
+  fi
+
+  if [ ! -t 0 ]; then
+    printf '  %-24s not set and no terminal to ask at, skipped\n' "$var"
+    eval "$var="
+    return
+  fi
+
+  printf '  %s\n    %s: ' "$description" "$var" >&2
+  read -rs value
+  printf '\n' >&2
+  if [ -n "$value" ]; then
+    printf '  %-24s read (%d characters)\n' "$var" "${#value}"
+  else
+    printf '  %-24s skipped\n' "$var"
+  fi
+  eval "$var=\$value"
+}
+
 echo "### Credentials that cannot be generated"
 if [ "$WRITE_CERT_MANAGER" = "1" ]; then
   prompt_secret CERT_MANAGER_KEY_ID     "Route53 IAM key for cert-manager (TXT records only)"
@@ -254,6 +303,10 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_USERNAME           "SMTP login for Alertmanager, also the sender address"
   prompt_secret SMTP_PASSWORD           "  ...and its password"
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
+fi
+if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
+  prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter to skip until it has issued one)"
+  [ -n "${SBOM_UPLOAD_API_KEY:-}" ] || WRITE_SBOM_UPLOAD=0
 fi
 echo
 
@@ -347,6 +400,20 @@ if [ "$WRITE_UMAMI" = "1" ]; then
   put umami/config \
     "app-secret=$(rand_hex 32)" \
     "two-factor-encryption-key=$(rand_hex 32)"
+fi
+
+# The key encryption key as the chart documents it, 32 random bytes in base64,
+# and the OIDC client ID. See homelab-apps/dependency-track/secrets.yaml.
+if [ "$WRITE_DTRACK" = "1" ]; then
+  put dependency-track/config \
+    "kek=$(rand_b64 32)" \
+    "oidc-client-id=$(rand_hex 16)"
+fi
+
+# Only when a key was typed above; see homelab-apps/docs/dependency-track.md#secrets
+if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
+  put dependency-track/sbom-upload \
+    "api-key=${SBOM_UPLOAD_API_KEY}"
 fi
 
 cat <<'EOF'
