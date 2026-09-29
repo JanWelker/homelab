@@ -57,14 +57,14 @@ The values are in `payload/platform/kured/application.yaml`; the reasoning:
 | Setting | Why |
 | --- | --- |
 | No reboot window | Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock |
-| `concurrency` of one and `lockReleaseDelay` | One node down at a time, with breathing room for Ceph to backfill before the next |
+| `concurrency` of one and `lockReleaseDelay` of five minutes | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
 | `forceReboot: false` | A node that will not drain is a node worth looking at |
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
 | `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from [Rebooting a node](../operations/nodes.md): a second reboot during a backfill can take a placement group below its minimum replica count |
 
 !!! note "The regex means the opposite of what it looks like"
-    `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it.
+    `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no `PrometheusRule` defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under [Health check](#health-check).
 
 ## Usage
 
@@ -90,4 +90,7 @@ kubectl get nodes -o json | jq -r '.items[] | select(.metadata.annotations["weav
 ssh core@<node> 'ls -l /run/reboot-required; update_engine_client -status'
 
 kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50
+
+# The alert names the gate may use: every entry in alertFilterRegexp must be here
+kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI'
 ```

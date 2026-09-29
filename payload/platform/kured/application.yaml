@@ -25,7 +25,8 @@ spec:
           concurrency: 1
 
           lockTtl: 1h
-          lockReleaseDelay: 10m
+          # Holds only the next node; the uncordon is immediate. See docs/platform/kured.md
+          lockReleaseDelay: 5m
 
           drainTimeout: 15m
           drainGracePeriod: 120
@@ -34,9 +35,10 @@ spec:
           prometheusUrl: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
           alertFiringOnly: true
           # Inverts the regex: listed alerts are the only ones that block.
+          # Names must exist in a PrometheusRule; see docs/platform/kured.md
           alertFilterMatchOnly: true
           # yamllint disable-line rule:line-length
-          alertFilterRegexp: '^(CephClusterErrorState|CephClusterWarningState|CephOSDDown|CephPGsUnhealthy|CephPGsDegraded|CephPGsNotDeepScrubbed|CephMonQuorumAtRisk|CephMonQuorumLost|CephNodeDown|etcdMembersDown|etcdInsufficientMembers|etcdNoLeader|KubeNodeNotReady|KubeAPIDown)$'
+          alertFilterRegexp: '^(CephHealthError|CephHealthWarning|CephOSDDown|CephOSDHostDown|CephMonDown|CephMonDownQuorumAtRisk|CephPGsInactive|CephPGsUnclean|CephPGRecoveryAtRisk|CephPGBackfillAtRisk|CephPGUnavailableBlockingIO|etcdMembersDown|etcdInsufficientMembers|etcdNoLeader|KubeNodeNotReady|KubeNodeUnreachable|KubeAPIDown)$'
 
           preferNoScheduleTaint: weave.works/kured-node-reboot
           annotateNodes: true
