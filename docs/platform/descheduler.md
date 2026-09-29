@@ -32,6 +32,7 @@ reasoning:
 | `kind: CronJob` on a two-hour schedule | A Deployment would poll continuously for a cluster that changes shape once per Flatcar update. A pass every two hours drifts a rebooted cluster back into balance the same day |
 | `nodeFit: true` | A pod is only evicted when another node has room for it, so an eviction never turns into a Pending pod |
 | Local-storage and PVC pods at the defaults | `emptyDir` pods are protected because their data goes with them; PVC pods are not, because Ceph volumes follow the pod to any node |
+| System-critical pods at the default | `evictSystemCriticalPods` stays off, so nothing with `priorityClassName: system-cluster-critical` is ever moved. Those components hold their own placement rule instead — see [Replica placement](index.md#replica-placement) |
 | `maxNoOfPodsToEvictPerNode` and `evictionLimits.node` | A few pods per node per pass: one Kured reboot already moved everything on a node once, a second mass move is what this component is meant to avoid |
 | `LowNodeUtilization` with `metricsUtilization.source: KubernetesMetrics` | Usage comes from metrics-server, not from requests. Requests here are still being tuned and many are far below what the pod uses, so a requests-based view would call a loaded node idle |
 | `thresholds` and `targetThresholds` | A node under the low mark is a candidate to receive, one over the high mark a candidate to lose pods; nodes in between are left alone |

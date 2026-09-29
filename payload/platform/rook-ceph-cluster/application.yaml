@@ -160,6 +160,19 @@ spec:
                 port: 80
                 instances: 2
                 priorityClassName: system-cluster-critical
+                # placement.all above is the CephCluster's; a CephObjectStore
+                # is its own CR. See docs/platform/index.md#replica-placement
+                placement:
+                  topologySpreadConstraints:
+                    - maxSkew: 1
+                      topologyKey: kubernetes.io/hostname
+                      whenUnsatisfiable: ScheduleAnyway
+                      nodeTaintsPolicy: Honor
+                      labelSelector:
+                        matchLabels:
+                          app: rook-ceph-rgw
+                          rook_cluster: rook-ceph
+                          rook_object_store: object-store
                 resources:
                   requests:
                     cpu: 100m
