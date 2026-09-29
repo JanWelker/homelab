@@ -61,6 +61,10 @@
 # password of the first editor, which Payload reads only while its database
 # is still empty.
 #
+# kv/paperless-ngx/config holds the key Paperless signs its sessions with, the
+# break-glass admin password it creates on its first start, and its OIDC
+# client pair, which Authentik reads through secrets-paperless-ngx.yaml.
+#
 # kv/dependency-track/config holds the key Dependency-Track encrypts its stored
 # secrets with and its OIDC client ID, which Authentik reads through
 # secrets-dependency-track.yaml; a public client, so there is no secret.
@@ -209,6 +213,13 @@ FEST_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wollb
   only reads that while the database is empty, so on a running site the new
   value is written down and the old one is still what logs you in."
 
+PAPERLESS_DANGER="  Rewriting it rotates the key every Paperless session is signed with, so
+  everyone is logged out, and issues a new OIDC client pair that Authentik
+  and Paperless read through separate ExternalSecrets which refresh
+  independently. The admin password changes too -- and Paperless only reads
+  that when it first creates the account, so on a running cluster the new
+  value is written down and the old one is still what logs you in."
+
 DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
   database is encrypted with -- feed tokens, notification credentials -- so
   those become unreadable, and issues a new OIDC client ID that Authentik and
@@ -231,6 +242,7 @@ decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
 decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
+decide WRITE_PAPERLESS    paperless-ngx/config "$PAPERLESS_DANGER"
 decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
@@ -240,6 +252,7 @@ if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
   && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
   && [ "$WRITE_FEST_WOLLBI" = "0" ] \
+  && [ "$WRITE_PAPERLESS" = "0" ] \
   && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -423,6 +436,16 @@ if [ "$WRITE_FEST_WOLLBI" = "1" ]; then
   put fest-wollbi/config \
     "payload-secret=$(rand_b64 48)" \
     "admin-password=$(rand_b64 24)"
+fi
+
+# All four generated; nothing here belongs to an account outside the cluster.
+# See homelab-apps/paperless-ngx/secrets.yaml.
+if [ "$WRITE_PAPERLESS" = "1" ]; then
+  put paperless-ngx/config \
+    "secret-key=$(rand_b64 48)" \
+    "admin-password=$(rand_b64 24)" \
+    "oidc-client-id=$(rand_hex 16)" \
+    "oidc-client-secret=$(rand_b64 48)"
 fi
 
 # The key encryption key as the chart documents it, 32 random bytes in base64,
