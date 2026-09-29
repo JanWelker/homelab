@@ -40,3 +40,25 @@ spec:
   dnsNames:
     - "*.infra.k8s.wlkr.ch"
     - "infra.k8s.wlkr.ch"
+---
+# The second domain on apps-gateway. Same issuer and the same DNS-01 solver:
+# the wollbi.ch zone is in the same Route53 account as wlkr.ch.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wollbi-gateway-tls
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  secretName: wollbi-gateway-tls
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 4096
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - "*.wollbi.ch"
+    - "wollbi.ch"

@@ -35,6 +35,23 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    # A second domain, for the two neighbourhood sites. Its own listener
+    # because a listener pins one hostname pattern, and its own certificate
+    # because a wildcard covers one zone; see docs/platform/gateway-api.md
+    - name: https-wollbi
+      protocol: HTTPS
+      port: 443
+      hostname: "*.wollbi.ch"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: wollbi-gateway-tls
+            namespace: kube-system
+      allowedRoutes:
+        namespaces:
+          from: All
 ---
 # Infra Gateway - for core/infrastructure services (*.infra.k8s.wlkr.ch)
 apiVersion: gateway.networking.k8s.io/v1
