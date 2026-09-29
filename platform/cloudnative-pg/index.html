@@ -2513,6 +2513,11 @@ registry terms keep changing. The rule for the
 <li>Put the <code>Cluster</code> in the workload's namespace, not <code>cnpg-system</code>, so the
    namespace's <code>CiliumNetworkPolicy</code> governs port 5432 and deleting the
    namespace takes the database with it.</li>
+<li>Set <code>enablePDB: false</code>. The operator's <code>&lt;cluster&gt;-primary</code>
+   PodDisruptionBudget refuses the primary's eviction outright, so a node
+   drain hangs on it until <a href="../kured/">Kured</a> gives up and the node is never
+   rebooted. Without the budget a single instance is down for the move to
+   another node and a three-instance cluster fails over within a minute.</li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusters.postgresql.cnpg.io<span class="w"> </span>-A

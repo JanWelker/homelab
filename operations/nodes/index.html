@@ -2382,6 +2382,10 @@ reboot; that takes a <a href="#rebuilding-or-repartitioning-a-node">rebuild</a>.
 <p>Drain it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data
 </span></code></pre></div>
+<p>A drain that loops on <code>Cannot evict pod as it would violate the pod's
+disruption budget</code> for a <code>&lt;name&gt;-db-&lt;n&gt;</code> pod is a CloudNativePG cluster
+with its budget still on — see
+<a href="../../platform/cloudnative-pg/#the-contract">the contract</a>.</p>
 </li>
 <li>
 <p>Reboot it and wait for <code>Ready</code>.</p>
