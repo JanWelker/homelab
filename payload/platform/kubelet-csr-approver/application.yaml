@@ -23,6 +23,17 @@ spec:
           - 10.9.2.0/24
         maxExpirationSeconds: 86400
         replicas: 2
+        # It tolerates the control planes, so six nodes always leave room for
+        # two replicas and the rule can be hard; the chart exposes no
+        # topologySpreadConstraints. See docs/platform/index.md#replica-placement
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: kubelet-csr-approver
+                    app.kubernetes.io/instance: kubelet-csr-approver
         # Pod-level; the container already matches.
         podSecurityContext:
           runAsNonRoot: true
