@@ -153,6 +153,7 @@ with the secret key, the bootstrap password and token and the ArgoCD and
 Grafana client pairs; `scripts/bao-secrets.sh` is the list of keys. A
 workload's client credentials go in the workload's own path (Nextcloud's in
 `kv/nextcloud/config`, Dependency-Track's in `kv/dependency-track/config`,
+Paperless-ngx's in `kv/paperless-ngx/config`,
 each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key
 that signs every session and token, and External Secrets fails an
 `ExternalSecret` whole when one key is missing, so a shared one would leave
