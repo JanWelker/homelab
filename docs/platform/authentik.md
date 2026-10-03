@@ -44,7 +44,7 @@ flowchart LR
     U([Browser]) --> GW[infra-gateway / apps-gateway]
     GW -->|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW -->|hubble, rook, prometheus, home, flowscape, analytics, fest/admin| AK
+    GW -->|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, claw| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
@@ -72,7 +72,7 @@ updates it.
 A proxied application's route lives with the application: Hubble's in
 `payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
 Prometheus's and Alertmanager's in `payload/platform/monitoring/`, and Home
-Assistant's, Flowscape's, Umami's and Wollbi-Fescht's in the
+Assistant's, Flowscape's, Umami's, Wollbi-Fescht's and OpenClaw's in the
 [workloads repository](../development/add-workload.md),
 each with `authentik-server` as `backendRef`. Gateway API forbids a
 cross-namespace `backendRef` unless the target namespace grants it, so

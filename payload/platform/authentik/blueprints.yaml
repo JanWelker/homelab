@@ -271,6 +271,30 @@ data:
           meta_launch_url: https://fest.wollbi.ch
           meta_description: The street's summer party, since 1987
 
+      # In front of the gateway's own shared-secret token, not instead of
+      # it: the control UI drives an agent that can run tools.
+      - model: authentik_providers_proxy.proxyprovider
+        state: present
+        id: openclaw-provider
+        identifiers:
+          name: openclaw
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          mode: proxy
+          external_host: https://claw.k8s.wlkr.ch
+          internal_host: http://openclaw.openclaw.svc.cluster.local:18789
+          internal_host_ssl_validation: false
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: openclaw
+        attrs:
+          name: OpenClaw
+          provider: !KeyOf openclaw-provider
+          meta_launch_url: https://claw.k8s.wlkr.ch
+          meta_description: The self-hosted assistant gateway
+
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
@@ -290,3 +314,4 @@ data:
             - !KeyOf flowscape-provider
             - !KeyOf umami-provider
             - !KeyOf fest-wollbi-provider
+            - !KeyOf openclaw-provider
