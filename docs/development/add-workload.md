@@ -266,7 +266,9 @@ metadata:
   namespace: my-app
 spec:
   parentRefs:
-    - name: apps-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: apps-gateway
       namespace: kube-system
       sectionName: https
   hostnames:
