@@ -204,17 +204,17 @@ configs:
         end
       end
       return hs
-    # The API server defaults group, kind and weight on every ref it is given
-    # without them, so a route that does not spell them out is OutOfSync the
-    # moment it is applied. jq expressions rather than pointers because a route
-    # may have more than one rule -- Dependency-Track splits /api from / -- and
-    # a pointer names one index, which left rule 1 drifting forever.
+    # The API server defaults group, kind and weight on every backend ref it
+    # is given without them, and the Dependency-Track and OpenBao charts
+    # render theirs that way. jq expressions rather than pointers because a
+    # route may have more than one rule -- Dependency-Track splits /api from /
+    # -- and a pointer names one index, which left rule 1 drifting forever.
+    # parentRefs are not here: every route names the Gateway's group and kind,
+    # so a changed parent shows up as the drift it is.
     resource.customizations: |
       gateway.networking.k8s.io/HTTPRoute:
         ignoreDifferences: |
           jqPathExpressions:
-          - .spec.parentRefs[].group
-          - .spec.parentRefs[].kind
           - .spec.rules[].backendRefs[].group
           - .spec.rules[].backendRefs[].kind
           - .spec.rules[].backendRefs[].weight
