@@ -6,7 +6,9 @@ metadata:
   namespace: rook-ceph
 spec:
   parentRefs:
-    - name: infra-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: infra-gateway
       namespace: kube-system
       sectionName: https
   hostnames:
@@ -39,7 +41,9 @@ metadata:
   namespace: rook-ceph
 spec:
   parentRefs:
-    - name: infra-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: infra-gateway
       namespace: kube-system
       sectionName: https
   hostnames:

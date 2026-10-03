@@ -7,7 +7,9 @@ metadata:
   namespace: kube-system
 spec:
   parentRefs:
-    - name: apps-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: apps-gateway
       namespace: kube-system
       sectionName: http
   rules:
@@ -25,7 +27,9 @@ metadata:
   namespace: kube-system
 spec:
   parentRefs:
-    - name: infra-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: infra-gateway
       namespace: kube-system
       sectionName: http
   rules:

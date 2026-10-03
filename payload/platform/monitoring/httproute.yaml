@@ -6,7 +6,9 @@ metadata:
   namespace: monitoring
 spec:
   parentRefs:
-    - name: infra-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: infra-gateway
       namespace: kube-system
       sectionName: https
   hostnames:
@@ -37,7 +39,9 @@ metadata:
   namespace: monitoring
 spec:
   parentRefs:
-    - name: infra-gateway
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: infra-gateway
       namespace: kube-system
       sectionName: https
   hostnames:
