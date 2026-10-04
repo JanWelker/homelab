@@ -8,15 +8,13 @@
 # the ExternalSecret that reads it, from a Password generator, and never
 # overwritten; see docs/platform/openbao.md#generated-secrets.
 #
-# Nine values belong to accounts outside this cluster and are prompted for,
+# Seven values belong to accounts outside this cluster and are prompted for,
 # one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
-#   OPEN_WEBUI_OPENAI_KEY                           the model API Open WebUI talks to
-#   OPENCLAW_ANTHROPIC_KEY                          the model the OpenClaw agent thinks with
 #
 # One more is optional, because the thing that issues it runs on the cluster
 # and does not exist on a fresh one. Enter writes the path with an empty value
@@ -44,10 +42,9 @@
 # payload/platform/external-dns/route53-credentials.yaml.
 #
 # A typed value never shares a path with generated ones. A `bao kv put`
-# replaces a path wholesale, so writing the OpenAI key into open-webui/config
+# replaces a path wholesale, so writing a typed key into a PushSecret's path
 # would delete the generated keys beside it, and the PushSecret would answer
-# with new ones -- a rotation nobody asked for. Hence kv/open-webui/openai
-# and kv/openclaw/anthropic.
+# with new ones -- a rotation nobody asked for.
 #
 # kv/kneadtime/config is the one generated value still written here: a P-256
 # key in PEM that signs every push, which a Password generator cannot produce.
@@ -188,14 +185,11 @@ decide WRITE_CERT_MANAGER cert-manager/route53
 decide WRITE_EXTERNAL_DNS external-dns/route53
 decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
-decide WRITE_OPEN_WEBUI   open-webui/openai
-decide WRITE_OPENCLAW     openclaw/anthropic
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
-  && [ "$WRITE_OPEN_WEBUI" = "0" ] && [ "$WRITE_OPENCLAW" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -277,12 +271,6 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_PASSWORD           "  ...and its password"
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
 fi
-if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
-  prompt_secret OPEN_WEBUI_OPENAI_KEY   "OpenAI API key for Open WebUI"
-fi
-if [ "$WRITE_OPENCLAW" = "1" ]; then
-  prompt_secret OPENCLAW_ANTHROPIC_KEY  "Anthropic API key for the OpenClaw agent"
-fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
 fi
@@ -336,18 +324,6 @@ fi
 if [ "$WRITE_KNEADTIME" = "1" ]; then
   put kneadtime/config \
     "vapid-private-key=$(openssl ecparam -name prime256v1 -genkey -noout)"
-fi
-
-# Typed in, so their own paths: see the header.
-# homelab-apps/open-webui/secrets.yaml, homelab-apps/openclaw/secrets.yaml
-if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
-  put open-webui/openai \
-    "api-key=${OPEN_WEBUI_OPENAI_KEY}"
-fi
-
-if [ "$WRITE_OPENCLAW" = "1" ]; then
-  put openclaw/anthropic \
-    "api-key=${OPENCLAW_ANTHROPIC_KEY}"
 fi
 
 # Written even when the answer was empty: the upload job reads the empty value
