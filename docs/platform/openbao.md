@@ -80,8 +80,9 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, and
 ExternalSecrets reference `cert-manager/route53` without the `data/` prefix ESO
 adds itself. A path is written by exactly one of two things: a `PushSecret`
 beside the `ExternalSecret` that reads it, when every value is random — see
-[Generated secrets](#generated-secrets) — or `make bao-secrets`, when a value
-belongs to an account outside the cluster. A path never mixes the two, because
+[Generated secrets](#generated-secrets) — or `make bao-secrets` (an agent
+session's PAT: `make claude-session-pat`), when a value belongs to an account
+outside the cluster. A path never mixes the two, because
 a `bao kv put` replaces the whole path.
 
 | Path | Keys | Read by |
@@ -93,7 +94,7 @@ a `bao kv put` replaces the whole path.
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
 | `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
-| `claude-<session>/github` | `token` | One agent session's GitHub PAT; `bao-secrets.sh` knows `claude-homelab` and `claude-homelab-apps`. Empty until typed in |
+| `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
 | `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's
