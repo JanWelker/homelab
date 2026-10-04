@@ -16,14 +16,12 @@
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
 #
-# Four more are optional, because what issues them runs on the cluster or
+# Two more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
-#   CLAUDE_HOMELAB_GITHUB_TOKEN                     a GitHub PAT for the homelab agent session
-#   CLAUDE_HOMELAB_APPS_GITHUB_TOKEN                a GitHub PAT for the homelab-apps agent session
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -62,11 +60,11 @@
 # and ArgoCD stops the sync on it -- which would leave Dependency-Track waiting
 # for a key only a running Dependency-Track can issue.
 #
-# kv/claude-agents/argocd and kv/claude-<session>/github are the same kind of
-# path: a token only an account outside this script can issue (Argo CD's
-# `argocd account generate-token --account claude`, a GitHub PAT), written
-# empty until it exists so that the agents' ExternalSecrets resolve. See
-# docs/platform/argocd.md#agent-account.
+# kv/claude-agents/argocd is the same kind of path: a token only Argo CD can
+# issue (`argocd account generate-token --account claude`), written empty until
+# it exists so that the agents' ExternalSecret resolves. See
+# docs/platform/argocd.md#agent-account. The per-session GitHub PATs are not
+# here: `make claude-session-pat` stores one for any session.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -75,47 +73,15 @@
 # others for non-interactive use.
 set -euo pipefail
 
-NAMESPACE="${NAMESPACE:-openbao}"
-POD="${POD:-openbao-0}"
-KEYFILE="${KEYFILE:-output/credentials/openbao-init.json}"
 FORCE="${FORCE:-0}"
 
-bao() { kubectl -n "$NAMESPACE" exec "$POD" -- bao "$@"; }
-bao_in() { kubectl -n "$NAMESPACE" exec -i "$POD" -- bao "$@"; }
+# shellcheck source=lib/bao.sh source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib/bao.sh"
 
-# --- Preflight -------------------------------------------------------------
-#
 # Logging in has to happen before anything is prompted for, because which
 # credentials are needed depends on which paths already exist, and that cannot
 # be known without reading OpenBao first.
-
-[ -f "$KEYFILE" ] || {
-  echo "ERROR: ${KEYFILE} not found -- run 'make bao-init' first, or log in by hand." >&2
-  exit 1
-}
-
-sealed="$(kubectl -n "$NAMESPACE" exec "$POD" -- bao status -format=json 2>/dev/null \
-  | uv run python -c 'import json,sys; print(json.load(sys.stdin).get("sealed",""))' 2>/dev/null || true)"
-[ "$sealed" = "False" ] || {
-  echo "ERROR: ${POD} is sealed. Run 'make bao-unseal' first." >&2
-  exit 1
-}
-
-root_token="$(uv run python -c '
-import json, sys
-with open(sys.argv[1]) as handle:
-    print(json.load(handle)["root_token"])
-' "$KEYFILE")"
-
-printf '%s' "$root_token" | bao_in login - >/dev/null
-cleanup() {
-  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token"' >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-
-exists() {
-  bao kv get -mount=kv "$1" >/dev/null 2>&1
-}
+bao_login
 
 # --- Decide what to write --------------------------------------------------
 #
@@ -196,14 +162,11 @@ decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
-decide WRITE_CLAUDE_GITHUB claude-homelab/github
-decide WRITE_CLAUDE_APPS_GITHUB claude-homelab-apps/github
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
-  && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
-  && [ "$WRITE_CLAUDE_GITHUB" = "0" ] && [ "$WRITE_CLAUDE_APPS_GITHUB" = "0" ]; then
+  && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -290,37 +253,9 @@ fi
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
   prompt_optional CLAUDE_ARGOCD_TOKEN   "Argo CD token of the claude account (Enter until you have generated one)"
 fi
-if [ "$WRITE_CLAUDE_GITHUB" = "1" ]; then
-  prompt_optional CLAUDE_HOMELAB_GITHUB_TOKEN "GitHub PAT for the homelab agent session (Enter until you have one)"
-fi
-if [ "$WRITE_CLAUDE_APPS_GITHUB" = "1" ]; then
-  prompt_optional CLAUDE_HOMELAB_APPS_GITHUB_TOKEN "GitHub PAT for the homelab-apps agent session (Enter until you have one)"
-fi
 echo
 
 # --- Write -----------------------------------------------------------------
-
-# Values travel on stdin at both ends: NUL-separated into the local interpreter
-# that builds the JSON, and as JSON into the pod. Neither process list shows
-# them, and this shell's history never sees them.
-#
-# The JSON is built into a variable before anything is piped. `kubectl exec -i`
-# reads stdin once, as the remote command starts: a producer that is not ready
-# by then -- `uv run python` starting an interpreter is easily slow enough --
-# hands the pod an empty stream. A pipeline starting with `uv run` loses the
-# secret that way, and reports success while doing it; a `printf` of a string
-# that already exists has nothing to be late with.
-put() {
-  local path="$1" json
-  shift
-  json="$(printf '%s\0' "$@" | uv run python -c '
-import json, sys
-pairs = sys.stdin.buffer.read().split(b"\0")[:-1]
-print(json.dumps(dict(p.decode().split("=", 1) for p in pairs)))
-')"
-  printf '%s' "$json" | bao_in kv put -mount=kv "$path" - >/dev/null
-  printf '  %-24s written\n' "kv/${path}"
-}
 
 if [ "$WRITE_CERT_MANAGER" = "1" ]; then
   put cert-manager/route53 \
@@ -360,14 +295,6 @@ fi
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
   put claude-agents/argocd \
     "token=${CLAUDE_ARGOCD_TOKEN:-}"
-fi
-if [ "$WRITE_CLAUDE_GITHUB" = "1" ]; then
-  put claude-homelab/github \
-    "token=${CLAUDE_HOMELAB_GITHUB_TOKEN:-}"
-fi
-if [ "$WRITE_CLAUDE_APPS_GITHUB" = "1" ]; then
-  put claude-homelab-apps/github \
-    "token=${CLAUDE_HOMELAB_APPS_GITHUB_TOKEN:-}"
 fi
 
 cat <<'EOF'

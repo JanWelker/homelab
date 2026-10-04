@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -109,6 +109,11 @@ bao-unseal: check-context
 
 bao-secrets: check-context
 	scripts/bao-secrets.sh
+
+# make claude-session-pat SESSION=homelab [DELETE=1]
+claude-session-pat: check-context
+	@test -n "$(SESSION)" || { echo "usage: make claude-session-pat SESSION=<session> [DELETE=1]"; exit 2; }
+	scripts/claude-session-pat.sh $(if $(DELETE),--delete) $(SESSION)
 
 # Without LIMIT this arms every node, and the firmware boots network-first: a
 # power cut after that reinstalls all three control planes and every Ceph OSD.
