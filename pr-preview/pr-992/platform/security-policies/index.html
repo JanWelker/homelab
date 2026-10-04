@@ -2855,7 +2855,7 @@ but change what a namespace file says, so they stay.</p>
 </tr>
 <tr>
 <td>HTTP rules on plaintext ports, ingress side only</td>
-<td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths a week of Hubble records showed; a browser UI behind the Authentik outpost stays at <code>http: [{}]</code>, its paths being the application's own</td>
+<td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths a week of Hubble records showed; a browser UI behind the Authentik outpost stays at <code>http: [{}]</code>, its paths being the application's own. The path is matched with its query string: a rule anchored with <code>$</code> names the query as well, as OpenBao's <code>/v1/sys/metrics\?format=prometheus$</code> does</td>
 </tr>
 </tbody>
 </table>
