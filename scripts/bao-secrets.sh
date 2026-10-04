@@ -3,13 +3,14 @@
 #
 #   make bao-secrets
 #
-# Seven of the values cannot be generated -- they belong to accounts outside this
+# Eight of the values cannot be generated -- they belong to accounts outside this
 # cluster -- and are prompted for, one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
+#   OPEN_WEBUI_OPENAI_KEY                           the model API Open WebUI talks to
 #
 # One more is optional, because the thing that issues it runs on the cluster
 # and does not exist on a fresh one. Enter writes the path with an empty value
@@ -62,6 +63,12 @@
 # is still empty.
 #
 # kv/advent-wollbi/config is the same pair for Wollbi Adventsfenster.
+#
+# kv/open-webui/config holds the key Open WebUI signs its sessions with, the
+# OpenAI key it talks to the model API with, and its OIDC client pair, which
+# Authentik reads through secrets-open-webui.yaml. The OpenAI key is the one
+# value in this script that belongs to an account outside the cluster and is
+# therefore prompted for rather than generated.
 #
 # kv/dependency-track/config holds the key Dependency-Track encrypts its stored
 # secrets with and its OIDC client ID, which Authentik reads through
@@ -217,6 +224,11 @@ ADVENT_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wol
   only reads that while the database is empty, so on a running site the new
   value is written down and the old one is still what logs you in."
 
+OPEN_WEBUI_DANGER="  Rewriting it rotates the key every Open WebUI session is signed with, so
+  everyone is logged out, and issues a new OIDC client pair that Authentik
+  and Open WebUI read through separate ExternalSecrets which refresh
+  independently -- so signing in fails until both have caught up."
+
 DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
   database is encrypted with -- feed tokens, notification credentials -- so
   those become unreadable, and issues a new OIDC client ID that Authentik and
@@ -240,6 +252,7 @@ decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
 decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
 decide WRITE_ADVENT_WOLLBI advent-wollbi/config "$ADVENT_WOLLBI_DANGER"
+decide WRITE_OPEN_WEBUI   open-webui/config "$OPEN_WEBUI_DANGER"
 decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
@@ -249,6 +262,7 @@ if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
   && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
   && [ "$WRITE_FEST_WOLLBI" = "0" ] && [ "$WRITE_ADVENT_WOLLBI" = "0" ] \
+  && [ "$WRITE_OPEN_WEBUI" = "0" ] \
   && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -329,6 +343,9 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_USERNAME           "SMTP login for Alertmanager, also the sender address"
   prompt_secret SMTP_PASSWORD           "  ...and its password"
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
+fi
+if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
+  prompt_secret OPEN_WEBUI_OPENAI_KEY   "OpenAI API key for Open WebUI"
 fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
@@ -439,6 +456,15 @@ if [ "$WRITE_ADVENT_WOLLBI" = "1" ]; then
   put advent-wollbi/config \
     "payload-secret=$(rand_b64 48)" \
     "admin-password=$(rand_b64 24)"
+fi
+
+# Three generated values and one typed one. See homelab-apps/open-webui/secrets.yaml.
+if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
+  put open-webui/config \
+    "webui-secret-key=$(rand_b64 48)" \
+    "openai-api-key=${OPEN_WEBUI_OPENAI_KEY}" \
+    "oidc-client-id=$(rand_hex 16)" \
+    "oidc-client-secret=$(rand_b64 48)"
 fi
 
 # The key encryption key as the chart documents it, 32 random bytes in base64,
