@@ -2823,8 +2823,8 @@ updates it.</p>
 <p>A proxied application's route lives with the application: Hubble's in
 <code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
 Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code>, and Home
-Assistant's, Flowscape's, Umami's, Wollbi-Fescht's, Wollbi
-Adventsfenster's, Jellyfin's and OpenClaw's in the
+Assistant's, Flowscape's, Umami's, Wollbi-Fescht's and Wollbi
+Adventsfenster's in the
 <a href="../../development/add-workload/">workloads repository</a>,
 each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
 cross-namespace <code>backendRef</code> unless the target namespace grants it, so
@@ -2974,8 +2974,6 @@ bootstrap password and token and the ArgoCD and Grafana client pairs; its
 <code>Password</code> generator's <code>secretKeys</code> is the list of keys. A
 workload's client credentials go in the workload's own path (Nextcloud's in
 <code>kv/nextcloud/config</code>, Dependency-Track's in <code>kv/dependency-track/config</code>,
-Open WebUI's in <code>kv/open-webui/config</code>,
-Paperless-ngx's in <code>kv/paperless-ngx/config</code>,
 each read by its own <code>secrets-&lt;workload&gt;.yaml</code>, mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the secret key
 that signs every session and token, and External Secrets fails an
 <code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
