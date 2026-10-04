@@ -168,6 +168,9 @@ configs:
     # Break-glass if Authentik is down: see docs/platform/argocd.md
     admin.enabled: "false"
 
+    # The in-cluster Claude Code agents; see docs/platform/authentik.md#argocds-api-key-account
+    accounts.claude: apiKey
+
     oidc.config: |
       name: Authentik
       issuer: https://auth.k8s.wlkr.ch/application/o/argocd/
@@ -227,4 +230,7 @@ configs:
     policy.csv: |
       g, argocd-admins, role:admin
       g, argocd-viewers, role:readonly
+      g, role:claude, role:readonly
+      p, role:claude, applications, sync, apps/*, allow
+      g, claude, role:claude
     scopes: "[groups, email]"

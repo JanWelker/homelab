@@ -118,6 +118,22 @@ certificates and "very likely fine" is not the standard, and `authentik`,
 where `authentik-server` sets no `serviceAccountName` — an upstream chart
 default, to be fixed at the source.
 
+### Agent RBAC
+
+`claude-agent-rbac.yaml` gives the in-cluster Claude Code agents two
+ClusterRoles, bound to the `claude-reader` and `claude-writer`
+ServiceAccounts of the `claude-agents` namespace. Cluster-scoped RBAC cannot
+come from the `apps` project, and what an agent may touch is a platform
+decision.
+
+| Role | Grants | Leaves out |
+| --- | --- | --- |
+| `claude-agent-read` | `get`, `list`, `watch` on named core, workload and CRD kinds | Secrets, RBAC, webhooks, CRDs, `pods/exec`, Trivy's exposed-secret reports |
+| `claude-agent-write` | Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets; the writer is bound to both roles | The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request) |
+
+Kinds are listed, never wildcarded, so a new CRD is invisible to the agents
+until someone adds it. Argo CD reverts a hand edit within minutes either way.
+
 ### Admission policies
 
 Trivy reports a bad image after it is running; `admission-policies.yaml`

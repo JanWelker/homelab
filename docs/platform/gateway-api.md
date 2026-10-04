@@ -35,7 +35,10 @@ neighbourhood sites. A listener pins one hostname pattern and a wildcard
 certificate covers one zone, so a second domain is a second listener and a
 second `Certificate` rather than a name added to the first.
 
-Both terminate TLS with cert-manager's wildcard certificates, so a new
+`apps-gateway` also has a `TLS` listener, `ssh`, for `*.ssh.wlkr.ch`; see
+[SSH listener](#ssh-listener).
+
+Both HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
 its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still
@@ -90,6 +93,29 @@ spec:
 ```
 
 Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools.
+
+### SSH listener
+
+The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
+port 443, the only port the router forwards to `apps-gateway`. Each agent's
+chart ships a `TLSRoute` for `<session>.ssh.wlkr.ch` pointing at its SSH
+Service.
+
+| Setting | Why |
+| --- | --- |
+| `mode: Passthrough` | Cilium rejects a `TLS` listener in `Terminate` mode: the listener goes `Accepted=False` with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate |
+| No `Certificate` here | A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from `letsencrypt-prod` in the agent's namespace |
+| `allowedRoutes.kinds: TLSRoute` | The listener serves nothing else, and `HTTPRoute`s cannot attach to it by accident |
+| `TLSRoute` `v1` | Installed in the standard channel of the Gateway API CRDs; `v1alpha2` is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart `cilium-operator` |
+
+DNS needs no record by hand: [external-dns](external-dns.md#configuration)
+reads the `TLSRoute` hostnames and publishes the router's public address, as
+for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`,
+for example `openssl s_client -quiet -connect %h:443 -servername %h`.
+
+Envoy checks its egress against the backend like any Gateway traffic, so the
+agents' namespace must admit the `ingress` entity on the SSH port; see
+[Security Policies](security-policies.md#network-policies).
 
 ## Health check
 

@@ -16,11 +16,14 @@
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
 #
-# One more is optional, because the thing that issues it runs on the cluster
-# and does not exist on a fresh one. Enter writes the path with an empty value
+# Four more are optional, because what issues them runs on the cluster or
+# outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
+#   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
+#   CLAUDE_HOMELAB_GITHUB_TOKEN                     a GitHub PAT for the homelab agent session
+#   CLAUDE_HOMELAB_APPS_GITHUB_TOKEN                a GitHub PAT for the homelab-apps agent session
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -58,6 +61,12 @@
 # because External Secrets fails an ExternalSecret whose path does not exist
 # and ArgoCD stops the sync on it -- which would leave Dependency-Track waiting
 # for a key only a running Dependency-Track can issue.
+#
+# kv/claude-agents/argocd and kv/claude-<session>/github are the same kind of
+# path: a token only an account outside this script can issue (Argo CD's
+# `argocd account generate-token --account claude`, a GitHub PAT), written
+# empty until it exists so that the agents' ExternalSecrets resolve. See
+# docs/platform/argocd.md#agent-account.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
@@ -186,11 +195,15 @@ decide WRITE_EXTERNAL_DNS external-dns/route53
 decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
+decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
+decide WRITE_CLAUDE_GITHUB claude-homelab/github
+decide WRITE_CLAUDE_APPS_GITHUB claude-homelab-apps/github
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
-  && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
+  && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
+  && [ "$WRITE_CLAUDE_GITHUB" = "0" ] && [ "$WRITE_CLAUDE_APPS_GITHUB" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -274,6 +287,15 @@ fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
 fi
+if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
+  prompt_optional CLAUDE_ARGOCD_TOKEN   "Argo CD token of the claude account (Enter until you have generated one)"
+fi
+if [ "$WRITE_CLAUDE_GITHUB" = "1" ]; then
+  prompt_optional CLAUDE_HOMELAB_GITHUB_TOKEN "GitHub PAT for the homelab agent session (Enter until you have one)"
+fi
+if [ "$WRITE_CLAUDE_APPS_GITHUB" = "1" ]; then
+  prompt_optional CLAUDE_HOMELAB_APPS_GITHUB_TOKEN "GitHub PAT for the homelab-apps agent session (Enter until you have one)"
+fi
 echo
 
 # --- Write -----------------------------------------------------------------
@@ -332,6 +354,20 @@ fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   put dependency-track/sbom-upload \
     "api-key=${SBOM_UPLOAD_API_KEY:-}"
+fi
+
+# Written even when empty, for the reason above.
+if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
+  put claude-agents/argocd \
+    "token=${CLAUDE_ARGOCD_TOKEN:-}"
+fi
+if [ "$WRITE_CLAUDE_GITHUB" = "1" ]; then
+  put claude-homelab/github \
+    "token=${CLAUDE_HOMELAB_GITHUB_TOKEN:-}"
+fi
+if [ "$WRITE_CLAUDE_APPS_GITHUB" = "1" ]; then
+  put claude-homelab-apps/github \
+    "token=${CLAUDE_HOMELAB_APPS_GITHUB_TOKEN:-}"
 fi
 
 cat <<'EOF'
