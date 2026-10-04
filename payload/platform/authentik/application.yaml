@@ -34,6 +34,10 @@ spec:
               - secretRef:
                   name: authentik-secrets-open-webui
                   optional: true
+              # From secrets-paperless-ngx.yaml; optional for the same reason.
+              - secretRef:
+                  name: authentik-secrets-paperless-ngx
+                  optional: true
             # CloudNativePG generates the database password; nothing copies it.
             env:
               - name: AUTHENTIK_POSTGRESQL__PASSWORD
@@ -135,6 +139,9 @@ spec:
                         optional: true
                     - configMap:
                         name: authentik-blueprint-open-webui
+                        optional: true
+                    - configMap:
+                        name: authentik-blueprint-paperless-ngx
                         optional: true
             volumeMounts:
               - name: blueprints-workloads

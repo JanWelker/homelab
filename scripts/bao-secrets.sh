@@ -70,6 +70,10 @@
 # value in this script that belongs to an account outside the cluster and is
 # therefore prompted for rather than generated.
 #
+# kv/paperless-ngx/config holds the key Paperless signs its sessions with, the
+# break-glass admin password it creates on its first start, and its OIDC
+# client pair, which Authentik reads through secrets-paperless-ngx.yaml.
+#
 # kv/dependency-track/config holds the key Dependency-Track encrypts its stored
 # secrets with and its OIDC client ID, which Authentik reads through
 # secrets-dependency-track.yaml; a public client, so there is no secret.
@@ -229,6 +233,13 @@ OPEN_WEBUI_DANGER="  Rewriting it rotates the key every Open WebUI session is si
   and Open WebUI read through separate ExternalSecrets which refresh
   independently -- so signing in fails until both have caught up."
 
+PAPERLESS_DANGER="  Rewriting it rotates the key every Paperless session is signed with, so
+  everyone is logged out, and issues a new OIDC client pair that Authentik
+  and Paperless read through separate ExternalSecrets which refresh
+  independently. The admin password changes too -- and Paperless only reads
+  that when it first creates the account, so on a running cluster the new
+  value is written down and the old one is still what logs you in."
+
 DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
   database is encrypted with -- feed tokens, notification credentials -- so
   those become unreadable, and issues a new OIDC client ID that Authentik and
@@ -253,6 +264,7 @@ decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
 decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
 decide WRITE_ADVENT_WOLLBI advent-wollbi/config "$ADVENT_WOLLBI_DANGER"
 decide WRITE_OPEN_WEBUI   open-webui/config "$OPEN_WEBUI_DANGER"
+decide WRITE_PAPERLESS    paperless-ngx/config "$PAPERLESS_DANGER"
 decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
@@ -263,6 +275,7 @@ if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
   && [ "$WRITE_FEST_WOLLBI" = "0" ] && [ "$WRITE_ADVENT_WOLLBI" = "0" ] \
   && [ "$WRITE_OPEN_WEBUI" = "0" ] \
+  && [ "$WRITE_PAPERLESS" = "0" ] \
   && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -463,6 +476,16 @@ if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
   put open-webui/config \
     "webui-secret-key=$(rand_b64 48)" \
     "openai-api-key=${OPEN_WEBUI_OPENAI_KEY}" \
+    "oidc-client-id=$(rand_hex 16)" \
+    "oidc-client-secret=$(rand_b64 48)"
+fi
+
+# All four generated; nothing here belongs to an account outside the cluster.
+# See homelab-apps/paperless-ngx/secrets.yaml.
+if [ "$WRITE_PAPERLESS" = "1" ]; then
+  put paperless-ngx/config \
+    "secret-key=$(rand_b64 48)" \
+    "admin-password=$(rand_b64 24)" \
     "oidc-client-id=$(rand_hex 16)" \
     "oidc-client-secret=$(rand_b64 48)"
 fi
