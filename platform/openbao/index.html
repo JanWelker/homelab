@@ -2830,8 +2830,9 @@ Service so ESO never produces one.</p>
 ExternalSecrets reference <code>cert-manager/route53</code> without the <code>data/</code> prefix ESO
 adds itself. A path is written by exactly one of two things: a <code>PushSecret</code>
 beside the <code>ExternalSecret</code> that reads it, when every value is random — see
-<a href="#generated-secrets">Generated secrets</a> — or <code>make bao-secrets</code>, when a value
-belongs to an account outside the cluster. A path never mixes the two, because
+<a href="#generated-secrets">Generated secrets</a> — or <code>make bao-secrets</code> (an agent
+session's PAT: <code>make claude-session-pat</code>), when a value belongs to an account
+outside the cluster. A path never mixes the two, because
 a <code>bao kv put</code> replaces the whole path.</p>
 <table>
 <thead>
@@ -2880,7 +2881,7 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <tr>
 <td><code>claude-&lt;session&gt;/github</code></td>
 <td><code>token</code></td>
-<td>One agent session's GitHub PAT; <code>bao-secrets.sh</code> knows <code>claude-homelab</code> and <code>claude-homelab-apps</code>. Empty until typed in</td>
+<td>One agent session's GitHub PAT, for any session name: <code>make claude-session-pat SESSION=&lt;session&gt;</code> stores it, adding <code>DELETE=1</code> removes the path. Not part of <code>make bao-secrets</code>, so a session needs no platform change. Empty until typed in</td>
 </tr>
 <tr>
 <td><code>nextcloud/config</code> (generated)</td>
