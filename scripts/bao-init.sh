@@ -115,15 +115,18 @@ bao write auth/kubernetes/config \
   kubernetes_host="https://kubernetes.default.svc" >/dev/null
 echo "    kubernetes auth       pointed at the in-cluster TokenReview API"
 
+# create and update are for the PushSecrets that write generated values; ESO
+# itself refuses to touch a path it did not create, and no delete is granted,
+# so nothing it pushes can remove a secret.
 bao_in policy write external-secrets - <<'EOF' >/dev/null
 path "kv/data/*" {
-  capabilities = ["read"]
+  capabilities = ["create", "read", "update"]
 }
 path "kv/metadata/*" {
-  capabilities = ["read", "list"]
+  capabilities = ["create", "read", "update", "list"]
 }
 EOF
-echo "    external-secrets      policy written (read-only on kv/)"
+echo "    external-secrets      policy written (read and write on kv/, no delete)"
 
 bao write auth/kubernetes/role/external-secrets \
   bound_service_account_names="$ESO_SERVICEACCOUNT" \

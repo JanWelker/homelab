@@ -27,7 +27,7 @@ on one replica means it has not joined Raft; `bao operator raft join` to
 | --- | --- | --- |
 | `make bao-init` | fresh cluster, once | yes: skips an initialised cluster and each configured step |
 | `make bao-unseal` | after any pod restart, node reboot, Kured, chart bump | yes: reads shares from `output/credentials/openbao-init.json` |
-| `make bao-secrets` | fresh cluster, or when a new KV path is added | asks per existing path; `FORCE=1` overwrites |
+| `make bao-secrets` | fresh cluster, or when a new typed KV path is added | asks per existing path; `FORCE=1` overwrites |
 
 The user runs them. They hold the key shares; Claude does not read
 `output/credentials/`. When a merge needs a restart or an unseal, say so in
@@ -57,18 +57,24 @@ A new consumer means, in one PR:
    that reads it. Its own path, not more keys on an existing one: a `kv put`
    replaces the path wholesale, so shared paths make every addition an outage
    for the other readers.
-2. The generation or prompt in `scripts/bao-secrets.sh`. Generated values
-   are generated there; values from outside accounts are prompted with
-   `read -rs`, never taken from the command line, because `#` and `!` are
-   mangled silently. Existing paths are asked about before overwrite; keep
-   that.
+2. Who writes it. Random values: a `Password` generator (`symbols: 0`,
+   `allowRepeat: true`, `secretKeys` = the property names) and a
+   `PushSecret` (`updatePolicy: IfNotExists`, `deletionPolicy: None`, sync
+   wave `-2` in homelab-apps) in the same file as the `ExternalSecret`.
+   Values from outside accounts: a prompt in `scripts/bao-secrets.sh` with
+   `read -rs`, never the command line, because `#` and `!` are mangled
+   silently. Never both in one path: a `kv put` of the typed value deletes
+   the generated ones, and the `PushSecret` answers with new ones.
 3. The `ExternalSecret` and a `ClusterSecretStore` reference, in the
    component's directory, or in `homelab-apps` for a workload.
 
-Then the user runs `make bao-secrets` and answers the prompts; "did not
-create the nextcloud secrets" is usually the script skipping an existing
-path or a prompt that was not reached, so read its output rather than the
-script.
+For a typed path the user then runs `make bao-secrets` and answers the
+prompts; "did not create the X secrets" is usually the script skipping an
+existing path, so read its output rather than the script. For a generated
+path read `kubectl get pushsecret -A`: `secret not managed by
+external-secrets` means a path the script wrote before the `PushSecret`
+existed (docs/platform/openbao.md#pitfalls has the one-line fix), a 403 means
+the live policy predates `create`/`update`.
 
 ## 5. Things the API refuses
 

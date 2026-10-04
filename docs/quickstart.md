@@ -284,10 +284,11 @@ the same L2 network segment as the nodes.
     It prompts, with input hidden, for the values that belong to accounts
     outside the cluster: two Route53 IAM key pairs (why two is in
     [OpenBao](platform/openbao.md)), and the SMTP login, password and alert
-    recipient. Everything under `kv/authentik/config`, including the OIDC
-    client credentials ArgoCD and Grafana read back, is generated, as is
-    Grafana's break-glass admin password. On a fresh cluster nothing exists
-    yet; on a running one it asks per path before overwriting — see
+    recipient. Everything random — `kv/authentik/config` with the OIDC client
+    credentials ArgoCD and Grafana read back, Grafana's break-glass admin
+    password — is not prompted for: a `PushSecret` writes it once the store
+    validates, see [Generated secrets](platform/openbao.md#generated-secrets).
+    On a running cluster it asks per path before overwriting — see
     [Rotating a credential](platform/openbao.md#rotating-a-credential).
 
     !!! tip "Paste them at the prompt, not onto a command line"
@@ -299,10 +300,9 @@ the same L2 network segment as the nodes.
 
 12. **Create the first administrator**:
     Authentik ships the built-in `akadmin` account; its password is the
-    `bootstrap-password` step 11 generated. Read it back out of OpenBao (needs
-    a token — `bao login` inside the pod, or the port-forward in
-    [OpenBao &rarr; Authenticating locally](platform/openbao.md#authenticating-locally);
-    `make bao-secrets` prints the same command when it finishes):
+    `bootstrap-password` its `PushSecret` generated. Read it back out of
+    OpenBao (needs a token — `bao login` inside the pod, or the port-forward in
+    [OpenBao &rarr; Authenticating locally](platform/openbao.md#authenticating-locally)):
 
     ```bash
     kubectl -n openbao exec openbao-0 -- \

@@ -54,7 +54,9 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
 
 ### Adding a secret
 
-1. Store the value in OpenBao, following the [KV layout](openbao.md#kv-layout):
+1. Store the value in OpenBao, following the [KV layout](openbao.md#kv-layout).
+   A random value is not typed in at all: a `Password` generator and a
+   `PushSecret` write it, see [Generated secrets](openbao.md#generated-secrets).
 
     ```bash
     bao kv put kv/<workload>/<purpose> key1="value1" key2="value2"
