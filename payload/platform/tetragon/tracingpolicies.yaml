@@ -413,13 +413,14 @@ spec:
         index: 0
         type: int
       selectors:
-        # Every Go binary's MPTCP probe at start, and Home Assistant's
-        # Bluetooth adapter probe.
+        # The MPTCP probe Go binaries and haproxy make at start, over IPv4
+        # and IPv6, and Home Assistant's Bluetooth adapter probe.
         - matchArgs:
             - index: 0
               operator: NotPrefix
               values:
                 - net-pf-2-proto-262
+                - net-pf-10-proto-262
                 - net-pf-31
           matchNamespaces:
             - namespace: Pid
@@ -512,11 +513,13 @@ spec:
                 - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
-            # Alloy's Snowflake driver unpacks its cgo library here at start.
+            # Libraries a runtime unpacks here at start: Alloy's Snowflake
+            # driver, and zstd-jni in Dependency-Track.
             - index: 0
               operator: NotPrefix
               values:
                 - /tmp/gosnowflake-cgo
+                - /tmp/libzstd-jni-
             - index: 1
               operator: Mask
               values:

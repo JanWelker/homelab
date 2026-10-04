@@ -202,6 +202,7 @@ data:
                     |= "process_exec"
                     | json
                     | process_exec_process_binary=~"^/(memfd:|proc/self/fd/).*"
+                    | process_exec_parent_binary != "/usr/bin/runc" or process_exec_process_arguments != "init"
                   [10m]
                 )
               ) > 0
@@ -212,7 +213,9 @@ data:
                 Fileless exec in {{ $labels.process_exec_process_pod_namespace }}/{{ $labels.process_exec_process_pod_name }}
               description: >-
                 The binary exists only in memory, through memfd_create or an
-                anonymous file descriptor. Nothing legitimate here does that.
+                anonymous file descriptor. runc re-executing its own sealed
+                copy as "init" on every exec probe is left out; nothing else
+                here does that.
           - alert: TetragonDeletedBinaryExec
             expr: |
               sum by (process_exec_process_pod_namespace, process_exec_process_pod_name, process_exec_process_binary) (

@@ -100,7 +100,7 @@ the mixin Grafana maintains, not rules written here.
 | `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by anything but the External Secrets Operator | [OpenBao's audit device](openbao.md#audit-devices) writes to stdout; ESO is the only day-to-day reader |
 | `TetragonSudoInContainer` | `sudo` executed in a container, except the `smartctl` and `nvme` calls `ceph-osd` makes once a day for its device health report | Only the exec event carries the binary and its parent |
 | `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec, with the same `ceph-osd` exception | The `binary_properties` field exists only in the exec event |
-| `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor | Same |
+| `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor, except runc's sealed self-copy on every `exec` | Same |
 | `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](tetragon.md#policies) |
 | `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The signature result is an argument of the kprobe event, not a metric label |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |

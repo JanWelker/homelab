@@ -169,11 +169,11 @@ spec:
         - alert: TetragonDnsOutsideCluster
           expr: |
             sum by (namespace, pod, binary) (
-                increase(tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"}[10m]) > 0
+                increase(tetragon_policy_events_total{policy="dns-outside-cluster", namespace!~"kube-system|cert-manager"}[10m]) > 0
               or
-                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"}
+                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!~"kube-system|cert-manager"}
               unless
-                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!="kube-system"} offset 10m
+                tetragon_policy_events_total{policy="dns-outside-cluster", namespace!~"kube-system|cert-manager"} offset 10m
             ) > 0
           keep_firing_for: 15m
           labels:
@@ -184,7 +184,9 @@ spec:
             description: >-
               A query on port 53 to something other than the cluster
               resolver or a pod-range address. CoreDNS forwards upstream from
-              kube-system and is left out; anything else has a resolver of
+              kube-system, and cert-manager asks the zone's authoritative
+              servers whether a DNS-01 record has propagated; both are left
+              out. Anything else has a resolver of
               its own, which is how DNS tunnels and exfiltration look. The
               event carries the destination: {container="export-stdout"} | json |
               process_kprobe_policy_name="dns-outside-cluster".
