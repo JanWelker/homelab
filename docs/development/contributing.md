@@ -51,9 +51,11 @@ The body explains *why*; the diff already says what.
 
 ## Review
 
-`.github/CODEOWNERS` assigns every path to the repository owner, so every pull
-request needs that review. Renovate PRs for patch and minor updates automerge;
-majors wait for a human.
+`.github/CODEOWNERS` assigns every path to the repository owner, which requests
+that review; it is not required, because an author cannot approve their own
+pull request. What `main` requires is the `ci-ok` check. Renovate PRs for patch
+and minor updates automerge once it is green; majors wait for a human — see
+[Automerge policy](maintenance.md#automerge-policy).
 
 `.agent/rules/general-rules.md` holds the standing rules for AI coding agents
 working here: GitOps only, docs in `docs/`, no hand-edited versions. Keep it in
