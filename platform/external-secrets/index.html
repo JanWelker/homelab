@@ -2528,7 +2528,9 @@ store uses ESO's <code>vault</code> provider unchanged against the in-cluster Se
 <h3 id="adding-a-secret">Adding a secret<a class="headerlink" href="#adding-a-secret" title="Permanent link">&para;</a></h3>
 <ol>
 <li>
-<p>Store the value in OpenBao, following the <a href="../openbao/#kv-layout">KV layout</a>:</p>
+<p>Store the value in OpenBao, following the <a href="../openbao/#kv-layout">KV layout</a>.
+   A random value is not typed in at all: a <code>Password</code> generator and a
+   <code>PushSecret</code> write it, see <a href="../openbao/#generated-secrets">Generated secrets</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/&lt;workload&gt;/&lt;purpose&gt;<span class="w"> </span><span class="nv">key1</span><span class="o">=</span><span class="s2">"value1"</span><span class="w"> </span><span class="nv">key2</span><span class="o">=</span><span class="s2">"value2"</span>
 </span></code></pre></div>
 </li>

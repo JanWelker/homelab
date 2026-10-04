@@ -2864,8 +2864,10 @@ and the rollout are in
 <h3 id="putting-a-workload-behind-authentik">Putting a workload behind Authentik<a class="headerlink" href="#putting-a-workload-behind-authentik" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>It speaks OIDC:</strong> the <code>oauth2provider</code> blueprint lives in the workload's
-    directory; its client credentials come from <code>scripts/bao-secrets.sh</code> under
-    <code>kv/&lt;app&gt;/config</code> plus one projected-volume source in
+    directory; its client credentials come from a <code>PushSecret</code> in the same
+    directory writing <code>kv/&lt;app&gt;/config</code> — see
+    <a href="../../platform/openbao/#generated-secrets">Generated secrets</a> — plus one
+    projected-volume source in
     <code>payload/platform/authentik/application.yaml</code>; the discovery URI is
     <code>auth.k8s.wlkr.ch</code>.</li>
 <li><strong>It does not:</strong> add a <code>proxyprovider</code> on the embedded outpost, point the
