@@ -293,41 +293,6 @@ data:
           meta_launch_url: https://advent.wollbi.ch
           meta_description: The street's advent windows
 
-      # Removed workloads: absent deletes what an earlier present created;
-      # dropping the entry would leave it behind.
-      - model: authentik_core.application
-        state: absent
-        identifiers:
-          slug: jellyfin
-      - model: authentik_providers_proxy.proxyprovider
-        state: absent
-        identifiers:
-          name: jellyfin
-      - model: authentik_core.application
-        state: absent
-        identifiers:
-          slug: openclaw
-      - model: authentik_providers_proxy.proxyprovider
-        state: absent
-        identifiers:
-          name: openclaw
-      - model: authentik_core.application
-        state: absent
-        identifiers:
-          slug: open-webui
-      - model: authentik_providers_oauth2.oauth2provider
-        state: absent
-        identifiers:
-          name: open-webui
-      - model: authentik_core.application
-        state: absent
-        identifiers:
-          slug: paperless-ngx
-      - model: authentik_providers_oauth2.oauth2provider
-        state: absent
-        identifiers:
-          name: paperless-ngx
-
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
         state: present
