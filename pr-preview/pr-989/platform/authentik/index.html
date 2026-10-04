@@ -2800,7 +2800,7 @@ application and protects exactly as far as nothing else can reach the backend.</
     U([Browser]) --&gt; GW[infra-gateway / apps-gateway]
     GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.-&gt;|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW --&gt;|hubble, rook, prometheus, home, flowscape, analytics, fest/admin| AK
+    GW --&gt;|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, advent/admin| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
 <h3 id="one-hostname">One hostname<a class="headerlink" href="#one-hostname" title="Permanent link">&para;</a></h3>
 <p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
@@ -2823,7 +2823,7 @@ updates it.</p>
 <p>A proxied application's route lives with the application: Hubble's in
 <code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
 Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code>, and Home
-Assistant's, Flowscape's, Umami's and Wollbi-Fescht's in the
+Assistant's, Flowscape's, Umami's, Wollbi-Fescht's and Wollbi Adventsfenster's in the
 <a href="../../development/add-workload/">workloads repository</a>,
 each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
 cross-namespace <code>backendRef</code> unless the target namespace grants it, so
