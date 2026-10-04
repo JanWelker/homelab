@@ -37,7 +37,7 @@ spec:
           rules:
             http:
               - method: GET
-                path: /v1/sys/metrics$
+                path: /v1/sys/metrics\?format=prometheus$
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
