@@ -2477,6 +2477,11 @@ everything, and Renovate, which chases dependencies.</p>
 <td><code>renovate-config-validator</code></td>
 </tr>
 <tr>
+<td><code>ci-ok.yaml</code></td>
+<td>every pull request</td>
+<td>Waits for every other check on the head commit and fails if one failed. The only check the ruleset on <code>main</code> requires, so the others keep their path filters</td>
+</tr>
+<tr>
 <td><code>fonts-check.yaml</code></td>
 <td><code>scripts/update-fonts.sh</code>, <code>docs/assets/fonts/**</code></td>
 <td><code>make fonts-check</code>: the committed <code>woff2</code> files match the pinned releases — see <a href="../contributing/#fonts">Fonts</a></td>
@@ -2484,20 +2489,19 @@ everything, and Renovate, which chases dependencies.</p>
 </tbody>
 </table>
 <h2 id="renovate">Renovate<a class="headerlink" href="#renovate" title="Permanent link">&para;</a></h2>
-<p>Configured in <code>renovate.json</code>. It runs at any time with no hourly or
-concurrency limit, and every component gets its own pull request so a failing
-update never holds up an unrelated one. The only groups are the pairs below
-that must move together.</p>
+<p>Configured in <code>renovate.json</code>, on top of the shared preset
+<a href="https://github.com/JanWelker/renovate-config">JanWelker/renovate-config</a>,
+which holds the policy for every repository. Every component gets its own pull
+request so a failing update never holds up an unrelated one; the only groups
+are the pairs below that must move together.</p>
 <h3 id="automerge-policy">Automerge policy<a class="headerlink" href="#automerge-policy" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Patch and minor updates automerge; majors wait for a human.</strong> One rule for
-    everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
-    the same way a Grafana chart patch does.</li>
-<li><strong>Three days between a release and its PR</strong> for every datasource that pins
-    something a node installs or the cluster runs (<code>minimumReleaseAge</code>): long
-    enough for an upstream to pull a broken or compromised tag, short enough
-    that a fix arrives the same week. Renovate lifts it for its own
-    vulnerability-alert PRs.</li>
+<li><strong>The preset's rules:</strong> three days between a release and its PR, patch and
+    minor automerge once <code>ci-ok</code> is green, majors open at 19:00 and wait for a
+    human, and security fixes skip both the wait and the schedule. The
+    preset's README says why for each.</li>
+<li><strong>One rule for everything here,</strong> with no per-area exceptions: a Flatcar or
+    Kubernetes minor lands the same way a Grafana chart patch does.</li>
 <li><strong>Pairs that must move together are grouped into one PR:</strong>
     <code>prometheus-operator-crds</code> with <code>kube-prometheus-stack</code>, because the CRDs
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
@@ -2510,9 +2514,9 @@ that must move together.</p>
     node installs, not what a running node runs.</strong> kubeadm cannot skip a minor,
     so a cluster left unrebuilt across two automerged Kubernetes minors has to be
     walked forward one at a time — see <a href="../../operations/upgrades/">Upgrades</a>.</li>
-<li><strong>Font bumps automerge without their second commit</strong> unless
-    <code>fonts-check.yaml</code> is a required check on <code>main</code>. If branch protection is
-    ever rebuilt, put it back — see <a href="../contributing/#fonts">Fonts</a>.</li>
+<li><strong>A font bump cannot automerge without its second commit:</strong>
+    <code>fonts-check.yaml</code> fails on it and <code>ci-ok</code> waits for it — see
+    <a href="../contributing/#fonts">Fonts</a>.</li>
 <li><code>config:best-practices</code> pins GitHub Actions to commit SHAs and container
     images to digests, and collects every pin into one shared
     <code>renovate/pin-dependencies</code> branch.</li>

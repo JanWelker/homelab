@@ -2595,7 +2595,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>library-from-writable-path</code></td>
 <td><code>security_mmap_file</code></td>
-<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads, except the cgo library Alloy's bundled Snowflake driver unpacks under <code>/tmp/gosnowflake-cgo*</code> on every start</td>
+<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads, except the native libraries runtimes unpack under <code>/tmp</code> on every start: Alloy's Snowflake driver (<code>/tmp/gosnowflake-cgo*</code>) and zstd-jni in Dependency-Track (<code>/tmp/libzstd-jni-*</code>)</td>
 <td>Yes: <code>TetragonLibraryFromWritablePath</code></td>
 </tr>
 <tr>
@@ -2613,13 +2613,13 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>kernel-module-load</code></td>
 <td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>find_module_sections</code></td>
-<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> request every Go binary makes when it probes MPTCP at start and the <code>net-pf-31</code> one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included: Flatcar signs its modules but does not enforce it (<code>CONFIG_MODULE_SIG</code> without <code>_FORCE</code>)</td>
+<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> and <code>net-pf-10-proto-262</code> requests Go binaries and haproxy make when they probe MPTCP at start and the <code>net-pf-31</code> one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included: Flatcar signs its modules but does not enforce it (<code>CONFIG_MODULE_SIG</code> without <code>_FORCE</code>)</td>
 <td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
 <td><code>dns-outside-cluster</code></td>
 <td><code>ip_output</code></td>
-<td>A port 53 packet from a container to anything but the kube-dns ClusterIP or the pod range, which is a hard-coded resolver in an image, a tunnel or exfiltration. The pod range is left out because it holds each node's Cilium router address, the pod's default gateway, which Home Assistant's dhcp integration asks for PTR records at start. The hook sees TCP and UDP alike, so musl's unconnected sends count too; the alert leaves out <code>kube-system</code>, where CoreDNS forwards upstream</td>
+<td>A port 53 packet from a container to anything but the kube-dns ClusterIP or the pod range, which is a hard-coded resolver in an image, a tunnel or exfiltration. The pod range is left out because it holds each node's Cilium router address, the pod's default gateway, which Home Assistant's dhcp integration asks for PTR records at start. The hook sees TCP and UDP alike, so musl's unconnected sends count too; the alert leaves out <code>kube-system</code>, where CoreDNS forwards upstream, and <code>cert-manager</code>, whose DNS-01 propagation check asks the zone's authoritative servers</td>
 <td>Yes: <code>TetragonDnsOutsideCluster</code></td>
 </tr>
 <tr>
