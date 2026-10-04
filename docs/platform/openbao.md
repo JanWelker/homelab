@@ -13,7 +13,7 @@ unrelated things breaking at once.
 ```mermaid
 flowchart LR
     Operator([Operator]) -->|bao CLI| Bao[(OpenBao<br/>KV v2)]
-    ESO[External Secrets<br/>Operator] -->|read| Bao
+    ESO[External Secrets<br/>Operator] -->|read, write once| Bao
     ESO -->|create/update| KSecret[K8s Secret]
     App[App Pod] -->|env / volume| KSecret
 
@@ -78,24 +78,53 @@ Service so ESO never produces one.
 
 One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, and
 ExternalSecrets reference `cert-manager/route53` without the `data/` prefix ESO
-adds itself. The `bao kv put` for each path sits in a comment at the top of the
-`ExternalSecret` that consumes it, collected in [Quickstart step 11](../quickstart.md).
+adds itself. A path is written by exactly one of two things: a `PushSecret`
+beside the `ExternalSecret` that reads it, when every value is random — see
+[Generated secrets](#generated-secrets) — or `make bao-secrets`, when a value
+belongs to an account outside the cluster. A path never mixes the two, because
+a `bao kv put` replaces the whole path.
 
 | Path | Keys | Read by |
 | --- | --- | --- |
-| `authentik/config` | `secret-key`, `bootstrap-password`, `bootstrap-token`, the ArgoCD and Grafana client id/secret pairs | Authentik, ArgoCD and Grafana — generating the OIDC credentials up front keeps both sides of each integration declarative |
+| `authentik/config` (generated) | `secret-key`, `bootstrap-password`, `bootstrap-token`, the ArgoCD and Grafana client id/secret pairs | Authentik, ArgoCD and Grafana — generating the OIDC credentials up front keeps both sides of each integration declarative |
 | `cert-manager/route53` | `access-key-id`, `secret-access-key` | The `certificates` Application |
 | `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
-| `monitoring/grafana-admin` | `password` | Grafana |
+| `monitoring/grafana-admin` (generated) | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
-| `nextcloud/config` | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
+| `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's
 key only writes `_acme-challenge` TXT records, so stolen it can issue
 certificates, while external-dns's creates and deletes A records, so stolen it
 can repoint hostnames. One shared key collapses both into "someone owns your
 domain".
+
+### Generated secrets
+
+Every random value — session keys, break-glass admin passwords, OIDC client
+pairs — comes from an ESO `Password` generator, written into OpenBao by a
+`PushSecret` in the same file as the `ExternalSecret` that reads it back:
+`payload/platform/authentik/secrets.yaml` here, `<app>/secrets.yaml` in the workloads repository. A fresh cluster needs
+no prompt for them, and a workload that adds a path needs no change to this
+repository.
+
+| Setting | Why |
+| --- | --- |
+| `updatePolicy: IfNotExists` | ESO checks each property before writing it and skips one that exists, so a value is written once and the next reconcile's freshly generated one is discarded |
+| `deletionPolicy: None` | Deleting the `PushSecret`, or its Application, leaves the value in OpenBao; the policy grants no `delete` either |
+| `symbols: 0`, `allowRepeat: true` | Alphanumeric only, so a value survives a URL, a `.env` line and a shell unquoted; repeats allowed because without them the generator cannot produce more than ten digits |
+| `encoding` or a `template` where the reader wants a format | Umami's keys are hex, Dependency-Track's KEK is base64 of 32 bytes, Nextcloud's admin user is the literal `admin` |
+| One `Password` per path, its `secretKeys` the property names | A generator produces one map per call; one key per property keeps every value independent |
+| Sync wave `-2` in the workloads repository | Its `ExternalSecret`s sit at `-1`, and ArgoCD waits for a wave to be healthy before the next |
+
+ESO refuses to write into a path it did not create (`secret not managed by
+external-secrets`), which keeps it away from everything `make bao-secrets`
+wrote. Reading a generated value, such as the `akadmin` password:
+
+```bash
+kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv -field=bootstrap-password authentik/config
+```
 
 ### Kubernetes auth
 
@@ -112,8 +141,8 @@ bao secrets enable -path=kv -version=2 kv
 bao auth enable kubernetes
 bao write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc"
 bao policy write external-secrets - <<'EOF'
-path "kv/data/*"     { capabilities = ["read"] }
-path "kv/metadata/*" { capabilities = ["read", "list"] }
+path "kv/data/*"     { capabilities = ["create", "read", "update"] }
+path "kv/metadata/*" { capabilities = ["create", "read", "update", "list"] }
 EOF
 bao write auth/kubernetes/role/external-secrets \
   bound_service_account_names=external-secrets-vault \
@@ -136,8 +165,9 @@ bao write auth/kubernetes/role/external-secrets \
     !!! danger "Move the unseal keys before you do anything else"
         `make bao-init` writes the 5 unseal keys and the root token to `output/credentials/openbao-init.json` (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](../architecture/security.md). Copy them into a password manager that does not need this cluster to be running, then delete the file. Losing all five means the data is unrecoverable: no support line, no recovery flow.
 
-2. Populate the paths in the [KV layout](#kv-layout) — the prompts follow
-   [Quickstart step 11](../quickstart.md):
+2. Write the values that belong to outside accounts — the prompts follow
+   [Quickstart step 11](../quickstart.md). The generated paths need nothing:
+   their `PushSecret`s write them once the store validates.
 
     ```bash
     make bao-secrets
@@ -167,19 +197,25 @@ bao kv get kv/cert-manager/route53
 
 ### Rotating a credential
 
-`make bao-secrets` is also the rotation tool: it asks, per existing path,
-whether to overwrite it.
+A typed value is rotated with `make bao-secrets`, which asks per existing path
+whether to overwrite it; a generated one by deleting its path, after which the
+`PushSecret` writes a whole new set within its `refreshInterval`.
 
-1. Run it and answer `y` for the path to rotate; the others are left alone.
-   `FORCE=1 make bao-secrets` overwrites every ordinary path without asking.
-   `authentik/config` and `nextcloud/config` are excepted: they only rewrite
-   after a typed `OVERWRITE`, even under `FORCE=1`, because other live
-   components authenticate against their contents and a rewrite is an outage
-   rather than an inconvenience. Without a terminal every existing path is
-   left alone.
+1. Rotate the path. For a typed value, answer `y` for that path; the others
+   are left alone. `FORCE=1 make bao-secrets` overwrites every ordinary path
+   without asking; `kneadtime/config` still wants a typed `OVERWRITE`, and
+   without a terminal every existing path is left alone.
 
     ```bash
     make bao-secrets
+    ```
+
+    For a generated path, delete it. Every key in it changes, with the
+    consequences the reading component's page lists — for `authentik/config`
+    that is every session, token and platform OIDC client at once:
+
+    ```bash
+    kubectl -n openbao exec openbao-0 -- bao kv metadata delete -mount=kv <path>
     ```
 
 2. Push the new value into the `Secret` now rather than at the next hourly
@@ -209,6 +245,9 @@ report `Ready=True`.
 
 !!! warning "Sealed after every restart, and Ready does not mean unsealed"
     OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness probe answers healthy while sealed (`sealedcode=204`), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](../architecture/limitations.md).
+
+!!! warning "A `PushSecret` cannot add a key to a path `make bao-secrets` wrote"
+    Paths written before their `PushSecret` existed carry no `managed-by` metadata, so a new key on one fails with `secret not managed by external-secrets` and the `PushSecret` goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: `bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets <path>`.
 
 !!! warning "`#` and `!` on a command line"
     Inside double quotes an interactive bash expands `!` from history before the quotes are considered, and an unquoted `#` truncates the line. Both are silent and store a plausible credential that does not work. Use single quotes, or write the secret as JSON and pass `@file` — a missing file then fails loudly.

@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Populates the eleven kv paths the cluster reads through ExternalSecrets.
+# Populates the kv paths whose values cannot be generated on the cluster.
 #
 #   make bao-secrets
 #
-# Nine of the values cannot be generated -- they belong to accounts outside this
-# cluster -- and are prompted for, one per line, with the input hidden:
+# Everything that is only random -- session keys, admin passwords, OIDC client
+# pairs -- is not here. Each such path is written once by a PushSecret next to
+# the ExternalSecret that reads it, from a Password generator, and never
+# overwritten; see docs/platform/openbao.md#generated-secrets.
+#
+# Nine values belong to accounts outside this cluster and are prompted for,
+# one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
@@ -38,65 +43,29 @@
 # records, external-dns creates and deletes A records for every hostname. See
 # payload/platform/external-dns/route53-credentials.yaml.
 #
-# Everything under kv/authentik/config is generated here, including the OIDC
-# client credentials ArgoCD and Grafana read back from the same path. Grafana's
-# break-glass admin password under kv/monitoring/grafana-admin is generated too.
+# A typed value never shares a path with generated ones. A `bao kv put`
+# replaces a path wholesale, so writing the OpenAI key into open-webui/config
+# would delete the generated keys beside it, and the PushSecret would answer
+# with new ones -- a rotation nobody asked for. Hence kv/open-webui/openai
+# and kv/openclaw/anthropic.
 #
-# kv/nextcloud/config is generated as well, and is deliberately its own path
-# rather than four more keys under kv/authentik/config. A `bao kv put` replaces
-# a path wholesale, so every application that kept its client credentials there
-# would make adding the next one an Authentik outage. Authentik reads the two
-# OIDC keys from here through the same ExternalSecret it reads its own config
-# with; Nextcloud reads all four. See payload/platform/authentik/secrets.yaml.
+# kv/kneadtime/config is the one generated value still written here: a P-256
+# key in PEM that signs every push, which a Password generator cannot produce.
+# Rewriting it retires every push subscription ever taken with the old key --
+# the push services answer 401/403 and the service deletes them -- so every
+# phone has to tap "Remind me" again.
 #
-# kv/kneadtime/config holds the VAPID private key the Knead Time reminder
-# service signs its pushes with. Rewriting it retires every push subscription
-# ever taken with the old key -- the push services answer 401/403 and the
-# service deletes them -- so every phone has to tap "Remind me" again.
-#
-# kv/umami/config holds the key Umami signs its dashboard sessions with and the
-# one it encrypts TOTP secrets with. Both go in at once because a `bao kv put`
-# replaces the path: adding the second later would have rotated the first.
-#
-# kv/fest-wollbi/config holds the key Payload signs the editor sessions of
-# Wollbi-Fescht with -- the same value the seed hook authenticates with -- and the
-# password of the first editor, which Payload reads only while its database
-# is still empty.
-#
-# kv/advent-wollbi/config is the same pair for Wollbi Adventsfenster.
-#
-# kv/open-webui/config holds the key Open WebUI signs its sessions with, the
-# OpenAI key it talks to the model API with, and its OIDC client pair, which
-# Authentik reads through secrets-open-webui.yaml. The OpenAI key is the one
-# value in this script that belongs to an account outside the cluster and is
-# therefore prompted for rather than generated.
-#
-# kv/paperless-ngx/config holds the key Paperless signs its sessions with, the
-# break-glass admin password it creates on its first start, and its OIDC
-# client pair, which Authentik reads through secrets-paperless-ngx.yaml.
-#
-# kv/openclaw/config holds the shared secret the OpenClaw control UI is
-# reached with, behind the outpost, and the model API key the agent thinks
-# with. Everything else OpenClaw holds -- channel credentials, tool tokens --
-# it stores itself on its volume, which is the only copy.
-#
-# kv/dependency-track/config holds the key Dependency-Track encrypts its stored
-# secrets with and its OIDC client ID, which Authentik reads through
-# secrets-dependency-track.yaml; a public client, so there is no secret.
 # kv/dependency-track/sbom-upload is the API key its upload job authenticates
 # with. Dependency-Track issues that key after its first start, so it is its
-# own path: writing it into dependency-track/config later would have rotated
-# the encryption key. The path is always written, empty when there is no key
-# yet, because External Secrets fails an ExternalSecret whose path does not
-# exist and ArgoCD stops the sync on it -- which would leave Dependency-Track
-# waiting for a key only a running Dependency-Track can issue.
+# own path. The path is always written, empty when there is no key yet,
+# because External Secrets fails an ExternalSecret whose path does not exist
+# and ArgoCD stops the sync on it -- which would leave Dependency-Track waiting
+# for a key only a running Dependency-Track can issue.
 #
 # Each path that already exists is named, and overwriting it is asked about one
 # path at a time -- so a single rotated Route53 key does not mean retyping the
-# other secrets, and does not put kv/authentik/config anywhere near the
-# blast radius. Rewriting that one rotates Authentik's Postgres password out
-# from under its database, so it asks for a typed confirmation rather than a
-# keystroke -- and keeps asking even under FORCE=1, which answers yes to the
+# other secrets. kv/kneadtime/config asks for a typed confirmation rather than
+# a keystroke, and keeps asking even under FORCE=1, which answers yes to the
 # others for non-interactive use.
 set -euo pipefail
 
@@ -210,85 +179,24 @@ decide() {
   esac
 }
 
-AUTHENTIK_DANGER="  Rewriting it rotates Authentik's Postgres password while Postgres is
-  still using the old one, and invalidates the OIDC client secrets ArgoCD
-  and Grafana authenticate with. On a running cluster that is an outage."
-
 KNEADTIME_DANGER="  Rewriting it replaces the VAPID key every push subscription was taken
   with. The push services refuse the new key for the old subscriptions, the
   reminder service deletes them, and every phone has to tap Remind me again."
 
-UMAMI_DANGER="  Rewriting it rotates the key every Umami dashboard session is signed
-  with, so everyone is logged out, and the key the TOTP secrets are encrypted
-  with, so every second factor enrolled in Umami stops verifying."
-
-FEST_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wollbi-Fescht is signed
-  with, so the editors are logged out, and the token the seed hook
-  authenticates with. The first editor's password changes too -- and Payload
-  only reads that while the database is empty, so on a running site the new
-  value is written down and the old one is still what logs you in."
-
-ADVENT_WOLLBI_DANGER="  Rewriting it rotates the key every editor session of Wollbi Adventsfenster is signed
-  with, so the editors are logged out, and the token the seed hook
-  authenticates with. The first editor's password changes too -- and Payload
-  only reads that while the database is empty, so on a running site the new
-  value is written down and the old one is still what logs you in."
-
-OPEN_WEBUI_DANGER="  Rewriting it rotates the key every Open WebUI session is signed with, so
-  everyone is logged out, and issues a new OIDC client pair that Authentik
-  and Open WebUI read through separate ExternalSecrets which refresh
-  independently -- so signing in fails until both have caught up."
-
-PAPERLESS_DANGER="  Rewriting it rotates the key every Paperless session is signed with, so
-  everyone is logged out, and issues a new OIDC client pair that Authentik
-  and Paperless read through separate ExternalSecrets which refresh
-  independently. The admin password changes too -- and Paperless only reads
-  that when it first creates the account, so on a running cluster the new
-  value is written down and the old one is still what logs you in."
-
-OPENCLAW_DANGER="  Rewriting it replaces the token the control UI is reached with, so anything
-  already paired with the gateway stops authenticating until it is given the
-  new one, and rotates the model API key out from under the running agent."
-
-DEPENDENCY_TRACK_DANGER="  Rewriting it replaces the key every secret Dependency-Track keeps in its
-  database is encrypted with -- feed tokens, notification credentials -- so
-  those become unreadable, and issues a new OIDC client ID that Authentik and
-  both Dependency-Track Deployments read through separate ExternalSecrets."
-
-NEXTCLOUD_DANGER="  Rewriting it issues a new OIDC client secret. Authentik and Nextcloud
-  read it from here through two different ExternalSecrets that refresh
-  independently, so signing in with Authentik fails until both have caught
-  up. The admin password changes too -- and Nextcloud only reads that when
-  it first installs, so on a running cluster the new value is written down
-  and the old one is still what logs you in."
-
 echo "### Existing paths"
 decide WRITE_CERT_MANAGER cert-manager/route53
 decide WRITE_EXTERNAL_DNS external-dns/route53
-decide WRITE_AUTHENTIK    authentik/config "$AUTHENTIK_DANGER"
 decide WRITE_MONITORING   monitoring/smtp
-decide WRITE_GRAFANA      monitoring/grafana-admin
-decide WRITE_NEXTCLOUD    nextcloud/config "$NEXTCLOUD_DANGER"
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
-decide WRITE_UMAMI        umami/config "$UMAMI_DANGER"
-decide WRITE_FEST_WOLLBI  fest-wollbi/config "$FEST_WOLLBI_DANGER"
-decide WRITE_ADVENT_WOLLBI advent-wollbi/config "$ADVENT_WOLLBI_DANGER"
-decide WRITE_OPEN_WEBUI   open-webui/config "$OPEN_WEBUI_DANGER"
-decide WRITE_PAPERLESS    paperless-ngx/config "$PAPERLESS_DANGER"
-decide WRITE_OPENCLAW     openclaw/config "$OPENCLAW_DANGER"
-decide WRITE_DTRACK       dependency-track/config "$DEPENDENCY_TRACK_DANGER"
+decide WRITE_OPEN_WEBUI   open-webui/openai
+decide WRITE_OPENCLAW     openclaw/anthropic
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
-  && [ "$WRITE_AUTHENTIK" = "0" ] && [ "$WRITE_MONITORING" = "0" ] \
-  && [ "$WRITE_GRAFANA" = "0" ] && [ "$WRITE_NEXTCLOUD" = "0" ] \
-  && [ "$WRITE_KNEADTIME" = "0" ] && [ "$WRITE_UMAMI" = "0" ] \
-  && [ "$WRITE_FEST_WOLLBI" = "0" ] && [ "$WRITE_ADVENT_WOLLBI" = "0" ] \
-  && [ "$WRITE_OPEN_WEBUI" = "0" ] \
-  && [ "$WRITE_PAPERLESS" = "0" ] \
-  && [ "$WRITE_OPENCLAW" = "0" ] \
-  && [ "$WRITE_DTRACK" = "0" ] && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
+  && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
+  && [ "$WRITE_OPEN_WEBUI" = "0" ] && [ "$WRITE_OPENCLAW" = "0" ] \
+  && [ "$WRITE_SBOM_UPLOAD" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -404,9 +312,6 @@ print(json.dumps(dict(p.decode().split("=", 1) for p in pairs)))
   printf '  %-24s written\n' "kv/${path}"
 }
 
-rand_b64() { openssl rand -base64 "$1" | tr -d '\n'; }
-rand_hex() { openssl rand -hex "$1"; }
-
 if [ "$WRITE_CERT_MANAGER" = "1" ]; then
   put cert-manager/route53 \
     "access-key-id=${CERT_MANAGER_KEY_ID}" \
@@ -419,42 +324,11 @@ if [ "$WRITE_EXTERNAL_DNS" = "1" ]; then
     "secret-access-key=${EXTERNAL_DNS_SECRET_KEY}"
 fi
 
-if [ "$WRITE_AUTHENTIK" = "1" ]; then
-  put authentik/config \
-    "secret-key=$(rand_b64 60)" \
-    "bootstrap-password=$(rand_b64 24)" \
-    "bootstrap-token=$(rand_hex 32)" \
-    "argocd-client-id=$(rand_hex 16)" \
-    "argocd-client-secret=$(rand_b64 48)" \
-    "grafana-client-id=$(rand_hex 16)" \
-    "grafana-client-secret=$(rand_b64 48)"
-fi
-
 if [ "$WRITE_MONITORING" = "1" ]; then
   put monitoring/smtp \
     "username=${SMTP_USERNAME}" \
     "password=${SMTP_PASSWORD}" \
     "to=${SMTP_TO}"
-fi
-
-# Grafana reads this only when it creates its database, so rewriting it on a
-# running cluster changes nothing until the password is reset to match -- see
-# payload/platform/monitoring/grafana-admin.yaml.
-if [ "$WRITE_GRAFANA" = "1" ]; then
-  put monitoring/grafana-admin \
-    "password=$(rand_b64 24)"
-fi
-
-# Four values, two consumers. Nextcloud reads all of them; Authentik reads the
-# two oidc-* keys to configure the provider Nextcloud then authenticates
-# against, so neither side is ever copied out of a UI. The admin account is
-# break-glass only -- day-to-day logins go through Authentik.
-if [ "$WRITE_NEXTCLOUD" = "1" ]; then
-  put nextcloud/config \
-    "username=admin" \
-    "password=$(rand_b64 24)" \
-    "oidc-client-id=$(rand_hex 16)" \
-    "oidc-client-secret=$(rand_b64 48)"
 fi
 
 # A P-256 key in PEM, which py_vapid reads directly; the service derives the
@@ -464,65 +338,20 @@ if [ "$WRITE_KNEADTIME" = "1" ]; then
     "vapid-private-key=$(openssl ecparam -name prime256v1 -genkey -noout)"
 fi
 
-# APP_SECRET and TWO_FACTOR_ENCRYPTION_KEY, both as Umami documents them: 64 hex
-# characters. See homelab-apps/umami/secrets.yaml.
-if [ "$WRITE_UMAMI" = "1" ]; then
-  put umami/config \
-    "app-secret=$(rand_hex 32)" \
-    "two-factor-encryption-key=$(rand_hex 32)"
-fi
-
-# Both generated. See homelab-apps/fest-wollbi/secrets.yaml.
-if [ "$WRITE_FEST_WOLLBI" = "1" ]; then
-  put fest-wollbi/config \
-    "payload-secret=$(rand_b64 48)" \
-    "admin-password=$(rand_b64 24)"
-fi
-
-# Both generated. See homelab-apps/advent-wollbi/secrets.yaml.
-if [ "$WRITE_ADVENT_WOLLBI" = "1" ]; then
-  put advent-wollbi/config \
-    "payload-secret=$(rand_b64 48)" \
-    "admin-password=$(rand_b64 24)"
-fi
-
-# Three generated values and one typed one. See homelab-apps/open-webui/secrets.yaml.
+# Typed in, so their own paths: see the header.
+# homelab-apps/open-webui/secrets.yaml, homelab-apps/openclaw/secrets.yaml
 if [ "$WRITE_OPEN_WEBUI" = "1" ]; then
-  put open-webui/config \
-    "webui-secret-key=$(rand_b64 48)" \
-    "openai-api-key=${OPEN_WEBUI_OPENAI_KEY}" \
-    "oidc-client-id=$(rand_hex 16)" \
-    "oidc-client-secret=$(rand_b64 48)"
+  put open-webui/openai \
+    "api-key=${OPEN_WEBUI_OPENAI_KEY}"
 fi
 
-# All four generated; nothing here belongs to an account outside the cluster.
-# See homelab-apps/paperless-ngx/secrets.yaml.
-if [ "$WRITE_PAPERLESS" = "1" ]; then
-  put paperless-ngx/config \
-    "secret-key=$(rand_b64 48)" \
-    "admin-password=$(rand_b64 24)" \
-    "oidc-client-id=$(rand_hex 16)" \
-    "oidc-client-secret=$(rand_b64 48)"
-fi
-
-# One generated, one typed. See homelab-apps/openclaw/secrets.yaml.
 if [ "$WRITE_OPENCLAW" = "1" ]; then
-  put openclaw/config \
-    "gateway-token=$(rand_hex 32)" \
-    "anthropic-api-key=${OPENCLAW_ANTHROPIC_KEY}"
-fi
-
-# The key encryption key as the chart documents it, 32 random bytes in base64,
-# and the OIDC client ID. See homelab-apps/dependency-track/secrets.yaml.
-if [ "$WRITE_DTRACK" = "1" ]; then
-  put dependency-track/config \
-    "kek=$(rand_b64 32)" \
-    "oidc-client-id=$(rand_hex 16)"
+  put openclaw/anthropic \
+    "api-key=${OPENCLAW_ANTHROPIC_KEY}"
 fi
 
 # Written even when the answer was empty: the upload job reads the empty value
-# and says so, where a missing path stops the whole sync. Rewriting this path
-# costs nothing, which is why it is not a key under dependency-track/config.
+# and says so, where a missing path stops the whole sync.
 # See homelab-apps/docs/dependency-track.md#secrets
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   put dependency-track/sbom-upload \
@@ -532,8 +361,8 @@ fi
 cat <<'EOF'
 
 Done. External Secrets refreshes hourly on its own. A path that was just
-rewritten is not live until it does, and cert-manager or Authentik will go on
-failing with the old value until then -- so to push it through now:
+rewritten is not live until it does, and cert-manager will go on failing with
+the old value until then -- so to push it through now:
 
   kubectl annotate externalsecret <name> -n <namespace> \
     force-sync="$(date +%s)" --overwrite
@@ -547,20 +376,9 @@ The hash moves when the contents do, and shows nothing secret:
   kubectl get externalsecret -A
   kubectl get clustersecretstore openbao -o jsonpath='{.status.conditions}'
 
-The Authentik admin password is generated, never printed, and is what you log
-in with as akadmin:
+The generated paths -- Authentik's akadmin password, Grafana's and the
+workloads' break-glass admins -- are not written here. Their PushSecrets
+write them, and docs/platform/openbao.md#generated-secrets says how to read one:
 
-  kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
-    -field=bootstrap-password authentik/config
-
-Grafana's break-glass admin password is generated the same way:
-
-  kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
-    -field=password monitoring/grafana-admin
-
-So is Nextcloud's, which is the break-glass local account behind
-https://cloud.k8s.wlkr.ch/login?direct=1 -- the normal login is Authentik:
-
-  kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv \
-    -field=password nextcloud/config
+  kubectl get pushsecret -A
 EOF

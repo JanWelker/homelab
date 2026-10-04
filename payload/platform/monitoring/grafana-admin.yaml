@@ -26,3 +26,38 @@ spec:
       remoteRef:
         key: monitoring/grafana-admin
         property: password
+---
+# Written once, never overwritten; see docs/platform/openbao.md#generated-secrets
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  length: 32
+  symbols: 0
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  updatePolicy: IfNotExists
+  deletionPolicy: None
+  secretStoreRefs:
+    - name: openbao
+      kind: ClusterSecretStore
+  selector:
+    generatorRef:
+      apiVersion: generators.external-secrets.io/v1alpha1
+      kind: Password
+      name: grafana-admin
+  data:
+    - match: {secretKey: password, remoteRef: {remoteKey: monitoring/grafana-admin, property: password}}

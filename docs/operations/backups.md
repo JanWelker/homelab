@@ -248,7 +248,8 @@ the CronJob uses. Upstream:
    certificates.
 2. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.
 3. When every `ExternalSecret` is Degraded, either `make bao-init` and restore
-   the OpenBao snapshot as above, or `make bao-init` and re-enter every secret
-   with `make bao-secrets`.
+   the OpenBao snapshot as above, or `make bao-init`, re-enter the typed
+   secrets with `make bao-secrets`, and let the `PushSecret`s generate the
+   rest anew — which loses whatever was encrypted with the old keys.
 4. Once the platform is Synced and Healthy, restore workloads with a Velero
    restore from the copied-off backup.
