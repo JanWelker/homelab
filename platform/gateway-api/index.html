@@ -1186,6 +1186,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backend protocol
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2268,6 +2285,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backend protocol
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2532,6 +2566,13 @@ address instead of the Gateway's LAN one; the router forwards ports 80 and
 access to Ingresses and IngressClasses: its Gateway API controller lists them
 too, and the chart grants that only with the Ingress controller enabled. Its
 header names the chart version last checked; retry removing it on a major.</p>
+<h3 id="backend-protocol">Backend protocol<a class="headerlink" href="#backend-protocol" title="Permanent link">&para;</a></h3>
+<p>Envoy speaks HTTP/1.1 to every backend unless the Service port says
+otherwise: Cilium's <code>gatewayAPI.enableAppProtocol</code> makes it honour
+<code>appProtocol: kubernetes.io/h2c</code> and open HTTP/2 cleartext instead. A
+<code>GRPCRoute</code> needs that, because the Gateway translates gRPC-web into native
+gRPC, which only an HTTP/2 backend answers; Argo CD's <code>http2</code> port is the one
+user, see <a href="../argocd/#cli-access">Argo CD → CLI access</a>.</p>
 <p>The CRDs arrive twice from one tag: <code>make install-cilium</code> applies the release
 bundle <code>standard-install.yaml</code> before ArgoCD exists, and the
 <code>gateway-api-crds</code> Application applies <code>config/crd/standard</code>, the directory
