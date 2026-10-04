@@ -21,10 +21,13 @@ spec:
 
           sources:
             - gateway-httproute
+            - gateway-tlsroute
+            - gateway-grpcroute
 
           domainFilters:
             - k8s.wlkr.ch
             - wollbi.ch
+            - ssh.wlkr.ch
 
           # k8s.wlkr.ch has no zone of its own; its records live in wlkr.ch.
           extraArgs:

@@ -249,6 +249,9 @@ Disabling the local admin also removes its `apiKey` capability. If a token is
 needed, add an account scoped to what the token is for rather than
 re-enabling admin:
 
+The `claude` account is one, for the in-cluster agents; see
+[Agent account](argocd.md#agent-account). The shape:
+
 ```yaml
 configs:
   cm:

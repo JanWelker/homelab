@@ -92,6 +92,8 @@ a `bao kv put` replaces the whole path.
 | `monitoring/grafana-admin` (generated) | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
+| `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
+| `claude-<session>/github` | `token` | One agent session's GitHub PAT; `bao-secrets.sh` knows `claude-homelab` and `claude-homelab-apps`. Empty until typed in |
 | `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's

@@ -52,6 +52,20 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    # SSH to the in-cluster Claude Code agents, tunnelled in TLS. Passthrough,
+    # because Cilium rejects Terminate for a TLSRoute; the pod ends the TLS.
+    # See docs/platform/gateway-api.md#ssh-listener
+    - name: ssh
+      protocol: TLS
+      port: 443
+      hostname: "*.ssh.wlkr.ch"
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - kind: TLSRoute
 ---
 # Infra Gateway - for core/infrastructure services (*.infra.k8s.wlkr.ch)
 apiVersion: gateway.networking.k8s.io/v1
