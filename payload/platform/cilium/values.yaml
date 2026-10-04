@@ -58,6 +58,9 @@ envoy:
 
 gatewayAPI:
   enabled: true
+  # Honour a Service port's appProtocol (kubernetes.io/h2c) towards the
+  # backend; see docs/platform/gateway-api.md#backend-protocol
+  enableAppProtocol: true
 
 # Gateway IPs are announced over L2 and BGP; see docs/platform/cilium.md.
 bgpControlPlane:
