@@ -106,6 +106,25 @@ server:
                   value: "SAMEORIGIN"
                 - name: Referrer-Policy
                   value: "strict-origin-when-cross-origin"
+  # The CLI's gRPC on its own hostname and an h2c port; see
+  # docs/platform/argocd.md#cli-access
+  service:
+    servicePortHttp2: 81
+    servicePortHttp2AppProtocol: kubernetes.io/h2c
+  grpcroute:
+    enabled: true
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: infra-gateway
+        namespace: kube-system
+        sectionName: https
+    hostnames:
+      - argo-grpc.infra.k8s.wlkr.ch
+    rules:
+      - matches:
+          - method:
+              type: Exact
   resources:
     requests:
       cpu: 25m
@@ -223,6 +242,11 @@ configs:
           - .spec.rules[].backendRefs[].weight
           jsonPointers:
           - /spec/rules/0/matches
+      gateway.networking.k8s.io/GRPCRoute:
+        ignoreDifferences: |
+          jqPathExpressions:
+          - .spec.rules[].backendRefs[].group
+          - .spec.rules[].backendRefs[].kind
 
   rbac:
     # No access without a matching group, not read-only-everything.

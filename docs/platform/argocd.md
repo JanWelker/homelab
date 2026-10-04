@@ -71,11 +71,26 @@ project, and nothing else. It has `apiKey` only, so it cannot log in.
 2. Store it with `make bao-secrets`, at `kv/claude-agents/argocd`
    (`token`).
 
-The agents reach `argo.infra.k8s.wlkr.ch` on 443 by name, so the traffic
-enters through `infra-gateway` and arrives at `argocd-server` as the `ingress`
-entity, which its policy already admits. A client uses
-`argocd --grpc-web` or the REST API; native gRPC through the route is not
-configured.
+The agents reach Argo CD on 443 by name, so the traffic enters through
+`infra-gateway` and arrives at `argocd-server` as the `ingress` entity, which
+its policy already admits. They use the CLI host from
+[CLI access](#cli-access).
+
+## CLI access
+
+The `argocd` CLI talks gRPC, which the browser route cannot carry: Cilium's
+Gateway translates gRPC-web into native gRPC, and native gRPC needs an HTTP/2
+backend, which the plain `http` port is not. The chart therefore adds an `h2c`
+port (`http2`, 81) and a `GRPCRoute` on `argo-grpc.infra.k8s.wlkr.ch`, a
+hostname of its own so the browser route stays as it is.
+
+The Gateway offers no ALPN, and gRPC clients refuse TLS without it, so the CLI
+needs ALPN enforcement off:
+
+```bash
+export GRPC_ENFORCE_ALPN_ENABLED=false
+argocd login argo-grpc.infra.k8s.wlkr.ch --sso --grpc-web
+```
 
 ## Health check
 
