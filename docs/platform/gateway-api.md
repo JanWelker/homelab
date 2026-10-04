@@ -56,6 +56,15 @@ access to Ingresses and IngressClasses: its Gateway API controller lists them
 too, and the chart grants that only with the Ingress controller enabled. Its
 header names the chart version last checked; retry removing it on a major.
 
+### Backend protocol
+
+Envoy speaks HTTP/1.1 to every backend unless the Service port says
+otherwise: Cilium's `gatewayAPI.enableAppProtocol` makes it honour
+`appProtocol: kubernetes.io/h2c` and open HTTP/2 cleartext instead. A
+`GRPCRoute` needs that, because the Gateway translates gRPC-web into native
+gRPC, which only an HTTP/2 backend answers; Argo CD's `http2` port is the one
+user, see [Argo CD → CLI access](argocd.md#cli-access).
+
 The CRDs arrive twice from one tag: `make install-cilium` applies the release
 bundle `standard-install.yaml` before ArgoCD exists, and the
 `gateway-api-crds` Application applies `config/crd/standard`, the directory
