@@ -1667,6 +1667,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#agent-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#admission-policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2455,6 +2466,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#agent-rbac" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent RBAC
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#admission-policies" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2876,6 +2898,35 @@ out: <code>kube-system</code>, where the control plane authenticates with client
 certificates and "very likely fine" is not the standard, and <code>authentik</code>,
 where <code>authentik-server</code> sets no <code>serviceAccountName</code> — an upstream chart
 default, to be fixed at the source.</p>
+<h3 id="agent-rbac">Agent RBAC<a class="headerlink" href="#agent-rbac" title="Permanent link">&para;</a></h3>
+<p><code>claude-agent-rbac.yaml</code> gives the in-cluster Claude Code agents two
+ClusterRoles, bound to the <code>claude-reader</code> and <code>claude-writer</code>
+ServiceAccounts of the <code>claude-agents</code> namespace. Cluster-scoped RBAC cannot
+come from the <code>apps</code> project, and what an agent may touch is a platform
+decision.</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Grants</th>
+<th>Leaves out</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>claude-agent-read</code></td>
+<td><code>get</code>, <code>list</code>, <code>watch</code> on named core, workload and CRD kinds</td>
+<td>Secrets, RBAC, webhooks, CRDs, <code>pods/exec</code>, Trivy's exposed-secret reports</td>
+</tr>
+<tr>
+<td><code>claude-agent-write</code></td>
+<td>Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets; the writer is bound to both roles</td>
+<td>The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request)</td>
+</tr>
+</tbody>
+</table>
+<p>Kinds are listed, never wildcarded, so a new CRD is invisible to the agents
+until someone adds it. Argo CD reverts a hand edit within minutes either way.</p>
 <h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
 <p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
 refuses or records it at admission, with the built-in

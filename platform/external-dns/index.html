@@ -2470,6 +2470,10 @@ record pointing at nothing when the workload goes.</p>
 <td>The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every <code>*.k8s.wlkr.ch</code> record gets it once. <code>infra-gateway</code> has none: those names stay LAN-only on purpose</td>
 </tr>
 <tr>
+<td>Source <code>gateway-tlsroute</code></td>
+<td>The agents' SSH hostnames are <code>TLSRoute</code>s, one per session. This version reads <code>TLSRoute</code> <code>v1</code>, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see <a href="../gateway-api/#ssh-listener">SSH listener</a></td>
+</tr>
+<tr>
 <td>Domain filter</td>
 <td>Nothing outside that subtree is touched</td>
 </tr>
@@ -2488,6 +2492,10 @@ record pointing at nothing when the workload goes.</p>
 <tr>
 <td>A second entry in <code>domainFilters</code></td>
 <td><code>wollbi.ch</code> is a zone of its own in the same account, for the neighbourhood sites. Without it their routes are ignored rather than refused, which reads as external-dns being down</td>
+</tr>
+<tr>
+<td><code>ssh.wlkr.ch</code> in <code>domainFilters</code></td>
+<td>Same zone as <code>k8s.wlkr.ch</code>, a different subtree</td>
 </tr>
 <tr>
 <td>Credentials as a file (<code>AWS_SHARED_CREDENTIALS_FILE</code>), not environment variables</td>

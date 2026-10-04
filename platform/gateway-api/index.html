@@ -1197,6 +1197,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh-listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSH listener
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2262,6 +2279,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ssh-listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSH listener
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2480,7 +2514,9 @@ L2 pool, defined in <code>gateways.yaml</code>:</p>
 neighbourhood sites. A listener pins one hostname pattern and a wildcard
 certificate covers one zone, so a second domain is a second listener and a
 second <code>Certificate</code> rather than a name added to the first.</p>
-<p>Both terminate TLS with cert-manager's wildcard certificates, so a new
+<p><code>apps-gateway</code> also has a <code>TLS</code> listener, <code>ssh</code>, for <code>*.ssh.wlkr.ch</code>; see
+<a href="#ssh-listener">SSH listener</a>.</p>
+<p>Both HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
 its Gateway's tree. A wildcard is a suffix match, so <code>*.k8s.wlkr.ch</code> still
@@ -2528,6 +2564,44 @@ name:</p>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
 <p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for platform tools.</p>
+<h3 id="ssh-listener">SSH listener<a class="headerlink" href="#ssh-listener" title="Permanent link">&para;</a></h3>
+<p>The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
+port 443, the only port the router forwards to <code>apps-gateway</code>. Each agent's
+chart ships a <code>TLSRoute</code> for <code>&lt;session&gt;.ssh.wlkr.ch</code> pointing at its SSH
+Service.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode: Passthrough</code></td>
+<td>Cilium rejects a <code>TLS</code> listener in <code>Terminate</code> mode: the listener goes <code>Accepted=False</code> with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate</td>
+</tr>
+<tr>
+<td>No <code>Certificate</code> here</td>
+<td>A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from <code>letsencrypt-prod</code> in the agent's namespace</td>
+</tr>
+<tr>
+<td><code>allowedRoutes.kinds: TLSRoute</code></td>
+<td>The listener serves nothing else, and <code>HTTPRoute</code>s cannot attach to it by accident</td>
+</tr>
+<tr>
+<td><code>TLSRoute</code> <code>v1</code></td>
+<td>Installed in the standard channel of the Gateway API CRDs; <code>v1alpha2</code> is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart <code>cilium-operator</code></td>
+</tr>
+</tbody>
+</table>
+<p>DNS needs no record by hand: <a href="../external-dns/#configuration">external-dns</a>
+reads the <code>TLSRoute</code> hostnames and publishes the router's public address, as
+for an <code>HTTPRoute</code>. A client connects with a TLS tunnel as its <code>ProxyCommand</code>,
+for example <code>openssl s_client -quiet -connect %h:443 -servername %h</code>.</p>
+<p>Envoy checks its egress against the backend like any Gateway traffic, so the
+agents' namespace must admit the <code>ingress</code> entity on the SSH port; see
+<a href="../security-policies/#network-policies">Security Policies</a>.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <p>Check that each HTTP listener carries only the redirect — <code>http</code> should show
 exactly <code>1</code>:</p>

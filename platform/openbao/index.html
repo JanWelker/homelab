@@ -2873,6 +2873,16 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td>The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one</td>
 </tr>
 <tr>
+<td><code>claude-agents/argocd</code></td>
+<td><code>token</code></td>
+<td>The agents' Argo CD API token — <a href="../argocd/#agent-account">Agent account</a>; empty until generated</td>
+</tr>
+<tr>
+<td><code>claude-&lt;session&gt;/github</code></td>
+<td><code>token</code></td>
+<td>One agent session's GitHub PAT; <code>bao-secrets.sh</code> knows <code>claude-homelab</code> and <code>claude-homelab-apps</code>. Empty until typed in</td>
+</tr>
+<tr>
 <td><code>nextcloud/config</code> (generated)</td>
 <td><code>username</code>, <code>password</code>, <code>oidc-client-id</code>, <code>oidc-client-secret</code></td>
 <td>Nextcloud, and Authentik for the two <code>oidc-*</code> keys — a separate path so rotating it cannot take Authentik's own credentials with it</td>

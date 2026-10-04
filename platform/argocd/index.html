@@ -1162,6 +1162,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Projects
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent account
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CLI access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2243,6 +2276,39 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#projects" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Projects
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#agent-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Agent account
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        CLI access
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#health-check" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2489,8 +2555,46 @@ a Secret labelled <code>app.kubernetes.io/part-of: argocd</code>, which the
 <p>The Grafana dashboard in <code>grafana-dashboards.yaml</code> is upstream's
 <code>examples/dashboard.json</code>, unmodified, at the ArgoCD version the chart deploys.
 Renovate does not see it: re-copy it when ArgoCD moves a minor version.</p>
+<h2 id="projects">Projects<a class="headerlink" href="#projects" title="Permanent link">&para;</a></h2>
+<p>The <code>apps</code> project lists the repositories its Applications may pull from in
+<code>payload/platform/argocd-projects/projects.yaml</code>. An OCI Helm chart is listed
+and referenced <strong>without</strong> the <code>oci://</code> scheme (<code>ghcr.io/janwelker/charts</code> as
+<code>sourceRepos</code> entry and as the Application's <code>repoURL</code>, with <code>chart:</code> naming
+the chart): Argo CD compares the two strings after normalising, and treats a
+<code>repoURL</code> with no scheme as OCI, so a public registry needs no repository
+Secret and no <code>enableOCI</code>.</p>
+<h2 id="agent-account">Agent account<a class="headerlink" href="#agent-account" title="Permanent link">&para;</a></h2>
+<p>The <code>claude</code> account is the in-cluster Claude Code agents' API identity. It
+may read everything <code>role:readonly</code> reads and sync Applications in the <code>apps</code>
+project, and nothing else. It has <code>apiKey</code> only, so it cannot log in.</p>
+<ol>
+<li>
+<p>Generate the token, logged in through Authentik:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude
+</span></code></pre></div>
+</li>
+<li>
+<p>Store it with <code>make bao-secrets</code>, at <code>kv/claude-agents/argocd</code>
+   (<code>token</code>).</p>
+</li>
+</ol>
+<p>The agents reach Argo CD on 443 by name, so the traffic enters through
+<code>infra-gateway</code> and arrives at <code>argocd-server</code> as the <code>ingress</code> entity, which
+its policy already admits. They use the CLI host from
+<a href="#cli-access">CLI access</a>.</p>
+<h2 id="cli-access">CLI access<a class="headerlink" href="#cli-access" title="Permanent link">&para;</a></h2>
+<p>The <code>argocd</code> CLI talks gRPC, which the browser route cannot carry: Cilium's
+Gateway translates gRPC-web into native gRPC, and native gRPC needs an HTTP/2
+backend, which the plain <code>http</code> port is not. The chart therefore adds an <code>h2c</code>
+port (<code>http2</code>, 81) and a <code>GRPCRoute</code> on <code>argo-grpc.infra.k8s.wlkr.ch</code>, a
+hostname of its own so the browser route stays as it is.</p>
+<p>The Gateway offers no ALPN, and gRPC clients refuse TLS without it, so the CLI
+needs ALPN enforcement off:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
+</span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span></code></pre></div>
 <p>Every Application should be <code>Synced</code> and <code>Healthy</code>. One that stays <code>OutOfSync</code>
 has exhausted its retries and waits for a hand sync — see
