@@ -121,10 +121,10 @@ server:
         sectionName: https
     hostnames:
       - argo-grpc.infra.k8s.wlkr.ch
+    # One rule without matches takes every call; a method match must name a
+    # service or a method.
     rules:
-      - matches:
-          - method:
-              type: Exact
+      - {}
   resources:
     requests:
       cpu: 25m
