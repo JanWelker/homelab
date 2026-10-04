@@ -1,53 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "platformAutomerge": true,
   "extends": [
-    "config:best-practices",
-    ":dependencyDashboard",
-    ":prHourlyLimitNone",
-    ":prConcurrentLimitNone",
-    ":timezone(Europe/Berlin)"
+    "github>JanWelker/renovate-config"
   ],
-  "labels": [
-    "dependencies"
-  ],
-  "schedule": "at any time",
-  "vulnerabilityAlerts": {
-    "enabled": true,
-    "labels": [
-      "security"
-    ]
-  },
   "packageRules": [
-    {
-      "description": "One policy for everything: patch and minor automerge, majors wait for a human. Every component gets its own PR, except the three pairs grouped below that must move together.",
-      "matchUpdateTypes": [
-        "patch",
-        "minor"
-      ],
-      "automerge": true
-    },
-    {
-      "description": "Major updates always require review.",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "automerge": false
-    },
-    {
-      "description": "Three days between a release and its PR, for every datasource that pins something a node installs or the cluster runs. Long enough for an upstream to pull a broken or compromised tag, short enough that a fix still arrives the same week. Renovate lifts this for its own vulnerability-alert PRs.",
-      "matchDatasources": [
-        "docker",
-        "helm",
-        "github-releases",
-        "github-tags",
-        "npm",
-        "pypi",
-        "custom.flatcar-stable",
-        "custom.syslinux-kernelorg"
-      ],
-      "minimumReleaseAge": "3 days"
-    },
     {
       "description": "pyproject.toml declares >= ranges, which every new release already satisfies; without bump Renovate never opens a PR for the linters or the docs generator.",
       "matchManagers": [
@@ -107,7 +63,7 @@
       "pinDigests": false
     },
     {
-      "description": "A PostgreSQL major version is an offline migration that takes the workload down while it runs, and it is not reversible. It waits for a human even though the image tag makes it look like any other bump. Same rule as the workloads repository -- see docs/platform/cloudnative-pg.md",
+      "description": "A PostgreSQL major version is an offline migration that takes the workload down while it runs, and it is not reversible. The preset already holds every major for a human; this rule labels it. Same rule as the workloads repository -- see docs/platform/cloudnative-pg.md",
       "matchDatasources": [
         "docker"
       ],
@@ -117,9 +73,7 @@
       "matchUpdateTypes": [
         "major"
       ],
-      "automerge": false,
-      "labels": [
-        "dependencies",
+      "addLabels": [
         "database-major"
       ]
     }

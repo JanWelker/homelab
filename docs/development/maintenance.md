@@ -22,25 +22,25 @@ All in `.github/workflows/`.
 | `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
+| `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
 | `fonts-check.yaml` | `scripts/update-fonts.sh`, `docs/assets/fonts/**` | `make fonts-check`: the committed `woff2` files match the pinned releases — see [Fonts](contributing.md#fonts) |
 
 ## Renovate
 
-Configured in `renovate.json`. It runs at any time with no hourly or
-concurrency limit, and every component gets its own pull request so a failing
-update never holds up an unrelated one. The only groups are the pairs below
-that must move together.
+Configured in `renovate.json`, on top of the shared preset
+[JanWelker/renovate-config](https://github.com/JanWelker/renovate-config),
+which holds the policy for every repository. Every component gets its own pull
+request so a failing update never holds up an unrelated one; the only groups
+are the pairs below that must move together.
 
 ### Automerge policy
 
-- **Patch and minor updates automerge; majors wait for a human.** One rule for
-    everything, with no per-area exceptions: a Flatcar or Kubernetes minor lands
-    the same way a Grafana chart patch does.
-- **Three days between a release and its PR** for every datasource that pins
-    something a node installs or the cluster runs (`minimumReleaseAge`): long
-    enough for an upstream to pull a broken or compromised tag, short enough
-    that a fix arrives the same week. Renovate lifts it for its own
-    vulnerability-alert PRs.
+- **The preset's rules:** three days between a release and its PR, patch and
+    minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a
+    human, and security fixes skip both the wait and the schedule. The
+    preset's README says why for each.
+- **One rule for everything here,** with no per-area exceptions: a Flatcar or
+    Kubernetes minor lands the same way a Grafana chart patch does.
 - **Pairs that must move together are grouped into one PR:**
     `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
@@ -53,9 +53,9 @@ that must move together.
     node installs, not what a running node runs.** kubeadm cannot skip a minor,
     so a cluster left unrebuilt across two automerged Kubernetes minors has to be
     walked forward one at a time — see [Upgrades](../operations/upgrades.md).
-- **Font bumps automerge without their second commit** unless
-    `fonts-check.yaml` is a required check on `main`. If branch protection is
-    ever rebuilt, put it back — see [Fonts](contributing.md#fonts).
+- **A font bump cannot automerge without its second commit:**
+    `fonts-check.yaml` fails on it and `ci-ok` waits for it — see
+    [Fonts](contributing.md#fonts).
 - `config:best-practices` pins GitHub Actions to commit SHAs and container
     images to digests, and collects every pin into one shared
     `renovate/pin-dependencies` branch.
