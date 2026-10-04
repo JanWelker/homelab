@@ -30,9 +30,6 @@ no app-of-apps tree.
   cannot go Ready just waits. Put a resource with what it needs, not with what
   it configures: the `ClusterSecretStore` sits with OpenBao, the issuers and
   certificates are their own `certificates` component.
-- A fresh cluster looks stuck at OpenBao: every `ExternalSecret` is Degraded
-  until `make bao-init`, `make bao-unseal` and `make bao-secrets`. Nothing
-  fails or times out there.
 - Patching a generated Application's `spec` achieves nothing — the next
   reconcile copies the file back over it. That includes switching automated
   sync off: the only rollback is a revert commit.
