@@ -39,7 +39,6 @@ the same L2 network segment as the nodes.
 | `butane` | transpiling Butane YAML to Ignition JSON | `brew install butane` or the [Flatcar docs](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/) |
 | `kubectl` | steps 8 onwards | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
 | `helm` | `make install-cilium`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
-| `sudo` | `make serve` binds privileged port 69 | — |
 
 ### Other requirements
 
@@ -106,7 +105,7 @@ the same L2 network segment as the nodes.
     ls output/tftp/pxelinux.cfg/     # one 01-<mac> file per host
     ```
 
-6. **Start Boot Server** (requires sudo for port 69):
+6. **Start Boot Server**:
 
     ```bash
     make serve

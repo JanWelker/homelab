@@ -7,6 +7,7 @@ reboot at the end of an install boots the disk instead of the installer again.
 """
 
 import argparse
+import contextlib
 import errno
 import json
 import logging
@@ -20,6 +21,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import tftpy
 import yaml
 from tftpy.TftpContexts import TftpContextServer
+from tftpy.TftpShared import TftpException
 
 TFTP_PORT = 69
 HTTP_PORT = 8000
@@ -276,11 +278,31 @@ class NarratingContext(TftpContextServer):
     def start(self, buffer):
         """Handle the request as tftpy would, then say which node asked for what."""
         try:
-            super().start(buffer)
+            with ending_session_on_socket_error(self.host):
+                super().start(buffer)
         finally:
             # A missing file raises, and that request is the one worth naming.
             if self.file_to_transfer:
                 announce_tftp(self.host, self.file_to_transfer)
+
+    def cycle(self):
+        """Answer the next packet of the transfer, as tftpy would."""
+        with ending_session_on_socket_error(self.host):
+            super().cycle()
+
+
+@contextlib.contextmanager
+def ending_session_on_socket_error(ip):
+    """End one transfer on a failed send, not the server every other node needs.
+
+    tftpy only drops a session on a TftpException; any other OSError leaves
+    listen() and stops the whole server.
+    """
+    try:
+        yield
+    except OSError as error:
+        say(ip, 'TFTP transfer failed: %s', error, level=logging.ERROR)
+        raise TftpException(str(error)) from error
 
 
 def announce_tftp(ip, requested):
@@ -390,68 +412,31 @@ class BootHandler(SimpleHTTPRequestHandler):
             )
 
 
-def sudo_ids():
-    """uid and gid of whoever ran sudo, or None when this is not a sudo session."""
-    try:
-        return int(os.environ['SUDO_UID']), int(os.environ['SUDO_GID'])
-    except KeyError, ValueError:
-        return None, None
-
-
-def ensure_directory(path):
-    """Create the directory if missing, owned by the sudo user rather than root.
-
-    Both servers are started as root, and a directory root creates under
-    output/ is one the next make config cannot write into.
-    """
-    missing = []
-    probe = path
-    while not os.path.isdir(probe):
-        missing.append(probe)
-        probe = os.path.dirname(probe)
-    os.makedirs(path, exist_ok=True)
-    uid, gid = sudo_ids()
-    if uid is not None:
-        for made in missing:
-            os.chown(made, uid, gid)
-
-
-def drop_root():
-    """Become the sudo user. Only port 69 needed root, and that is bound by now."""
-    uid, gid = sudo_ids()
-    if uid is None or os.getuid() != 0:
-        return
-    os.setgroups([])
-    os.setgid(gid)
-    os.setuid(uid)
-    say('server', 'ports bound -- dropped root, running as uid %s', uid)
-
-
-def drop_root_once_bound(server):
-    """tftpy binds inside listen() and never returns, so watch for the bind."""
-
-    def watch():
-        server.is_running.wait()
-        drop_root()
-
-    threading.Thread(target=watch, daemon=True).start()
-
-
 def bind_http():
     """Bind the HTTP server on the boot address, or exit.
 
-    The same address as TFTP, on purpose: the Ignition configs served here
-    carry the join token, the certificate key and the etcd encryption key, and
-    a listener on every interface hands them to any network the deployment host
-    happens to be on. Binding is fatal because a node that gets its menu over
+    One address, on purpose: the Ignition configs served here carry the join
+    token, the certificate key and the etcd encryption key, and a listener on
+    every interface hands them to any network the deployment host happens to
+    be on. Binding is fatal because a node that gets its menu over
     TFTP and then fails on the kernel fetch is far harder to read than a server
     that refused to start.
     """
-    ensure_directory(HTTP_DIR)
+    os.makedirs(HTTP_DIR, exist_ok=True)
     try:
         return ThreadingHTTPServer((BIND_IP, HTTP_PORT), BootHandler)
     except OSError as error:
-        if error.errno == errno.EADDRINUSE:
+        if error.errno == errno.EADDRNOTAVAIL:
+            say(
+                'server',
+                'no interface on this machine holds %s -- that is '
+                'boot_server_ip in ansible/inventory.yaml, and the '
+                'address every generated PXE menu points at. Fix it '
+                'there and re-run make config',
+                BIND_IP,
+                level=logging.ERROR,
+            )
+        elif error.errno == errno.EADDRINUSE:
             say(
                 'server',
                 'port %s is already in use -- another make serve, or '
@@ -472,12 +457,16 @@ def bind_http():
 
 
 def run_tftp():
-    """Serve output/tftp until the process is killed. Blocks the main thread."""
-    ensure_directory(TFTP_DIR)
+    """Serve output/tftp until the process is killed. Blocks the main thread.
+
+    Every interface rather than the boot address: macOS lets an ordinary user
+    bind port 69 only on the wildcard. The server must not run as root, since a
+    process that drops root loses macOS Local Network access and every reply
+    fails with EHOSTUNREACH. Nothing served here is secret.
+    """
+    os.makedirs(TFTP_DIR, exist_ok=True)
     sys.modules['tftpy.TftpServer'].TftpContextServer = NarratingContext
-    server = tftpy.TftpServer(TFTP_DIR)
-    drop_root_once_bound(server)
-    server.listen(BIND_IP, TFTP_PORT)
+    tftpy.TftpServer(TFTP_DIR).listen('0.0.0.0', TFTP_PORT)
 
 
 def armed_hosts():
@@ -532,7 +521,7 @@ def offer_to_disarm():
 def announce_start():
     """Say where the servers are and which nodes are armed, before anything boots."""
     say('server', 'http on %s:%s from output/http', BIND_IP, HTTP_PORT)
-    say('server', 'tftp on %s:%s from output/tftp', BIND_IP, TFTP_PORT)
+    say('server', 'tftp on every interface, port %s, from output/tftp', TFTP_PORT)
 
     menus = pxe_menus()
     if not menus:
@@ -620,22 +609,13 @@ def main(argv=None):
         offer_to_disarm()
     except PermissionError:
         say(
-            'server', 'cannot bind port %s -- make serve needs sudo', TFTP_PORT, level=logging.ERROR
+            'server',
+            'cannot bind port %s -- on Linux, allow it with '
+            'sysctl net.ipv4.ip_unprivileged_port_start=%s',
+            TFTP_PORT,
+            TFTP_PORT,
+            level=logging.ERROR,
         )
-        sys.exit(1)
-    except OSError as error:
-        if error.errno == errno.EADDRNOTAVAIL:
-            say(
-                'server',
-                'no interface on this machine holds %s -- that is '
-                'boot_server_ip in ansible/inventory.yaml, and the '
-                'address every generated PXE menu points at. Fix it '
-                'there and re-run make config',
-                BIND_IP,
-                level=logging.ERROR,
-            )
-        else:
-            say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
         sys.exit(1)
     except Exception as error:
         say('server', 'TFTP failed to start: %s', error, level=logging.ERROR)
