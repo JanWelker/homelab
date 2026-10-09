@@ -153,16 +153,19 @@ The node boots from its own disk; the boot server should be off.
 ## Boot server
 
 `boot_server/serve.py` is a TFTP server and an HTTP server, installed by
-`uv sync` as the `boot-server` command. `make serve` runs it under `sudo` from
-the repository root (the document roots hang off `--root`, which defaults to
-the working directory), because port 69 needs root; once both ports are bound
-it drops back to the user who ran `sudo`, so nothing under `output/` ends up
-owned by root. Both servers bind `boot_server_ip`
-from `ansible/inventory.yaml` — the address `make config` baked into every
-generated URL — and nothing else. If no interface holds that address it says so
-and names the variable; if port 8000 is taken it exits. `--bind`, `--http-port`
-and `--tftp-port` override all three, which is how the tests and a dry run on
-a laptop avoid the privileged port.
+`uv sync` as the `boot-server` command. `make serve` runs it as you, never
+root, from the repository root (the document roots hang off `--root`, which
+defaults to the working directory): macOS denies Local Network access to a
+process that started as root and dropped it, so every TFTP reply would fail
+with *No route to host*. HTTP binds `boot_server_ip` from
+`ansible/inventory.yaml` — the address `make config` baked into every generated
+URL — and nothing else, because it serves the Ignition secrets. TFTP listens on
+every interface, the only way an ordinary user may bind port 69 on macOS; on
+Linux, lower `net.ipv4.ip_unprivileged_port_start` to 69. If no interface
+holds `boot_server_ip` it says so and names the variable; if port 8000 is taken
+it exits. A failed send ends that node's transfer, not the server. `--bind`,
+`--http-port` and `--tftp-port` override the address and ports, which is how
+the tests and a dry run on a laptop avoid the privileged port.
 
 | Server | Root | Serves |
 | --- | --- | --- |

@@ -26,7 +26,7 @@ config:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
 
 serve:
-	sudo .venv/bin/boot-server
+	.venv/bin/boot-server
 
 kubeconfig:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml
