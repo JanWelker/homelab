@@ -73,6 +73,11 @@ The deployment host — the laptop running Ansible and the boot server — is
 | freya | Worker | 10.9.2.4 |
 | heimdall | Worker | 10.9.2.5 |
 | valkyrie | Worker | 10.9.2.6 |
+| baldur | Worker | 10.9.2.7 |
+| tyr | Worker | 10.9.2.8 |
+| frigg | Worker | 10.9.2.9 |
+| bragi | Worker | 10.9.2.11 |
+| idun | Worker | 10.9.2.12 |
 
 Three control-plane nodes because etcd needs an odd number, and two is the
 worst answer: twice the hardware and quorum still lost when one dies. The API
