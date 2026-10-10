@@ -49,6 +49,15 @@
       "extractVersion": "^kubernetes-(?<version>.+)$"
     },
     {
+      "description": "These datasources publish no release timestamps, so the preset's minimumReleaseAge would hold their updates forever. They skip the release age instead, as the preset does for timestamp-less registries.",
+      "matchDatasources": [
+        "custom.flatcar-stable",
+        "custom.syslinux-kernelorg",
+        "git-tags"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
       "description": "A Helm `tag:` override holds a bare tag, so docker:pinDigests has nowhere to write a digest and fails the whole shared pin branch. Add a bare-tag docker pin here or the Dependency Dashboard reports `Error updating branch: update failure`. Images written as a full reference keep their digests -- see docs/development/maintenance.md",
       "matchDatasources": [
         "docker"
