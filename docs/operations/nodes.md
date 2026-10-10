@@ -90,24 +90,21 @@ password manager, each pod wants 3 of the 5 shares by hand, per
     does not name has its kubelet certificate denied and
     [silently drops out of `kubectl top`](../platform/metrics-server.md#pitfalls).
 
-2. On a control-plane node, generate a fresh join command; the provisioning
-   token has a 24 hour TTL and has long expired.
+    Against a running cluster, `make config` also re-creates the bootstrap
+    token baked into the Ignition configs for 24 hours and uploads the
+    control-plane certificates for two, so the node joins on its own.
+
+2. Network-boot the new node within those windows: two hours for a
+   **control-plane** node, 24 for a worker. `bootstrap-k8s.service` runs the
+   join once and only while `/etc/kubernetes/kubelet.conf` is absent, so it
+   does not interfere with a node that has joined.
+
+3. If the window has passed, run `make config` again, then retry the join on
+   the node.
 
     ```bash
-    ssh core@<control-plane-node>
-    sudo kubeadm token create --print-join-command
+    ssh <node> sudo systemctl restart bootstrap-k8s
     ```
-
-3. For a new **control-plane** node, also upload a current certificate key,
-   which expires after two hours.
-
-    ```bash
-    sudo kubeadm init phase upload-certs --upload-certs
-    ```
-
-4. Network-boot the new node and run the printed join command on it. The
-   `bootstrap-k8s.service` unit only fires when `/etc/kubernetes/kubelet.conf`
-   is absent, so it does not interfere with a node that has joined.
 
 ## Replacing a failed node
 

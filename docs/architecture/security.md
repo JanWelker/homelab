@@ -35,7 +35,8 @@ of the cluster's own security exists.
 | The OS image is signature-checked | `flatcar-install` is given `-b`/`-V`, so the node downloads the image and its detached signature and checks both against Flatcar's key before writing anything |
 
 The mitigation is time: `make serve` is a foreground command, the bootstrap
-token has a 24 hour TTL and the certificate key expires after two hours. The
+token has a 24 hour TTL and the certificate key expires after two hours, and
+`make config` re-arms both only for those windows. The
 encryption key has no clock, which is why the boot server listens only on
 `boot_server_ip`, serves files by name and lists nothing. **Stop the boot
 server when provisioning is finished.** Flatcar is installed to disk, so
