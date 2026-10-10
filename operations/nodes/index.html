@@ -2467,32 +2467,29 @@ password manager, each pod wants 3 of the 5 shares by hand, per
 <code>payload/platform/kubelet-csr-approver/application.yaml</code>: a node the regex
 does not name has its kubelet certificate denied and
 <a href="../../platform/metrics-server/#pitfalls">silently drops out of <code>kubectl top</code></a>.</p>
+<p>Against a running cluster, <code>make config</code> also re-creates the bootstrap
+token baked into the Ignition configs for 24 hours and uploads the
+control-plane certificates for two, so the node joins on its own.</p>
 </li>
 <li>
-<p>On a control-plane node, generate a fresh join command; the provisioning
-   token has a 24 hour TTL and has long expired.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssh<span class="w"> </span>core@&lt;control-plane-node&gt;
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>token<span class="w"> </span>create<span class="w"> </span>--print-join-command
+<p>Network-boot the new node within those windows: two hours for a
+   <strong>control-plane</strong> node, 24 for a worker. <code>bootstrap-k8s.service</code> runs the
+   join once and only while <code>/etc/kubernetes/kubelet.conf</code> is absent, so it
+   does not interfere with a node that has joined.</p>
+</li>
+<li>
+<p>If the window has passed, run <code>make config</code> again, then retry the join on
+   the node.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>bootstrap-k8s
 </span></code></pre></div>
-</li>
-<li>
-<p>For a new <strong>control-plane</strong> node, also upload a current certificate key,
-   which expires after two hours.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>upload-certs<span class="w"> </span>--upload-certs
-</span></code></pre></div>
-</li>
-<li>
-<p>Network-boot the new node and run the printed join command on it. The
-   <code>bootstrap-k8s.service</code> unit only fires when <code>/etc/kubernetes/kubelet.conf</code>
-   is absent, so it does not interfere with a node that has joined.</p>
 </li>
 </ol>
 <h2 id="replacing-a-failed-node">Replacing a failed node<a class="headerlink" href="#replacing-a-failed-node" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
 <p>Remove it from the cluster.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
 </li>
 <li>
@@ -2502,12 +2499,12 @@ does not name has its kubelet certificate denied and
 <li>
 <p>If it was a control-plane node, remove its etcd member; a dead member still
    counts toward quorum.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>member<span class="w"> </span>list
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2537,7 +2534,7 @@ the space.</p>
 <li>Edit whatever needs editing under <code>ansible/</code>.</li>
 <li>
 <p>Regenerate both Ignition configs and serve them.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
 </span></code></pre></div>
 </li>
 <li>
@@ -2546,7 +2543,7 @@ the space.</p>
    disarms it once it has the image, so the reboot at the end of the install
    does not start a second one — see
    <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
 </li>
 <li>

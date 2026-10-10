@@ -2562,7 +2562,8 @@ of the cluster's own security exists.</p>
 </tbody>
 </table>
 <p>The mitigation is time: <code>make serve</code> is a foreground command, the bootstrap
-token has a 24 hour TTL and the certificate key expires after two hours. The
+token has a 24 hour TTL and the certificate key expires after two hours, and
+<code>make config</code> re-arms both only for those windows. The
 encryption key has no clock, which is why the boot server listens only on
 <code>boot_server_ip</code>, serves files by name and lists nothing. <strong>Stop the boot
 server when provisioning is finished.</strong> Flatcar is installed to disk, so
