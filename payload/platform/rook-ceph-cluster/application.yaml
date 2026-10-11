@@ -163,10 +163,12 @@ spec:
                 # placement.all above is the CephCluster's; a CephObjectStore
                 # is its own CR. See docs/platform/index.md#replica-placement
                 placement:
+                  # Hard: two gateways on one node share instance_id "a" in
+                  # the exporter, and the descheduler never evicts them
                   topologySpreadConstraints:
                     - maxSkew: 1
                       topologyKey: kubernetes.io/hostname
-                      whenUnsatisfiable: ScheduleAnyway
+                      whenUnsatisfiable: DoNotSchedule
                       nodeTaintsPolicy: Honor
                       labelSelector:
                         matchLabels:

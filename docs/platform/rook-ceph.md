@@ -56,6 +56,9 @@ TLS. Two RGW instances keep
 a node reboot from stalling a backup, which only holds while they sit on
 separate nodes: `gateway.placement` carries the spread constraint, because the
 `placement.all` block belongs to the `CephCluster` and never reaches this CR.
+It is a hard one: both gateways are daemon `a`, so on one node the exporter
+reports their counters under the same labels and Prometheus drops them, and
+the descheduler never evicts a `system-cluster-critical` pod to fix that.
 The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at
 `failureDomain: host` with six nodes.
 
