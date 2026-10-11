@@ -2877,6 +2877,11 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td>The agents' Argo CD API token — <a href="../argocd/#agent-account">Agent account</a>; empty until generated</td>
 </tr>
 <tr>
+<td><code>argocd/github-previews</code></td>
+<td><code>token</code></td>
+<td>The GitHub PAT the <code>previews</code> ApplicationSet lists pull requests with — <a href="../argocd/#pull-request-previews">Pull request previews</a>; empty until created</td>
+</tr>
+<tr>
 <td><code>claude-&lt;session&gt;/github</code></td>
 <td><code>token</code></td>
 <td>One agent session's GitHub PAT, for any session name: <code>make claude-session-pat SESSION=&lt;session&gt;</code> stores it, adding <code>DELETE=1</code> removes the path. Not part of <code>make bao-secrets</code>, so a session needs no platform change. Empty until typed in</td>

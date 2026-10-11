@@ -1181,6 +1181,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pull-request-previews" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pull request previews
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cli-access" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2295,6 +2306,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pull-request-previews" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pull request previews
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cli-access" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2485,7 +2507,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (OIDC <code>ExternalSecret</code>, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects)</td>
+<td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (OIDC and preview-token <code>ExternalSecret</code>s, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects), <code>payload/workloads/applicationset-previews.yaml</code></td>
 </tr>
 </tbody>
 </table>
@@ -2580,6 +2602,57 @@ project, and nothing else. It has <code>apiKey</code> only, so it cannot log in.
 <code>infra-gateway</code> and arrives at <code>argocd-server</code> as the <code>ingress</code> entity, which
 its policy already admits. They use the CLI host from
 <a href="#cli-access">CLI access</a>.</p>
+<h2 id="pull-request-previews">Pull request previews<a class="headerlink" href="#pull-request-previews" title="Permanent link">&para;</a></h2>
+<p>The <code>previews</code> ApplicationSet deploys every open pull request labelled
+<code>preview</code> on the two neighbourhood sites, from <code>&lt;site&gt;/preview/</code> in the
+workloads repository, at <code>&lt;site&gt;-pr-&lt;n&gt;.k8s.wlkr.ch</code>. Closing the pull request
+deletes the Application, and its finalizer deletes the namespace with the
+database in it. The manifests and the site's side are on the workloads
+repository's <a href="https://homelab-apps.wlkr.ch/previews/">Previews</a> page.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The <code>pullRequest</code> generator polls GitHub</td>
+<td>The webhook cannot reach a private address, as for every other generator</td>
+</tr>
+<tr>
+<td>A fine-grained PAT at <code>kv/argocd/github-previews</code></td>
+<td>One site is private, and an anonymous client gets 60 requests an hour. The PAT needs <em>Pull requests: read</em> on both repositories and nothing else</td>
+</tr>
+<tr>
+<td><code>argocd.argoproj.io/secret-type: scm-creds</code> on the Secret</td>
+<td>The label Argo CD's tokenRef strict mode requires; set now so turning that on breaks nothing</td>
+</tr>
+<tr>
+<td><code>labels: [preview]</code></td>
+<td>Opt-in per pull request: each preview is a database and a Next.js process, and Renovate keeps a handful of pull requests open at any time</td>
+</tr>
+<tr>
+<td>Egress to <code>api.github.com</code> from the ApplicationSet controller</td>
+<td>The only Argo CD component that calls GitHub's API</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>
+<p>Create the PAT on GitHub (<em>Settings → Developer settings → Fine-grained
+   tokens</em>), limited to <code>advent.wollbi.ch</code> and <code>fest.wollbi.ch</code>.</p>
+</li>
+<li>
+<p>Store it:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>bao-secrets
+</span></code></pre></div>
+</li>
+</ol>
+<p>A generator that fails, a missing or expired token included, stops the whole
+set: <code>kubectl -n argocd get applicationset previews -o
+jsonpath='{.status.conditions}'</code> names the error.</p>
 <h2 id="cli-access">CLI access<a class="headerlink" href="#cli-access" title="Permanent link">&para;</a></h2>
 <p>The <code>argocd</code> CLI talks gRPC, which the browser route cannot carry: Cilium's
 Gateway translates gRPC-web into native gRPC, and native gRPC needs an HTTP/2
@@ -2588,11 +2661,11 @@ port (<code>http2</code>, 81) and a <code>GRPCRoute</code> on <code>argo-grpc.in
 hostname of its own so the browser route stays as it is.</p>
 <p>The Gateway offers no ALPN, and gRPC clients refuse TLS without it, so the CLI
 needs ALPN enforcement off:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span></code></pre></div>
 <p>Every Application should be <code>Synced</code> and <code>Healthy</code>. One that stays <code>OutOfSync</code>
 has exhausted its retries and waits for a hand sync — see
