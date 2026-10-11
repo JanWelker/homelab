@@ -36,19 +36,61 @@ spec:
               hostPath:
                 path: /etc/kubernetes/pki/etcd
                 type: Directory
-          containers:
+          # The etcd image is distroless, so each step is its own container
+          # instead of one shell script, in order: status, defrag, status.
+          initContainers:
+            - name: status-before
+              image: registry.k8s.io/etcd:3.7.2-0@sha256:7c6c239825d00e3f6328a69caafd54be92063acf0c2ce78b8394699f52b75dc3
+              command: [etcdctl, endpoint, status, --cluster, -w, table]
+              env:
+                - name: ETCDCTL_API
+                  value: "3"
+                - name: ETCDCTL_ENDPOINTS
+                  value: https://127.0.0.1:2379
+                - name: ETCDCTL_CACERT
+                  value: /pki/ca.crt
+                - name: ETCDCTL_CERT
+                  value: /pki/healthcheck-client.crt
+                - name: ETCDCTL_KEY
+                  value: /pki/healthcheck-client.key
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: etcd-certs
+                  mountPath: /pki
+                  readOnly: true
+            # --cluster walks the member list, so every member is
+            # defragmented one after another from this one pod
             - name: defrag
               image: registry.k8s.io/etcd:3.7.2-0@sha256:7c6c239825d00e3f6328a69caafd54be92063acf0c2ce78b8394699f52b75dc3
-              command:
-                - /bin/sh
-                - -c
-                - |
-                  set -eu
-                  # --cluster walks the member list, so every member is
-                  # defragmented one after another from this one pod
-                  etcdctl endpoint status --cluster -w table
-                  etcdctl defrag --cluster --command-timeout=60s
-                  etcdctl endpoint status --cluster -w table
+              command: [etcdctl, defrag, --cluster, --command-timeout=60s]
+              env:
+                - name: ETCDCTL_API
+                  value: "3"
+                - name: ETCDCTL_ENDPOINTS
+                  value: https://127.0.0.1:2379
+                - name: ETCDCTL_CACERT
+                  value: /pki/ca.crt
+                - name: ETCDCTL_CERT
+                  value: /pki/healthcheck-client.crt
+                - name: ETCDCTL_KEY
+                  value: /pki/healthcheck-client.key
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: etcd-certs
+                  mountPath: /pki
+                  readOnly: true
+          containers:
+            - name: status-after
+              image: registry.k8s.io/etcd:3.7.2-0@sha256:7c6c239825d00e3f6328a69caafd54be92063acf0c2ce78b8394699f52b75dc3
+              command: [etcdctl, endpoint, status, --cluster, -w, table]
               env:
                 - name: ETCDCTL_API
                   value: "3"
