@@ -45,21 +45,18 @@ spec:
             - name: tmp
               emptyDir: {}
           initContainers:
+            # The etcd image is distroless: one binary per container, no shell
             - name: snapshot
               image: registry.k8s.io/etcd:3.7.2-0@sha256:7c6c239825d00e3f6328a69caafd54be92063acf0c2ce78b8394699f52b75dc3
               command:
-                - /bin/sh
-                - -c
-                - |
-                  set -eu
-                  ETCDCTL_API=3 etcdctl \
-                    --endpoints=https://127.0.0.1:2379 \
-                    --cacert=/pki/ca.crt \
-                    --cert=/pki/healthcheck-client.crt \
-                    --key=/pki/healthcheck-client.key \
-                    snapshot save /snapshot/etcd.db
-                  # Verify before upload; `etcdctl snapshot status` is gone in 3.6
-                  etcdutl --write-out=table snapshot status /snapshot/etcd.db
+                - etcdctl
+                - --endpoints=https://127.0.0.1:2379
+                - --cacert=/pki/ca.crt
+                - --cert=/pki/healthcheck-client.crt
+                - --key=/pki/healthcheck-client.key
+                - snapshot
+                - save
+                - /snapshot/etcd.db
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
@@ -71,6 +68,19 @@ spec:
                   readOnly: true
                 - name: snapshot
                   mountPath: /snapshot
+            # Verify before upload; `etcdctl snapshot status` is gone in 3.6
+            - name: verify
+              image: registry.k8s.io/etcd:3.7.2-0@sha256:7c6c239825d00e3f6328a69caafd54be92063acf0c2ce78b8394699f52b75dc3
+              command: [etcdutl, --write-out=table, snapshot, status, /snapshot/etcd.db]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: snapshot
+                  mountPath: /snapshot
+                  readOnly: true
           containers:
             - name: upload
               image: public.ecr.aws/aws-cli/aws-cli:2.37.12@sha256:ce44b800602264c12298bbf3399055a4cefdb9ed4a098abe564afe26e7071bce
