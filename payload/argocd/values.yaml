@@ -247,6 +247,13 @@ configs:
           jqPathExpressions:
           - .spec.rules[].backendRefs[].group
           - .spec.rules[].backendRefs[].kind
+      # The CRD defaults conversionStrategy on every data entry, and no
+      # manifest here sets it, so every PushSecret drifted and self-healed
+      # once a minute.
+      external-secrets.io/PushSecret:
+        ignoreDifferences: |
+          jqPathExpressions:
+          - .spec.data[].conversionStrategy
 
   rbac:
     # No access without a matching group, not read-only-everything.
