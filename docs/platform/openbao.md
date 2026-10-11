@@ -94,6 +94,7 @@ a `bao kv put` replaces the whole path.
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
 | `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
+| `argocd/github-previews` | `token` | The GitHub PAT the `previews` ApplicationSet lists pull requests with — [Pull request previews](argocd.md#pull-request-previews); empty until created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
 | `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 

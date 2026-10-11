@@ -16,7 +16,7 @@ the chart values and the supporting resources around ArgoCD itself.
 | Namespace | `argocd` |
 | Depends on | [OpenBao](openbao.md) for the OIDC client secret, [Gateway API](gateway-api.md) for its route, [Authentik](authentik.md) for every login |
 | If it is down | Nothing syncs. Running workloads are unaffected |
-| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
+| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC and preview-token `ExternalSecret`s, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects), `payload/workloads/applicationset-previews.yaml` |
 
 ## Configuration
 
@@ -75,6 +75,36 @@ The agents reach Argo CD on 443 by name, so the traffic enters through
 `infra-gateway` and arrives at `argocd-server` as the `ingress` entity, which
 its policy already admits. They use the CLI host from
 [CLI access](#cli-access).
+
+## Pull request previews
+
+The `previews` ApplicationSet deploys every open pull request labelled
+`preview` on the two neighbourhood sites, from `<site>/preview/` in the
+workloads repository, at `<site>-pr-<n>.k8s.wlkr.ch`. Closing the pull request
+deletes the Application, and its finalizer deletes the namespace with the
+database in it. The manifests and the site's side are on the workloads
+repository's [Previews](https://homelab-apps.wlkr.ch/previews/) page.
+
+| Setting | Why |
+| --- | --- |
+| The `pullRequest` generator polls GitHub | The webhook cannot reach a private address, as for every other generator |
+| A fine-grained PAT at `kv/argocd/github-previews` | One site is private, and an anonymous client gets 60 requests an hour. The PAT needs *Pull requests: read* on both repositories and nothing else |
+| `argocd.argoproj.io/secret-type: scm-creds` on the Secret | The label Argo CD's tokenRef strict mode requires; set now so turning that on breaks nothing |
+| `labels: [preview]` | Opt-in per pull request: each preview is a database and a Next.js process, and Renovate keeps a handful of pull requests open at any time |
+| Egress to `api.github.com` from the ApplicationSet controller | The only Argo CD component that calls GitHub's API |
+
+1. Create the PAT on GitHub (*Settings → Developer settings → Fine-grained
+   tokens*), limited to `advent.wollbi.ch` and `fest.wollbi.ch`.
+
+2. Store it:
+
+    ```bash
+    make bao-secrets
+    ```
+
+A generator that fails, a missing or expired token included, stops the whole
+set: `kubectl -n argocd get applicationset previews -o
+jsonpath='{.status.conditions}'` names the error.
 
 ## CLI access
 

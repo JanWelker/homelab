@@ -1,0 +1,90 @@
+---
+# One Application per open pull request labelled `preview` on the two
+# neighbourhood sites, deployed from <site>/preview/ in the workloads
+# repository. See docs/platform/argocd.md#pull-request-previews
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: previews
+  namespace: argocd
+  annotations:
+    # The diff preview renders this repository; the workloads live elsewhere.
+    argocd-diff-preview/ignore: "true"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - site: advent-wollbi
+                  repo: advent.wollbi.ch
+                  image: ghcr.io/janwelker/advent-wollbi-ch
+                - site: fest-wollbi
+                  repo: fest.wollbi.ch
+                  image: ghcr.io/janwelker/fest-wollbi-ch
+          - pullRequest:
+              github:
+                owner: JanWelker
+                repo: "{{ .repo }}"
+                labels: [preview]
+                tokenRef: {secretName: github-previews, key: token}
+              requeueAfterSeconds: 60
+  template:
+    metadata:
+      name: "{{ .site }}-pr-{{ .number }}"
+      namespace: argocd
+      # Closing the pull request deletes the Application, and this cascades
+      # that into the namespace, the database included.
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      annotations:
+        link.argocd.argoproj.io/external-link: "https://{{ .site }}-pr-{{ .number }}.k8s.wlkr.ch"
+    spec:
+      project: apps
+      source:
+        repoURL: https://github.com/JanWelker/homelab-apps.git
+        targetRevision: HEAD
+        path: "{{ .site }}/preview"
+        kustomize:
+          namespace: "{{ .site }}-pr-{{ .number }}"
+          # The site's push-image workflow tags every pull request build
+          # with the full head SHA.
+          images:
+            - "{{ .image }}:sha-{{ .head_sha }}"
+          patches:
+            - target: {kind: HTTPRoute, name: "{{ .site }}"}
+              patch: |-
+                - op: replace
+                  path: /spec/hostnames/0
+                  value: {{ .site }}-pr-{{ .number }}.k8s.wlkr.ch
+            - target: {kind: Deployment, name: "{{ .site }}"}
+              patch: |-
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: {{ .site }}
+                spec:
+                  template:
+                    spec:
+                      containers:
+                        - name: {{ .site }}
+                          env:
+                            - name: NEXT_PUBLIC_SERVER_URL
+                              value: https://{{ .site }}-pr-{{ .number }}.k8s.wlkr.ch
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .site }}-pr-{{ .number }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m
+        syncOptions:
+          - ServerSideApply=true

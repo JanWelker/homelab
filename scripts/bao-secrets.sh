@@ -16,12 +16,13 @@
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
 #
-# Two more are optional, because what issues them runs on the cluster or
+# Three more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
+#   PREVIEWS_GITHUB_TOKEN                           GitHub PAT the previews ApplicationSet lists PRs with
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -162,11 +163,13 @@ decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
+decide WRITE_PREVIEWS     argocd/github-previews
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
-  && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ]; then
+  && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
+  && [ "$WRITE_PREVIEWS" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -253,6 +256,9 @@ fi
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
   prompt_optional CLAUDE_ARGOCD_TOKEN   "Argo CD token of the claude account (Enter until you have generated one)"
 fi
+if [ "$WRITE_PREVIEWS" = "1" ]; then
+  prompt_optional PREVIEWS_GITHUB_TOKEN "GitHub PAT for the pull request previews (Enter until you have created one)"
+fi
 echo
 
 # --- Write -----------------------------------------------------------------
@@ -295,6 +301,14 @@ fi
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
   put claude-agents/argocd \
     "token=${CLAUDE_ARGOCD_TOKEN:-}"
+fi
+
+# Written even when empty, so the ExternalSecret resolves. Until it holds a
+# token, the private site's generator fails, and with it the whole set.
+# See docs/platform/argocd.md#pull-request-previews
+if [ "$WRITE_PREVIEWS" = "1" ]; then
+  put argocd/github-previews \
+    "token=${PREVIEWS_GITHUB_TOKEN:-}"
 fi
 
 cat <<'EOF'

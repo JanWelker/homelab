@@ -9,10 +9,11 @@ bring the nodes up; ArgoCD owns everything after that.
 `payload/argocd/application.yaml`, syncs the argo-cd chart and
 `payload/argocd/applicationset-platform.yaml`. That ApplicationSet generates one
 Application per `payload/platform/*/application.yaml`, plus
-`payload/workloads/application.yaml`. The latter deploys the only other
-ApplicationSet, `payload/workloads/applicationset.yaml`, which generates one
-Application per directory of the separate `homelab-apps` repository. There is
-no app-of-apps tree.
+`payload/workloads/application.yaml`. The latter deploys the two other
+ApplicationSets: `payload/workloads/applicationset.yaml` generates one
+Application per directory of the separate `homelab-apps` repository, and
+`applicationset-previews.yaml` one per pull request labelled `preview` on the
+two wollbi sites. There is no app-of-apps tree.
 
 - A component is a directory with exactly one `application.yaml` plus the
   manifests it deploys. The generator copies that file's labels, annotations,

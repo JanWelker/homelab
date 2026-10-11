@@ -1,0 +1,27 @@
+---
+# The token the `previews` ApplicationSet lists pull requests with. The
+# scm-creds label is what Argo CD's tokenRef strict mode checks for.
+# See docs/platform/argocd.md#pull-request-previews
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: github-previews
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: openbao
+    kind: ClusterSecretStore
+  target:
+    name: github-previews
+    creationPolicy: Owner
+    deletionPolicy: Retain
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: scm-creds
+  data:
+    - secretKey: token
+      remoteRef: {key: argocd/github-previews, property: token}
