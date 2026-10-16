@@ -122,6 +122,7 @@ security.
 | Setting | Why |
 | --- | --- |
 | `keyType: aes` | krbd cannot use anything else |
+| `mon_auth_allow_insecure_key: "true"` | Its default differs between mons; one that says `false` refuses an OSD's start-up key fetch, and an OSD whose on-disk key predates a rotation then fails with `Permission denied` |
 | `keyRotationPolicy: KeyGeneration` | Changing `keyType` alone never rotates existing keys while the policy is `Disabled` |
 | `keyGeneration` | Rotation only triggers on an increase, so a generation can never be lowered to undo one |
 | `healthCheck.muteHealthWarning` | The `AUTH_*` warnings would otherwise keep the Application `Degraded` while the data is healthy. Temporary: remove once RBD moves to the userspace `rbd-nbd` mounter and the keys can leave `aes` |
