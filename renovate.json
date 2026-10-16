@@ -12,6 +12,15 @@
       "rangeStrategy": "bump"
     },
     {
+      "description": "requires-python, .python-version and the python images must name the same minor, or uv sync fails in every job: one PR for all of them. Held at 3.14 until ansible-core supports 3.15, which ansible-lint crashes on.",
+      "matchDepNames": [
+        "python",
+        "docker.io/library/python"
+      ],
+      "groupName": "python",
+      "allowedVersions": "/^3\\.14([.-]|$)/"
+    },
+    {
       "description": "The CRDs must not lag the operator chart: one PR for both, so the pair cannot automerge separately.",
       "matchDatasources": [
         "helm"
