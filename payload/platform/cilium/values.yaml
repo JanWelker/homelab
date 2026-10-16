@@ -101,6 +101,15 @@ hubble:
       enabled: true
     dashboards:
       enabled: true
+  # Tokens and cookies stay out of Loki and Relay; see docs/platform/cilium.md
+  redact:
+    enabled: true
+    http:
+      userInfo: true
+      headers:
+        allow:
+          - User-Agent
+          - Content-Type
   # Policy verdicts to a file Alloy tails; see docs/platform/cilium.md
   export:
     fileMaxSizeMb: 10
