@@ -77,6 +77,8 @@ spec:
             mon:
               # Default debug floods Loki with mon probe and pgmap lines.
               mon_cluster_log_level: info
+              # Unset, mons disagree and refuse aes key fetches at random.
+              mon_auth_allow_insecure_key: "true"
 
           storage:
             useAllNodes: true
