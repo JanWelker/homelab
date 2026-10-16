@@ -34,7 +34,7 @@ spec:
       initContainers:
         - name: pull
           # Pre-pulls the image before `adopt`; keep in step with the container.
-          image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
+          image: ghcr.io/kube-vip/kube-vip:v1.3.0@sha256:57603c01702ac2c62e31112306a1c34d46047231fe03716dfb8b363c33284649
           args:
             - version
           securityContext:
@@ -82,7 +82,7 @@ spec:
               memory: 32Mi
       containers:
         - name: kube-vip
-          image: ghcr.io/kube-vip/kube-vip:v1.2.4@sha256:dde4c0669d9058c74c69c0bc2f0122e26900e1e4b913c03577cb6e4e28083079
+          image: ghcr.io/kube-vip/kube-vip:v1.3.0@sha256:57603c01702ac2c62e31112306a1c34d46047231fe03716dfb8b363c33284649
           args:
             - manager
           env:
