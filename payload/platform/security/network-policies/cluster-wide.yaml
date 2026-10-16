@@ -35,3 +35,42 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: init
+spec:
+  description: >-
+    A pod whose labels the agent has not resolved yet carries the
+    reserved init identity for its first seconds, and no namespace policy
+    selects it. Without this policy the audit log showed its DNS lookups,
+    the kubelet's probes and lookups sent to a CoreDNS pod still starting
+    as denied. This admits exactly those; anything else waits for the real
+    identity, a retransmit later. DNS goes through the proxy so the
+    answers are in the pod's name cache once its identity arrives.
+  endpointSelector:
+    matchLabels:
+      reserved:init: ""
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
