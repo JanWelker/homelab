@@ -84,6 +84,13 @@ pod in a namespace without policies into egress default-deny. DNS is the
 only rule lifted; the intra-namespace and node-probe rules would qualify
 but change what a namespace file says, so they stay.
 
+The second policy there, `init`, is for the seconds before the agent has
+resolved a new pod's labels. The pod then carries the reserved `init`
+identity, which no namespace policy selects, and the audit log shows its
+traffic denied all the same; a scan Job's first lookups and a starting
+pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing
+else.
+
 #### What every policy contains
 
 | Rule | Why |
