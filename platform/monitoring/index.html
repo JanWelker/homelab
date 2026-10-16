@@ -2671,8 +2671,8 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 <td>mailbox.org refuses a sender the login does not own</td>
 </tr>
 <tr>
-<td>Grouping by <code>alertname</code> and <code>namespace</code>, shorter repeat for <code>critical</code>, resolved notifications sent</td>
-<td>One mail per problem, a "back to normal" mail after it</td>
+<td>Grouping by <code>namespace</code>, a group re-sent at most every 30 minutes and repeated daily; <code>critical</code> every 5 minutes and repeated every 3 hours; resolved notifications sent</td>
+<td>mailbox.org caps what an account may send. One mail per alert and namespace came to 300–700 a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together</td>
 </tr>
 <tr>
 <td><code>Watchdog</code> routed to <code>null</code></td>
