@@ -45,7 +45,10 @@ are the pairs below that must move together.
     `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
     Rook requires both charts on the same version; and `markdownlint-cli2` in
-    the workflow with its pre-commit hook, because the two must lint alike.
+    the workflow with its pre-commit hook, because the two must lint alike;
+    and every Python pin (`requires-python`, `.python-version`, the
+    `python` images), because `uv sync` fails when they name different
+    minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new
     release already satisfies; `rangeStrategy: bump` is what makes Renovate
     open a PR for the linters and the docs generator at all.
@@ -110,9 +113,8 @@ found and why it skipped any. The rules, each of which is written into
 - **Hold a major with a regex, not a range.** `"allowedVersions": "/^17\\./"`
     is matched before version parsing; a range like `<18` is graded by npm
     semver, where a three-part tag such as `17.11.1-trixie` parses as a
-    prerelease and is dropped from every range that does not name one. No
-    rule needs this today: the CloudNativePG images carry a major bump as
-    a `major` update, which the first rule already keeps from automerging.
+    prerelease and is dropped from every range that does not name one.
+    Python is held at 3.14 this way until ansible-core supports 3.15.
 - **Check that the currently pinned version passes its own rule.** A filter
     that excludes what is deployed excludes everything, silently.
 
