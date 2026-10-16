@@ -50,7 +50,7 @@ login and recipient are e-mail addresses that do not belong in Git.
 | --- | --- |
 | `smtp_smarthost` on port 465 | Implicit TLS, which Alertmanager selects from the port; `smtp_require_tls` stays on so a move back to 587 cannot fall to plaintext |
 | `smtp_from` equals the login | mailbox.org refuses a sender the login does not own |
-| Grouping by `alertname` and `namespace`, shorter repeat for `critical`, resolved notifications sent | One mail per problem, a "back to normal" mail after it |
+| Grouping by `namespace`, a group re-sent at most every 30 minutes and repeated daily; `critical` every 5 minutes and repeated every 3 hours; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to 300–700 a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together |
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender |
 | Inhibit rules repeated from the chart defaults | A supplied config replaces the whole document, so nothing is inherited |
 | Every templated value through `toJson` | A password containing `:`, `#` or a quote cannot break the rendered file |
