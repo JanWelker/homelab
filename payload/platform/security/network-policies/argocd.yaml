@@ -27,14 +27,23 @@ metadata:
 spec:
   description: >-
     The UI and API arrive from the Gateway on the plaintext port, since the
-    server runs with --insecure and TLS ends at Envoy. Prometheus reads the
-    metrics port.
+    server runs with --insecure and TLS ends at Envoy. The homelab agent
+    session calls the same port directly; it carries gRPC as well as
+    HTTP, so the rule is L4. Prometheus reads the metrics port.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argocd-server
   ingress:
     - fromEntities:
         - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: claude-agents
+            k8s:app.kubernetes.io/instance: claude-homelab
       toPorts:
         - ports:
             - port: "8080"
