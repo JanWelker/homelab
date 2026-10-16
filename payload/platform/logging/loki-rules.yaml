@@ -256,6 +256,38 @@ data:
                 but does not enforce the signature. An unsigned module is
                 not Flatcar's, on the host or from a container. The event
                 names it.
+      - name: hubble
+        rules:
+          # Answers, init pods and addresses with no pod behind them (the
+          # inventory's pod_subnet and service_subnet) are not a missing rule.
+          - alert: HubblePolicyDrops
+            expr: |
+              sum by (namespace, direction, source_namespace, source_workload, destination_namespace, destination, port) (
+                count_over_time(
+                  {job="hubble", verdict="DROPPED"}
+                    |= `POLICY_DENIED`
+                    | json direction="flow.traffic_direction", reply="flow.is_reply", source_namespace="flow.source.namespace", source_workload="flow.source.workloads[0].name", destination_namespace="flow.destination.namespace", dst_workload="flow.destination.workloads[0].name", dst_pod="flow.destination.pod_name", dst_name="flow.destination_names[0]", dst_ip="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port", src_id="flow.source.identity", dst_id="flow.destination.identity"
+                    | reply != "true" and src_id != "5" and dst_id != "5"
+                    | dst_id != "2" or dst_ip !~ `10[.](244|9[6-9]|10[0-9]|11[01])[.].*`
+                    | label_format namespace=`{{ if eq .direction "EGRESS" }}{{ .source_namespace }}{{ else }}{{ .destination_namespace }}{{ end }}`, destination=`{{ or .dst_workload .dst_pod .dst_name .dst_ip }}`, port=`{{ .tcp }}{{ .udp }}`
+                  [10m]
+                )
+              ) > 3
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.namespace }} policy dropped {{ $labels.source_namespace }}/{{ $labels.source_workload }} to {{ $labels.destination_namespace }}/{{ $labels.destination }}:{{ $labels.port }}
+              description: >-
+                Cilium refused {{ $value }} packets in ten minutes, {{ $labels.direction }}
+                in the {{ $labels.namespace }} policy, from
+                {{ $labels.source_namespace }}/{{ $labels.source_workload }} to
+                {{ $labels.destination_namespace }}/{{ $labels.destination }} on
+                port {{ $labels.port }}. A connection's retransmits pass the
+                threshold, a name rule's one-off SYN does not. Either the
+                policy file for {{ $labels.namespace }} is missing a rule or
+                something is probing; the flows are in Loki under
+                job="hubble", verdict="DROPPED".
       - name: systemd-journal
         rules:
           - alert: NodeSshLogin

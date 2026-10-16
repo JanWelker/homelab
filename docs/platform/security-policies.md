@@ -232,8 +232,9 @@ are not enforced either.
    `policyAuditMode: false`, which rolls the agents again. The first
    week's reading is [Network Policy Audit 2026-09-27](../operations/network-policy-audit-2026-09-27.md). From then on the
    verdict to watch is `DROPPED`, live or from Loki — see
-   [Cilium](cilium.md#health-check) — and the `HubblePolicyDrops` alert
-   fires on a sustained one.
+   [Cilium](cilium.md#health-check) — and the
+   [`HubblePolicyDrops`](logging.md#alerting) alert mails each refused
+   connection.
 
 If a single endpoint needs the same treatment later, audit mode can be set on
 it alone, until the agent restarts:
