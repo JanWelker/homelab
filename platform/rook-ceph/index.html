@@ -2902,6 +2902,10 @@ security.</p>
 <td>krbd cannot use anything else</td>
 </tr>
 <tr>
+<td><code>mon_auth_allow_insecure_key: "true"</code></td>
+<td>Its default differs between mons; one that says <code>false</code> refuses an OSD's start-up key fetch, and an OSD whose on-disk key predates a rotation then fails with <code>Permission denied</code></td>
+</tr>
+<tr>
 <td><code>keyRotationPolicy: KeyGeneration</code></td>
 <td>Changing <code>keyType</code> alone never rotates existing keys while the policy is <code>Disabled</code></td>
 </tr>
