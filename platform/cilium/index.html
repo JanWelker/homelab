@@ -2513,10 +2513,6 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to <code>cilium-config</code> is a rolling restart of the CNI on all six nodes: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the <a href="#pitfalls"><code>k8sServiceHost</code> pitfall</a> bites at merge, not later</td>
 </tr>
 <tr>
-<td><code>prometheusrule.yaml</code></td>
-<td><code>HubblePolicyDrops</code>: fifteen minutes of <code>POLICY_DENIED</code> drops between two namespaces, above a trickle. <code>VLAN_FILTERED</code> and <code>STALE_OR_UNROUTABLE_IP</code> dominate the raw counter and are the LAN, not a policy</td>
-</tr>
-<tr>
 <td><code>cilium-agent</code> memory limit</td>
 <td>It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, not a day, before the <a href="../">platform rule</a> applied</td>
 </tr>
