@@ -2837,6 +2837,12 @@ deny is off because a cluster-wide egress rule would otherwise put every
 pod in a namespace without policies into egress default-deny. DNS is the
 only rule lifted; the intra-namespace and node-probe rules would qualify
 but change what a namespace file says, so they stay.</p>
+<p>The second policy there, <code>init</code>, is for the seconds before the agent has
+resolved a new pod's labels. The pod then carries the reserved <code>init</code>
+identity, which no namespace policy selects, and the audit log shows its
+traffic denied all the same; a scan Job's first lookups and a starting
+pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing
+else.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
