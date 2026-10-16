@@ -14,7 +14,9 @@ spec:
     Authentik outpost proxies Prometheus and Alertmanager behind SSO. The
     Ceph mgr reads Prometheus for its alerts and Grafana for its embedded
     panels. Loki's ruler sends the alerts it evaluates from logs to
-    Alertmanager. All four are plaintext HTTP, so all four are at L7.
+    Alertmanager. The homelab agent session queries Prometheus while it
+    diagnoses the cluster. All five are plaintext HTTP, so all five are at
+    L7.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -61,6 +63,17 @@ spec:
             - port: "9090"
               protocol: TCP
             - port: "9093"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: claude-agents
+            k8s:app.kubernetes.io/instance: claude-homelab
+      toPorts:
+        - ports:
+            - port: "9090"
               protocol: TCP
           rules:
             http:

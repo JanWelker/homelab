@@ -9,9 +9,10 @@ spec:
     Default-deny ingress for OpenBao, allowing only the cluster's own
     traffic: peers within the namespace for Raft and request forwarding, the
     Gateway for the UI, Prometheus for the metrics endpoint on the active
-    pod, the External Secrets controller for logins and kv reads, and the
-    node for health probes. The API is plaintext behind the Gateway, so the
-    last two are at L7: External Secrets logs in, checks and revokes its
+    pod, the External Secrets controller for logins and kv reads, the
+    homelab agent session, which checks status while it diagnoses, and the
+    node for health probes. The API is plaintext behind the
+    Gateway, so the callers inside the cluster are at L7: External Secrets logs in, checks and revokes its
     token and reads under kv/data, nothing else.
   endpointSelector: {}
   ingress:
@@ -38,6 +39,17 @@ spec:
             http:
               - method: GET
                 path: /v1/sys/metrics\?format=prometheus$
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: claude-agents
+            k8s:app.kubernetes.io/instance: claude-homelab
+      toPorts:
+        - ports:
+            - port: "8200"
+              protocol: TCP
+          rules:
+            http:
+              - {}
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: external-secrets
