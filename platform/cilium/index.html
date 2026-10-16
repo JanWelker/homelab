@@ -2501,6 +2501,10 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and of the requests the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second on a cluster this size, where the proxied requests are a few.</td>
 </tr>
 <tr>
+<td><code>hubble.redact</code></td>
+<td>Every header except <code>User-Agent</code> and <code>Content-Type</code>, and the password of a basic-auth URL, is replaced before a flow leaves the agent, for the export file and Relay alike. An L7 rule proxies the requests that carry credentials: External Secrets' <code>X-Vault-Token</code>, the bearer tokens Prometheus scrapes with, Velero's signed S3 requests, Authentik's cookies. The method, path and query the L7 rules are tightened from survive</td>
+</tr>
+<tr>
 <td><code>policyAuditMode</code></td>
 <td>Verdicts are logged, not enforced, for the observation week of a policy rollout — see <a href="../security-policies/#rollout">Security Policies</a>. Cluster-wide, and blind to L7 rules</td>
 </tr>
