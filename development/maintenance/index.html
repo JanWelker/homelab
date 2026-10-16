@@ -2505,7 +2505,10 @@ are the pairs below that must move together.</p>
     <code>prometheus-operator-crds</code> with <code>kube-prometheus-stack</code>, because the CRDs
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
     Rook requires both charts on the same version; and <code>markdownlint-cli2</code> in
-    the workflow with its pre-commit hook, because the two must lint alike.</li>
+    the workflow with its pre-commit hook, because the two must lint alike;
+    and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
+    <code>python</code> images), because <code>uv sync</code> fails when they name different
+    minors.</li>
 <li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new
     release already satisfies; <code>rangeStrategy: bump</code> is what makes Renovate
     open a PR for the linters and the docs generator at all.</li>
@@ -2564,9 +2567,8 @@ found and why it skipped any. The rules, each of which is written into
 <li><strong>Hold a major with a regex, not a range.</strong> <code>"allowedVersions": "/^17\\./"</code>
     is matched before version parsing; a range like <code>&lt;18</code> is graded by npm
     semver, where a three-part tag such as <code>17.11.1-trixie</code> parses as a
-    prerelease and is dropped from every range that does not name one. No
-    rule needs this today: the CloudNativePG images carry a major bump as
-    a <code>major</code> update, which the first rule already keeps from automerging.</li>
+    prerelease and is dropped from every range that does not name one.
+    Python is held at 3.14 this way until ansible-core supports 3.15.</li>
 <li><strong>Check that the currently pinned version passes its own rule.</strong> A filter
     that excludes what is deployed excludes everything, silently.</li>
 </ul>
