@@ -230,7 +230,7 @@ are not enforced either.
 
 4. Tighten each `http: [{}]` to the methods and paths seen, set
    `policyAuditMode: false`, which rolls the agents again. The first
-   week's reading is [Network Policy Audit 2026-09-27](../operations/network-policy-audit-2026-09-27.md). From then on the
+   week's reading is [Network Policy Audit 2026-09-27](../operations/network-policy-audit-2026-09-27.md), the reading before the flip [Network Policy Audit 2026-10-16](../operations/network-policy-audit-2026-10-16.md). From then on the
    verdict to watch is `DROPPED`, live or from Loki — see
    [Cilium](cilium.md#health-check) — and the
    [`HubblePolicyDrops`](logging.md#alerting) alert mails each refused
