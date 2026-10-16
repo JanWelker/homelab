@@ -42,8 +42,11 @@ spec:
     minute and the data-mover pods the node agent starts each night carry
     the volume data to it: S3 over TLS through the infra Gateway, whose
     address the datapath classifies as world, hence the name rule. The
-    movers are created with Velero's own labels, so the rule is for the
-    namespace. The etcd CronJob is host-networked and outside any policy.
+    Gateway's Envoy checks the caller's egress a second time against the
+    RGW pod it picked, and answers 403 itself without the second rule.
+    The movers are created with Velero's own labels, so the rules are for
+    the namespace. The etcd CronJob is host-networked and outside any
+    policy.
   endpointSelector: {}
   egress:
     - toEndpoints:
@@ -55,4 +58,12 @@ spec:
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+            k8s:app: rook-ceph-rgw
+      toPorts:
+        - ports:
+            - port: "8080"
               protocol: TCP
