@@ -8,21 +8,23 @@
 # the ExternalSecret that reads it, from a Password generator, and never
 # overwritten; see docs/platform/openbao.md#generated-secrets.
 #
-# Seven values belong to accounts outside this cluster and are prompted for,
+# Nine values belong to accounts outside this cluster and are prompted for,
 # one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
 #   EXTERNAL_DNS_KEY_ID / EXTERNAL_DNS_SECRET_KEY   Route53, A and TXT records
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
+#   SHOT_BRIDGE_LM_USERNAME / SHOT_BRIDGE_LM_PASSWORD  the shot bridge's La Marzocco account
 #
-# Three more are optional, because what issues them runs on the cluster or
+# Five more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
 #   PREVIEWS_GITHUB_TOKEN                           GitHub PAT the previews ApplicationSet lists PRs with
+#   SHOT_BRIDGE_APNS_KEY_ID / SHOT_BRIDGE_APNS_KEY_FILE  the shot bridge's APNs key: its ID, and the .p8 file's path
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -164,12 +166,13 @@ decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
 decide WRITE_PREVIEWS     argocd/github-previews
+decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
-  && [ "$WRITE_PREVIEWS" = "0" ]; then
+  && [ "$WRITE_PREVIEWS" = "0" ] && [ "$WRITE_SHOT_BRIDGE" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -259,6 +262,16 @@ fi
 if [ "$WRITE_PREVIEWS" = "1" ]; then
   prompt_optional PREVIEWS_GITHUB_TOKEN "GitHub PAT for the pull request previews (Enter until you have created one)"
 fi
+if [ "$WRITE_SHOT_BRIDGE" = "1" ]; then
+  prompt_secret SHOT_BRIDGE_LM_USERNAME     "La Marzocco account the shot bridge logs in with (e-mail)"
+  prompt_secret SHOT_BRIDGE_LM_PASSWORD     "  ...and its password"
+  prompt_optional SHOT_BRIDGE_APNS_KEY_ID   "APNs key ID for the shot bridge (Enter until you have created the key)"
+  prompt_optional SHOT_BRIDGE_APNS_KEY_FILE "  ...and the path to its AuthKey_<id>.p8 file"
+  if [ -n "${SHOT_BRIDGE_APNS_KEY_FILE:-}" ] && ! grep -q 'BEGIN PRIVATE KEY' "${SHOT_BRIDGE_APNS_KEY_FILE/#\~/$HOME}" 2>/dev/null; then
+    echo "ERROR: ${SHOT_BRIDGE_APNS_KEY_FILE} is not a readable .p8 key." >&2
+    exit 1
+  fi
+fi
 echo
 
 # --- Write -----------------------------------------------------------------
@@ -309,6 +322,21 @@ fi
 if [ "$WRITE_PREVIEWS" = "1" ]; then
   put argocd/github-previews \
     "token=${PREVIEWS_GITHUB_TOKEN:-}"
+fi
+
+# The APNs half is written even when empty, for the reason above: the bridge
+# pod then fails with a clear missing-variable error instead of the whole sync
+# stopping. See homelab-apps/docs/shot-bridge.md#secrets
+if [ "$WRITE_SHOT_BRIDGE" = "1" ]; then
+  apns_key=""
+  if [ -n "${SHOT_BRIDGE_APNS_KEY_FILE:-}" ]; then
+    apns_key="$(cat "${SHOT_BRIDGE_APNS_KEY_FILE/#\~/$HOME}")"
+  fi
+  put shot-bridge/accounts \
+    "lm-username=${SHOT_BRIDGE_LM_USERNAME}" \
+    "lm-password=${SHOT_BRIDGE_LM_PASSWORD}" \
+    "apns-key-id=${SHOT_BRIDGE_APNS_KEY_ID:-}" \
+    "apns-key-p8=${apns_key}"
 fi
 
 cat <<'EOF'
