@@ -85,6 +85,9 @@ spec:
                     address = "[::]:8200"
                     cluster_address = "[::]:8201"
 
+                    # Temporary: lets 3 unseal keys mint a root token when none is left.
+                    disable_unauthed_generate_root_endpoints = false
+
                     # The ServiceMonitor has no token to present.
                     telemetry {
                       unauthenticated_metrics_access = true
