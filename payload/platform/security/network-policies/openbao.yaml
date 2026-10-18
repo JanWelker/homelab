@@ -13,7 +13,8 @@ spec:
     homelab agent session, which checks status while it diagnoses, and the
     node for health probes. The API is plaintext behind the
     Gateway, so the callers inside the cluster are at L7: External Secrets logs in, checks and revokes its
-    token and reads under kv/data, nothing else.
+    token, reads under kv/data and, for its PushSecrets, writes under
+    kv/data and kv/metadata, mirroring its OpenBao policy (no delete).
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -67,7 +68,9 @@ spec:
               - method: PUT
                 path: /v1/auth/token/revoke-self$
               - method: GET
-                path: /v1/kv/data/.*
+                path: /v1/kv/(data|metadata)/.*
+              - method: PUT|POST
+                path: /v1/kv/(data|metadata)/.*
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
