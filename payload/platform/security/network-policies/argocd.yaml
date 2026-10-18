@@ -183,8 +183,9 @@ spec:
     The repo-server fetches the two Git repositories on GitHub, the
     Gateway API CRDs, and every Helm
     repository an application.yaml names. Most of those are GitHub Pages
-    with tarballs served from githubusercontent.com; the rest are listed
-    by name. A new chart repository needs a line here, or the Application
+    with tarballs served from githubusercontent.com; the OCI charts come
+    from ghcr.io, whose blobs are on githubusercontent.com too; the rest
+    are listed by name. A new chart repository needs a line here, or the Application
     reads "ComparisonError" within a minute.
   endpointSelector:
     matchLabels:
@@ -192,6 +193,7 @@ spec:
   egress:
     - toFQDNs:
         - matchName: github.com
+        - matchName: ghcr.io
         - matchPattern: "**.github.io"
         - matchPattern: "**.githubusercontent.com"
         - matchName: charts.goauthentik.io
