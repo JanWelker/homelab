@@ -1,0 +1,168 @@
+---
+# Deletes the SbomReports and ExposedSecretReports of ReplicaSets scaled to
+# zero, which carry no TTL and otherwise live as long as the revision. See
+# docs/platform/trivy-operator.md#report-pruning
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: report-prune
+  namespace: trivy-system
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: trivy-report-prune
+rules:
+  - apiGroups: ["aquasecurity.github.io"]
+    resources:
+      - sbomreports
+      - exposedsecretreports
+    verbs: ["list", "delete"]
+  - apiGroups: ["apps"]
+    resources:
+      - replicasets
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: trivy-report-prune
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: trivy-report-prune
+subjects:
+  - kind: ServiceAccount
+    name: report-prune
+    namespace: trivy-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: report-prune
+  namespace: trivy-system
+data:
+  prune.py: |
+    """Delete the reports of superseded ReplicaSets, one JSON line per kind."""
+    import json
+    import os
+    import ssl
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    SA = "/var/run/secrets/kubernetes.io/serviceaccount"
+    API = os.environ.get("API_URL") or (
+        f"https://{os.environ['KUBERNETES_SERVICE_HOST']}"
+        f":{os.environ['KUBERNETES_SERVICE_PORT']}"
+    )
+    GROUP = "/apis/aquasecurity.github.io/v1alpha1"
+    HEADERS = {}
+    CONTEXT = None
+    if os.path.exists(f"{SA}/token"):
+        with open(f"{SA}/token", encoding="utf-8") as handle:
+            HEADERS["Authorization"] = f"Bearer {handle.read()}"
+        CONTEXT = ssl.create_default_context(cafile=f"{SA}/ca.crt")
+
+
+    def call(path, method="GET"):
+        request = urllib.request.Request(f"{API}{path}", headers=HEADERS, method=method)
+        with urllib.request.urlopen(request, context=CONTEXT) as response:
+            return json.load(response)
+
+
+    def pages(path, limit):
+        """Every object of one list, one page at a time."""
+        cont = ""
+        while True:
+            query = urllib.parse.urlencode({"limit": limit, "continue": cont})
+            page = call(f"{path}?{query}")
+            yield from page["items"]
+            cont = page["metadata"].get("continue", "")
+            if not cont:
+                return
+
+
+    idle = {
+        (item["metadata"]["namespace"], item["metadata"]["name"])
+        for item in pages("/apis/apps/v1/replicasets", 200)
+        if not item["spec"].get("replicas")
+    }
+
+    for resource in ("sbomreports", "exposedsecretreports"):
+        # Collected first: deleting while paging invalidates the continue token.
+        stale = []
+        for item in pages(f"{GROUP}/{resource}", 20):
+            labels = item["metadata"].get("labels", {})
+            namespace = item["metadata"]["namespace"]
+            if labels.get("trivy-operator.resource.kind") == "ReplicaSet" and (
+                namespace,
+                labels.get("trivy-operator.resource.name"),
+            ) in idle:
+                stale.append((namespace, item["metadata"]["name"]))
+        deleted = 0
+        for namespace, name in stale:
+            try:
+                call(f"{GROUP}/namespaces/{namespace}/{resource}/{name}", "DELETE")
+                deleted += 1
+            except urllib.error.HTTPError as error:
+                if error.code != 404:
+                    raise
+        print(json.dumps({"resource": resource, "deleted": deleted}), flush=True)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: report-prune
+  namespace: trivy-system
+spec:
+  # Before Dependency-Track's 05:00 upload and the 06:30 findings history.
+  schedule: "30 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            # Selected by the network policy; job-name alone is not stable.
+            app.kubernetes.io/name: report-prune
+        spec:
+          serviceAccountName: report-prune
+          automountServiceAccountToken: true
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: report-prune
+              image: docker.io/library/python:3.14-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+              command: ["python3", "/scripts/prune.py"]
+              env:
+                - name: PYTHONDONTWRITEBYTECODE
+                  value: "1"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: scripts
+              configMap:
+                name: report-prune
