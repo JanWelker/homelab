@@ -104,3 +104,16 @@ serverTLSBootstrap: true
 # start; see docs/architecture/security.md#node-hardening
 protectKernelDefaults: true
 podPidsLimit: 4096
+# Keeps memory outside kubepods.slice for systemd, sshd and the kubelet; see
+# docs/architecture/security.md#node-hardening
+systemReserved:
+  memory: 512Mi
+kubeReserved:
+  memory: 256Mi
+# A partial map zeroes the signals it leaves out, so the defaults are restated.
+evictionHard:
+  memory.available: 256Mi
+  nodefs.available: "10%"
+  nodefs.inodesFree: "5%"
+  imagefs.available: "15%"
+  imagefs.inodesFree: "5%"
