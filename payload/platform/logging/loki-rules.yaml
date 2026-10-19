@@ -266,8 +266,8 @@ data:
                 count_over_time(
                   {job="hubble", verdict="DROPPED"}
                     |= `POLICY_DENIED`
-                    | json direction="flow.traffic_direction", reply="flow.is_reply", source_namespace="flow.source.namespace", source_workload="flow.source.workloads[0].name", destination_namespace="flow.destination.namespace", dst_workload="flow.destination.workloads[0].name", dst_pod="flow.destination.pod_name", dst_name="flow.destination_names[0]", dst_ip="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port", src_id="flow.source.identity", dst_id="flow.destination.identity"
-                    | reply != "true" and src_id != "5" and dst_id != "5"
+                    | json direction="flow.traffic_direction", reply="flow.is_reply", source_namespace="flow.source.namespace", source_workload="flow.source.workloads[0].name", destination_namespace="flow.destination.namespace", dst_workload="flow.destination.workloads[0].name", dst_pod="flow.destination.pod_name", dst_name="flow.destination_names[0]", dst_ip="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port", icmp="flow.l4.ICMPv4.type", src_id="flow.source.identity", dst_id="flow.destination.identity"
+                    | reply != "true" and src_id != "5" and dst_id != "5" and icmp !~ "3|11"
                     | dst_id != "2" or dst_ip !~ `10[.](244|9[6-9]|10[0-9]|11[01])[.].*`
                     | label_format namespace=`{{ if eq .direction "EGRESS" }}{{ .source_namespace }}{{ else }}{{ .destination_namespace }}{{ end }}`, destination=`{{ or .dst_workload .dst_pod .dst_name .dst_ip }}`, port=`{{ .tcp }}{{ .udp }}`
                   [10m]
