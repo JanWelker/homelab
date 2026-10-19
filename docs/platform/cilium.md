@@ -85,3 +85,6 @@ The same verdicts, for the whole Loki retention window, in Grafana:
 
 !!! danger "`k8sServiceHost` pointed at an address that does not answer takes the cluster down"
     Every Cilium pod loses the API server at once, and cluster networking goes with it — including whatever you were using to fix the problem. The change ordering is in [Control Plane VIP](../operations/control-plane-vip.md).
+
+!!! warning "An operator that starts without the API server leaves the Gateways without certificates"
+    cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and `cilium-secrets` empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. `CiliumGatewayCertificatesMissing` fires; `kubectl -n kube-system rollout restart deploy/cilium-operator` recovers it.

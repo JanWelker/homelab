@@ -1,0 +1,33 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cilium
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium
+spec:
+  groups:
+    - name: cilium
+      rules:
+        # Why the operator stops copying: docs/platform/cilium.md#pitfalls
+        - alert: CiliumGatewayCertificatesMissing
+          expr: |
+            (count(kube_secret_info{namespace="cilium-secrets"}) or vector(0))
+              < count(kube_secret_info{namespace="kube-system", secret=~".+-gateway-tls"})
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: >-
+              The Gateways' TLS certificates are missing from cilium-secrets
+            description: >-
+              cilium-operator copies every Gateway certificate into
+              cilium-secrets, and the agents hand them to Envoy from there.
+              Fewer copies than kube-system/*-gateway-tls Secrets means an
+              Envoy that restarts, or any node but the one still holding the
+              old copies, resets the TLS handshake: clients see "connection
+              lost" depending on which node the router hashes them to. The
+              operator log says "Required GatewayAPI resources are not
+              found"; restart it with kubectl -n kube-system rollout restart
+              deploy/cilium-operator.
