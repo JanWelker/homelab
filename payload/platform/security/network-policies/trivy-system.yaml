@@ -55,9 +55,9 @@ metadata:
   namespace: trivy-system
 spec:
   description: >-
-    The operator and the findings-history CronJob read and write reports
-    through the API server. Scan jobs mount no token and need nothing
-    there.
+    The operator and the findings-history and report-prune CronJobs read
+    and write reports through the API server. Scan jobs mount no token and
+    need nothing there.
   endpointSelector:
     matchExpressions:
       - key: app.kubernetes.io/name
@@ -65,6 +65,7 @@ spec:
         values:
           - trivy-operator
           - findings-history
+          - report-prune
   egress:
     - toEntities:
         - kube-apiserver

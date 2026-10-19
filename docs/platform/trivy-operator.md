@@ -18,7 +18,7 @@ this page is the operator itself.
 | If it is down | Reports expire after 24h and are not rebuilt; `TrivyContainerNotScanned` fires for every container |
 | Health check | `kubectl -n trivy-system get pods,jobs`, then the reconciliation below |
 | Dashboard | [Trivy Operator](https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview) |
-| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` CronJob, the `sbom-readers.yaml` grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
+| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` and `report-prune` CronJobs, the `sbom-readers.yaml` grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](security-policies.md) |
 
 | Scanner | Produces | Answers |
 | --- | --- | --- |
@@ -123,6 +123,18 @@ history Trivy's 24h reports cannot. `sbom-readers.yaml` is the
 ReplicaSets, so it can skip the reports of superseded revisions: the `apps`
 project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.
+
+### Report pruning
+
+`SbomReport`s and `ExposedSecretReport`s carry no TTL, unlike the
+`VulnerabilityReport`s: they are owned by the scanned ReplicaSet and live as
+long as it does, and Deployments keep ten superseded revisions scaled to zero.
+Those SBOMs were over half the reports' bytes in etcd, and each API server holds
+them decoded in its watch cache.
+The `report-prune` CronJob in `report-prune.yaml` deletes the two kinds for
+every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
+skips those reports anyway. `scanOnlyCurrentRevisions` keeps the operator from
+writing them again. Its log is one JSON line per kind with the count deleted.
 
 ## Usage
 
