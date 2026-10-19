@@ -2646,6 +2646,10 @@ carry the settings below. They land at provisioning time and change only on
 <td>Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. Well above anything running here, well below <code>kernel.pid_max</code></td>
 </tr>
 <tr>
+<td><code>systemReserved</code>, <code>kubeReserved</code> and <code>evictionHard</code> memory</td>
+<td>The reservations cap <code>kubepods.slice</code> below the node's RAM, so a pod that grows, the API server included, is OOM-killed inside its own cgroup instead of starving systemd-networkd, sshd and the kubelet. The eviction threshold makes the kubelet evict before the kernel has to act. A running node needs the same values in the <code>kubelet-config</code> ConfigMap, or <code>kubeadm upgrade node</code> reverts them</td>
+</tr>
+<tr>
 <td><code>/etc/tmpfiles.d/kubernetes-cis.conf</code></td>
 <td>kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and a kubelet <code>ExecStartPre</code> re-applies them before every start, when kubeadm has just rewritten them. See <a href="../../operations/triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
 </tr>
