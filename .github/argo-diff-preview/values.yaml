@@ -1,0 +1,7 @@
+---
+# Helm values for the throwaway Argo CD that argo-diff-preview.yaml installs.
+redis:
+  image:
+    # Anonymous pulls from Public ECR are throttled on shared runner IPs;
+    # Docker Hub serves the same official image without that limit.
+    repository: docker.io/library/redis

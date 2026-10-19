@@ -6,6 +6,7 @@ name: Argo CD Diff Preview
     paths:
       - "payload/**"
       - ".github/workflows/argo-diff-preview.yaml"
+      - ".github/argo-diff-preview/**"
 
 jobs:
   build:
@@ -28,15 +29,20 @@ jobs:
 
       - name: Generate Diff
         run: |
+          # The chart version the cluster runs, read the way the Makefile does.
+          ARGOCD_CHART_VERSION=$(awk '/chart:/{f=1} f&&/targetRevision:/{print $2; exit}' \
+            pull-request/payload/argocd/application.yaml)
           docker run \
             --network=host \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v $(pwd)/main:/base-branch \
             -v $(pwd)/pull-request:/target-branch \
             -v $(pwd)/output:/output \
+            -v $(pwd)/pull-request/.github/argo-diff-preview/values.yaml:/argocd-config/values.yaml \
             -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
             -e REPO=${{ github.repository }} \
             dagandersen/argocd-diff-preview:v0.2.16@sha256:21e7c8fa794220118feedc6e5316afd90cf0a107bfc845e08aa0291996efd968 \
+            --argocd-chart-version="$ARGOCD_CHART_VERSION" \
             --auto-detect-files-changed=true \
             --watch-if-no-watch-pattern-found=false
 
