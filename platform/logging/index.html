@@ -2829,7 +2829,7 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>HubblePolicyDrops</code></td>
-<td>More than three <code>POLICY_DENIED</code> packets in ten minutes for one source workload, destination and port; replies, pods still in the <code>init</code> identity and addresses with no pod behind them are left out. The <code>namespace</code> label is the policy that refused, so the mail names the file to edit</td>
+<td>More than three <code>POLICY_DENIED</code> packets in ten minutes for one source workload, destination and port; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the <code>init</code> identity and addresses with no pod behind them are left out. The <code>namespace</code> label is the policy that refused, so the mail names the file to edit</td>
 <td>A connection's retransmits pass the threshold and a name rule's single early <code>SYN</code> does not; the metric counts per namespace pair only and misses the first burst of a new pair</td>
 </tr>
 <tr>
