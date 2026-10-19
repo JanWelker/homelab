@@ -40,8 +40,9 @@ spec:
     Default-deny egress for the CloudNativePG operator. It reconciles
     through the API server and polls every instance it manages on the
     status port, wherever that instance runs, which is why the target is
-    the instance label rather than a namespace list. The port is TLS, so
-    the rule stays at L4.
+    the instance label rather than a namespace list; the namespace key must
+    still be named, or Cilium reads the selector as this namespace only.
+    The port is TLS, so the rule stays at L4.
   endpointSelector: {}
   egress:
     - toEndpoints:
@@ -51,6 +52,9 @@ spec:
     - toEndpoints:
         - matchLabels:
             k8s:cnpg.io/podRole: instance
+          matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: Exists
       toPorts:
         - ports:
             - port: "8000"
