@@ -12,6 +12,16 @@
       "rangeStrategy": "bump"
     },
     {
+      "description": "requires-python names the minor only: Dependabot's dependency graph rejects a patch bound like >=3.14.8, and .python-version already picks the interpreter.",
+      "matchManagers": [
+        "pep621"
+      ],
+      "matchDepTypes": [
+        "requires-python"
+      ],
+      "rangeStrategy": "replace"
+    },
+    {
       "description": "requires-python, .python-version and the python images must name the same minor, or uv sync fails in every job: one PR for all of them. Held at 3.14 until ansible-core supports 3.15, which ansible-lint crashes on.",
       "matchDepNames": [
         "python",
