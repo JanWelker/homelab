@@ -2584,6 +2584,10 @@ advertised:</p>
 <p class="admonition-title"><code>k8sServiceHost</code> pointed at an address that does not answer takes the cluster down</p>
 <p>Every Cilium pod loses the API server at once, and cluster networking goes with it — including whatever you were using to fix the problem. The change ordering is in <a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">An operator that starts without the API server leaves the Gateways without certificates</p>
+<p>cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and <code>cilium-secrets</code> empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. <code>CiliumGatewayCertificatesMissing</code> fires; <code>kubectl -n kube-system rollout restart deploy/cilium-operator</code> recovers it.</p>
+</div>
 
 
 
