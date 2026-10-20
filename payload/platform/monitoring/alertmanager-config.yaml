@@ -62,13 +62,14 @@ spec:
             group_wait: 30s
             group_interval: 30m
             repeat_interval: 24h
-            receiver: email
+            # Temporarily muted: mail volume hit the provider's limits. Revert to email.
+            receiver: "null"
             routes:
               # Watchdog always fires by design; do not mail it.
               - receiver: "null"
                 matchers:
                   - alertname = "Watchdog"
-              - receiver: email
+              - receiver: "null"
                 matchers:
                   - severity = "critical"
                 group_interval: 5m
