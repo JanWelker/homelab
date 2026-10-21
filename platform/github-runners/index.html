@@ -1664,6 +1664,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metrics
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#network-policy" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2365,6 +2376,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Metrics
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#network-policy" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2678,6 +2700,14 @@ stay on GitHub.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="metrics">Metrics<a class="headerlink" href="#metrics" title="Permanent link">&para;</a></h3>
+<p><code>metrics</code> in the controller values turns on <code>/metrics</code> on port 8080 of the
+controller and of every listener it starts. The listener's are the scale
+set's view from GitHub (assigned jobs, desired, idle and registered runners,
+job start-up and run times), the controller's the runner pods it manages.
+Both PodMonitors in <code>payload/platform/arc-controller/podmonitors.yaml</code> set
+<code>honorLabels</code>, so the metrics keep their own <code>namespace</code>, the runners'
+namespace, instead of the pod's <code>arc-systems</code>.</p>
 <h3 id="network-policy">Network policy<a class="headerlink" href="#network-policy" title="Permanent link">&para;</a></h3>
 <p>Every rule in
 <code>payload/platform/security/network-policies/arc-runners.yaml</code>. Unlike the
@@ -2705,7 +2735,8 @@ other namespaces, egress is every public address rather than a list of names.</p
 </tbody>
 </table>
 <p>The controller's and listeners' egress, GitHub's API and the Actions service
-only, is in <code>payload/platform/security/network-policies/arc-systems.yaml</code>.</p>
+only, and Prometheus' scrape of their metrics port, are in
+<code>payload/platform/security/network-policies/arc-systems.yaml</code>.</p>
 <h2 id="github-app">GitHub App<a class="headerlink" href="#github-app" title="Permanent link">&para;</a></h2>
 <p>One app per organisation, installed on each repository that has a scale set.</p>
 <ol>
