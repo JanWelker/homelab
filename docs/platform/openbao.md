@@ -96,6 +96,7 @@ a `bao kv put` replaces the whole path.
 | `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
 | `argocd/github-previews` | `token` | The GitHub PAT the `previews` ApplicationSet lists pull requests with — [Pull request previews](argocd.md#pull-request-previews); empty until created |
 | `shot-bridge/accounts` | `lm-username`, `lm-password`, `apns-key-id`, `apns-key-p8` | The Shot Timer bridge's La Marzocco login and APNs key — [Shot Timer bridge](https://homelab-apps.wlkr.ch/shot-bridge/#secrets); the APNs keys are empty until the key is created |
+| `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](https://homelab-apps.wlkr.ch/arc-runners/#github-app); empty until the app is created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
 | `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 

@@ -18,6 +18,7 @@ applications` shows — and the namespace it lands in.
 | Component | Namespace | What it does |
 | --- | --- | --- |
 | alloy | `logging` | Grafana Alloy, the log shipper — see [Logging](logging.md) |
+| arc-controller | `arc-systems` | The Actions Runner Controller; the runners themselves are a workload — see [GitHub runners](https://homelab-apps.wlkr.ch/arc-runners/) |
 | [argocd](argocd.md) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
 | argocd-config | `argocd` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see [ArgoCD](argocd.md) |
 | argocd-projects | `argocd` | The `apps`, `infra` and `system` AppProjects |
@@ -140,7 +141,7 @@ while it is not yet Healthy.
 | --- | --- | --- |
 | Projects and CRDs | `argocd-projects`, `gateway-api-crds`, `prometheus-operator-crds` | — |
 | Network | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
-| Controllers | `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
+| Controllers | `arc-controller`, `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | Storage | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
 | Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](../architecture/gitops.md#bootstrap-pauses-at-openbao) |
 | Certificates | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
