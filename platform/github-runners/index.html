@@ -2648,6 +2648,10 @@ stay on GitHub.</p>
 <td><code>resources</code>: 1Gi requested, 4Gi limit</td>
 <td>Unmeasured; a test suite with a database beside it fits, and the limit stops a runaway build before it starves the node</td>
 </tr>
+<tr>
+<td>A second scale set, <code>homelab-wait</code>, for <code>ci-ok</code> alone</td>
+<td>The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as <code>maxRunners</code> fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request</td>
+</tr>
 </tbody>
 </table>
 <h3 id="controller">Controller<a class="headerlink" href="#controller" title="Permanent link">&para;</a></h3>
