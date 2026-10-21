@@ -158,12 +158,15 @@ And in the `Cluster`:
 ```yaml
   plugins:
     - name: barman-cloud.cloudnative-pg.io
+      enabled: true
       isWALArchiver: true
       parameters:
         barmanObjectName: <db>
 ```
 
-Adding the plugin restarts every instance to inject the sidecar: a
+`enabled: true` is the webhook's default; written out, ArgoCD's diff matches
+the live object, since `plugins` is compared as a whole list. Adding the
+plugin restarts every instance to inject the sidecar: a
 single-instance database is down for that restart, a replicated one switches
 over. `immediate: true` takes the first base backup at once, so the WAL
 archive is restorable from the first day.
