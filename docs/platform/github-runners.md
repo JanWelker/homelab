@@ -31,7 +31,7 @@ stay on GitHub.
 | `githubConfigUrl` on the repository, not the organisation | No other repository in the organisation can schedule code onto the cluster |
 | `githubConfigSecret: github-app` | A GitHub App rather than a PAT: no expiry and a token scoped to the installed repository — see [GitHub App](#github-app) |
 | `controllerServiceAccount` spelled out | The chart finds the controller with Helm `lookup`, which Argo CD does not run |
-| `minRunners: 0`, `maxRunners: 3` | No idle pods between pushes; three covers one CI run's parallel Linux jobs |
+| `minRunners: 0`, `maxRunners: 10` | No idle pods between pushes; ten lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory |
 | `containerMode: kubernetes-novolume` | A job with `services:` or `container:` gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job |
 | `ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER: "false"` | A job without `container:` runs in the runner pod itself, as on a hosted runner |
 | The namespace enforces `baseline` | The runner image uses `sudo`, and a service container such as PostgreSQL starts as root; neither passes `restricted` |
