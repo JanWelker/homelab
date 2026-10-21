@@ -2907,6 +2907,11 @@ identity, which no namespace policy selects, and the audit log shows its
 traffic denied all the same; a scan Job's first lookups and a starting
 pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing
 else.</p>
+<p>The third, <code>cnpg-backups</code>, selects every CloudNativePG pod by its
+<code>cnpg.io/cluster</code> label and admits only the object store, by the same two
+rules Velero's namespace has. Every database's backup sidecar needs exactly
+that, wherever the database runs, so one policy replaces a rule in each
+workload's file.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>

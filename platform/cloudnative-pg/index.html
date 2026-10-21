@@ -1298,6 +1298,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1317,6 +1334,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         The contract
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backing-up-a-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backing up a database
       </span>
     </span>
   </a>
@@ -1347,6 +1375,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#point-in-time-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Point-in-time restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2328,6 +2384,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backups
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2347,6 +2420,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         The contract
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backing-up-a-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backing up a database
       </span>
     </span>
   </a>
@@ -2377,6 +2461,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#point-in-time-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Point-in-time restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2531,7 +2643,7 @@ maintains the chart that buried it. CloudNativePG is one operator in
 </tr>
 <tr>
 <td>Depends on</td>
-<td><a href="../rook-ceph/">Rook-Ceph</a> for the database volumes</td>
+<td><a href="../rook-ceph/">Rook-Ceph</a> for the database volumes and the backup buckets; <a href="../cert-manager/">cert-manager</a> for the backup plugin's gRPC certificates</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2540,6 +2652,10 @@ maintains the chart that buried it. CloudNativePG is one operator in
 <tr>
 <td>Health check</td>
 <td><code>kubectl get clusters.postgresql.cnpg.io -A</code> &rarr; <code>Cluster in healthy state</code></td>
+</tr>
+<tr>
+<td>Backups</td>
+<td>Continuous WAL and a nightly base backup per database, to a bucket of its own</td>
 </tr>
 <tr>
 <td>Files</td>
@@ -2588,6 +2704,51 @@ every database and a single-instance <code>Cluster</code> is a defensible defaul
 data survives a node loss even when the process does not. Where a workload
 cannot tolerate the restart, <code>instances: 3</code> is the change, as
 <a href="../authentik/#database">Authentik</a> shows.</p>
+<h3 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://cloudnative-pg.io/plugin-barman-cloud/">Barman Cloud plugin</a>
+runs beside the operator and injects a sidecar into every instance that names
+an <code>ObjectStore</code>. The sidecar archives each WAL segment as PostgreSQL closes
+it and takes the base backups a <code>ScheduledBackup</code> asks for, so a database
+restores to any second inside the retention window, not just to last night.</p>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The plugin, not <code>spec.backup.barmanObjectStore</code></td>
+<td>The in-tree field is deprecated upstream and is removed in a later release</td>
+</tr>
+<tr>
+<td>One bucket per database, claimed in its own namespace</td>
+<td>The bucket's keys exist only there, so a compromised workload can read or delete its own backups and nobody else's</td>
+</tr>
+<tr>
+<td><code>https://s3.infra.k8s.wlkr.ch</code>, not the plain RGW Service</td>
+<td>Backups hold every row of the database; the Gateway's TLS is the same path Velero uses</td>
+</tr>
+<tr>
+<td>Base backup nightly, after Velero</td>
+<td>The two never contend for the object store; WAL archiving covers the hours between</td>
+</tr>
+<tr>
+<td>Retention equal to Velero's TTL</td>
+<td>One window to reason about: what Velero can no longer restore, the WAL archive cannot either</td>
+</tr>
+<tr>
+<td>Preview databases have none</td>
+<td>They are rebuilt from the pull request and deleted with it</td>
+</tr>
+</tbody>
+</table>
+<p><code>ObjectStore</code> is a namespaced resource with no cluster-scoped counterpart, so
+the per-database part is a short, identical stanza (below); everything else
+is shared: the plugin, and the <code>cnpg-backups</code> policy in
+<code>payload/platform/security/network-policies/cluster-wide.yaml</code> that lets any
+CloudNativePG pod reach the object store.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="the-contract">The contract<a class="headerlink" href="#the-contract" title="Permanent link">&para;</a></h3>
 <p><strong>Every workload that needs PostgreSQL gets a CloudNativePG <code>Cluster</code>. No
@@ -2613,20 +2774,133 @@ registry terms keep changing. The rule for the
    drain hangs on it until <a href="../kured/">Kured</a> gives up and the node is never
    rebooted. Without the budget a single instance is down for the move to
    another node and a three-instance cluster fails over within a minute.</li>
+<li>Back it up with the <a href="#backing-up-a-database">stanza below</a>. Velero's
+   nightly PVC snapshot is crash-consistent and restores only to the night it
+   was taken; the WAL archive restores to any second.</li>
 </ol>
+<h3 id="backing-up-a-database">Backing up a database<a class="headerlink" href="#backing-up-a-database" title="Permanent link">&para;</a></h3>
+<p>Next to the <code>Cluster</code>, in the same namespace, with <code>&lt;db&gt;</code> the cluster's
+name. The bucket name is cluster-wide, hence the namespace in it; the sync
+wave puts the store ahead of the <code>Cluster</code> that names it.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nn">---</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">objectbucket.io/v1alpha1</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ObjectBucketClaim</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;-backup</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;namespace&gt;</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">bucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cnpg-&lt;namespace&gt;</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nn">---</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barmancloud.cnpg.io/v1</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ObjectStore</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;namespace&gt;</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SkipDryRunOnMissingResource=true</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">retentionPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14d</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="nt">configuration</span><span class="p">:</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="nt">destinationPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://cnpg-&lt;namespace&gt;/</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="nt">endpointURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://s3.infra.k8s.wlkr.ch</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="nt">s3Credentials</span><span class="p">:</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">      </span><span class="nt">accessKeyId</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;db&gt;-backup</span><span class="p p-Indicator">,</span><span class="nt"> key</span><span class="p">:</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="p p-Indicator">}</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">      </span><span class="nt">secretAccessKey</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;db&gt;-backup</span><span class="p p-Indicator">,</span><span class="nt"> key</span><span class="p">:</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="p p-Indicator">}</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">    </span><span class="nt">wal</span><span class="p">:</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">      </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gzip</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">      </span><span class="nt">compression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gzip</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="nn">---</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql.cnpg.io/v1</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ScheduledBackup</span>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;namespace&gt;</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">"0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">immediate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">  </span><span class="nt">backupOwnerReference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">self</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="nt">cluster</span><span class="p">:</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plugin</span>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">  </span><span class="nt">pluginConfiguration</span><span class="p">:</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barman-cloud.cloudnative-pg.io</span>
+</span></code></pre></div>
+<p>And in the <code>Cluster</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">  </span><span class="nt">plugins</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barman-cloud.cloudnative-pg.io</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">isWALArchiver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">parameters</span><span class="p">:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">        </span><span class="nt">barmanObjectName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span></code></pre></div>
+<p>Adding the plugin restarts every instance to inject the sidecar: a
+single-instance database is down for that restart, a replicated one switches
+over. <code>immediate: true</code> takes the first base backup at once, so the WAL
+archive is restorable from the first day.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusters.postgresql.cnpg.io<span class="w"> </span>-A
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>cnpg<span class="w"> </span>status<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;cluster-name&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusters.postgresql.cnpg.io<span class="w"> </span>-A
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>cnpg<span class="w"> </span>status<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;cluster-name&gt;
 </span></code></pre></div>
 <p><code>Cluster in healthy state</code> is the phrase; ArgoCD's built-in health check reads
 the same field, which lets a sync wave wait for a database before the
 application in front of it. The plugin prints the primary, replication lag,
 WAL position and last failover.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>backups.postgresql.cnpg.io<span class="w"> </span>-A<span class="w">           </span><span class="c1"># Phase completed, one per night</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clusters.postgresql.cnpg.io<span class="w"> </span>-A<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span><span class="s1">'NS:.metadata.namespace,NAME:.metadata.name,ARCHIVING:.status.conditions[?(@.type=="ContinuousArchiving")].status'</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>objectstores.barmancloud.cnpg.io<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>yaml<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-A3<span class="w"> </span>serverRecoveryWindow
+</span></code></pre></div>
+<p><code>ContinuousArchiving</code> <code>True</code> means the last WAL segment reached the bucket;
+<code>False</code> means WAL is piling up on the instance's volume, which fills it. The
+recovery window lives on the <code>ObjectStore</code>, per server name: the <code>Cluster</code>'s
+own backup fields stay empty with a plugin.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">Backups are Velero's job, for now</p>
-<p>CloudNativePG can stream WAL to S3 and the object store exists, but nothing is configured to do it yet. A workload database is protected exactly as far as its PVC is: a crash-consistent CSI snapshot, recovered to a snapshot boundary rather than a point in time. See <a href="../../operations/backups/">Backups &amp; Recovery</a>.</p>
-</div>
+<ul>
+<li><strong>A stuck archive fills the volume.</strong> PostgreSQL keeps every WAL segment the
+  sidecar has not archived; a broken bucket or policy shows as
+  <code>ContinuousArchiving</code> <code>False</code> long before the PVC is full. Fix the cause,
+  never delete <code>pg_wal</code>.</li>
+<li><strong>A restore is a new <code>Cluster</code>.</strong> Recovery bootstraps a fresh cluster from
+  the bucket; it never rewinds a running one. Give the new cluster its own
+  <code>ObjectStore</code> destination, or its archive would mix with the one it was
+  restored from.</li>
+</ul>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h3 id="point-in-time-restore">Point-in-time restore<a class="headerlink" href="#point-in-time-restore" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Pick the target time (UTC) and check it lies inside the window:</li>
+</ol>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>get<span class="w"> </span>objectstore<span class="w"> </span>&lt;db&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.serverRecoveryWindow}{"\n"}'</span>
+</span></code></pre></div>
+<ol>
+<li>In the workloads repository, rename the <code>Cluster</code> to <code>&lt;db&gt;-restore</code> and
+   replace <code>bootstrap.initdb</code> with a recovery from the old store, keeping the
+   old name as <code>serverName</code>:</li>
+</ol>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="nt">recovery</span><span class="p">:</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">      </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">origin</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">recoveryTarget</span><span class="p">:</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="nt">targetTime</span><span class="p">:</span><span class="w"> </span><span class="s">"2026-10-21</span><span class="nv"> </span><span class="s">12:00:00+00"</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">externalClusters</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">origin</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">      </span><span class="nt">plugin</span><span class="p">:</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barman-cloud.cloudnative-pg.io</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">        </span><span class="nt">parameters</span><span class="p">:</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">          </span><span class="nt">barmanObjectName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">          </span><span class="nt">serverName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
+</span></code></pre></div>
+<p>Its own <code>plugins</code> entry keeps the same <code>barmanObjectName</code> with
+   <code>serverName: &lt;db&gt;-restore</code>, so the new archive lands beside the old one.</p>
+<ol>
+<li>Merge, wait for <code>Cluster in healthy state</code>, then point the application at
+   <code>&lt;db&gt;-restore-app</code> and remove the old <code>Cluster</code> in a second PR.</li>
+</ol>
 
 
 
