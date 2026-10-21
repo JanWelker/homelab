@@ -104,6 +104,17 @@
       "addLabels": [
         "database-major"
       ]
+    },
+    {
+      "description": "The ARC controller deletes a scale set whose chart version differs from its own, and the controller (homelab) and scale sets (homelab-apps) cannot share a PR. Merge arc-controller first, then arc-runners.",
+      "matchPackageNames": [
+        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller",
+        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set"
+      ],
+      "automerge": false,
+      "addLabels": [
+        "arc-lockstep"
+      ]
     }
   ],
   "pre-commit": {
