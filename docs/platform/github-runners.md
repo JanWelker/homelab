@@ -59,6 +59,13 @@ Both PodMonitors in `payload/platform/arc-controller/podmonitors.yaml` set
 `honorLabels`, so the metrics keep their own `namespace`, the runners'
 namespace, instead of the pod's `arc-systems`.
 
+The **GitHub Actions Runners** dashboard in
+`payload/platform/arc-controller/grafana-dashboards.yaml` reads them. The job
+metrics carry no scale set label, so its job panels take the scale set from
+the listener pod's name. Upstream's sample dashboard is not vendored: it
+filters on `actions_github_com_scale_set_name`, which this version does not
+export, and most of its panels stay empty.
+
 ### Network policy
 
 Every rule in
