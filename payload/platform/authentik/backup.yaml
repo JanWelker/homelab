@@ -1,0 +1,50 @@
+---
+# WAL and nightly base backups to this database's own bucket; the stanza and
+# every choice in it: docs/platform/cloudnative-pg.md#backups
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: authentik-db-backup
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  bucketName: cnpg-authentik
+  storageClassName: ceph-bucket
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: authentik-db
+  namespace: authentik
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  retentionPolicy: 14d
+  configuration:
+    destinationPath: s3://cnpg-authentik/
+    endpointURL: https://s3.infra.k8s.wlkr.ch
+    s3Credentials:
+      accessKeyId: {name: authentik-db-backup, key: AWS_ACCESS_KEY_ID}
+      secretAccessKey: {name: authentik-db-backup, key: AWS_SECRET_ACCESS_KEY}
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: authentik-db
+  namespace: authentik
+spec:
+  schedule: "0 0 3 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: authentik-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

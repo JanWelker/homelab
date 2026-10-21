@@ -49,5 +49,11 @@ spec:
     limits:
       memory: 512Mi
 
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: authentik-db
+
   monitoring:
     enablePodMonitor: true
