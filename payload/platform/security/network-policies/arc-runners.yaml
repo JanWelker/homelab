@@ -1,0 +1,51 @@
+---
+# Every rule and its reason: docs/platform/github-runners.md#network-policy
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: arc-runners
+spec:
+  description: >-
+    Default-deny ingress. A runner pulls its job and reaches its job pod
+    through the API server; only the namespace and the node's probes call in.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: arc-runners
+spec:
+  description: >-
+    Default-deny egress. Every public address on 80 and 443, because a job
+    fetches whatever its workflow names; the private, carrier-grade and
+    link-local ranges are cut out, so a job reaches neither the LAN nor the
+    cluster's services. The API server is for the container hook, which
+    starts the job pod and execs every step into it.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEntities:
+        - kube-apiserver
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10
+            - 169.254.0.0/16
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP

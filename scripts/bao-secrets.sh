@@ -353,7 +353,7 @@ fi
 
 # Written even when empty, for the reason above: the scale set's listener then
 # fails to authenticate instead of the whole sync stopping.
-# See homelab-apps/docs/arc-runners.md#github-app
+# See docs/platform/github-runners.md#github-app
 if [ "$WRITE_ARC" = "1" ]; then
   arc_key=""
   if [ -n "${ARC_PRIVATE_KEY_FILE:-}" ]; then

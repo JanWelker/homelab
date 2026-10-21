@@ -14,11 +14,11 @@ spec:
     # OCI, without the scheme; see docs/platform/argocd.md#projects
     repoURL: ghcr.io/actions/actions-runner-controller-charts
     chart: gha-runner-scale-set-controller
-    # homelab-apps' arc-runners scale set chart must stay on the same version.
+    # The arc-runners scale set chart must stay on the same version.
     targetRevision: 0.15.0
     helm:
       valuesObject:
-        # Why each non-default value: homelab-apps/docs/arc-runners.md#controller
+        # Why each non-default value: docs/platform/github-runners.md#controller
         flags:
           logLevel: info
           logFormat: json
