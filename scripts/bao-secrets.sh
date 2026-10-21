@@ -17,7 +17,7 @@
 #   SMTP_TO                                         where alert mail is delivered
 #   SHOT_BRIDGE_LM_USERNAME / SHOT_BRIDGE_LM_PASSWORD  the shot bridge's La Marzocco account
 #
-# Five more are optional, because what issues them runs on the cluster or
+# Eight more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
@@ -25,6 +25,7 @@
 #   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
 #   PREVIEWS_GITHUB_TOKEN                           GitHub PAT the previews ApplicationSet lists PRs with
 #   SHOT_BRIDGE_APNS_KEY_ID / SHOT_BRIDGE_APNS_KEY_FILE  the shot bridge's APNs key: its ID, and the .p8 file's path
+#   ARC_APP_ID / ARC_INSTALLATION_ID / ARC_PRIVATE_KEY_FILE  the GitHub App the Actions runners register with, and its .pem file's path
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -167,12 +168,14 @@ decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
 decide WRITE_PREVIEWS     argocd/github-previews
 decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
+decide WRITE_ARC          arc-runners/github-app
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
-  && [ "$WRITE_PREVIEWS" = "0" ] && [ "$WRITE_SHOT_BRIDGE" = "0" ]; then
+  && [ "$WRITE_PREVIEWS" = "0" ] && [ "$WRITE_SHOT_BRIDGE" = "0" ] \
+  && [ "$WRITE_ARC" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -272,6 +275,15 @@ if [ "$WRITE_SHOT_BRIDGE" = "1" ]; then
     exit 1
   fi
 fi
+if [ "$WRITE_ARC" = "1" ]; then
+  prompt_optional ARC_APP_ID            "GitHub App ID or client ID for the Actions runners (Enter until you have created the app)"
+  prompt_optional ARC_INSTALLATION_ID   "  ...its installation ID on the repository"
+  prompt_optional ARC_PRIVATE_KEY_FILE  "  ...and the path to its private key .pem file"
+  if [ -n "${ARC_PRIVATE_KEY_FILE:-}" ] && ! grep -q 'BEGIN RSA PRIVATE KEY' "${ARC_PRIVATE_KEY_FILE/#\~/$HOME}" 2>/dev/null; then
+    echo "ERROR: ${ARC_PRIVATE_KEY_FILE} is not a readable GitHub App private key." >&2
+    exit 1
+  fi
+fi
 echo
 
 # --- Write -----------------------------------------------------------------
@@ -337,6 +349,20 @@ if [ "$WRITE_SHOT_BRIDGE" = "1" ]; then
     "lm-password=${SHOT_BRIDGE_LM_PASSWORD}" \
     "apns-key-id=${SHOT_BRIDGE_APNS_KEY_ID:-}" \
     "apns-key-p8=${apns_key}"
+fi
+
+# Written even when empty, for the reason above: the scale set's listener then
+# fails to authenticate instead of the whole sync stopping.
+# See docs/platform/github-runners.md#github-app
+if [ "$WRITE_ARC" = "1" ]; then
+  arc_key=""
+  if [ -n "${ARC_PRIVATE_KEY_FILE:-}" ]; then
+    arc_key="$(cat "${ARC_PRIVATE_KEY_FILE/#\~/$HOME}")"
+  fi
+  put arc-runners/github-app \
+    "app-id=${ARC_APP_ID:-}" \
+    "installation-id=${ARC_INSTALLATION_ID:-}" \
+    "private-key=${arc_key}"
 fi
 
 cat <<'EOF'

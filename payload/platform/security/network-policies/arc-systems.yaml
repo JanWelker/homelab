@@ -1,0 +1,44 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: arc-systems
+spec:
+  description: >-
+    Default-deny ingress for the Actions Runner Controller. The controller
+    and its listeners only call out; the kubelet's probes are all that
+    reaches them, and metrics are off.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: arc-systems
+spec:
+  description: >-
+    Default-deny egress for the Actions Runner Controller. The controller
+    registers scale sets and mints GitHub App tokens at api.github.com; each
+    listener long-polls the Actions service for jobs and asks the API server
+    for runner pods.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEntities:
+        - kube-apiserver
+    - toFQDNs:
+        - matchName: github.com
+        - matchName: api.github.com
+        - matchPattern: "**.actions.githubusercontent.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

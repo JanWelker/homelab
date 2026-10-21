@@ -18,6 +18,8 @@ applications` shows — and the namespace it lands in.
 | Component | Namespace | What it does |
 | --- | --- | --- |
 | alloy | `logging` | Grafana Alloy, the log shipper — see [Logging](logging.md) |
+| arc-controller | `arc-systems` | The Actions Runner Controller — see [GitHub runners](github-runners.md) |
+| [arc-runners](github-runners.md) | `arc-runners` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](argocd.md) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
 | argocd-config | `argocd` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see [ArgoCD](argocd.md) |
 | argocd-projects | `argocd` | The `apps`, `infra` and `system` AppProjects |
@@ -140,12 +142,12 @@ while it is not yet Healthy.
 | --- | --- | --- |
 | Projects and CRDs | `argocd-projects`, `gateway-api-crds`, `prometheus-operator-crds` | — |
 | Network | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
-| Controllers | `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
+| Controllers | `arc-controller`, `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | Storage | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
 | Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](../architecture/gitops.md#bootstrap-pauses-at-openbao) |
 | Certificates | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
 | Ingress | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
-| Services | `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
+| Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
 | Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
