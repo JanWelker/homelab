@@ -65,6 +65,55 @@ spec:
                       memory: 1Gi
                     limits:
                       memory: 4Gi
+    # ci-ok's wait only: it holds a runner until every other check finished,
+    # so on the shared set enough open pull requests deadlock it.
+    # docs/platform/github-runners.md#configuration
+    - repoURL: ghcr.io/actions/actions-runner-controller-charts
+      chart: gha-runner-scale-set
+      # Same version as the arc-controller chart.
+      targetRevision: 0.15.0
+      helm:
+        releaseName: shotapp-wait
+        valuesObject:
+          githubConfigUrl: https://github.com/somuch-cloud/shotapp
+          githubConfigSecret: github-app
+          runnerScaleSetName: homelab-wait
+
+          minRunners: 0
+          maxRunners: 10
+
+          controllerServiceAccount:
+            namespace: arc-systems
+            name: arc-controller-gha-rs-controller
+
+          listenerTemplate:
+            spec:
+              securityContext:
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+              containers:
+                - name: listener
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop: ["ALL"]
+
+          template:
+            spec:
+              securityContext:
+                seccompProfile:
+                  type: RuntimeDefault
+              containers:
+                - name: runner
+                  image: ghcr.io/actions/actions-runner:2.338.0@sha256:4ffadc0002b2581327e06101fc8c06cd189232baf79fe561fac9caeb76f5e807
+                  command: ["/home/runner/run.sh"]
+                  resources:
+                    requests:
+                      cpu: 10m
+                      memory: 128Mi
+                    limits:
+                      memory: 512Mi
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/arc-runners
