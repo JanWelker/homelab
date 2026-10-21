@@ -74,3 +74,41 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
+---
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: cnpg-backups
+spec:
+  description: >-
+    Every CloudNativePG pod, instances and recovery jobs in any namespace,
+    may reach the object store its ObjectStore names: S3 over TLS through
+    the infra Gateway, whose address the datapath classifies as world,
+    hence the name rule, and the RGW pods, because the Gateway's Envoy
+    checks the caller's egress a second time against the pod it picked.
+    Same path as Velero's. enableDefaultDeny is off so a namespace's own
+    policy still decides everything else.
+  endpointSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
+      - key: io.kubernetes.pod.namespace
+        operator: Exists
+  enableDefaultDeny:
+    ingress: false
+    egress: false
+  egress:
+    - toFQDNs:
+        - matchName: s3.infra.k8s.wlkr.ch
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: rook-ceph
+            k8s:app: rook-ceph-rgw
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
