@@ -2625,8 +2625,8 @@ stay on GitHub.</p>
 <td>The chart finds the controller with Helm <code>lookup</code>, which Argo CD does not run</td>
 </tr>
 <tr>
-<td><code>minRunners: 0</code>, <code>maxRunners: 3</code></td>
-<td>No idle pods between pushes; three covers one CI run's parallel Linux jobs</td>
+<td><code>minRunners: 0</code>, <code>maxRunners: 10</code></td>
+<td>No idle pods between pushes; ten lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory</td>
 </tr>
 <tr>
 <td><code>containerMode: kubernetes-novolume</code></td>
