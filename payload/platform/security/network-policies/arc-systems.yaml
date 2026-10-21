@@ -7,8 +7,8 @@ metadata:
 spec:
   description: >-
     Default-deny ingress for the Actions Runner Controller. The controller
-    and its listeners only call out; the kubelet's probes are all that
-    reaches them, and metrics are off.
+    and its listeners only call out; the kubelet's probes reach them, and
+    Prometheus scrapes the metrics port of both.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -16,6 +16,18 @@ spec:
     - fromEntities:
         - host
         - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: /metrics$
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

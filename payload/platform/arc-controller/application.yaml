@@ -10,36 +10,48 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
+  sources:
     # OCI, without the scheme; see docs/platform/argocd.md#projects
-    repoURL: ghcr.io/actions/actions-runner-controller-charts
-    chart: gha-runner-scale-set-controller
-    # The arc-runners scale set chart must stay on the same version.
-    targetRevision: 0.15.0
-    helm:
-      valuesObject:
-        # Why each non-default value: docs/platform/github-runners.md#controller
-        flags:
-          logLevel: info
-          logFormat: json
-          watchSingleNamespace: arc-runners
+    - repoURL: ghcr.io/actions/actions-runner-controller-charts
+      chart: gha-runner-scale-set-controller
+      # The arc-runners scale set chart must stay on the same version.
+      targetRevision: 0.15.0
+      helm:
+        valuesObject:
+          # Why each non-default value: docs/platform/github-runners.md#controller
+          flags:
+            logLevel: info
+            logFormat: json
+            watchSingleNamespace: arc-runners
 
-        podSecurityContext:
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
+          # The controller's and every listener's /metrics; the listener's
+          # are the scale set's queue and runner counts.
+          metrics:
+            controllerManagerAddr: ":8080"
+            listenerAddr: ":8080"
+            listenerEndpoint: "/metrics"
 
-        resources:
-          requests:
-            cpu: 10m
-            memory: 64Mi
-          limits:
-            memory: 256Mi
+          podSecurityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/arc-controller
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: arc-systems

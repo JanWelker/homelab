@@ -49,6 +49,16 @@ The `arc-controller` values, and why:
 | `logLevel: info`, `logFormat: json` | The chart's default is `debug`, which logs every reconcile; JSON is what Loki parses |
 | Restricted security context on the controller and the listener | Both are distroless and run as non-root; the namespace enforces `baseline` and audits `restricted` |
 
+### Metrics
+
+`metrics` in the controller values turns on `/metrics` on port 8080 of the
+controller and of every listener it starts. The listener's are the scale
+set's view from GitHub (assigned jobs, desired, idle and registered runners,
+job start-up and run times), the controller's the runner pods it manages.
+Both PodMonitors in `payload/platform/arc-controller/podmonitors.yaml` set
+`honorLabels`, so the metrics keep their own `namespace`, the runners'
+namespace, instead of the pod's `arc-systems`.
+
 ### Network policy
 
 Every rule in
@@ -62,7 +72,8 @@ other namespaces, egress is every public address rather than a list of names.
 | Egress to `0.0.0.0/0` on 80 and 443, minus the private, carrier-grade and link-local ranges | A job downloads whatever its workflow names (actions, toolchains, packages), which no name list keeps up with. Cutting the private ranges keeps the LAN, the nodes and every in-cluster service out of reach |
 
 The controller's and listeners' egress, GitHub's API and the Actions service
-only, is in `payload/platform/security/network-policies/arc-systems.yaml`.
+only, and Prometheus' scrape of their metrics port, are in
+`payload/platform/security/network-policies/arc-systems.yaml`.
 
 ## GitHub App
 
