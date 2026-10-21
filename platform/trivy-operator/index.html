@@ -17,7 +17,7 @@
         <link rel="prev" href="../security-policies/">
       
       
-        <link rel="next" href="../../operations/">
+        <link rel="next" href="../github-runners/">
       
       
         
@@ -303,6 +303,8 @@
       
         
           
+        
+      
         
       
         
@@ -953,6 +955,8 @@
       
         
           
+        
+      
         
       
         
@@ -1654,6 +1658,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#report-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Report pruning
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1696,6 +1711,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../github-runners/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  GitHub Runners
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2355,6 +2397,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#report-pruning" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Report pruning
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2479,6 +2532,8 @@
       
         
       
+        
+      
     
     
     
@@ -2559,7 +2614,7 @@ this page is the operator itself.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/trivy-operator/</code>: the chart, <code>prometheusrule.yaml</code>, the <code>findings-history</code> CronJob, the <code>sbom-readers.yaml</code> grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in <a href="../security-policies/">Security Policies</a></td>
+<td><code>payload/platform/trivy-operator/</code>: the chart, <code>prometheusrule.yaml</code>, the <code>findings-history</code> and <code>report-prune</code> CronJobs, the <code>sbom-readers.yaml</code> grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in <a href="../security-policies/">Security Policies</a></td>
 </tr>
 </tbody>
 </table>
@@ -2761,6 +2816,16 @@ history Trivy's 24h reports cannot. <code>sbom-readers.yaml</code> is the
 ReplicaSets, so it can skip the reports of superseded revisions: the <code>apps</code>
 project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.</p>
+<h3 id="report-pruning">Report pruning<a class="headerlink" href="#report-pruning" title="Permanent link">&para;</a></h3>
+<p><code>SbomReport</code>s and <code>ExposedSecretReport</code>s carry no TTL, unlike the
+<code>VulnerabilityReport</code>s: they are owned by the scanned ReplicaSet and live as
+long as it does, and Deployments keep ten superseded revisions scaled to zero.
+Those SBOMs were over half the reports' bytes in etcd, and each API server holds
+them decoded in its watch cache.
+The <code>report-prune</code> CronJob in <code>report-prune.yaml</code> deletes the two kinds for
+every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
+skips those reports anyway. <code>scanOnlyCurrentRevisions</code> keeps the operator from
+writing them again. Its log is one JSON line per kind with the count deleted.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is a summary; the objects have the detail.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># What has been scanned, worst first</span>
@@ -2896,13 +2961,13 @@ minutes; that is the expected shape, not a stall.</p>
         
         
           
-          <a href="../../operations/" class="md-footer__link md-footer__link--next" aria-label="Next: Operations">
+          <a href="../github-runners/" class="md-footer__link md-footer__link--next" aria-label="Next: GitHub Runners">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Operations
+                GitHub Runners
               </div>
             </div>
             <div class="md-footer__button md-icon">
