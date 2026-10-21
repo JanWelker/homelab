@@ -113,6 +113,7 @@ its upstream tag.
 | [Loki](logging.md) | The Loki mixin: Reads, Writes, Operational, Chunks, Retention and the rest | Chart: `monitoring.dashboards`, with `monitoring.rules` for the recording rules they read |
 | ArgoCD | ArgoCD | Vendored: `argocd-config/grafana-dashboards.yaml` |
 | [Tetragon](tetragon.md) | Tetragon | Written for this cluster: `tetragon/grafana-dashboards.yaml`; upstream ships none |
+| [GitHub runners](github-runners.md) | GitHub Actions Runners | Written for this cluster: `arc-controller/grafana-dashboards.yaml`; upstream's sample filters on labels ARC 0.15 does not export |
 | [Trivy Operator](trivy-operator.md) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboards.yaml` |
 
 ## Usage
