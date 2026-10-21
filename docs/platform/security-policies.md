@@ -91,6 +91,12 @@ traffic denied all the same; a scan Job's first lookups and a starting
 pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing
 else.
 
+The third, `cnpg-backups`, selects every CloudNativePG pod by its
+`cnpg.io/cluster` label and admits only the object store, by the same two
+rules Velero's namespace has. Every database's backup sidecar needs exactly
+that, wherever the database runs, so one policy replaces a rule in each
+workload's file.
+
 #### What every policy contains
 
 | Rule | Why |

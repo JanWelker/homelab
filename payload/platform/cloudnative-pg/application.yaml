@@ -35,6 +35,19 @@ spec:
               memory: 96Mi
             limits:
               memory: 256Mi
+    # Base backups and WAL to the object store; it must share the operator's
+    # namespace. docs/platform/cloudnative-pg.md#backups
+    - repoURL: https://cloudnative-pg.github.io/charts
+      chart: plugin-barman-cloud
+      targetRevision: 0.8.1
+      helm:
+        valuesObject:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
   destination:
     server: https://kubernetes.default.svc
     namespace: cnpg-system

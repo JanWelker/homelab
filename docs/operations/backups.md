@@ -13,6 +13,7 @@ cannot.
 | --- | --- | --- |
 | Kubernetes objects | Nightly | [Velero](#velero) to the Ceph object store |
 | Ceph RBD volumes (PVCs) | Nightly | Velero CSI snapshot, moved into the object store |
+| PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](../platform/cloudnative-pg.md#backups), one bucket per database; restores to a point in time |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](#etcd) to the object store |
 | OpenBao secrets | Manual | [Raft snapshot](#openbao) |
