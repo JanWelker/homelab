@@ -41,7 +41,7 @@ jobs:
             -v $(pwd)/pull-request/.github/argo-diff-preview/values.yaml:/argocd-config/values.yaml \
             -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
             -e REPO=${{ github.repository }} \
-            dagandersen/argocd-diff-preview:v0.2.16@sha256:21e7c8fa794220118feedc6e5316afd90cf0a107bfc845e08aa0291996efd968 \
+            dagandersen/argocd-diff-preview:v0.2.17@sha256:ea90848df29337b50d5058330210b38e39232360b78d9c60951fc92e454c6941 \
             --argocd-chart-version="$ARGOCD_CHART_VERSION" \
             --auto-detect-files-changed=true \
             --watch-if-no-watch-pattern-found=false
