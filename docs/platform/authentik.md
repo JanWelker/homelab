@@ -16,7 +16,7 @@ every network flow in the cluster to anyone who could reach the hostname.
 | Nextcloud | OIDC, login form hidden, local admin break-glass |
 | Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](#pitfalls) |
 | Umami | Proxy outpost **in front of** its own login; the tracker paths pass through — see [Pitfalls](#pitfalls) |
-| Rook dashboard, Hubble UI, Prometheus, Alertmanager | Proxy outpost |
+| Rook dashboard, Hubble UI, Prometheus, Alertmanager, Extractor admin UI | Proxy outpost |
 
 ## At a glance
 
@@ -44,7 +44,7 @@ flowchart LR
     U([Browser]) --> GW[infra-gateway / apps-gateway]
     GW -->|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW -->|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, advent/admin, media, claw| AK
+    GW -->|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin, media, claw| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
@@ -72,8 +72,8 @@ updates it.
 A proxied application's route lives with the application: Hubble's in
 `payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
 Prometheus's and Alertmanager's in `payload/platform/monitoring/`, and Home
-Assistant's, Flowscape's, Umami's, Wollbi-Fescht's and Wollbi
-Adventsfenster's in the
+Assistant's, Flowscape's, Umami's, Wollbi-Fescht's, Wollbi
+Adventsfenster's and the Extractor admin UI's in the
 [workloads repository](../development/add-workload.md),
 each with `authentik-server` as `backendRef`. Gateway API forbids a
 cross-namespace `backendRef` unless the target namespace grants it, so

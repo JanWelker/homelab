@@ -170,6 +170,14 @@ spec:
         - ports:
             - port: "8123"
               protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: extractor-admin
+            k8s:app.kubernetes.io/name: extractor-admin
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
     - toFQDNs:
         - matchName: auth.k8s.wlkr.ch
       toPorts:
