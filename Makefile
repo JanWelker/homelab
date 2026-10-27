@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets bao-rotate-root claude-session-pat
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -106,6 +106,9 @@ bao-init: check-context
 
 bao-unseal: check-context
 	scripts/bao-unseal.sh
+
+bao-policies: check-context
+	scripts/bao-policies.sh
 
 bao-secrets: check-context
 	scripts/bao-secrets.sh

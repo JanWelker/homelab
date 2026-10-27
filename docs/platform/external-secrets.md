@@ -17,8 +17,8 @@ is.
 | Namespace | `external-secrets` |
 | Depends on | [OpenBao](openbao.md) at runtime, though not to be installed |
 | If it is down | Secrets already materialised keep working. Nothing rotates, and nothing new resolves |
-| Health check | `kubectl get clustersecretstore openbao` &rarr; `Valid` |
-| Files | `payload/platform/external-secrets/`; the store in `payload/platform/openbao/cluster-secret-store.yaml` |
+| Health check | `kubectl get clustersecretstore` &rarr; `Valid` on all three |
+| Files | `payload/platform/external-secrets/`; the stores in `payload/platform/openbao/cluster-secret-store.yaml` |
 
 ## Configuration
 
@@ -38,16 +38,19 @@ sequenceDiagram
     App->>K: mount / envFrom
 ```
 
-ESO mints a short-lived token for its `external-secrets-vault` ServiceAccount
-through the TokenRequest API (the `external-secrets-vault-token-creator`
-ClusterRole); OpenBao validates it against the TokenReview API and issues a
-token bound to the `external-secrets` policy. No long-lived credential exists
-anywhere, and when it breaks it breaks in the `ClusterSecretStore` status. The
-store uses ESO's `vault` provider unchanged against the in-cluster Service.
+ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount
+through the TokenRequest API, which the chart's controller ClusterRole allows
+in every namespace; OpenBao validates it against the TokenReview API
+and issues a token bound to that store's policy. Platform namespaces use the
+`openbao` store and the ServiceAccount in `external-secrets`; a workload uses
+`openbao-apps` and its own, which confines it to `kv/<namespace>/` — see
+[Kubernetes auth](openbao.md#kubernetes-auth). No long-lived credential exists
+anywhere. The stores use ESO's `vault` provider unchanged against the
+in-cluster Service.
 
 | Setting | Why |
 | --- | --- |
-| No `ClusterSecretStore` here | It only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
+| No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
 | Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`), which only shows when the pod is recreated |
 
 ## Usage
@@ -63,9 +66,20 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
     ```
 
 2. Declare an `ExternalSecret` alongside the workload's other manifests; the
-   parent Application picks it up:
+   parent Application picks it up. A workload names `openbao-apps` and ships
+   the ServiceAccount that store logs in as; a platform component names
+   `openbao` instead and needs no ServiceAccount:
 
     ```yaml
+    ---
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: external-secrets-vault
+      namespace: my-app
+      annotations:
+        argocd.argoproj.io/sync-wave: "-2"
+    automountServiceAccountToken: false
     ---
     apiVersion: external-secrets.io/v1
     kind: ExternalSecret
@@ -79,7 +93,7 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
     spec:
       refreshInterval: 1h
       secretStoreRef:
-        name: openbao
+        name: openbao-apps
         kind: ClusterSecretStore
       target:
         name: my-app-credentials   # name of the resulting K8s Secret
@@ -87,7 +101,7 @@ store uses ESO's `vault` provider unchanged against the in-cluster Service.
       data:
         - secretKey: key1           # key in the K8s Secret
           remoteRef:
-            key: <workload>/<purpose>
+            key: my-app/<purpose>   # the namespace is the prefix
             property: key1          # key inside the KV entry
     ```
 
@@ -121,7 +135,9 @@ kubectl annotate externalsecret -n <namespace> <name> \
 
 ## Health check
 
-Start with the store; if it is not Ready, nothing downstream is either:
+Start with the store; if it is not Ready, nothing downstream is either.
+`openbao-apps` and `openbao-claude-agents` report `Valid` without logging in,
+so their auth failures show on the `ExternalSecret` instead:
 
 ```bash
 kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
@@ -130,8 +146,8 @@ kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
 | Cause | Fix |
 | --- | --- |
 | OpenBao is sealed | [Unseal it](openbao.md#unsealing-after-a-restart) |
-| Kubernetes auth role missing | Re-run `make bao-init`, which writes `auth/kubernetes/role/external-secrets` |
-| Wrong `serviceAccountRef` | Must be `external-secrets-vault` in `external-secrets` |
+| Kubernetes auth role missing | `make bao-policies` writes all three roles |
+| Wrong `serviceAccountRef` | `external-secrets-vault`, in `external-secrets` for `openbao` and without a namespace for the other two |
 
 Then the individual object:
 
@@ -143,7 +159,8 @@ kubectl describe externalsecret -n <namespace> <name>
 | --- | --- |
 | The KV path does not exist (`bao kv get kv/<path>` returns 404) | Store the secret first |
 | `property:` matches no key in the KV entry | `bao kv get kv/<path>` lists them |
-| The policy does not grant `read` on the path | Edit the `external-secrets` policy |
+| `permission denied` from `openbao-apps` | The path is outside `kv/<namespace>/`, or the namespace has no `external-secrets-vault` ServiceAccount |
+| `using cluster store ... is not allowed from namespace` | The store's `conditions` exclude the namespace: a platform namespace on `openbao-apps` |
 
 ## Pitfalls
 
