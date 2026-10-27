@@ -26,7 +26,13 @@ enforce second, one namespace at a time.
 
 ### Pod Security Admission
 
-A namespace that does not opt in runs at `privileged`, which enforces nothing.
+A namespace without labels gets the cluster default from
+`ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and
+`warn` at `restricted`. It reaches a control-plane node only at provisioning;
+see [Node hardening](../architecture/security.md#node-hardening). It exempts
+`kube-system`, which Cilium needs before Argo CD can label anything, and the
+namespaces that need `privileged` but carry no labels. An exemption skips
+`audit` and `warn` as well, so the labelled namespaces below are not exempt.
 Each namespace in `pod-security.yaml` carries three labels:
 
 | Label | Set to | Effect |

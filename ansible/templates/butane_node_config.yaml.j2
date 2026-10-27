@@ -35,6 +35,8 @@ storage:
       mode: 0700
     - path: /etc/kubernetes/patches
       mode: 0700
+    - path: /etc/kubernetes/admission
+      mode: 0700
 {% endif %}
   files:
     - path: /etc/hostname
@@ -56,6 +58,18 @@ storage:
       contents:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
+{% if inventory_hostname != groups['control_plane'][0] %}
+
+    # The join flags; bootstrap-k8s.service deletes it once the node has joined.
+    - path: /opt/bootstrap-k8s.env
+      mode: 0600
+      contents:
+        inline: |
+          KUBEADM_TOKEN={{ kubeadm_token }}
+{% if role == 'control-plane' %}
+          KUBEADM_CERTIFICATE_KEY={{ certificate_key }}
+{% endif %}
+{% endif %}
 {% if role == 'control-plane' %}
     - path: /etc/kubernetes/enc/encryption-config.yaml
       mode: 0600
@@ -124,6 +138,13 @@ storage:
               verbs: ["get", "list", "watch"]
             - level: Metadata
 
+    # Cluster-wide Pod Security default; see docs/platform/security-policies.md#pod-security-admission
+    - path: /etc/kubernetes/admission/admission.yaml
+      mode: 0600
+      contents:
+        inline: |
+          {{ lookup('template', '../templates/admission.yaml.j2') | indent(10) }}
+
     # Memory requests for the static pods, applied by kubeadm init, join and
     # upgrade; see docs/platform/index.md#components
     - path: /etc/kubernetes/patches/kube-apiserver+strategic.yaml
@@ -169,6 +190,32 @@ storage:
                 resources:
                   requests:
                     memory: 96Mi
+
+    # The metrics listeners on this node's address rather than every interface.
+    # Appended flags win over kubeadm's; the probes follow the bind address.
+    # See docs/architecture/security.md#node-hardening
+    - path: /etc/kubernetes/patches/etcd1+json.yaml
+      mode: 0600
+      contents:
+        inline: |
+          - op: add
+            path: /spec/containers/0/command/-
+            value: --listen-metrics-urls=http://127.0.0.1:2381,http://{{ ansible_host }}:2381
+{% for component, probes in {'kube-controller-manager': ['liveness', 'startup'], 'kube-scheduler': ['liveness', 'readiness', 'startup']}.items() %}
+
+    - path: /etc/kubernetes/patches/{{ component }}1+json.yaml
+      mode: 0600
+      contents:
+        inline: |
+          - op: add
+            path: /spec/containers/0/command/-
+            value: --bind-address={{ ansible_host }}
+{% for probe in probes %}
+          - op: replace
+            path: /spec/containers/0/{{ probe }}Probe/httpGet/host
+            value: {{ ansible_host }}
+{% endfor %}
+{% endfor %}
 
     # Bootstrap copy; the DaemonSet in payload/platform/kube-vip/ replaces it.
     # Keep the env in step with that DaemonSet.
@@ -254,13 +301,13 @@ storage:
           kernel.panic = 10
           kernel.panic_on_oops = 1
 
-
-    - path: /opt/ignition-final.json
-      contents:
-        source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
+    # Inline rather than fetched: this file decides where every later sysext
+    # comes from; see docs/operations/upgrades.md#nodes-are-pinned-to-a-minor-series
     - path: /etc/sysupdate.kubernetes.d/kubernetes.conf
+      mode: 0644
       contents:
-        source: http://{{ boot_server_ip }}:8000/kubernetes.conf
+        inline: |
+          {{ lookup('template', '../templates/sysupdate_kubernetes.conf.j2') | indent(10) }}
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
@@ -269,8 +316,10 @@ storage:
     # Keeps the default sysupdate component from failing; see
     # docs/architecture/security.md#node-hardening
     - path: /etc/sysupdate.d/noop.conf
+      mode: 0644
       contents:
-        source: http://{{ boot_server_ip }}:8000/noop.conf
+        inline: |
+          {{ lookup('template', '../templates/sysupdate_noop.conf.j2') | indent(10) }}
   links:
     - path: /etc/extensions/docker-flatcar.raw
       target: /dev/null
@@ -361,10 +410,14 @@ systemd:
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         {% else %}
-        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key {{ certificate_key }} --patches /etc/kubernetes/patches --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        EnvironmentFile=/opt/bootstrap-k8s.env
+        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token ${KUBEADM_TOKEN} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key ${KUBEADM_CERTIFICATE_KEY} --patches /etc/kubernetes/patches --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
+        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env
         {% endif %}
         {% else %}
-        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token {{ kubeadm_token }} --discovery-token-unsafe-skip-ca-verification
+        EnvironmentFile=/opt/bootstrap-k8s.env
+        ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token ${KUBEADM_TOKEN} --discovery-token-unsafe-skip-ca-verification
+        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env
         {% endif %}
 
         [Install]

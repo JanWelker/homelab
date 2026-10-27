@@ -21,6 +21,9 @@
       run_once: true # noqa: run-once
       delegate_to: localhost
 
+    # Reused across runs, not rotated: a node whose join window passed retries
+    # with the values on its disk once make config has re-armed them; see
+    # docs/operations/nodes.md#adding-a-node. Delete the files to rotate.
     - name: Generate Kubeadm Token
       ansible.builtin.set_fact:
         kubeadm_token: "{{ token_id }}.{{ token_secret }}"
@@ -30,12 +33,14 @@
           {{ lookup('password', playbook_dir + '/../../output/credentials/kubeadm_token_secret length=16 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}
       run_once: true # noqa: run-once
       delegate_to: localhost
+      no_log: true
 
     - name: Generate Certificate Key
       ansible.builtin.set_fact:
         certificate_key: "{{ lookup('password', playbook_dir + '/../../output/credentials/certificate_key length=64 chars=0123456789abcdef') }}"
       run_once: true # noqa: run-once
       delegate_to: localhost
+      no_log: true
 
     # The lookup re-reads the existing file, so re-running keeps etcd readable.
     - name: Generate Secrets Encryption Key
@@ -44,6 +49,7 @@
           {{ lookup('password', playbook_dir + '/../../output/credentials/encryption_key length=32 chars=ascii_letters,digits') | b64encode }}
       run_once: true # noqa: run-once
       delegate_to: localhost
+      no_log: true
 
     - name: Set Cluster Facts
       ansible.builtin.set_fact:
@@ -51,6 +57,7 @@
         certificate_key: "{{ certificate_key }}"
         encryption_key: "{{ encryption_key }}"
         control_plane_endpoint: "{{ control_plane_vip }}:6443"
+      no_log: true
 
     - name: Create output directories
       ansible.builtin.file:
@@ -113,6 +120,7 @@
         src: "{{ playbook_dir }}/../templates/kubeadm.yaml.j2" # noqa: no-relative-paths
         dest: "{{ output_dir }}/tmp/kubeadm/kubeadm-config-{{ inventory_hostname }}.yaml"
         mode: "0600"
+      no_log: true
 
     - name: Ensure tmp butane directory exists
       ansible.builtin.file:
@@ -128,6 +136,7 @@
       loop: "{{ ignition_configs }}"
       loop_control:
         label: "{{ inventory_hostname }}{{ item.suffix }}"
+      no_log: true
 
     - name: Transpile Butane to Ignition
       ansible.builtin.command:
@@ -139,6 +148,26 @@
       loop_control:
         label: "{{ inventory_hostname }}{{ item.suffix }}"
       changed_when: true
+
+    # butane writes 0644 and keeps the mode of a file it overwrites. The boot
+    # server runs as the same user, so nobody else needs to read them.
+    - name: Restrict the Ignition configs to their owner
+      ansible.builtin.file:
+        path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ item.suffix }}.json"
+        mode: "0600"
+      loop: "{{ ignition_configs }}"
+      loop_control:
+        label: "{{ inventory_hostname }}{{ item.suffix }}"
+
+    # The same file the Ignition configs inline, for pushing to running nodes;
+    # see docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
+    - name: Render the sysupdate config for running nodes
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/sysupdate_kubernetes.conf.j2" # noqa: no-relative-paths
+        dest: "{{ output_dir }}/http/kubernetes.conf"
+        mode: "0644"
+      run_once: true # noqa: run-once
+      delegate_to: localhost
 
     # Keeps the DEFAULT install that make reinstall armed.
     - name: Check for an existing PXE menu

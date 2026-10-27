@@ -7,6 +7,17 @@
     output_dir: "{{ playbook_dir }}/../../output"
     http_dir: "{{ output_dir }}/http"
     tftp_dir: "{{ output_dir }}/tftp"
+    # A keyring of its own, so nothing in ~/.gnupg is trusted by accident.
+    gnupg_home: "{{ output_dir }}/tmp/gnupg"
+    # Primary key fingerprints, from https://www.flatcar.org/security/image-signing-key/
+    # and kernel.org's pgpkeys repository. The yearly signing subkeys come with
+    # the fetched key and are trusted through the primary.
+    flatcar_signing_key:
+      url: https://www.flatcar.org/security/image-signing-key/Flatcar_Image_Signing_Key.asc
+      fingerprint: F88CFEDEFF29A5B4D9523864E25D9AED0593B34A
+    kernel_org_autosigner_key:
+      url: https://git.kernel.org/pub/scm/docs/kernel/pgpkeys.git/plain/keys/632D3A06589DA6B1.asc
+      fingerprint: B8868C80BA62A1FFFAF5FDA9632D3A06589DA6B1
   tasks:
     - name: Create output directories
       ansible.builtin.file:
@@ -16,6 +27,12 @@
       loop:
         - "{{ http_dir }}"
         - "{{ tftp_dir }}"
+
+    - name: Create the signature-checking keyring directory
+      ansible.builtin.file:
+        path: "{{ gnupg_home }}"
+        state: directory
+        mode: "0700"
 
     - name: Download Flatcar OS Artifacts
       ansible.builtin.include_tasks: tasks/download_flatcar.yaml
@@ -38,13 +55,6 @@
       loop:
         - name: kubernetes
           version: "{{ kubernetes_version }}"
-          series: "{{ kubernetes_version.split('.')[:2] | join('.') }}"
-
-    - name: Download Noop Sysext Config
-      ansible.builtin.get_url:
-        url: "https://extensions.flatcar.org/extensions/noop.conf"
-        dest: "{{ http_dir }}/noop.conf"
-        mode: "0644"
 
     - name: Download Syslinux
       ansible.builtin.include_tasks: tasks/download_syslinux.yaml

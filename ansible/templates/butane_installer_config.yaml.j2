@@ -14,7 +14,9 @@ storage:
     - device: {{ install_disk }}
       wipe_table: true
   files:
+    # Holds the join credentials; flatcar-install copies it, mode included, to the OEM partition.
     - path: /opt/ignition-final.json
+      mode: 0600
       contents:
         source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
 

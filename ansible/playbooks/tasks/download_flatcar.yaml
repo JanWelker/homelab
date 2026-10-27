@@ -1,13 +1,16 @@
 ---
-- name: "Download DIGESTS for {{ item.name | capitalize }}"
-  ansible.builtin.uri:
-    url: "{{ url }}/{{ item.file }}.DIGESTS"
-    return_content: true
-  register: artifact_digests
+# The sums are only as good as their signature; the initrd runs flatcar-install.
+- name: "Verify the DIGESTS for {{ item.name | capitalize }}"
+  ansible.builtin.include_tasks: verify_clearsigned.yaml
+  vars:
+    signed_name: "{{ item.file }}.DIGESTS.asc"
+    signed_url: "{{ url }}/{{ item.file }}.DIGESTS.asc"
+    key_url: "{{ flatcar_signing_key.url }}"
+    key_fingerprint: "{{ flatcar_signing_key.fingerprint }}"
 
 - name: "Set Checksum Fact for {{ item.name | capitalize }}"
   ansible.builtin.set_fact:
-    artifact_checksum: "{{ artifact_digests.content | regex_search('(?s)# SHA512 HASH\\n([a-f0-9]+)', '\\1') | first }}"
+    artifact_checksum: "{{ verified_text | regex_search('(?s)# SHA512 HASH\\n([a-f0-9]+)', '\\1') | first }}"
 
 - name: "Ensure the destination directory exists for {{ item.name | capitalize }}"
   ansible.builtin.file:
