@@ -55,6 +55,8 @@ TFTP_NOISE = (
     # the IP in hex, then 'default' -- so misses are how it finds the menu.
     # announce_tftp reports the one miss that matters, and says what to do.
     re.compile(r'File not found: .*[/\\]' + MENU_SUBDIR + r'[/\\]'),
+    # A refused upload: refuse_upload already named the client and the file.
+    re.compile(r'Dynamic path .* not permitted'),
 )
 
 # role, name, address, MAC -- the width the identity column is padded to.
@@ -456,17 +458,41 @@ def bind_http():
         sys.exit(1)
 
 
+def refuse_upload(path, context):
+    """Answer every TFTP write request with an access violation.
+
+    tftpy refuses the request when this hook returns None instead of a file;
+    without the hook it opens the path for writing, and output/tftp holds
+    the bootloaders and every node's menu: a planted menu outlives the server
+    and installs someone else's image at the node's next power cycle.
+    """
+    say(
+        context.host,
+        'tried to upload %s -- refused, this server only serves files',
+        os.path.basename(path),
+        level=logging.WARNING,
+    )
+    # NarratingContext.start would otherwise narrate the name as a download.
+    context.file_to_transfer = None
+
+
+def tftp_server():
+    """The TFTP server for output/tftp, read-only."""
+    return tftpy.TftpServer(TFTP_DIR, upload_open=refuse_upload)
+
+
 def run_tftp():
     """Serve output/tftp until the process is killed. Blocks the main thread.
 
     Every interface rather than the boot address: macOS lets an ordinary user
     bind port 69 only on the wildcard. The server must not run as root, since a
     process that drops root loses macOS Local Network access and every reply
-    fails with EHOSTUNREACH. Nothing served here is secret.
+    fails with EHOSTUNREACH. Nothing served here is secret, and nothing can be
+    written: refuse_upload turns away every write request.
     """
     os.makedirs(TFTP_DIR, exist_ok=True)
     sys.modules['tftpy.TftpServer'].TftpContextServer = NarratingContext
-    tftpy.TftpServer(TFTP_DIR).listen('0.0.0.0', TFTP_PORT)
+    tftp_server().listen('0.0.0.0', TFTP_PORT)
 
 
 def armed_hosts():
