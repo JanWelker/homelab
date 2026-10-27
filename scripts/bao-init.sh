@@ -11,15 +11,16 @@
 #   2. unseal all three replicas
 #   3. enable the kv v2 engine at kv/
 #   4. enable the kubernetes auth method and point it at the TokenReview API
-#   5. write the external-secrets policy and the role bound to ESO's
-#      ServiceAccount
+#   5. write ESO's policies and roles (scripts/bao-policies.sh, which
+#      `make bao-policies` re-runs on a live cluster)
 #   6. create the operator's userpass login, which the other scripts use, and
 #      revoke the root token
 #
-# Steps 3-6 skip or rewrite what is already in place, so this is
-# safe to re-run against a half-finished bootstrap. Step 1 is not re-runnable
-# by design: an initialised cluster is left alone; `make bao-rotate-root` does
-# step 6 on a cluster initialised before it existed.
+# Steps 3, 4 and 6 skip or rewrite what is already in place and step 5
+# overwrites, so this is safe to re-run against a half-finished bootstrap.
+# Step 1 is not re-runnable by design: an initialised cluster is left alone;
+# `make bao-rotate-root` does step 6 on a cluster initialised before it
+# existed. Step 5 must come before step 6: the operator cannot write policies.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openbao}"
@@ -27,8 +28,6 @@ POD="${POD:-openbao-0}"
 KEYFILE="${KEYFILE:-output/credentials/openbao-init.json}"
 KEY_SHARES="${KEY_SHARES:-5}"
 KEY_THRESHOLD="${KEY_THRESHOLD:-3}"
-ESO_NAMESPACE="${ESO_NAMESPACE:-external-secrets}"
-ESO_SERVICEACCOUNT="${ESO_SERVICEACCOUNT:-external-secrets-vault}"
 
 # shellcheck source=lib/bao.sh source-path=SCRIPTDIR
 . "$(dirname "${BASH_SOURCE[0]}")/lib/bao.sh"
@@ -114,25 +113,8 @@ bao write auth/kubernetes/config \
   kubernetes_host="https://kubernetes.default.svc" >/dev/null
 echo "    kubernetes auth       pointed at the in-cluster TokenReview API"
 
-# create and update are for the PushSecrets that write generated values; ESO
-# itself refuses to touch a path it did not create, and no delete is granted,
-# so nothing it pushes can remove a secret.
-bao_in policy write external-secrets - <<'EOF' >/dev/null
-path "kv/data/*" {
-  capabilities = ["create", "read", "update"]
-}
-path "kv/metadata/*" {
-  capabilities = ["create", "read", "update", "list"]
-}
-EOF
-echo "    external-secrets      policy written (read and write on kv/, no delete)"
-
-bao write auth/kubernetes/role/external-secrets \
-  bound_service_account_names="$ESO_SERVICEACCOUNT" \
-  bound_service_account_namespaces="$ESO_NAMESPACE" \
-  policies=external-secrets \
-  ttl=1h >/dev/null
-echo "    external-secrets      role bound to ${ESO_NAMESPACE}/${ESO_SERVICEACCOUNT}"
+echo
+NAMESPACE="$NAMESPACE" POD="$POD" KEYFILE="$KEYFILE" scripts/bao-policies.sh
 
 echo
 echo "### Replacing the root token"

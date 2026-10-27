@@ -18,7 +18,7 @@ directory there and pushing it. Why the split exists is in
 | HTTPS | Nothing | `apps-gateway` terminates TLS with a `*.k8s.wlkr.ch` wildcard |
 | Storage | A PVC with `storageClassName: rook-ceph-block` | [Rook-Ceph](../platform/rook-ceph.md) replicates it three ways, one copy per host |
 | A database | A CloudNativePG `Cluster` | [The operator](../platform/cloudnative-pg.md) generates credentials and runs failover |
-| A secret from outside the cluster | An `ExternalSecret` | [OpenBao](../platform/openbao.md) holds it; ESO renders a `Secret` |
+| A secret from outside the cluster | An `ExternalSecret` on the `openbao-apps` store, and an `external-secrets-vault` ServiceAccount — see [Adding a secret](../platform/external-secrets.md#adding-a-secret) | [OpenBao](../platform/openbao.md) holds it under `kv/<namespace>/`, the only prefix the namespace can reach; ESO renders a `Secret` |
 | Metrics | A `ServiceMonitor` or `PodMonitor` | Prometheus scrapes it |
 | Logs | Nothing | Alloy ships every container's stdout to Loki |
 | Backups | Nothing, for a PVC | Velero snapshots it nightly |

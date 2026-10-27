@@ -64,10 +64,10 @@ pod next restarts — see [Unsealing after a restart](#unsealing-after-a-restart
 
 `OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](logging.md#alerting)
 fires on a `kv/data/` read by anything but the External Secrets Operator's
-policy: the operator, a generated root token, or a token that should not exist. A
+roles: the operator, a generated root token, or a token that should not exist. A
 standby audits a request before it resolves the token, so its
 `please forward to the active node` rejections carry no identity; the rule
-drops them, and the `ClusterSecretStore` targets the `openbao-active`
+drops them, and every `ClusterSecretStore` targets the `openbao-active`
 Service so ESO never produces one.
 
 ```logql
@@ -76,8 +76,9 @@ Service so ESO never produces one.
 
 ### KV layout
 
-One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, and
-ExternalSecrets reference `cert-manager/route53` without the `data/` prefix ESO
+One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a
+workload's prefix is its namespace, the only one
+[its store](#kubernetes-auth) reaches. ExternalSecrets reference `cert-manager/route53` without the `data/` prefix ESO
 adds itself. A path is written by exactly one of two things: a `PushSecret`
 beside the `ExternalSecret` that reads it, when every value is random — see
 [Generated secrets](#generated-secrets) — or `make bao-secrets` (an agent
@@ -154,24 +155,31 @@ The policy and login are written by `bao_create_operator` in
 ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
 validates against the TokenReview API (`rbac.yaml` binds
 `system:auth-delegator` to the `openbao` ServiceAccount) and answers with a
-token bound to the `external-secrets` policy. The `external-secrets-vault`
-ServiceAccount and the `ClusterSecretStore` live in `cluster-secret-store.yaml`
-here, because the store only validates against a running, unsealed OpenBao.
-`make bao-init` configures all of it:
+token bound to one policy. Three `ClusterSecretStore`s in
+`cluster-secret-store.yaml` each log in with their own role, so what a
+namespace can reach follows from the store it is allowed to use:
 
-```bash
-bao secrets enable -path=kv -version=2 kv
-bao auth enable kubernetes
-bao write auth/kubernetes/config kubernetes_host="https://kubernetes.default.svc"
-bao policy write external-secrets - <<'EOF'
-path "kv/data/*"     { capabilities = ["create", "read", "update"] }
-path "kv/metadata/*" { capabilities = ["create", "read", "update", "list"] }
-EOF
-bao write auth/kubernetes/role/external-secrets \
-  bound_service_account_names=external-secrets-vault \
-  bound_service_account_namespaces=external-secrets \
-  policies=external-secrets ttl=1h
-```
+| Store | Who may use it | Logs in as | Reaches |
+| --- | --- | --- | --- |
+| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | Every path |
+| `openbao-apps` | Every other namespace | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/` |
+| `openbao-claude-agents` | `claude-agents` | The same, in `claude-agents` | `kv/claude-*`, where `make claude-session-pat` writes each session's token |
+
+| Setting | Why |
+| --- | --- |
+| `openbao-apps` names no ServiceAccount namespace | ESO then requests the token in the namespace of the `ExternalSecret` or `PushSecret`, and the `external-secrets-apps` policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload, and a new one needs no change here |
+| `openbao-apps` excludes the platform namespaces by name | Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own `Namespace` with any label |
+| Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
+| Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
+
+The ServiceAccount the platform store uses lives in
+`cluster-secret-store.yaml` too, because the stores only validate against a
+running, unsealed OpenBao. `make bao-init` writes the policies and roles on a
+fresh cluster by running `scripts/bao-policies.sh`; after a change to that
+script, `make bao-policies` rewrites them on a live one. It needs a root
+token, because the operator login cannot write policies: run it before
+`make bao-rotate-root`, or with a
+[generated root token](#generating-a-root-token).
 
 ## Usage
 
@@ -196,10 +204,10 @@ bao write auth/kubernetes/role/external-secrets \
     make bao-secrets
     ```
 
-3. Confirm the store validates:
+3. Confirm the stores validate:
 
     ```bash
-    kubectl get clustersecretstore openbao
+    kubectl get clustersecretstore
     ```
 
 ### Authenticating locally
@@ -255,13 +263,13 @@ whether to overwrite it; a generated one by deleting its path, after which the
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao status
-kubectl get clustersecretstore openbao -o yaml
+kubectl get clustersecretstore
 kubectl get externalsecret -A
 ```
 
 `bao status` should show `Initialized: true`, `Sealed: false`, and
 `HA Mode: active` on one pod with `standby` on the others; it exits `0`
-unsealed, `2` sealed and `1` unreachable. The `ClusterSecretStore` should
+unsealed, `2` sealed and `1` unreachable. Every `ClusterSecretStore` should
 report `Ready=True`.
 
 ## Pitfalls
