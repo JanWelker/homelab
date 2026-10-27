@@ -43,6 +43,13 @@ repos:
         files: ^(docs/|overrides/|zensical\.toml$)
         pass_filenames: false
 
+  # Scans the staged changes; the Secret Scan workflow runs the same version
+  # over every pull request.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.24.0
     hooks:

@@ -23,13 +23,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Runs the site builder and its dependencies with a read-only token.
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
@@ -45,6 +46,35 @@ jobs:
       # Otherwise Pages runs Jekyll, which drops paths it considers private.
       - name: Disable Jekyll
         run: touch site/.nojekyll
+
+      - name: Upload site
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: site
+          path: site
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  # Holds the write token and runs no dependency code: it pushes what the
+  # build job uploaded.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # The deploy action needs a work tree; it pushes with its own token.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Download site
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: site
+          path: site
 
       - name: Deploy to gh-pages
         uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
