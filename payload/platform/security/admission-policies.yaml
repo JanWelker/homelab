@@ -236,11 +236,14 @@ spec:
     namespaceSelector:
       matchLabels:
         kubernetes.io/metadata.name: authentik
+    # A namespaceSelector does not filter cluster-scoped objects; without the
+    # scope this policy judged every one of them, in no namespace at all.
     resourceRules:
       - apiGroups: ["*"]
         apiVersions: ["*"]
         operations: ["CREATE", "UPDATE"]
         resources: ["*"]
+        scope: Namespaced
   # Only what an Argo CD Application applied; controllers and kubectl carry no tracking id.
   matchConditions:
     - name: tracked-by-argocd
