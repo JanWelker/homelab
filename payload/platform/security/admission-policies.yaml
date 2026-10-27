@@ -99,3 +99,89 @@ spec:
   policyName: image-registry-allowed
   # Measured, not enforced: the audit log records what a Deny would refuse.
   validationActions: ["Audit", "Warn"]
+---
+# What a pod written by the claude-writer agent may not ask for, in any
+# namespace; see docs/platform/security-policies.md#agent-rbac
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: claude-writer-pod-limits
+spec:
+  # Fail: the match condition limits the policy to one identity, so a policy
+  # bug stops the agent, never the cluster.
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs", "cronjobs"]
+  matchConditions:
+    - name: claude-writer
+      expression: >-
+        request.userInfo.username == 'system:serviceaccount:claude-agents:claude-writer'
+  variables:
+    - name: podSpec
+      expression: >-
+        object.kind == 'Pod' ? object.spec :
+        object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec :
+        object.spec.template.spec
+    - name: containers
+      expression: >-
+        variables.podSpec.containers +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers : [])
+    - name: serviceAccount
+      expression: >-
+        has(variables.podSpec.serviceAccountName) && variables.podSpec.serviceAccountName != '' ?
+        variables.podSpec.serviceAccountName : 'default'
+    # An update may keep the ServiceAccount the workload already runs as.
+    - name: oldServiceAccount
+      expression: >-
+        request.operation != 'UPDATE' ? 'default' :
+        oldObject.kind == 'Pod' ?
+          (has(oldObject.spec.serviceAccountName) ? oldObject.spec.serviceAccountName : 'default') :
+        oldObject.kind == 'CronJob' ?
+          (has(oldObject.spec.jobTemplate.spec.template.spec.serviceAccountName) ?
+            oldObject.spec.jobTemplate.spec.template.spec.serviceAccountName : 'default') :
+        (has(oldObject.spec.template.spec.serviceAccountName) ?
+          oldObject.spec.template.spec.serviceAccountName : 'default')
+  validations:
+    - expression: >-
+        !(has(variables.podSpec.hostNetwork) && variables.podSpec.hostNetwork) &&
+        !(has(variables.podSpec.hostPID) && variables.podSpec.hostPID) &&
+        !(has(variables.podSpec.hostIPC) && variables.podSpec.hostIPC)
+      message: The agent may not create pods in the host's namespaces.
+      reason: Forbidden
+    - expression: >-
+        !has(variables.podSpec.volumes) ||
+        variables.podSpec.volumes.all(v, !has(v.hostPath))
+      message: The agent may not mount host paths.
+      reason: Forbidden
+    - expression: >-
+        variables.containers.all(c,
+          !(has(c.securityContext) && has(c.securityContext.privileged) && c.securityContext.privileged))
+      message: The agent may not create privileged containers.
+      reason: Forbidden
+    - expression: >-
+        variables.serviceAccount == 'default' ||
+        variables.serviceAccount == variables.oldServiceAccount
+      message: >-
+        The agent may only run pods as the namespace's default ServiceAccount,
+        or keep the one a workload already uses.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: claude-writer-pod-limits
+spec:
+  policyName: claude-writer-pod-limits
+  validationActions: ["Deny"]

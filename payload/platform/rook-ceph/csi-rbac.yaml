@@ -1,5 +1,7 @@
 ---
-# Vendored RBD half of ceph-csi-operator v1.0.4 deploy/multifile/csi-rbac.yaml
+# Vendored RBD half of ceph-csi-operator v1.1.0 deploy/multifile/csi-rbac.yaml,
+# with the node plugin's Secret and token access cut to what RBD without
+# encryption reads.
 # Refresh: see docs/platform/rook-ceph.md#csi-driver
 ---
 apiVersion: v1
@@ -68,6 +70,16 @@ metadata:
   name: rbd-nodeplugin-r
   namespace: rook-ceph
 rules:
+  # Upstream grants every Secret in the cluster, for the KMS providers.
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    resourceNames:
+      - rook-csi-rbd-node
+      - rook-csi-rbd-provisioner
+    verbs:
+      - get
   - apiGroups:
       - csiaddons.openshift.io
     resources:
@@ -196,8 +208,6 @@ rules:
       - get
       - list
       - watch
-      # Not upstream yet: csi-provisioner v6 puts a finalizer on the source
-      # snapshot of every clone. https://github.com/ceph/ceph-csi-operator/issues/624
       - update
   - apiGroups:
       - snapshot.storage.k8s.io
@@ -344,14 +354,6 @@ rules:
   - apiGroups:
       - ''
     resources:
-      - secrets
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - ''
-    resources:
       - persistentvolumes
     verbs:
       - get
@@ -369,18 +371,6 @@ rules:
       - configmaps
     verbs:
       - get
-  - apiGroups:
-      - ''
-    resources:
-      - serviceaccounts
-    verbs:
-      - get
-  - apiGroups:
-      - ''
-    resources:
-      - serviceaccounts/token
-    verbs:
-      - create
   - apiGroups:
       - ''
     resources:
@@ -409,6 +399,7 @@ rules:
       - persistentvolumeclaims
     verbs:
       - get
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

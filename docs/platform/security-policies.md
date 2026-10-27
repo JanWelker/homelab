@@ -134,15 +134,28 @@ default, to be fixed at the source.
 ### Agent RBAC
 
 `claude-agent-rbac.yaml` gives the in-cluster Claude Code agents two
-ClusterRoles, bound to the `claude-reader` and `claude-writer`
-ServiceAccounts of the `claude-agents` namespace. Cluster-scoped RBAC cannot
-come from the `apps` project, and what an agent may touch is a platform
-decision.
+ClusterRoles for the `claude-reader` and `claude-writer` ServiceAccounts of the
+`claude-agents` namespace. Cluster-scoped RBAC cannot come from the `apps`
+project, and what an agent may touch is a platform decision.
 
-| Role | Grants | Leaves out |
-| --- | --- | --- |
-| `claude-agent-read` | `get`, `list`, `watch` on named core, workload and CRD kinds | Secrets, RBAC, webhooks, CRDs, `pods/exec`, Trivy's exposed-secret reports |
-| `claude-agent-write` | Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets; the writer is bound to both roles | The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request) |
+| Role | Bound | Grants | Leaves out |
+| --- | --- | --- | --- |
+| `claude-agent-read` | Cluster-wide, to both ServiceAccounts | `get`, `list`, `watch` on named core, workload and CRD kinds, `pods/log` included | Secrets, RBAC, webhooks, CRDs, `pods/exec`, Trivy's exposed-secret reports |
+| `claude-agent-write` | Nowhere by the platform: the workloads repository adds a RoleBinding in each namespace a writer session may change | Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets | The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request) |
+
+- **Creating a pod reads every Secret in its namespace.** That is why the
+  write role is bound per namespace, and the `apps` project cannot place a
+  RoleBinding in the namespaces its [destinations](argocd.md#projects)
+  exclude.
+- **`claude-writer-pod-limits`** in `admission-policies.yaml` refuses any pod
+  or pod template from the writer that uses the host's network, PID or IPC
+  namespace, a `hostPath` volume, a privileged container, or a ServiceAccount
+  other than `default` or the one the workload already runs as. A namespace
+  without a Pod Security level allows all of those, and another
+  ServiceAccount's token is that account's RBAC.
+- **`pods/log` is cluster-wide**, so the reader sees whatever any component
+  logs, platform namespaces included. Triage needs it, and a cluster-wide grant
+  cannot leave out namespaces.
 
 Kinds are listed, never wildcarded, so a new CRD is invisible to the agents
 until someone adds it. Argo CD reverts a hand edit within minutes either way.
@@ -151,18 +164,20 @@ until someone adds it. Argo CD reverts a hand edit within minutes either way.
 
 Trivy reports a bad image after it is running; `admission-policies.yaml`
 refuses or records it at admission, with the built-in
-`ValidatingAdmissionPolicy` rather than a policy engine. Both match Pods and
-every controller that produces them, so a bad Deployment is rejected at
+`ValidatingAdmissionPolicy` rather than a policy engine. Every policy matches
+Pods and every controller that produces them, so a bad Deployment is rejected at
 `kubectl apply` rather than failing quietly in its ReplicaSet.
 
 | Policy | Action | Why |
 | --- | --- | --- |
 | `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
 | `image-registry-allowed` | `Audit` and `Warn` | The registries the cluster pulls from today; a reference with no registry counts as `docker.io`. Recorded to the [audit log](../architecture/audit-logging.md) and shown to whoever applies, not enforced, until the record is clean |
+| `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](#agent-rbac) |
 
-Both carry `failurePolicy: Ignore`: an expression that errors lets the request
-through rather than stopping every pod in the cluster. A real violation is
-still refused.
+The image policies carry `failurePolicy: Ignore`: an expression that errors
+lets the request through rather than stopping every pod in the cluster. A real
+violation is still refused. `claude-writer-pod-limits` fails closed, since it
+only ever matches one identity.
 
 ## Usage
 

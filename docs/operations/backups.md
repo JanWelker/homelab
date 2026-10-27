@@ -75,7 +75,7 @@ before Velero runs.
 | Property | Value |
 | --- | --- |
 | Schedule | `payload/platform/backup/etcd-backup.yaml`: nightly, before Velero |
-| Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node |
+| Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node. It mounts the CA certificate and the healthcheck client pair, never the directory, which also holds the CA and server keys |
 | Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup (`etcdctl snapshot status` was removed in etcd 3.6) |
 | Destination | S3 bucket `etcd-backup`, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
 

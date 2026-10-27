@@ -119,11 +119,10 @@ rules:
     resources: ["cephblockpools", "cephclusters"]
     verbs: ["get", "list", "watch"]
 ---
-# Read, plus the namespaced kinds a workload is made of. No pods/exec or
-# pods/portforward (a shell in any pod reads its mounted Secrets), no
-# PersistentVolumeClaims (deleting one deletes data), and none of the policy
-# or routing kinds: those change who may talk to what, which is a pull request.
-# Argo CD reverts a hand-edited resource within minutes either way.
+# Read, plus the namespaced kinds a workload is made of. Never bound
+# cluster-wide: the workloads repository grants it per namespace with a
+# RoleBinding, and the claude-writer-pod-limits admission policy refuses the
+# pod fields that would reach past that namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -166,20 +165,7 @@ subjects:
   - kind: ServiceAccount
     name: claude-reader
     namespace: claude-agents
-  # The writer reads too: the write role adds to this one.
-  - kind: ServiceAccount
-    name: claude-writer
-    namespace: claude-agents
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: claude-agent-write
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: claude-agent-write
-subjects:
+  # The writer reads too: its RoleBindings add to this one.
   - kind: ServiceAccount
     name: claude-writer
     namespace: claude-agents
