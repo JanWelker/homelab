@@ -2614,7 +2614,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 </tr>
 <tr>
 <td><code>resource.customizations</code> for <code>HTTPRoute</code></td>
-<td>Cilium defaults <code>group</code>, <code>kind</code>, <code>weight</code> and the empty <code>matches</code> onto every route; without the ignore list each one is permanently OutOfSync</td>
+<td>The API server defaults <code>group</code>, <code>kind</code>, <code>weight</code> and a catch-all <code>matches</code> onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs</td>
 </tr>
 <tr>
 <td><code>admin.enabled: "false"</code></td>
