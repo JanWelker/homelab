@@ -161,7 +161,7 @@ namespace can reach follows from the store it is allowed to use:
 
 | Store | Who may use it | Logs in as | Reaches |
 | --- | --- | --- | --- |
-| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | Reads every path, because Authentik reads each workload's `kv/<app>/config`; writes only `authentik/` and `monitoring/`, where its `PushSecret`s are |
+| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | Reads every path, because Authentik reads each workload's `kv/<app>/config`; writes only `authentik/`, `monitoring/` and `velero/`, where its `PushSecret`s are |
 | `openbao-apps` | Every other namespace | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/` |
 | `openbao-claude-agents` | `claude-agents` | The same, in `claude-agents` | `kv/claude-*`, where `make claude-session-pat` writes each session's token |
 

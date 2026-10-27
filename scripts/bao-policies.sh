@@ -11,7 +11,7 @@
 # touched. See docs/platform/openbao.md#kubernetes-auth.
 #
 #   role / policy                   store                  reaches
-#   external-secrets                openbao                reads every path, writes two
+#   external-secrets                openbao                reads every path, writes three
 #   external-secrets-apps           openbao-apps           kv/<caller's namespace>/
 #   external-secrets-claude-agents  openbao-claude-agents  kv/claude-*
 set -euo pipefail
@@ -56,8 +56,14 @@ path "kv/data/monitoring/*" {
 path "kv/metadata/monitoring/*" {
   capabilities = ["create", "read", "update", "list"]
 }
+path "kv/data/velero/*" {
+  capabilities = ["create", "read", "update"]
+}
+path "kv/metadata/velero/*" {
+  capabilities = ["create", "read", "update", "list"]
+}
 POLICY
-echo "    external-secrets                policy written (read on kv/, write on authentik/ and monitoring/)"
+echo "    external-secrets                policy written (read on kv/, write on authentik/, monitoring/ and velero/)"
 
 bao write auth/kubernetes/role/external-secrets \
   bound_service_account_names="$ESO_SERVICEACCOUNT" \
