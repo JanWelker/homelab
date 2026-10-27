@@ -20,8 +20,8 @@ stay on GitHub.
 | Workflow label | `runs-on: homelab` |
 | Depends on | [OpenBao](openbao.md) for the GitHub App in `kv/arc-runners/github-app` |
 | If it is down | Jobs on `runs-on: homelab` queue on GitHub until a runner registers; nothing else notices |
-| Namespaces | `arc-systems` for the controller and the listeners, `arc-runners` for the runner and job pods |
-| Files | `payload/platform/arc-controller/`, `payload/platform/arc-runners/`, and the two namespaces' files under `payload/platform/security/` |
+| Namespaces | `arc-systems` for the controller and the listeners, `arc-runners` for the runner pods, `arc-jobs` for the job pods the container hook starts |
+| Files | `payload/platform/arc-controller/`, `payload/platform/arc-runners/`, and the three namespaces' files under `payload/platform/security/` |
 
 ## Configuration
 
@@ -32,12 +32,26 @@ stay on GitHub.
 | `githubConfigSecret: github-app` | A GitHub App rather than a PAT: no expiry and a token scoped to the installed repository — see [GitHub App](#github-app) |
 | `controllerServiceAccount` spelled out | The chart finds the controller with Helm `lookup`, which Argo CD does not run |
 | `minRunners: 0`, `maxRunners: 10` | No idle pods between pushes; ten lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory |
-| `containerMode: kubernetes-novolume` | A job with `services:` or `container:` gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job |
+| `containerMode: kubernetes-novolume` | A job with `services:` or `container:` gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job. Where that pod runs, and with which token: [Job pods](#job-pods) |
 | `ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER: "false"` | A job without `container:` runs in the runner pod itself, as on a hosted runner |
-| The namespace enforces `baseline` | The runner image uses `sudo`, and a service container such as PostgreSQL starts as root; neither passes `restricted` |
+| `arc-runners` and `arc-jobs` enforce `baseline` | The runner image uses `sudo`, and a service container such as PostgreSQL starts as root; neither passes `restricted` |
 | The runner image as a full reference with a digest | Renovate tracks it; the chart passes the same image to the hook for the job pod's init container |
 | `resources`: 1Gi requested, 4Gi limit | Unmeasured; a test suite with a database beside it fits, and the limit stops a runaway build before it starves the node |
 | A second scale set, `homelab-wait`, for `ci-ok` alone | The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as `maxRunners` fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request |
+
+### Job pods
+
+The chart's own ServiceAccount for `kubernetes-novolume` may read every Secret
+in `arc-runners`, where the GitHub App key and each runner's JIT config live,
+and a step without `container:` runs in the runner pod with that token. The
+`homelab` set therefore runs its hook one namespace over.
+
+| Setting | Why |
+| --- | --- |
+| `serviceAccountName: homelab-runner` | The chart then renders no Role of its own; `job-pods-rbac.yaml` grants the ServiceAccount rights in `arc-jobs` only |
+| `ACTIONS_RUNNER_KUBERNETES_NAMESPACE: arc-jobs` | The hook creates the job pod and its environment Secret there, so the Secret verbs it needs reach nothing else |
+| The Role is the hook's `requiredPermissions`, Secret `get` and `list` included | The hook checks every verb before each command and fails the job if one is missing; a step can still read the environment of another job running at the same time, from the same repository |
+| `default` ServiceAccount in `arc-jobs` without a token | A job pod never calls the API server |
 
 ### Controller
 
@@ -68,14 +82,14 @@ export, and most of its panels stay empty.
 
 ### Network policy
 
-Every rule in
-`payload/platform/security/network-policies/arc-runners.yaml`. Unlike the
-other namespaces, egress is every public address rather than a list of names.
+Every rule in `arc-runners.yaml` and `arc-jobs.yaml` under
+`payload/platform/security/network-policies/`. Unlike the other namespaces,
+egress is every public address rather than a list of names.
 
 | Rule | Why |
 | --- | --- |
-| Ingress from the namespace and the node only | Runners and job pods serve nothing; the listener in `arc-systems` reaches GitHub, not the runners |
-| Egress to the API server | The container hook creates the job pod and execs each step into it |
+| Ingress from the namespace and the node only | Runners and job pods serve nothing; the listener in `arc-systems` reaches GitHub, not the runners, and a runner reaches its job pod through the API server |
+| Egress to the API server, `homelab` runner pods only | The container hook creates the job pod and execs each step into it; the `homelab-wait` runners run no hook, and job pods carry no token |
 | Egress to `0.0.0.0/0` on 80 and 443, minus the private, carrier-grade and link-local ranges | A job downloads whatever its workflow names (actions, toolchains, packages), which no name list keeps up with. Cutting the private ranges keeps the LAN, the nodes and every in-cluster service out of reach |
 
 The controller's and listeners' egress, GitHub's API and the Actions service

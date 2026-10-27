@@ -49,6 +49,9 @@ spec:
 
           template:
             spec:
+              # Own ServiceAccount, so the chart renders no Role with Secrets
+              # in this namespace: job-pods-rbac.yaml.
+              serviceAccountName: homelab-runner
               securityContext:
                 seccompProfile:
                   type: RuntimeDefault
@@ -59,6 +62,9 @@ spec:
                   env:
                     - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                       value: "false"
+                    # The container hook starts job pods there, not here.
+                    - name: ACTIONS_RUNNER_KUBERNETES_NAMESPACE
+                      value: arc-jobs
                   resources:
                     requests:
                       cpu: 500m

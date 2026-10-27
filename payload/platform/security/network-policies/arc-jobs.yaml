@@ -1,0 +1,42 @@
+---
+# Every rule and its reason: docs/platform/github-runners.md#network-policy
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: arc-jobs
+spec:
+  description: >-
+    Default-deny ingress. A job pod serves nothing: its runner execs into it
+    through the API server, and its services answer on localhost.
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: arc-jobs
+spec:
+  description: >-
+    Default-deny egress. Every public address on 80 and 443, as for the
+    runner pods, and no API server: the pods carry no token.
+  endpointSelector: {}
+  egress:
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10
+            - 169.254.0.0/16
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP

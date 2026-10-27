@@ -19,7 +19,7 @@ applications` shows — and the namespace it lands in.
 | --- | --- | --- |
 | alloy | `logging` | Grafana Alloy, the log shipper — see [Logging](logging.md) |
 | arc-controller | `arc-systems` | The Actions Runner Controller — see [GitHub runners](github-runners.md) |
-| [arc-runners](github-runners.md) | `arc-runners` | Self-hosted GitHub Actions runners, one scale set per repository |
+| [arc-runners](github-runners.md) | `arc-runners`, `arc-jobs` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](argocd.md) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
 | argocd-config | `argocd` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see [ArgoCD](argocd.md) |
 | argocd-projects | `argocd` | The `apps`, `infra` and `system` AppProjects |
