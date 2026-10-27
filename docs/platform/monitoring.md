@@ -68,10 +68,17 @@ values in OpenBao.
 
 ### Scrape targets
 
-Every `ServiceMonitor`, `PodMonitor` and `PrometheusRule` in every namespace,
-through the five `*SelectorNilUsesHelmValues: false` settings: the chart
-treats an empty selector as unset and renders `release: kube-prometheus-stack`
-in its place, which limits Prometheus to its own targets.
+Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five
+`*SelectorNilUsesHelmValues: false` settings: the chart treats an empty
+selector as unset and renders `release: kube-prometheus-stack` in its place,
+which limits Prometheus to its own targets.
+
+`PrometheusRule`s load only from the namespaces the `apps` project cannot
+deploy to, matched on the `kubernetes.io/metadata.name` label the API server
+sets. [Kured](kured.md#configuration) gates reboots on alert names, so a
+workload's rule named `CephHealthError` would otherwise stop OS updates
+cluster-wide. A rule in a new platform namespace loads only once that
+namespace is on the list in `ruleNamespaceSelector`.
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
@@ -122,8 +129,10 @@ its upstream tag.
 
 Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it
 describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named
-`<component>-grafana-dashboards`; the sidecar watches every namespace
-(`sidecar.dashboards.searchNamespace: ALL`). Prefer the chart's own dashboard
+`<component>-grafana-dashboards`. The sidecar watches only the platform
+namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload
+cannot replace a dashboard; a component in a new namespace adds it there, and
+the `apps` project must not be able to deploy to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.
 
