@@ -93,6 +93,9 @@ sensitive is committed to Git.
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
   a namespace can read what ESO materialised there. Encryption at rest protects
   the bytes in etcd, not the API.
+- Velero's resource backups hold every `Secret` as plain JSON in the `velero`
+  bucket, so its keys and RGW bypass encryption at rest; only the volume data
+  is encrypted — see [Velero](../platform/velero.md#repository-password).
 
 ### Encryption at rest
 

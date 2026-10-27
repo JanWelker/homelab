@@ -36,6 +36,25 @@ the chart tuning.
 | Node agent `containerSecurityContext` | Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on |
 | `prometheusRule` | `VeleroBackupFailures` and `VeleroBackupTooOld` (critical), `VeleroBackupPartialFailures` (warning); only the age alert catches a backup that hangs `InProgress` |
 
+### Repository password
+
+Kopia encrypts the volume data in every repository with one password, read
+from the Secret `velero-repo-credentials` (key `repository-password`) in
+Velero's namespace. When that Secret is missing Velero creates it with a
+default compiled into the binary, which protects nothing, so
+`payload/platform/backup/velero-repo-credentials.yaml` supplies it.
+
+| Setting | Why |
+| --- | --- |
+| A `Password` generator and `PushSecret` writing `velero/repository` | A [generated secret](openbao.md#generated-secrets): random, written once, and in the OpenBao snapshot that a restore on a fresh cluster needs anyway |
+| `creationPolicy: Owner` on the `ExternalSecret` | ESO takes over the Secret Velero created at start-up and overwrites the default |
+| `velero.io/exclude-from-backup` on the Secret | The resource backup lands in the same bucket as the repositories the password unlocks |
+| Secrets stay in the resource backup | The tarball under `backups/` is not encrypted, so every backed-up `Secret` sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. The `velero` bucket and its keys are therefore as sensitive as an unencrypted etcd |
+
+A repository keeps the password it was initialised with, and all
+repositories share one, so a changed value makes every existing repository
+unreachable; see [Re-initialising the repositories](#re-initialising-the-repositories).
+
 ## Usage
 
 ```bash
@@ -48,6 +67,8 @@ velero -n backup backup create manual-$(date +%s) --include-namespaces my-app
 kubectl -n backup get backupstoragelocation       # Available
 kubectl -n backup get backups.velero.io           # Completed, not PartiallyFailed
 kubectl -n backup get volumesnapshotclass rook-ceph-block
+kubectl -n backup get backuprepositories.velero.io  # Ready
+kubectl -n backup get externalsecret velero-repo-credentials   # SecretSynced
 ```
 
 ## Pitfalls
@@ -57,3 +78,51 @@ kubectl -n backup get volumesnapshotclass rook-ceph-block
 
 !!! warning "Every `BackupRepository` NotReady, `Access Denied` on `kopia.blobcfg`"
     Objects upload, volume data does not: the RGW log shows `PUT /velero/kopia/...` from `minio-go` with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the `s3Url` row above.
+
+!!! warning "Every `BackupRepository` NotReady, `invalid repository password`"
+    The password changed under existing repositories: OpenBao was rebuilt without its snapshot, `velero/repository` was deleted, or a backup ran on a fresh cluster before OpenBao was unsealed and initialised them with Velero's default. Volume data stops and backups end `PartiallyFailed`. Restore the old value into OpenBao if it exists anywhere; otherwise re-initialise as below.
+
+## Recovery
+
+### Re-initialising the repositories
+
+Discards every backup in the bucket, resource backups included: a `Backup`
+whose volume snapshots cannot be reached never finishes deleting, so the
+bucket is emptied as a whole and Velero drops the `Backup` objects it no
+longer finds there.
+
+1. Confirm the Secret carries the value from OpenBao, not Velero's default.
+
+    ```bash
+    kubectl -n backup get externalsecret velero-repo-credentials   # SecretSynced
+    ```
+
+2. Delete the repository objects.
+
+    ```bash
+    kubectl -n backup delete backuprepositories.velero.io --all
+    ```
+
+3. Empty the bucket with its own keys, from a machine that reaches the infra Gateway.
+
+    ```bash
+    export AWS_ACCESS_KEY_ID=$(kubectl -n backup get secret velero-bucket -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(kubectl -n backup get secret velero-bucket -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+    export AWS_CONFIG_FILE=$(mktemp)    # path-style addressing, without touching ~/.aws
+    printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 rm s3://velero --recursive
+    ```
+
+4. Restart Velero and the node agents, so no cached repository connection survives.
+
+    ```bash
+    kubectl -n backup rollout restart deployment/velero daemonset/node-agent
+    ```
+
+5. Take a backup now rather than at the next schedule, and confirm it.
+
+    ```bash
+    velero -n backup backup create --from-schedule velero-daily
+    kubectl -n backup get backups.velero.io               # Completed
+    kubectl -n backup get backuprepositories.velero.io    # Ready
+    ```
