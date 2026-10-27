@@ -92,8 +92,8 @@ spec:
     The operator, the CSI operator and the CSI controller plugin's sidecars
     reconcile through the API server, and so do the two kinds of Job the
     operator starts on every reconcile: detect-version and the per-node
-    osd-prepare report their result in a ConfigMap. The Ceph daemons
-    themselves never touch it.
+    osd-prepare report their result in a ConfigMap. Of the Ceph daemons
+    only the manager touches it, below.
   endpointSelector:
     matchExpressions:
       - key: app
@@ -130,12 +130,16 @@ metadata:
   namespace: rook-ceph
 spec:
   description: >-
-    The dashboard module reads Prometheus for its alerts and Grafana for
-    the panels it embeds.
+    The watch-active sidecar labels the active manager's pod, which is what
+    the mgr Services select; it reads and patches through the API server.
+    The dashboard module reads Prometheus for its alerts and Grafana for the
+    panels it embeds.
   endpointSelector:
     matchLabels:
       app: rook-ceph-mgr
   egress:
+    - toEntities:
+        - kube-apiserver
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
