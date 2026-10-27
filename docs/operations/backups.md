@@ -172,7 +172,9 @@ The commands are the upstream-documented ones for the versions pinned in
 
 ### OpenBao snapshot restore
 
-Needs an initialised, unsealed cluster and the root token. `-force` is what
+Needs an initialised, unsealed cluster and a root token from
+[Generating a root token](../platform/openbao.md#generating-a-root-token). Afterwards
+the snapshot's own operator login applies, not the new cluster's. `-force` is what
 lets a snapshot from a *different* cluster (a fresh `bao operator init`) load;
 afterwards the pods seal and want the snapshot's keys, not the new cluster's.
 
@@ -245,7 +247,7 @@ the CronJob uses. Upstream:
 
 ### Rebuild from scratch
 
-1. Have the Git repository, the OpenBao unseal keys and root token, and an
+1. Have the Git repository, the OpenBao unseal keys and operator login, and an
    OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
    certificates.
 2. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.

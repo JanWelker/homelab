@@ -269,8 +269,9 @@ the same L2 network segment as the nodes.
 
     Initialises and unseals OpenBao, enables the `kv` v2 engine and the
     Kubernetes auth method, and writes the policy and role External Secrets
-    authenticates with. Keys and root token land in
-    `output/credentials/openbao-init.json`.
+    authenticates with, then replaces the root token with an operator
+    login. The keys land in `output/credentials/openbao-init.json`, the login
+    in `openbao-operator.json` beside it.
 
     !!! danger "Move those keys before you do anything else"
         That file is a plaintext copy of the keys to every secret the cluster holds. Copy them into a password manager and delete it. Losing them means the data is unrecoverable. See [OpenBao &rarr; Bootstrap](platform/openbao.md#bootstrap).
@@ -301,7 +302,7 @@ the same L2 network segment as the nodes.
 12. **Create the first administrator**:
     Authentik ships the built-in `akadmin` account; its password is the
     `bootstrap-password` its `PushSecret` generated. Read it back out of
-    OpenBao (needs a token — `bao login` inside the pod, or the port-forward in
+    OpenBao (needs a token — `bao login -method=userpass username=operator` inside the pod, or the port-forward in
     [OpenBao &rarr; Authenticating locally](platform/openbao.md#authenticating-locally)):
 
     ```bash

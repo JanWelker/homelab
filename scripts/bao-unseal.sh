@@ -97,16 +97,17 @@ for pod in $pods; do
   fi
 
   sealed_any=1
-  # Each share travels on stdin, never as an exec argument. The API server
-  # audits pods/exec at RequestResponse, and the exec URI carries every
-  # argument as a `command=` query parameter, so a share passed on the command
-  # line is written to the audit log and shipped to Loki. `bao operator
-  # unseal` with no argument insists on a terminal and refuses piped input,
-  # and `-` is taken as a literal key, so a shell inside the pod reads the
-  # share and hands it over as an argument that only the pod ever sees.
+  # Each share travels on stdin, never as an argument. The API server audits
+  # pods/exec at RequestResponse, and the exec URI carries every argument as a
+  # `command=` query parameter, so a share on the exec command line lands in
+  # the audit log and Loki; one on the command line inside the pod is in its
+  # process list. `bao operator unseal` takes no `-` and insists on a terminal
+  # for its prompt, so this writes the unauthenticated sys/unseal endpoint
+  # directly: `key=-` reads the value from stdin. No newline, which would
+  # become part of the key.
   for index in $(seq 0 $((threshold - 1))); do
-    printf '%s\n' "${keys[$index]}" | kubectl -n "$NAMESPACE" exec -i "$pod" -- \
-      sh -c 'IFS= read -r share && bao operator unseal "$share"' >/dev/null
+    printf '%s' "${keys[$index]}" | kubectl -n "$NAMESPACE" exec -i "$pod" -- \
+      bao write sys/unseal key=- >/dev/null
   done
 
   if [ "$(bao_status "$pod" | json_field sealed)" = "False" ]; then

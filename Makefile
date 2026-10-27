@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets claude-session-pat
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -110,6 +110,10 @@ bao-unseal: check-context
 bao-secrets: check-context
 	scripts/bao-secrets.sh
 
+# Once, on a cluster initialised before bao-init revoked its root token.
+bao-rotate-root: check-context
+	scripts/bao-rotate-root.sh
+
 # make claude-session-pat SESSION=homelab [DELETE=1]
 claude-session-pat: check-context
 	@test -n "$(SESSION)" || { echo "usage: make claude-session-pat SESSION=<session> [DELETE=1]"; exit 2; }
@@ -150,9 +154,10 @@ clean:
 	  '  make clean deletes everything under output/, including credentials that' \
 	  '  are generated once and never regenerated identically:' \
 	  '' \
-	  '    output/credentials/openbao-init.json  the 5 OpenBao unseal keys and root' \
-	  '                                          token. Without these every secret' \
-	  '                                          the cluster holds is unrecoverable.' \
+	  '    output/credentials/openbao-init.json  the 5 OpenBao unseal keys. Without' \
+	  '                                          these every secret the cluster' \
+	  '                                          holds is unrecoverable.' \
+	  '    output/credentials/openbao-operator.json  the OpenBao operator login.' \
 	  '    output/credentials/encryption_key     decrypts the Secrets in etcd.' \
 	  '    output/credentials/certificate_key    joins control-plane nodes.' \
 	  '    output/credentials/kubeadm_token_*    joins worker nodes.' \
