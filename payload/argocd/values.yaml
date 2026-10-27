@@ -232,7 +232,9 @@ configs:
     # route may have more than one rule -- Dependency-Track splits /api from /
     # -- and a pointer names one index, which left rule 1 drifting forever.
     # parentRefs are not here: every route names the Gateway's group and kind,
-    # so a changed parent shows up as the drift it is.
+    # so a changed parent shows up as the drift it is. A rule without matches
+    # gets the catch-all PathPrefix / -- only that exact value is ignored, so
+    # a changed path still shows up as drift.
     resource.customizations: |
       gateway.networking.k8s.io/HTTPRoute:
         ignoreDifferences: |
@@ -240,8 +242,7 @@ configs:
           - .spec.rules[].backendRefs[].group
           - .spec.rules[].backendRefs[].kind
           - .spec.rules[].backendRefs[].weight
-          jsonPointers:
-          - /spec/rules/0/matches
+          - '.spec.rules[] | select(.matches == [{"path": {"type": "PathPrefix", "value": "/"}}]) | .matches'
       gateway.networking.k8s.io/GRPCRoute:
         ignoreDifferences: |
           jqPathExpressions:
