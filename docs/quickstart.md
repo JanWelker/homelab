@@ -310,9 +310,9 @@ the same L2 network segment as the nodes.
     ```
 
     Log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
-    `akadmin`, then create the four groups listed in
+    `akadmin`, then add yourself to the groups listed in
     [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles)
-    under *Directory &rarr; Groups* and add yourself.
+    under *Directory &rarr; Groups*; the blueprints create them.
 
     ArgoCD's `policy.default` is empty, so an SSO login that lands on an
     ArgoCD with no applications means a missing group, not a broken

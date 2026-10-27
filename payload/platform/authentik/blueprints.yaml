@@ -11,6 +11,29 @@ data:
     metadata:
       name: homelab-argocd
     entries:
+      # Every file declares the group it binds, so none waits on another; see
+      # docs/platform/authentik.md#groups-and-roles
+      - model: authentik_core.group
+        state: present
+        id: infra-users
+        identifiers:
+          name: infra-users
+      - model: authentik_core.group
+        state: present
+        id: argocd-admins
+        identifiers:
+          name: argocd-admins
+        attrs:
+          parents:
+            - !KeyOf infra-users
+      - model: authentik_core.group
+        state: present
+        id: argocd-viewers
+        identifiers:
+          name: argocd-viewers
+        attrs:
+          parents:
+            - !KeyOf infra-users
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         id: argocd-provider
@@ -36,6 +59,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
+        id: argocd-application
         identifiers:
           slug: argocd
         attrs:
@@ -43,12 +67,42 @@ data:
           provider: !KeyOf argocd-provider
           meta_launch_url: https://argo.infra.k8s.wlkr.ch
           meta_description: GitOps controller
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf argocd-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
   11-oidc-grafana.yaml: |
     version: 1
     metadata:
       name: homelab-grafana
     entries:
+      # Every file declares the group it binds, so none waits on another; see
+      # docs/platform/authentik.md#groups-and-roles
+      - model: authentik_core.group
+        state: present
+        id: infra-users
+        identifiers:
+          name: infra-users
+      - model: authentik_core.group
+        state: present
+        id: grafana-admins
+        identifiers:
+          name: grafana-admins
+        attrs:
+          parents:
+            - !KeyOf infra-users
+      - model: authentik_core.group
+        state: present
+        id: grafana-editors
+        identifiers:
+          name: grafana-editors
+        attrs:
+          parents:
+            - !KeyOf infra-users
       - model: authentik_providers_oauth2.oauth2provider
         state: present
         id: grafana-provider
@@ -74,18 +128,33 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
       - model: authentik_core.application
         state: present
+        id: grafana-application
         identifiers:
           slug: grafana
         attrs:
           name: Grafana
           provider: !KeyOf grafana-provider
           meta_launch_url: https://monitoring.infra.k8s.wlkr.ch
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf grafana-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
   20-proxy-providers.yaml: |
     version: 1
     metadata:
       name: homelab-proxied-dashboards
     entries:
+      # Every file declares the group it binds, so none waits on another; see
+      # docs/platform/authentik.md#groups-and-roles
+      - model: authentik_core.group
+        state: present
+        id: infra-users
+        identifiers:
+          name: infra-users
       - model: authentik_providers_proxy.proxyprovider
         state: present
         id: hubble-provider
@@ -100,12 +169,20 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: hubble-application
         identifiers:
           slug: hubble
         attrs:
           name: Hubble
           provider: !KeyOf hubble-provider
           meta_launch_url: https://hubble.infra.k8s.wlkr.ch
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf hubble-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       - model: authentik_providers_proxy.proxyprovider
         state: present
@@ -121,12 +198,20 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: rook-application
         identifiers:
           slug: rook
         attrs:
           name: Ceph Dashboard
           provider: !KeyOf rook-provider
           meta_launch_url: https://rook.infra.k8s.wlkr.ch
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf rook-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       - model: authentik_providers_proxy.proxyprovider
         state: present
@@ -142,12 +227,20 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: prometheus-application
         identifiers:
           slug: prometheus
         attrs:
           name: Prometheus
           provider: !KeyOf prometheus-provider
           meta_launch_url: https://prometheus.infra.k8s.wlkr.ch
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf prometheus-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       - model: authentik_providers_proxy.proxyprovider
         state: present
@@ -163,12 +256,20 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: alertmanager-application
         identifiers:
           slug: alertmanager
         attrs:
           name: Alertmanager
           provider: !KeyOf alertmanager-provider
           meta_launch_url: https://alertmanager.infra.k8s.wlkr.ch
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf alertmanager-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       # Sits in front of Home Assistant's own login; see docs/platform/authentik.md#pitfalls
       - model: authentik_providers_proxy.proxyprovider
@@ -212,6 +313,7 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: flowscape-application
         identifiers:
           slug: flowscape
         attrs:
@@ -219,6 +321,13 @@ data:
           provider: !KeyOf flowscape-provider
           meta_launch_url: https://flowscape.k8s.wlkr.ch
           meta_description: Cluster network traffic in 3D
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf flowscape-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       # The tracker and its collect endpoint are what every visitor of every site loads,
       # so those two paths pass unauthenticated; the dashboard does not.
@@ -308,6 +417,7 @@ data:
           internal_host_ssl_validation: false
       - model: authentik_core.application
         state: present
+        id: extractor-admin-application
         identifiers:
           slug: extractor-admin
         attrs:
@@ -315,6 +425,13 @@ data:
           provider: !KeyOf extractor-admin-provider
           meta_launch_url: https://extractor-admin.k8s.wlkr.ch
           meta_description: Espresso shot diagnostics
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf extractor-admin-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       # Replaces the provider list: every proxied application must be here.
       - model: authentik_outposts.outpost
