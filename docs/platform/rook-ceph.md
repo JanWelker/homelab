@@ -85,12 +85,11 @@ them every PVC stays `Pending` on `ExternalProvisioning`.
 | --- | --- |
 | `csi-driver.yaml` in `rook-ceph`, with `SkipDryRunOnMissingResource` | The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart |
 | `OperatorConfig` pointing at the chart's image-set `ConfigMap` | A chart bump moves every sidecar and the cephcsi image together |
-| `csi.<sidecar>.tag` pins in `rook-ceph-operator` | The sidecars Rook ships link a gRPC with an authorization bypass; the pins move ahead of the chart under `# renovate:` annotations and go once the chart catches up |
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |
 | `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by `CSI_SERVICE_ACCOUNT_PREFIX` (empty here): `rbd-ctrlplugin-sa` and `rbd-nodeplugin-sa`. Without them the Deployment and DaemonSet exist but create no pods |
 
-!!! warning "`csi` values on the operator chart do nothing, except the images"
-    Helm accepts values a chart no longer reads. Driver settings go in `csi-driver.yaml`; only `csi.<sidecar>.tag` still renders into the image-set `ConfigMap`.
+!!! warning "`csi` values on the operator chart do nothing"
+    Helm accepts values a chart no longer reads. Driver settings go in `csi-driver.yaml`.
 
 `csi-rbac.yaml` is the RBD half of the ceph-csi-operator's
 `deploy/multifile/csi-rbac.yaml` at the version the rook-ceph chart pulls in;

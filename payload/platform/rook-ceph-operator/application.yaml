@@ -16,18 +16,6 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        # Only the image set is read from `csi`; the rest is csi-driver.yaml.
-        # Pinned ahead of the chart until Rook ships ceph-csi-operator >= v1.0.5.
-        csi:
-          provisioner:
-            # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-provisioner versioning=docker
-            tag: v6.4.0
-          resizer:
-            # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-resizer versioning=docker
-            tag: v2.3.0
-          snapshotter:
-            # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-snapshotter versioning=docker
-            tag: v8.7.0
   destination:
     server: https://kubernetes.default.svc
     namespace: rook-ceph
