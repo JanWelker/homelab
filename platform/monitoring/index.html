@@ -2765,10 +2765,16 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 <p>For another provider, change <code>smtp_smarthost</code> in the template and the three
 values in OpenBao.</p>
 <h3 id="scrape-targets">Scrape targets<a class="headerlink" href="#scrape-targets" title="Permanent link">&para;</a></h3>
-<p>Every <code>ServiceMonitor</code>, <code>PodMonitor</code> and <code>PrometheusRule</code> in every namespace,
-through the five <code>*SelectorNilUsesHelmValues: false</code> settings: the chart
-treats an empty selector as unset and renders <code>release: kube-prometheus-stack</code>
-in its place, which limits Prometheus to its own targets.</p>
+<p>Every <code>ServiceMonitor</code> and <code>PodMonitor</code> in every namespace, through the five
+<code>*SelectorNilUsesHelmValues: false</code> settings: the chart treats an empty
+selector as unset and renders <code>release: kube-prometheus-stack</code> in its place,
+which limits Prometheus to its own targets.</p>
+<p><code>PrometheusRule</code>s load only from the namespaces the <code>apps</code> project cannot
+deploy to, matched on the <code>kubernetes.io/metadata.name</code> label the API server
+sets. <a href="../kured/#configuration">Kured</a> gates reboots on alert names, so a
+workload's rule named <code>CephHealthError</code> would otherwise stop OS updates
+cluster-wide. A rule in a new platform namespace loads only once that
+namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <table>
 <thead>
 <tr>
@@ -2920,8 +2926,10 @@ its upstream tag.</p>
 <h3 id="adding-a-dashboard">Adding a dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h3>
 <p>Add a ConfigMap labelled <code>grafana_dashboard: "1"</code> next to the component it
 describes, in a file named <code>grafana-dashboards.yaml</code> and a ConfigMap named
-<code>&lt;component&gt;-grafana-dashboards</code>; the sidecar watches every namespace
-(<code>sidecar.dashboards.searchNamespace: ALL</code>). Prefer the chart's own dashboard
+<code>&lt;component&gt;-grafana-dashboards</code>. The sidecar watches only the platform
+namespaces listed in <code>sidecar.dashboards.searchNamespace</code>, so a workload
+cannot replace a dashboard; a component in a new namespace adds it there, and
+the <code>apps</code> project must not be able to deploy to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
 <h3 id="growing-the-prometheus-volume">Growing the Prometheus volume<a class="headerlink" href="#growing-the-prometheus-volume" title="Permanent link">&para;</a></h3>

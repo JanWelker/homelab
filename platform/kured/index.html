@@ -2569,7 +2569,7 @@ marker clears itself on reboot.</p>
 </tr>
 <tr>
 <td><code>alertFilterRegexp</code> with <code>alertFilterMatchOnly: true</code></td>
-<td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from <a href="../../operations/nodes/">Rebooting a node</a>: a second reboot during a backfill can take a placement group below its minimum replica count</td>
+<td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from <a href="../../operations/nodes/">Rebooting a node</a>: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from <a href="../monitoring/#scrape-targets">platform namespaces only</a></td>
 </tr>
 </tbody>
 </table>
