@@ -16,7 +16,7 @@ stay on GitHub.
 
 | | |
 | --- | --- |
-| Scale sets | `homelab` on `somuch-cloud/shotapp` |
+| Scale sets | `homelab` and `homelab-wait` on `somuch-cloud/extractor.cafe` |
 | Workflow label | `runs-on: homelab` |
 | Depends on | [OpenBao](openbao.md) for the GitHub App in `kv/arc-runners/github-app` |
 | If it is down | Jobs on `runs-on: homelab` queue on GitHub until a runner registers; nothing else notices |
