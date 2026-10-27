@@ -2734,6 +2734,9 @@ sensitive is committed to Git.</p>
   generated from the shares when needed. The operator login reads and writes
   every KV path, so <code>output/credentials/</code> is as sensitive as before, but it
   cannot change policies or auth methods.</li>
+<li>A workload's namespace reaches only <code>kv/&lt;namespace&gt;/</code> in OpenBao; the
+  platform's store refuses every other namespace — see
+  <a href="../../platform/openbao/#kubernetes-auth">Kubernetes auth</a>.</li>
 <li>A Kubernetes <code>Secret</code> is base64, not encryption. Anyone with <code>get secrets</code> in
   a namespace can read what ESO materialised there. Encryption at rest protects
   the bytes in etcd, not the API.</li>

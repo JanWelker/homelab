@@ -3128,7 +3128,7 @@ namespace can reach follows from the store it is allowed to use:</p>
 <td><code>openbao</code></td>
 <td>The platform namespaces</td>
 <td><code>external-secrets-vault</code> in <code>external-secrets</code></td>
-<td>Every path</td>
+<td>Reads every path, because Authentik reads each workload's <code>kv/&lt;app&gt;/config</code>; writes only <code>authentik/</code>, <code>monitoring/</code> and <code>velero/</code>, where its <code>PushSecret</code>s are</td>
 </tr>
 <tr>
 <td><code>openbao-apps</code></td>
@@ -3157,8 +3157,8 @@ namespace can reach follows from the store it is allowed to use:</p>
 <td>ESO then requests the token in the namespace of the <code>ExternalSecret</code> or <code>PushSecret</code>, and the <code>external-secrets-apps</code> policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload, and a new one needs no change here</td>
 </tr>
 <tr>
-<td><code>openbao-apps</code> excludes the platform namespaces by name</td>
-<td>Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own <code>Namespace</code> with any label</td>
+<td><code>openbao</code> lists the platform namespaces by name, <code>openbao-apps</code> excludes the same list</td>
+<td>Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own <code>Namespace</code> with any label. A platform component that reads a secret from a new namespace adds it to both</td>
 </tr>
 <tr>
 <td>Each workload ships an <code>external-secrets-vault</code> ServiceAccount</td>
