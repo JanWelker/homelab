@@ -2786,12 +2786,12 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tbody>
 <tr>
 <td>kube-scheduler, kube-controller-manager</td>
-<td><code>bind-address</code> in <code>ansible/templates/kubeadm.yaml.j2</code> (kubeadm binds them to <code>127.0.0.1</code>)</td>
+<td>A per-node <code>bind-address</code> patch in <code>ansible/templates/butane_node_config.yaml.j2</code> (kubeadm binds them to <code>127.0.0.1</code>)</td>
 <td>HTTPS with a self-signed certificate, so the ServiceMonitors set <code>insecureSkipVerify</code>; the ServiceAccount token still authenticates</td>
 </tr>
 <tr>
 <td>etcd</td>
-<td><code>listen-metrics-urls</code> in the same template (kubeadm gives it none)</td>
+<td>A per-node <code>listen-metrics-urls</code> patch in the same template (kubeadm listens on <code>127.0.0.1</code> only)</td>
 <td>Plain HTTP on 2381, serving only <code>/metrics</code> and <code>/health</code>; client and peer APIs stay on mTLS</td>
 </tr>
 <tr>

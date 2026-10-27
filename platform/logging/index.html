@@ -2814,8 +2814,8 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>KubernetesAuditSecretReadByUser</code></td>
-<td>A Secret read by a user, not a <code>system:</code> identity</td>
-<td>Every controller reads through a ServiceAccount; a user is a person with a kubeconfig</td>
+<td>A Secret read by a person, or by a ServiceAccount outside its own namespace that is not on the allowlist of platform controllers</td>
+<td>A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, and a ServiceAccount reading its own namespace is what its Role is for</td>
 </tr>
 <tr>
 <td><code>KubernetesAuditRbacBindingChanged</code></td>
@@ -2834,8 +2834,8 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>OpenBaoSecretReadOutsideEso</code></td>
-<td>A <code>kv/data/</code> read from OpenBao by anything but the External Secrets Operator</td>
-<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader</td>
+<td>A <code>kv/data/</code> read from OpenBao by any token whose display name is not exactly that of ESO's Kubernetes login</td>
+<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader, and a token created by hand is prefixed <code>token-</code>, so it cannot borrow that name</td>
 </tr>
 <tr>
 <td><code>TetragonSudoInContainer</code></td>

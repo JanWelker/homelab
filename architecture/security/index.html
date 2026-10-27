@@ -2606,7 +2606,7 @@ of the cluster's own security exists.</p>
 </tr>
 <tr>
 <td>Those configs embed join credentials</td>
-<td>The inlined kubeadm config carries the bootstrap <code>token</code> and the <code>certificateKey</code>, together enough to join a new control-plane node</td>
+<td>The bootstrap <code>token</code>, and on control-plane nodes the <code>certificateKey</code>, together enough to join a new control-plane node. Only the init host has them in its kubeadm config; the others get a <code>0600</code> environment file that <code>bootstrap-k8s.service</code> names by variable and deletes after a successful join, so <code>systemctl cat</code> and <code>systemctl show</code> reveal nothing</td>
 </tr>
 <tr>
 <td>The control-plane configs embed the etcd encryption key</td>
@@ -2618,7 +2618,11 @@ of the cluster's own security exists.</p>
 </tr>
 <tr>
 <td>Sysext updates set <code>Verify=false</code></td>
-<td>On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off</td>
+<td>On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off. The transfer config that names their source is inlined from a template in Git, not fetched</td>
+</tr>
+<tr>
+<td>The PXE kernel, initrd and bootloader are signature-checked</td>
+<td><code>make download</code> takes their sums only from a clearsigned file that <code>gpgv</code> verifies against a pinned primary key fingerprint: Flatcar's image signing key for <code>.DIGESTS.asc</code>, the kernel.org checksum autosigner for syslinux's <code>sha256sums.asc</code></td>
 </tr>
 <tr>
 <td>The OS image is signature-checked</td>
@@ -2638,9 +2642,13 @@ server when provisioning is finished.</strong> Flatcar is installed to disk, so
 nothing needs it after a build — see
 <a href="../boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
 <p><code>output/credentials/</code> holds the generated bootstrap token and certificate key
-in plaintext. The directory is <code>0700</code> and <code>output/</code> is gitignored, but the
-values are reused across <code>make config</code> runs — the Ansible <code>password</code> lookup
-reads back an existing file. Delete them to force new ones.</p>
+in plaintext. The directory is <code>0700</code>, the Ignition configs in <code>output/http</code>
+are <code>0600</code>, and <code>output/</code> is gitignored. The values are reused across
+<code>make config</code> runs, because a node whose join window passed retries with the
+values on its disk once <code>make config</code> has re-armed them
+(<a href="../../operations/nodes/#adding-a-node">Adding a node</a>). Delete them to force
+new ones. The installer keeps its copy of the node config <code>0600</code> in RAM;
+<code>flatcar-install</code> carries that mode to the OEM partition.</p>
 <h2 id="node-hardening">Node hardening<a class="headerlink" href="#node-hardening" title="Permanent link">&para;</a></h2>
 <p><code>ansible/templates/kubeadm.yaml.j2</code> and <code>ansible/templates/butane_node_config.yaml.j2</code>
 carry the settings below. They land at provisioning time and change only on
@@ -2660,6 +2668,18 @@ carry the settings below. They land at provisioning time and change only on
 <tr>
 <td><code>--kubelet-certificate-authority</code></td>
 <td>The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. It can, because <code>serverTLSBootstrap</code> makes the kubelet request its certificate from the cluster CA and <a href="../../platform/metrics-server/">kubelet-csr-approver</a> approves the CSR; metrics-server verifies the same certificates</td>
+</tr>
+<tr>
+<td><code>--admission-control-config-file</code></td>
+<td>A <a href="../../platform/security-policies/#pod-security-admission">Pod Security default</a> for namespaces without labels, so a namespace nobody labelled is <code>baseline</code>, not <code>privileged</code></td>
+</tr>
+<tr>
+<td><code>--profiling=false</code> on the API server, controller-manager and scheduler</td>
+<td><code>/debug/pprof</code> exposes internals to any token with the right RBAC and helps nothing here; CIS asks for it off</td>
+</tr>
+<tr>
+<td>Metrics listeners on the node address</td>
+<td>etcd's plain-HTTP metrics and the controller-manager and scheduler bind the node's own address, where Prometheus scrapes them, instead of every interface. The address differs per node, so it comes from per-node JSON patches in <code>/etc/kubernetes/patches</code> rather than the cluster-wide <code>ClusterConfiguration</code>; the patches also move the probes, and etcd keeps <code>127.0.0.1</code> for its own</td>
 </tr>
 <tr>
 <td><code>DenyServiceExternalIPs</code></td>
@@ -2773,8 +2793,10 @@ nothing the PR review does not. <code>system</code> is confined to the <code>arg
 <code>apps</code> has the boundary to draw, because its Applications come from a second
 repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
-namespace (<code>authentik</code> excepted, for the blueprint ConfigMap a workload ships
-there), and at cluster scope may create nothing but namespaces.</p>
+namespace (<code>authentik</code> excepted, where an admission policy narrows it to the
+workload's own blueprint ConfigMap), and at cluster scope may create nothing
+but namespaces, never at the <code>privileged</code> Pod Security level — see
+<a href="../../platform/security-policies/#admission-policies">Security Policies</a>.</p>
 <p><strong>Every platform namespace is default-deny in both directions</strong>, one
 <code>CiliumNetworkPolicy</code> file per namespace plus the cluster-wide rules, and
 Cilium enforces them: <code>policyAuditMode</code> is off, so a flow no rule allows is
@@ -2795,50 +2817,69 @@ verifier would exempt nearly everything. See
 to either Gateway and claim a hostname inside its listener's pattern — see
 <a href="../../platform/gateway-api/#configuration">Gateway API</a>.</p>
 <h2 id="exposed-interfaces">Exposed interfaces<a class="headerlink" href="#exposed-interfaces" title="Permanent link">&para;</a></h2>
-<p>Every platform UI on the infra gateway is behind
-<a href="../../platform/authentik/">Authentik</a>; the last two rows are not:</p>
+<p>Every platform UI on the infra gateway, and Flowscape and the Extractor admin
+UI on the apps gateway, is behind
+<a href="../../platform/authentik/">Authentik</a>, and only accounts in <code>infra-users</code> get
+past it. The wollbi editors also have Authentik accounts, so being logged in
+is not enough. The last two rows are not behind Authentik:</p>
 <table>
 <thead>
 <tr>
 <th>Service</th>
 <th>Authentication</th>
+<th>Group required</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>ArgoCD</td>
 <td>Authentik OIDC; local admin disabled. The server runs with <code>--insecure</code> because TLS terminates at the Gateway</td>
+<td><code>infra-users</code>, then <code>argocd-admins</code> or <code>argocd-viewers</code> for any access</td>
 </tr>
 <tr>
 <td>Grafana</td>
 <td>Authentik OIDC; login form disabled</td>
+<td><code>infra-users</code>; refused without <code>grafana-admins</code>, <code>grafana-editors</code> or direct <code>infra-users</code></td>
 </tr>
 <tr>
 <td>Hubble UI</td>
 <td>Authentik proxy outpost</td>
+<td><code>infra-users</code></td>
 </tr>
 <tr>
 <td>Rook dashboard</td>
 <td>Authentik proxy outpost</td>
+<td><code>infra-users</code></td>
 </tr>
 <tr>
 <td>Prometheus</td>
 <td>Authentik proxy outpost</td>
+<td><code>infra-users</code></td>
 </tr>
 <tr>
 <td>Alertmanager</td>
 <td>Authentik proxy outpost</td>
+<td><code>infra-users</code></td>
+</tr>
+<tr>
+<td>Flowscape, Extractor admin UI</td>
+<td>Authentik proxy outpost</td>
+<td><code>infra-users</code></td>
 </tr>
 <tr>
 <td>OpenBao UI</td>
 <td>Token or configured auth method — not behind Authentik</td>
+<td>—</td>
 </tr>
 <tr>
 <td>Agent SSH, <code>*.ssh.wlkr.ch</code></td>
 <td>The <code>ssh</code> TLS-passthrough listener on <code>apps-gateway</code>, which external-dns publishes on the public address. Nothing in front authenticates it: <code>sshd</code> in each agent pod admits the user <code>agent</code> with public keys only — see <a href="../../platform/gateway-api/#ssh-listener">SSH listener</a> and the workloads repository's <a href="https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md">Claude agents</a> page</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
+<p>The groups and how they nest are in
+<a href="../../platform/authentik/#groups-and-roles">Groups and roles</a>.</p>
 <p>Authentik is therefore a dependency of reaching any of them; the break-glass
 paths are in <a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a>.
 OpenBao is left out deliberately: it holds Authentik's own database password,

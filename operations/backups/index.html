@@ -2793,7 +2793,7 @@ before Velero runs.</p>
 </tr>
 <tr>
 <td>Where it runs</td>
-<td>Any control-plane node, on the host network: etcd listens on <code>127.0.0.1</code> and its client certs are on the node</td>
+<td>Any control-plane node, on the host network: etcd listens on <code>127.0.0.1</code> and its client certs are on the node. It mounts the CA certificate and the healthcheck client pair, never the directory, which also holds the CA and server keys</td>
 </tr>
 <tr>
 <td>Verification</td>

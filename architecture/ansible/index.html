@@ -2422,11 +2422,11 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 <tbody>
 <tr>
 <td><code>config.yaml</code></td>
-<td>Generates the bootstrap token, certificate key and etcd encryption key into <code>output/credentials/</code> (mode <code>0700</code>); renders the Ignition configs via Butane into <code>output/http</code>, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, and a readable copy of the kubeadm config into <code>output/tmp/</code> (the copy that runs is inlined into Ignition)</td>
+<td>Generates the bootstrap token, certificate key and etcd encryption key into <code>output/credentials/</code> (mode <code>0700</code>); renders the Ignition configs via Butane into <code>output/http</code> (mode <code>0600</code>), the sysupdate config for running nodes beside them, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, and a readable copy of the kubeadm config into <code>output/tmp/</code> (the copy that runs is inlined into Ignition)</td>
 </tr>
 <tr>
 <td><code>download.yaml</code></td>
-<td>Fetches the Flatcar kernel, initrd, OS image and its detached signature; the Kubernetes sysext image with the sysupdate config the release publishes for the inventory's major.minor; and the syslinux bootloader files</td>
+<td>Fetches the Flatcar kernel, initrd, OS image and its detached signature, checked against the <code>.DIGESTS.asc</code> that <code>gpgv</code> verifies; the Kubernetes sysext image; and the syslinux bootloader files, checked the same way against <code>sha256sums.asc</code>. The signing keys are fetched and trusted through the primary fingerprints pinned in the playbook</td>
 </tr>
 <tr>
 <td><code>reinstall.yaml</code></td>

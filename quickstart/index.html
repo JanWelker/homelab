@@ -2595,6 +2595,11 @@ the same L2 network segment as the nodes.</p>
 <td><code>brew install butane</code> or the <a href="https://www.flatcar.org/docs/latest/provisioning/config-transpiler/">Flatcar docs</a></td>
 </tr>
 <tr>
+<td><code>gpg</code> and <code>gpgv</code></td>
+<td>checking the signatures on the Flatcar and syslinux checksums in <code>make download</code></td>
+<td><code>brew install gnupg</code> or your package manager</td>
+</tr>
+<tr>
 <td><code>kubectl</code></td>
 <td>steps 8 onwards</td>
 <td><a href="https://kubernetes.io/docs/tasks/tools/">kubernetes.io</a></td>
@@ -2857,9 +2862,9 @@ re-checked every few minutes, so that can take that long to start.</p>
 </span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
 </span></code></pre></div>
 <p>Log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
-<code>akadmin</code>, then create the four groups listed in
+<code>akadmin</code>, then add yourself to the groups listed in
 <a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>
-under <em>Directory &rarr; Groups</em> and add yourself.</p>
+under <em>Directory &rarr; Groups</em>; the blueprints create them.</p>
 <p>ArgoCD's <code>policy.default</code> is empty, so an SSO login that lands on an
 ArgoCD with no applications means a missing group, not a broken
 integration. Then create a personal account in <em>Directory &rarr; Users</em>,

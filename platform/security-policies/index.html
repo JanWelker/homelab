@@ -2761,7 +2761,8 @@
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
 <p>Four cluster-wide controls: Pod Security Admission, default-deny network
 policy in both directions, no API token on the <code>default</code> ServiceAccount, and
-two admission policies on image references. Each is easy to turn on and hard to
+admission policies on image references, namespace labels and the <code>authentik</code>
+namespace. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2801,7 +2802,13 @@ enforce second, one namespace at a time.</p>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="pod-security-admission">Pod Security Admission<a class="headerlink" href="#pod-security-admission" title="Permanent link">&para;</a></h3>
-<p>A namespace that does not opt in runs at <code>privileged</code>, which enforces nothing.
+<p>A namespace without labels gets the cluster default from
+<code>ansible/templates/admission.yaml.j2</code>: <code>enforce</code> at <code>baseline</code>, <code>audit</code> and
+<code>warn</code> at <code>restricted</code>. It reaches a control-plane node only at provisioning;
+see <a href="../../architecture/security/#node-hardening">Node hardening</a>. It exempts
+<code>kube-system</code>, which Cilium needs before Argo CD can label anything, and the
+namespaces that need <code>privileged</code> but carry no labels. An exemption skips
+<code>audit</code> and <code>warn</code> as well, so the labelled namespaces below are not exempt.
 Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 <table>
 <thead>
@@ -2867,8 +2874,28 @@ an informed change.</p>
 <td>node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks</td>
 </tr>
 <tr>
+<td><code>backup</code></td>
+<td><code>privileged</code></td>
+<td>The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory</td>
+</tr>
+<tr>
+<td><code>logging</code></td>
+<td><code>privileged</code></td>
+<td>Alloy hostPath-mounts the pod logs and the Hubble export</td>
+</tr>
+<tr>
+<td><code>kured</code></td>
+<td><code>privileged</code></td>
+<td>kured runs privileged in the host PID namespace to reboot the node</td>
+</tr>
+<tr>
 <td><code>cert-manager</code>, <code>external-secrets</code>, <code>argocd</code></td>
 <td><code>baseline</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>authentik</code>, <code>descheduler</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>, <code>cilium-secrets</code>, <code>default</code>, <code>kube-public</code>, <code>kube-node-lease</code></td>
+<td><code>restricted</code></td>
 <td>—</td>
 </tr>
 </tbody>
@@ -2876,7 +2903,11 @@ an informed change.</p>
 <p><code>privileged</code> here means "not yet reduced", not "unexamined": <code>audit</code> and <code>warn</code>
 are still <code>baseline</code> or <code>restricted</code> on all of them. Namespace objects are
 owned by this Application so the labels stay declarative rather than drifting
-after <code>CreateNamespace=true</code>.</p>
+after <code>CreateNamespace=true</code>. <code>cilium-secrets</code> is the exception: the Cilium
+chart creates it, so its labels are <code>secretsNamespaceLabels</code> in
+<code>payload/platform/cilium/values.yaml</code>, and a second owner would fight the
+first. Workload namespaces label themselves in the workloads repository, and
+<code>namespace-privileged-allowed</code> keeps them off <code>privileged</code>.</p>
 <h3 id="network-policies">Network policies<a class="headerlink" href="#network-policies" title="Permanent link">&para;</a></h3>
 <p>One file per namespace in <code>network-policies/</code>, holding that namespace's
 <code>CiliumNetworkPolicy</code> objects. A namespace gets two whole-namespace policies,
@@ -2976,14 +3007,14 @@ where <code>authentik-server</code> sets no <code>serviceAccountName</code> — 
 default, to be fixed at the source.</p>
 <h3 id="agent-rbac">Agent RBAC<a class="headerlink" href="#agent-rbac" title="Permanent link">&para;</a></h3>
 <p><code>claude-agent-rbac.yaml</code> gives the in-cluster Claude Code agents two
-ClusterRoles, bound to the <code>claude-reader</code> and <code>claude-writer</code>
-ServiceAccounts of the <code>claude-agents</code> namespace. Cluster-scoped RBAC cannot
-come from the <code>apps</code> project, and what an agent may touch is a platform
-decision.</p>
+ClusterRoles for the <code>claude-reader</code> and <code>claude-writer</code> ServiceAccounts of the
+<code>claude-agents</code> namespace. Cluster-scoped RBAC cannot come from the <code>apps</code>
+project, and what an agent may touch is a platform decision.</p>
 <table>
 <thead>
 <tr>
 <th>Role</th>
+<th>Bound</th>
 <th>Grants</th>
 <th>Leaves out</th>
 </tr>
@@ -2991,24 +3022,42 @@ decision.</p>
 <tbody>
 <tr>
 <td><code>claude-agent-read</code></td>
-<td><code>get</code>, <code>list</code>, <code>watch</code> on named core, workload and CRD kinds</td>
+<td>Cluster-wide, to both ServiceAccounts</td>
+<td><code>get</code>, <code>list</code>, <code>watch</code> on named core, workload and CRD kinds, <code>pods/log</code> included</td>
 <td>Secrets, RBAC, webhooks, CRDs, <code>pods/exec</code>, Trivy's exposed-secret reports</td>
 </tr>
 <tr>
 <td><code>claude-agent-write</code></td>
-<td>Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets; the writer is bound to both roles</td>
+<td>Nowhere by the platform: the workloads repository adds a RoleBinding in each namespace a writer session may change</td>
+<td>Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets</td>
 <td>The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request)</td>
 </tr>
 </tbody>
 </table>
+<ul>
+<li><strong>Creating a pod reads every Secret in its namespace.</strong> That is why the
+  write role is bound per namespace, and the <code>apps</code> project cannot place a
+  RoleBinding in the namespaces its <a href="../argocd/#projects">destinations</a>
+  exclude.</li>
+<li><strong><code>claude-writer-pod-limits</code></strong> in <code>admission-policies.yaml</code> refuses any pod
+  or pod template from the writer that uses the host's network, PID or IPC
+  namespace, a <code>hostPath</code> volume, a privileged container, or a ServiceAccount
+  other than <code>default</code> or the one the workload already runs as. A namespace
+  without a Pod Security level allows all of those, and another
+  ServiceAccount's token is that account's RBAC.</li>
+<li><strong><code>pods/log</code> is cluster-wide</strong>, so the reader sees whatever any component
+  logs, platform namespaces included. Triage needs it, and a cluster-wide grant
+  cannot leave out namespaces.</li>
+</ul>
 <p>Kinds are listed, never wildcarded, so a new CRD is invisible to the agents
 until someone adds it. Argo CD reverts a hand edit within minutes either way.</p>
 <h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
 <p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
 refuses or records it at admission, with the built-in
-<code>ValidatingAdmissionPolicy</code> rather than a policy engine. Both match Pods and
-every controller that produces them, so a bad Deployment is rejected at
-<code>kubectl apply</code> rather than failing quietly in its ReplicaSet.</p>
+<code>ValidatingAdmissionPolicy</code> rather than a policy engine. The image policies
+match Pods and every controller that produces them, so a bad Deployment is
+rejected at <code>kubectl apply</code> rather than failing quietly in its ReplicaSet. The
+other three close what RBAC and the <code>apps</code> project cannot express.</p>
 <table>
 <thead>
 <tr>
@@ -3028,11 +3077,27 @@ every controller that produces them, so a bad Deployment is rejected at
 <td><code>Audit</code> and <code>Warn</code></td>
 <td>The registries the cluster pulls from today; a reference with no registry counts as <code>docker.io</code>. Recorded to the <a href="../../architecture/audit-logging/">audit log</a> and shown to whoever applies, not enforced, until the record is clean</td>
 </tr>
+<tr>
+<td><code>claude-writer-pod-limits</code></td>
+<td><code>Deny</code></td>
+<td>Host access and borrowed ServiceAccounts from the agent writer, see <a href="#agent-rbac">Agent RBAC</a></td>
+</tr>
+<tr>
+<td><code>namespace-privileged-allowed</code></td>
+<td><code>Deny</code></td>
+<td>A Namespace may carry <code>enforce: privileged</code> only if it is in the policy's list, the <code>privileged</code> rows above. The <code>apps</code> project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security</td>
+</tr>
+<tr>
+<td><code>authentik-foreign-objects</code></td>
+<td><code>Deny</code></td>
+<td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>, or be the ConfigMap <code>authentik-blueprint-&lt;application&gt;</code>. Argo CD cannot whitelist kinds per destination namespace, so this is what holds <code>apps</code> to its blueprint there; objects with no <code>argocd.argoproj.io/tracking-id</code> annotation, from controllers and <code>kubectl</code>, are not matched</td>
+</tr>
 </tbody>
 </table>
-<p>Both carry <code>failurePolicy: Ignore</code>: an expression that errors lets the request
-through rather than stopping every pod in the cluster. A real violation is
-still refused.</p>
+<p>All but one carry <code>failurePolicy: Ignore</code>: an expression that errors lets the
+request through rather than stopping every pod in the cluster. A real violation
+is still refused. <code>claude-writer-pod-limits</code> fails closed, since it only ever
+matches one identity.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="promoting-the-registry-allowlist">Promoting the registry allowlist<a class="headerlink" href="#promoting-the-registry-allowlist" title="Permanent link">&para;</a></h3>
 <ol>

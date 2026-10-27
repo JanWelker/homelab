@@ -2698,6 +2698,10 @@ left out rather than reported as failing.</p>
 <td>The first is the Job's <code>activeDeadlineSeconds</code> and kills the pod whatever Trivy is doing; the second is Trivy's own flag and only fires if it is the shorter. Raising one alone does nothing</td>
 </tr>
 <tr>
+<td><code>accessGlobalSecretsAndServiceAccount: false</code></td>
+<td>The default grants the operator read on every Secret in the cluster so scan jobs can borrow a workload's <code>imagePullSecrets</code>, and every image here is public. A private image would fail its scan and raise <code>TrivyContainerNotScanned</code>. The flag also drops <code>nodes/proxy</code>, without which node-collector silently skips the kubelet-configuration CIS checks, so <code>node-collector-rbac.yaml</code> grants that back</td>
+</tr>
+<tr>
 <td><code>clusterSbomCacheEnabled: false</code></td>
 <td>With the cache, every workload after the first to use an image gets an <code>SbomReport</code> from the cached SBOM and no <code>VulnerabilityReport</code>. Upstream: <a href="https://github.com/aquasecurity/trivy-operator/issues/1668">trivy-operator#1668</a></td>
 </tr>

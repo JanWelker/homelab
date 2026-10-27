@@ -1478,6 +1478,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bootstrap-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap credentials
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#groups-and-roles" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2533,6 +2544,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bootstrap-credentials" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Bootstrap credentials
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#groups-and-roles" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2971,8 +2993,8 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 <tr>
 <td>A workload's provider and application</td>
-<td>The workload's directory in the workloads repository, as a ConfigMap targeted at <code>authentik</code></td>
-<td>The provider and the application it authenticates change in one commit</td>
+<td>The workload's directory in the workloads repository, as the ConfigMap <code>authentik-blueprint-&lt;application&gt;</code> targeted at <code>authentik</code></td>
+<td>The provider and the application it authenticates change in one commit; the <a href="../security-policies/#admission-policies"><code>authentik-foreign-objects</code></a> policy refuses any other object a workload sends here</td>
 </tr>
 <tr>
 <td>Client credentials</td>
@@ -2996,8 +3018,37 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="bootstrap-credentials">Bootstrap credentials<a class="headerlink" href="#bootstrap-credentials" title="Permanent link">&para;</a></h3>
+<p>Authentik's built-in bootstrap blueprint creates <code>akadmin</code> from
+<code>AUTHENTIK_BOOTSTRAP_PASSWORD</code> only while no <code>akadmin</code> exists, and reads
+nothing from it afterwards.</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Set</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTHENTIK_BOOTSTRAP_PASSWORD</code></td>
+<td>Always, from <code>bootstrap-password</code></td>
+<td>Without it a fresh install creates <code>akadmin</code> with no usable password, and the initial-setup flow that sets one is open to whoever reaches <code>auth.k8s.wlkr.ch</code> first. Blanking it after the first start buys nothing: the account keeps the password, and it stays the break-glass identity</td>
+</tr>
+<tr>
+<td><code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td>
+<td>Never</td>
+<td>It mints a non-expiring superuser API token, <code>authentik-bootstrap-token</code>, which nothing here uses, and while the variable is set the blueprint recreates the token whenever it is deleted</td>
+</tr>
+</tbody>
+</table>
+<p>A cluster installed before the token was dropped still holds it: delete
+<code>authentik-bootstrap-token</code> under <strong>Directory &rarr; Tokens and App
+passwords</strong>, once the worker has restarted without the variable.</p>
 <h3 id="groups-and-roles">Groups and roles<a class="headerlink" href="#groups-and-roles" title="Permanent link">&para;</a></h3>
-<p>Authorisation is group membership. Create these in Authentik and add users:</p>
+<p>Authorisation is group membership. The blueprints create these groups;
+membership is set by hand under <strong>Directory &rarr; Groups</strong>:</p>
 <table>
 <thead>
 <tr>
@@ -3007,26 +3058,36 @@ against a provider must tolerate it not existing yet.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>infra-users</code></td>
+<td>Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Flowscape and the Extractor admin UI. Grafana <code>Viewer</code> for a direct member</td>
+</tr>
+<tr>
 <td><code>argocd-admins</code></td>
-<td>ArgoCD <code>role:admin</code></td>
+<td>ArgoCD <code>role:admin</code>, and <code>infra-users</code></td>
 </tr>
 <tr>
 <td><code>argocd-viewers</code></td>
-<td>ArgoCD <code>role:readonly</code></td>
+<td>ArgoCD <code>role:readonly</code>, and <code>infra-users</code></td>
 </tr>
 <tr>
 <td><code>grafana-admins</code></td>
-<td>Grafana <code>Admin</code></td>
+<td>Grafana <code>Admin</code>, and <code>infra-users</code></td>
 </tr>
 <tr>
 <td><code>grafana-editors</code></td>
-<td>Grafana <code>Editor</code></td>
+<td>Grafana <code>Editor</code>, and <code>infra-users</code></td>
 </tr>
 </tbody>
 </table>
-<p>ArgoCD's <code>policy.default</code> is empty, so a user in neither ArgoCD group gets
-<strong>no</strong> access; Grafana falls back to <code>Viewer</code>. Access to a proxied application
-is bound to the application in Authentik itself.</p>
+<p>Every infra application carries a policy binding to <code>infra-users</code>, so an
+account outside it, such as a wollbi editor's, is refused by Authentik
+before the application sees it. The four role groups have <code>infra-users</code> as
+their parent, and Authentik counts a child group's members as members of
+the parent. Grafana only sees the groups a user belongs to directly, and
+with <code>role_attribute_strict</code> it refuses a login that matches none of its
+three. ArgoCD's <code>policy.default</code> is empty, so a user in neither ArgoCD group
+gets <strong>no</strong> access. The wollbi sites, Home Assistant and Umami have no binding:
+the first are for the editors, and the other two have logins of their own.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="client-secrets">Client secrets<a class="headerlink" href="#client-secrets" title="Permanent link">&para;</a></h3>
 <p>The OIDC client IDs and secrets are generated once into OpenBao and read by
@@ -3035,7 +3096,7 @@ both sides — Authentik through <code>!Env</code>, ArgoCD and Grafana through t
 nothing is copied out of a UI. The <code>PushSecret</code> in <code>secrets.yaml</code> writes
 <code>kv/authentik/config</code> once — see
 <a href="../openbao/#generated-secrets">Generated secrets</a> — with the secret key, the
-bootstrap password and token and the ArgoCD and Grafana client pairs; its
+bootstrap password and the ArgoCD and Grafana client pairs; its
 <code>Password</code> generator's <code>secretKeys</code> is the list of keys. A
 workload's client credentials go in the workload's own path (Nextcloud's in
 <code>kv/nextcloud/config</code>, Dependency-Track's in <code>kv/dependency-track/config</code>,
@@ -3044,7 +3105,7 @@ that signs every session and token, and External Secrets fails an
 <code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
 a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
 <p>Then log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
-<code>akadmin</code> with <code>bootstrap-password</code> and create the groups above.</p>
+<code>akadmin</code> with <code>bootstrap-password</code> and add your user to the groups above.</p>
 <h3 id="adding-an-application">Adding an application<a class="headerlink" href="#adding-an-application" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Generate its client credentials into OpenBao with a <code>PushSecret</code> beside
@@ -3055,7 +3116,9 @@ a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.
    <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
 <li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code> and
    add its namespace to <code>referencegrant.yaml</code>.</li>
-<li>Bind the groups or policies that may reach it, in Authentik.</li>
+<li>Bind <code>infra-users</code> to an infra application in the blueprint, as an
+   <code>authentik_policies.policybinding</code> with the application as <code>target</code>. An
+   application with no binding is open to every Authentik account.</li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <p>When every login fails, in this order:</p>
@@ -3085,6 +3148,10 @@ a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.
 <div class="admonition danger">
 <p class="admonition-title">A new client credential needs the worker restarted</p>
 <p><code>envFrom</code> injects <code>authentik-secrets</code> <strong>once, when the pod starts</strong>. A blueprint reading a newly added credential through <code>!Env</code> on a running worker gets an empty string and creates a provider that answers 404 on its discovery endpoint. Bumping <code>secret-generation</code> restarts the worker in the sync that adds the credential; <code>kubectl rollout restart</code> fixes a running cluster but leaves nothing for the next one.</p>
+</div>
+<div class="admonition danger">
+<p class="admonition-title">A workload blueprint is code with admin rights</p>
+<p>The worker applies a blueprint with full access to Authentik's models, so a blueprint ConfigMap from the workloads repository can create a superuser or add someone to <code>argocd-admins</code>. The admission policy limits which ConfigMap a workload may write, not what it says: review a blueprint change in the workloads repository like a change here.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">OAuth2 providers must name their grant types</p>

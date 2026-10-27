@@ -1655,6 +1655,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#job-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Job pods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#controller" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2367,6 +2378,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#job-pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Job pods
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#controller" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2615,11 +2637,11 @@ stay on GitHub.</p>
 </tr>
 <tr>
 <td>Namespaces</td>
-<td><code>arc-systems</code> for the controller and the listeners, <code>arc-runners</code> for the runner and job pods</td>
+<td><code>arc-systems</code> for the controller and the listeners, <code>arc-runners</code> for the runner pods, <code>arc-jobs</code> for the job pods the container hook starts</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/arc-controller/</code>, <code>payload/platform/arc-runners/</code>, and the two namespaces' files under <code>payload/platform/security/</code></td>
+<td><code>payload/platform/arc-controller/</code>, <code>payload/platform/arc-runners/</code>, and the three namespaces' files under <code>payload/platform/security/</code></td>
 </tr>
 </tbody>
 </table>
@@ -2654,14 +2676,14 @@ stay on GitHub.</p>
 </tr>
 <tr>
 <td><code>containerMode: kubernetes-novolume</code></td>
-<td>A job with <code>services:</code> or <code>container:</code> gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job</td>
+<td>A job with <code>services:</code> or <code>container:</code> gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job. Where that pod runs, and with which token: <a href="#job-pods">Job pods</a></td>
 </tr>
 <tr>
 <td><code>ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER: "false"</code></td>
 <td>A job without <code>container:</code> runs in the runner pod itself, as on a hosted runner</td>
 </tr>
 <tr>
-<td>The namespace enforces <code>baseline</code></td>
+<td><code>arc-runners</code> and <code>arc-jobs</code> enforce <code>baseline</code></td>
 <td>The runner image uses <code>sudo</code>, and a service container such as PostgreSQL starts as root; neither passes <code>restricted</code></td>
 </tr>
 <tr>
@@ -2675,6 +2697,37 @@ stay on GitHub.</p>
 <tr>
 <td>A second scale set, <code>homelab-wait</code>, for <code>ci-ok</code> alone</td>
 <td>The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as <code>maxRunners</code> fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request</td>
+</tr>
+</tbody>
+</table>
+<h3 id="job-pods">Job pods<a class="headerlink" href="#job-pods" title="Permanent link">&para;</a></h3>
+<p>The chart's own ServiceAccount for <code>kubernetes-novolume</code> may read every Secret
+in <code>arc-runners</code>, where the GitHub App key and each runner's JIT config live,
+and a step without <code>container:</code> runs in the runner pod with that token. The
+<code>homelab</code> set therefore runs its hook one namespace over.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serviceAccountName: homelab-runner</code></td>
+<td>The chart then renders no Role of its own; <code>job-pods-rbac.yaml</code> grants the ServiceAccount rights in <code>arc-jobs</code> only</td>
+</tr>
+<tr>
+<td><code>ACTIONS_RUNNER_KUBERNETES_NAMESPACE: arc-jobs</code></td>
+<td>The hook creates the job pod and its environment Secret there, so the Secret verbs it needs reach nothing else</td>
+</tr>
+<tr>
+<td>The Role is the hook's <code>requiredPermissions</code>, Secret <code>get</code> and <code>list</code> included</td>
+<td>The hook checks every verb before each command and fails the job if one is missing; a step can still read the environment of another job running at the same time, from the same repository</td>
+</tr>
+<tr>
+<td><code>default</code> ServiceAccount in <code>arc-jobs</code> without a token</td>
+<td>A job pod never calls the API server</td>
 </tr>
 </tbody>
 </table>
@@ -2717,9 +2770,9 @@ the listener pod's name. Upstream's sample dashboard is not vendored: it
 filters on <code>actions_github_com_scale_set_name</code>, which this version does not
 export, and most of its panels stay empty.</p>
 <h3 id="network-policy">Network policy<a class="headerlink" href="#network-policy" title="Permanent link">&para;</a></h3>
-<p>Every rule in
-<code>payload/platform/security/network-policies/arc-runners.yaml</code>. Unlike the
-other namespaces, egress is every public address rather than a list of names.</p>
+<p>Every rule in <code>arc-runners.yaml</code> and <code>arc-jobs.yaml</code> under
+<code>payload/platform/security/network-policies/</code>. Unlike the other namespaces,
+egress is every public address rather than a list of names.</p>
 <table>
 <thead>
 <tr>
@@ -2730,11 +2783,11 @@ other namespaces, egress is every public address rather than a list of names.</p
 <tbody>
 <tr>
 <td>Ingress from the namespace and the node only</td>
-<td>Runners and job pods serve nothing; the listener in <code>arc-systems</code> reaches GitHub, not the runners</td>
+<td>Runners and job pods serve nothing; the listener in <code>arc-systems</code> reaches GitHub, not the runners, and a runner reaches its job pod through the API server</td>
 </tr>
 <tr>
-<td>Egress to the API server</td>
-<td>The container hook creates the job pod and execs each step into it</td>
+<td>Egress to the API server, <code>homelab</code> runner pods only</td>
+<td>The container hook creates the job pod and execs each step into it; the <code>homelab-wait</code> runners run no hook, and job pods carry no token</td>
 </tr>
 <tr>
 <td>Egress to <code>0.0.0.0/0</code> on 80 and 443, minus the private, carrier-grade and link-local ranges</td>
