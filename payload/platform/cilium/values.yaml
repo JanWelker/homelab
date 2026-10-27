@@ -59,6 +59,13 @@ envoy:
     limits:
       memory: 128Mi
 
+# The chart creates cilium-secrets, so its Pod Security labels are set here;
+# see docs/platform/security-policies.md#pod-security-admission
+secretsNamespaceLabels:
+  pod-security.kubernetes.io/enforce: restricted
+  pod-security.kubernetes.io/audit: restricted
+  pod-security.kubernetes.io/warn: restricted
+
 gatewayAPI:
   enabled: true
   # Honour a Service port's appProtocol (kubernetes.io/h2c) towards the

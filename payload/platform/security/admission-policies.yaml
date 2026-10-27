@@ -185,3 +185,87 @@ metadata:
 spec:
   policyName: claude-writer-pod-limits
   validationActions: ["Deny"]
+---
+# A namespace outside the platform's list cannot opt out of Pod Security;
+# see docs/platform/security-policies.md#admission-policies
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: namespace-privileged-allowed
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["namespaces"]
+  variables:
+    # The namespaces pod-security.yaml labels privileged, and nothing else.
+    - name: allowed
+      expression: >-
+        ['kube-system', 'rook-ceph', 'monitoring', 'openbao', 'trivy-system',
+         'backup', 'logging', 'kured']
+  validations:
+    - expression: >-
+        !has(object.metadata.labels) ||
+        !('pod-security.kubernetes.io/enforce' in object.metadata.labels) ||
+        object.metadata.labels['pod-security.kubernetes.io/enforce'] != 'privileged' ||
+        object.metadata.name in variables.allowed
+      messageExpression: >-
+        'Namespace ' + object.metadata.name + ' may not enforce the privileged Pod Security level; only platform namespaces may.'
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: namespace-privileged-allowed
+spec:
+  policyName: namespace-privileged-allowed
+  validationActions: ["Deny"]
+---
+# The apps project reaches authentik for the workloads' blueprint ConfigMaps
+# only; see docs/platform/security-policies.md#admission-policies
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: authentik-foreign-objects
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: authentik
+    resourceRules:
+      - apiGroups: ["*"]
+        apiVersions: ["*"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["*"]
+  # Only what an Argo CD Application applied; controllers and kubectl carry no tracking id.
+  matchConditions:
+    - name: tracked-by-argocd
+      expression: >-
+        has(object.metadata.annotations) &&
+        'argocd.argoproj.io/tracking-id' in object.metadata.annotations
+  variables:
+    # <application>:<group>/<kind>:<namespace>/<name>
+    - name: application
+      expression: >-
+        object.metadata.annotations['argocd.argoproj.io/tracking-id'].split(':')[0]
+  validations:
+    - expression: >-
+        variables.application in ['authentik', 'security'] ||
+        (request.kind.group == '' && request.kind.kind == 'ConfigMap' &&
+         object.metadata.name == 'authentik-blueprint-' + variables.application)
+      messageExpression: >-
+        'Application ' + variables.application + ' may only create the ConfigMap authentik-blueprint-' +
+        variables.application + ' in authentik.'
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: authentik-foreign-objects
+spec:
+  policyName: authentik-foreign-objects
+  validationActions: ["Deny"]

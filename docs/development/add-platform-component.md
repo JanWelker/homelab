@@ -32,8 +32,12 @@ Application on the next poll. Workloads go in the
 
 4. **Label the namespace** in `payload/platform/security/pod-security.yaml`
    with the Pod Security Admission level it demonstrably needs, one sentence
-   of why next to any `privileged` — see
+   of why next to any `privileged`, and add a `privileged` one to the list in
+   `namespace-privileged-allowed` — see
    [Security Policies](../platform/security-policies.md#pod-security-admission).
+   Then **deny it to workloads**: add `"!<namespace>"` to the `apps` project's
+   destinations in `payload/platform/argocd-projects/projects.yaml`, which
+   otherwise lets every workload Application write into it.
 
 5. **Write its network policy** as
    `payload/platform/security/network-policies/<namespace>.yaml`: the
