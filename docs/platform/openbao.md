@@ -161,14 +161,14 @@ namespace can reach follows from the store it is allowed to use:
 
 | Store | Who may use it | Logs in as | Reaches |
 | --- | --- | --- | --- |
-| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | Every path |
+| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | Reads every path, because Authentik reads each workload's `kv/<app>/config`; writes only `authentik/`, `monitoring/` and `velero/`, where its `PushSecret`s are |
 | `openbao-apps` | Every other namespace | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/` |
 | `openbao-claude-agents` | `claude-agents` | The same, in `claude-agents` | `kv/claude-*`, where `make claude-session-pat` writes each session's token |
 
 | Setting | Why |
 | --- | --- |
 | `openbao-apps` names no ServiceAccount namespace | ESO then requests the token in the namespace of the `ExternalSecret` or `PushSecret`, and the `external-secrets-apps` policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload, and a new one needs no change here |
-| `openbao-apps` excludes the platform namespaces by name | Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own `Namespace` with any label |
+| `openbao` lists the platform namespaces by name, `openbao-apps` excludes the same list | Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own `Namespace` with any label. A platform component that reads a secret from a new namespace adds it to both |
 | Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
 | Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
 

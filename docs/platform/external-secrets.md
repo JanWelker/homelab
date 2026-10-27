@@ -160,7 +160,7 @@ kubectl describe externalsecret -n <namespace> <name>
 | The KV path does not exist (`bao kv get kv/<path>` returns 404) | Store the secret first |
 | `property:` matches no key in the KV entry | `bao kv get kv/<path>` lists them |
 | `permission denied` from `openbao-apps` | The path is outside `kv/<namespace>/`, or the namespace has no `external-secrets-vault` ServiceAccount |
-| `using cluster store ... is not allowed from namespace` | The store's `conditions` exclude the namespace: a platform namespace on `openbao-apps` |
+| `using cluster store ... is not allowed from namespace` | The store's `conditions` exclude the namespace: a workload on `openbao`, or a platform namespace on `openbao-apps` |
 
 ## Pitfalls
 
