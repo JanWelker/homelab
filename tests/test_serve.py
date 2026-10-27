@@ -1,9 +1,13 @@
-"""Unit tests for the boot server's pure helpers. Nothing here binds a port."""
+"""Tests for the boot server. Only the listener tests bind, on 127.0.0.1."""
 
+import http.client
 import json
 import logging
+import threading
 
 import pytest
+import tftpy
+from tftpy.TftpShared import TftpException
 
 from boot_server import serve
 
@@ -307,6 +311,8 @@ def record(name, message, level=logging.ERROR):
         'TFTP error: errorcode 8: ...',
         'Timeout waiting for traffic, errorcode=8',
         'File not found: /srv/tftp/pxelinux.cfg/01-fc-3f-db-0d-8f-5c',
+        'Fatal exception thrown from session 10.0.0.9:1234: '
+        'Dynamic path /srv/tftp/pxelinux.cfg/default not permitted',
         r'File not found: C:\tftp\pxelinux.cfg\default',
     ],
 )
@@ -383,3 +389,119 @@ def test_announce_tftp_warns_about_an_unknown_mac_and_names_the_bootloader(check
         ),
         (logging.INFO, 'collecting the bootloader (lpxelinux.0)'),
     ]
+
+
+# --- the listeners ---------------------------------------------------------
+
+
+@pytest.fixture
+def tftp(checkout, monkeypatch):
+    """The TFTP server as run_tftp starts it, on a free port of 127.0.0.1."""
+    monkeypatch.setattr(
+        serve.sys.modules['tftpy.TftpServer'], 'TftpContextServer', serve.NarratingContext
+    )
+    server = serve.tftp_server()
+    thread = threading.Thread(target=server.listen, args=('127.0.0.1', 0, 1), daemon=True)
+    thread.start()
+    assert server.is_running.wait(5)
+    yield server
+    server.stop(now=True)
+    thread.join(5)
+
+
+def test_tftp_refuses_a_write_request(checkout, tftp, tmp_path, caplog):
+    """A WRQ for a node's menu gets an access violation and leaves the menu alone."""
+    caplog.set_level(logging.INFO, logger='bootserver')
+    menu = checkout / 'output' / 'tftp' / 'pxelinux.cfg' / ODIN_MENU
+    before = menu.read_text(encoding='utf-8')
+    planted = tmp_path / 'planted'
+    planted.write_text('DEFAULT install\n', encoding='utf-8')
+    client = tftpy.TftpClient('127.0.0.1', tftp.listenport)
+    with pytest.raises(TftpException, match='Access violation'):
+        client.upload(f'pxelinux.cfg/{ODIN_MENU}', str(planted), timeout=2, retries=0)
+    assert menu.read_text(encoding='utf-8') == before
+    with pytest.raises(TftpException, match='Access violation'):
+        client.upload('new-file', str(planted), timeout=2, retries=0)
+    assert not (checkout / 'output' / 'tftp' / 'new-file').exists()
+    assert '127.0.0.1' not in serve.hosts_by_ip
+    assert [r.getMessage() for r in caplog.records if r.name == 'bootserver'] == [
+        f'tried to upload {ODIN_MENU} -- refused, this server only serves files',
+        'tried to upload new-file -- refused, this server only serves files',
+    ]
+
+
+def test_tftp_still_serves_a_read_request(checkout, tftp, tmp_path):
+    """Refusing writes leaves the downloads every PXE boot needs."""
+    fetched = tmp_path / 'fetched'
+    tftpy.TftpClient('127.0.0.1', tftp.listenport).download(
+        f'pxelinux.cfg/{THOR_MENU}', str(fetched), timeout=2, retries=0
+    )
+    assert fetched.read_text(encoding='utf-8') == MENU.format(default='localboot', host='thor')
+
+
+@pytest.fixture
+def web(checkout, monkeypatch):
+    """The HTTP server as main starts it, on a free port of 127.0.0.1."""
+    monkeypatch.setattr(serve, 'HTTP_PORT', 0)
+    server = serve.bind_http()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server
+    server.shutdown()
+    server.server_close()
+    thread.join(5)
+
+
+def fetch(server, path):
+    """GET a raw path, unnormalised, the way a hostile client would send it."""
+    connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+    try:
+        connection.request('GET', path)
+        response = connection.getresponse()
+        return response.status, response.read()
+    finally:
+        connection.close()
+
+
+def test_bind_http_binds_the_boot_address_only(web):
+    """The Ignition configs must not reach other networks the host is on."""
+    assert web.server_address[0] == serve.BIND_IP == '127.0.0.1'
+
+
+def test_bind_http_exits_when_no_interface_holds_the_address(checkout, monkeypatch):
+    """A wrong boot_server_ip is an exit, never a fall back to the wildcard."""
+    monkeypatch.setattr(serve, 'HTTP_PORT', 0)
+    monkeypatch.setattr(serve, 'BIND_IP', '192.0.2.1')
+    with pytest.raises(SystemExit):
+        serve.bind_http()
+
+
+@pytest.mark.parametrize('path', ['/', '//', '/?C=M;O=D'])
+def test_http_refuses_a_directory_listing(web, path):
+    """Files are served by name only; the names would list every host."""
+    status, body = fetch(web, path)
+    assert status == 403
+    assert b'ignition-odin.json' not in body
+
+
+def test_http_serves_a_file_by_name(web):
+    """The refusals above leave the one thing a node asks for."""
+    status, body = fetch(web, '/ignition-thor.json')
+    assert status == 200
+    assert b'kubeadm join' in body
+
+
+@pytest.mark.parametrize(
+    'path',
+    [
+        '/../../ansible/inventory.yaml',
+        '/%2e%2e/%2e%2e/ansible/inventory.yaml',
+        '/..%2f..%2fansible%2finventory.yaml',
+        '/./../../ansible/inventory.yaml',
+    ],
+)
+def test_http_stays_inside_the_http_directory(web, path):
+    """A traversal resolves inside output/http, where the file is not."""
+    status, body = fetch(web, path)
+    assert status == 404
+    assert b'boot_server_ip' not in body

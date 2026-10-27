@@ -37,8 +37,11 @@ of the cluster's own security exists.
 The mitigation is time: `make serve` is a foreground command, the bootstrap
 token has a 24 hour TTL and the certificate key expires after two hours, and
 `make config` re-arms both only for those windows. The
-encryption key has no clock, which is why the boot server listens only on
-`boot_server_ip`, serves files by name and lists nothing. **Stop the boot
+encryption key has no clock, which is why the HTTP server listens only on
+`boot_server_ip`, serves files by name and lists nothing. TFTP listens on
+every interface, because macOS lets an unprivileged process bind port 69 only
+there, and refuses every write request, so nobody can plant a boot menu.
+**Stop the boot
 server when provisioning is finished.** Flatcar is installed to disk, so
 nothing needs it after a build — see
 [Every boot after the first](boot-process.md#every-boot-after-the-first).
