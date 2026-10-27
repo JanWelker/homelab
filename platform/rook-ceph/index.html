@@ -2912,10 +2912,6 @@ them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.<
 <td>A chart bump moves every sidecar and the cephcsi image together</td>
 </tr>
 <tr>
-<td><code>csi.&lt;sidecar&gt;.tag</code> pins in <code>rook-ceph-operator</code></td>
-<td>The sidecars Rook ships link a gRPC with an authorization bypass; the pins move ahead of the chart under <code># renovate:</code> annotations and go once the chart catches up</td>
-</tr>
-<tr>
 <td>Driver name <code>rook-ceph.rbd.csi.ceph.com</code></td>
 <td>Derived from the namespace and must match the StorageClasses' <code>provisioner</code>. RBD is the only driver; CephFS is not enabled</td>
 </tr>
@@ -2926,8 +2922,8 @@ them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.<
 </tbody>
 </table>
 <div class="admonition warning">
-<p class="admonition-title"><code>csi</code> values on the operator chart do nothing, except the images</p>
-<p>Helm accepts values a chart no longer reads. Driver settings go in <code>csi-driver.yaml</code>; only <code>csi.&lt;sidecar&gt;.tag</code> still renders into the image-set <code>ConfigMap</code>.</p>
+<p class="admonition-title"><code>csi</code> values on the operator chart do nothing</p>
+<p>Helm accepts values a chart no longer reads. Driver settings go in <code>csi-driver.yaml</code>.</p>
 </div>
 <p><code>csi-rbac.yaml</code> is the RBD half of the ceph-csi-operator's
 <code>deploy/multifile/csi-rbac.yaml</code> at the version the rook-ceph chart pulls in;
