@@ -79,6 +79,10 @@ spec:
               mon_cluster_log_level: info
               # Unset, mons disagree and refuse aes key fetches at random.
               mon_auth_allow_insecure_key: "true"
+              # The mon store shares the node's root filesystem with the
+              # container images, which the kubelet only prunes at 85% used;
+              # the default 30% free warned permanently below that.
+              mon_data_avail_warn: "15"
 
           storage:
             useAllNodes: true
