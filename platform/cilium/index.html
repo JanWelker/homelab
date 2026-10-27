@@ -2623,6 +2623,10 @@ advertised:</p>
 <p class="admonition-title">An operator that starts without the API server leaves the Gateways without certificates</p>
 <p>cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and <code>cilium-secrets</code> empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. <code>CiliumGatewayCertificatesMissing</code> fires; <code>kubectl -n kube-system rollout restart deploy/cilium-operator</code> recovers it.</p>
 </div>
+<div class="admonition danger">
+<p class="admonition-title">A chart default that disappears stays in <code>cilium-config</code></p>
+<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When 1.20.4 dropped the <code>envoy.xdsMode</code> default, the agents kept <code>envoy-xds-mode: ads</code> while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
+</div>
 
 
 
