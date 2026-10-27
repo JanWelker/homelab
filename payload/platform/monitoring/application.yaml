@@ -74,8 +74,11 @@ spec:
                 auth_url: https://auth.k8s.wlkr.ch/application/o/authorize/
                 token_url: https://auth.k8s.wlkr.ch/application/o/token/
                 api_url: https://auth.k8s.wlkr.ch/application/o/userinfo/
+                # No Viewer fallback: a login in none of these groups is refused,
+                # see docs/platform/authentik.md#groups-and-roles
+                role_attribute_strict: true
                 # yamllint disable-line rule:line-length
-                role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-editors') && 'Editor' || 'Viewer'"
+                role_attribute_path: "contains(groups[*], 'grafana-admins') && 'Admin' || contains(groups[*], 'grafana-editors') && 'Editor' || contains(groups[*], 'infra-users') && 'Viewer'"
               users:
                 auto_assign_org_role: Viewer
 

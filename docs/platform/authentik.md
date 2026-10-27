@@ -144,18 +144,26 @@ passwords**, once the worker has restarted without the variable.
 
 ### Groups and roles
 
-Authorisation is group membership. Create these in Authentik and add users:
+Authorisation is group membership. The blueprints create these groups;
+membership is set by hand under **Directory &rarr; Groups**:
 
 | Group | Grants |
 | --- | --- |
-| `argocd-admins` | ArgoCD `role:admin` |
-| `argocd-viewers` | ArgoCD `role:readonly` |
-| `grafana-admins` | Grafana `Admin` |
-| `grafana-editors` | Grafana `Editor` |
+| `infra-users` | Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Flowscape and the Extractor admin UI. Grafana `Viewer` for a direct member |
+| `argocd-admins` | ArgoCD `role:admin`, and `infra-users` |
+| `argocd-viewers` | ArgoCD `role:readonly`, and `infra-users` |
+| `grafana-admins` | Grafana `Admin`, and `infra-users` |
+| `grafana-editors` | Grafana `Editor`, and `infra-users` |
 
-ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group gets
-**no** access; Grafana falls back to `Viewer`. Access to a proxied application
-is bound to the application in Authentik itself.
+Every infra application carries a policy binding to `infra-users`, so an
+account outside it, such as a wollbi editor's, is refused by Authentik
+before the application sees it. The four role groups have `infra-users` as
+their parent, and Authentik counts a child group's members as members of
+the parent. Grafana only sees the groups a user belongs to directly, and
+with `role_attribute_strict` it refuses a login that matches none of its
+three. ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group
+gets **no** access. The wollbi sites, Home Assistant and Umami have no binding:
+the first are for the editors, and the other two have logins of their own.
 
 ## Usage
 
@@ -177,7 +185,7 @@ that signs every session and token, and External Secrets fails an
 a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
 Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
-`akadmin` with `bootstrap-password` and create the groups above.
+`akadmin` with `bootstrap-password` and add your user to the groups above.
 
 ### Adding an application
 
@@ -189,7 +197,9 @@ Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
    `grant_types`, or a proxy provider added to the outpost's `providers:` list.
 4. For a proxied application, point its `HTTPRoute` at `authentik-server` and
    add its namespace to `referencegrant.yaml`.
-5. Bind the groups or policies that may reach it, in Authentik.
+5. Bind `infra-users` to an infra application in the blueprint, as an
+   `authentik_policies.policybinding` with the application as `target`. An
+   application with no binding is open to every Authentik account.
 
 ## Health check
 

@@ -176,19 +176,26 @@ to either Gateway and claim a hostname inside its listener's pattern — see
 
 ## Exposed interfaces
 
-Every platform UI on the infra gateway is behind
-[Authentik](../platform/authentik.md); the last two rows are not:
+Every platform UI on the infra gateway, and Flowscape and the Extractor admin
+UI on the apps gateway, is behind
+[Authentik](../platform/authentik.md), and only accounts in `infra-users` get
+past it. The wollbi editors also have Authentik accounts, so being logged in
+is not enough. The last two rows are not behind Authentik:
 
-| Service | Authentication |
-| --- | --- |
-| ArgoCD | Authentik OIDC; local admin disabled. The server runs with `--insecure` because TLS terminates at the Gateway |
-| Grafana | Authentik OIDC; login form disabled |
-| Hubble UI | Authentik proxy outpost |
-| Rook dashboard | Authentik proxy outpost |
-| Prometheus | Authentik proxy outpost |
-| Alertmanager | Authentik proxy outpost |
-| OpenBao UI | Token or configured auth method — not behind Authentik |
-| Agent SSH, `*.ssh.wlkr.ch` | The `ssh` TLS-passthrough listener on `apps-gateway`, which external-dns publishes on the public address. Nothing in front authenticates it: `sshd` in each agent pod admits the user `agent` with public keys only — see [SSH listener](../platform/gateway-api.md#ssh-listener) and the workloads repository's [Claude agents](https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md) page |
+| Service | Authentication | Group required |
+| --- | --- | --- |
+| ArgoCD | Authentik OIDC; local admin disabled. The server runs with `--insecure` because TLS terminates at the Gateway | `infra-users`, then `argocd-admins` or `argocd-viewers` for any access |
+| Grafana | Authentik OIDC; login form disabled | `infra-users`; refused without `grafana-admins`, `grafana-editors` or direct `infra-users` |
+| Hubble UI | Authentik proxy outpost | `infra-users` |
+| Rook dashboard | Authentik proxy outpost | `infra-users` |
+| Prometheus | Authentik proxy outpost | `infra-users` |
+| Alertmanager | Authentik proxy outpost | `infra-users` |
+| Flowscape, Extractor admin UI | Authentik proxy outpost | `infra-users` |
+| OpenBao UI | Token or configured auth method — not behind Authentik | — |
+| Agent SSH, `*.ssh.wlkr.ch` | The `ssh` TLS-passthrough listener on `apps-gateway`, which external-dns publishes on the public address. Nothing in front authenticates it: `sshd` in each agent pod admits the user `agent` with public keys only — see [SSH listener](../platform/gateway-api.md#ssh-listener) and the workloads repository's [Claude agents](https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md) page | — |
+
+The groups and how they nest are in
+[Groups and roles](../platform/authentik.md#groups-and-roles).
 
 Authentik is therefore a dependency of reaching any of them; the break-glass
 paths are in [When Authentik is down](../platform/authentik.md#when-authentik-is-down).
