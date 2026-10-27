@@ -6,7 +6,8 @@ description: "Pod Security Admission levels per namespace and the first default-
 
 Four cluster-wide controls: Pod Security Admission, default-deny network
 policy in both directions, no API token on the `default` ServiceAccount, and
-two admission policies on image references. Each is easy to turn on and hard to
+admission policies on image references, namespace labels and the `authentik`
+namespace. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.
 
@@ -45,12 +46,20 @@ an informed change.
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
 | `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap, which baseline does not allow |
 | `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
+| `backup` | `privileged` | The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory |
+| `logging` | `privileged` | Alloy hostPath-mounts the pod logs and the Hubble export |
+| `kured` | `privileged` | kured runs privileged in the host PID namespace to reboot the node |
 | `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
+| `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
 
 `privileged` here means "not yet reduced", not "unexamined": `audit` and `warn`
 are still `baseline` or `restricted` on all of them. Namespace objects are
 owned by this Application so the labels stay declarative rather than drifting
-after `CreateNamespace=true`.
+after `CreateNamespace=true`. `cilium-secrets` is the exception: the Cilium
+chart creates it, so its labels are `secretsNamespaceLabels` in
+`payload/platform/cilium/values.yaml`, and a second owner would fight the
+first. Workload namespaces label themselves in the workloads repository, and
+`namespace-privileged-allowed` keeps them off `privileged`.
 
 ### Network policies
 
@@ -164,20 +173,23 @@ until someone adds it. Argo CD reverts a hand edit within minutes either way.
 
 Trivy reports a bad image after it is running; `admission-policies.yaml`
 refuses or records it at admission, with the built-in
-`ValidatingAdmissionPolicy` rather than a policy engine. Every policy matches
-Pods and every controller that produces them, so a bad Deployment is rejected at
-`kubectl apply` rather than failing quietly in its ReplicaSet.
+`ValidatingAdmissionPolicy` rather than a policy engine. The image policies
+match Pods and every controller that produces them, so a bad Deployment is
+rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The
+other three close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
 | `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
 | `image-registry-allowed` | `Audit` and `Warn` | The registries the cluster pulls from today; a reference with no registry counts as `docker.io`. Recorded to the [audit log](../architecture/audit-logging.md) and shown to whoever applies, not enforced, until the record is clean |
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](#agent-rbac) |
+| `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
+| `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
 
-The image policies carry `failurePolicy: Ignore`: an expression that errors
-lets the request through rather than stopping every pod in the cluster. A real
-violation is still refused. `claude-writer-pod-limits` fails closed, since it
-only ever matches one identity.
+All but one carry `failurePolicy: Ignore`: an expression that errors lets the
+request through rather than stopping every pod in the cluster. A real violation
+is still refused. `claude-writer-pod-limits` fails closed, since it only ever
+matches one identity.
 
 ## Usage
 

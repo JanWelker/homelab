@@ -87,7 +87,7 @@ a `bao kv put` replaces the whole path.
 
 | Path | Keys | Read by |
 | --- | --- | --- |
-| `authentik/config` (generated) | `secret-key`, `bootstrap-password`, `bootstrap-token`, the ArgoCD and Grafana client id/secret pairs | Authentik, ArgoCD and Grafana — generating the OIDC credentials up front keeps both sides of each integration declarative |
+| `authentik/config` (generated) | `secret-key`, `bootstrap-password`, the ArgoCD and Grafana client id/secret pairs | Authentik, ArgoCD and Grafana — generating the OIDC credentials up front keeps both sides of each integration declarative |
 | `cert-manager/route53` | `access-key-id`, `secret-access-key` | The `certificates` Application |
 | `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
 | `monitoring/grafana-admin` (generated) | `password` | Grafana |

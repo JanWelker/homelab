@@ -16,7 +16,9 @@ spec:
     - https://dependencytrack.github.io/helm-charts
     # An OCI chart, without the oci:// scheme; see docs/platform/argocd.md#projects
     - ghcr.io/janwelker/charts
-  # authentik stays open: workloads ship their blueprint as a ConfigMap there.
+  # Every platform namespace is denied here; see docs/development/add-platform-component.md
+  # authentik stays open for the workloads' blueprint ConfigMaps, and the
+  # authentik-foreign-objects admission policy refuses anything else there.
   destinations:
     - namespace: "*"
       server: https://kubernetes.default.svc
@@ -56,6 +58,12 @@ spec:
       server: https://kubernetes.default.svc
     # Grafana loads dashboards from here; see docs/platform/monitoring.md#adding-a-dashboard
     - namespace: "!arc-systems"
+      server: https://kubernetes.default.svc
+    - namespace: "!arc-runners"
+      server: https://kubernetes.default.svc
+    - namespace: "!descheduler"
+      server: https://kubernetes.default.svc
+    - namespace: "!default"
       server: https://kubernetes.default.svc
   # What the workloads demonstrably need at cluster scope: their namespaces.
   clusterResourceWhitelist:
