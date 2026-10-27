@@ -17,11 +17,12 @@ All in `.github/workflows/`.
 | `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check` and `pytest` on the boot server and the scripts |
 | `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
-| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation) |
-| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/`; fork PRs skipped |
+| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
+| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
 | `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
+| `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
 | `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
 | `fonts-check.yaml` | `scripts/update-fonts.sh`, `docs/assets/fonts/**` | `make fonts-check`: the committed `woff2` files match the pinned releases — see [Fonts](contributing.md#fonts) |
 
@@ -46,7 +47,7 @@ are the pairs below that must move together.
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
     Rook requires both charts on the same version; and `markdownlint-cli2` in
     the workflow with its pre-commit hook, because the two must lint alike;
-    and every Python pin (`requires-python`, `.python-version`, the
+    `gitleaks` likewise; and every Python pin (`requires-python`, `.python-version`, the
     `python` images), because `uv sync` fails when they name different
     minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new

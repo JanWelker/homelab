@@ -23,20 +23,25 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           path: head
+          persist-credentials: false
 
       - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
           path: base
+          persist-credentials: false
 
       - name: Install Trivy
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.76.1
 
-      - name: Install PyYAML
-        run: pip install --quiet pyyaml
+      # PyYAML comes from uv.lock, hash-checked, at the version Renovate tracks.
+      - name: Install uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.13.5"
 
       - name: Scan changed images
-        run: python3 head/scripts/image-scan-diff.py base head
+        run: uv run --locked --no-dev --project head python head/scripts/image-scan-diff.py base head
