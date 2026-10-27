@@ -16,7 +16,7 @@ the chart tuning.
 | --- | --- |
 | Namespace | `backup` |
 | Depends on | [Rook-Ceph](rook-ceph.md) for the bucket claims and RBD snapshots |
-| If it is down | Nightly backups stop; `VeleroBackupFailures` fires |
+| If it is down | Nightly backups stop; `VeleroBackupTooOld` fires after 36 hours |
 | Health check | `kubectl -n backup get backupstoragelocation` reads `Available` |
 | Files | `payload/platform/velero/`, `payload/platform/backup/`, `payload/platform/snapshot-controller/` |
 
@@ -34,7 +34,7 @@ the chart tuning.
 | `snapshot-controller` Application | Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the `VolumeSnapshotClass` applies, so it is its own Application. It applies the two kustomize directories [kubernetes-csi/external-snapshotter](https://github.com/kubernetes-csi/external-snapshotter) publishes at each tag, the owning project's only packaging, namespaced into `backup` with the hardening as a patch; the Deployment at a tag runs the previous release's image, which is how upstream cuts releases |
 | No `runAsNonRoot` on the `velero` container | Whether the plugin init container's copy into `/target` works non-root depends on the image's `USER`; confirm on a real backup first |
 | Node agent `containerSecurityContext` | Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on |
-| `prometheusRule` | `VeleroBackupFailures` (critical) and `VeleroBackupPartialFailures` (warning) |
+| `prometheusRule` | `VeleroBackupFailures` and `VeleroBackupTooOld` (critical), `VeleroBackupPartialFailures` (warning); only the age alert catches a backup that hangs `InProgress` |
 
 ## Usage
 

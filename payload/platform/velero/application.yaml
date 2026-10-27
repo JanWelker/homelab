@@ -104,6 +104,15 @@ spec:
                   severity: critical
                 annotations:
                   message: Velero backup {{ $labels.schedule }} has failed.
+              # A backup that hangs InProgress never fails, and the schedule
+              # creates no new one while it runs.
+              - alert: VeleroBackupTooOld
+                expr: time() - velero_backup_last_successful_timestamp{schedule!=""} > 36 * 3600
+                for: 15m
+                labels:
+                  severity: critical
+                annotations:
+                  message: Velero schedule {{ $labels.schedule }} has had no successful backup for more than 36 hours.
 
         schedules:
           daily:
