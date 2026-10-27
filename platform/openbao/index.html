@@ -1391,6 +1391,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#operator-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Operator credential
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#kubernetes-auth" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1506,6 +1517,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Unsealing after a restart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generating-a-root-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Generating a root token
       </span>
     </span>
   </a>
@@ -2489,6 +2511,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#operator-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Operator credential
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#kubernetes-auth" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2604,6 +2637,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Unsealing after a restart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generating-a-root-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Generating a root token
       </span>
     </span>
   </a>
@@ -2883,16 +2927,17 @@ start-up, and the StatefulSet updates <code>OnDelete</code>, so a change lands w
 pod next restarts — see <a href="#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
 <p><code>OpenBaoSecretReadOutsideEso</code> in <a href="../logging/#alerting"><code>loki-rules.yaml</code></a>
 fires on a <code>kv/data/</code> read by anything but the External Secrets Operator's
-policy: a person with the root token, or a token that should not exist. A
+roles: the operator, a generated root token, or a token that should not exist. A
 standby audits a request before it resolves the token, so its
 <code>please forward to the active node</code> rejections carry no identity; the rule
-drops them, and the <code>ClusterSecretStore</code> targets the <code>openbao-active</code>
+drops them, and every <code>ClusterSecretStore</code> targets the <code>openbao-active</code>
 Service so ESO never produces one.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
 </span></code></pre></div>
 <h3 id="kv-layout">KV layout<a class="headerlink" href="#kv-layout" title="Permanent link">&para;</a></h3>
-<p>One KV v2 engine at <code>kv/</code>; every leaf is <code>&lt;workload&gt;/&lt;purpose&gt;</code>, and
-ExternalSecrets reference <code>cert-manager/route53</code> without the <code>data/</code> prefix ESO
+<p>One KV v2 engine at <code>kv/</code>; every leaf is <code>&lt;workload&gt;/&lt;purpose&gt;</code>, where a
+workload's prefix is its namespace, the only one
+<a href="#kubernetes-auth">its store</a> reaches. ExternalSecrets reference <code>cert-manager/route53</code> without the <code>data/</code> prefix ESO
 adds itself. A path is written by exactly one of two things: a <code>PushSecret</code>
 beside the <code>ExternalSecret</code> that reads it, when every value is random — see
 <a href="#generated-secrets">Generated secrets</a> — or <code>make bao-secrets</code> (an agent
@@ -2964,6 +3009,11 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td>One agent session's GitHub PAT, for any session name: <code>make claude-session-pat SESSION=&lt;session&gt;</code> stores it, adding <code>DELETE=1</code> removes the path. Not part of <code>make bao-secrets</code>, so a session needs no platform change. Empty until typed in</td>
 </tr>
 <tr>
+<td><code>velero/repository</code> (generated)</td>
+<td><code>password</code></td>
+<td>Velero, as the kopia password of every backup repository — <a href="../velero/#repository-password">Repository password</a>; changing it orphans every volume backup</td>
+</tr>
+<tr>
 <td><code>nextcloud/config</code> (generated)</td>
 <td><code>username</code>, <code>password</code>, <code>oidc-client-id</code>, <code>oidc-client-secret</code></td>
 <td>Nextcloud, and Authentik for the two <code>oidc-*</code> keys — a separate path so rotating it cannot take Authentik's own credentials with it</td>
@@ -3021,26 +3071,113 @@ external-secrets</code>), which keeps it away from everything <code>make bao-sec
 wrote. Reading a generated value, such as the <code>akadmin</code> password:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
 </span></code></pre></div>
+<h3 id="operator-credential">Operator credential<a class="headerlink" href="#operator-credential" title="Permanent link">&para;</a></h3>
+<p>No root token outlives the command that needs it. <code>make bao-init</code> ends by
+creating a userpass login for the scripts and revoking the root token; the
+password lands in <code>output/credentials/openbao-operator.json</code> (mode <code>0600</code>).
+The policy and login are written by <code>bao_create_operator</code> in
+<code>scripts/lib/bao.sh</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The <code>operator</code> policy: <code>kv/</code> read, write and delete, <code>sys/storage/raft/snapshot</code> read</td>
+<td>Everything <code>make bao-secrets</code>, <code>make claude-session-pat</code>, <a href="#rotating-a-credential">rotation</a> and a <a href="#backups">snapshot</a> need; policies, auth methods and snapshot restores still need root</td>
+</tr>
+<tr>
+<td><code>sys/generate-root-token/*</code> and <code>sys/decode-token</code> in the same policy</td>
+<td>Since OpenBao 2.6 <code>bao operator generate-root</code> needs a token, so without these a revoked root could not be regenerated; the unseal shares still decide</td>
+</tr>
+<tr>
+<td><code>token_ttl=1h</code>, <code>token_max_ttl=1h</code></td>
+<td>The scripts cache the token in the pod; one a dropped connection leaves behind expires within the hour, and the exit trap revokes it sooner</td>
+</tr>
+<tr>
+<td>Userpass, not OIDC</td>
+<td>Authentik reads its own database password from OpenBao, so an Authentik login would be a loop</td>
+</tr>
+<tr>
+<td>The scripts fall back to the root token in <code>openbao-init.json</code></td>
+<td>A cluster initialised before this keeps working, with a warning, until <code>make bao-rotate-root</code> creates the login and revokes the root token</td>
+</tr>
+</tbody>
+</table>
 <h3 id="kubernetes-auth">Kubernetes auth<a class="headerlink" href="#kubernetes-auth" title="Permanent link">&para;</a></h3>
 <p>ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
 validates against the TokenReview API (<code>rbac.yaml</code> binds
 <code>system:auth-delegator</code> to the <code>openbao</code> ServiceAccount) and answers with a
-token bound to the <code>external-secrets</code> policy. The <code>external-secrets-vault</code>
-ServiceAccount and the <code>ClusterSecretStore</code> live in <code>cluster-secret-store.yaml</code>
-here, because the store only validates against a running, unsealed OpenBao.
-<code>make bao-init</code> configures all of it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>bao<span class="w"> </span>secrets<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>-path<span class="o">=</span>kv<span class="w"> </span>-version<span class="o">=</span><span class="m">2</span><span class="w"> </span>kv
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>bao<span class="w"> </span>auth<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>kubernetes
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/config<span class="w"> </span><span class="nv">kubernetes_host</span><span class="o">=</span><span class="s2">"https://kubernetes.default.svc"</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>bao<span class="w"> </span>policy<span class="w"> </span>write<span class="w"> </span>external-secrets<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s">path "kv/data/*"     { capabilities = ["create", "read", "update"] }</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s">path "kv/metadata/*" { capabilities = ["create", "read", "update", "list"] }</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s">EOF</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>bao<span class="w"> </span>write<span class="w"> </span>auth/kubernetes/role/external-secrets<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nv">bound_service_account_names</span><span class="o">=</span>external-secrets-vault<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="nv">bound_service_account_namespaces</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span><span class="nv">policies</span><span class="o">=</span>external-secrets<span class="w"> </span><span class="nv">ttl</span><span class="o">=</span>1h
-</span></code></pre></div>
+token bound to one policy. Three <code>ClusterSecretStore</code>s in
+<code>cluster-secret-store.yaml</code> each log in with their own role, so what a
+namespace can reach follows from the store it is allowed to use:</p>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Who may use it</th>
+<th>Logs in as</th>
+<th>Reaches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>openbao</code></td>
+<td>The platform namespaces</td>
+<td><code>external-secrets-vault</code> in <code>external-secrets</code></td>
+<td>Every path</td>
+</tr>
+<tr>
+<td><code>openbao-apps</code></td>
+<td>Every other namespace</td>
+<td><code>external-secrets-vault</code> in the <code>ExternalSecret</code>'s own namespace</td>
+<td><code>kv/&lt;namespace&gt;/</code></td>
+</tr>
+<tr>
+<td><code>openbao-claude-agents</code></td>
+<td><code>claude-agents</code></td>
+<td>The same, in <code>claude-agents</code></td>
+<td><code>kv/claude-*</code>, where <code>make claude-session-pat</code> writes each session's token</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>openbao-apps</code> names no ServiceAccount namespace</td>
+<td>ESO then requests the token in the namespace of the <code>ExternalSecret</code> or <code>PushSecret</code>, and the <code>external-secrets-apps</code> policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload, and a new one needs no change here</td>
+</tr>
+<tr>
+<td><code>openbao-apps</code> excludes the platform namespaces by name</td>
+<td>Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own <code>Namespace</code> with any label</td>
+</tr>
+<tr>
+<td>Each workload ships an <code>external-secrets-vault</code> ServiceAccount</td>
+<td>The role is bound to that name; <code>automountServiceAccountToken: false</code>, because only ESO needs a token for it</td>
+</tr>
+<tr>
+<td>Referent stores report <code>Valid</code> without logging in</td>
+<td>ESO cannot know the namespace until an <code>ExternalSecret</code> names the store, so a missing role or ServiceAccount shows on the <code>ExternalSecret</code>, not the store</td>
+</tr>
+</tbody>
+</table>
+<p>The ServiceAccount the platform store uses lives in
+<code>cluster-secret-store.yaml</code> too, because the stores only validate against a
+running, unsealed OpenBao. <code>make bao-init</code> writes the policies and roles on a
+fresh cluster by running <code>scripts/bao-policies.sh</code>; after a change to that
+script, <code>make bao-policies</code> rewrites them on a live one. It needs a root
+token, because the operator login cannot write policies: run it before
+<code>make bao-rotate-root</code>, or with a
+<a href="#generating-a-root-token">generated root token</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h3>
 <ol>
@@ -3048,35 +3185,35 @@ here, because the store only validates against a running, unsealed OpenBao.
 <p>Initialise, unseal and configure the engine and ESO's auth. Safe to re-run:
    each configuration step is skipped if already in place, and an initialised
    cluster is left alone.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>bao-init
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>bao-init
 </span></code></pre></div>
 <div class="admonition danger">
 <p class="admonition-title">Move the unseal keys before you do anything else</p>
-<p><code>make bao-init</code> writes the 5 unseal keys and the root token to <code>output/credentials/openbao-init.json</code> (mode <code>0600</code>, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the <a href="../../architecture/security/">etcd encryption key</a>. Copy them into a password manager that does not need this cluster to be running, then delete the file. Losing all five means the data is unrecoverable: no support line, no recovery flow.</p>
+<p><code>make bao-init</code> writes the 5 unseal keys to <code>output/credentials/openbao-init.json</code> and the <a href="#operator-credential">operator login</a> to <code>openbao-operator.json</code> beside it (mode <code>0600</code>, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the <a href="../../architecture/security/">etcd encryption key</a>. The root token in the first file is revoked before the command ends. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing all five keys means the data is unrecoverable: no support line, no recovery flow.</p>
 </div>
 </li>
 <li>
 <p>Write the values that belong to outside accounts — the prompts follow
    <a href="../../quickstart/">Quickstart step 11</a>. The generated paths need nothing:
    their <code>PushSecret</code>s write them once the store validates.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>bao-secrets
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
 </li>
 <li>
-<p>Confirm the store validates:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao
+<p>Confirm the stores validate:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore
 </span></code></pre></div>
 </li>
 </ol>
 <h3 id="authenticating-locally">Authenticating locally<a class="headerlink" href="#authenticating-locally" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>port-forward<span class="w"> </span>svc/openbao<span class="w"> </span><span class="m">8200</span>:8200<span class="w"> </span><span class="p">&amp;</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BAO_ADDR</span><span class="o">=</span>http://127.0.0.1:8200
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>bao<span class="w"> </span>login<span class="w">   </span><span class="c1"># paste the root token</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>port-forward<span class="w"> </span>svc/openbao<span class="w"> </span><span class="m">8200</span>:8200<span class="w"> </span><span class="p">&amp;</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BAO_ADDR</span><span class="o">=</span>http://127.0.0.1:8200
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>bao<span class="w"> </span>login<span class="w"> </span>-method<span class="o">=</span>userpass<span class="w"> </span><span class="nv">username</span><span class="o">=</span>operator<span class="w">   </span><span class="c1"># password from openbao-operator.json</span>
 </span></code></pre></div>
 <h3 id="storing-and-reading-a-secret">Storing and reading a secret<a class="headerlink" href="#storing-and-reading-a-secret" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span>access-key-id<span class="o">=</span><span class="s1">'AKIA...'</span><span class="w"> </span>secret-access-key<span class="o">=</span><span class="s1">'...'</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>cert-manager/route53<span class="w"> </span>@/tmp/secret.json<span class="w">   </span><span class="c1"># what make bao-secrets does</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>kv/cert-manager/route53
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span>access-key-id<span class="o">=</span><span class="s1">'AKIA...'</span><span class="w"> </span>secret-access-key<span class="o">=</span><span class="s1">'...'</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>cert-manager/route53<span class="w"> </span>@/tmp/secret.json<span class="w">   </span><span class="c1"># what make bao-secrets does</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>kv/cert-manager/route53
 </span></code></pre></div>
 <h3 id="rotating-a-credential">Rotating a credential<a class="headerlink" href="#rotating-a-credential" title="Permanent link">&para;</a></h3>
 <p>A typed value is rotated with <code>make bao-secrets</code>, which asks per existing path
@@ -3088,18 +3225,18 @@ whether to overwrite it; a generated one by deleting its path, after which the
    are left alone. <code>FORCE=1 make bao-secrets</code> overwrites every ordinary path
    without asking; <code>kneadtime/config</code> still wants a typed <code>OVERWRITE</code>, and
    without a terminal every existing path is left alone.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>bao-secrets
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
 <p>For a generated path, delete it. Every key in it changes, with the
 consequences the reading component's page lists — for <code>authentik/config</code>
 that is every session, token and platform OIDC client at once:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>kv<span class="w"> </span>metadata<span class="w"> </span>delete<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>&lt;path&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>kv<span class="w"> </span>metadata<span class="w"> </span>delete<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>&lt;path&gt;
 </span></code></pre></div>
 </li>
 <li>
 <p>Push the new value into the <code>Secret</code> now rather than at the next hourly
    refresh — see <a href="../external-secrets/#usage">External Secrets</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
 </li>
 <li>
@@ -3108,13 +3245,13 @@ that is every session, token and platform OIDC client at once:</p>
 </li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
-</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span>yaml
-</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>-A
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>-A
 </span></code></pre></div>
 <p><code>bao status</code> should show <code>Initialized: true</code>, <code>Sealed: false</code>, and
 <code>HA Mode: active</code> on one pod with <code>standby</code> on the others; it exits <code>0</code>
-unsealed, <code>2</code> sealed and <code>1</code> unreachable. The <code>ClusterSecretStore</code> should
+unsealed, <code>2</code> sealed and <code>1</code> unreachable. Every <code>ClusterSecretStore</code> should
 report <code>Ready=True</code>.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
@@ -3131,30 +3268,71 @@ report <code>Ready=True</code>.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="unsealing-after-a-restart">Unsealing after a restart<a class="headerlink" href="#unsealing-after-a-restart" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>make<span class="w"> </span>bao-unseal
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>bao-unseal
 </span></code></pre></div>
 <p>It feeds three shares from <code>output/credentials/openbao-init.json</code> to each sealed
 replica, waits for one that has not joined Raft yet, and is idempotent. With
 the key file deleted, which is the correct end state, unseal by hand:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="nv">$?</span><span class="w"> </span><span class="k">in</span>
-</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: already unsealed"</span><span class="w"> </span><span class="p">;;</span>
-</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span><span class="m">2</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
-</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">         </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
-</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">       </span><span class="k">done</span><span class="w"> </span><span class="p">;;</span>
-</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: OpenBao did not answer, check the pod"</span><span class="w"> </span><span class="p">;;</span>
-</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">  </span><span class="k">esac</span>
-</span><span id="__span-13-10"><a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">for</span><span class="w"> </span>pod<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w"> </span>&gt;/dev/null<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="nv">$?</span><span class="w"> </span><span class="k">in</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="m">0</span><span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: already unsealed"</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span><span class="m">2</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="m">3</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">         </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>unseal
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">       </span><span class="k">done</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span>*<span class="o">)</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$pod</span><span class="s2">: OpenBao did not answer, check the pod"</span><span class="w"> </span><span class="p">;;</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">  </span><span class="k">esac</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="k">done</span>
 </span></code></pre></div>
 <p>A replica that says <code>Vault is not initialized</code> has not joined the Raft cluster
 — one that predates the <code>retry_join</code> stanzas or started before <code>openbao-0</code> was
 initialised. Point it at the leader once; it takes unseal keys afterwards:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-1<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>join<span class="w"> </span>http://openbao-0.openbao-internal:8200
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-1<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>join<span class="w"> </span>http://openbao-0.openbao-internal:8200
 </span></code></pre></div>
+<h3 id="generating-a-root-token">Generating a root token<a class="headerlink" href="#generating-a-root-token" title="Permanent link">&para;</a></h3>
+<p>For what the operator policy does not cover — a policy, an auth method, a
+snapshot restore, or the operator login itself broken. Needs the operator
+login and 3 unseal shares; each step runs in the pod.</p>
+<ol>
+<li>
+<p>Log in as the operator; it prompts for the password from <code>openbao-operator.json</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-method<span class="o">=</span>userpass<span class="w"> </span><span class="nv">username</span><span class="o">=</span>operator
+</span></code></pre></div>
+</li>
+<li>
+<p>Generate a one-time password and start the attempt with it; note both the OTP and the nonce.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-generate-otp
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-init<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Enter one share per run, three runs; the last prints <code>Encoded Token</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-nonce<span class="o">=</span>&lt;nonce&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Decode it into the root token.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-decode<span class="o">=</span>&lt;encoded-token&gt;<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Do the one job with it, then revoke it and clear the pod's token cache.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-i<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-<span class="w">     </span><span class="c1"># paste the root token, then Ctrl-D</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>token<span class="w"> </span>revoke<span class="w"> </span>-self
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'rm -f "$HOME/.bao-token"'</span>
+</span></code></pre></div>
+</li>
+</ol>
+<p>With the operator login gone too, no token can start an attempt: set
+<code>disable_unauthed_generate_root_endpoints = false</code> in the listener stanza in
+<code>application.yaml</code>, restart and unseal the pods, and drive the deprecated
+<code>sys/generate-root/*</code> API with the shares; revert the setting afterwards.</p>
+<p>To recreate the operator login with that root token, put it as <code>root_token</code>
+into a copy of <code>openbao-init.json</code>, move <code>openbao-operator.json</code> aside, and run
+<code>make bao-rotate-root</code>, which writes a new password and revokes the token.</p>
 <h3 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
 </span></code></pre></div>
 <p>The snapshot holds all KV data and OpenBao's own configuration; restore with
 <code>bao operator raft snapshot restore</code>. Store it off-cluster — it is encrypted

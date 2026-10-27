@@ -2761,6 +2761,10 @@ nightly. Chart values and why each is set are in
 <td>Volume data</td>
 <td>CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket</td>
 </tr>
+<tr>
+<td>Encryption</td>
+<td>Volume data with the repository password generated into OpenBao at <code>velero/repository</code>, which a restore needs; resource backups, Secrets included, are plain JSON — see <a href="../../platform/velero/#repository-password">Repository password</a></td>
+</tr>
 </tbody>
 </table>
 <p>The <code>velero</code> CLI defaults to the <code>velero</code> namespace; this install is in
@@ -2875,7 +2879,9 @@ nothing else. Almost every Application runs with <code>prune: true</code> (<code
 </li>
 </ol>
 <h3 id="openbao-snapshot-restore">OpenBao snapshot restore<a class="headerlink" href="#openbao-snapshot-restore" title="Permanent link">&para;</a></h3>
-<p>Needs an initialised, unsealed cluster and the root token. <code>-force</code> is what
+<p>Needs an initialised, unsealed cluster and a root token from
+<a href="../../platform/openbao/#generating-a-root-token">Generating a root token</a>. Afterwards
+the snapshot's own operator login applies, not the new cluster's. <code>-force</code> is what
 lets a snapshot from a <em>different</em> cluster (a fresh <code>bao operator init</code>) load;
 afterwards the pods seal and want the snapshot's keys, not the new cluster's.</p>
 <ol>
@@ -2942,14 +2948,15 @@ the CronJob uses. Upstream:
 </ol>
 <h3 id="rebuild-from-scratch">Rebuild from scratch<a class="headerlink" href="#rebuild-from-scratch" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Have the Git repository, the OpenBao unseal keys and root token, and an
+<li>Have the Git repository, the OpenBao unseal keys and operator login, and an
    OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
    certificates.</li>
 <li>Provision the cluster per the <a href="../../quickstart/">Quickstart</a> from step 1.</li>
 <li>When every <code>ExternalSecret</code> is Degraded, either <code>make bao-init</code> and restore
    the OpenBao snapshot as above, or <code>make bao-init</code>, re-enter the typed
    secrets with <code>make bao-secrets</code>, and let the <code>PushSecret</code>s generate the
-   rest anew — which loses whatever was encrypted with the old keys.</li>
+   rest anew — which loses whatever was encrypted with the old keys,
+   Velero's volume backups among them.</li>
 <li>Once the platform is Synced and Healthy, restore workloads with a Velero
    restore from the copied-off backup.</li>
 </ol>

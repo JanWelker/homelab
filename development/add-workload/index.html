@@ -2674,8 +2674,8 @@ directory there and pushing it. Why the split exists is in
 </tr>
 <tr>
 <td>A secret from outside the cluster</td>
-<td>An <code>ExternalSecret</code></td>
-<td><a href="../../platform/openbao/">OpenBao</a> holds it; ESO renders a <code>Secret</code></td>
+<td>An <code>ExternalSecret</code> on the <code>openbao-apps</code> store, and an <code>external-secrets-vault</code> ServiceAccount — see <a href="../../platform/external-secrets/#adding-a-secret">Adding a secret</a></td>
+<td><a href="../../platform/openbao/">OpenBao</a> holds it under <code>kv/&lt;namespace&gt;/</code>, the only prefix the namespace can reach; ESO renders a <code>Secret</code></td>
 </tr>
 <tr>
 <td>Metrics</td>

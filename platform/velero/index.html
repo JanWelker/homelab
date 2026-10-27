@@ -1327,6 +1327,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#repository-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repository password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1359,6 +1376,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#re-initialising-the-repositories" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Re-initialising the repositories
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2313,6 +2358,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#repository-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Repository password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2345,6 +2407,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#re-initialising-the-repositories" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Re-initialising the repositories
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2572,6 +2662,41 @@ the chart tuning.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="repository-password">Repository password<a class="headerlink" href="#repository-password" title="Permanent link">&para;</a></h3>
+<p>Kopia encrypts the volume data in every repository with one password, read
+from the Secret <code>velero-repo-credentials</code> (key <code>repository-password</code>) in
+Velero's namespace. When that Secret is missing Velero creates it with a
+default compiled into the binary, which protects nothing, so
+<code>payload/platform/backup/velero-repo-credentials.yaml</code> supplies it.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A <code>Password</code> generator and <code>PushSecret</code> writing <code>velero/repository</code></td>
+<td>A <a href="../openbao/#generated-secrets">generated secret</a>: random, written once, and in the OpenBao snapshot that a restore on a fresh cluster needs anyway</td>
+</tr>
+<tr>
+<td><code>creationPolicy: Owner</code> on the <code>ExternalSecret</code></td>
+<td>ESO takes over the Secret Velero created at start-up and overwrites the default</td>
+</tr>
+<tr>
+<td><code>velero.io/exclude-from-backup</code> on the Secret</td>
+<td>The resource backup lands in the same bucket as the repositories the password unlocks</td>
+</tr>
+<tr>
+<td>Secrets stay in the resource backup</td>
+<td>The tarball under <code>backups/</code> is not encrypted, so every backed-up <code>Secret</code> sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. The <code>velero</code> bucket and its keys are therefore as sensitive as an unencrypted etcd</td>
+</tr>
+</tbody>
+</table>
+<p>A repository keeps the password it was initialised with, and all
+repositories share one, so a changed value makes every existing repository
+unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the repositories</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
@@ -2579,6 +2704,8 @@ the chart tuning.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backupstoragelocation<span class="w">       </span><span class="c1"># Available</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io<span class="w">           </span><span class="c1"># Completed, not PartiallyFailed</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>volumesnapshotclass<span class="w"> </span>rook-ceph-block
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backuprepositories.velero.io<span class="w">  </span><span class="c1"># Ready</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>velero-repo-credentials<span class="w">   </span><span class="c1"># SecretSynced</span>
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
@@ -2589,6 +2716,49 @@ the chart tuning.</p>
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>Access Denied</code> on <code>kopia.blobcfg</code></p>
 <p>Objects upload, volume data does not: the RGW log shows <code>PUT /velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>invalid repository password</code></p>
+<p>The password changed under existing repositories: OpenBao was rebuilt without its snapshot, <code>velero/repository</code> was deleted, or a backup ran on a fresh cluster before OpenBao was unsealed and initialised them with Velero's default. Volume data stops and backups end <code>PartiallyFailed</code>. Restore the old value into OpenBao if it exists anywhere; otherwise re-initialise as below.</p>
+</div>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h3 id="re-initialising-the-repositories">Re-initialising the repositories<a class="headerlink" href="#re-initialising-the-repositories" title="Permanent link">&para;</a></h3>
+<p>Discards every backup in the bucket, resource backups included: a <code>Backup</code>
+whose volume snapshots cannot be reached never finishes deleting, so the
+bucket is emptied as a whole and Velero drops the <code>Backup</code> objects it no
+longer finds there.</p>
+<ol>
+<li>
+<p>Confirm the Secret carries the value from OpenBao, not Velero's default.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>externalsecret<span class="w"> </span>velero-repo-credentials<span class="w">   </span><span class="c1"># SecretSynced</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Delete the repository objects.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>delete<span class="w"> </span>backuprepositories.velero.io<span class="w"> </span>--all
+</span></code></pre></div>
+</li>
+<li>
+<p>Empty the bucket with its own keys, from a machine that reaches the infra Gateway.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>velero-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_ACCESS_KEY_ID}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>velero-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_SECRET_ACCESS_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="w">    </span><span class="c1"># path-style addressing, without touching ~/.aws</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>rm<span class="w"> </span>s3://velero<span class="w"> </span>--recursive
+</span></code></pre></div>
+</li>
+<li>
+<p>Restart Velero and the node agents, so no cached repository connection survives.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deployment/velero<span class="w"> </span>daemonset/node-agent
+</span></code></pre></div>
+</li>
+<li>
+<p>Take a backup now rather than at the next schedule, and confirm it.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>--from-schedule<span class="w"> </span>velero-daily
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io<span class="w">               </span><span class="c1"># Completed</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backuprepositories.velero.io<span class="w">    </span><span class="c1"># Ready</span>
+</span></code></pre></div>
+</li>
+</ol>
 
 
 

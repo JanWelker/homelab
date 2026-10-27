@@ -2729,9 +2729,17 @@ sensitive is committed to Git.</p>
   <a href="../../platform/openbao/#unsealing-after-a-restart">unsealed by hand</a>, so the
   5 key shares are the root of trust for every other secret; losing all of them
   loses everything, and nothing outside the cluster holds a copy.</li>
+<li>No root token is kept: <code>make bao-init</code> revokes it once it has created the
+  <a href="../../platform/openbao/#operator-credential">operator login</a>, and one is
+  generated from the shares when needed. The operator login reads and writes
+  every KV path, so <code>output/credentials/</code> is as sensitive as before, but it
+  cannot change policies or auth methods.</li>
 <li>A Kubernetes <code>Secret</code> is base64, not encryption. Anyone with <code>get secrets</code> in
   a namespace can read what ESO materialised there. Encryption at rest protects
   the bytes in etcd, not the API.</li>
+<li>Velero's resource backups hold every <code>Secret</code> as plain JSON in the <code>velero</code>
+  bucket, so its keys and RGW bypass encryption at rest; only the volume data
+  is encrypted — see <a href="../../platform/velero/#repository-password">Velero</a>.</li>
 </ul>
 <h3 id="encryption-at-rest">Encryption at rest<a class="headerlink" href="#encryption-at-rest" title="Permanent link">&para;</a></h3>
 <p>The API server encrypts <code>secrets</code> with <code>secretbox</code> before they reach etcd

@@ -2543,11 +2543,11 @@ is.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl get clustersecretstore openbao</code> &rarr; <code>Valid</code></td>
+<td><code>kubectl get clustersecretstore</code> &rarr; <code>Valid</code> on all three</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/external-secrets/</code>; the store in <code>payload/platform/openbao/cluster-secret-store.yaml</code></td>
+<td><code>payload/platform/external-secrets/</code>; the stores in <code>payload/platform/openbao/cluster-secret-store.yaml</code></td>
 </tr>
 </tbody>
 </table>
@@ -2565,12 +2565,15 @@ is.</p>
     Bao--&gt;&gt;ESO: secret data
     ESO-&gt;&gt;K: create/update Secret
     App-&gt;&gt;K: mount / envFrom</code></pre>
-<p>ESO mints a short-lived token for its <code>external-secrets-vault</code> ServiceAccount
-through the TokenRequest API (the <code>external-secrets-vault-token-creator</code>
-ClusterRole); OpenBao validates it against the TokenReview API and issues a
-token bound to the <code>external-secrets</code> policy. No long-lived credential exists
-anywhere, and when it breaks it breaks in the <code>ClusterSecretStore</code> status. The
-store uses ESO's <code>vault</code> provider unchanged against the in-cluster Service.</p>
+<p>ESO mints a short-lived token for an <code>external-secrets-vault</code> ServiceAccount
+through the TokenRequest API, which the chart's controller ClusterRole allows
+in every namespace; OpenBao validates it against the TokenReview API
+and issues a token bound to that store's policy. Platform namespaces use the
+<code>openbao</code> store and the ServiceAccount in <code>external-secrets</code>; a workload uses
+<code>openbao-apps</code> and its own, which confines it to <code>kv/&lt;namespace&gt;/</code> — see
+<a href="../openbao/#kubernetes-auth">Kubernetes auth</a>. No long-lived credential exists
+anywhere. The stores use ESO's <code>vault</code> provider unchanged against the
+in-cluster Service.</p>
 <table>
 <thead>
 <tr>
@@ -2581,7 +2584,7 @@ store uses ESO's <code>vault</code> provider unchanged against the in-cluster Se
 <tbody>
 <tr>
 <td>No <code>ClusterSecretStore</code> here</td>
-<td>It only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>, whose readiness it reports — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
+<td>A store only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>, whose readiness it reports — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
 </tr>
 <tr>
 <td>Webhook ServiceAccount token stays mounted</td>
@@ -2601,30 +2604,41 @@ store uses ESO's <code>vault</code> provider unchanged against the in-cluster Se
 </li>
 <li>
 <p>Declare an <code>ExternalSecret</code> alongside the workload's other manifests; the
-   parent Application picks it up:</p>
+   parent Application picks it up. A workload names <code>openbao-apps</code> and ships
+   the ServiceAccount that store logs in as; a platform component names
+   <code>openbao</code> instead and needs no ServiceAccount:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nn">---</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external-secrets.io/v1</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExternalSecret</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServiceAccount</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external-secrets-vault</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="c1"># ESO's CRDs arrive with the external-secrets Application; this</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="c1"># covers a sync before they have landed.</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SkipDryRunOnMissingResource=true</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">  </span><span class="nt">refreshInterval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">  </span><span class="nt">secretStoreRef</span><span class="p">:</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openbao</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterSecretStore</span>
-</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">target</span><span class="p">:</span>
-</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span><span class="w">   </span><span class="c1"># name of the resulting K8s Secret</span>
-</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="nt">creationPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Owner</span>
-</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">  </span><span class="nt">data</span><span class="p">:</span>
-</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span><span class="w">           </span><span class="c1"># key in the K8s Secret</span>
-</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">      </span><span class="nt">remoteRef</span><span class="p">:</span>
-</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;workload&gt;/&lt;purpose&gt;</span>
-</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">        </span><span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span><span class="w">          </span><span class="c1"># key inside the KV entry</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nt">automountServiceAccountToken</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="nn">---</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external-secrets.io/v1</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ExternalSecret</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="w">    </span><span class="c1"># ESO's CRDs arrive with the external-secrets Application; this</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="w">    </span><span class="c1"># covers a sync before they have landed.</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SkipDryRunOnMissingResource=true</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="w">  </span><span class="nt">refreshInterval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1h</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="w">  </span><span class="nt">secretStoreRef</span><span class="p">:</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openbao-apps</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ClusterSecretStore</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">  </span><span class="nt">target</span><span class="p">:</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-credentials</span><span class="w">   </span><span class="c1"># name of the resulting K8s Secret</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">    </span><span class="nt">creationPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Owner</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="w">  </span><span class="nt">data</span><span class="p">:</span>
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretKey</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span><span class="w">           </span><span class="c1"># key in the K8s Secret</span>
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a><span class="w">      </span><span class="nt">remoteRef</span><span class="p">:</span>
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="w">        </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app/&lt;purpose&gt;</span><span class="w">   </span><span class="c1"># the namespace is the prefix</span>
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a><span class="w">        </span><span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span><span class="w">          </span><span class="c1"># key inside the KV entry</span>
 </span></code></pre></div>
 <p>To pull every key without listing them, use <code>dataFrom</code> instead of <code>data</code>:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">spec</span><span class="p">:</span>
@@ -2650,7 +2664,9 @@ resource changes. To sync now rather than wait:</p>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<p>Start with the store; if it is not Ready, nothing downstream is either:</p>
+<p>Start with the store; if it is not Ready, nothing downstream is either.
+<code>openbao-apps</code> and <code>openbao-claude-agents</code> report <code>Valid</code> without logging in,
+so their auth failures show on the <code>ExternalSecret</code> instead:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
 </span></code></pre></div>
 <table>
@@ -2667,11 +2683,11 @@ resource changes. To sync now rather than wait:</p>
 </tr>
 <tr>
 <td>Kubernetes auth role missing</td>
-<td>Re-run <code>make bao-init</code>, which writes <code>auth/kubernetes/role/external-secrets</code></td>
+<td><code>make bao-policies</code> writes all three roles</td>
 </tr>
 <tr>
 <td>Wrong <code>serviceAccountRef</code></td>
-<td>Must be <code>external-secrets-vault</code> in <code>external-secrets</code></td>
+<td><code>external-secrets-vault</code>, in <code>external-secrets</code> for <code>openbao</code> and without a namespace for the other two</td>
 </tr>
 </tbody>
 </table>
@@ -2695,8 +2711,12 @@ resource changes. To sync now rather than wait:</p>
 <td><code>bao kv get kv/&lt;path&gt;</code> lists them</td>
 </tr>
 <tr>
-<td>The policy does not grant <code>read</code> on the path</td>
-<td>Edit the <code>external-secrets</code> policy</td>
+<td><code>permission denied</code> from <code>openbao-apps</code></td>
+<td>The path is outside <code>kv/&lt;namespace&gt;/</code>, or the namespace has no <code>external-secrets-vault</code> ServiceAccount</td>
+</tr>
+<tr>
+<td><code>using cluster store ... is not allowed from namespace</code></td>
+<td>The store's <code>conditions</code> exclude the namespace: a platform namespace on <code>openbao-apps</code></td>
 </tr>
 </tbody>
 </table>

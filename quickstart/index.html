@@ -2826,8 +2826,9 @@ see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storag
 </span></code></pre></div>
 <p>Initialises and unseals OpenBao, enables the <code>kv</code> v2 engine and the
 Kubernetes auth method, and writes the policy and role External Secrets
-authenticates with. Keys and root token land in
-<code>output/credentials/openbao-init.json</code>.</p>
+authenticates with, then replaces the root token with an operator
+login. The keys land in <code>output/credentials/openbao-init.json</code>, the login
+in <code>openbao-operator.json</code> beside it.</p>
 <div class="admonition danger">
 <p class="admonition-title">Move those keys before you do anything else</p>
 <p>That file is a plaintext copy of the keys to every secret the cluster holds. Copy them into a password manager and delete it. Losing them means the data is unrecoverable. See <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a>.</p>
@@ -2856,7 +2857,7 @@ re-checked every few minutes, so that can take that long to start.</p>
 <p><strong>Create the first administrator</strong>:
     Authentik ships the built-in <code>akadmin</code> account; its password is the
     <code>bootstrap-password</code> its <code>PushSecret</code> generated. Read it back out of
-    OpenBao (needs a token — <code>bao login</code> inside the pod, or the port-forward in
+    OpenBao (needs a token — <code>bao login -method=userpass username=operator</code> inside the pod, or the port-forward in
     <a href="../platform/openbao/#authenticating-locally">OpenBao &rarr; Authenticating locally</a>):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
