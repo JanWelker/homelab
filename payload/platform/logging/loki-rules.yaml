@@ -43,8 +43,14 @@ data:
                   {job="kubernetes-audit", verb=~"get|list|watch"}
                     | json
                     | objectRef_resource="secrets"
-                    | user_username !~ "system:.*"
                     | responseStatus_code < 400
+                    | user_username !~ "system:(apiserver|kube-controller-manager|kube-scheduler|node:.+)"
+                    | user_username !~ "system:serviceaccount:(kube-system|rook-ceph|arc-systems):.+"
+                    | user_username !~ "system:serviceaccount:argocd:argocd-(application-controller|applicationset-controller|server|notifications-controller|dex-server|redis-secret-init)"
+                    | user_username !~ "system:serviceaccount:(backup:velero-server|cert-manager:cert-manager(-cainjector|-webhook)?|cnpg-system:cloudnative-pg(-plugin-barman-cloud)?|external-secrets:external-secrets(-cert-controller)?|logging:(alloy|loki)|monitoring:kube-prometheus-stack-(grafana|kube-state-metrics|operator|admission)|trivy-system:trivy-operator)"
+                    | label_format sa_namespace=`{{ regexReplaceAll "^system:serviceaccount:([^:]+):.+$" .user_username "${1}" }}`
+                    | label_format own_namespace=`{{ if and (hasPrefix "system:serviceaccount:" .user_username) (eq .sa_namespace .objectRef_namespace) }}true{{ end }}`
+                    | own_namespace != "true"
                   [10m]
                 )
               ) > 0
@@ -54,9 +60,10 @@ data:
               summary: >-
                 {{ $labels.user_username }} read Secrets in {{ $labels.objectRef_namespace }}
               description: >-
-                A Secret read by a user rather than a component. Every
-                controller here reads through a ServiceAccount, so this is a
-                person with a kubeconfig, or someone holding one.
+                A Secret read by a person with a kubeconfig, or by a
+                ServiceAccount outside its own namespace that is not one of
+                the platform controllers RBAC grants Secrets to: someone
+                holding a token that should not read them.
           - alert: KubernetesAuditRbacBindingChanged
             expr: |
               sum by (user_username, objectRef_resource, objectRef_name) (
@@ -120,7 +127,8 @@ data:
                 should not have.
       - name: openbao-audit
         rules:
-          # The server's own log lines share the stream: filter before parsing.
+          # The server's own log lines share the stream: drop them before
+          # parsing, then compare the reader exactly.
           - alert: OpenBaoSecretReadOutsideEso
             expr: |
               sum by (auth_display_name, request_path) (
@@ -128,11 +136,12 @@ data:
                   {namespace="openbao", container="openbao"}
                     |= `"type":"response"`
                     |= `kv/data/`
-                    != `external-secrets`
                     != `please forward to the active node`
                     | json
                     | __error__=""
                     | request_operation="read"
+                    | request_path=~"kv/data/.+"
+                    | auth_display_name != "kubernetes-external-secrets-external-secrets-vault"
                   [10m]
                 )
               ) > 0

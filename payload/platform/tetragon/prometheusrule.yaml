@@ -20,6 +20,8 @@ spec:
               unless
                 tetragon_policy_events_total{policy="sensitive-file-access"} offset 10m
             ) > 0
+            unless on (namespace, pod, binary)
+              tetragon_policy_events_total{policy="sensitive-file-access", namespace="backup", workload=~"etcd-(backup|defrag)-[0-9]+", binary="/usr/local/bin/etcdctl"}
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -29,22 +31,26 @@ spec:
             description: >-
               {{ $labels.binary }}{{ if $labels.pod }} in pod
               {{ $labels.namespace }}/{{ $labels.pod }}{{ else }} on the host{{ end }}
-              opened a file under the control plane's PKI, the encryption
-              config, etcd's data or the kubelet's certificates and is not a
-              control-plane binary, or wrote to passwd, shadow, group,
-              sudoers, ld.so.preload, a cron or sudoers drop-in or root's
-              ssh directory. The event, with the path and arguments, is in
+              read a control-plane key, the encryption config, an admin
+              kubeconfig, etcd's data or a kubelet key, under whatever path
+              it was mounted, and is not a control-plane binary on the host
+              network, or wrote to passwd, shadow, group, sudoers,
+              ld.so.preload, a cron or sudoers drop-in or root's ssh
+              directory. The nightly etcd backup and the weekly defrag are
+              left out. The event, with the path and arguments, is in
               Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
         - alert: TetragonCredentialsEscalated
           expr: |
             sum by (namespace, pod, binary) (
-                increase(tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"}[10m]) > 0
+                increase(tetragon_policy_events_total{policy="process-creds-changed", namespace!="rook-ceph"}[10m]) > 0
               or
-                tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"}
+                tetragon_policy_events_total{policy="process-creds-changed", namespace!="rook-ceph"}
               unless
-                tetragon_policy_events_total{policy="process-creds-changed", namespace!~"rook-ceph|kube-system"} offset 10m
+                tetragon_policy_events_total{policy="process-creds-changed", namespace!="rook-ceph"} offset 10m
             ) > 0
+            unless on (namespace, pod)
+              tetragon_policy_events_total{policy="process-creds-changed", namespace="kube-system", workload="cilium"}
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -55,9 +61,9 @@ spec:
               A process in the container moved into another mount, pid,
               network or user namespace after it was executed: nsenter,
               setns, or an escape. runc, which does this on every start, is
-              dropped in the kernel; Cilium's init containers and Rook's OSD
-              prepare Jobs nsenter into the host by design, so kube-system
-              and rook-ceph are left out. Loki:
+              dropped in the kernel; the Cilium agent's init containers and
+              Rook's OSD prepare Jobs nsenter into the host by design, so the
+              cilium DaemonSet's pods and rook-ceph are left out. Loki:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="process-creds-changed".
         - alert: TetragonExecFromWritablePath

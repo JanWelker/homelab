@@ -26,7 +26,8 @@ spec:
             # Alloy reads the sidecar's stdout; see docs/platform/tetragon.md#configuration
             exportDenyList: |
               {"health_check":true}
-              {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["","cilium","kube-system"]}
+              {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["","cilium"]}
+              {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["kube-system"],"labels":["tier=control-plane","app.kubernetes.io/part-of=cilium","k8s-app=kube-dns","app.kubernetes.io/name in (tetragon,tetragon-operator,kube-vip,metrics-server)"]}
 
             prometheus:
               serviceMonitor:

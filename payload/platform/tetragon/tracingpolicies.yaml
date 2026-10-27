@@ -22,15 +22,34 @@ spec:
         index: 0
         type: int
       selectors:
-        # Key material: the control plane and kube-vip read it continuously.
+        # Key material by file name, so a hostPath mounted anywhere matches.
+        # The control plane, the kubelet and kube-vip read it continuously:
+        # dropped only when the binary is theirs and it runs on the host
+        # network, as they all do. See docs/platform/tetragon.md#policies
         - matchArgs:
             - index: 0
-              operator: Prefix
-              values:
-                - /etc/kubernetes/pki/
-                - /etc/kubernetes/enc/
-                - /var/lib/etcd/
-                - /var/lib/kubelet/pki/
+              operator: Postfix
+              values: &key-material
+                - /sa.key
+                - /apiserver.key
+                - /apiserver-kubelet-client.key
+                - /apiserver-etcd-client.key
+                - /front-proxy-ca.key
+                - /front-proxy-client.key
+                - /healthcheck-client.key
+                - /peer.key
+                - /pki/ca.key
+                - /pki/server.key
+                - /etcd/ca.key
+                - /etcd/server.key
+                - /encryption-config.yaml
+                - /admin.conf
+                - /super-admin.conf
+                - /kubelet-client-current.pem
+                - /kubelet-server-current.pem
+                - /kubelet.key
+                - /member/snap/db
+                - .wal
           matchBinaries:
             - operator: NotIn
               values:
@@ -46,15 +65,13 @@ spec:
               rateLimit: 1m
         - matchArgs:
             - index: 0
-              operator: Equal
+              operator: Postfix
+              values: *key-material
+          matchNamespaces:
+            - namespace: Net
+              operator: NotIn
               values:
-                - /etc/kubernetes/admin.conf
-                - /etc/kubernetes/super-admin.conf
-          matchBinaries:
-            - operator: NotIn
-              values:
-                - /kube-vip
-                - /usr/bin/kubeadm
+                - host_ns
           matchActions:
             - action: Post
               rateLimit: 1m
@@ -193,43 +210,10 @@ kind: TracingPolicy
 metadata:
   name: privileges-raise
 spec:
-  # redis-ha's busybox calls setgid(0) on every applet.
-  podSelector:
-    matchExpressions:
-      - key: app
-        operator: NotIn
-        values:
-          - redis-ha
   kprobes:
     - call: __sys_setuid
       syscall: false
       message: setuid to root
-      tags:
-        - observability.privilege_escalation
-      args:
-        - index: 0
-          type: int
-      selectors:
-        - matchArgs:
-            - index: 0
-              operator: Equal
-              values:
-                - "0"
-          matchNamespaces:
-            - namespace: Pid
-              operator: NotIn
-              values:
-                - host_ns
-          matchBinaries:
-            - operator: NotIn
-              values:
-                - /usr/bin/runc
-          matchActions:
-            - action: Post
-              rateLimit: 1m
-    - call: __sys_setgid
-      syscall: false
-      message: setgid to root
       tags:
         - observability.privilege_escalation
       args:
@@ -281,6 +265,77 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
+    - call: __sys_setresuid
+      syscall: false
+      message: setresuid to root
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+        - index: 2
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: privileges-raise-gid
+spec:
+  # The redis-ha busybox calls setgid(0) on every applet. Two policies tie
+  # its exemption to the argocd namespace, which one selector cannot.
+  podSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: NotIn
+        values:
+          - argocd
+  kprobes:
+    - call: __sys_setgid
+      syscall: false
+      message: setgid to root
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
+          matchActions:
+            - action: Post
+              rateLimit: 1m
     - call: __sys_setregid
       syscall: false
       message: setregid to root
@@ -309,9 +364,9 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
-    - call: __sys_setresuid
+    - call: __sys_setresgid
       syscall: false
-      message: setresuid to root
+      message: setresgid to root
       tags:
         - observability.privilege_escalation
       args:
@@ -320,6 +375,77 @@ spec:
         - index: 1
           type: int
         - index: 2
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: privileges-raise-gid-argocd
+spec:
+  podSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - argocd
+      - key: app
+        operator: NotIn
+        values:
+          - redis-ha
+  kprobes:
+    - call: __sys_setgid
+      syscall: false
+      message: setgid to root
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /usr/bin/runc
+          matchActions:
+            - action: Post
+              rateLimit: 1m
+    - call: __sys_setregid
+      syscall: false
+      message: setregid to root
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: int
+        - index: 1
           type: int
       selectors:
         - matchArgs:

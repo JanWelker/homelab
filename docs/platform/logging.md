@@ -93,11 +93,11 @@ the mixin Grafana maintains, not rules written here.
 | Alert | Fires on | Why it is a log alert |
 | --- | --- | --- |
 | `KubernetesAuditExecIntoPod` | A successful `exec` or `attach` | Only the [audit log](../architecture/audit-logging.md) records who ran what in which pod |
-| `KubernetesAuditSecretReadByUser` | A Secret read by a user, not a `system:` identity | Every controller reads through a ServiceAccount; a user is a person with a kubeconfig |
+| `KubernetesAuditSecretReadByUser` | A Secret read by a person, or by a ServiceAccount outside its own namespace that is not on the allowlist of platform controllers | A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, and a ServiceAccount reading its own namespace is what its Role is for |
 | `KubernetesAuditRbacBindingChanged` | A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a `kube-system` controller | Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously |
 | `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
 | `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
-| `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by anything but the External Secrets Operator | [OpenBao's audit device](openbao.md#audit-devices) writes to stdout; ESO is the only day-to-day reader |
+| `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by any token whose display name is not exactly that of ESO's Kubernetes login | [OpenBao's audit device](openbao.md#audit-devices) writes to stdout; ESO is the only day-to-day reader, and a token created by hand is prefixed `token-`, so it cannot borrow that name |
 | `TetragonSudoInContainer` | `sudo` executed in a container, except the `smartctl` and `nvme` calls `ceph-osd` makes once a day for its device health report | Only the exec event carries the binary and its parent |
 | `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec, with the same `ceph-osd` exception | The `binary_properties` field exists only in the exec event |
 | `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor, except runc's sealed self-copy on every `exec` | Same |
