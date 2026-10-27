@@ -33,10 +33,20 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           volumes:
-            - name: etcd-certs
+            # The client pair and the CA certificate, not the directory: it
+            # also holds the CA and server keys.
+            - name: etcd-ca
               hostPath:
-                path: /etc/kubernetes/pki/etcd
-                type: Directory
+                path: /etc/kubernetes/pki/etcd/ca.crt
+                type: File
+            - name: etcd-client-cert
+              hostPath:
+                path: /etc/kubernetes/pki/etcd/healthcheck-client.crt
+                type: File
+            - name: etcd-client-key
+              hostPath:
+                path: /etc/kubernetes/pki/etcd/healthcheck-client.key
+                type: File
             - name: snapshot
               emptyDir: {}
             # The only two places the upload container writes.
@@ -63,8 +73,14 @@ spec:
                 capabilities:
                   drop: ["ALL"]
               volumeMounts:
-                - name: etcd-certs
-                  mountPath: /pki
+                - name: etcd-ca
+                  mountPath: /pki/ca.crt
+                  readOnly: true
+                - name: etcd-client-cert
+                  mountPath: /pki/healthcheck-client.crt
+                  readOnly: true
+                - name: etcd-client-key
+                  mountPath: /pki/healthcheck-client.key
                   readOnly: true
                 - name: snapshot
                   mountPath: /snapshot
