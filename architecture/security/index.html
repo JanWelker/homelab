@@ -2629,8 +2629,11 @@ of the cluster's own security exists.</p>
 <p>The mitigation is time: <code>make serve</code> is a foreground command, the bootstrap
 token has a 24 hour TTL and the certificate key expires after two hours, and
 <code>make config</code> re-arms both only for those windows. The
-encryption key has no clock, which is why the boot server listens only on
-<code>boot_server_ip</code>, serves files by name and lists nothing. <strong>Stop the boot
+encryption key has no clock, which is why the HTTP server listens only on
+<code>boot_server_ip</code>, serves files by name and lists nothing. TFTP listens on
+every interface, because macOS lets an unprivileged process bind port 69 only
+there, and refuses every write request, so nobody can plant a boot menu.
+<strong>Stop the boot
 server when provisioning is finished.</strong> Flatcar is installed to disk, so
 nothing needs it after a build — see
 <a href="../boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
@@ -2730,7 +2733,7 @@ cluster holds.</p>
 </tr>
 <tr>
 <td>Key</td>
-<td>32 random bytes, generated once by <code>make config</code> into <code>output/credentials/encryption_key</code></td>
+<td>32 random letters and digits (about 190 bits), generated once by <code>make config</code> into <code>output/credentials/encryption_key</code> and base64-encoded into the config as the <code>secretbox</code> key</td>
 </tr>
 <tr>
 <td>Scope</td>
@@ -2773,8 +2776,9 @@ the chart repositories the workloads use, may not write into any platform
 namespace (<code>authentik</code> excepted, for the blueprint ConfigMap a workload ships
 there), and at cluster scope may create nothing but namespaces.</p>
 <p><strong>Every platform namespace is default-deny in both directions</strong>, one
-<code>CiliumNetworkPolicy</code> file per namespace plus the cluster-wide rules, and the
-policies are still in audit mode until the observation week ends — see
+<code>CiliumNetworkPolicy</code> file per namespace plus the cluster-wide rules, and
+Cilium enforces them: <code>policyAuditMode</code> is off, so a flow no rule allows is
+dropped — see
 <a href="../../platform/security-policies/#network-policies">Security Policies</a> and
 <a href="../../platform/security-policies/#rollout">Rollout</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
@@ -2792,7 +2796,7 @@ to either Gateway and claim a hostname inside its listener's pattern — see
 <a href="../../platform/gateway-api/#configuration">Gateway API</a>.</p>
 <h2 id="exposed-interfaces">Exposed interfaces<a class="headerlink" href="#exposed-interfaces" title="Permanent link">&para;</a></h2>
 <p>Every platform UI on the infra gateway is behind
-<a href="../../platform/authentik/">Authentik</a>:</p>
+<a href="../../platform/authentik/">Authentik</a>; the last two rows are not:</p>
 <table>
 <thead>
 <tr>
@@ -2829,6 +2833,10 @@ to either Gateway and claim a hostname inside its listener's pattern — see
 <td>OpenBao UI</td>
 <td>Token or configured auth method — not behind Authentik</td>
 </tr>
+<tr>
+<td>Agent SSH, <code>*.ssh.wlkr.ch</code></td>
+<td>The <code>ssh</code> TLS-passthrough listener on <code>apps-gateway</code>, which external-dns publishes on the public address. Nothing in front authenticates it: <code>sshd</code> in each agent pod admits the user <code>agent</code> with public keys only — see <a href="../../platform/gateway-api/#ssh-listener">SSH listener</a> and the workloads repository's <a href="https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md">Claude agents</a> page</td>
+</tr>
 </tbody>
 </table>
 <p>Authentik is therefore a dependency of reaching any of them; the break-glass
@@ -2838,9 +2846,6 @@ so putting it behind Authentik would be a loop.</p>
 <h2 id="what-would-tighten-this-up">What would tighten this up<a class="headerlink" href="#what-would-tighten-this-up" title="Permanent link">&para;</a></h2>
 <p>Roughly in order of value against effort:</p>
 <ol>
-<li>Finish the <a href="../../platform/security-policies/#rollout">network policy rollout</a>:
-   tighten the <code>http: [{}]</code> rules to what the audit week recorded, then turn
-   <code>policyAuditMode</code> off.</li>
 <li>Narrow <code>sourceRepos</code> on the AppProjects to this repository and the Helm
    repositories actually in use.</li>
 <li>Restrict <code>allowedRoutes</code> on <code>infra-gateway</code> to the platform namespaces, and

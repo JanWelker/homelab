@@ -2338,10 +2338,10 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <td><a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>, <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">upgrading a minor deliberately</a>, <a href="../../platform/kured/">Kured</a></td>
 </tr>
 <tr>
-<td><strong>Network policy is auditing, AppProjects are permissive</strong></td>
-<td>Every platform namespace has default-deny policy in both directions and Pod Security Admission labels, but <code>policyAuditMode</code> is still on, so a verdict is logged rather than enforced, and the <code>infra</code> AppProject allows every kind in every namespace</td>
-<td>Finish the <a href="../../platform/security-policies/#rollout">rollout</a>; narrow the projects</td>
-<td><a href="../../platform/security-policies/">Security Policies</a>, <a href="../security/#authorization">Security Posture</a></td>
+<td><strong>The <code>infra</code> AppProject is permissive</strong></td>
+<td>The network policies are enforced, but the <code>infra</code> AppProject allows every kind in every namespace, so a platform <code>application.yaml</code> can deploy anything anywhere</td>
+<td>Narrow the projects</td>
+<td><a href="../security/#authorization">Security Posture</a></td>
 </tr>
 <tr>
 <td><strong>Reprovisioning needs the boot server on the segment</strong></td>

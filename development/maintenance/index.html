@@ -2517,12 +2517,12 @@ everything, and Renovate, which chases dependencies.</p>
 <tr>
 <td><code>docs.yaml</code></td>
 <td>push to <code>main</code> under <code>docs/**</code>, <code>overrides/**</code>, <code>zensical.toml</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td>
-<td>Builds the site with <code>--strict</code> and publishes it — see <a href="../contributing/#documentation">Contributing</a></td>
+<td>Builds the site with <code>--strict</code> and publishes it — see <a href="../contributing/#documentation">Contributing</a>. The build runs with a read-only token; only the deploy job, which runs no dependency code, can push</td>
 </tr>
 <tr>
 <td><code>preview.yaml</code></td>
 <td>pull requests on the same paths</td>
-<td>Publishes a preview under <code>pr-preview/</code>; fork PRs skipped</td>
+<td>Publishes a preview under <code>pr-preview/</code> from the build job's artifact, same split as <code>docs.yaml</code>; fork PRs skipped</td>
 </tr>
 <tr>
 <td><code>argo-diff-preview.yaml</code></td>
@@ -2538,6 +2538,11 @@ everything, and Renovate, which chases dependencies.</p>
 <td><code>renovate-validate.yaml</code></td>
 <td><code>renovate.json</code></td>
 <td><code>renovate-config-validator</code></td>
+</tr>
+<tr>
+<td><code>secret-scan.yaml</code></td>
+<td>every pull request</td>
+<td><code>gitleaks</code> over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history</td>
 </tr>
 <tr>
 <td><code>ci-ok.yaml</code></td>
@@ -2570,7 +2575,7 @@ are the pairs below that must move together.</p>
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
     Rook requires both charts on the same version; and <code>markdownlint-cli2</code> in
     the workflow with its pre-commit hook, because the two must lint alike;
-    and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
+    <code>gitleaks</code> likewise; and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
     <code>python</code> images), because <code>uv sync</code> fails when they name different
     minors.</li>
 <li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new
