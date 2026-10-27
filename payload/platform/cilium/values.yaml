@@ -49,6 +49,9 @@ operator:
 
 envoy:
   rollOutPods: true
+  # Pinned: the bootstrap's Helm field manager keeps the old key in
+  # cilium-config; see docs/platform/cilium.md#pitfalls
+  xdsMode: ads
   resources:
     requests:
       cpu: 25m

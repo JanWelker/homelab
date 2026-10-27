@@ -88,3 +88,6 @@ The same verdicts, for the whole Loki retention window, in Grafana:
 
 !!! warning "An operator that starts without the API server leaves the Gateways without certificates"
     cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and `cilium-secrets` empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. `CiliumGatewayCertificatesMissing` fires; `kubectl -n kube-system rollout restart deploy/cilium-operator` recovers it.
+
+!!! danger "A chart default that disappears stays in `cilium-config`"
+    The bootstrap install's `helm` field manager still co-owns every `cilium-config` key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When 1.20.4 dropped the `envoy.xdsMode` default, the agents kept `envoy-xds-mode: ads` while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in `values.yaml` rather than relying on the default.
