@@ -28,10 +28,11 @@ of the cluster's own security exists.
 | Property | Detail |
 | --- | --- |
 | Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
-| Those configs embed join credentials | The inlined kubeadm config carries the bootstrap `token` and the `certificateKey`, together enough to join a new control-plane node |
+| Those configs embed join credentials | The bootstrap `token`, and on control-plane nodes the `certificateKey`, together enough to join a new control-plane node. Only the init host has them in its kubeadm config; the others get a `0600` environment file that `bootstrap-k8s.service` names by variable and deletes after a successful join, so `systemctl cat` and `systemctl show` reveal nothing |
 | The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. It has no TTL: anyone who fetched a control-plane config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
-| Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off |
+| Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off. The transfer config that names their source is inlined from a template in Git, not fetched |
+| The PXE kernel, initrd and bootloader are signature-checked | `make download` takes their sums only from a clearsigned file that `gpgv` verifies against a pinned primary key fingerprint: Flatcar's image signing key for `.DIGESTS.asc`, the kernel.org checksum autosigner for syslinux's `sha256sums.asc` |
 | The OS image is signature-checked | `flatcar-install` is given `-b`/`-V`, so the node downloads the image and its detached signature and checks both against Flatcar's key before writing anything |
 
 The mitigation is time: `make serve` is a foreground command, the bootstrap
@@ -47,9 +48,13 @@ nothing needs it after a build — see
 [Every boot after the first](boot-process.md#every-boot-after-the-first).
 
 `output/credentials/` holds the generated bootstrap token and certificate key
-in plaintext. The directory is `0700` and `output/` is gitignored, but the
-values are reused across `make config` runs — the Ansible `password` lookup
-reads back an existing file. Delete them to force new ones.
+in plaintext. The directory is `0700`, the Ignition configs in `output/http`
+are `0600`, and `output/` is gitignored. The values are reused across
+`make config` runs, because a node whose join window passed retries with the
+values on its disk once `make config` has re-armed them
+([Adding a node](../operations/nodes.md#adding-a-node)). Delete them to force
+new ones. The installer keeps its copy of the node config `0600` in RAM;
+`flatcar-install` carries that mode to the OEM partition.
 
 ## Node hardening
 
@@ -61,6 +66,9 @@ carry the settings below. They land at provisioning time and change only on
 | --- | --- |
 | `proxy.disabled: true` | Cilium replaces `kube-proxy`. The field lands in the `kubeadm-config` ConfigMap that `kubeadm upgrade apply` reads; a `skipPhases` on init alone leaves `proxy: {}` stored, and every upgrade puts `kube-proxy` back beside Cilium |
 | `--kubelet-certificate-authority` | The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. It can, because `serverTLSBootstrap` makes the kubelet request its certificate from the cluster CA and [kubelet-csr-approver](../platform/metrics-server.md) approves the CSR; metrics-server verifies the same certificates |
+| `--admission-control-config-file` | A [Pod Security default](../platform/security-policies.md#pod-security-admission) for namespaces without labels, so a namespace nobody labelled is `baseline`, not `privileged` |
+| `--profiling=false` on the API server, controller-manager and scheduler | `/debug/pprof` exposes internals to any token with the right RBAC and helps nothing here; CIS asks for it off |
+| Metrics listeners on the node address | etcd's plain-HTTP metrics and the controller-manager and scheduler bind the node's own address, where Prometheus scrapes them, instead of every interface. The address differs per node, so it comes from per-node JSON patches in `/etc/kubernetes/patches` rather than the cluster-wide `ClusterConfiguration`; the patches also move the probes, and etcd keeps `127.0.0.1` for its own |
 | `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any address on every node, with no ownership check. Nothing here uses it: LoadBalancer addresses come from Cilium's pools. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
 | `--tls-cipher-suites` and `--tls-min-version` | Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1 |
 | `protectKernelDefaults: true` | The kubelet no longer rewrites `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` at start and refuses to start unless they are already right. `/etc/sysctl.d/k8s.conf` in the node config sets them, and the two travel together: without the drop-in a fresh node comes up at the kernel defaults, the kubelet exits and the node never joins, which shows at the next `make reinstall`, not on merge |

@@ -8,6 +8,9 @@ nodeRegistration:
   imagePullPolicy: IfNotPresent
   name: "{{ inventory_hostname }}"
   taints: null
+{% if inventory_hostname == groups['control_plane'][0] %}
+# Only kubeadm init reads these; every other node joins with flags from
+# /opt/bootstrap-k8s.env, see butane_node_config.yaml.j2.
 bootstrapTokens:
   - groups:
       - system:bootstrappers:kubeadm:default-node-token
@@ -17,6 +20,7 @@ bootstrapTokens:
       - signing
       - authentication
 certificateKey: "{{ certificate_key }}"
+{% endif %}
 patches:
   directory: /etc/kubernetes/patches
 timeouts:
@@ -56,7 +60,16 @@ apiServer:
       value: "10"
     - name: audit-log-maxsize
       value: "100"
+    - name: admission-control-config-file
+      value: /etc/kubernetes/admission/admission.yaml
+    - name: profiling
+      value: "false"
   extraVolumes:
+    - name: admission-config
+      hostPath: /etc/kubernetes/admission
+      mountPath: /etc/kubernetes/admission
+      readOnly: true
+      pathType: Directory
     - name: encryption-config
       hostPath: /etc/kubernetes/enc
       mountPath: /etc/kubernetes/enc
@@ -74,17 +87,17 @@ apiServer:
       pathType: DirectoryOrCreate
 certificatesDir: /etc/kubernetes/pki
 clusterName: kubernetes
+# The metrics listeners bind the node's own address through per-node patches
+# in /etc/kubernetes/patches: this section is stored once for the whole
+# cluster, so it cannot name an address.
 controllerManager:
   extraArgs:
-    - name: bind-address
-      value: "0.0.0.0"
+    - name: profiling
+      value: "false"
 dns: {}
 etcd:
   local:
     dataDir: /var/lib/etcd
-    extraArgs:
-      - name: listen-metrics-urls
-        value: "http://0.0.0.0:2381"
 imageRepository: registry.k8s.io
 kubernetesVersion: {{ kubernetes_version }}
 networking:
@@ -93,8 +106,8 @@ networking:
   podSubnet: {{ pod_subnet }}
 scheduler:
   extraArgs:
-    - name: bind-address
-      value: "0.0.0.0"
+    - name: profiling
+      value: "false"
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration

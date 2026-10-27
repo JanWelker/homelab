@@ -1,0 +1,13 @@
+[Transfer]
+Verify=false
+
+[Source]
+Type=url-file
+Path=https://extensions.flatcar.org/extensions/kubernetes/
+MatchPattern=kubernetes-{{ kubernetes_version.split('.')[:2] | join('.') }}.@v-%a.raw
+
+[Target]
+InstancesMax=3
+Type=regular-file
+Path=/opt/extensions/kubernetes
+CurrentSymlink=/etc/extensions/kubernetes.raw

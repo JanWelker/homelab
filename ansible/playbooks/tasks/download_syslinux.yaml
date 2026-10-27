@@ -10,15 +10,17 @@
     state: directory
     mode: "0755"
 
-- name: Download Syslinux Checksums
-  ansible.builtin.uri:
-    url: "{{ url }}/sha256sums.asc"
-    return_content: true
-  register: syslinux_checksums
+- name: Verify the Syslinux checksums
+  ansible.builtin.include_tasks: verify_clearsigned.yaml
+  vars:
+    signed_name: syslinux sha256sums.asc
+    signed_url: "{{ url }}/sha256sums.asc"
+    key_url: "{{ kernel_org_autosigner_key.url }}"
+    key_fingerprint: "{{ kernel_org_autosigner_key.fingerprint }}"
 
 - name: Set Syslinux Checksum Fact
   ansible.builtin.set_fact:
-    syslinux_checksum: "{{ syslinux_checksums.content | regex_search('([a-f0-9]+)\\s+syslinux-' + syslinux_version + '.zip', '\\1') | first }}"
+    syslinux_checksum: "{{ verified_text | regex_search('([a-f0-9]+)\\s+syslinux-' + syslinux_version + '.zip', '\\1') | first }}"
 
 - name: Download Syslinux (zip)
   ansible.builtin.get_url:

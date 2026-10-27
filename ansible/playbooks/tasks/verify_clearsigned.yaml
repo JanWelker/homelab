@@ -1,0 +1,46 @@
+---
+# Fetches a clearsigned file and sets verified_text to the part the signature
+# covers, or fails. The signing key is fetched from its publisher but trusted
+# only through the pinned primary fingerprint, which gpg reports as the last
+# field of VALIDSIG for a signature by the key or any of its subkeys.
+# Expects: signed_url, key_url, key_fingerprint, signed_name.
+- name: "Fetch the signing key for {{ signed_name }}"
+  ansible.builtin.get_url:
+    url: "{{ key_url }}"
+    dest: "{{ gnupg_home }}/{{ key_fingerprint }}.asc"
+    # A new yearly subkey arrives only with a fresh copy.
+    force: true
+    mode: "0600"
+
+# gpgv needs no agent and no trust database, only a binary keyring.
+- name: "Unwrap the signing key for {{ signed_name }}"
+  ansible.builtin.command:
+    cmd: >-
+      gpg --batch --no-autostart --homedir {{ gnupg_home }} --yes
+      --output {{ gnupg_home }}/{{ key_fingerprint }}.gpg
+      --dearmor {{ gnupg_home }}/{{ key_fingerprint }}.asc
+  changed_when: false
+
+- name: "Fetch {{ signed_name }}"
+  ansible.builtin.get_url:
+    url: "{{ signed_url }}"
+    dest: "{{ gnupg_home }}/{{ signed_url | basename }}"
+    force: true
+    mode: "0600"
+
+# --output prints only the signed text, so nothing outside the signature is
+# parsed; the status lines go to stderr to keep the two apart.
+- name: "Verify the signature on {{ signed_name }}"
+  ansible.builtin.command:
+    cmd: >-
+      gpgv --keyring {{ gnupg_home }}/{{ key_fingerprint }}.gpg --status-fd 2
+      --output - {{ gnupg_home }}/{{ signed_url | basename }}
+  register: gpg_verify
+  changed_when: false
+  failed_when: >-
+    gpg_verify.rc != 0 or
+    gpg_verify.stderr is not search('(?m)^\\[GNUPG:\\] VALIDSIG .* ' + key_fingerprint + '$')
+
+- name: "Keep the verified text of {{ signed_name }}"
+  ansible.builtin.set_fact:
+    verified_text: "{{ gpg_verify.stdout }}"

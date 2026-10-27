@@ -37,6 +37,7 @@ the same L2 network segment as the nodes.
 | `git` | cloning this repository | your package manager |
 | `uv` | Ansible and the boot server | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | `butane` | transpiling Butane YAML to Ignition JSON | `brew install butane` or the [Flatcar docs](https://www.flatcar.org/docs/latest/provisioning/config-transpiler/) |
+| `gpg` and `gpgv` | checking the signatures on the Flatcar and syslinux checksums in `make download` | `brew install gnupg` or your package manager |
 | `kubectl` | steps 8 onwards | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
 | `helm` | `make install-cilium`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
 

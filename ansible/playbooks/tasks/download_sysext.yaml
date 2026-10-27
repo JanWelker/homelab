@@ -15,12 +15,3 @@
     dest: "{{ http_dir }}/{{ item.name }}-{{ item.version }}-x86-64.raw"
     checksum: "sha256:{{ sysext_checksum }}"
     mode: "0644"
-
-# The release ships one sysupdate config per minor series next to the floating
-# one; the series-pinned file is what the nodes get.
-- name: "Download Series-Pinned Sysupdate Config for {{ item.name | capitalize }}"
-  ansible.builtin.get_url:
-    url: "{{ url }}/{{ item.name }}-{{ item.version }}/{{ item.name }}-{{ item.series }}.conf"
-    dest: "{{ http_dir }}/{{ item.name }}.conf"
-    force: true
-    mode: "0644"
