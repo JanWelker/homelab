@@ -11,7 +11,7 @@
 # touched. See docs/platform/openbao.md#kubernetes-auth.
 #
 #   role / policy                   store                  reaches
-#   external-secrets                openbao                every path (platform)
+#   external-secrets                openbao                reads every path, writes two
 #   external-secrets-apps           openbao-apps           kv/<caller's namespace>/
 #   external-secrets-claude-agents  openbao-claude-agents  kv/claude-*
 set -euo pipefail
@@ -33,18 +33,31 @@ accessor="$(bao auth list -format=json \
   | uv run python -c 'import json,sys; print(json.load(sys.stdin)["kubernetes/"]["accessor"])')"
 namespace="{{identity.entity.aliases.${accessor}.metadata.service_account_namespace}}"
 
-# create and update are for the PushSecrets that write generated values; ESO
-# itself refuses to touch a path it did not create, and no delete is granted,
-# so nothing it pushes can remove a secret.
+# Reads everything: Authentik reads each workload's OIDC pair from its
+# kv/<app>/config. Writes only where a platform PushSecret writes generated
+# values; ESO itself refuses to touch a path it did not create, and no delete
+# is granted, so nothing it pushes can remove a secret.
 bao_in policy write external-secrets - <<'POLICY' >/dev/null
 path "kv/data/*" {
-  capabilities = ["create", "read", "update"]
+  capabilities = ["read"]
 }
 path "kv/metadata/*" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/authentik/*" {
+  capabilities = ["create", "read", "update"]
+}
+path "kv/metadata/authentik/*" {
+  capabilities = ["create", "read", "update", "list"]
+}
+path "kv/data/monitoring/*" {
+  capabilities = ["create", "read", "update"]
+}
+path "kv/metadata/monitoring/*" {
   capabilities = ["create", "read", "update", "list"]
 }
 POLICY
-echo "    external-secrets                policy written (read and write on kv/, no delete)"
+echo "    external-secrets                policy written (read on kv/, write on authentik/ and monitoring/)"
 
 bao write auth/kubernetes/role/external-secrets \
   bound_service_account_names="$ESO_SERVICEACCOUNT" \
