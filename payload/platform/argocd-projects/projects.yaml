@@ -54,6 +54,9 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: "!trivy-system"
       server: https://kubernetes.default.svc
+    # Grafana loads dashboards from here; see docs/platform/monitoring.md#adding-a-dashboard
+    - namespace: "!arc-systems"
+      server: https://kubernetes.default.svc
   # What the workloads demonstrably need at cluster scope: their namespaces.
   clusterResourceWhitelist:
     - group: ""

@@ -31,9 +31,20 @@ spec:
                   memory: 112Mi
                 limits:
                   memory: 256Mi
-              # Every namespace; the datasource sidecar watches only `monitoring`.
+              # The platform's namespaces that carry a dashboard; the datasource
+              # sidecar watches only `monitoring`. See docs/platform/monitoring.md#adding-a-dashboard
               dashboards:
-                searchNamespace: ALL
+                searchNamespace:
+                  - arc-systems
+                  - argocd
+                  - cnpg-system
+                  - external-secrets
+                  - kube-system
+                  - logging
+                  - monitoring
+                  - openbao
+                  - rook-ceph
+                  - trivy-system
 
             envFromSecret: grafana-oidc
 
@@ -124,6 +135,25 @@ spec:
               podMonitorSelectorNilUsesHelmValues: false
               probeSelectorNilUsesHelmValues: false
               scrapeConfigSelectorNilUsesHelmValues: false
+              # Rules from the namespaces the apps project cannot write to;
+              # Kured gates on alert names. See docs/platform/monitoring.md#scrape-targets
+              ruleNamespaceSelector:
+                matchExpressions:
+                  - key: kubernetes.io/metadata.name
+                    operator: In
+                    values:
+                      - argocd
+                      - backup
+                      - cert-manager
+                      - cnpg-system
+                      - external-secrets
+                      - kube-system
+                      - kured
+                      - logging
+                      - monitoring
+                      - openbao
+                      - rook-ceph
+                      - trivy-system
               storageSpec:
                 volumeClaimTemplate:
                   spec:
