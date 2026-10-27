@@ -94,7 +94,7 @@ cluster holds.
 | Property | Detail |
 | --- | --- |
 | Provider | `secretbox`, with `identity` listed after it |
-| Key | 32 random bytes, generated once by `make config` into `output/credentials/encryption_key` |
+| Key | 32 random letters and digits (about 190 bits), generated once by `make config` into `output/credentials/encryption_key` and base64-encoded into the config as the `secretbox` key |
 | Scope | `secrets` only; ConfigMaps and other resources are unencrypted |
 | Distribution | The same key on every control-plane node, written by Ignition to `/etc/kubernetes/enc/encryption-config.yaml` (mode `0600`) |
 
@@ -139,8 +139,9 @@ namespace (`authentik` excepted, for the blueprint ConfigMap a workload ships
 there), and at cluster scope may create nothing but namespaces.
 
 **Every platform namespace is default-deny in both directions**, one
-`CiliumNetworkPolicy` file per namespace plus the cluster-wide rules, and the
-policies are still in audit mode until the observation week ends — see
+`CiliumNetworkPolicy` file per namespace plus the cluster-wide rules, and
+Cilium enforces them: `policyAuditMode` is off, so a flow no rule allows is
+dropped — see
 [Security Policies](../platform/security-policies.md#network-policies) and
 [Rollout](../platform/security-policies.md#rollout).
 
@@ -163,7 +164,7 @@ to either Gateway and claim a hostname inside its listener's pattern — see
 ## Exposed interfaces
 
 Every platform UI on the infra gateway is behind
-[Authentik](../platform/authentik.md):
+[Authentik](../platform/authentik.md); the last two rows are not:
 
 | Service | Authentication |
 | --- | --- |
@@ -174,6 +175,7 @@ Every platform UI on the infra gateway is behind
 | Prometheus | Authentik proxy outpost |
 | Alertmanager | Authentik proxy outpost |
 | OpenBao UI | Token or configured auth method — not behind Authentik |
+| Agent SSH, `*.ssh.wlkr.ch` | The `ssh` TLS-passthrough listener on `apps-gateway`, which external-dns publishes on the public address. Nothing in front authenticates it: `sshd` in each agent pod admits the user `agent` with public keys only — see [SSH listener](../platform/gateway-api.md#ssh-listener) and the workloads repository's [Claude agents](https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md) page |
 
 Authentik is therefore a dependency of reaching any of them; the break-glass
 paths are in [When Authentik is down](../platform/authentik.md#when-authentik-is-down).
@@ -184,18 +186,15 @@ so putting it behind Authentik would be a loop.
 
 Roughly in order of value against effort:
 
-1. Finish the [network policy rollout](../platform/security-policies.md#rollout):
-   tighten the `http: [{}]` rules to what the audit week recorded, then turn
-   `policyAuditMode` off.
-2. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
+1. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-3. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and
+2. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and
    promote the registry allowlist to `Deny`.
-4. Add a second Alertmanager receiver on a different transport, so a failure of
+3. Add a second Alertmanager receiver on a different transport, so a failure of
    the mail path is not itself unmonitored.
-5. Move etcd encryption to a KMS provider, removing the static
+4. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` in `output/credentials/`.
-6. Get the backups out of the cluster: Velero and the etcd snapshots write to
+5. Get the backups out of the cluster: Velero and the etcd snapshots write to
    the Ceph object store they are backing up.
 
 See [Known Limitations](limitations.md) for the operational counterparts.
