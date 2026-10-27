@@ -11,6 +11,13 @@ storage:
     - device: {{ install_disk }}
       wipe_table: false
       partitions:
+{% if role == 'control-plane' %}
+        # No OSD next to etcd; see docs/platform/rook-ceph.md#disks
+        - label: ROOT
+          number: 9
+          size_mib: 0
+          resize: true
+{% else %}
         - label: ROOT
           number: 9
           size_mib: 50000
@@ -23,6 +30,7 @@ storage:
     - device: /dev/disk/by-partlabel/rook-osd
       format: none
       wipe_filesystem: true
+{% endif %}
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755

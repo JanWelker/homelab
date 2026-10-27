@@ -136,10 +136,10 @@ The node boots from its own disk; the boot server should be off.
 
 | | |
 | --- | --- |
-| `/` | ext4 on partition 9, capped at 50 GB and grown into it by `grow-root.service` |
+| `/` | ext4 on partition 9, grown into it by `grow-root.service`: 50 GB on workers, the whole disk on control planes |
 | Ignition | Runs **once**, on the first boot after the install |
 | `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
-| `rook-osd` | Partition 10, raw and unmounted — Ceph owns it |
+| `rook-osd` | Partition 10 on workers, raw and unmounted — Ceph owns it |
 
 `bootstrap-k8s.service` does not fire again: its
 `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer satisfied.

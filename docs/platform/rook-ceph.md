@@ -14,7 +14,7 @@ data after a node dies, and the one with the steepest learning curve. Check
 | | |
 | --- | --- |
 | Namespace | `rook-ceph` |
-| Depends on | A raw `rook-osd` partition on every node, written at install time |
+| Depends on | A raw `rook-osd` partition on every worker, written at install time |
 | If it is down | Every pod with a volume — `openbao` first, which turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
 | UI | `rook.infra.k8s.wlkr.ch` |
@@ -24,9 +24,12 @@ data after a node dies, and the one with the steepest learning curve. Check
 
 ### Disks
 
-Each node has a raw partition labelled `rook-osd`, created by Ignition as the
+Each worker has a raw partition labelled `rook-osd`, created by Ignition as the
 **last** partition with whatever the root leaves, which Rook adds as an OSD;
-data is replicated three ways across them. Its contents are wherever Ceph last
+data is replicated three ways across them. Control planes get none, and the
+CephCluster's OSD placement excludes them: on one shared NVMe, etcd's fsyncs
+and BlueStore's writes stalled each other until OSDs hit their heartbeat
+timeout and aborted. Its contents are wherever Ceph last
 wrote them, so inserting a partition ahead of it shifts its offset and takes
 the OSD data with it: changing the partition table is a
 [reinstall](../operations/nodes.md), not an edit.
