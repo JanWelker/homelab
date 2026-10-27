@@ -2595,7 +2595,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Nightly backups stop; <code>VeleroBackupFailures</code> fires</td>
+<td>Nightly backups stop; <code>VeleroBackupTooOld</code> fires after 36 hours</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2658,7 +2658,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>prometheusRule</code></td>
-<td><code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning)</td>
+<td><code>VeleroBackupFailures</code> and <code>VeleroBackupTooOld</code> (critical), <code>VeleroBackupPartialFailures</code> (warning); only the age alert catches a backup that hangs <code>InProgress</code></td>
 </tr>
 </tbody>
 </table>
