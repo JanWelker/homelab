@@ -49,6 +49,7 @@ nightly. Chart values and why each is set are in
 | Scope | All namespaces except `kube-system` (rebuilt from Git, and large), minus `events` (they expire anyway) |
 | Destination | S3 bucket `velero` in the [Ceph object store](../platform/rook-ceph.md) |
 | Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
+| Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](../platform/velero.md#repository-password) |
 
 The `velero` CLI defaults to the `velero` namespace; this install is in
 `backup`, so pass `-n backup` every time.
@@ -251,6 +252,7 @@ the CronJob uses. Upstream:
 3. When every `ExternalSecret` is Degraded, either `make bao-init` and restore
    the OpenBao snapshot as above, or `make bao-init`, re-enter the typed
    secrets with `make bao-secrets`, and let the `PushSecret`s generate the
-   rest anew — which loses whatever was encrypted with the old keys.
+   rest anew — which loses whatever was encrypted with the old keys,
+   Velero's volume backups among them.
 4. Once the platform is Synced and Healthy, restore workloads with a Velero
    restore from the copied-off backup.
