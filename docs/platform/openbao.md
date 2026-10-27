@@ -64,7 +64,7 @@ pod next restarts — see [Unsealing after a restart](#unsealing-after-a-restart
 
 `OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](logging.md#alerting)
 fires on a `kv/data/` read by anything but the External Secrets Operator's
-policy: a person with the root token, or a token that should not exist. A
+policy: the operator, a generated root token, or a token that should not exist. A
 standby audits a request before it resolves the token, so its
 `please forward to the active node` rejections carry no identity; the rule
 drops them, and the `ClusterSecretStore` targets the `openbao-active`
@@ -133,6 +133,22 @@ wrote. Reading a generated value, such as the `akadmin` password:
 kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv -field=bootstrap-password authentik/config
 ```
 
+### Operator credential
+
+No root token outlives the command that needs it. `make bao-init` ends by
+creating a userpass login for the scripts and revoking the root token; the
+password lands in `output/credentials/openbao-operator.json` (mode `0600`).
+The policy and login are written by `bao_create_operator` in
+`scripts/lib/bao.sh`.
+
+| Setting | Why |
+| --- | --- |
+| The `operator` policy: `kv/` read, write and delete, `sys/storage/raft/snapshot` read | Everything `make bao-secrets`, `make claude-session-pat`, [rotation](#rotating-a-credential) and a [snapshot](#backups) need; policies, auth methods and snapshot restores still need root |
+| `sys/generate-root-token/*` and `sys/decode-token` in the same policy | Since OpenBao 2.6 `bao operator generate-root` needs a token, so without these a revoked root could not be regenerated; the unseal shares still decide |
+| `token_ttl=1h`, `token_max_ttl=1h` | The scripts cache the token in the pod; one a dropped connection leaves behind expires within the hour, and the exit trap revokes it sooner |
+| Userpass, not OIDC | Authentik reads its own database password from OpenBao, so an Authentik login would be a loop |
+| The scripts fall back to the root token in `openbao-init.json` | A cluster initialised before this keeps working, with a warning, until `make bao-rotate-root` creates the login and revokes the root token |
+
 ### Kubernetes auth
 
 ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
@@ -170,7 +186,7 @@ bao write auth/kubernetes/role/external-secrets \
     ```
 
     !!! danger "Move the unseal keys before you do anything else"
-        `make bao-init` writes the 5 unseal keys and the root token to `output/credentials/openbao-init.json` (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](../architecture/security.md). Copy them into a password manager that does not need this cluster to be running, then delete the file. Losing all five means the data is unrecoverable: no support line, no recovery flow.
+        `make bao-init` writes the 5 unseal keys to `output/credentials/openbao-init.json` and the [operator login](#operator-credential) to `openbao-operator.json` beside it (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](../architecture/security.md). The root token in the first file is revoked before the command ends. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing all five keys means the data is unrecoverable: no support line, no recovery flow.
 
 2. Write the values that belong to outside accounts — the prompts follow
    [Quickstart step 11](../quickstart.md). The generated paths need nothing:
@@ -191,7 +207,7 @@ bao write auth/kubernetes/role/external-secrets \
 ```bash
 kubectl -n openbao port-forward svc/openbao 8200:8200 &
 export BAO_ADDR=http://127.0.0.1:8200
-bao login   # paste the root token
+bao login -method=userpass username=operator   # password from openbao-operator.json
 ```
 
 ### Storing and reading a secret
@@ -292,6 +308,54 @@ initialised. Point it at the leader once; it takes unseal keys afterwards:
 kubectl -n openbao exec openbao-1 -- \
   bao operator raft join http://openbao-0.openbao-internal:8200
 ```
+
+### Generating a root token
+
+For what the operator policy does not cover — a policy, an auth method, a
+snapshot restore, or the operator login itself broken. Needs the operator
+login and 3 unseal shares; each step runs in the pod.
+
+1. Log in as the operator; it prompts for the password from `openbao-operator.json`.
+
+    ```bash
+    kubectl -n openbao exec -it openbao-0 -- bao login -method=userpass username=operator
+    ```
+
+2. Generate a one-time password and start the attempt with it; note both the OTP and the nonce.
+
+    ```bash
+    kubectl -n openbao exec openbao-0 -- bao operator generate-root -generate-otp
+    kubectl -n openbao exec openbao-0 -- bao operator generate-root -init -otp=<otp>
+    ```
+
+3. Enter one share per run, three runs; the last prints `Encoded Token`.
+
+    ```bash
+    kubectl -n openbao exec -it openbao-0 -- bao operator generate-root -nonce=<nonce>
+    ```
+
+4. Decode it into the root token.
+
+    ```bash
+    kubectl -n openbao exec openbao-0 -- bao operator generate-root -decode=<encoded-token> -otp=<otp>
+    ```
+
+5. Do the one job with it, then revoke it and clear the pod's token cache.
+
+    ```bash
+    kubectl -n openbao exec -i openbao-0 -- bao login -     # paste the root token, then Ctrl-D
+    kubectl -n openbao exec openbao-0 -- bao token revoke -self
+    kubectl -n openbao exec openbao-0 -- sh -c 'rm -f "$HOME/.bao-token"'
+    ```
+
+With the operator login gone too, no token can start an attempt: set
+`disable_unauthed_generate_root_endpoints = false` in the listener stanza in
+`application.yaml`, restart and unseal the pods, and drive the deprecated
+`sys/generate-root/*` API with the shares; revert the setting afterwards.
+
+To recreate the operator login with that root token, put it as `root_token`
+into a copy of `openbao-init.json`, move `openbao-operator.json` aside, and run
+`make bao-rotate-root`, which writes a new password and revokes the token.
 
 ### Backups
 

@@ -90,6 +90,11 @@ sensitive is committed to Git.
   [unsealed by hand](../platform/openbao.md#unsealing-after-a-restart), so the
   5 key shares are the root of trust for every other secret; losing all of them
   loses everything, and nothing outside the cluster holds a copy.
+- No root token is kept: `make bao-init` revokes it once it has created the
+  [operator login](../platform/openbao.md#operator-credential), and one is
+  generated from the shares when needed. The operator login reads and writes
+  every KV path, so `output/credentials/` is as sensitive as before, but it
+  cannot change policies or auth methods.
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
   a namespace can read what ESO materialised there. Encryption at rest protects
   the bytes in etcd, not the API.

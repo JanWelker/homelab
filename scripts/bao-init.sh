@@ -13,10 +13,13 @@
 #   4. enable the kubernetes auth method and point it at the TokenReview API
 #   5. write the external-secrets policy and the role bound to ESO's
 #      ServiceAccount
+#   6. create the operator's userpass login, which the other scripts use, and
+#      revoke the root token
 #
-# Steps 3-5 are skipped individually if they are already in place, so this is
+# Steps 3-6 skip or rewrite what is already in place, so this is
 # safe to re-run against a half-finished bootstrap. Step 1 is not re-runnable
-# by design: an initialised cluster is left alone.
+# by design: an initialised cluster is left alone; `make bao-rotate-root` does
+# step 6 on a cluster initialised before it existed.
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-openbao}"
@@ -27,8 +30,8 @@ KEY_THRESHOLD="${KEY_THRESHOLD:-3}"
 ESO_NAMESPACE="${ESO_NAMESPACE:-external-secrets}"
 ESO_SERVICEACCOUNT="${ESO_SERVICEACCOUNT:-external-secrets-vault}"
 
-bao() { kubectl -n "$NAMESPACE" exec "$POD" -- bao "$@"; }
-bao_in() { kubectl -n "$NAMESPACE" exec -i "$POD" -- bao "$@"; }
+# shellcheck source=lib/bao.sh source-path=SCRIPTDIR
+. "$(dirname "${BASH_SOURCE[0]}")/lib/bao.sh"
 
 kubectl -n "$NAMESPACE" get pod "$POD" >/dev/null 2>&1 || {
   echo "ERROR: pod ${POD} not found in ${NAMESPACE}. Has ArgoCD synced OpenBao yet?" >&2
@@ -53,6 +56,12 @@ chmod 0700 "$(dirname "$KEYFILE")"
   exit 1
 }
 
+[ -e "$OPERATOR_FILE" ] && {
+  echo "ERROR: ${OPERATOR_FILE} already exists but the cluster is not initialised." >&2
+  echo "       It belongs to another cluster. Move it out of the way first." >&2
+  exit 1
+}
+
 echo "### Initialising ${POD} (${KEY_SHARES} shares, threshold ${KEY_THRESHOLD})"
 
 umask 077
@@ -67,20 +76,10 @@ echo
 echo "### Unsealing"
 NAMESPACE="$NAMESPACE" KEYFILE="$KEYFILE" scripts/bao-unseal.sh
 
-root_token="$(uv run python -c '
-import json, sys
-with open(sys.argv[1]) as handle:
-    print(json.load(handle)["root_token"])
-' "$KEYFILE")"
-
 # `bao login -` caches the token in the pod so the calls below do not carry it
 # in their arguments. Cleared again at the end.
-printf '%s' "$root_token" | bao_in login - >/dev/null
-
-cleanup() {
-  kubectl -n "$NAMESPACE" exec "$POD" -- sh -c 'rm -f "$HOME/.bao-token"' >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
+bao_login_root || { echo "ERROR: the root token in ${KEYFILE} was refused." >&2; exit 1; }
+trap bao_cleanup EXIT
 
 echo
 echo "### Configuring"
@@ -135,14 +134,24 @@ bao write auth/kubernetes/role/external-secrets \
   ttl=1h >/dev/null
 echo "    external-secrets      role bound to ${ESO_NAMESPACE}/${ESO_SERVICEACCOUNT}"
 
+echo
+echo "### Replacing the root token"
+bao_create_operator
+bao_verify_operator || {
+  echo "ERROR: the operator login does not work; the root token was NOT revoked." >&2
+  exit 1
+}
+bao_revoke_root
+echo "    root token            revoked; ${OPERATOR_FILE} is the login from now on"
+
 cat <<EOF
 
 Done. OpenBao is initialised, unsealed and ready to be populated:
 
   make bao-secrets
 
->>> ${KEYFILE} now holds the 5 unseal keys and the root token, in plaintext,
->>> on this machine. They protect every other secret the cluster has, and
+>>> ${KEYFILE} now holds the 5 unseal keys, in plaintext, on this machine
+>>> (its root token is revoked). They protect every other secret the cluster has, and
 >>> nothing else can recover them. Copy them into a password manager now, and
 >>> keep them somewhere that does not require this cluster to be running in
 >>> order to read.
@@ -150,4 +159,7 @@ Done. OpenBao is initialised, unsealed and ready to be populated:
 >>> Deleting the file afterwards is the correct end state. \`make bao-unseal\`
 >>> needs it, so unsealing goes back to being manual -- which is the trade the
 >>> rest of this repository's security posture already makes.
+>>>
+>>> ${OPERATOR_FILE} is the login make bao-secrets uses. It reads and
+>>> writes every kv/ path; keep it with the keys, mode 0600.
 EOF
