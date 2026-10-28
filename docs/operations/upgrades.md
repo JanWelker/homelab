@@ -137,3 +137,47 @@ Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a
 installed by `make install-cilium` and `make install-argo` before ArgoCD exists,
 but from the same `targetRevision`, so a rebuild lands where the cluster
 already is — see [Version pins](../architecture/gitops.md#version-pins).
+
+## Control-plane certificates
+
+kubeadm issues the control-plane certificates for one year and renews them only
+during `kubeadm upgrade`. Patch updates arrive as a sysext and never run
+kubeadm, and a minor is [a manual procedure](#upgrading-a-minor-version-deliberately),
+so a year without one takes the API servers, the etcd peers and the front
+proxy down together. The kubelet certificates are the exception: the serving
+certificate is rotated through [kubelet-csr-approver](../platform/metrics-server.md)
+and the client certificate by the kubelet itself.
+
+`monitoring/control-plane-certificate-rules.yaml` warns thirty days ahead on
+the client certificates the API server sees, which kubeadm issues together
+with the serving ones; the chart's own `KubeClientCertificateExpiration` takes
+over at seven days and one day. The renewal is done by hand, once a year or
+when the alert fires, on every control plane in turn:
+
+1. Read the remaining lifetime; every line but the CA should have well over
+   thirty days.
+
+    ```bash
+    ssh <control plane> sudo kubeadm certs check-expiration
+    ```
+
+2. Renew everything kubeadm issued on that node. The CA is not touched.
+
+    ```bash
+    ssh <control plane> sudo kubeadm certs renew all
+    ```
+
+3. Restart the static pods so they load the new certificates: move the
+   manifests out, wait for the containers to stop, move them back. One node at
+   a time, since the API server and etcd on it are down in between.
+
+    ```bash
+    ssh <control plane> 'sudo mkdir -p /root/manifests-stopped && sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ && sleep 30 && sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'
+    ```
+
+4. After the last node, refresh the admin kubeconfig: `admin.conf` was renewed
+   too, and the copy in `output/kubeconfig` carries the old client certificate.
+
+    ```bash
+    make kubeconfig
+    ```

@@ -1,0 +1,33 @@
+---
+# kubeadm's control-plane certificates last a year and are renewed only by
+# kubeadm upgrade, which is manual here; see docs/operations/upgrades.md
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: control-plane-certificates
+  namespace: monitoring
+spec:
+  groups:
+    - name: control-plane-certificates
+      rules:
+        # The chart's KubeClientCertificateExpiration fires at 7 days and 24
+        # hours; this is the month of notice a hand renewal needs. Same
+        # expression, same percentile.
+        - alert: KubeClientCertificateExpiringSoon
+          expr: |-
+            histogram_quantile(0.01, sum without (namespace, service, endpoint) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver"}[5m]))) < 30 * 24 * 3600
+            and
+            on (job, cluster, instance) apiserver_client_certificate_expiration_seconds_count{job="apiserver"} > 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              A client certificate the API server sees expires within 30 days
+            description: >-
+              The soonest-expiring client certificate presented to
+              {{ $labels.instance }} has {{ $value | humanizeDuration }} left.
+              kubeadm issues the controller-manager, scheduler and admin
+              certificates together with the serving certificates, so this is
+              the whole control-plane set coming due: run the yearly renewal
+              in docs/operations/upgrades.md#control-plane-certificates.

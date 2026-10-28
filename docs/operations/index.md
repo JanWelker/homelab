@@ -60,6 +60,7 @@ see the [Quickstart](../quickstart.md).
 | `kubectl get nodes` | Every node `Ready` |
 | `kubectl -n argocd get applications` | Every Application `Synced` *and* `Healthy` |
 | `kubectl get certificate -A` | Every certificate `READY=True` |
+| `ssh <control plane> sudo kubeadm certs check-expiration` | More than thirty days left on every line; less and the [yearly renewal](upgrades.md#control-plane-certificates) is due |
 | `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` | `HEALTH_OK`, and an OSD count matching your node count |
 | `kubectl -n openbao exec openbao-0 -- bao status` | `Sealed: false`; the one failure that looks like health, so run it after anything restarted |
 
