@@ -76,6 +76,19 @@
       "extractVersion": "^kubernetes-(?<version>.+)$"
     },
     {
+      "description": "A Kubernetes minor is a manual kubeadm upgrade in version-skew order, and a node provisioned from an automerged minor would run a kubelet ahead of the API server and fail its kubeadm join. Patches still automerge: sysupdate picks those up on the running nodes by itself -- see docs/operations/upgrades.md",
+      "matchDepNames": [
+        "kubernetes"
+      ],
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "automerge": false,
+      "reviewers": [
+        "JanWelker"
+      ]
+    },
+    {
       "description": "These datasources publish no release timestamps, so the preset's minimumReleaseAge would hold their updates forever. They skip the release age instead, as the preset does for timestamp-less registries.",
       "matchDatasources": [
         "custom.flatcar-stable",

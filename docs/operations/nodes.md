@@ -78,7 +78,11 @@ password manager, each pod wants 3 of the 5 shares by hand, per
 
 ## Adding a node
 
-1. Add the host to `ansible/inventory.yaml`, then regenerate and serve the boot
+1. Compare `kubernetes_version` in `ansible/inventory.yaml` with
+   `kubectl version`: a node installs the inventory's version, and `kubeadm
+   join` refuses a kubelet newer than the API server, so a merged minor has to
+   be [walked onto the cluster](upgrades.md#upgrading-a-minor-version-deliberately)
+   first. Then add the host to the inventory and regenerate and serve the boot
    files.
 
     ```bash
