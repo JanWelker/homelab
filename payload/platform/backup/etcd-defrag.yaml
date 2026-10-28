@@ -52,6 +52,12 @@ spec:
             - name: status-before
               image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
               command: [etcdctl, endpoint, status, --cluster, -w, table]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
               env:
                 - name: ETCDCTL_API
                   value: "3"
@@ -83,6 +89,12 @@ spec:
             - name: defrag
               image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
               command: [etcdctl, defrag, --cluster, --command-timeout=60s]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
               env:
                 - name: ETCDCTL_API
                   value: "3"

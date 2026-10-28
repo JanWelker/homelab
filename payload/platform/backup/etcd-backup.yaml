@@ -84,6 +84,13 @@ spec:
                   readOnly: true
                 - name: snapshot
                   mountPath: /snapshot
+              # etcdctl buffers the whole database on its way to disk.
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 256Mi
             # Verify before upload; `etcdctl snapshot status` is gone in 3.6
             - name: verify
               image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
@@ -97,6 +104,12 @@ spec:
                 - name: snapshot
                   mountPath: /snapshot
                   readOnly: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
           containers:
             - name: upload
               image: public.ecr.aws/aws-cli/aws-cli:2.38.6@sha256:bdb0dd07c54dfc7fe6526387dcf23eaab269875a20d647ae4de8196ea04d6bd4

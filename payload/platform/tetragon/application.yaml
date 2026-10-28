@@ -44,6 +44,15 @@ spec:
               limits:
                 memory: 768Mi
 
+          # The export-stdout sidecar on every agent pod.
+          export:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+
           tetragonOperator:
             prometheus:
               serviceMonitor:

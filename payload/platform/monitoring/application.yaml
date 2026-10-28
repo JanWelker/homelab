@@ -257,6 +257,15 @@ spec:
                   memory: 32Mi
                 limits:
                   memory: 128Mi
+            # The create and patch Jobs that mint the webhook certificate.
+            admissionWebhooks:
+              patch:
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 32Mi
+                  limits:
+                    memory: 128Mi
 
           kube-state-metrics:
             resources:
