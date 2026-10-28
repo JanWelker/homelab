@@ -32,7 +32,7 @@ Sort the state into one of five buckets before reading anything else:
 | Synced + Degraded | Applied, a resource cannot go Ready | the resource in `status.resources`, then §2 |
 | Synced + Progressing for long | Waiting on a PVC, image pull, or a Job | events on the pod, then §2 |
 | Missing resources, prune warnings | A resource moved or was deleted by hand | `docs/architecture/gitops.md` on moving resources |
-| Retries exhausted (`retry` limit 10) | Failed against a dependency that arrived later | `argocd app sync <app>` once; nothing to fix |
+| Retries exhausted (`retry` limit 10) | Failed against a dependency that arrived later | `argocd app sync <app>` once; nothing to fix. In an agent session ask the user: the `claude` account is read-only |
 
 Every Application auto-syncs with `selfHeal` and `prune`, so a state that
 persists is not waiting for a person to click Sync. A hand-applied fix is
@@ -127,9 +127,9 @@ resource. Ship it through `pr-batch`, one PR per cause. Say in the PR body
 whether the user must restart or unseal something after merge.
 
 Do not `kubectl edit`, `patch`, `delete` or `helm upgrade` on a running
-cluster. Read-only commands, `argocd app sync` on an exhausted retry,
-`argocd app get --refresh`, and a throwaway probe pod are the whole
-imperative toolbox:
+cluster. Read-only commands, `argocd app sync` on an exhausted retry (the
+user's, from an agent session), `argocd app get --refresh`, and a throwaway
+probe pod are the whole imperative toolbox:
 
 ```bash
 kubectl -n <ns> run probe --rm -i --restart=Never --image=curlimages/curl:8.11.1 \

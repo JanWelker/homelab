@@ -59,17 +59,40 @@ Secret and no `enableOCI`.
 ## Agent account
 
 The `claude` account is the in-cluster Claude Code agents' API identity. It
-may read everything `role:readonly` reads and sync Applications in the `apps`
-project, and nothing else. It has `apiKey` only, so it cannot log in.
+may read everything `role:readonly` reads, `argocd app get --refresh`
+included, and nothing else: the sessions investigate and open pull requests,
+and every Application syncs itself. It has `apiKey` only, so it cannot log
+in. One token serves every session with `argocd.enabled`, so its expiry is
+what bounds a leak from any of them.
+
+The token expires after 90 days: that caps a leak at a quarter, and rotating
+is a few commands with no restart. An expired token fails every agent
+`argocd` call until the next one is stored. To rotate:
 
 1. Generate the token, logged in through Authentik:
 
     ```bash
-    argocd account generate-token --account claude
+    argocd account generate-token --account claude --expires-in 90d
     ```
 
 2. Store it with `make bao-secrets`, at `kv/claude-agents/argocd`
    (`token`).
+
+3. Pull it into the sessions now instead of at the next hourly refresh. The
+   chart mounts the token as a file that the `argocd` wrapper reads on every
+   call, so no pod restarts; only a shell opened earlier keeps the old token
+   in its environment:
+
+    ```bash
+    kubectl -n claude-agents annotate externalsecret claude-<session>-argocd force-sync=$(date +%s) --overwrite
+    ```
+
+4. Revoke the previous token. `argocd account get --account claude` lists
+   the token IDs with their expiry dates:
+
+    ```bash
+    argocd account delete-token --account claude <id>
+    ```
 
 The agents reach Argo CD on 443 by name, so the traffic enters through
 `infra-gateway` and arrives at `argocd-server` as the `ingress` entity, which
