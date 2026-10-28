@@ -125,6 +125,7 @@ repository's [Previews](https://homelab-apps.wlkr.ch/previews/) page.
 | `argocd.argoproj.io/secret-type: scm-creds` on the Secret | The label Argo CD's tokenRef strict mode requires; set now so turning that on breaks nothing |
 | `labels: [preview]` | Opt-in per pull request: each preview is a database and a Next.js process, and Renovate keeps a handful of pull requests open at any time |
 | Egress to `api.github.com` from the ApplicationSet controller | The only Argo CD component that calls GitHub's API |
+| Bare `image` names in the list elements, held out of `docker:pinDigests` in `renovate.json` | The kustomize override appends the pull request's tag, and kustomize reads everything after an `@` as the digest, tag included: a pinned digest renders an image reference no kubelet accepts |
 
 1. Create the PAT on GitHub (*Settings → Developer settings → Fine-grained
    tokens*), limited to `advent.wollbi.ch` and `fest.wollbi.ch`.
