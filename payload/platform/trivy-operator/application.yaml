@@ -135,10 +135,20 @@ spec:
                   drop: ["ALL"]
                 seccompProfile:
                   type: RuntimeDefault
+              # The chart's defaults minus the CPU limit; null makes Helm drop
+              # the inherited key. See docs/platform/index.md#components
+              resources:
+                limits:
+                  cpu: null
 
             slow: true
             # Keep equal to operator.scanJobTimeout above.
             timeout: "20m0s"
+            # Scan jobs: a throttled scan eats into that timeout. Same null
+            # mechanism as the server above.
+            resources:
+              limits:
+                cpu: null
 
           nodeCollector:
             # Control plane included, or the CIS node checks skip it.
