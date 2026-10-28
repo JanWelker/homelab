@@ -3067,6 +3067,10 @@ asks for.</p>
 <p class="admonition-title">Ceph warnings show as Degraded</p>
 <p>ArgoCD maps <code>HEALTH_WARN</code> to Degraded, so <code>rook-ceph-cluster</code> reports Degraded for the whole of a warning; nothing else waits on it — see <a href="../../architecture/gitops/">GitOps</a>.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Rook skips tainted nodes</p>
+<p>The operator neither creates nor updates an OSD on a node with a taint <code>placement.all</code> does not tolerate, <code>PreferNoSchedule</code> included, and logs <code>placement settings do not match</code>. <a href="../kured/">Kured</a> taints every node waiting for its reboot lock, so that taint is tolerated.</p>
+</div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="no-osds-after-reprovisioning">No OSDs after reprovisioning<a class="headerlink" href="#no-osds-after-reprovisioning" title="Permanent link">&para;</a></h3>
 <p>A node whose <code>rook-osd</code> partition still carries a previous cluster's BlueStore
