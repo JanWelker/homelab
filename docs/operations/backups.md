@@ -215,10 +215,20 @@ the CronJob uses. Upstream:
     sudo crictl ps --name 'etcd|kube-apiserver'    # empty
     ```
 
-3. On every control-plane node, restore into a new data directory with the
+3. On every control-plane node, pull the etcd image the CronJob uses (the tag
+   is in `payload/platform/backup/etcd-backup.yaml`). Only the node that last
+   ran the CronJob has it; `ctr run` does not pull.
+
+    ```bash
+    sudo ctr -n k8s.io image pull registry.k8s.io/etcd:<tag>
+    ```
+
+4. On every control-plane node, restore into a new data directory with the
    `--name`, `--initial-cluster` and `--initial-advertise-peer-urls` values
-   from that node's `/etc/kubernetes/manifests/etcd.yaml` (the image tag is in
-   `payload/platform/backup/etcd-backup.yaml`).
+   from that node's `/etc/kubernetes/manifests/etcd.yaml`, and one
+   `--initial-cluster-token` that is the same on every node and differs from
+   the old cluster's, so a member that missed the restore cannot rejoin the new
+   one.
 
     ```bash
     sudo ctr -n k8s.io run --rm \
@@ -226,10 +236,11 @@ the CronJob uses. Upstream:
       registry.k8s.io/etcd:<tag> etcd-restore \
       etcdutl snapshot restore /restore/snapshot.db --data-dir /restore/etcd \
         --name <node> --initial-cluster <name=https://ip:2380,...> \
+        --initial-cluster-token <new-token> \
         --initial-advertise-peer-urls https://<node-ip>:2380
     ```
 
-4. Swap the data directory in, keeping the old one and its ownership.
+5. Swap the data directory in, keeping the old one and its ownership.
 
     ```bash
     sudo mv /var/lib/etcd /var/lib/etcd.bak
@@ -237,7 +248,7 @@ the CronJob uses. Upstream:
     sudo chown -R --reference=/var/lib/etcd.bak /var/lib/etcd
     ```
 
-5. Put the manifests back on every node, then confirm.
+6. Put the manifests back on every node, then confirm.
 
     ```bash
     sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/

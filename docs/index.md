@@ -6,7 +6,7 @@ description: "GitOps-driven Kubernetes homelab on bare metal, running Flatcar Co
 
 ![Homelab Logo](assets/images/logo.png){ align=right width=150 }
 
-Six machines in a rack and a pile of YAML: a bare metal Kubernetes cluster that
+A rack of machines and a pile of YAML: a bare metal Kubernetes cluster that
 provisions itself over PXE, keeps its entire state in Git, and is documented
 here so that nothing has to be re-derived at 02:00.
 

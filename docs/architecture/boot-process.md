@@ -136,7 +136,7 @@ The node boots from its own disk; the boot server should be off.
 
 | | |
 | --- | --- |
-| `/` | ext4 on partition 9, grown into it by `grow-root.service`: 50 GB on workers, the whole disk on control planes |
+| `/` | ext4 on partition 9, grown into it by `grow-root.service`: a fixed size on workers (`size_mib` in `ansible/templates/butane_node_config.yaml.j2`) so the OSD partition gets the rest, the whole disk on control planes |
 | Ignition | Runs **once**, on the first boot after the install |
 | `/etc/kubernetes`, `/var/lib/etcd`, `/var/lib/rook` | On disk; survive a reboot |
 | `rook-osd` | Partition 10 on workers, raw and unmounted — Ceph owns it |
@@ -145,7 +145,7 @@ The node boots from its own disk; the boot server should be off.
 `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer satisfied.
 
 !!! note "Why `grow-root.service` exists"
-    Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: it is pulled in by an `x-systemd.growfs` mount option that a root mounted from `root=LABEL=ROOT` does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a 50 GB partition. It runs the same binary and is a no-op once the filesystem fills the partition.
+    Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: it is pulled in by an `x-systemd.growfs` mount option that a root mounted from `root=LABEL=ROOT` does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a partition many times that size. It runs the same binary and is a no-op once the filesystem fills the partition.
 
 !!! note "Two boot paths, and the menu picks the safe one"
     `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
@@ -178,23 +178,33 @@ fixed by `make artifacts`, not by the script.
 Leave it in the foreground. It opens by naming what it serves and which nodes
 are armed — a boxed warning listing every disk about to be wiped, with
 `make reinstall-cancel` and its `LIMIT=<node>` form — then logs one line per
-request against the node that made it. The file a node *stops* at is the
+request against the node that made it: role, name, address and MAC once the
+menu it fetched has identified it, dashes before. The file a node *stops* at is the
 diagnosis; see
 [Troubleshooting PXE boot](../quickstart.md#troubleshooting-pxe-boot).
 
 ```console
-20:33:04  server        http on 10.9.200.222:8000 from output/http
-20:33:04  server        tftp on 10.9.200.222:69 from output/tftp
-20:33:04  server        armed to install: odin, thor
-20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie
-20:34:17  odin          collecting the bootloader (lpxelinux.0)
-20:34:17  odin          collecting its boot menu -- armed, so it will install
-20:34:19  odin          collecting the kernel
-20:34:21  odin          collecting the initrd (391.2 MB)
-20:34:48  odin          collecting its Ignition config
-20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one
-20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk
-20:38:40  odin          collecting the kubernetes sysext (61.4 MB)
+20:33:04  server                                                    http on 10.9.200.222:8000 from output/http
+20:33:04  server                                                    tftp on every interface, port 69, from output/tftp
+
+  ⚠  ARMED TO INSTALL: odin, thor
+
+     Every disk above is wiped on boot -- the partition table, every
+     partition on it, and the Ceph OSD with them. No data survives, and
+     nothing asks for confirmation at the console.
+
+     To cancel, run:  make reinstall-cancel
+                      make reinstall-cancel LIMIT=<node>  for one
+
+20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie
+20:34:17  -             -        10.9.2.1        -                  collecting the bootloader (lpxelinux.0)
+20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install
+20:34:19  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kernel
+20:34:21  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the initrd (391.2 MB)
+20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its Ignition config
+20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one
+20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk
+20:38:40  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kubernetes sysext (61.4 MB)
 ```
 
 A node is identified by MAC from the `01-<mac>` menu it fetches, and after the

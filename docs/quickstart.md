@@ -19,7 +19,8 @@ Each node must have:
 
 - A NIC that supports PXE booting
 - An NVMe drive, or a different `install_disk` in `inventory.yaml`
-- Enough disk for Flatcar, a 50 GB root filesystem, and the remainder, which
+- Enough disk for Flatcar, the root filesystem (`size_mib` in
+  `ansible/templates/butane_node_config.yaml.j2`), and the remainder, which
   Rook-Ceph takes as OSD storage
 - At least 4 GB of RAM: the installer runs from a RAM disk and streams the
   Flatcar image straight to disk
@@ -44,9 +45,15 @@ the same L2 network segment as the nodes.
 ### Other requirements
 
 - **SSH Key**: An Ed25519 key at `~/.ssh/id_ed25519.pub` (or edit `ansible/templates/butane_node_config.yaml.j2` and `butane_installer_config.yaml.j2` to use a different path/key)
-- **External DHCP Server**: Must point PXE clients at the deployment host:
+- **External DHCP Server**: Must point PXE clients at the deployment host and
+  give every node a fixed address:
   - Option 66 (`next-server`): IP of the machine running `make serve`
   - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
+  - A reservation per `mac_address` handing out exactly that host's
+    `ansible_host`. Nothing in the node config sets a static address; the API
+    server's `advertiseAddress`, the etcd peer URLs kubeadm derives from it and
+    the metrics listeners are all rendered from `ansible_host`, so a node that
+    leases a different address joins with the wrong one or not at all.
 
 !!! tip "Consumer routers and PXE"
     Many home routers accept options 66 and 67 and then serve neither. If step 7 produces silence in the boot server log, prove the DHCP side first with `tcpdump -i <iface> port 67 or port 68`.
@@ -67,7 +74,7 @@ the same L2 network segment as the nodes.
     | --- | --- |
     | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. |
     | `mac_address` (per host) | Selects which generated PXE menu a node picks up |
-    | `ansible_host` (per host) | The static IP the node is given |
+    | `ansible_host` (per host) | The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs |
     | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default). **Wiped completely** — partitions, GPT and a device-level discard — before the install |
     | `kubernetes_version`, `flatcar_version` | Artifact versions to download |
     | `bootstrap_cluster` | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) |
@@ -114,16 +121,25 @@ the same L2 network segment as the nodes.
     ```
 
     Leave this running through step 7 and keep the window visible: it names
-    each node and logs one line per request. Its first two lines say what each
-    node will do when powered on; a node under *booting from disk* will not
-    install, however often you reboot it.
+    each node and logs one line per request. Its opening lines say what each
+    node will do when powered on: a boxed `ARMED TO INSTALL` warning names the
+    nodes that will wipe and install, and a node under *booting from disk* will
+    not, however often you reboot it.
 
     ```console
-    20:33:04  server        armed to install: odin, thor
-    20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie
-    20:34:17  odin          collecting its boot menu -- armed, so it will install
-    20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one
-    20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk
+      ⚠  ARMED TO INSTALL: odin, thor
+
+         Every disk above is wiped on boot -- the partition table, every
+         partition on it, and the Ceph OSD with them. No data survives, and
+         nothing asks for confirmation at the console.
+
+         To cancel, run:  make reinstall-cancel
+                          make reinstall-cancel LIMIT=<node>  for one
+
+    20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie
+    20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install
+    20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one
+    20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk
     ```
 
 7. **Arm the install, then boot the machines**:
@@ -379,13 +395,14 @@ Read the `make serve` log instead of the node and ask how far it got.
 | Symptom | Likely cause |
 | --- | --- |
 | Nothing after the startup lines; the node never appears | DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware. |
+| Node comes up on an address other than its `ansible_host` | No per-MAC DHCP reservation, or one for the wrong NIC. The join uses the rendered address, not the leased one. |
 | `PXE-E32: TFTP open timeout` | `make serve` isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall. |
 | Bootloader loads, then "Could not find kernel image" or a hang at the menu | `boot_server_ip` in `inventory.yaml` is wrong. It is baked into the menu's kernel/initrd URLs. Fix it, re-run `make config`, and reboot the node. |
 | `no generated menu has that MAC` in the boot server log | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. The log prints the MAC the node actually asked for; put that in the inventory and re-run `make config`. |
 | `collecting its boot menu -- booting from its local disk` | The node is not armed. `make reinstall LIMIT=<node>` and boot it again. Expected after an install: the boot server disarms a node once it has the OS image. |
 | Kernel boots, then Ignition fails | The node couldn't fetch `ignition-<host>-install.json` over HTTP (port 8000), or the Butane template references an SSH key path that doesn't exist. |
 | `refusing to wipe active disk` on the first boot after an install | The installer's disk stanza reached the installed system. `wipe_table` belongs in `ignition-<host>-install.json` only — see [Wiping the disk](architecture/boot-process.md#wiping-the-disk). |
-| Node installs but never joins the cluster | Sysext download failed, or the kubeadm systemd unit errored. SSH in as `core` and check `journalctl -u kubeadm`. |
+| Node installs but never joins the cluster | Sysext download failed, or the join unit errored. SSH in as `core` and check `journalctl -u bootstrap-k8s`. |
 
 A machine with two NICs PXE boots from whichever it likes, and the MAC on the
 case is often not that one. A node that boots the menu and stalls right after

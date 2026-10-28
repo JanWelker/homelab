@@ -4,8 +4,8 @@ description: "How the cluster is put together: node roles, networking, the repos
 
 # Architecture
 
-A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: six
-machines, a network, and a deployment host that talks them into existence. The
+A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: a rack
+of machines, a network, and a deployment host that talks them into existence. The
 stack itself is summarised in [one table](../index.md#the-stack-in-one-table)
 on the home page, and the reasoning behind each choice in
 [Design Decisions](decisions.md).

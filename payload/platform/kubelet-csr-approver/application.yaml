@@ -26,8 +26,8 @@ spec:
         # docs/platform/index.md#components
         priorityClassName: system-cluster-critical
         replicas: 2
-        # It tolerates the control planes, so six nodes always leave room for
-        # two replicas and the rule can be hard; the chart exposes no
+        # It tolerates the control planes, so every node is a candidate and
+        # the rule can be hard; the chart exposes no
         # topologySpreadConstraints. See docs/platform/index.md#replica-placement
         affinity:
           podAntiAffinity:
