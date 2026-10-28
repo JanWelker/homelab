@@ -96,8 +96,20 @@ before a merge, so a pull request it opens is reviewed like any other.
 
 ## Usage
 
-The API is not routed; reach it with a port-forward and the `holmes` CLI
-from the laptop, or from the `homelab` agent session:
+The API is not routed, and the `holmes` CLI has no client mode: installed
+on a laptop it is a second agent with its own key and only the laptop's
+kubeconfig to look through. `scripts/holmes-cluster.sh` asks the in-cluster
+instance instead, through a port-forward, so every question gets Prometheus,
+Loki, Argo CD and GitHub and nothing but `kubectl` and `jq` run locally:
+
+```bash
+scripts/holmes-cluster.sh "why is the velero backup from last night partially failed?"
+scripts/holmes-cluster.sh --model haiku --tools "which pods restarted in the last hour?"
+```
+
+`--model` picks a key of `modelList`, `--tools` prints the tool calls after
+the answer. A symlink in `~/.local/bin` makes it `holmes-cluster`. The raw
+call behind it, for the `homelab` agent session or a script:
 
 ```bash
 kubectl -n holmesgpt port-forward svc/holmesgpt-holmes 5050:80
