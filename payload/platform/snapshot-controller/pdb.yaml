@@ -1,0 +1,12 @@
+---
+# Upstream ships two leader-elected replicas and no PDB; see docs/platform/velero.md
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: snapshot-controller
+  namespace: backup
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: snapshot-controller
