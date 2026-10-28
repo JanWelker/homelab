@@ -1,0 +1,64 @@
+/* Self-hosted webfonts, so the site pulls nothing from fonts.googleapis.com.
+   `theme.font = false` in zensical.toml drops the theme's Google Fonts <link>
+   and the --md-*-font variables it would set; the declarations below replace
+   both. Files come from the upstream releases:
+   Inter 4.1 (github.com/rsms/inter) and JetBrains Mono 2.304
+   (github.com/JetBrains/JetBrainsMono), both SIL OFL 1.1 - see the LICENSE
+   files next to the woff2 in docs/assets/fonts/. */
+
+/* Inter ships one variable file per style, covering the whole weight range. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: fallback;
+  src: url("../assets/fonts/InterVariable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: fallback;
+  src: url("../assets/fonts/InterVariable-Italic.woff2") format("woff2");
+}
+
+/* JetBrains Mono has no variable webfont upstream, so ship the four static
+   faces the theme actually asks for. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: fallback;
+  src: url("../assets/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: italic;
+  font-weight: 400;
+  font-display: fallback;
+  src: url("../assets/fonts/JetBrainsMono-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: fallback;
+  src: url("../assets/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: italic;
+  font-weight: 700;
+  font-display: fallback;
+  src: url("../assets/fonts/JetBrainsMono-BoldItalic.woff2") format("woff2");
+}
+
+/* The theme appends its own fallback stack to each of these. */
+:root {
+  --md-text-font: "Inter";
+  --md-code-font: "JetBrains Mono";
+}
