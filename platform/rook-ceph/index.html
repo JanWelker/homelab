@@ -2790,7 +2790,7 @@ data after a node dies, and the one with the steepest learning curve. Check
 </tr>
 <tr>
 <td>Depends on</td>
-<td>A raw <code>rook-osd</code> partition on every node, written at install time</td>
+<td>A raw <code>rook-osd</code> partition on every worker, written at install time</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2812,9 +2812,12 @@ data after a node dies, and the one with the steepest learning curve. Check
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="disks">Disks<a class="headerlink" href="#disks" title="Permanent link">&para;</a></h3>
-<p>Each node has a raw partition labelled <code>rook-osd</code>, created by Ignition as the
+<p>Each worker has a raw partition labelled <code>rook-osd</code>, created by Ignition as the
 <strong>last</strong> partition with whatever the root leaves, which Rook adds as an OSD;
-data is replicated three ways across them. Its contents are wherever Ceph last
+data is replicated three ways across them. Control planes get none, and the
+CephCluster's OSD placement excludes them: on one shared NVMe, etcd's fsyncs
+and BlueStore's writes stalled each other until OSDs hit their heartbeat
+timeout and aborted. Its contents are wherever Ceph last
 wrote them, so inserting a partition ahead of it shifts its offset and takes
 the OSD data with it: changing the partition table is a
 <a href="../../operations/nodes/">reinstall</a>, not an edit.</p>
