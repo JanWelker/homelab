@@ -91,9 +91,9 @@ spec:
   description: >-
     The operator, the CSI operator and the CSI controller plugin's sidecars
     reconcile through the API server, and so do the two kinds of Job the
-    operator starts on every reconcile: detect-version and the per-node
-    osd-prepare report their result in a ConfigMap. Of the Ceph daemons
-    only the manager touches it, below.
+    operator starts on every reconcile: the cluster's and the object
+    store's detect-version and the per-node osd-prepare report their result
+    in a ConfigMap. Of the Ceph daemons only the manager touches it, below.
   endpointSelector:
     matchExpressions:
       - key: app
@@ -102,6 +102,7 @@ spec:
           - rook-ceph-operator
           - rook-ceph.rbd.csi.ceph.com-ctrlplugin
           - rook-ceph-detect-version
+          - ceph-object-controller-detect-version
           - rook-ceph-osd-prepare
   egress:
     - toEntities:
