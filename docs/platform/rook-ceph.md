@@ -89,6 +89,7 @@ them every PVC stays `Pending` on `ExternalProvisioning`.
 | `csi-driver.yaml` in `rook-ceph`, with `SkipDryRunOnMissingResource` | The CRs need the ceph-csi-operator's CRDs, which arrive with the operator chart |
 | `OperatorConfig` pointing at the chart's image-set `ConfigMap` | A chart bump moves every sidecar and the cephcsi image together |
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |
+| Two controller plugin replicas, `RollingUpdate` without surge, a PodDisruptionBudget | A drain of the provisioner's node otherwise stalls every provision, attach, resize and snapshot until the pod reschedules. The operator already keeps the replicas on distinct nodes with required anti-affinity and runs every sidecar with leader election, so the `Driver` CR carries no spread constraint, and no field for one |
 | `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by `CSI_SERVICE_ACCOUNT_PREFIX` (empty here): `rbd-ctrlplugin-sa` and `rbd-nodeplugin-sa`. Without them the Deployment and DaemonSet exist but create no pods |
 
 !!! warning "`csi` values on the operator chart do nothing"
