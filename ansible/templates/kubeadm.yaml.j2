@@ -117,6 +117,19 @@ serverTLSBootstrap: true
 # start; see docs/architecture/security.md#node-hardening
 protectKernelDefaults: true
 podPidsLimit: 4096
+# The API server's suites and floor, for the kubelet's own listener on 10250.
+tlsCipherSuites:
+  - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+  - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+  - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+  - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+  - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+  - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+tlsMinVersion: VersionTLS12
+# A reboot or power-off without a drain still gives pods a SIGTERM window; see
+# docs/architecture/security.md#node-hardening
+shutdownGracePeriod: 60s
+shutdownGracePeriodCriticalPods: 20s
 # Keeps memory outside kubepods.slice for systemd, sshd and the kubelet; see
 # docs/architecture/security.md#node-hardening
 systemReserved:
