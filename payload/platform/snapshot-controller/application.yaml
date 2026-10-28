@@ -21,6 +21,10 @@ spec:
       path: deploy/kubernetes/snapshot-controller
       kustomize:
         namespace: backup
+        # Upstream's Deployment at a tag still names the previous release's
+        # image; Renovate moves this with targetRevision. See docs/platform/velero.md
+        images:
+          - registry.k8s.io/sig-storage/snapshot-controller=registry.k8s.io/sig-storage/snapshot-controller:v8.7.0
         patches:
           - target:
               kind: Deployment
@@ -66,6 +70,11 @@ spec:
                     memory: 64Mi
                   limits:
                     memory: 256Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/snapshot-controller
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: backup

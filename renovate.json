@@ -53,6 +53,14 @@
       "groupName": "rook-ceph"
     },
     {
+      "description": "The snapshot-controller image is pinned beside the kustomize tag because upstream's Deployment at a tag names the previous release's image: one PR for both, so they cannot drift.",
+      "matchDepNames": [
+        "https://github.com/kubernetes-csi/external-snapshotter.git",
+        "registry.k8s.io/sig-storage/snapshot-controller"
+      ],
+      "groupName": "snapshot-controller"
+    },
+    {
       "description": "The Lint Markdown workflow and the pre-commit hook must run the same markdownlint-cli2, or a commit passes locally and fails CI.",
       "matchDepNames": [
         "markdownlint-cli2",

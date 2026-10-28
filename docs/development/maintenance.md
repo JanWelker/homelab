@@ -50,7 +50,10 @@ are the pairs below that must move together.
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
     Rook requires both charts on the same version; and `markdownlint-cli2` in
     the workflow with its pre-commit hook, because the two must lint alike;
-    `gitleaks` likewise; and every Python pin (`requires-python`, `.python-version`, the
+    `gitleaks` likewise; the `external-snapshotter` tag with the
+    `snapshot-controller` image it pins, because upstream's manifest at a tag
+    names the previous release's image (the image is a `registry.k8s.io` one,
+    so the pair waits for a human like every third-party image there); and every Python pin (`requires-python`, `.python-version`, the
     `python` images), because `uv sync` fails when they name different
     minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new
