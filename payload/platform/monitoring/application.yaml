@@ -267,6 +267,8 @@ spec:
                 memory: 128Mi
 
           prometheus-node-exporter:
+            # Its own namespace, the only privileged one the stack needs.
+            namespaceOverride: node-exporter
             resources:
               requests:
                 cpu: 10m

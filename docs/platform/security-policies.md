@@ -49,11 +49,12 @@ an informed change.
 | --- | --- | --- |
 | `kube-system` | `privileged` | Cilium, kube-vip and the control plane use host networking and host paths |
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
-| `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
+| `node-exporter` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys`; kube-prometheus-stack places it here with `namespaceOverride` so the rest of the stack need not follow |
 | `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
 | `backup` | `privileged` | The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory |
 | `logging` | `privileged` | Alloy hostPath-mounts the pod logs and the Hubble export |
 | `kured` | `privileged` | kured runs privileged in the host PID namespace to reboot the node |
+| `monitoring` | `baseline` | Grafana's `init-chown-data` container runs as root to own the data volume |
 | `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
 | `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `openbao`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
 
