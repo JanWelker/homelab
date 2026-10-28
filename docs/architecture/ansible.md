@@ -26,6 +26,12 @@ rather than read at boot. The variables are described in
 !!! warning "Every edit needs a regeneration, and some need two"
     `make config` re-renders the Ignition configs and PXE menus from the inventory. The four version variables are consumed by `download.yaml` instead, so changing one needs `make download` as well — `make artifacts` runs both. An edit followed by neither changes nothing at all, silently.
 
+`bootstrap_cluster` in the `control_plane` group decides whether the first
+control-plane host renders `kubeadm init` (`true`, the first install) or, like
+every other control plane, `kubeadm join --control-plane` (`false`, every
+rebuild). A rebuilt node that ran `init` would start a second cluster on the
+same VIP — see [Rebuilding a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node).
+
 `kube_vip_version` only sets the bootstrap static pod that gives `kubeadm init`
 a VIP; once ArgoCD syncs, `payload/platform/kube-vip/` takes over and its image
 is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
@@ -36,7 +42,7 @@ is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
 | --- | --- |
 | `config.yaml` | Generates the bootstrap token, certificate key and etcd encryption key into `output/credentials/` (mode `0700`); renders the Ignition configs via Butane into `output/http` (mode `0600`), the sysupdate config for running nodes beside them, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, and a readable copy of the kubeadm config into `output/tmp/` (the copy that runs is inlined into Ignition) |
 | `download.yaml` | Fetches the Flatcar kernel, initrd, OS image and its detached signature, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext image; and the syslinux bootloader files, checked the same way against `sha256sums.asc`. The signing keys are fetched and trusted through the primary fingerprints pinned in the playbook |
-| `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. It touches only `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe default. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
+| `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers. It touches only `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe default. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600` |
 
 `config.yaml` is safe to re-run: the `password` lookup reads an existing

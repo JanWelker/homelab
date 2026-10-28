@@ -70,6 +70,7 @@ the same L2 network segment as the nodes.
     | `ansible_host` (per host) | The static IP the node is given |
     | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default). **Wiped completely** — partitions, GPT and a device-level discard — before the install |
     | `kubernetes_version`, `flatcar_version` | Artifact versions to download |
+    | `bootstrap_cluster` | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) |
 
 3. **Initialize Environment**:
     Creates the `uv` virtual environment and installs dependencies:
