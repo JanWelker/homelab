@@ -50,6 +50,13 @@ credential file back instead of generating a new value, so the encryption key
 every control-plane node shares stays the one etcd's Secrets were encrypted
 with.
 
+`config.yaml` renews the join credentials on the first control-plane host
+that answers with a running cluster, so the node being
+[replaced](../operations/nodes.md#replacing-a-failed-node) may be any of them;
+it fails when none answers while `output/kubeconfig` exists, since a node
+booted then could not join, and skips the renewal silently only before the
+first bootstrap.
+
 `kubeconfig.yaml` targets `control_plane[0]` — the first control-plane host in
 the inventory, with no fallback. If that node is down, copy
 `/etc/kubernetes/admin.conf` off any other control-plane node by hand. Keep a

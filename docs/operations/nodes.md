@@ -92,7 +92,9 @@ password manager, each pod wants 3 of the 5 shares by hand, per
 
     Against a running cluster, `make config` also re-creates the bootstrap
     token baked into the Ignition configs for 24 hours and uploads the
-    control-plane certificates for two, so the node joins on its own.
+    control-plane certificates for two, on
+    [whichever control plane answers](../architecture/ansible.md#playbooks),
+    so the node joins on its own.
 
 2. Network-boot the new node within those windows: two hours for a
    **control-plane** node, 24 for a worker. `bootstrap-k8s.service` runs the
