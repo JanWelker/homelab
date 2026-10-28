@@ -1,0 +1,160 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: holmesgpt
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  sources:
+    - repoURL: https://robusta-charts.storage.googleapis.com
+      chart: holmes
+      targetRevision: 0.45.0
+      helm:
+        valuesObject:
+          # Why each value is what it is: docs/platform/holmesgpt.md#configuration
+          enableTelemetry: false
+          sentryDSN: ""
+
+          # The image has no USER; the namespace enforces restricted.
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containerSecurityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 2048Mi
+
+          # Only the CRDs this cluster has; the rest would be dead rules.
+          crdPermissions:
+            argo: true
+            flux: false
+            kafka: false
+            keda: false
+            crossplane: false
+            istio: false
+            gatewayApi: true
+            velero: true
+            externalSecrets: true
+
+          # All four read from kv/holmesgpt/*; see secrets.yaml
+          extraEnvVarsSecrets:
+            - holmesgpt-env
+          additionalEnvVars:
+            # /root is unreadable as uid 65534, and git reads ~/.gitconfig
+            - name: HOME
+              value: /tmp
+            - name: MODEL
+              value: sonnet
+            - name: ARGOCD_SERVER
+              value: argocd-server.argocd.svc:80
+            - name: ARGOCD_OPTS
+              value: --plaintext --grpc-web
+
+          modelList:
+            sonnet:
+              model: anthropic/claude-sonnet-5-5
+              api_key: envRef:ANTHROPIC_API_KEY
+              temperature: 0
+            haiku:
+              model: anthropic/claude-haiku-5-5
+              api_key: envRef:ANTHROPIC_API_KEY
+              temperature: 0
+
+          toolsets:
+            kubernetes/core:
+              enabled: true
+            kubernetes/logs:
+              enabled: true
+            prometheus/metrics:
+              enabled: true
+              config:
+                prometheus_url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+            grafana/loki:
+              enabled: true
+              config:
+                api_url: http://loki.logging.svc:3100
+            grafana/dashboards:
+              enabled: true
+              config:
+                api_url: http://kube-prometheus-stack-grafana.monitoring.svc
+                api_key: "{{ env.GRAFANA_API_KEY }}"
+            argocd/core:
+              enabled: true
+            # Chart defaults that reach outside the cluster or run shells.
+            robusta:
+              enabled: false
+            internet:
+              enabled: false
+            bash:
+              enabled: false
+            connectivity_check:
+              enabled: false
+
+          # GitHub's hosted MCP server, so Holmes can open pull requests.
+          mcp_servers:
+            github:
+              description: "GitHub: the repositories this cluster and its workloads are deployed from"
+              config:
+                url: https://api.githubcopilot.com/mcp/
+                mode: streamable-http
+                headers:
+                  Authorization: "Bearer {{ env.GITHUB_TOKEN }}"
+                  X-MCP-Toolsets: repos,issues,pull_requests,actions
+              llm_instructions: >-
+                Every change to this cluster lands through a pull request; nothing is
+                changed on the cluster directly. The platform is JanWelker/homelab
+                (payload/platform/<component>/), the workloads are
+                JanWelker/homelab-apps (one directory per workload), and the
+                applications' own code is in JanWelker/flowscape, JanWelker/knead-time,
+                JanWelker/fest.wollbi.ch and JanWelker/advent.wollbi.ch. To fix
+                something, create a branch off main, commit the change, and open a pull
+                request against main with the why in the description. One concern per
+                pull request, no emojis, and never push to main. Read the repository's
+                CLAUDE.md first: it names the conventions a pull request has to follow.
+
+          operator:
+            enabled: true
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/holmesgpt
+      directory:
+        exclude: "application.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: holmesgpt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

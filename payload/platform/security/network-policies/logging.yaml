@@ -9,9 +9,9 @@ spec:
     Default-deny ingress for the logging stack. Alloy pushes to Loki, and
     Loki dials its own ClusterIP for the compactor and memberlist, all
     within the namespace. From outside it, Prometheus scrapes Loki and
-    every Alloy, and Grafana queries Loki. Loki's scrape and query share
-    one port, so the L7 rule is what tells them apart: Prometheus gets
-    GET /metrics, Grafana the query API.
+    every Alloy, and Grafana and HolmesGPT query Loki. Loki's scrape and
+    query share one port, so the L7 rule is what tells them apart:
+    Prometheus gets GET /metrics, the other two the query API.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -37,6 +37,9 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: monitoring
             k8s:app.kubernetes.io/name: grafana
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: holmesgpt
+            k8s:app: holmes
       toPorts:
         - ports:
             - port: "3100"

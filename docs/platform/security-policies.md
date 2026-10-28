@@ -56,7 +56,7 @@ an informed change.
 | `kured` | `privileged` | kured runs privileged in the host PID namespace to reboot the node |
 | `monitoring` | `baseline` | Grafana's `init-chown-data` container runs as root to own the data volume |
 | `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
-| `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `openbao`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
+| `authentik`, `descheduler`, `external-dns`, `holmesgpt`, `kubelet-csr-approver`, `openbao`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
 
 `privileged` here means "not yet reduced", not "unexamined": `audit` and `warn`
 are still `baseline` or `restricted` on all of them. Namespace objects are

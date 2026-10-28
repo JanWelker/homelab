@@ -1,0 +1,26 @@
+---
+# One check a day, results in the resource's status only; the alerts that
+# need a human within the hour are Alertmanager's. See
+# docs/platform/holmesgpt.md#daily-check
+apiVersion: holmesgpt.dev/v1alpha1
+kind: ScheduledHealthCheck
+metadata:
+  name: daily
+  namespace: holmesgpt
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # 05:00 UTC, after the nightly backups and before the day starts.
+  schedule: "0 5 * * *"
+  timeout: 300
+  mode: monitor
+  query: >-
+    Is this cluster healthy? Check, in this order: nodes that are not Ready or
+    are cordoned; pods that are not Running or Completed, restarting, or
+    Pending for more than an hour; Argo CD Applications that are not Synced
+    and Healthy; firing Prometheus alerts other than Watchdog, with how long
+    each has been firing; Velero backups and CloudNativePG backups from the
+    last 24 hours that did not complete; certificates that expire within 14
+    days; and Ceph health from the rook-ceph namespace. Report pass only if
+    nothing on that list needs a human. For every finding name the resource,
+    the evidence you saw, and the most likely cause.

@@ -34,6 +34,7 @@ applications` shows — and the namespace it lands in.
 | [external-secrets](external-secrets.md) | `external-secrets` | Bridges OpenBao to native Kubernetes Secrets |
 | [gateway-api](gateway-api.md) | `kube-system` | The two Gateways and the HTTP-to-HTTPS redirect |
 | gateway-api-crds | `kube-system` | The Gateway API CRDs — see [Gateway API](gateway-api.md) |
+| [holmesgpt](holmesgpt.md) | `holmesgpt` | An investigation agent over Prometheus, Loki, Argo CD and the API server, with a daily health check |
 | kube-vip | `kube-system` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](../operations/control-plane-vip.md) |
 | kubelet-csr-approver | `kubelet-csr-approver` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](metrics-server.md#verifying-the-kubelet-instead-of-trusting-it) |
 | [kured](kured.md) | `kured` | Drains and reboots nodes to apply staged OS and Kubernetes updates |
@@ -162,7 +163,7 @@ while it is not yet Healthy.
 | Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](../architecture/gitops.md#bootstrap-pauses-at-openbao) |
 | Certificates | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
 | Ingress | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
-| Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
+| Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `holmesgpt`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
 | Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |

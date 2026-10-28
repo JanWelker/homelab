@@ -17,7 +17,7 @@
 #   SMTP_TO                                         where alert mail is delivered
 #   SHOT_BRIDGE_LM_USERNAME / SHOT_BRIDGE_LM_PASSWORD  the shot bridge's La Marzocco account
 #
-# Eight more are optional, because what issues them runs on the cluster or
+# Twelve more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
 # rather than skipping it -- see kv/dependency-track/sbom-upload below:
 #
@@ -26,6 +26,8 @@
 #   PREVIEWS_GITHUB_TOKEN                           GitHub PAT the previews ApplicationSet lists PRs with
 #   SHOT_BRIDGE_APNS_KEY_ID / SHOT_BRIDGE_APNS_KEY_FILE  the shot bridge's APNs key: its ID, and the .p8 file's path
 #   ARC_APP_ID / ARC_INSTALLATION_ID / ARC_PRIVATE_KEY_FILE  the GitHub App the Actions runners register with, and its .pem file's path
+#   HOLMES_ANTHROPIC_API_KEY / HOLMES_GITHUB_TOKEN  HolmesGPT's model API key and the PAT it opens pull requests with
+#   HOLMES_ARGOCD_TOKEN / HOLMES_GRAFANA_TOKEN      the holmesgpt Argo CD account's token and its Grafana service account token
 #
 # The two addresses are not secrets in the credential sense, but they are kept
 # out of the repository, so they live here with the password. See
@@ -169,13 +171,19 @@ decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
 decide WRITE_PREVIEWS     argocd/github-previews
 decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
 decide WRITE_ARC          arc-runners/github-app
+decide WRITE_HOLMES_LLM    holmesgpt/anthropic
+decide WRITE_HOLMES_GITHUB holmesgpt/github
+decide WRITE_HOLMES_ARGOCD holmesgpt/argocd
+decide WRITE_HOLMES_GRAFANA holmesgpt/grafana
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
   && [ "$WRITE_PREVIEWS" = "0" ] && [ "$WRITE_SHOT_BRIDGE" = "0" ] \
-  && [ "$WRITE_ARC" = "0" ]; then
+  && [ "$WRITE_ARC" = "0" ] && [ "$WRITE_HOLMES_LLM" = "0" ] \
+  && [ "$WRITE_HOLMES_GITHUB" = "0" ] && [ "$WRITE_HOLMES_ARGOCD" = "0" ] \
+  && [ "$WRITE_HOLMES_GRAFANA" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -284,6 +292,18 @@ if [ "$WRITE_ARC" = "1" ]; then
     exit 1
   fi
 fi
+if [ "$WRITE_HOLMES_LLM" = "1" ]; then
+  prompt_optional HOLMES_ANTHROPIC_API_KEY "Anthropic API key HolmesGPT investigates with (Enter until you have created one)"
+fi
+if [ "$WRITE_HOLMES_GITHUB" = "1" ]; then
+  prompt_optional HOLMES_GITHUB_TOKEN   "GitHub PAT HolmesGPT opens pull requests with (Enter until you have created one)"
+fi
+if [ "$WRITE_HOLMES_ARGOCD" = "1" ]; then
+  prompt_optional HOLMES_ARGOCD_TOKEN   "Argo CD token of the holmesgpt account (Enter until you have generated one)"
+fi
+if [ "$WRITE_HOLMES_GRAFANA" = "1" ]; then
+  prompt_optional HOLMES_GRAFANA_TOKEN  "Grafana service account token for HolmesGPT (Enter until you have created one)"
+fi
 echo
 
 # --- Write -----------------------------------------------------------------
@@ -363,6 +383,27 @@ if [ "$WRITE_ARC" = "1" ]; then
     "app-id=${ARC_APP_ID:-}" \
     "installation-id=${ARC_INSTALLATION_ID:-}" \
     "private-key=${arc_key}"
+fi
+
+# Four paths, each written even when empty, for the reason above: one
+# ExternalSecret reads all four, so a missing one keeps the pod from starting,
+# while an empty one only disables that toolset. See
+# docs/platform/holmesgpt.md#secrets
+if [ "$WRITE_HOLMES_LLM" = "1" ]; then
+  put holmesgpt/anthropic \
+    "api-key=${HOLMES_ANTHROPIC_API_KEY:-}"
+fi
+if [ "$WRITE_HOLMES_GITHUB" = "1" ]; then
+  put holmesgpt/github \
+    "token=${HOLMES_GITHUB_TOKEN:-}"
+fi
+if [ "$WRITE_HOLMES_ARGOCD" = "1" ]; then
+  put holmesgpt/argocd \
+    "token=${HOLMES_ARGOCD_TOKEN:-}"
+fi
+if [ "$WRITE_HOLMES_GRAFANA" = "1" ]; then
+  put holmesgpt/grafana \
+    "token=${HOLMES_GRAFANA_TOKEN:-}"
 fi
 
 cat <<'EOF'

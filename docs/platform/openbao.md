@@ -95,6 +95,7 @@ a `bao kv put` replaces the whole path.
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
 | `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
+| `holmesgpt/anthropic`, `holmesgpt/github`, `holmesgpt/argocd`, `holmesgpt/grafana` | `api-key`; `token` on the other three | HolmesGPT's model key, pull-request PAT, Argo CD token and Grafana token, one path each so a rotation retypes one value — [HolmesGPT](holmesgpt.md#secrets); each empty until created |
 | `argocd/github-previews` | `token` | The GitHub PAT the `previews` ApplicationSet lists pull requests with — [Pull request previews](argocd.md#pull-request-previews); empty until created |
 | `shot-bridge/accounts` | `lm-username`, `lm-password`, `apns-key-id`, `apns-key-p8` | The Shot Timer bridge's La Marzocco login and APNs key — [Shot Timer bridge](https://homelab-apps.wlkr.ch/shot-bridge/#secrets); the APNs keys are empty until the key is created |
 | `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](github-runners.md#github-app); empty until the app is created |
