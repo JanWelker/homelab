@@ -2652,23 +2652,65 @@ the chart): Argo CD compares the two strings after normalising, and treats a
 Secret and no <code>enableOCI</code>.</p>
 <h2 id="agent-account">Agent account<a class="headerlink" href="#agent-account" title="Permanent link">&para;</a></h2>
 <p>The <code>claude</code> account is the in-cluster Claude Code agents' API identity. It
-may read everything <code>role:readonly</code> reads and sync Applications in the <code>apps</code>
-project, and nothing else. It has <code>apiKey</code> only, so it cannot log in.</p>
+may read everything <code>role:readonly</code> reads, <code>argocd app get --refresh</code>
+included, and nothing else: the sessions investigate and open pull requests,
+and every Application syncs itself. It has <code>apiKey</code> only, so it cannot log
+in. One token serves every session with <code>argocd.enabled</code>, so its expiry is
+what bounds a leak from any of them.</p>
+<p>The token expires after 90 days: that caps a leak at a quarter, and rotating
+is a few commands with no restart. An expired token fails every agent
+<code>argocd</code> call until the next one is stored. To rotate:</p>
 <ol>
 <li>
 <p>Generate the token, logged in through Authentik:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>--expires-in<span class="w"> </span>90d
 </span></code></pre></div>
 </li>
 <li>
 <p>Store it with <code>make bao-secrets</code>, at <code>kv/claude-agents/argocd</code>
    (<code>token</code>).</p>
 </li>
+<li>
+<p>Pull it into the sessions now instead of at the next hourly refresh. The
+   chart mounts the token as a file that the <code>argocd</code> wrapper reads on every
+   call, so no pod restarts; only a shell opened earlier keeps the old token
+   in its environment:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>claude-agents<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>claude-&lt;session&gt;-argocd<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+</span></code></pre></div>
+</li>
+<li>
+<p>Revoke the previous token. <code>argocd account get --account claude</code> lists
+   the token IDs with their expiry dates:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>delete-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>&lt;id&gt;
+</span></code></pre></div>
+</li>
 </ol>
-<p>The agents reach Argo CD on 443 by name, so the traffic enters through
-<code>infra-gateway</code> and arrives at <code>argocd-server</code> as the <code>ingress</code> entity, which
-its policy already admits. They use the CLI host from
-<a href="#cli-access">CLI access</a>.</p>
+<p>The agents reach Argo CD on 443 through the CLI host from
+<a href="#cli-access">CLI access</a>, which resolves to <code>infra-gateway</code>'s own address.
+The caller's policy has to admit both legs, as for any name the Gateway
+serves (<a href="../security-policies/#network-policies">Security Policies</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Leg</th>
+<th>Admitted by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent pod to the Gateway address</td>
+<td>A name rule for the CLI host: the datapath classifies the Gateway's address as <code>world</code>, not <code>ingress</code></td>
+</tr>
+<tr>
+<td>The Gateway's Envoy to <code>argocd-server</code></td>
+<td>An egress rule to the <code>argocd-server</code> pod itself. Envoy checks the caller's egress policy again against the pod it picked and answers <code>403 Access denied</code> when no rule matches, audit mode or not. The server's own policy already admits the <code>ingress</code> entity</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>homelab</code> session's policy in the workloads repository carries both. The
+chart's own policy has only the name rule
+(<a href="https://github.com/JanWelker/claude-agent/issues/3">claude-agent#3</a>), so
+any other session with <code>argocd.enabled</code> gets a 403 on every call.</p>
 <h2 id="pull-request-previews">Pull request previews<a class="headerlink" href="#pull-request-previews" title="Permanent link">&para;</a></h2>
 <p>The <code>previews</code> ApplicationSet deploys every open pull request labelled
 <code>preview</code> on the two neighbourhood sites, from <code>&lt;site&gt;/preview/</code> in the
@@ -2713,7 +2755,7 @@ repository's <a href="https://homelab-apps.wlkr.ch/previews/">Previews</a> page.
 </li>
 <li>
 <p>Store it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>bao-secrets
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
 </li>
 </ol>
@@ -2728,11 +2770,11 @@ port (<code>http2</code>, 81) and a <code>GRPCRoute</code> on <code>argo-grpc.in
 hostname of its own so the browser route stays as it is.</p>
 <p>The Gateway offers no ALPN, and gRPC clients refuse TLS without it, so the CLI
 needs ALPN enforcement off:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span></code></pre></div>
 <p>Every Application should be <code>Synced</code> and <code>Healthy</code>. One that stays <code>OutOfSync</code>
 has exhausted its retries and waits for a hand sync — see

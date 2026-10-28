@@ -3185,7 +3185,7 @@ it alone, until the agent restarts:</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Audit mode stops at the proxy</p>
-<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity.</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity. The agents' <code>argocd</code> calls failed this way, <code>server: envoy</code> and <code>grpc-message: Access denied</code>, while their policy named the host but not the <code>argocd-server</code> pod; see <a href="../argocd/#agent-account">Agent account</a>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">A name rule audits one SYN in twenty</p>
