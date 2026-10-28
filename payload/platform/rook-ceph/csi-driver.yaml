@@ -24,8 +24,13 @@ spec:
       enableSeLinuxHostMount: false
     controllerPlugin:
       priorityClassName: system-cluster-critical
+      # No surge: the operator keeps the replicas on distinct nodes and the
+      # sidecars elect a leader, so the old pod goes before the new one comes
       deploymentStrategy:
-        type: Recreate
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
 ---
 # Name must match the provisioner in cluster.yaml's StorageClasses
 apiVersion: csi.ceph.io/v1
@@ -54,7 +59,7 @@ spec:
         limits:
           memory: 512Mi
   controllerPlugin:
-    replicas: 1
+    replicas: 2
     resources:
       plugin:
         requests:
@@ -86,3 +91,15 @@ spec:
           cpu: 10m
         limits:
           memory: 128Mi
+---
+# The label is the operator's, app: <driver>-ctrlplugin
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rbd-ctrlplugin
+  namespace: rook-ceph
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: rook-ceph.rbd.csi.ceph.com-ctrlplugin
