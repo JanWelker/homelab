@@ -1,6 +1,6 @@
 ---
 # Apps Gateway IP Pool (public apps at *.k8s.wlkr.ch)
-apiVersion: "cilium.io/v2alpha1"
+apiVersion: "cilium.io/v2"
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: "apps-pool"
@@ -9,7 +9,7 @@ spec:
     - cidr: "10.9.2.249/32"
 ---
 # Infra Gateway IP Pool (core services at *.infra.k8s.wlkr.ch)
-apiVersion: "cilium.io/v2alpha1"
+apiVersion: "cilium.io/v2"
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: "infra-pool"
