@@ -182,7 +182,26 @@ spec:
             serviceAccount:
               automountServiceAccountToken: false
 
+            # One of the two may go, so a Kured drain keeps alerting up;
+            # `null` drops the chart's minAvailable, a PDB takes only one.
+            podDisruptionBudget:
+              enabled: true
+              minAvailable: null
+              maxUnavailable: 1
+
             alertmanagerSpec:
+              replicas: 2
+              # Worker-only, so ScheduleAnyway; see
+              # docs/platform/index.md#replica-placement
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: ScheduleAnyway
+                  nodeTaintsPolicy: Honor
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: alertmanager
+                      alertmanager: kube-prometheus-stack-alertmanager
               # The Alertmanager link in mails, see docs/platform/monitoring.md#alerting
               externalUrl: https://alertmanager.infra.k8s.wlkr.ch
               resources:

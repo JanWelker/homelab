@@ -207,3 +207,8 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 `Watchdog` proves the pipeline as far as Alertmanager and not one step
 further; SMTP auth, spam heuristics and an expired password are unmonitored.
 Send yourself a test alert once and confirm it arrives.
+
+## Pitfalls
+
+!!! warning "Prometheus is a single replica, Alertmanager is not"
+    Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a [Kured](kured.md) drain keeps alerting up. A second Prometheus would double the memory limit and the volume in `application.yaml`, which the [2.5x-peak rule](index.md#components) leaves no room for on an 8&nbsp;GiB node, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.
