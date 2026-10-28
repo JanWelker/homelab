@@ -117,6 +117,14 @@ spec:
                 - key: node-role.kubernetes.io/control-plane
                   operator: Exists
                   effect: NoSchedule
+            # No OSDs where etcd shares the disk; see docs/platform/rook-ceph.md#disks
+            osd:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
 
         cephBlockPools:
           - name: rbd-pool
