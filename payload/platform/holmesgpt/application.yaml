@@ -94,6 +94,9 @@ spec:
               value: /tmp
             - name: MODEL
               value: sonnet
+            # Virtual, per tool command; the Go CLIs need more than the amd64 default.
+            - name: TOOL_MEMORY_LIMIT_MB
+              value: "2048"
             # Claude 5.5 rejects the parameter; "none" sends none at all.
             - name: TEMPERATURE
               value: none
