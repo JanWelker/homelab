@@ -64,8 +64,6 @@ spec:
                   capabilities:
                     drop:
                       - ALL
-                    add:
-                      - IPC_LOCK
             image:
               # No registry prefix: the chart already prepends quay.io.
               repository: openbao/openbao
@@ -148,6 +146,12 @@ spec:
             readinessProbe:
               enabled: true
               path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+            # Same sealed-tolerant path: restart a hung process, not a sealed one.
+            livenessProbe:
+              enabled: true
+              path: /v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204
+              failureThreshold: 6
+              periodSeconds: 10
             resources:
               requests:
                 cpu: 100m

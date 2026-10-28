@@ -50,13 +50,12 @@ an informed change.
 | `kube-system` | `privileged` | Cilium, kube-vip and the control plane use host networking and host paths |
 | `rook-ceph` | `privileged` | OSDs need raw block devices |
 | `monitoring` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys` |
-| `openbao` | `privileged` | Adds `IPC_LOCK` to keep the root key out of swap, which baseline does not allow |
 | `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
 | `backup` | `privileged` | The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory |
 | `logging` | `privileged` | Alloy hostPath-mounts the pod logs and the Hubble export |
 | `kured` | `privileged` | kured runs privileged in the host PID namespace to reboot the node |
 | `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
-| `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
+| `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `openbao`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
 
 `privileged` here means "not yet reduced", not "unexamined": `audit` and `warn`
 are still `baseline` or `restricted` on all of them. Namespace objects are
