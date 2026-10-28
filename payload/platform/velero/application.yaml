@@ -32,6 +32,19 @@ spec:
             volumeMounts:
               - mountPath: /target
                 name: plugins
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+        # The pre-upgrade Job that applies the CRDs; an OOM here fails the sync.
+        upgradeJobResources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 256Mi
 
         # Keys come from the bucket claim's Secret via extraEnvVars below
         credentials:
