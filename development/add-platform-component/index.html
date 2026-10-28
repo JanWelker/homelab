@@ -2449,7 +2449,13 @@ Application on the next poll. Workloads go in the
    OpenBao and the issuers are their own component — see
    <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>.
    A resource whose CRD comes from another component gets
-   <code>argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true</code>.</p>
+   <code>argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true</code>.
+   A component with an <code>ExternalSecret</code> needs its namespace in both lists
+   of <code>payload/platform/openbao/cluster-secret-store.yaml</code>, or the
+   ExternalSecret reads <code>denied by spec.condition</code>. A chart from a new
+   repository needs that host in the repo-server's policy in
+   <code>payload/platform/security/network-policies/argocd.yaml</code>, or the
+   Application reads <code>ComparisonError</code>.</p>
 </li>
 <li>
 <p><strong>Label the namespace</strong> in <code>payload/platform/security/pod-security.yaml</code>
