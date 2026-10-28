@@ -52,6 +52,39 @@ spec:
             velero: true
             externalSecrets: true
 
+          # The platform's own CRDs, read-only: the chart's role knows none of
+          # them, and the list matches claude-agent-read in security/.
+          customClusterRoleRules:
+            - apiGroups: ["postgresql.cnpg.io"]
+              resources: ["backups", "clusters", "poolers", "scheduledbackups"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["cert-manager.io"]
+              resources: ["certificaterequests", "certificates", "clusterissuers", "issuers"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["acme.cert-manager.io"]
+              resources: ["challenges", "orders"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["ceph.rook.io"]
+              resources: ["cephblockpools", "cephclusters"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["aquasecurity.github.io"]
+              resources: ["configauditreports", "vulnerabilityreports"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["cilium.io"]
+              resources:
+                - ciliumclusterwidenetworkpolicies
+                - ciliumendpoints
+                - ciliumnetworkpolicies
+                - ciliumnodes
+                - tracingpolicies
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["snapshot.storage.k8s.io"]
+              resources: ["volumesnapshotclasses", "volumesnapshots"]
+              verbs: ["get", "list", "watch"]
+            - apiGroups: ["holmesgpt.dev"]
+              resources: ["healthchecks", "scheduledhealthchecks"]
+              verbs: ["get", "list", "watch"]
+
           # All four read from kv/holmesgpt/*; see secrets.yaml
           extraEnvVarsSecrets:
             - holmesgpt-env
