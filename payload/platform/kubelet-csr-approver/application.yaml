@@ -22,6 +22,9 @@ spec:
         providerIpPrefixes:
           - 10.9.2.0/24
         maxExpirationSeconds: 86400
+        # Node joins and kubelet serving-cert renewals wait on it; see
+        # docs/platform/index.md#components
+        priorityClassName: system-cluster-critical
         replicas: 2
         # It tolerates the control planes, so six nodes always leave room for
         # two replicas and the rule can be hard; the chart exposes no

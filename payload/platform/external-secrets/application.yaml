@@ -18,6 +18,8 @@ spec:
         valuesObject:
           installCRDs: true
           replicaCount: 1
+          # Here and on the two deployments below; see docs/platform/index.md#components
+          priorityClassName: system-cluster-critical
           # Pod-level, here and on the two deployments below; the containers
           # already match.
           podSecurityContext:
@@ -44,6 +46,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
                 whenUnsatisfiable: ScheduleAnyway
                 nodeTaintsPolicy: Honor
+            priorityClassName: system-cluster-critical
             podSecurityContext:
               enabled: true
               runAsNonRoot: true
@@ -60,6 +63,7 @@ spec:
                 memory: 128Mi
             # Keep the SA token mounted: the webhook exits without it.
           certController:
+            priorityClassName: system-cluster-critical
             podSecurityContext:
               enabled: true
               runAsNonRoot: true
