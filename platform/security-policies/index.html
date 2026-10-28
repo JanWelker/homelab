@@ -2890,14 +2890,9 @@ an informed change.</p>
 <td>OSDs need raw block devices</td>
 </tr>
 <tr>
-<td><code>monitoring</code></td>
+<td><code>node-exporter</code></td>
 <td><code>privileged</code></td>
-<td>node-exporter is host-networked and reads <code>/proc</code> and <code>/sys</code></td>
-</tr>
-<tr>
-<td><code>openbao</code></td>
-<td><code>privileged</code></td>
-<td>Adds <code>IPC_LOCK</code> to keep the root key out of swap, which baseline does not allow</td>
+<td>node-exporter is host-networked and reads <code>/proc</code> and <code>/sys</code>; kube-prometheus-stack places it here with <code>namespaceOverride</code> so the rest of the stack need not follow</td>
 </tr>
 <tr>
 <td><code>trivy-system</code></td>
@@ -2920,12 +2915,17 @@ an informed change.</p>
 <td>kured runs privileged in the host PID namespace to reboot the node</td>
 </tr>
 <tr>
+<td><code>monitoring</code></td>
+<td><code>baseline</code></td>
+<td>Grafana's <code>init-chown-data</code> container runs as root to own the data volume</td>
+</tr>
+<tr>
 <td><code>cert-manager</code>, <code>external-secrets</code>, <code>argocd</code></td>
 <td><code>baseline</code></td>
 <td>—</td>
 </tr>
 <tr>
-<td><code>authentik</code>, <code>descheduler</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>, <code>cilium-secrets</code>, <code>default</code>, <code>kube-public</code>, <code>kube-node-lease</code></td>
+<td><code>authentik</code>, <code>descheduler</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>, <code>openbao</code>, <code>cilium-secrets</code>, <code>default</code>, <code>kube-public</code>, <code>kube-node-lease</code></td>
 <td><code>restricted</code></td>
 <td>—</td>
 </tr>

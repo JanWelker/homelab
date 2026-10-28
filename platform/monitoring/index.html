@@ -1561,6 +1561,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2557,6 +2568,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pitfalls
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2693,8 +2715,11 @@
 <p>Full observability stack based on
 <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>:
 Prometheus, Grafana, Alertmanager, node-exporter and
-kube-state-metrics. The chart's default rule set is good; its default routing
-swallows every alert, which is what most of this page is about.</p>
+kube-state-metrics. node-exporter runs in its own <code>node-exporter</code> namespace so
+that only it is admitted at the <code>privileged</code> level
+(<a href="../security-policies/#pod-security-admission">security policies</a>). The
+chart's default rule set is good; its default routing swallows every alert,
+which is what most of this page is about.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3017,6 +3042,11 @@ hand; <code>--cascade=orphan</code> keeps the pod and the claim.</p>
 <p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step
 further; SMTP auth, spam heuristics and an expired password are unmonitored.
 Send yourself a test alert once and confirm it arrives.</p>
+<h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Prometheus is a single replica, Alertmanager is not</p>
+<p>Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a <a href="../kured/">Kured</a> drain keeps alerting up. A second Prometheus would double the memory limit and the volume in <code>application.yaml</code>, which the <a href="../#components">2.5x-peak rule</a> leaves no room for on an 8&nbsp;GiB node, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.</p>
+</div>
 
 
 

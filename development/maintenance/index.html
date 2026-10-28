@@ -2609,7 +2609,10 @@ are the pairs below that must move together.</p>
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
     Rook requires both charts on the same version; and <code>markdownlint-cli2</code> in
     the workflow with its pre-commit hook, because the two must lint alike;
-    <code>gitleaks</code> likewise; and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
+    <code>gitleaks</code> likewise; the <code>external-snapshotter</code> tag with the
+    <code>snapshot-controller</code> image it pins, because upstream's manifest at a tag
+    names the previous release's image (the image is a <code>registry.k8s.io</code> one,
+    so the pair waits for a human like every third-party image there); and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
     <code>python</code> images), because <code>uv sync</code> fails when they name different
     minors.</li>
 <li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new

@@ -2744,7 +2744,12 @@ cannot.</p>
 <tr>
 <td>Prometheus metrics</td>
 <td><strong>No</strong></td>
-<td>Kept for the <code>retention</code> in <code>payload/platform/monitoring/application.yaml</code>, then gone</td>
+<td>Its PVC carries <code>velero.io/exclude-from-backup</code>; metrics live for the <code>retention</code> in <code>payload/platform/monitoring/application.yaml</code>, then are gone</td>
+</tr>
+<tr>
+<td>Trivy reports and vulnerability database</td>
+<td><strong>No</strong></td>
+<td><code>trivy-system</code> is excluded; the operator rescans and the server downloads the database again</td>
 </tr>
 <tr>
 <td>Everything in <code>payload/</code></td>
@@ -2784,7 +2789,7 @@ nightly. Chart values and why each is set are in
 </tr>
 <tr>
 <td>Scope</td>
-<td>All namespaces except <code>kube-system</code> (rebuilt from Git, and large), minus <code>events</code> (they expire anyway)</td>
+<td>All namespaces except <code>kube-system</code> (rebuilt from Git, and large) and <code>trivy-system</code> (rescanned), minus <code>events</code> (they expire anyway) and any PVC labelled <code>velero.io/exclude-from-backup</code>, which is only Prometheus's: the chart's <code>volumeClaimTemplate.metadata.labels</code> carries it</td>
 </tr>
 <tr>
 <td>Destination</td>

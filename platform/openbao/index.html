@@ -2922,7 +2922,7 @@ unrelated things breaking at once.</p>
 <tbody>
 <tr>
 <td>Pod security context restated in full</td>
-<td>OpenBao keeps the root key out of swap with <code>mlock</code>, which needs <code>IPC_LOCK</code> — the reason the namespace enforces <code>privileged</code>; the container drops <code>ALL</code> and adds only that. The chart's <code>securityContext.pod</code> replaces rather than merges, and the image's <code>USER</code> is a name, so dropping the numeric IDs makes the kubelet refuse the container as unprovably non-root — on pod recreation, typically after a reboot</td>
+<td>The chart's <code>securityContext.pod</code> and <code>.container</code> replace rather than merge, so a block that names only what differs loses the rest. The image's <code>USER</code> is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce <code>restricted</code> (<a href="../security-policies/#pod-security-admission">security policies</a>)</td>
 </tr>
 <tr>
 <td><code>image.repository</code> without a registry</td>
@@ -3287,7 +3287,7 @@ report <code>Ready=True</code>.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Sealed after every restart, and Ready does not mean unsealed</p>
-<p>OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness probe answers healthy while sealed (<code>sealedcode=204</code>), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys; the cost is that only <code>bao status</code>, not <code>kubectl get pods</code>, can tell you OpenBao is usable. While sealed no <code>ExternalSecret</code> resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See <a href="../../architecture/limitations/">Limitations</a>.</p>
+<p>OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (<code>sealedcode=204</code>), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys and a sealed pod is not restarted into another sealed pod; the cost is that only <code>bao status</code>, not <code>kubectl get pods</code>, can tell you OpenBao is usable. While sealed no <code>ExternalSecret</code> resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See <a href="../../architecture/limitations/">Limitations</a>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">A <code>PushSecret</code> cannot add a key to a path <code>make bao-secrets</code> wrote</p>

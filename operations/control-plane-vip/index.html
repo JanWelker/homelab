@@ -2680,6 +2680,10 @@ the API away from the workers and from every kubeconfig.</p>
 <td>Capabilities identical to the static pod</td>
 <td>The first sync replaces all three at once; untested hardening takes the VIP down everywhere</td>
 </tr>
+<tr>
+<td>Liveness probe on <code>/metrics</code></td>
+<td>Every kube-vip serves it, leader or not, so a hung process holding the Lease is restarted instead of keeping the VIP dead until another node's renew fails too; the long failure window keeps a slow API server from recycling a healthy pod</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition danger">

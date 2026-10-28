@@ -2950,6 +2950,10 @@ them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.<
 <td>Derived from the namespace and must match the StorageClasses' <code>provisioner</code>. RBD is the only driver; CephFS is not enabled</td>
 </tr>
 <tr>
+<td>Two controller plugin replicas, <code>RollingUpdate</code> without surge, a PodDisruptionBudget</td>
+<td>A drain of the provisioner's node otherwise stalls every provision, attach, resize and snapshot until the pod reschedules. The operator already keeps the replicas on distinct nodes with required anti-affinity and runs every sidecar with leader election, so the <code>Driver</code> CR carries no spread constraint, and no field for one</td>
+</tr>
+<tr>
 <td><code>csi-rbac.yaml</code></td>
 <td>The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by <code>CSI_SERVICE_ACCOUNT_PREFIX</code> (empty here): <code>rbd-ctrlplugin-sa</code> and <code>rbd-nodeplugin-sa</code>. Without them the Deployment and DaemonSet exist but create no pods</td>
 </tr>

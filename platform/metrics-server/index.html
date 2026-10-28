@@ -2545,7 +2545,7 @@ API is an aggregated Kubernetes API that core controllers read directly.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td>kubelet-csr-approver, or the kubelet certificates it verifies are never issued</td>
+<td>kubelet-csr-approver, or the kubelet certificates it verifies are never issued; <a href="../cert-manager/">cert-manager</a> for its own serving certificate</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2611,11 +2611,16 @@ pieces:</p>
 <td>Two replicas and a PodDisruptionBudget</td>
 <td>A node reboot does not take the resource metrics API down</td>
 </tr>
+<tr>
+<td><code>tls.type: cert-manager</code> with <code>apiService.insecureSkipTLSVerify: false</code></td>
+<td>The other half of the path: the chart's self-signed <code>Issuer</code> signs the serving certificate and the cainjector copies its CA into the <code>APIService</code>, so kube-apiserver verifies metrics-server instead of trusting whatever answers at the Service</td>
+</tr>
 </tbody>
 </table>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>csr<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kubelet-serving<span class="w">   </span><span class="c1"># should be Approved,Issued</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>top<span class="w"> </span>nodes
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>apiservice<span class="w"> </span>v1beta1.metrics.k8s.io<span class="w">   </span><span class="c1"># Available True, caBundle filled</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubectl<span class="w"> </span>top<span class="w"> </span>nodes
 </span></code></pre></div>
 <p><code>Pending</code> CSRs mean kubelet-csr-approver is not running or a node name does not
 match the regex. <code>Denied</code> means the regex or the IP prefix is wrong — check the

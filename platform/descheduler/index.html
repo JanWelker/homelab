@@ -2570,8 +2570,8 @@ reasoning:</p>
 <td>A pod is only evicted when another node has room for it, so an eviction never turns into a Pending pod</td>
 </tr>
 <tr>
-<td>Local-storage and PVC pods at the defaults</td>
-<td><code>emptyDir</code> pods are protected because their data goes with them; PVC pods are not, because Ceph volumes follow the pod to any node</td>
+<td><code>podProtections.extraEnabled: PodsWithPVC</code></td>
+<td>Ceph volumes would follow an evicted pod, but the pods that own them run alone: a moved <a href="../cloudnative-pg/">CloudNativePG</a> primary is a failover and a cold restart of its application, a moved Loki a detach and reattach. Their PDBs are off so that Kured can drain, so this is the only guard. <code>emptyDir</code> pods stay protected at the default because their data goes with them</td>
 </tr>
 <tr>
 <td>System-critical pods at the default</td>
