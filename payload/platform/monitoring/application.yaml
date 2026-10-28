@@ -186,12 +186,11 @@ spec:
             serviceAccount:
               automountServiceAccountToken: false
 
-            # One of the two may go, so a Kured drain keeps alerting up;
-            # `null` drops the chart's minAvailable, a PDB takes only one.
+            # One of the two may go, so a Kured drain keeps alerting up. The
+            # chart's minAvailable: 1 says that with two replicas; a null
+            # override is dropped by valuesObject, so it cannot be swapped.
             podDisruptionBudget:
               enabled: true
-              minAvailable: null
-              maxUnavailable: 1
 
             alertmanagerSpec:
               replicas: 2
