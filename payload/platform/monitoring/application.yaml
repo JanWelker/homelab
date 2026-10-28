@@ -159,6 +159,10 @@ spec:
                       - trivy-system
               storageSpec:
                 volumeClaimTemplate:
+                  # Metrics are rebuilt, not restored; see docs/operations/backups.md#velero
+                  metadata:
+                    labels:
+                      velero.io/exclude-from-backup: "true"
                   spec:
                     storageClassName: rook-ceph-block
                     accessModes: ["ReadWriteOnce"]
