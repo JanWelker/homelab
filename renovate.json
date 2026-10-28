@@ -109,6 +109,17 @@
       "pinDigests": false
     },
     {
+      "description": "The previews ApplicationSet holds bare image names and appends the pull request's tag at render time; kustomize reads `name@sha256:...:tag` as one digest, so a pinned digest breaks every preview pod -- see docs/platform/argocd.md#pull-request-previews",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/janwelker/advent-wollbi-ch",
+        "ghcr.io/janwelker/fest-wollbi-ch"
+      ],
+      "pinDigests": false
+    },
+    {
       "description": "A PostgreSQL major version is an offline migration that takes the workload down while it runs, and it is not reversible. The preset already holds every major for a human; this rule labels it. Same rule as the workloads repository -- see docs/platform/cloudnative-pg.md",
       "matchDatasources": [
         "docker"
