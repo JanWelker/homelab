@@ -125,7 +125,11 @@ more than one replica carries an explicit rule:
 | `podAntiAffinity` `requiredDuringSchedulingIgnoredDuringExecution` | the component tolerates the control planes, so six nodes always leave room — or its chart exposes no spread constraint |
 
 Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the
-nodes the pod can reach rather than over the tainted control planes. Placement
+nodes the pod can reach rather than over the tainted control planes. The same
+components carry a PodDisruptionBudget with `maxUnavailable: 1`, so a drain or
+the [descheduler](descheduler.md) evicts one replica at a time; `maxUnavailable`
+rather than `minAvailable`, so a component scaled down to one replica never
+blocks a drain. Placement
 is scored once, at scheduling time: pods already sharing a node stay there
 until something restarts them, and the [descheduler](descheduler.md) moves
 them back only if its evictor is allowed to touch them.
