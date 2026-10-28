@@ -304,6 +304,12 @@ spec:
                 - apiGroups: ["holmesgpt.dev"]
                   resources: ["healthchecks"]
                   verbs: ["list", "watch"]
+                - apiGroups: ["barmancloud.cnpg.io"]
+                  resources: ["objectstores"]
+                  verbs: ["list", "watch"]
+                - apiGroups: ["postgresql.cnpg.io"]
+                  resources: ["backups"]
+                  verbs: ["list", "watch"]
             customResourceState:
               enabled: true
               config:
@@ -335,6 +341,59 @@ spec:
                             gauge:
                               path: [status, completionTime]
                               nilIsZero: true
+                    # The Cluster's own backup fields stay empty under the plugin;
+                    # see docs/platform/cloudnative-pg.md#health-check
+                    - groupVersionKind:
+                        group: barmancloud.cnpg.io
+                        version: v1
+                        kind: ObjectStore
+                      metricNamePrefix: cnpg_objectstore
+                      labelsFromPath:
+                        name: [metadata, name]
+                        namespace: [metadata, namespace]
+                      metrics:
+                        - name: last_successful_backup_time_seconds
+                          help: "The newest completed base backup per server, as a Unix timestamp; 0 before the first"
+                          each:
+                            type: Gauge
+                            gauge:
+                              path: [status, serverRecoveryWindow]
+                              labelFromKey: server
+                              valueFrom: [lastSuccessfulBackupTime]
+                              nilIsZero: true
+                        - name: first_recoverability_point_seconds
+                          help: "The oldest point a server can be restored to, as a Unix timestamp; 0 before the first backup"
+                          each:
+                            type: Gauge
+                            gauge:
+                              path: [status, serverRecoveryWindow]
+                              labelFromKey: server
+                              valueFrom: [firstRecoverabilityPoint]
+                              nilIsZero: true
+                    - groupVersionKind:
+                        group: postgresql.cnpg.io
+                        version: v1
+                        kind: Backup
+                      metricNamePrefix: cnpg_backup
+                      labelsFromPath:
+                        name: [metadata, name]
+                        namespace: [metadata, namespace]
+                        cluster: [spec, cluster, name]
+                      metrics:
+                        - name: phase
+                          help: "The Backup's phase: 1 on the series whose phase label holds it"
+                          each:
+                            type: StateSet
+                            stateSet:
+                              labelName: phase
+                              path: [status, phase]
+                              list: [pending, started, running, completed, failed, walArchivingFailing]
+                        - name: created_time_seconds
+                          help: "When the Backup object was created, as a Unix timestamp"
+                          each:
+                            type: Gauge
+                            gauge:
+                              path: [metadata, creationTimestamp]
 
           prometheus-node-exporter:
             # Its own namespace, the only privileged one the stack needs.

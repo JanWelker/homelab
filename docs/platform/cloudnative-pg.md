@@ -200,7 +200,14 @@ kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecover
 `ContinuousArchiving` `True` means the last WAL segment reached the bucket;
 `False` means WAL is piling up on the instance's volume, which fills it. The
 recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s
-own backup fields stay empty with a plugin.
+own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay
+empty with a plugin, which upstream documents as deprecated under CNPG-I.
+`prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup`
+objects through kube-state-metrics'
+[custom resource metrics](monitoring.md#scrape-targets):
+`CNPGBackupStale` when a server's last successful base backup is older than
+36 hours, `CNPGBackupFailed` when a Backup from the last 24 hours ended in
+`failed`. Both are warnings on the daily mail.
 
 ## Pitfalls
 
