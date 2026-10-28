@@ -129,10 +129,13 @@ exists, once the API servers have restarted:
 kubectl get secrets -A -o json | kubectl replace -f -
 ```
 
-The key is static, with no rotation, and lives in `output/credentials/` beside
-the kubeadm token and certificate key — that directory is what decrypts etcd.
-A KMS provider would remove the static key at the cost of a dependency the
-cluster must reach before it can serve Secrets.
+The key lives in `output/credentials/` beside the kubeadm token and
+certificate key — that directory is what decrypts etcd. The API servers reload
+the config file on change (`encryption-provider-config-automatic-reload`), so
+rotating it is a file edit and a rewrite of every Secret, by hand — see
+[Encryption Key Rotation](../operations/encryption-key-rotation.md). A KMS
+provider would remove the key file at the cost of a dependency the cluster must
+reach before it can serve Secrets.
 
 ## Runtime
 

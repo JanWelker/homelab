@@ -43,6 +43,13 @@ see the [Quickstart](../quickstart.md).
     How the API server address survives losing the node that answers it, and
     how to migrate a cluster built without it.
 
+- **[Encryption Key Rotation](encryption-key-rotation.md)**
+
+    ---
+
+    Swapping the key that encrypts Secrets in etcd, with no API server
+    restart and two rewrites of every Secret.
+
 - **[Vulnerability Triage](vulnerabilities.md)**
 
     ---
