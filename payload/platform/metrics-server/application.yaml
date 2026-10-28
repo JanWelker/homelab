@@ -25,6 +25,15 @@ spec:
           # Needs kubelet-csr-approver; never swap for --kubelet-insecure-tls.
           - --kubelet-certificate-authority=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         replicas: 2
+        # cert-manager issues the serving certificate and the cainjector fills
+        # the APIService caBundle, so the aggregator verifies it; see
+        # docs/platform/metrics-server.md
+        tls:
+          type: cert-manager
+          certManager:
+            addInjectorAnnotations: true
+        apiService:
+          insecureSkipTLSVerify: false
         # Pod-level; the container already matches.
         podSecurityContext:
           runAsNonRoot: true

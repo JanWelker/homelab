@@ -16,7 +16,7 @@ API is an aggregated Kubernetes API that core controllers read directly.
 | | |
 | --- | --- |
 | Namespace | `kube-system`; kubelet-csr-approver in `kubelet-csr-approver` |
-| Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued |
+| Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued; [cert-manager](cert-manager.md) for its own serving certificate |
 | If it is down | `kubectl top`, every HPA and the [descheduler](descheduler.md)'s node usage. Nothing else notices |
 | Health check | `kubectl top nodes` &rarr; a row per node |
 | Files | `payload/platform/metrics-server/`, `payload/platform/kubelet-csr-approver/` |
@@ -42,11 +42,13 @@ pieces:
 | --- | --- |
 | Flags via `defaultArgs`, not `args` | The default list already sets `--kubelet-preferred-address-types`, and a flag passed twice leaves the winner to parsing order. It is `InternalIP` because node hostnames do not resolve here |
 | Two replicas and a PodDisruptionBudget | A node reboot does not take the resource metrics API down |
+| `tls.type: cert-manager` with `apiService.insecureSkipTLSVerify: false` | The other half of the path: the chart's self-signed `Issuer` signs the serving certificate and the cainjector copies its CA into the `APIService`, so kube-apiserver verifies metrics-server instead of trusting whatever answers at the Service |
 
 ## Health check
 
 ```bash
 kubectl get csr | grep kubelet-serving   # should be Approved,Issued
+kubectl get apiservice v1beta1.metrics.k8s.io   # Available True, caBundle filled
 kubectl top nodes
 ```
 
