@@ -61,6 +61,9 @@ spec:
               value: /tmp
             - name: MODEL
               value: sonnet
+            # Claude 5.5 rejects the parameter; "none" sends none at all.
+            - name: TEMPERATURE
+              value: none
             - name: ARGOCD_SERVER
               value: argocd-server.argocd.svc:80
             - name: ARGOCD_OPTS
@@ -70,11 +73,9 @@ spec:
             sonnet:
               model: anthropic/claude-sonnet-5-5
               api_key: envRef:ANTHROPIC_API_KEY
-              temperature: 0
             haiku:
               model: anthropic/claude-haiku-5-5
               api_key: envRef:ANTHROPIC_API_KEY
-              temperature: 0
 
           toolsets:
             kubernetes/core:
