@@ -39,9 +39,9 @@ kind: Namespace
 metadata:
   name: openbao
   labels:
-    pod-security.kubernetes.io/enforce: privileged
-    pod-security.kubernetes.io/audit: baseline
-    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
 ---

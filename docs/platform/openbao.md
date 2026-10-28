@@ -43,7 +43,7 @@ flowchart LR
 
 | Setting | Why |
 | --- | --- |
-| Pod security context restated in full | OpenBao keeps the root key out of swap with `mlock`, which needs `IPC_LOCK` — the reason the namespace enforces `privileged`; the container drops `ALL` and adds only that. The chart's `securityContext.pod` replaces rather than merges, and the image's `USER` is a name, so dropping the numeric IDs makes the kubelet refuse the container as unprovably non-root — on pod recreation, typically after a reboot |
+| Pod security context restated in full | The chart's `securityContext.pod` and `.container` replace rather than merge, so a block that names only what differs loses the rest. The image's `USER` is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce `restricted` ([security policies](security-policies.md#pod-security-admission)) |
 | `image.repository` without a registry | The chart prepends `server.image.registry` (`quay.io`) itself |
 | `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200 |
 | `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it as they start. `service_registration "kubernetes"` only labels pods `active` and `standby` |
@@ -275,7 +275,7 @@ report `Ready=True`.
 ## Pitfalls
 
 !!! warning "Sealed after every restart, and Ready does not mean unsealed"
-    OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness probe answers healthy while sealed (`sealedcode=204`), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](../architecture/limitations.md).
+    OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (`sealedcode=204`), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys and a sealed pod is not restarted into another sealed pod; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](../architecture/limitations.md).
 
 !!! warning "A `PushSecret` cannot add a key to a path `make bao-secrets` wrote"
     Paths written before their `PushSecret` existed carry no `managed-by` metadata, so a new key on one fails with `secret not managed by external-secrets` and the `PushSecret` goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: `bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets <path>`.
