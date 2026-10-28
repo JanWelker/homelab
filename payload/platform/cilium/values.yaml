@@ -9,8 +9,9 @@ devices: "en+"
 rollOutCiliumPods: true
 
 kubeProxyReplacement: true
-# Only change once the new address answers; see docs/platform/cilium.md.
-k8sServiceHost: 10.9.2.1
+# The control-plane VIP (control_plane_vip in ansible/inventory.yaml). Only
+# change once the new address answers; see docs/platform/cilium.md.
+k8sServiceHost: 10.9.2.10
 k8sServicePort: 6443
 
 # Renders without the CRDs, as `make install-cilium` must; see docs/platform/cilium.md.

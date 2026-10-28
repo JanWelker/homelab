@@ -44,11 +44,11 @@ LoadBalancer addresses, WireGuard transparent encryption and Hubble for flow
 visibility — four things that would otherwise be four components on bare metal.
 
 The cost is a hard bootstrap dependency: with no `kube-proxy`, Cilium needs a
-literal API server address in `k8sServiceHost`, which should be the
+literal API server address in `k8sServiceHost`, which is the
 [control plane VIP](../operations/control-plane-vip.md); pointing it at one
-node makes that node a
-[single point of failure](limitations.md), and pointing it at an address that
-does not answer takes networking down everywhere.
+node would make that node a single point of failure for the CNI on every
+other node, and pointing it at an address that does not answer takes
+networking down everywhere.
 
 ## Gateway API, not Ingress
 

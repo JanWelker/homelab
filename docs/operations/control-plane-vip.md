@@ -7,9 +7,10 @@ description: "The kube-vip virtual IP that fronts the API servers, and how to mi
 The API server is reached through a virtual IP held by
 [kube-vip](https://kube-vip.io/), not through one named node: whichever
 control-plane node wins the leader election answers on `control_plane_vip`
-from `ansible/inventory.yaml`, and another takes over if it goes away. See
-[Known Limitations](../architecture/limitations.md)
-for a cluster whose certificates predate the VIP.
+from `ansible/inventory.yaml`, and another takes over if it goes away. The
+address is fixed at `kubeadm init` — see
+[Known Limitations](../architecture/limitations.md); a cluster built before
+the VIP is [migrated in place](#migrating-a-cluster-built-without-a-vip).
 
 ## How it is wired
 
@@ -58,7 +59,7 @@ the API away from the workers and from every kubeconfig.
 | Capabilities identical to the static pod | The first sync replaces all three at once; untested hardening takes the VIP down everywhere |
 
 !!! danger "If the DaemonSet pods do not come up"
-    The static manifests are already gone, so nothing holds the VIP. As long as Cilium's `k8sServiceHost` names a node rather than the VIP, Cilium and ArgoCD keep working. Point `kubectl` at a node with `--server https://10.9.2.1:6443`, read `kubectl -n kube-system logs ds/kube-vip -c kube-vip`, and fix the DaemonSet in Git. If that cannot wait, write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2`. That holds while the broken pod merely restarts; if the pod is deleted or recreated, `adopt` removes the file again.
+    The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node directly with `--server https://<node>:6443` (the node addresses are in the certificate SANs), write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init` finishes, so the bootstrap unit points kube-vip's `hostPath` at `super-admin.conf` during init and moves it back afterwards. Inside the container the file stays at `/etc/kubernetes/admin.conf`.

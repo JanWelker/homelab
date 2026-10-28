@@ -26,7 +26,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | Setting | Why |
 | --- | --- |
 | `kubeProxyReplacement: true` | Service routing in eBPF. `proxy.disabled` in `ansible/templates/kubeadm.yaml.j2` keeps `kube-proxy` out at init and on every `kubeadm upgrade apply` |
-| `k8sServiceHost` as a literal IP | With `kube-proxy` gone Cilium cannot reach the API server through a Service — see [Pitfalls](#pitfalls) |
+| `k8sServiceHost` as a literal IP | With `kube-proxy` gone Cilium cannot reach the API server through a Service, so it names the [control-plane VIP](../operations/control-plane-vip.md) — see [Pitfalls](#pitfalls) |
 | Gateway API | Replaces an Ingress controller — see [Gateway API](gateway-api.md) |
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
 | `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file |
