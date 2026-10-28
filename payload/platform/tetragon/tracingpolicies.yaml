@@ -187,7 +187,6 @@ spec:
             - index: 0
               operator: NotEqual
               values:
-                - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
             # s6-overlay writes its init and service scripts here at start.
@@ -636,7 +635,6 @@ spec:
             - index: 0
               operator: NotEqual
               values:
-                - /shared/argocd-dex
                 - /controller/manager
                 - /plugins/velero-plugin-for-aws
             # Libraries a runtime unpacks here at start: Alloy's Snowflake
