@@ -28,8 +28,8 @@ spec:
   description: >-
     The UI and API arrive from the Gateway on the plaintext port, since the
     server runs with --insecure and TLS ends at Envoy. The homelab agent
-    session calls the same port directly; it carries gRPC as well as
-    HTTP, so the rule is L4. Prometheus reads the metrics port.
+    session and HolmesGPT call the same port directly; it carries gRPC as
+    well as HTTP, so the rules are L4. Prometheus reads the metrics port.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argocd-server
@@ -44,6 +44,9 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: claude-agents
             k8s:app.kubernetes.io/instance: claude-homelab
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: holmesgpt
+            k8s:app: holmes
       toPorts:
         - ports:
             - port: "8080"

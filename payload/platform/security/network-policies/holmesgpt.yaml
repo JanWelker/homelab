@@ -1,0 +1,95 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: holmesgpt
+spec:
+  description: >-
+    Default-deny ingress for HolmesGPT. The API serves the operator, which
+    lives in the same namespace, and whoever port-forwards to it; there is
+    no route, no metrics port and nothing else that calls in. The node
+    runs the probes.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: holmesgpt
+spec:
+  description: >-
+    Default-deny egress for HolmesGPT. The operator watches its CRDs and
+    posts each check to the API in the namespace; Holmes itself reads the
+    cluster through the API server. What it reaches beyond that is below.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: holmes
+  namespace: holmesgpt
+spec:
+  description: >-
+    Holmes investigates with the toolsets its values enable: Prometheus and
+    Grafana's dashboard API in monitoring, Loki in logging, and the argocd
+    CLI against argocd-server's plaintext port, which carries gRPC and so
+    stays at L4 on both sides. Its model is Anthropic's API, and its pull
+    requests go through GitHub's hosted MCP server; both over TLS, so a
+    name rule each. There is no rule for the internet or bash toolsets:
+    they are off, and a flow to anywhere else is a toolset that was
+    switched on without a rule here.
+  endpointSelector:
+    matchLabels:
+      app: holmes
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: grafana
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: logging
+            k8s:app.kubernetes.io/name: loki
+      toPorts:
+        - ports:
+            - port: "3100"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argocd
+            k8s:app.kubernetes.io/name: argocd-server
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: api.anthropic.com
+        - matchName: api.githubcopilot.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

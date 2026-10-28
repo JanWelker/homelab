@@ -15,8 +15,8 @@ spec:
     Ceph mgr reads Prometheus for its alerts and Grafana for its embedded
     panels. Loki's ruler sends the alerts it evaluates from logs to
     Alertmanager. The homelab agent session queries Prometheus while it
-    diagnoses the cluster. All five are plaintext HTTP, so all five are at
-    L7.
+    diagnoses the cluster, and HolmesGPT queries Prometheus and Grafana's
+    dashboard API. All six are plaintext HTTP, so all six are at L7.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -74,6 +74,19 @@ spec:
       toPorts:
         - ports:
             - port: "9090"
+              protocol: TCP
+          rules:
+            http:
+              - {}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: holmesgpt
+            k8s:app: holmes
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "3000"
               protocol: TCP
           rules:
             http:

@@ -64,7 +64,9 @@ may read everything `role:readonly` reads, `argocd app get --refresh`
 included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has `apiKey` only, so it cannot log
 in. One token serves every session with `argocd.enabled`, so its expiry is
-what bounds a leak from any of them.
+what bounds a leak from any of them. [HolmesGPT](holmesgpt.md#secrets) has
+the same shape as `holmesgpt`, with its own token, so neither consumer's
+rotation touches the other.
 
 The token expires after 90 days: that caps a leak at a quarter, and rotating
 is a few commands with no restart. An expired token fails every agent
