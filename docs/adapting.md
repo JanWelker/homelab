@@ -99,7 +99,7 @@ Edit `ansible/inventory.yaml`; the variables are listed under
 | --- | --- |
 | `control_plane_vip` | Free address on the nodes' subnet, outside DHCP and distinct from the LoadBalancer pools. Becomes the API endpoint in the cluster certificates. |
 | `control_plane_vip_interface` | The NIC kube-vip advertises on; check `ip link` on a provisioned node. |
-| host entries | Replace the six hosts with yours. Each needs `ansible_host` (static IP) and `mac_address` (the NIC that PXE boots). |
+| host entries | Replace the hosts with yours. Each needs `ansible_host` and `mac_address` (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from `ansible_host` — see [Quickstart &rarr; Other requirements](quickstart.md#other-requirements). |
 | `control_plane` / `workers` | Group membership decides the node role. |
 | `pod_subnet`, `service_subnet` | Only change if they collide with your LAN. |
 | `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory. `make config` renders the router's FRR config into `output/router/` — see [Cilium](platform/cilium.md#configuration). |

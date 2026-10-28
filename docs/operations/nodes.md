@@ -179,5 +179,5 @@ the space.
 One node at a time is safe when rebuilding: etcd keeps quorum and Ceph
 backfills, as in [Replacing a failed node](#replacing-a-failed-node).
 Repartitioning destroys every OSD as it goes, so a rolling repartition across
-all six nodes destroys all replicas of everything; step 1 is not optional for
+every node destroys all replicas of everything; step 1 is not optional for
 that case.

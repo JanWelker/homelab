@@ -122,7 +122,7 @@ more than one replica carries an explicit rule:
 | Rule | When |
 | --- | --- |
 | `topologySpreadConstraints`, `maxSkew: 1`, `whenUnsatisfiable: ScheduleAnyway` | the component runs on the three workers only, where a hard rule would leave a replica `Pending` through a Kured drain |
-| `podAntiAffinity` `requiredDuringSchedulingIgnoredDuringExecution` | the component tolerates the control planes, so six nodes always leave room — or its chart exposes no spread constraint |
+| `podAntiAffinity` `requiredDuringSchedulingIgnoredDuringExecution` | the component tolerates the control planes, so every node is a candidate and a drain always leaves room — or its chart exposes no spread constraint |
 
 Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the
 nodes the pod can reach rather than over the tainted control planes. The same

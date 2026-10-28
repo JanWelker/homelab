@@ -50,7 +50,7 @@ in the line where `| json` can reach them. See
 
 | Stage | Why |
 | --- | --- |
-| `discovery.kubernetes` with a `spec.nodeName` field selector | Each agent discovers only its own node's pods; without it six agents watch every pod and discard all but their own |
+| `discovery.kubernetes` with a `spec.nodeName` field selector | Each agent discovers only its own node's pods; without it every agent watches every pod and discards all but its own |
 | `stage.cri {}` on container logs | containerd writes `<timestamp> <stream> <flags> <message>`; without it the timestamp lands inside the line and Loki stamps everything at ingest time |
 | `discovery.relabel "journal"` sets `job` | `loki.source.journal` overwrites `job` with its component ID after applying `labels`; only relabel rules run after that |
 | `stage.json`, `stage.labels`, `stage.timestamp` on audit events | Stamps each event with its `requestReceivedTimestamp` rather than when Alloy read the file |

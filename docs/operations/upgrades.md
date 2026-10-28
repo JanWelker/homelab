@@ -38,15 +38,10 @@ part of the OS image and updates with it.
 
 ### Nodes are pinned to a minor series
 
-The sysupdate configs point at `https://extensions.flatcar.org/extensions/`,
-not at the boot server, and pin the major.minor from `ansible/inventory.yaml`:
-
-```ini
-[Source]
-Type=url-file
-Path=https://extensions.flatcar.org/extensions/kubernetes/
-MatchPattern=kubernetes-v1.37.@v-%a.raw
-```
+The sysupdate config points at `https://extensions.flatcar.org/extensions/`,
+not at the boot server, and its `MatchPattern` names the major.minor from
+`kubernetes_version` in `ansible/inventory.yaml` with only the patch left as
+the `@v` wildcard — see `ansible/templates/sysupdate_kubernetes.conf.j2`.
 
 Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
