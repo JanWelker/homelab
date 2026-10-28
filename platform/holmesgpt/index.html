@@ -2660,7 +2660,7 @@ without being asked.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/holmesgpt/</code>, <code>payload/platform/security/network-policies/holmesgpt.yaml</code></td>
+<td><code>payload/platform/holmesgpt/</code>, <code>payload/platform/security/network-policies/holmesgpt.yaml</code>; the metrics in <code>payload/platform/monitoring/application.yaml</code></td>
 </tr>
 </tbody>
 </table>
@@ -2767,8 +2767,18 @@ the pod, which reads its env once:</p>
 nightly backups: nodes, pods, Argo CD Applications, firing alerts, last
 night's Velero and CloudNativePG backups, certificates expiring within two
 weeks, and Ceph health. <code>mode: monitor</code> keeps the result in the resource's
-status and sends nothing; what needs a human within the hour is
-<a href="../monitoring/#alerting">Alertmanager</a>'s job, and this is the morning read.</p>
+status and sends nothing itself: the operator's destinations are Slack,
+PagerDuty and a webhook in its own format, none of which is the mail that
+carries every other alert here. The verdict reaches it as a metric instead.
+kube-state-metrics renders each HealthCheck's <code>status.result</code> and
+<code>status.completionTime</code> through its
+<a href="../monitoring/#scrape-targets">custom resource state config</a>, and
+<code>prometheusrule.yaml</code> turns the newest scheduled check into
+<code>HolmesDailyCheckFailed</code> on <code>fail</code> or <code>error</code>, plus <code>HolmesDailyCheckStale</code>
+when no check has completed in 36 hours. Both are <code>warning</code>, so they ride the
+daily mail with the rest; the mail names the resource, the report stays in
+it. A manual HealthCheck never alerts: the rule selects on the
+<code>holmesgpt.dev/scheduled-by</code> label the operator sets.</p>
 <h3 id="pull-requests">Pull requests<a class="headerlink" href="#pull-requests" title="Permanent link">&para;</a></h3>
 <p>Holmes has no clone and no git; it opens a pull request through the GitHub
 MCP server's tools, branch and commits included, with the token above. The

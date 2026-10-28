@@ -2893,6 +2893,11 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>Not scraped (<code>kubeProxy.enabled: false</code>)</td>
 <td>Cilium replaces it; the default would keep <code>KubeProxyDown</code> firing forever</td>
 </tr>
+<tr>
+<td>CRD status fields: HolmesGPT's HealthChecks</td>
+<td>kube-state-metrics' <code>customResourceState</code> config in the chart values, one <code>rbac.extraRules</code> entry per kind</td>
+<td>A <code>StateSet</code> per enum field and a <code>Gauge</code> per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition note">
