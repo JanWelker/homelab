@@ -21,7 +21,19 @@ spec:
           crds:
             create: true
 
-          replicaCount: 1
+          # The pod also serves the admission webhooks (failurePolicy Fail);
+          # see docs/platform/cloudnative-pg.md#configuration
+          replicaCount: 2
+          # Worker-only, so ScheduleAnyway; see docs/platform/index.md#replica-placement
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              nodeTaintsPolicy: Honor
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: cloudnative-pg
+                  app.kubernetes.io/instance: cloudnative-pg
 
           monitoring:
             podMonitorEnabled: true

@@ -42,6 +42,13 @@ data survives a node loss even when the process does not. Where a workload
 cannot tolerate the restart, `instances: 3` is the change, as
 [Authentik](authentik.md#database) shows.
 
+The operator itself runs two replicas, spread per
+[Replica placement](index.md#replica-placement): the same pod serves the
+`Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`,
+so a single replica rescheduling through a Kured drain refuses every apply,
+while leader election keeps one of the two reconciling. The chart ships no
+PodDisruptionBudget.
+
 ### Backups
 
 The [Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/)
