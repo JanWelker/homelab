@@ -188,29 +188,63 @@
 
 # The provisioning token expires 24h after kubeadm init, and the uploaded
 # control-plane certificates after 2h. Re-create both with the values baked
-# into the Ignition configs so a node added later joins on its own.
-# Skipped while no cluster is up. Flatcar has no Python, hence raw.
+# into the Ignition configs so a node added later joins on its own. Any
+# control plane that answers does it, so the node being replaced may be the
+# first one. Skipped while no cluster is up. Flatcar has no Python, hence raw.
 - name: Renew the join credentials baked into the Ignition configs
-  hosts: control_plane[0]
+  hosts: control_plane
   become: true
   gather_facts: false
-  ignore_unreachable: true
   tasks:
     - name: Check for a running cluster
       ansible.builtin.raw: test -e /etc/kubernetes/admin.conf && echo present || echo absent
       register: admin_conf
       changed_when: false
+      ignore_unreachable: true
+
+    - name: Pick the first control plane that answers
+      ansible.builtin.set_fact:
+        renew_host: >-
+          {{ groups['control_plane'] | map('extract', hostvars)
+             | selectattr('admin_conf.stdout', 'defined')
+             | selectattr('admin_conf.stdout', 'search', 'present')
+             | map(attribute='inventory_hostname') | first | default('') }}
+      run_once: true # noqa: run-once
+
+    # make kubeconfig wrote it, so a cluster exists and the renewal must happen.
+    - name: Check for the kubeconfig of an earlier bootstrap
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../output/kubeconfig"
+      register: kubeconfig_stat
+      run_once: true # noqa: run-once
+      delegate_to: localhost
+      become: false
+
+    - name: Require a control plane that answers
+      ansible.builtin.assert:
+        that: renew_host | length > 0 or not kubeconfig_stat.stat.exists
+        fail_msg: >-
+          No control plane answered with a running cluster
+          ({{ groups['control_plane'] | join(', ') }}), so the join token and
+          certificate key in the Ignition configs were not renewed and a node
+          booted now cannot join. Run make config again once one is reachable.
+        quiet: true
+      run_once: true # noqa: run-once
 
     - name: Re-create the bootstrap token for 24 hours
       ansible.builtin.raw: >-
         kubeadm token delete {{ kubeadm_token.split('.')[0] }} >/dev/null 2>&1;
         kubeadm token create {{ kubeadm_token }} --ttl 24h --description "renewed by make config"
-      when: "'present' in admin_conf.stdout | default('')"
+      delegate_to: "{{ renew_host or inventory_hostname }}"
+      run_once: true # noqa: run-once
+      when: renew_host | length > 0
       changed_when: true
       no_log: true
 
     - name: Upload the control-plane certificates for 2 hours
       ansible.builtin.raw: kubeadm init phase upload-certs --upload-certs --certificate-key {{ certificate_key }}
-      when: "'present' in admin_conf.stdout | default('')"
+      delegate_to: "{{ renew_host or inventory_hostname }}"
+      run_once: true # noqa: run-once
+      when: renew_host | length > 0
       changed_when: true
       no_log: true
