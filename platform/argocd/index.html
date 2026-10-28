@@ -2648,6 +2648,10 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>The API server defaults <code>group</code>, <code>kind</code>, <code>weight</code> and a catch-all <code>matches</code> onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs</td>
 </tr>
 <tr>
+<td><code>dex.enabled: false</code></td>
+<td><code>oidc.config</code> talks to <a href="../authentik/">Authentik</a> directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own <code>/auth/callback</code> either way</td>
+</tr>
+<tr>
 <td><code>admin.enabled: "false"</code></td>
 <td>With SSO in front, a shared admin password would bypass it with no audit trail</td>
 </tr>
@@ -2776,6 +2780,10 @@ repository's <a href="https://homelab-apps.wlkr.ch/previews/">Previews</a> page.
 <tr>
 <td>Egress to <code>api.github.com</code> from the ApplicationSet controller</td>
 <td>The only Argo CD component that calls GitHub's API</td>
+</tr>
+<tr>
+<td>Bare <code>image</code> names in the list elements, held out of <code>docker:pinDigests</code> in <code>renovate.json</code></td>
+<td>The kustomize override appends the pull request's tag, and kustomize reads everything after an <code>@</code> as the digest, tag included: a pinned digest renders an image reference no kubelet accepts</td>
 </tr>
 </tbody>
 </table>

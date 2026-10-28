@@ -2604,11 +2604,11 @@ service-routing path. It also supplies Gateway API, L2 announcements for
 LoadBalancer addresses, WireGuard transparent encryption and Hubble for flow
 visibility — four things that would otherwise be four components on bare metal.</p>
 <p>The cost is a hard bootstrap dependency: with no <code>kube-proxy</code>, Cilium needs a
-literal API server address in <code>k8sServiceHost</code>, which should be the
+literal API server address in <code>k8sServiceHost</code>, which is the
 <a href="../../operations/control-plane-vip/">control plane VIP</a>; pointing it at one
-node makes that node a
-<a href="../limitations/">single point of failure</a>, and pointing it at an address that
-does not answer takes networking down everywhere.</p>
+node would make that node a single point of failure for the CNI on every
+other node, and pointing it at an address that does not answer takes
+networking down everywhere.</p>
 <h2 id="gateway-api-not-ingress">Gateway API, not Ingress<a class="headerlink" href="#gateway-api-not-ingress" title="Permanent link">&para;</a></h2>
 <p>Ingress is effectively frozen, and its per-controller annotations are why
 Ingress manifests are rarely portable. Gateway API separates the cluster-owned

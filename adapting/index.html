@@ -2653,7 +2653,7 @@ and adjust the credential path in OpenBao accordingly.</p>
 </tr>
 <tr>
 <td>host entries</td>
-<td>Replace the six hosts with yours. Each needs <code>ansible_host</code> (static IP) and <code>mac_address</code> (the NIC that PXE boots).</td>
+<td>Replace the hosts with yours. Each needs <code>ansible_host</code> and <code>mac_address</code> (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from <code>ansible_host</code> — see <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>.</td>
 </tr>
 <tr>
 <td><code>control_plane</code> / <code>workers</code></td>

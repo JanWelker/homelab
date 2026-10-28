@@ -2952,30 +2952,40 @@ the CronJob uses. Upstream:
 </span></code></pre></div>
 </li>
 <li>
+<p>On every control-plane node, pull the etcd image the CronJob uses (the tag
+   is in <code>payload/platform/backup/etcd-backup.yaml</code>). Only the node that last
+   ran the CronJob has it; <code>ctr run</code> does not pull.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>image<span class="w"> </span>pull<span class="w"> </span>registry.k8s.io/etcd:&lt;tag&gt;
+</span></code></pre></div>
+</li>
+<li>
 <p>On every control-plane node, restore into a new data directory with the
    <code>--name</code>, <code>--initial-cluster</code> and <code>--initial-advertise-peer-urls</code> values
-   from that node's <code>/etc/kubernetes/manifests/etcd.yaml</code> (the image tag is in
-   <code>payload/platform/backup/etcd-backup.yaml</code>).</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
+   from that node's <code>/etc/kubernetes/manifests/etcd.yaml</code>, and one
+   <code>--initial-cluster-token</code> that is the same on every node and differs from
+   the old cluster's, so a member that missed the restore cannot rejoin the new
+   one.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span>--initial-cluster-token<span class="w"> </span>&lt;new-token&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
 </span></code></pre></div>
 </li>
 <li>
 <p>Swap the data directory in, keeping the old one and its ownership.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
-</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
 </span></code></pre></div>
 </li>
 <li>
 <p>Put the manifests back on every node, then confirm.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
 </span></code></pre></div>
 </li>
 </ol>

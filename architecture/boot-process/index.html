@@ -2739,7 +2739,7 @@ charge.</p>
 <tbody>
 <tr>
 <td><code>/</code></td>
-<td>ext4 on partition 9, grown into it by <code>grow-root.service</code>: 50 GB on workers, the whole disk on control planes</td>
+<td>ext4 on partition 9, grown into it by <code>grow-root.service</code>: a fixed size on workers (<code>size_mib</code> in <code>ansible/templates/butane_node_config.yaml.j2</code>) so the OSD partition gets the rest, the whole disk on control planes</td>
 </tr>
 <tr>
 <td>Ignition</td>
@@ -2759,7 +2759,7 @@ charge.</p>
 <code>ConditionPathExists=!/etc/kubernetes/kubelet.conf</code> is no longer satisfied.</p>
 <div class="admonition note">
 <p class="admonition-title">Why <code>grow-root.service</code> exists</p>
-<p>Taking partition 9 over in Ignition stops Flatcar's stock <code>systemd-growfs-root.service</code>: it is pulled in by an <code>x-systemd.growfs</code> mount option that a root mounted from <code>root=LABEL=ROOT</code> does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a 50 GB partition. It runs the same binary and is a no-op once the filesystem fills the partition.</p>
+<p>Taking partition 9 over in Ignition stops Flatcar's stock <code>systemd-growfs-root.service</code>: it is pulled in by an <code>x-systemd.growfs</code> mount option that a root mounted from <code>root=LABEL=ROOT</code> does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a partition many times that size. It runs the same binary and is a no-op once the filesystem fills the partition.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Two boot paths, and the menu picks the safe one</p>
@@ -2806,21 +2806,31 @@ fixed by <code>make artifacts</code>, not by the script.</p>
 <p>Leave it in the foreground. It opens by naming what it serves and which nodes
 are armed — a boxed warning listing every disk about to be wiped, with
 <code>make reinstall-cancel</code> and its <code>LIMIT=&lt;node&gt;</code> form — then logs one line per
-request against the node that made it. The file a node <em>stops</em> at is the
+request against the node that made it: role, name, address and MAC once the
+menu it fetched has identified it, dashes before. The file a node <em>stops</em> at is the
 diagnosis; see
 <a href="../../quickstart/#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">20:33:04  server        http on 10.9.200.222:8000 from output/http</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">20:33:04  server        tftp on 10.9.200.222:69 from output/tftp</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="go">20:33:04  server        armed to install: odin, thor</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="go">20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="go">20:34:17  odin          collecting the bootloader (lpxelinux.0)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="go">20:34:17  odin          collecting its boot menu -- armed, so it will install</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="go">20:34:19  odin          collecting the kernel</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="go">20:34:21  odin          collecting the initrd (391.2 MB)</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="go">20:34:48  odin          collecting its Ignition config</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="go">20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="go">20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="go">20:38:40  odin          collecting the kubernetes sysext (61.4 MB)</span>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">20:33:04  server                                                    http on 10.9.200.222:8000 from output/http</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">20:33:04  server                                                    tftp on every interface, port 69, from output/tftp</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="go">  ⚠  ARMED TO INSTALL: odin, thor</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="go">     Every disk above is wiped on boot -- the partition table, every</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="go">     partition on it, and the Ceph OSD with them. No data survives, and</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="go">     nothing asks for confirmation at the console.</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="go">     To cancel, run:  make reinstall-cancel</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="go">                      make reinstall-cancel LIMIT=&lt;node&gt;  for one</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="go">20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="go">20:34:17  -             -        10.9.2.1        -                  collecting the bootloader (lpxelinux.0)</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="go">20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="go">20:34:19  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kernel</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="go">20:34:21  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the initrd (391.2 MB)</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="go">20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its Ignition config</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="go">20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="go">20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="go">20:38:40  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kubernetes sysext (61.4 MB)</span>
 </span></code></pre></div>
 <p>A node is identified by MAC from the <code>01-&lt;mac&gt;</code> menu it fetches, and after the
 install by name from the <code>ignition-&lt;host&gt;.json</code> it asks for. A request from an

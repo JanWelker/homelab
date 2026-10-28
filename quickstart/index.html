@@ -2587,7 +2587,8 @@ afternoon anyway, because step 7 depends on your DHCP server behaving.</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive, or a different <code>install_disk</code> in <code>inventory.yaml</code></li>
-<li>Enough disk for Flatcar, a 50 GB root filesystem, and the remainder, which
+<li>Enough disk for Flatcar, the root filesystem (<code>size_mib</code> in
+  <code>ansible/templates/butane_node_config.yaml.j2</code>), and the remainder, which
   Rook-Ceph takes as OSD storage</li>
 <li>At least 4 GB of RAM: the installer runs from a RAM disk and streams the
   Flatcar image straight to disk</li>
@@ -2645,9 +2646,15 @@ the same L2 network segment as the nodes.</p>
 <h3 id="other-requirements">Other requirements<a class="headerlink" href="#other-requirements" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>SSH Key</strong>: An Ed25519 key at <code>~/.ssh/id_ed25519.pub</code> (or edit <code>ansible/templates/butane_node_config.yaml.j2</code> and <code>butane_installer_config.yaml.j2</code> to use a different path/key)</li>
-<li><strong>External DHCP Server</strong>: Must point PXE clients at the deployment host:</li>
+<li><strong>External DHCP Server</strong>: Must point PXE clients at the deployment host and
+  give every node a fixed address:</li>
 <li>Option 66 (<code>next-server</code>): IP of the machine running <code>make serve</code></li>
 <li>Option 67 (<code>filename</code>): <code>lpxelinux.0</code> for BIOS, <code>syslinux.efi</code> for UEFI</li>
+<li>A reservation per <code>mac_address</code> handing out exactly that host's
+    <code>ansible_host</code>. Nothing in the node config sets a static address; the API
+    server's <code>advertiseAddress</code>, the etcd peer URLs kubeadm derives from it and
+    the metrics listeners are all rendered from <code>ansible_host</code>, so a node that
+    leases a different address joins with the wrong one or not at all.</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Consumer routers and PXE</p>
@@ -2682,7 +2689,7 @@ the same L2 network segment as the nodes.</p>
 </tr>
 <tr>
 <td><code>ansible_host</code> (per host)</td>
-<td>The static IP the node is given</td>
+<td>The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs</td>
 </tr>
 <tr>
 <td><code>install_disk</code></td>
@@ -2732,14 +2739,23 @@ Check that one PXE menu was generated per node:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>serve
 </span></code></pre></div>
 <p>Leave this running through step 7 and keep the window visible: it names
-each node and logs one line per request. Its first two lines say what each
-node will do when powered on; a node under <em>booting from disk</em> will not
-install, however often you reboot it.</p>
-<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">20:33:04  server        armed to install: odin, thor</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">20:33:04  server        booting from disk: freya, heimdall, loki, valkyrie</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">20:34:17  odin          collecting its boot menu -- armed, so it will install</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">20:34:48  odin          collecting the OS image (1.2 GB) -- this is the long one</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="go">20:36:12  odin          OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
+each node and logs one line per request. Its opening lines say what each
+node will do when powered on: a boxed <code>ARMED TO INSTALL</code> warning names the
+nodes that will wipe and install, and a node under <em>booting from disk</em> will
+not, however often you reboot it.</p>
+<div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">  ⚠  ARMED TO INSTALL: odin, thor</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">     Every disk above is wiped on boot -- the partition table, every</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">     partition on it, and the Ceph OSD with them. No data survives, and</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="go">     nothing asks for confirmation at the console.</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="go">     To cancel, run:  make reinstall-cancel</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="go">                      make reinstall-cancel LIMIT=&lt;node&gt;  for one</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="go">20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="go">20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="go">20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="go">20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2965,6 +2981,10 @@ Read the <code>make serve</code> log instead of the node and ask how far it got.
 <td>DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware.</td>
 </tr>
 <tr>
+<td>Node comes up on an address other than its <code>ansible_host</code></td>
+<td>No per-MAC DHCP reservation, or one for the wrong NIC. The join uses the rendered address, not the leased one.</td>
+</tr>
+<tr>
 <td><code>PXE-E32: TFTP open timeout</code></td>
 <td><code>make serve</code> isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall.</td>
 </tr>
@@ -2990,7 +3010,7 @@ Read the <code>make serve</code> log instead of the node and ask how far it got.
 </tr>
 <tr>
 <td>Node installs but never joins the cluster</td>
-<td>Sysext download failed, or the kubeadm systemd unit errored. SSH in as <code>core</code> and check <code>journalctl -u kubeadm</code>.</td>
+<td>Sysext download failed, or the join unit errored. SSH in as <code>core</code> and check <code>journalctl -u bootstrap-k8s</code>.</td>
 </tr>
 </tbody>
 </table>

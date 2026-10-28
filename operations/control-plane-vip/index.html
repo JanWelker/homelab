@@ -2587,9 +2587,10 @@
 <p>The API server is reached through a virtual IP held by
 <a href="https://kube-vip.io/">kube-vip</a>, not through one named node: whichever
 control-plane node wins the leader election answers on <code>control_plane_vip</code>
-from <code>ansible/inventory.yaml</code>, and another takes over if it goes away. See
-<a href="../../architecture/limitations/">Known Limitations</a>
-for a cluster whose certificates predate the VIP.</p>
+from <code>ansible/inventory.yaml</code>, and another takes over if it goes away. The
+address is fixed at <code>kubeadm init</code> — see
+<a href="../../architecture/limitations/">Known Limitations</a>; a cluster built before
+the VIP is <a href="#migrating-a-cluster-built-without-a-vip">migrated in place</a>.</p>
 <h2 id="how-it-is-wired">How it is wired<a class="headerlink" href="#how-it-is-wired" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2683,7 +2684,7 @@ the API away from the workers and from every kubeconfig.</p>
 </table>
 <div class="admonition danger">
 <p class="admonition-title">If the DaemonSet pods do not come up</p>
-<p>The static manifests are already gone, so nothing holds the VIP. As long as Cilium's <code>k8sServiceHost</code> names a node rather than the VIP, Cilium and ArgoCD keep working. Point <code>kubectl</code> at a node with <code>--server https://10.9.2.1:6443</code>, read <code>kubectl -n kube-system logs ds/kube-vip -c kube-vip</code>, and fix the DaemonSet in Git. If that cannot wait, write <code>/etc/kubernetes/manifests/kube-vip.yaml</code> back onto one control-plane node from <code>ansible/templates/butane_node_config.yaml.j2</code>. That holds while the broken pod merely restarts; if the pod is deleted or recreated, <code>adopt</code> removes the file again.</p>
+<p>The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's <code>k8sServiceHost</code> point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point <code>kubectl</code> at a control-plane node's <code>ansible_host</code> from <code>ansible/inventory.yaml</code> with <code>--server https://&lt;address&gt;:6443</code> (the node addresses are in the certificate SANs), write <code>/etc/kubernetes/manifests/kube-vip.yaml</code> back onto one control-plane node from <code>ansible/templates/butane_node_config.yaml.j2</code> so that the VIP answers again, then read <code>kubectl -n kube-system logs ds/kube-vip -c kube-vip</code> and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, <code>adopt</code> removes the file again.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

@@ -2735,12 +2735,16 @@ more than one replica carries an explicit rule:</p>
 </tr>
 <tr>
 <td><code>podAntiAffinity</code> <code>requiredDuringSchedulingIgnoredDuringExecution</code></td>
-<td>the component tolerates the control planes, so six nodes always leave room — or its chart exposes no spread constraint</td>
+<td>the component tolerates the control planes, so every node is a candidate and a drain always leaves room — or its chart exposes no spread constraint</td>
 </tr>
 </tbody>
 </table>
 <p>Constraints carry <code>nodeTaintsPolicy: Honor</code>, so the skew is measured over the
-nodes the pod can reach rather than over the tainted control planes. Placement
+nodes the pod can reach rather than over the tainted control planes. The same
+components carry a PodDisruptionBudget with <code>maxUnavailable: 1</code>, so a drain or
+the <a href="descheduler/">descheduler</a> evicts one replica at a time; <code>maxUnavailable</code>
+rather than <code>minAvailable</code>, so a component scaled down to one replica never
+blocks a drain. Placement
 is scored once, at scheduling time: pods already sharing a node stay there
 until something restarts them, and the <a href="descheduler/">descheduler</a> moves
 them back only if its evictor is allowed to touch them.</p>

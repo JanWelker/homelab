@@ -2567,7 +2567,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>k8sServiceHost</code> as a literal IP</td>
-<td>With <code>kube-proxy</code> gone Cilium cannot reach the API server through a Service — see <a href="#pitfalls">Pitfalls</a></td>
+<td>With <code>kube-proxy</code> gone Cilium cannot reach the API server through a Service, so it names the <a href="../../operations/control-plane-vip/">control-plane VIP</a> — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
 <tr>
 <td>Gateway API</td>
@@ -2607,7 +2607,19 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>rollOutCiliumPods</code> and the four <code>rollOutPods</code></td>
-<td>The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to <code>cilium-config</code> is a rolling restart of the CNI on all six nodes: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the <a href="#pitfalls"><code>k8sServiceHost</code> pitfall</a> bites at merge, not later</td>
+<td>The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to <code>cilium-config</code> is a rolling restart of the CNI on every node: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the <a href="#pitfalls"><code>k8sServiceHost</code> pitfall</a> bites at merge, not later</td>
+</tr>
+<tr>
+<td><code>updateStrategy.rollingUpdate.maxUnavailable: 1</code></td>
+<td>The chart default restarts the agent on two nodes at once, which can be two of the three control planes that hold the L2 leases and BGP sessions; one at a time keeps every Gateway address announced throughout a rollout</td>
+</tr>
+<tr>
+<td><code>operator.replicas: 2</code></td>
+<td>The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the <code>cilium-secrets</code> sync; with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the two apart, so the standby is already running — see the <a href="#pitfalls">operator pitfall</a></td>
+</tr>
+<tr>
+<td><code>lb-pools.yaml</code> on <code>cilium.io/v2</code></td>
+<td>The storage version for <code>CiliumLoadBalancerIPPool</code>; <code>v2alpha1</code> is served as deprecated and warns on every sync. <code>CiliumL2AnnouncementPolicy</code> has no <code>v2</code> yet and stays</td>
 </tr>
 <tr>
 <td><code>cilium-agent</code> memory limit</td>

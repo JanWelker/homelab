@@ -2339,10 +2339,10 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 </thead>
 <tbody>
 <tr>
-<td><strong>API server endpoint is fixed at <code>kubeadm init</code></strong></td>
-<td><code>controlPlaneEndpoint</code> is baked into the API server certificates. A cluster whose certificates name one node is single-homed on it: while that node is down no node can join, Cilium on every other node loses the API server (with <code>kube-proxy</code> replaced it cannot reach it through a Service), and <code>output/kubeconfig</code> points at nothing. Workloads keep running; control-plane <em>access</em> fails</td>
-<td>Provisioning puts a kube-vip VIP in front of the API servers. Cilium's <code>k8sServiceHost</code> must name an address that answers — pointing it at one that does not takes the CNI down cluster-wide — so it moves to the VIP only once the VIP is live</td>
-<td><a href="../../operations/control-plane-vip/">Control Plane VIP</a>, <a href="../../operations/control-plane-vip/#migrating-a-cluster-built-without-a-vip">migrating a cluster built without one</a></td>
+<td><strong>The API endpoint address is fixed at <code>kubeadm init</code></strong></td>
+<td><code>controlPlaneEndpoint</code> is the kube-vip VIP, and <code>kubeadm</code> bakes it into the API server certificates, every node's kubeconfig and the stored <code>ClusterConfiguration</code>; Cilium's <code>k8sServiceHost</code> names the same address. Moving the VIP to another address is therefore a certificate regeneration on every control-plane node and a kubeconfig rewrite on every node, not a config change that can be synced</td>
+<td>Choose the address once, outside any DHCP range and apart from the LoadBalancer pools. The in-place procedure exists for the day it has to move</td>
+<td><a href="../../operations/control-plane-vip/#choosing-the-address">Choosing the address</a>, <a href="../../operations/control-plane-vip/#in-place">migrating in place</a></td>
 </tr>
 <tr>
 <td><strong>OpenBao needs an operator to unseal it</strong></td>
