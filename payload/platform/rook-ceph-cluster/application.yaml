@@ -117,6 +117,11 @@ spec:
                 - key: node-role.kubernetes.io/control-plane
                   operator: Exists
                   effect: NoSchedule
+                # Rook skips nodes with any untolerated taint, so without this
+                # every node waiting for Kured's reboot lock loses its OSD updates
+                - key: weave.works/kured-node-reboot
+                  operator: Exists
+                  effect: PreferNoSchedule
             # No OSDs where etcd shares the disk; see docs/platform/rook-ceph.md#disks
             osd:
               nodeAffinity:
