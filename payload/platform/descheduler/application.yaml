@@ -34,6 +34,10 @@ spec:
                 - name: DefaultEvictor
                   args:
                     nodeFit: true
+                    # Single-instance databases carry no PDB; see docs/platform/descheduler.md
+                    podProtections:
+                      extraEnabled:
+                        - PodsWithPVC
                 - name: RemoveDuplicates
                 - name: RemovePodsViolatingTopologySpreadConstraint
                   args:
