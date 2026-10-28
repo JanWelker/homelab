@@ -30,6 +30,23 @@ cainjector:
       memory: 256Mi
 
 webhook:
+  # failurePolicy Fail: one replica refuses every apply while its node drains.
+  # See docs/platform/cert-manager.md#configuration
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+  # Worker-only, so ScheduleAnyway; see docs/platform/index.md#replica-placement
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: webhook
+          app.kubernetes.io/instance: cert-manager
+          app.kubernetes.io/component: webhook
   resources:
     requests:
       cpu: 10m

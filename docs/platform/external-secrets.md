@@ -52,6 +52,7 @@ in-cluster Service.
 | --- | --- |
 | No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
 | Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`), which only shows when the pod is recreated |
+| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every `ExternalSecret`, `PushSecret` and store apply fails and the Argo sync that carried it goes to retry — see [Replica placement](index.md#replica-placement) |
 
 ## Usage
 
