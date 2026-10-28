@@ -203,6 +203,9 @@ asks for.
 !!! warning "Ceph warnings show as Degraded"
     ArgoCD maps `HEALTH_WARN` to Degraded, so `rook-ceph-cluster` reports Degraded for the whole of a warning; nothing else waits on it — see [GitOps](../architecture/gitops.md).
 
+!!! warning "Rook skips tainted nodes"
+    The operator neither creates nor updates an OSD on a node with a taint `placement.all` does not tolerate, `PreferNoSchedule` included, and logs `placement settings do not match`. [Kured](kured.md) taints every node waiting for its reboot lock, so that taint is tolerated.
+
 ## Recovery
 
 ### No OSDs after reprovisioning
