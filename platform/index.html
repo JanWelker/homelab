@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1634,6 +1636,8 @@
       
         
       
+        
+      
     
     
     
@@ -1808,6 +1812,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2585,7 +2616,17 @@ The control-plane static pods get their memory requests through the kubeadm
 patches in <code>ansible/templates/butane_node_config.yaml.j2</code>, applied at
 <code>kubeadm init</code>, <code>join</code> and <code>upgrade</code>, so a running node picks them up at its
 next reinstall; they carry no limits, because a limit on the API server or
-etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.</p>
+etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.
+CoreDNS is kubeadm's too: the same directory holds a patch spreading its
+replicas one per node, which kubeadm applies at <code>init</code> and <code>upgrade apply</code>
+only, and its PodDisruptionBudget sits in the <code>security</code> component because
+nothing else owns a CoreDNS manifest.</p>
+<p>Components the cluster cannot run without — the CNI and API VIP, the
+admission webhooks, the secret and certificate chain, the CSR approver, the
+storage daemons and the node security agents — carry a <code>system-*</code> priority
+class, so under node pressure the kubelet evicts workloads first:
+<code>system-node-critical</code> for the DaemonSets a node needs,
+<code>system-cluster-critical</code> for the rest.</p>
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     Client([Client]) --&gt; LB[Cilium LoadBalancer]

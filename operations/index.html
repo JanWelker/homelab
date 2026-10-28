@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1631,6 +1633,8 @@
       
         
       
+        
+      
     
     
     
@@ -1808,6 +1812,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2270,6 +2301,8 @@
       
         
       
+        
+      
     
     
     
@@ -2349,6 +2382,12 @@ deliberately.</p>
 how to migrate a cluster built without it.</p>
 </li>
 <li>
+<p><strong><a href="encryption-key-rotation/">Encryption Key Rotation</a></strong></p>
+<hr />
+<p>Swapping the key that encrypts Secrets in etcd, with no API server
+restart and two rewrites of every Secret.</p>
+</li>
+<li>
 <p><strong><a href="vulnerabilities/">Vulnerability Triage</a></strong></p>
 <hr />
 <p>How to read the Trivy findings and when to file upstream; the dated logs
@@ -2377,6 +2416,10 @@ are <a href="triage-2026-09-20/">Triage 2026-09-20</a> and
 <tr>
 <td><code>kubectl get certificate -A</code></td>
 <td>Every certificate <code>READY=True</code></td>
+</tr>
+<tr>
+<td><code>ssh &lt;control plane&gt; sudo kubeadm certs check-expiration</code></td>
+<td>More than thirty days left on every line; less and the <a href="upgrades/#control-plane-certificates">yearly renewal</a> is due</td>
 </tr>
 <tr>
 <td><code>kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status</code></td>

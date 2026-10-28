@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1736,6 +1738,8 @@
       
         
       
+        
+      
     
     
     
@@ -1910,6 +1914,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2541,6 +2572,10 @@ hostname the cluster serves.</p>
 <tr>
 <td><code>ServiceMonitor</code> rendered unconditionally</td>
 <td>The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate <code>prometheus-operator-crds</code> Application — see <a href="../monitoring/#crds">Monitoring</a></td>
+</tr>
+<tr>
+<td>Two webhook replicas, a PodDisruptionBudget and a hostname spread</td>
+<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see <a href="../#replica-placement">Replica placement</a></td>
 </tr>
 <tr>
 <td><code>letsencrypt-staging</code> and <code>letsencrypt-prod</code></td>

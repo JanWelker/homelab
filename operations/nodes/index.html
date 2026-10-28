@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1631,6 +1633,8 @@
       
         
       
+        
+      
     
     
     
@@ -1910,6 +1914,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2416,6 +2447,8 @@
       
         
       
+        
+      
     
     
     
@@ -2526,7 +2559,11 @@ password manager, each pod wants 3 of the 5 shares by hand, per
 <h2 id="adding-a-node">Adding a node<a class="headerlink" href="#adding-a-node" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
-<p>Add the host to <code>ansible/inventory.yaml</code>, then regenerate and serve the boot
+<p>Compare <code>kubernetes_version</code> in <code>ansible/inventory.yaml</code> with
+   <code>kubectl version</code>: a node installs the inventory's version, and <code>kubeadm
+   join</code> refuses a kubelet newer than the API server, so a merged minor has to
+   be <a href="../upgrades/#upgrading-a-minor-version-deliberately">walked onto the cluster</a>
+   first. Then add the host to the inventory and regenerate and serve the boot
    files.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
 </span></code></pre></div>
@@ -2536,7 +2573,9 @@ does not name has its kubelet certificate denied and
 <a href="../../platform/metrics-server/#pitfalls">silently drops out of <code>kubectl top</code></a>.</p>
 <p>Against a running cluster, <code>make config</code> also re-creates the bootstrap
 token baked into the Ignition configs for 24 hours and uploads the
-control-plane certificates for two, so the node joins on its own.</p>
+control-plane certificates for two, on
+<a href="../../architecture/ansible/#playbooks">whichever control plane answers</a>,
+so the node joins on its own.</p>
 </li>
 <li>
 <p>Network-boot the new node within those windows: two hours for a
@@ -2605,6 +2644,13 @@ the space.</p>
 </span></code></pre></div>
 </li>
 <li>
+<p>For a <strong>control-plane</strong> node, remove it from the cluster first: the drain,
+   <code>kubectl delete node</code> and the etcd <code>member remove</code> are steps 1 and 3 of
+   <a href="#replacing-a-failed-node">Replacing a failed node</a>. The wiped node comes
+   back with an empty etcd under its old peer URL, and kubeadm treats a known
+   peer as already joined; two of three members keep quorum meanwhile.</p>
+</li>
+<li>
 <p>Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
    no prompt), a later <code>make config</code> keeps a node armed, and the boot server
    disarms it once it has the image, so the reboot at the end of the install
@@ -2612,6 +2658,9 @@ the space.</p>
    <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
+<p>Every control plane joins the running cluster; only
+<a href="../../architecture/ansible/#inventory"><code>bootstrap_cluster</code></a> renders
+<code>kubeadm init</code>, and arming refuses while it is set and the VIP answers.</p>
 </li>
 <li>
 <p>Network-boot the node. The installer wipes the disk, runs <code>flatcar-install</code>,
@@ -2623,8 +2672,9 @@ the space.</p>
 <li>Leave the boot server up until the node is <code>Ready</code> (the sysext images are
    fetched from it on that first boot), then stop it.</li>
 </ol>
-<p>One node at a time is safe when rebuilding: etcd keeps quorum and Ceph
-backfills, as in <a href="#replacing-a-failed-node">Replacing a failed node</a>.
+<p>One node at a time is safe when rebuilding: etcd keeps quorum once the old
+member is removed and Ceph backfills, as in
+<a href="#replacing-a-failed-node">Replacing a failed node</a>.
 Repartitioning destroys every OSD as it goes, so a rolling repartition across
 all six nodes destroys all replicas of everything; step 1 is not optional for
 that case.</p>

@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1797,6 +1799,8 @@
       
         
       
+        
+      
     
     
     
@@ -1971,6 +1975,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2686,8 +2717,12 @@ carry the settings below. They land at provisioning time and change only on
 <td><code>spec.externalIPs</code> lets whoever can create a Service claim traffic to any address on every node, with no ownership check. Nothing here uses it: LoadBalancer addresses come from Cilium's pools. <code>NodeRestriction</code> is repeated because the flag replaces kubeadm's default list</td>
 </tr>
 <tr>
-<td><code>--tls-cipher-suites</code> and <code>--tls-min-version</code></td>
-<td>Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1</td>
+<td><code>--tls-cipher-suites</code> and <code>--tls-min-version</code>, <code>tlsCipherSuites</code> and <code>tlsMinVersion</code></td>
+<td>Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1. The kubelet's own listener on port 10250 gets the same list and floor, since the API server, metrics-server and Prometheus are its only clients</td>
+</tr>
+<tr>
+<td><code>shutdownGracePeriod</code> and <code>shutdownGracePeriodCriticalPods</code></td>
+<td>The kubelet holds a systemd inhibitor lock, so a <code>systemctl reboot</code> without the <a href="../../operations/nodes/#rebooting-a-node">documented drain</a>, or an ACPI power-off, waits while pods get their SIGTERM window instead of killing them mid-write; the second value is the tail of the first that only critical pods may use. CloudNativePG primaries and Ceph OSDs are the ones that notice</td>
 </tr>
 <tr>
 <td><code>protectKernelDefaults: true</code></td>
@@ -2781,10 +2816,13 @@ was enabled stay readable but are not rewritten. To encrypt what already
 exists, once the API servers have restarted:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>secrets<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>replace<span class="w"> </span>-f<span class="w"> </span>-
 </span></code></pre></div>
-<p>The key is static, with no rotation, and lives in <code>output/credentials/</code> beside
-the kubeadm token and certificate key — that directory is what decrypts etcd.
-A KMS provider would remove the static key at the cost of a dependency the
-cluster must reach before it can serve Secrets.</p>
+<p>The key lives in <code>output/credentials/</code> beside the kubeadm token and
+certificate key — that directory is what decrypts etcd. The API servers reload
+the config file on change (<code>encryption-provider-config-automatic-reload</code>), so
+rotating it is a file edit and a rewrite of every Secret, by hand — see
+<a href="../../operations/encryption-key-rotation/">Encryption Key Rotation</a>. A KMS
+provider would remove the key file at the cost of a dependency the cluster must
+reach before it can serve Secrets.</p>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
 <p><a href="../../platform/tetragon/">Tetragon</a> records every exec in every pod and
 alerts when anything but the control plane reads the cluster's key material.

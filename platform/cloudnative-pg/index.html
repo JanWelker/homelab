@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1809,6 +1811,8 @@
       
         
       
+        
+      
     
     
     
@@ -1983,6 +1987,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2706,6 +2737,12 @@ every database and a single-instance <code>Cluster</code> is a defensible defaul
 data survives a node loss even when the process does not. Where a workload
 cannot tolerate the restart, <code>instances: 3</code> is the change, as
 <a href="../authentik/#database">Authentik</a> shows.</p>
+<p>The operator itself runs two replicas, spread per
+<a href="../#replica-placement">Replica placement</a>: the same pod serves the
+<code>Cluster</code> and <code>ScheduledBackup</code> admission webhooks with <code>failurePolicy: Fail</code>,
+so a single replica rescheduling through a Kured drain refuses every apply,
+while leader election keeps one of the two reconciling. The chart ships no
+PodDisruptionBudget.</p>
 <h3 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h3>
 <p>The <a href="https://cloudnative-pg.io/plugin-barman-cloud/">Barman Cloud plugin</a>
 runs beside the operator and injects a sidecar into every instance that names

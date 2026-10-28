@@ -391,6 +391,8 @@
       
         
       
+        
+      
     
     
     
@@ -1627,6 +1629,8 @@
       
         
       
+        
+      
     
     
     
@@ -1801,6 +1805,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2568,8 +2599,11 @@ are the pairs below that must move together.</p>
     minor automerge once <code>ci-ok</code> is green, majors open at 19:00 and wait for a
     human, and security fixes skip both the wait and the schedule. The
     preset's README says why for each.</li>
-<li><strong>One rule for everything here,</strong> with no per-area exceptions: a Flatcar or
-    Kubernetes minor lands the same way a Grafana chart patch does.</li>
+<li><strong>One exception: a Kubernetes minor waits for a human.</strong> A Flatcar minor
+    lands the same way a Grafana chart patch does, but <code>kubernetes_version</code> is
+    walked forward by hand in version-skew order, and a node provisioned from
+    an automerged minor would run a kubelet ahead of the API server and fail
+    its <code>kubeadm join</code> — see <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">Upgrades</a>.</li>
 <li><strong>Pairs that must move together are grouped into one PR:</strong>
     <code>prometheus-operator-crds</code> with <code>kube-prometheus-stack</code>, because the CRDs
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
@@ -2583,8 +2617,8 @@ are the pairs below that must move together.</p>
     open a PR for the linters and the docs generator at all.</li>
 <li><strong>Flatcar and Kubernetes bumps change what a newly provisioned
     node installs, not what a running node runs.</strong> kubeadm cannot skip a minor,
-    so a cluster left unrebuilt across two automerged Kubernetes minors has to be
-    walked forward one at a time — see <a href="../../operations/upgrades/">Upgrades</a>.</li>
+    so a cluster that sits while two Kubernetes minors merge has to be walked
+    forward one at a time — see <a href="../../operations/upgrades/">Upgrades</a>.</li>
 <li><strong>A font bump cannot automerge without its second commit:</strong>
     <code>fonts-check.yaml</code> fails on it and <code>ci-ok</code> waits for it — see
     <a href="../contributing/#fonts">Fonts</a>.</li>

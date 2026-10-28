@@ -395,6 +395,8 @@
       
         
       
+        
+      
     
     
     
@@ -1703,6 +1705,8 @@
       
         
       
+        
+      
     
     
     
@@ -1877,6 +1881,33 @@
     
   
   Control Plane VIP
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/encryption-key-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Encryption Key Rotation
 
     
   </span>
@@ -2408,6 +2439,11 @@ rather than read at boot. The variables are described in
 <p class="admonition-title">Every edit needs a regeneration, and some need two</p>
 <p><code>make config</code> re-renders the Ignition configs and PXE menus from the inventory. The four version variables are consumed by <code>download.yaml</code> instead, so changing one needs <code>make download</code> as well — <code>make artifacts</code> runs both. An edit followed by neither changes nothing at all, silently.</p>
 </div>
+<p><code>bootstrap_cluster</code> in the <code>control_plane</code> group decides whether the first
+control-plane host renders <code>kubeadm init</code> (<code>true</code>, the first install) or, like
+every other control plane, <code>kubeadm join --control-plane</code> (<code>false</code>, every
+rebuild). A rebuilt node that ran <code>init</code> would start a second cluster on the
+same VIP — see <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Rebuilding a node</a>.</p>
 <p><code>kube_vip_version</code> only sets the bootstrap static pod that gives <code>kubeadm init</code>
 a VIP; once ArgoCD syncs, <code>payload/platform/kube-vip/</code> takes over and its image
 is what runs — see <a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
@@ -2430,7 +2466,7 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 </tr>
 <tr>
 <td><code>reinstall.yaml</code></td>
-<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. It touches only <code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe default. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
+<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. Arming refuses while <code>bootstrap_cluster</code> is <code>true</code> and the API VIP answers. It touches only <code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe default. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
 </tr>
 <tr>
 <td><code>kubeconfig.yaml</code></td>
@@ -2442,6 +2478,12 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 credential file back instead of generating a new value, so the encryption key
 every control-plane node shares stays the one etcd's Secrets were encrypted
 with.</p>
+<p><code>config.yaml</code> renews the join credentials on the first control-plane host
+that answers with a running cluster, so the node being
+<a href="../../operations/nodes/#replacing-a-failed-node">replaced</a> may be any of them;
+it fails when none answers while <code>output/kubeconfig</code> exists, since a node
+booted then could not join, and skips the renewal silently only before the
+first bootstrap.</p>
 <p><code>kubeconfig.yaml</code> targets <code>control_plane[0]</code> — the first control-plane host in
 the inventory, with no fallback. If that node is down, copy
 <code>/etc/kubernetes/admin.conf</code> off any other control-plane node by hand. Keep a
