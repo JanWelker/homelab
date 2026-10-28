@@ -65,6 +65,10 @@ spec:
 
           server:
             replicas: 2
+            # One replica per eviction; see docs/platform/index.md#replica-placement
+            pdb:
+              enabled: true
+              maxUnavailable: 1
             # The chart's anti-affinity is a preference the scheduler outweighs
             # on unequal nodes; see docs/platform/authentik.md#database
             topologySpreadConstraints:
