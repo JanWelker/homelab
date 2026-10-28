@@ -29,6 +29,12 @@ Application on the next poll. Workloads go in the
    [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence).
    A resource whose CRD comes from another component gets
    `argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true`.
+   A component with an `ExternalSecret` needs its namespace in both lists
+   of `payload/platform/openbao/cluster-secret-store.yaml`, or the
+   ExternalSecret reads `denied by spec.condition`. A chart from a new
+   repository needs that host in the repo-server's policy in
+   `payload/platform/security/network-policies/argocd.yaml`, or the
+   Application reads `ComparisonError`.
 
 4. **Label the namespace** in `payload/platform/security/pod-security.yaml`
    with the Pod Security Admission level it demonstrably needs, one sentence
