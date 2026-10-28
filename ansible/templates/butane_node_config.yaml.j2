@@ -201,6 +201,24 @@ storage:
                   requests:
                     memory: 96Mi
 
+    # One CoreDNS replica per node; kubeadm applies this at init and upgrade
+    # apply only, the PDB sits in payload/platform/security/coredns.yaml.
+    # See docs/platform/index.md#components
+    - path: /etc/kubernetes/patches/corednsdeployment+strategic.yaml
+      mode: 0600
+      contents:
+        inline: |
+          spec:
+            template:
+              spec:
+                topologySpreadConstraints:
+                  - maxSkew: 1
+                    topologyKey: kubernetes.io/hostname
+                    whenUnsatisfiable: DoNotSchedule
+                    labelSelector:
+                      matchLabels:
+                        k8s-app: kube-dns
+
     # The metrics listeners on this node's address rather than every interface.
     # Appended flags win over kubeadm's; the probes follow the bind address.
     # See docs/architecture/security.md#node-hardening

@@ -20,7 +20,7 @@ enforce second, one namespace at a time.
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |
 | Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Anything else removed from Git is pruned, so the Application does not sit OutOfSync on leftovers |
-| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/` |
+| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](index.md#components) |
 
 ## Configuration
 
