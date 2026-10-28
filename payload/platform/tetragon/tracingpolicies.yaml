@@ -50,6 +50,12 @@ spec:
                 - /kubelet.key
                 - /member/snap/db
                 - .wal
+            # Cilium's route reconciler keeps its own WAL here and reopens it
+            # on every agent restart.
+            - index: 0
+              operator: NotPrefix
+              values:
+                - /run/cilium/state/
           matchBinaries:
             - operator: NotIn
               values:
