@@ -2692,6 +2692,10 @@ reasoning:</p>
 <td>Sonnet as the default, Haiku selectable per request for a cheap question. The key is read from the env var the ExternalSecret below provides, so the values carry no secret</td>
 </tr>
 <tr>
+<td><code>TEMPERATURE=none</code></td>
+<td>Claude 5.5 answers <code>temperature is deprecated for this model</code> to any request that carries one, and Holmes sends its own default unless told to send none; a <code>temperature</code> in <code>modelList</code> would be sent as well</td>
+</tr>
+<tr>
 <td><code>toolsets</code></td>
 <td>On: Kubernetes, Prometheus, Loki (direct, single-tenant), Grafana's dashboard API and the <code>argocd</code> CLI. Off, against the chart's defaults: <code>internet</code> (fetches any URL), <code>bash</code> (runs shell commands) and <code>robusta</code> (phones the vendor's platform). <code>connectivity_check</code> is off for the same reason as <code>internet</code>. The <code>helm</code> toolset is pointless here, since Argo CD renders charts without a Helm release, and the <code>cilium</code> one needs a CLI the image does not ship</td>
 </tr>
