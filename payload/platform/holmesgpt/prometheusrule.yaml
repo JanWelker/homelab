@@ -1,0 +1,48 @@
+---
+# The daily check's verdict, mailed by Alertmanager. The metrics come from
+# kube-state-metrics' custom resource state config in monitoring; see
+# docs/platform/holmesgpt.md#daily-check
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: holmesgpt
+  namespace: holmesgpt
+  labels:
+    app.kubernetes.io/name: holmesgpt
+spec:
+  groups:
+    - name: holmesgpt
+      rules:
+        # topk picks the newest scheduled check, so a verdict stays until the
+        # next run replaces it and a manual HealthCheck never counts.
+        - alert: HolmesDailyCheckFailed
+          expr: |
+            holmesgpt_healthcheck_result{scheduled_by="daily", result=~"fail|error"} == 1
+            and on (namespace, name)
+            topk(1, holmesgpt_healthcheck_completion_time_seconds{scheduled_by="daily"} > 0)
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              The daily HolmesGPT check came back {{ $labels.result }}
+            description: >-
+              HealthCheck {{ $labels.namespace }}/{{ $labels.name }} ended with
+              result {{ $labels.result }}: fail is a verdict with findings, error
+              means the check itself could not run. The report is in the
+              resource: kubectl -n {{ $labels.namespace }} get hc {{ $labels.name }}
+              -o jsonpath='{.status.message}'
+        - alert: HolmesDailyCheckStale
+          expr: |
+            time() - max(holmesgpt_healthcheck_completion_time_seconds{scheduled_by="daily"}) > 36 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No daily HolmesGPT check has completed in 36 hours
+            description: >-
+              The ScheduledHealthCheck runs at 05:00 UTC; a day without a
+              completed check means the operator is not creating them or every
+              check times out. kubectl -n holmesgpt get shc,hc and the operator's
+              log say which.

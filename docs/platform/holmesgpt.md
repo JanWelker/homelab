@@ -24,7 +24,7 @@ without being asked.
 | Depends on | [OpenBao](openbao.md) for its four credentials; [Monitoring](monitoring.md), [Logging](logging.md) and [ArgoCD](argocd.md) as data sources |
 | If it is down | Nothing visible: the daily check does not run and `holmes` on the laptop gets no answer |
 | Health check | `kubectl -n holmesgpt get shc,hc` &rarr; yesterday's check `pass` or `fail`, not `error` |
-| Files | `payload/platform/holmesgpt/`, `payload/platform/security/network-policies/holmesgpt.yaml` |
+| Files | `payload/platform/holmesgpt/`, `payload/platform/security/network-policies/holmesgpt.yaml`; the metrics in `payload/platform/monitoring/application.yaml` |
 
 ## Configuration
 
@@ -73,8 +73,18 @@ kubectl -n holmesgpt rollout restart deploy/holmesgpt-holmes
 nightly backups: nodes, pods, Argo CD Applications, firing alerts, last
 night's Velero and CloudNativePG backups, certificates expiring within two
 weeks, and Ceph health. `mode: monitor` keeps the result in the resource's
-status and sends nothing; what needs a human within the hour is
-[Alertmanager](monitoring.md#alerting)'s job, and this is the morning read.
+status and sends nothing itself: the operator's destinations are Slack,
+PagerDuty and a webhook in its own format, none of which is the mail that
+carries every other alert here. The verdict reaches it as a metric instead.
+kube-state-metrics renders each HealthCheck's `status.result` and
+`status.completionTime` through its
+[custom resource state config](monitoring.md#scrape-targets), and
+`prometheusrule.yaml` turns the newest scheduled check into
+`HolmesDailyCheckFailed` on `fail` or `error`, plus `HolmesDailyCheckStale`
+when no check has completed in 36 hours. Both are `warning`, so they ride the
+daily mail with the rest; the mail names the resource, the report stays in
+it. A manual HealthCheck never alerts: the rule selects on the
+`holmesgpt.dev/scheduled-by` label the operator sets.
 
 ### Pull requests
 

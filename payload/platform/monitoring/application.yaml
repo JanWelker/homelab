@@ -150,6 +150,7 @@ spec:
                       - cert-manager
                       - cnpg-system
                       - external-secrets
+                      - holmesgpt
                       - kube-system
                       - kured
                       - logging
@@ -296,6 +297,44 @@ spec:
                 memory: 56Mi
               limits:
                 memory: 128Mi
+            # CRD status fields as metrics; the rules that read them sit with
+            # their component. See docs/platform/monitoring.md#scrape-targets
+            rbac:
+              extraRules:
+                - apiGroups: ["holmesgpt.dev"]
+                  resources: ["healthchecks"]
+                  verbs: ["list", "watch"]
+            customResourceState:
+              enabled: true
+              config:
+                kind: CustomResourceStateMetrics
+                spec:
+                  resources:
+                    - groupVersionKind:
+                        group: holmesgpt.dev
+                        version: v1alpha1
+                        kind: HealthCheck
+                      metricNamePrefix: holmesgpt_healthcheck
+                      labelsFromPath:
+                        name: [metadata, name]
+                        namespace: [metadata, namespace]
+                        scheduled_by: [metadata, labels, holmesgpt.dev/scheduled-by]
+                      metrics:
+                        - name: result
+                          help: "The check's verdict: 1 on the series whose result label holds it"
+                          each:
+                            type: StateSet
+                            stateSet:
+                              labelName: result
+                              path: [status, result]
+                              list: [pass, fail, error]
+                        - name: completion_time_seconds
+                          help: "When the check finished, as a Unix timestamp; 0 while it runs"
+                          each:
+                            type: Gauge
+                            gauge:
+                              path: [status, completionTime]
+                              nilIsZero: true
 
           prometheus-node-exporter:
             # Its own namespace, the only privileged one the stack needs.
