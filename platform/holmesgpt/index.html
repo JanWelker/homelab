@@ -2688,6 +2688,10 @@ reasoning:</p>
 <td>The chart's ClusterRole lists every CRD it knows. Only the groups this cluster has are left on; the rest would be rules that grant nothing and read as if they did</td>
 </tr>
 <tr>
+<td><code>customClusterRoleRules</code></td>
+<td>The chart's ClusterRole covers the kinds every cluster has plus the CRD groups in <code>crdPermissions</code>; the platform's own, CloudNativePG, cert-manager, Rook, Trivy, Cilium, snapshots and the HealthChecks, are added read-only, the same list as the <a href="../security-policies/#agent-rbac">agent read role</a>. The first daily check reported CloudNativePG backups as forbidden</td>
+</tr>
+<tr>
 <td><code>modelList</code> with <code>envRef:</code></td>
 <td>Sonnet as the default, Haiku selectable per request for a cheap question. The key is read from the env var the ExternalSecret below provides, so the values carry no secret</td>
 </tr>
