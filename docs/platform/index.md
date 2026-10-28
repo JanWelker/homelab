@@ -40,7 +40,7 @@ applications` shows — and the namespace it lands in.
 | [logging](logging.md) | `logging` | Loki's bucket, rules, dashboards and Grafana datasource |
 | loki | `logging` | The Loki chart — see [Logging](logging.md) |
 | [metrics-server](metrics-server.md) | `kube-system` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
-| monitoring, Application `kube-prometheus-stack` | `monitoring` | Prometheus, Grafana, Alertmanager, node-exporter, kube-state-metrics — see [Monitoring](monitoring.md) |
+| monitoring, Application `kube-prometheus-stack` | `monitoring`, `node-exporter` | Prometheus, Grafana, Alertmanager, kube-state-metrics; node-exporter alone in `node-exporter` — see [Monitoring](monitoring.md) |
 | [openbao](openbao.md) | `openbao` | Cluster-wide secret store |
 | prometheus-operator-crds | `monitoring` | The Prometheus operator CRDs, separate so every chart that ships a `ServiceMonitor` can sync — see [Monitoring](monitoring.md#crds) |
 | [rook-ceph](rook-ceph.md) | `rook-ceph` | The CSI driver, dashboards and HTTPRoute |

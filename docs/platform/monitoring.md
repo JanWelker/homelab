@@ -7,8 +7,11 @@ description: "The kube-prometheus-stack observability setup, accessing Grafana, 
 Full observability stack based on
 [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack):
 Prometheus, Grafana, Alertmanager, node-exporter and
-kube-state-metrics. The chart's default rule set is good; its default routing
-swallows every alert, which is what most of this page is about.
+kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so
+that only it is admitted at the `privileged` level
+([security policies](security-policies.md#pod-security-admission)). The
+chart's default rule set is good; its default routing swallows every alert,
+which is what most of this page is about.
 
 ## At a glance
 
