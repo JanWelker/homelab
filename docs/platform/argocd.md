@@ -94,10 +94,20 @@ is a few commands with no restart. An expired token fails every agent
     argocd account delete-token --account claude <id>
     ```
 
-The agents reach Argo CD on 443 by name, so the traffic enters through
-`infra-gateway` and arrives at `argocd-server` as the `ingress` entity, which
-its policy already admits. They use the CLI host from
-[CLI access](#cli-access).
+The agents reach Argo CD on 443 through the CLI host from
+[CLI access](#cli-access), which resolves to `infra-gateway`'s own address.
+The caller's policy has to admit both legs, as for any name the Gateway
+serves ([Security Policies](security-policies.md#network-policies)):
+
+| Leg | Admitted by |
+| --- | --- |
+| Agent pod to the Gateway address | A name rule for the CLI host: the datapath classifies the Gateway's address as `world`, not `ingress` |
+| The Gateway's Envoy to `argocd-server` | An egress rule to the `argocd-server` pod itself. Envoy checks the caller's egress policy again against the pod it picked and answers `403 Access denied` when no rule matches, audit mode or not. The server's own policy already admits the `ingress` entity |
+
+The `homelab` session's policy in the workloads repository carries both. The
+chart's own policy has only the name rule
+([claude-agent#3](https://github.com/JanWelker/claude-agent/issues/3)), so
+any other session with `argocd.enabled` gets a 403 on every call.
 
 ## Pull request previews
 
