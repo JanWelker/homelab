@@ -56,6 +56,7 @@ the API away from the workers and from every kubeconfig.
 | `maxUnavailable: 1`, no surge | An old and a new pod would fight over `:2112` and the lease |
 | Tolerates every taint | A NotReady or pressured control-plane node is when the VIP has to move |
 | Capabilities identical to the static pod | The first sync replaces all three at once; untested hardening takes the VIP down everywhere |
+| Liveness probe on `/metrics` | Every kube-vip serves it, leader or not, so a hung process holding the Lease is restarted instead of keeping the VIP dead until another node's renew fails too; the long failure window keeps a slow API server from recycling a healthy pod |
 
 !!! danger "If the DaemonSet pods do not come up"
     The static manifests are already gone, so nothing holds the VIP. As long as Cilium's `k8sServiceHost` names a node rather than the VIP, Cilium and ArgoCD keep working. Point `kubectl` at a node with `--server https://10.9.2.1:6443`, read `kubectl -n kube-system logs ds/kube-vip -c kube-vip`, and fix the DaemonSet in Git. If that cannot wait, write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2`. That holds while the broken pod merely restarts; if the pod is deleted or recreated, `adopt` removes the file again.
