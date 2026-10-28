@@ -295,7 +295,7 @@ kubectl get validatingadmissionpolicy
 ## Pitfalls
 
 !!! note "Audit mode stops at the proxy"
-    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity.
+    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity. The agents' `argocd` calls failed this way, `server: envoy` and `grpc-message: Access denied`, while their policy named the host but not the `argocd-server` pod; see [Agent account](argocd.md#agent-account).
 
 !!! note "A name rule audits one SYN in twenty"
     A `toFQDNs` rule admits the addresses the DNS proxy has seen for the name, and the proxy releases the answer after at most 100ms whether or not every datapath has the new address. About one connection in twenty to a CDN name is recorded `AUDIT` with a `world` destination; under enforcement that `SYN` drops and the retransmit a second later goes through. A run of drops on one source port is different: the application connected to an address it cached past the DNS TTL.
