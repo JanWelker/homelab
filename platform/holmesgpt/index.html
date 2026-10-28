@@ -2696,6 +2696,10 @@ reasoning:</p>
 <td>Sonnet as the default, Haiku selectable per request for a cheap question. The key is read from the env var the ExternalSecret below provides, so the values carry no secret</td>
 </tr>
 <tr>
+<td><code>TOOL_MEMORY_LIMIT_MB</code></td>
+<td>Every tool command runs under <code>ulimit -v</code>, 800 MB on amd64 by default. <code>argocd app list</code> and <code>kubectl get pods -A -o json</code> are Go binaries whose address space alone exceeds that, so the check reported them as out of memory; both pass at 1.5 GB, and 2 GB leaves room for a larger cluster. It bounds address space, not the pod's memory, which <code>resources</code> still caps</td>
+</tr>
+<tr>
 <td><code>TEMPERATURE=none</code></td>
 <td>Claude 5.5 answers <code>temperature is deprecated for this model</code> to any request that carries one, and Holmes sends its own default unless told to send none; a <code>temperature</code> in <code>modelList</code> would be sent as well</td>
 </tr>
