@@ -69,11 +69,11 @@ spec:
         - alert: TetragonExecFromWritablePath
           expr: |
             sum by (namespace, pod, binary) (
-                increase(tetragon_policy_events_total{policy="exec-from-writable-path"}[10m]) > 0
+                increase(tetragon_policy_events_total{policy="exec-from-writable-path", namespace!="holmesgpt"}[10m]) > 0
               or
-                tetragon_policy_events_total{policy="exec-from-writable-path"}
+                tetragon_policy_events_total{policy="exec-from-writable-path", namespace!="holmesgpt"}
               unless
-                tetragon_policy_events_total{policy="exec-from-writable-path"} offset 10m
+                tetragon_policy_events_total{policy="exec-from-writable-path", namespace!="holmesgpt"} offset 10m
             ) > 0
           keep_firing_for: 15m
           labels:
@@ -85,7 +85,10 @@ spec:
               A process in {{ $labels.namespace }}/{{ $labels.pod }} executed
               a file under /tmp, /var/tmp, /dev/shm, /run or one of the
               emptyDirs that carry binaries here, and it is not one an init
-              container or s6-overlay is known to put there. Nothing in an
+              container or s6-overlay is known to put there. HolmesGPT is
+              left out: it writes every tool command to a script under
+              /tmp and runs it, so each investigation is a dozen of these
+              on purpose. Nothing in an
               image lives on those paths, so the binary was written after
               the container started. The event, with the path and the parent
               process, is in Loki: {container="export-stdout"} | json |
