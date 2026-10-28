@@ -104,7 +104,7 @@ node at once hands the workers a new kubelet before the API server has moved.
    `proxy: {}` in its stored `kubeadm-config`, and without the flag the upgrade
    redeploys `kube-proxy` beside Cilium; the flag is harmless on a cluster
    built since. Always pass `--patches /etc/kubernetes/patches` too: the static
-   pods' memory requests come from that directory and an upgrade rewrites the
+   pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the
    manifests without them otherwise.
 
     ```bash

@@ -1,0 +1,13 @@
+---
+# CoreDNS is kubeadm's, not Helm's; its spread constraint is a kubeadm patch in
+# ansible/templates/butane_node_config.yaml.j2. See docs/platform/index.md#components
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coredns
+  namespace: kube-system
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
