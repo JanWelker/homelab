@@ -137,8 +137,10 @@ spec:
               snapshotMoveData: true
               includedNamespaces:
                 - "*"
+              # Both rebuild from Git and a rescan; see docs/operations/backups.md#velero
               excludedNamespaces:
                 - kube-system
+                - trivy-system
               excludedResources:
                 - events
                 - events.events.k8s.io

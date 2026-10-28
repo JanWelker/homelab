@@ -18,7 +18,8 @@ cannot.
 | etcd (raw) | Nightly | [CronJob](#etcd) to the object store |
 | OpenBao secrets | Manual | [Raft snapshot](#openbao) |
 | OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
-| Prometheus metrics | **No** | Kept for the `retention` in `payload/platform/monitoring/application.yaml`, then gone |
+| Prometheus metrics | **No** | Its PVC carries `velero.io/exclude-from-backup`; metrics live for the `retention` in `payload/platform/monitoring/application.yaml`, then are gone |
+| Trivy reports and vulnerability database | **No** | `trivy-system` is excluded; the operator rescans and the server downloads the database again |
 | Everything in `payload/` | Yes | It is in Git |
 
 ## What is not covered
@@ -46,7 +47,7 @@ nightly. Chart values and why each is set are in
 | Property | Value |
 | --- | --- |
 | Schedule | The `schedules` block in `payload/platform/velero/application.yaml`: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires |
-| Scope | All namespaces except `kube-system` (rebuilt from Git, and large), minus `events` (they expire anyway) |
+| Scope | All namespaces except `kube-system` (rebuilt from Git, and large) and `trivy-system` (rescanned), minus `events` (they expire anyway) and any PVC labelled `velero.io/exclude-from-backup`, which is only Prometheus's: the chart's `volumeClaimTemplate.metadata.labels` carries it |
 | Destination | S3 bucket `velero` in the [Ceph object store](../platform/rook-ceph.md) |
 | Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
 | Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](../platform/velero.md#repository-password) |
