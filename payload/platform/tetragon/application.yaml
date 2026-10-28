@@ -57,12 +57,14 @@ spec:
             prometheus:
               serviceMonitor:
                 enabled: true
-            # The chart's own defaults, restated: see docs/platform/index.md
+            # The chart's defaults minus its CPU limit; null makes Helm drop
+            # the inherited key. See docs/platform/index.md#components
             resources:
               requests:
                 cpu: 10m
                 memory: 64Mi
               limits:
+                cpu: null
                 memory: 128Mi
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
