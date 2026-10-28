@@ -64,6 +64,13 @@ replicas one per node, which kubeadm applies at `init` and `upgrade apply`
 only, and its PodDisruptionBudget sits in the `security` component because
 nothing else owns a CoreDNS manifest.
 
+Components the cluster cannot run without — the CNI and API VIP, the
+admission webhooks, the secret and certificate chain, the CSR approver, the
+storage daemons and the node security agents — carry a `system-*` priority
+class, so under node pressure the kubelet evicts workloads first:
+`system-node-critical` for the DaemonSets a node needs,
+`system-cluster-critical` for the rest.
+
 ## Traffic Flow
 
 ```mermaid

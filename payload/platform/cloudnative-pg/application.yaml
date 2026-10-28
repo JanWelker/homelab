@@ -34,6 +34,8 @@ spec:
                 matchLabels:
                   app.kubernetes.io/name: cloudnative-pg
                   app.kubernetes.io/instance: cloudnative-pg
+          # See docs/platform/index.md#components
+          priorityClassName: system-cluster-critical
 
           monitoring:
             podMonitorEnabled: true
