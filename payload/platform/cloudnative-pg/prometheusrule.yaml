@@ -1,0 +1,48 @@
+---
+# Read through kube-state-metrics' custom resource state config in monitoring:
+# the Cluster's own backup metrics stay at zero under the plugin.
+# See docs/platform/cloudnative-pg.md#health-check
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cloudnative-pg-backups
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/name: cloudnative-pg
+spec:
+  groups:
+    - name: cloudnative-pg-backups
+      rules:
+        - alert: CNPGBackupStale
+          expr: |
+            time() - cnpg_objectstore_last_successful_backup_time_seconds > 36 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              No base backup of {{ $labels.namespace }}/{{ $labels.server }} in 36 hours
+            description: >-
+              The ObjectStore {{ $labels.namespace }}/{{ $labels.name }} records
+              its last successful base backup for server {{ $labels.server }}
+              more than 36 hours ago, or none at all. The ScheduledBackup runs
+              nightly at 03:00; the WAL archive keeps the window open only from
+              the last base backup. kubectl -n {{ $labels.namespace }} get
+              backups.postgresql.cnpg.io shows which night failed and why.
+        - alert: CNPGBackupFailed
+          expr: |
+            cnpg_backup_phase{phase="failed"} == 1
+            and on (namespace, name)
+            (time() - cnpg_backup_created_time_seconds < 24 * 3600)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              Backup {{ $labels.namespace }}/{{ $labels.name }} of {{ $labels.cluster }} failed
+            description: >-
+              A Backup created in the last 24 hours ended in phase failed. The
+              Backup's status.error carries the plugin's exit status and the
+              sidecar's log of that night is in Loki, container
+              plugin-barman-cloud. A failed night does not shorten the recovery
+              window by itself; CNPGBackupStale says when it does.

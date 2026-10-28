@@ -62,6 +62,11 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/cloudnative-pg
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: cnpg-system
