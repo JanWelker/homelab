@@ -40,8 +40,11 @@ are the pairs below that must move together.
     minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a
     human, and security fixes skip both the wait and the schedule. The
     preset's README says why for each.
-- **One rule for everything here,** with no per-area exceptions: a Flatcar or
-    Kubernetes minor lands the same way a Grafana chart patch does.
+- **One exception: a Kubernetes minor waits for a human.** A Flatcar minor
+    lands the same way a Grafana chart patch does, but `kubernetes_version` is
+    walked forward by hand in version-skew order, and a node provisioned from
+    an automerged minor would run a kubelet ahead of the API server and fail
+    its `kubeadm join` — see [Upgrades](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
 - **Pairs that must move together are grouped into one PR:**
     `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
@@ -55,8 +58,8 @@ are the pairs below that must move together.
     open a PR for the linters and the docs generator at all.
 - **Flatcar and Kubernetes bumps change what a newly provisioned
     node installs, not what a running node runs.** kubeadm cannot skip a minor,
-    so a cluster left unrebuilt across two automerged Kubernetes minors has to be
-    walked forward one at a time — see [Upgrades](../operations/upgrades.md).
+    so a cluster that sits while two Kubernetes minors merge has to be walked
+    forward one at a time — see [Upgrades](../operations/upgrades.md).
 - **A font bump cannot automerge without its second commit:**
     `fonts-check.yaml` fails on it and `ci-ok` waits for it — see
     [Fonts](contributing.md#fonts).

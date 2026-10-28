@@ -70,17 +70,23 @@ this procedure, each with its release notes read. A newly provisioned node
 skips all of it: it installs `kubernetes_version` directly and gets the pinned
 sysupdate config from the boot server.
 
-1. Update `kubernetes_version` in
-   `ansible/inventory.yaml`.
+The order is upstream's: the first control plane, the other control planes,
+then the workers, because a kubelet may run older than the API server but never
+newer. The sysext swaps kubeadm and kubelet together at the reboot, so the
+sysupdate config goes to one group at a time: Kured's `concurrency: 1` reboots
+one node at a time but in no particular order, and a config pushed to every
+node at once hands the workers a new kubelet before the API server has moved.
+
+1. Update `kubernetes_version` in `ansible/inventory.yaml`.
 2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
 
     ```bash
     make download && make config
     ```
 
-3. Replace the sysupdate config on every running node; it was written once at
-   install time and nothing rewrites it. The boot server is not needed: the
-   node reboots from its own disk — see
+3. Stage the new sysext on the first control plane only. The sysupdate config
+   was written once at install time and nothing rewrites it. The boot server is
+   not needed: the node reboots from its own disk — see
    [Every boot after the first](../architecture/boot-process.md#every-boot-after-the-first).
 
     ```bash
@@ -89,24 +95,40 @@ sysupdate config from the boot server.
     ssh core@<node> sudo systemctl start systemd-sysupdate
     ```
 
-4. Reboot nodes to pick up the sysext: Kured does it once sysupdate sets the
-   sentinel, or follow [Rebooting a node](nodes.md#rebooting-a-node).
-5. On a control-plane node, run the kubeadm upgrade; the sysext swaps the
-   binaries and nothing else. Always pass `--skip-phases addon/kube-proxy`,
-   because a cluster built before `proxy.disabled` was set in `kubeadm.yaml.j2`
-   still has `proxy: {}` in its stored `kubeadm-config`, and without the flag
-   the upgrade redeploys `kube-proxy` beside Cilium; the flag is harmless on a
-   cluster built since. Always pass `--patches /etc/kubernetes/patches` too:
-   the static pods' memory requests come from that directory and an upgrade
-   rewrites the manifests without them otherwise. The other control-plane
-   nodes follow with `kubeadm upgrade node` and the same `--patches` flag.
+4. Reboot it to pick up the sysext — see
+   [Rebooting a node](nodes.md#rebooting-a-node). Kured would do it once
+   sysupdate sets the sentinel, but by hand the next step follows at once.
+5. On that node, run the kubeadm upgrade; the sysext swapped the binaries and
+   nothing else. Always pass `--skip-phases addon/kube-proxy`, because a
+   cluster built before `proxy.disabled` was set in `kubeadm.yaml.j2` still has
+   `proxy: {}` in its stored `kubeadm-config`, and without the flag the upgrade
+   redeploys `kube-proxy` beside Cilium; the flag is harmless on a cluster
+   built since. Always pass `--patches /etc/kubernetes/patches` too: the static
+   pods' memory requests come from that directory and an upgrade rewrites the
+   manifests without them otherwise.
 
     ```bash
     sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
     ```
 
+6. The other control planes, one at a time: step 3, then `kubeadm upgrade node`
+   with the same `--patches` flag, then step 4. It takes the version from the
+   `kubeadm-config` that `upgrade apply` stored and rewrites the static pod
+   manifests on this node.
+
+    ```bash
+    sudo kubeadm upgrade node --patches /etc/kubernetes/patches
+    ```
+
+7. The workers, one at a time: step 3, then `kubeadm upgrade node`, which only
+   fetches the new kubelet configuration, then step 4.
+
+    ```bash
+    sudo kubeadm upgrade node
+    ```
+
 !!! note
-    Renovate keeps `kubernetes_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`, and patch and minor bumps automerge. Merging one changes what a **newly provisioned** node installs, not a running node — see [Maintenance](../development/maintenance.md#automerge-policy).
+    Renovate keeps `kubernetes_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`. Patch bumps automerge; a Kubernetes minor waits for a human, because merging it changes what a **newly provisioned** node installs, and a node installed one minor ahead of the control plane fails its `kubeadm join` — see [Maintenance](../development/maintenance.md#automerge-policy).
 
 ## Platform components
 
