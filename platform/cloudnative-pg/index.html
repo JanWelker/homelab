@@ -2933,7 +2933,14 @@ WAL position and last failover.</p>
 <p><code>ContinuousArchiving</code> <code>True</code> means the last WAL segment reached the bucket;
 <code>False</code> means WAL is piling up on the instance's volume, which fills it. The
 recovery window lives on the <code>ObjectStore</code>, per server name: the <code>Cluster</code>'s
-own backup fields stay empty with a plugin.</p>
+own backup fields and the <code>cnpg_collector_*_backup_timestamp</code> metrics stay
+empty with a plugin, which upstream documents as deprecated under CNPG-I.
+<code>prometheusrule.yaml</code> therefore reads the <code>ObjectStore</code> and <code>Backup</code>
+objects through kube-state-metrics'
+<a href="../monitoring/#scrape-targets">custom resource metrics</a>:
+<code>CNPGBackupStale</code> when a server's last successful base backup is older than
+36 hours, <code>CNPGBackupFailed</code> when a Backup from the last 24 hours ended in
+<code>failed</code>. Both are warnings on the daily mail.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>A stuck archive fills the volume.</strong> PostgreSQL keeps every WAL segment the
