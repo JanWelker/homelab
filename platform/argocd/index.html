@@ -347,6 +347,8 @@
       
         
       
+        
+      
     
     
     
@@ -959,6 +961,8 @@
       
         
           
+        
+      
         
       
         
@@ -1637,6 +1641,33 @@
     
   
   Descheduler
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../holmesgpt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HolmesGPT
 
     
   </span>
@@ -2533,6 +2564,8 @@
       
         
       
+        
+      
     
     
     
@@ -2691,7 +2724,9 @@ may read everything <code>role:readonly</code> reads, <code>argocd app get --ref
 included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has <code>apiKey</code> only, so it cannot log
 in. One token serves every session with <code>argocd.enabled</code>, so its expiry is
-what bounds a leak from any of them.</p>
+what bounds a leak from any of them. <a href="../holmesgpt/#secrets">HolmesGPT</a> has
+the same shape as <code>holmesgpt</code>, with its own token, so neither consumer's
+rotation touches the other.</p>
 <p>The token expires after 90 days: that caps a leak at a quarter, and rotating
 is a few commands with no restart. An expired token fails every agent
 <code>argocd</code> call until the next one is stored. To rotate:</p>
