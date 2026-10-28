@@ -1,3 +1,5 @@
+{#- Only the first install runs kubeadm init; see docs/architecture/ansible.md#inventory #}
+{%- set kubeadm_init = role == 'control-plane' and inventory_hostname == groups['control_plane'][0] and (bootstrap_cluster | default(false) | bool) %}
 variant: flatcar
 version: 1.0.0
 passwd:
@@ -66,7 +68,7 @@ storage:
       contents:
         inline: |
           {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
-{% if inventory_hostname != groups['control_plane'][0] %}
+{% if not kubeadm_init %}
 
     # The join flags; bootstrap-k8s.service deletes it once the node has joined.
     - path: /opt/bootstrap-k8s.env
@@ -412,7 +414,7 @@ systemd:
         [Service]
         Type=oneshot
         {% if role == 'control-plane' %}
-        {% if inventory_hostname == groups['control_plane'][0] %}
+        {% if kubeadm_init %}
         # kube-vip reads super-admin.conf until init completes; see docs/operations/control-plane-vip.md
         ExecStartPre=/usr/bin/sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests

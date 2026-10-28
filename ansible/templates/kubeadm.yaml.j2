@@ -8,7 +8,7 @@ nodeRegistration:
   imagePullPolicy: IfNotPresent
   name: "{{ inventory_hostname }}"
   taints: null
-{% if inventory_hostname == groups['control_plane'][0] %}
+{% if role == 'control-plane' and inventory_hostname == groups['control_plane'][0] and (bootstrap_cluster | default(false) | bool) %}
 # Only kubeadm init reads these; every other node joins with flags from
 # /opt/bootstrap-k8s.env, see butane_node_config.yaml.j2.
 bootstrapTokens:

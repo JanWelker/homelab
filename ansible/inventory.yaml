@@ -30,6 +30,9 @@ all:
         control_plane:
           vars:
             role: control-plane
+            # true for the first install only: it makes the first control plane
+            # run kubeadm init. See docs/operations/nodes.md#rebuilding-or-repartitioning-a-node
+            bootstrap_cluster: false
           hosts:
             odin:
               ansible_host: 10.9.2.1

@@ -158,7 +158,13 @@ the space.
     make config && make serve
     ```
 
-4. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
+4. For a **control-plane** node, remove it from the cluster first: the drain,
+   `kubectl delete node` and the etcd `member remove` are steps 1 and 3 of
+   [Replacing a failed node](#replacing-a-failed-node). The wiped node comes
+   back with an empty etcd under its old peer URL, and kubeadm treats a known
+   peer as already joined; two of three members keep quorum meanwhile.
+
+5. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
    no prompt), a later `make config` keeps a node armed, and the boot server
    disarms it once it has the image, so the reboot at the end of the install
    does not start a second one — see
@@ -168,16 +174,21 @@ the space.
     make reinstall LIMIT=odin   # `make reinstall` alone asks, then arms every host
     ```
 
-5. Network-boot the node. The installer wipes the disk, runs `flatcar-install`,
+    Every control plane joins the running cluster; only
+    [`bootstrap_cluster`](../architecture/ansible.md#inventory) renders
+    `kubeadm init`, and arming refuses while it is set and the VIP answers.
+
+6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`,
    and reboots into the installed system, which then runs `kubeadm`. The node
    comes back with a new SSH host key; `make reinstall` already forgot the
    old one, or `StrictHostKeyChecking=accept-new` would refuse the first
    `make kubeconfig`.
-6. Leave the boot server up until the node is `Ready` (the sysext images are
+7. Leave the boot server up until the node is `Ready` (the sysext images are
    fetched from it on that first boot), then stop it.
 
-One node at a time is safe when rebuilding: etcd keeps quorum and Ceph
-backfills, as in [Replacing a failed node](#replacing-a-failed-node).
+One node at a time is safe when rebuilding: etcd keeps quorum once the old
+member is removed and Ceph backfills, as in
+[Replacing a failed node](#replacing-a-failed-node).
 Repartitioning destroys every OSD as it goes, so a rolling repartition across
 all six nodes destroys all replicas of everything; step 1 is not optional for
 that case.
