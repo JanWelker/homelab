@@ -35,6 +35,7 @@ stay on GitHub.
 | `containerMode: kubernetes-novolume` | A job with `services:` or `container:` gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job. Where that pod runs, and with which token: [Job pods](#job-pods) |
 | `ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER: "false"` | A job without `container:` runs in the runner pod itself, as on a hosted runner |
 | `arc-runners` and `arc-jobs` enforce `baseline` | The runner image uses `sudo`, and a service container such as PostgreSQL starts as root; neither passes `restricted` |
+| `arc-jobs` is exempt from the user-namespace kill | buildah builds the images as root without `CAP_SYS_ADMIN`, which `baseline` forbids, so it re-executes itself in a user namespace; [Tetragon](tetragon.md#enforcement) records those instead of killing them |
 | The runner image as a full reference with a digest | Renovate tracks it; the chart passes the same image to the hook for the job pod's init container |
 | `resources`: 1Gi requested, 4Gi limit | Unmeasured; a test suite with a database beside it fits, and the limit stops a runaway build before it starves the node |
 | A second scale set, `homelab-wait`, for `ci-ok` alone | The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as `maxRunners` fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request |
