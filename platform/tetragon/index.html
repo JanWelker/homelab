@@ -2766,8 +2766,14 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>kill-unprivileged-user-namespace</code></td>
 <td><code>create_user_ns</code></td>
-<td>A user namespace created without <code>CAP_SYS_ADMIN</code> in a container, killed. The only policy in <code>enforce</code> mode</td>
+<td>A user namespace created without <code>CAP_SYS_ADMIN</code> in a container, killed, except in <code>arc-jobs</code>. The only policy in <code>enforce</code> mode</td>
 <td>Yes: <code>TetragonUserNamespaceCreated</code></td>
+</tr>
+<tr>
+<td><code>unprivileged-user-namespace-arc-jobs</code></td>
+<td><code>create_user_ns</code></td>
+<td>The same in <code>arc-jobs</code>, recorded: buildah builds the images there in a user namespace, see <a href="../github-runners/">GitHub runners</a></td>
+<td>No; every image build would fire it</td>
 </tr>
 <tr>
 <td><code>egress-outside-cluster</code></td>
@@ -2821,7 +2827,10 @@ binary raising privileges, a fileless exec and a deleted binary. They are
 carries <code>policy-mode: enforce</code> and a <code>Sigkill</code>, because nothing here
 creates user namespaces and most kernel escalation chains start with one.
 It stays scoped to containers: a sysctl would cover the host too, where
-systemd's <code>PrivateUsers=</code> needs them.
+systemd's <code>PrivateUsers=</code> needs them. The one exception is <code>arc-jobs</code>,
+where buildah needs one for every image build; its <code>podSelector</code> excludes
+that namespace, at the price of the first seconds of every container
+(see Pitfalls), and a monitor-only twin records the events there.
 The limits, both checked on the running nodes: <code>Override</code> and enforcers
 need <code>CONFIG_FUNCTION_ERROR_INJECTION</code>, which Flatcar's kernel does not
 set, and BPF LSM hooks need <code>bpf</code> in the <code>lsm=</code> boot argument, which

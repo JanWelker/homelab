@@ -2751,6 +2751,10 @@ stay on GitHub.</p>
 <td>The runner image uses <code>sudo</code>, and a service container such as PostgreSQL starts as root; neither passes <code>restricted</code></td>
 </tr>
 <tr>
+<td><code>arc-jobs</code> is exempt from the user-namespace kill</td>
+<td>buildah builds the images as root without <code>CAP_SYS_ADMIN</code>, which <code>baseline</code> forbids, so it re-executes itself in a user namespace; <a href="../tetragon/#enforcement">Tetragon</a> records those instead of killing them</td>
+</tr>
+<tr>
 <td>The runner image as a full reference with a digest</td>
 <td>Renovate tracks it; the chart passes the same image to the hook for the job pod's init container</td>
 </tr>
