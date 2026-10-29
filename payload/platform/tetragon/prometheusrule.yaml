@@ -34,7 +34,8 @@ spec:
               read a control-plane key, the encryption config, an admin
               kubeconfig, etcd's data or a kubelet key, under whatever path
               it was mounted, and is not a control-plane binary on the host
-              network, or wrote to passwd, shadow, group, sudoers,
+              network, read shadow on the host other than through PAM's
+              unix_chkpwd, or wrote to passwd, shadow, group, sudoers,
               ld.so.preload, a cron or sudoers drop-in or root's ssh
               directory. The nightly etcd backup and the weekly defrag are
               left out. The event, with the path and arguments, is in
@@ -51,6 +52,8 @@ spec:
             ) > 0
             unless on (namespace, pod)
               tetragon_policy_events_total{policy="process-creds-changed", namespace="kube-system", workload="cilium"}
+            unless on (namespace, pod, binary)
+              tetragon_policy_events_total{policy="process-creds-changed", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/proc/self/exe"}
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -63,7 +66,9 @@ spec:
               setns, or an escape. runc, which does this on every start, is
               dropped in the kernel; the Cilium agent's init containers and
               Rook's OSD prepare Jobs nsenter into the host by design, so the
-              cilium DaemonSet's pods and rook-ceph are left out. Loki:
+              cilium DaemonSet's pods and rook-ceph are left out, as is
+              buildah re-executing itself into its user namespace in a CI
+              job pod in arc-jobs. Loki:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="process-creds-changed".
         - alert: TetragonExecFromWritablePath
