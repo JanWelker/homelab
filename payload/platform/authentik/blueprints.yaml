@@ -6,6 +6,148 @@ metadata:
   name: authentik-blueprints
   namespace: authentik
 data:
+  # Usernames are fixed; see docs/platform/authentik.md#user-settings-flow
+  05-user-settings.yaml: |
+    version: 1
+    metadata:
+      name: homelab-user-settings
+    entries:
+      # The default brand must exist before it can point at this flow.
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - Brand
+          required: false
+      - model: authentik_flows.flow
+        state: present
+        id: user-settings-flow
+        identifiers:
+          slug: homelab-user-settings
+        attrs:
+          name: User settings
+          title: Update your info
+          designation: stage_configuration
+          authentication: require_authenticated
+      # No username field, so the write stage has no username to write.
+      - model: authentik_stages_prompt.prompt
+        state: present
+        id: user-settings-field-name
+        identifiers:
+          name: homelab-user-settings-field-name
+        attrs:
+          order: 201
+          field_key: name
+          label: Name
+          type: text
+          required: true
+          placeholder: Name
+          initial_value: |
+            try:
+                return user.name
+            except:
+                return ''
+          initial_value_expression: true
+      - model: authentik_stages_prompt.prompt
+        state: present
+        id: user-settings-field-email
+        identifiers:
+          name: homelab-user-settings-field-email
+        attrs:
+          order: 202
+          field_key: email
+          label: Email
+          type: email
+          required: true
+          placeholder: Email
+          initial_value: |
+            try:
+                return user.email
+            except:
+                return ''
+          initial_value_expression: true
+      - model: authentik_stages_prompt.prompt
+        state: present
+        id: user-settings-field-locale
+        identifiers:
+          name: homelab-user-settings-field-locale
+        attrs:
+          order: 203
+          field_key: attributes.settings.locale
+          label: Locale
+          type: ak-locale
+          required: true
+          placeholder: Locale
+          initial_value: |
+            try:
+                return user.attributes.get("settings", {}).get("locale", "")
+            except:
+                return ''
+          initial_value_expression: true
+      # The default flow's name and e-mail checks, without the username one.
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        id: user-settings-authorization
+        identifiers:
+          name: homelab-user-settings-authorization
+        attrs:
+          expression: |
+            from authentik.core.models import (
+                USER_ATTRIBUTE_CHANGE_EMAIL,
+                USER_ATTRIBUTE_CHANGE_NAME,
+            )
+            prompt_data = request.context.get("prompt_data")
+            attributes = request.user.group_attributes(request.http_request)
+            tenant = request.http_request.tenant
+
+            if not attributes.get(USER_ATTRIBUTE_CHANGE_EMAIL, tenant.default_user_change_email):
+                if prompt_data.get("email") != request.user.email:
+                    ak_message("Not allowed to change email address.")
+                    return False
+
+            if not attributes.get(USER_ATTRIBUTE_CHANGE_NAME, tenant.default_user_change_name):
+                if prompt_data.get("name") != request.user.name:
+                    ak_message("Not allowed to change name.")
+                    return False
+
+            return True
+      - model: authentik_stages_prompt.promptstage
+        state: present
+        id: user-settings-prompt
+        identifiers:
+          name: homelab-user-settings
+        attrs:
+          fields:
+            - !KeyOf user-settings-field-name
+            - !KeyOf user-settings-field-email
+            - !KeyOf user-settings-field-locale
+          validation_policies:
+            - !KeyOf user-settings-authorization
+      - model: authentik_stages_user_write.userwritestage
+        state: present
+        id: user-settings-write
+        identifiers:
+          name: homelab-user-settings-write
+        attrs:
+          user_creation_mode: never_create
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf user-settings-flow
+          stage: !KeyOf user-settings-prompt
+          order: 20
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf user-settings-flow
+          stage: !KeyOf user-settings-write
+          order: 100
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          default: true
+        attrs:
+          flow_user_settings: !KeyOf user-settings-flow
+
   10-oidc-argocd.yaml: |
     version: 1
     metadata:
