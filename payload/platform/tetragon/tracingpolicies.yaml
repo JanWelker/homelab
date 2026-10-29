@@ -814,6 +814,15 @@ spec:
   options:
     - name: policy-mode
       value: enforce
+  # buildah on the CI runners builds the images in a user namespace, as root
+  # without CAP_SYS_ADMIN. Two policies tie its exemption to the arc-jobs
+  # namespace, which one selector cannot; the second one records instead.
+  podSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: NotIn
+        values:
+          - arc-jobs
   kprobes:
     - call: create_user_ns
       syscall: false
@@ -836,3 +845,38 @@ spec:
                 - host_ns
           matchActions:
             - action: Sigkill
+---
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: unprivileged-user-namespace-arc-jobs
+spec:
+  podSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: In
+        values:
+          - arc-jobs
+  kprobes:
+    - call: create_user_ns
+      syscall: false
+      message: Unprivileged user namespace created in a CI job pod
+      tags:
+        - observability.privilege_escalation
+      args:
+        - index: 0
+          type: nop
+      selectors:
+        - matchCapabilities:
+            - type: Effective
+              operator: NotIn
+              values:
+                - CAP_SYS_ADMIN
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - host_ns
+          matchActions:
+            - action: Post
+              rateLimit: 1m

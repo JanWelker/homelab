@@ -55,7 +55,8 @@ what it is without a lookup here.
 | `dns-outside-cluster` | `ip_output` | A port 53 packet from a container to anything but the kube-dns ClusterIP or the pod range, which is a hard-coded resolver in an image, a tunnel or exfiltration. The pod range is left out because it holds each node's Cilium router address, the pod's default gateway, which Home Assistant's dhcp integration asks for PTR records at start. The hook sees TCP and UDP alike, so musl's unconnected sends count too; the alert leaves out `kube-system`, where CoreDNS forwards upstream, and `cert-manager`, whose DNS-01 propagation check asks the zone's authoritative servers | Yes: `TetragonDnsOutsideCluster` |
 | `mount-in-container` | `security_sb_mount` | Any mount from a container except by `runc`, which mounts the rootfs, proc and sysfs on every start. Escapes start with a mount of the host's disk, cgroup or proc; the alert leaves out `rook-ceph`, `cilium` and `kube-system`, which mount by design | Yes: `TetragonMountInContainer` |
 | `ptrace-in-container` | `security_ptrace_access_check` | An attach-mode access to another process from a container: ptrace, `process_vm_writev`, `/proc/<pid>/mem`. The read mode `ps` uses is left alone | Yes: `TetragonPtraceInContainer` |
-| `kill-unprivileged-user-namespace` | `create_user_ns` | A user namespace created without `CAP_SYS_ADMIN` in a container, killed. The only policy in `enforce` mode | Yes: `TetragonUserNamespaceCreated` |
+| `kill-unprivileged-user-namespace` | `create_user_ns` | A user namespace created without `CAP_SYS_ADMIN` in a container, killed, except in `arc-jobs`. The only policy in `enforce` mode | Yes: `TetragonUserNamespaceCreated` |
+| `unprivileged-user-namespace-arc-jobs` | `create_user_ns` | The same in `arc-jobs`, recorded: buildah builds the images there in a user namespace, see [GitHub runners](github-runners.md) | No; every image build would fire it |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
 The allow list in the first policy is the set of things that read key material
@@ -116,7 +117,10 @@ Every policy but one only records. `kill-unprivileged-user-namespace`
 carries `policy-mode: enforce` and a `Sigkill`, because nothing here
 creates user namespaces and most kernel escalation chains start with one.
 It stays scoped to containers: a sysctl would cover the host too, where
-systemd's `PrivateUsers=` needs them.
+systemd's `PrivateUsers=` needs them. The one exception is `arc-jobs`,
+where buildah needs one for every image build; its `podSelector` excludes
+that namespace, at the price of the first seconds of every container
+(see Pitfalls), and a monitor-only twin records the events there.
 The limits, both checked on the running nodes: `Override` and enforcers
 need `CONFIG_FUNCTION_ERROR_INJECTION`, which Flatcar's kernel does not
 set, and BPF LSM hooks need `bpf` in the `lsm=` boot argument, which
