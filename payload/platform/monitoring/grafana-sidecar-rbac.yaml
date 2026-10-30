@@ -1,0 +1,13 @@
+---
+# The dashboard and datasource sidecars read grafana_dashboard and
+# grafana_datasource ConfigMaps. The chart's ClusterRole also reads every
+# Secret; grafana.rbac.useExistingClusterRole points its binding here instead.
+# See docs/platform/monitoring.md#grafana
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: grafana-sidecar
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]

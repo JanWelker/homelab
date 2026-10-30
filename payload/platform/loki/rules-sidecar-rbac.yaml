@@ -1,0 +1,12 @@
+---
+# The rules sidecar copies loki_rule ConfigMaps into the ruler's directory. The
+# chart's ClusterRole also reads every Secret; rbac.useExistingRole points its
+# binding here instead. See docs/platform/logging.md#storage
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: loki-rules-sidecar
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
