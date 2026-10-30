@@ -4,10 +4,10 @@ description: "Pod Security Admission levels per namespace and the first default-
 
 # Security Policies
 
-Four cluster-wide controls: Pod Security Admission, default-deny network
-policy in both directions, no API token on the `default` ServiceAccount, and
-admission policies on image references, namespace labels and the `authentik`
-namespace. Each is easy to turn on and hard to
+Five cluster-wide controls: Pod Security Admission, default-deny network
+policy in both directions, a host firewall on the nodes, no API token on the
+`default` ServiceAccount, and admission policies on image references, namespace
+labels and the `authentik` namespace. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.
 
@@ -133,6 +133,22 @@ therefore covers only its pod-networked workloads, each selected by label.
 Where a chart ships `NetworkPolicy` objects of its own (`argocd`) they are
 switched off in its values: Cilium unions the two kinds, so a chart rule
 that allows everything would silently override the default-deny.
+
+### Host firewall
+
+Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPolicy`
+with a `nodeSelector` can, and Cilium's
+[host firewall](https://docs.cilium.io/en/stable/security/host-firewall/) enforces
+it on the native device and `cilium_host`. What each port is for is in
+[Host Firewall Inventory 2026-10-30](../operations/host-firewall-inventory-2026-10-30.md).
+
+| Behaviour | Why it matters |
+| --- | --- |
+| Only packets addressed to a node IP are checked | The kube-vip address counts on the node holding it; Gateway addresses and NodePorts are translated first, so their policy is the backend pod's |
+| A node with no selecting policy is not denied anything on IPv4 | The switch can merge alone, and reverting the policy needs no second rollout |
+| No rule in a direction leaves that direction unenforced | A host policy with `ingress` only never blocks a node's own connections, and their replies pass through conntrack |
+| Host endpoint labels are filtered | `kubernetes.io/hostname` is not among them, so a node can only be chosen by a label such as `node-access` in the upstream example, or by the `control-plane` role label |
+| A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
 
 ### Default ServiceAccount tokens
 
@@ -289,6 +305,24 @@ kubectl -n kube-system exec ds/cilium -c cilium-agent -- \
   cilium-dbg endpoint config <endpoint-id> PolicyAuditMode=Enabled
 ```
 
+### Host firewall rollout
+
+Audit is per host endpoint, a setting of the running agent: `policyAuditMode`
+would stop enforcing the pod policies, and upstream says the per-endpoint
+setting does not survive an agent restart, after which the node enforces.
+The audit week therefore runs through a node label, and every step before
+enforcement is reversible by removing that label.
+
+1. Merge the switch; the agents roll, one node at a time. Every agent reports
+   the firewall on the native device:
+
+    ```bash
+    kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status | grep 'Host firewall'
+    ```
+
+2. Reboot one worker with no policy selecting it and watch it return `Ready`,
+   as in [Rebooting a node](../operations/nodes.md#rebooting-a-node).
+
 ## Health check
 
 ```bash
@@ -308,3 +342,57 @@ kubectl get validatingadmissionpolicy
 
 !!! note "The token change is not retroactive"
     The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.
+
+!!! danger "A reboot can isolate a node a host policy selects"
+    [Upstream](https://github.com/cilium/cilium/issues/48070) reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here, and a power cut would hit every selected node at once. That is why the rollout selects one worker first and reboots it.
+
+## Recovery
+
+### Host firewall lockout
+
+Work down until the node answers. An agent that cannot reach the API server
+hears neither a policy change nor a label removal, so step 1 alone does not
+free a node that is already cut off.
+
+1. API server answering: take the node out of the policy. Argo CD does not own
+   node labels, so nothing puts it back. Use `--all` instead of a name for every
+   node.
+
+    ```bash
+    kubectl label node <node> host-firewall.wlkr.ch/selected-
+    ```
+
+2. SSH answering: put the node in audit mode, which needs no API server and
+   lasts until the agent restarts.
+
+    ```bash
+    ssh <node> sudo bash -s <<'EOF'
+    id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)
+    crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'
+    EOF
+    ```
+
+3. Nothing answering, the API server up: nothing filters a node until its agent
+   has started after boot, so stop the agent coming back. Run this from the
+   workstation, then power-cycle the node, then do step 1 and start the kubelet
+   again with `sudo systemctl unmask kubelet && sudo systemctl start kubelet`.
+
+    ```bash
+    until ssh -o ConnectTimeout=2 <node> sudo systemctl mask --now kubelet; do sleep 1; done
+    ```
+
+4. Every control plane cut off: the API server needs no CNI, so it comes up
+   before the agent does. Power-cycle all three and take the label off in that
+   window.
+
+    ```bash
+    until kubectl label node --all host-firewall.wlkr.ch/selected-; do sleep 2; done
+    ```
+
+5. Still nothing: at the node's console, add `flatcar.autologin` to the boot
+   entry in the GRUB menu, since `core` has no password, then run the inner
+   command of step 2. Failing that, [rebuild the node](../operations/nodes.md#rebuilding-or-repartitioning-a-node).
+
+6. Then [unseal OpenBao](../operations/nodes.md#after-any-node-reboot-unseal-openbao)
+   and revert in Git: the policy first; the switch only if the firewall itself
+   is the fault, since that revert rolls every agent again.
