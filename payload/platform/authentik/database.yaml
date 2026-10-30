@@ -41,6 +41,8 @@ spec:
     parameters:
       shared_buffers: 128MB
       max_connections: "200"
+      # A quarter of the volume; see docs/platform/cloudnative-pg.md#pitfalls
+      max_slot_wal_keep_size: 4GB
 
   resources:
     requests:

@@ -215,6 +215,15 @@ objects through kube-state-metrics'
   sidecar has not archived; a broken bucket or policy shows as
   `ContinuousArchiving` `False` long before the PVC is full. Fix the cause,
   never delete `pg_wal`.
+- **A dead replica fills the primary.** Its replication slot holds WAL until
+  the replica catches up, so every multi-instance `Cluster` caps it with
+  `max_slot_wal_keep_size` at a quarter of the volume; past that the slot is
+  invalidated and the replica restores from the WAL archive or must be
+  recreated with `kubectl cnpg destroy <cluster> <instance>`.
+- **A full volume is not resized by the operator.** An instance stopped with
+  `no free disk space for WALs` keeps its PVC size although `storage.size`
+  grew; patch that PVC to the new size by hand, as
+  [upstream documents](https://cloudnative-pg.io/documentation/current/instance_manager/) under "Disk full failure".
 - **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from
   the bucket; it never rewinds a running one. Give the new cluster its own
   `ObjectStore` destination, or its archive would mix with the one it was
