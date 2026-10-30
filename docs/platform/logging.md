@@ -61,6 +61,7 @@ in the line where `| json` can reach them. See
 | `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
 | `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
+| `rbac.rules` without `secrets` | The chart's ClusterRole reads every Secret for `remote.kubernetes.secret`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](#alerting) would show such a read, but a grant with no purpose is better not made |
 
 ### Storage
 
@@ -77,6 +78,7 @@ in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
 | `loki.podSecurityContext` | Adds `RuntimeDefault` seccomp at pod level, covering the rules sidecar too |
 | Retention with the compactor enabled | Old chunks are actually deleted |
 | `rulerConfig` | The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of `loki_rule` ConfigMaps, so `storage.type` is `local` rather than the bucket the chart would pick; `rule_path` is the ruler's scratch directory and must not be the rules directory |
+| `rbac.useExistingRole` with `rules-sidecar-rbac.yaml`, and `sidecar.rules.resource: configmap` | The rules are ConfigMaps, so the own ClusterRole grants those alone instead of the chart's ConfigMaps-and-Secrets one, for the same reason as Alloy's `rbac.rules` above; `resource: configmap` keeps the sidecar from listing Secrets it may not read |
 | `retention_stream` for the `findings-history` container | The daily [Trivy summary](trivy-operator.md#history) is a few lines and the only long-range record of findings, so that one stream stays a year |
 
 ### Alerting

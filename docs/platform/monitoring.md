@@ -104,6 +104,7 @@ namespace is on the list in `ruleNamespaceSelector`.
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](authentik.md#client-secrets) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
 | `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](authentik.md#when-authentik-is-down); never set `grafana.adminPassword` in Git |
+| `grafana.rbac.useExistingClusterRole` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so the sidecars' ClusterRole grants those alone instead of the chart's ConfigMaps-and-Secrets one, for the reason given with [Alloy's `rbac.rules`](logging.md#alloy-pipeline) |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
 | Prometheus and Grafana uncapped | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
@@ -134,10 +135,11 @@ its upstream tag.
 
 Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it
 describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named
-`<component>-grafana-dashboards`. The sidecar watches only the platform
-namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload
-cannot replace a dashboard; a component in a new namespace adds it there, and
-the `apps` project must not be able to deploy to it. Prefer the chart's own dashboard
+`<component>-grafana-dashboards`; a Secret carrying the label is not read. The
+sidecar watches only the platform namespaces listed in
+`sidecar.dashboards.searchNamespace`, so a workload cannot replace a
+dashboard; a component in a new namespace adds it there, and the `apps`
+project must not be able to deploy to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.
 

@@ -24,6 +24,11 @@ spec:
           grafana:
             enabled: true
 
+            rbac:
+              # The chart's ClusterRole reads Secrets; grafana-sidecar-rbac.yaml
+              # grants ConfigMaps alone. See docs/platform/monitoring.md#grafana
+              useExistingClusterRole: grafana-sidecar
+
             sidecar:
               resources:
                 requests:
@@ -31,9 +36,14 @@ spec:
                   memory: 112Mi
                 limits:
                   memory: 256Mi
+              # ConfigMaps only, so the sidecars never ask for Secrets their
+              # role does not grant.
+              datasources:
+                resource: configmap
               # The platform's namespaces that carry a dashboard; the datasource
               # sidecar watches only `monitoring`. See docs/platform/monitoring.md#adding-a-dashboard
               dashboards:
+                resource: configmap
                 searchNamespace:
                   - arc-systems
                   - argocd

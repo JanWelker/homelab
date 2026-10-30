@@ -10,144 +10,158 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
-    repoURL: https://grafana-community.github.io/helm-charts
-    chart: loki
-    targetRevision: 19.2.0
-    helm:
-      valuesObject:
-        deploymentMode: Monolithic
+  sources:
+    - repoURL: https://grafana-community.github.io/helm-charts
+      chart: loki
+      targetRevision: 19.2.0
+      helm:
+        valuesObject:
+          deploymentMode: Monolithic
 
-        loki:
-          # Here, not singleBinary.podSecurityContext: that key does not exist.
-          podSecurityContext:
-            fsGroup: 10001
-            fsGroupChangePolicy: OnRootMismatch
-            runAsGroup: 10001
-            runAsNonRoot: true
-            runAsUser: 10001
-            seccompProfile:
-              type: RuntimeDefault
-          auth_enabled: false
-          # No phone-home.
-          analytics:
-            reporting_enabled: false
-          commonConfig:
-            replication_factor: 1
-          schemaConfig:
-            configs:
-              - from: "2026-01-01"
-                store: tsdb
-                object_store: s3
-                schema: v13
-                index:
-                  prefix: loki_index_
-                  period: 24h
-          storage:
-            type: s3
-            bucketNames:
-              chunks: loki
-              ruler: loki
-            s3:
-              endpoint: rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
-              region: eu-central-1
-              accessKeyId: "${AWS_ACCESS_KEY_ID}"
-              secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
-              s3ForcePathStyle: true
-              insecure: true
-          limits_config:
-            retention_period: 30d
-            # A year of the daily Trivy summary; see docs/platform/trivy-operator.md#history
-            retention_stream:
-              - selector: '{namespace="trivy-system", container="findings-history"}'
-                priority: 1
-                period: 8760h
-            reject_old_samples: true
-            reject_old_samples_max_age: 168h
-            volume_enabled: true
-          compactor:
-            retention_enabled: true
-            delete_request_store: s3
-          storage_config:
-            tsdb_shipper:
-              active_index_directory: /var/loki/tsdb-index
-              cache_location: /var/loki/tsdb-cache
-          # Rules are ConfigMaps labelled loki_rule; see docs/platform/logging.md
-          rulerConfig:
-            alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
-            enable_alertmanager_v2: true
-            enable_api: true
-            ring:
-              kvstore:
-                store: inmemory
-            # Scratch space, distinct from the rules directory below.
-            rule_path: /var/loki/ruler-scratch
-            wal:
-              dir: /var/loki/ruler-wal
+          loki:
+            # Here, not singleBinary.podSecurityContext: that key does not exist.
+            podSecurityContext:
+              fsGroup: 10001
+              fsGroupChangePolicy: OnRootMismatch
+              runAsGroup: 10001
+              runAsNonRoot: true
+              runAsUser: 10001
+              seccompProfile:
+                type: RuntimeDefault
+            auth_enabled: false
+            # No phone-home.
+            analytics:
+              reporting_enabled: false
+            commonConfig:
+              replication_factor: 1
+            schemaConfig:
+              configs:
+                - from: "2026-01-01"
+                  store: tsdb
+                  object_store: s3
+                  schema: v13
+                  index:
+                    prefix: loki_index_
+                    period: 24h
             storage:
-              type: local
-              local:
-                directory: /rules
+              type: s3
+              bucketNames:
+                chunks: loki
+                ruler: loki
+              s3:
+                endpoint: rook-ceph-rgw-object-store.rook-ceph.svc.cluster.local
+                region: eu-central-1
+                accessKeyId: "${AWS_ACCESS_KEY_ID}"
+                secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+                s3ForcePathStyle: true
+                insecure: true
+            limits_config:
+              retention_period: 30d
+              # A year of the daily Trivy summary; see docs/platform/trivy-operator.md#history
+              retention_stream:
+                - selector: '{namespace="trivy-system", container="findings-history"}'
+                  priority: 1
+                  period: 8760h
+              reject_old_samples: true
+              reject_old_samples_max_age: 168h
+              volume_enabled: true
+            compactor:
+              retention_enabled: true
+              delete_request_store: s3
+            storage_config:
+              tsdb_shipper:
+                active_index_directory: /var/loki/tsdb-index
+                cache_location: /var/loki/tsdb-cache
+            # Rules are ConfigMaps labelled loki_rule; see docs/platform/logging.md
+            rulerConfig:
+              alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc.cluster.local:9093
+              enable_alertmanager_v2: true
+              enable_api: true
+              ring:
+                kvstore:
+                  store: inmemory
+              # Scratch space, distinct from the rules directory below.
+              rule_path: /var/loki/ruler-scratch
+              wal:
+                dir: /var/loki/ruler-wal
+              storage:
+                type: local
+                local:
+                  directory: /rules
 
-        singleBinary:
-          replicas: 1
-          # On singleBinary, not global, see docs/platform/logging.md
-          extraArgs:
-            - "-config.expand-env=true"
-          # Written by Rook when it provisions the ObjectBucketClaim.
-          extraEnvFrom:
-            - secretRef:
-                name: loki-bucket
-          persistence:
-            enabled: true
-            storageClass: rook-ceph-block
-            size: 10Gi
-          resources:
-            requests:
-              cpu: 100m
-              memory: 512Mi
-            limits:
-              memory: 2Gi
+          singleBinary:
+            replicas: 1
+            # On singleBinary, not global, see docs/platform/logging.md
+            extraArgs:
+              - "-config.expand-env=true"
+            # Written by Rook when it provisions the ObjectBucketClaim.
+            extraEnvFrom:
+              - secretRef:
+                  name: loki-bucket
+            persistence:
+              enabled: true
+              storageClass: rook-ceph-block
+              size: 10Gi
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
 
-        sidecar:
-          resources:
-            requests:
-              cpu: 10m
-              memory: 88Mi
-            limits:
-              memory: 192Mi
+          sidecar:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 88Mi
+              limits:
+                memory: 192Mi
+            rules:
+              # ConfigMaps only, so the sidecar never asks for Secrets its role
+              # does not grant; see docs/platform/logging.md#storage
+              resource: configmap
 
-        chunksCache:
-          enabled: false
-        resultsCache:
-          enabled: false
+          rbac:
+            # The chart's ClusterRole reads Secrets; rules-sidecar-rbac.yaml
+            # grants ConfigMaps alone.
+            useExistingRole: loki-rules-sidecar
 
-        # SimpleScalable-only components, and the smoke tests.
-        backend:
-          replicas: 0
-        read:
-          replicas: 0
-        write:
-          replicas: 0
-        gateway:
-          enabled: false
-        lokiCanary:
-          enabled: false
-        test:
-          enabled: false
+          chunksCache:
+            enabled: false
+          resultsCache:
+            enabled: false
 
-        monitoring:
-          # The chart relabels `job` to logging/loki.
-          serviceMonitor:
-            enabled: true
-          # The Loki mixin: dashboards, the recording rules they read and
-          # the alerts; see docs/platform/logging.md#alerting
-          dashboards:
-            enabled: true
-          rules:
-            enabled: true
-          alerts:
-            enabled: true
+          # SimpleScalable-only components, and the smoke tests.
+          backend:
+            replicas: 0
+          read:
+            replicas: 0
+          write:
+            replicas: 0
+          gateway:
+            enabled: false
+          lokiCanary:
+            enabled: false
+          test:
+            enabled: false
+
+          monitoring:
+            # The chart relabels `job` to logging/loki.
+            serviceMonitor:
+              enabled: true
+            # The Loki mixin: dashboards, the recording rules they read and
+            # the alerts; see docs/platform/logging.md#alerting
+            dashboards:
+              enabled: true
+            rules:
+              enabled: true
+            alerts:
+              enabled: true
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/loki
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: logging
