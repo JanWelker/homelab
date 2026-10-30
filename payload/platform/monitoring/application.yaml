@@ -297,6 +297,10 @@ spec:
                 memory: 56Mi
               limits:
                 memory: 128Mi
+            # Pod labels as kube_pod_labels series; the rules that read them
+            # sit with their component. See docs/platform/monitoring.md#scrape-targets
+            metricLabelsAllowlist:
+              - pods=[openbao-sealed]
             # CRD status fields as metrics; the rules that read them sit with
             # their component. See docs/platform/monitoring.md#scrape-targets
             rbac:

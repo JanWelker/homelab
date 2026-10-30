@@ -273,6 +273,11 @@ kubectl get externalsecret -A
 unsealed, `2` sealed and `1` unreachable. Every `ClusterSecretStore` should
 report `Ready=True`.
 
+`prometheusrule.yaml` mails `OpenBaoSealed` for each pod sealed for five
+minutes, read from the `openbao-sealed` pod label because a sealed pod still
+reports Ready, and `OpenBaoNoActiveNode` when no unsealed active pod is
+scraped at all.
+
 ## Pitfalls
 
 !!! warning "Sealed after every restart, and Ready does not mean unsealed"

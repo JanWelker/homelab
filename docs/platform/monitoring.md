@@ -90,6 +90,7 @@ namespace is on the list in `ruleNamespaceSelector`.
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](rook-ceph.md#monitoring) | |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
 | CRD status fields: HolmesGPT's HealthChecks, CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above |
+| Pod labels: OpenBao's `openbao-sealed` | kube-state-metrics' `metricLabelsAllowlist` in the chart values | Exported as `label_<name>` on `kube_pod_labels`; only listed labels, since every one adds a series per pod |
 
 !!! note
     A cluster provisioned before the kubeadm change keeps the old flags in its static pod manifests; until those nodes are reprovisioned the three control-plane targets stay down.
