@@ -323,6 +323,18 @@ enforcement is reversible by removing that label.
 2. Reboot one worker with no policy selecting it and watch it return `Ready`,
    as in [Rebooting a node](../operations/nodes.md#rebooting-a-node).
 
+3. Merge `host-firewall-audit.yaml`, a DaemonSet that puts each host endpoint
+   back in audit mode within seconds of an agent restart, because any restart
+   would otherwise start enforcing that node: a Renovate bump, a value change,
+   Kured. Every node must answer `Enabled` before the policy merges:
+
+    ```bash
+    for p in $(kubectl -n kube-system get pods -l k8s-app=cilium -o name); do
+      kubectl -n kube-system exec "$p" -c cilium-agent -- \
+        sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") | grep PolicyAuditMode'
+    done
+    ```
+
 ## Health check
 
 ```bash
