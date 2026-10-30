@@ -2939,8 +2939,8 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and <code>checksum/secret</code> restarts Grafana on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
 </tr>
 <tr>
-<td><code>grafana.rbac.useExistingClusterRole</code> with <code>grafana-sidecar-rbac.yaml</code>, and <code>sidecar.*.resource: configmap</code></td>
-<td>Dashboards and datasources are ConfigMaps, so the sidecars' ClusterRole grants those alone instead of the chart's ConfigMaps-and-Secrets one, for the reason given with <a href="../logging/#alloy-pipeline">Alloy's <code>rbac.rules</code></a></td>
+<td><code>grafana.rbac.create: false</code> with <code>grafana-sidecar-rbac.yaml</code>, and <code>sidecar.*.resource: configmap</code></td>
+<td>Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with <a href="../logging/#alloy-pipeline">Alloy's <code>rbac.rules</code></a>; the chart's binding is dropped rather than repointed because a <code>roleRef</code> is immutable</td>
 </tr>
 <tr>
 <td><code>Recreate</code> strategy</td>
