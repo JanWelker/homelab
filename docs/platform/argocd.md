@@ -56,6 +56,9 @@ and referenced **without** the `oci://` scheme (`ghcr.io/janwelker/charts` as
 the chart): Argo CD compares the two strings after normalising, and treats a
 `repoURL` with no scheme as OCI, so a public registry needs no repository
 Secret and no `enableOCI`.
+The `default` project Argo CD creates on install is declared in the same file
+with empty lists: it cannot be deleted, so an Application that names no
+project lands there and must be able to do nothing.
 
 ## Agent account
 

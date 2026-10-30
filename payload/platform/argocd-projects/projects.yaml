@@ -70,6 +70,10 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: "!holmesgpt"
       server: https://kubernetes.default.svc
+    - namespace: "!node-exporter"
+      server: https://kubernetes.default.svc
+    - namespace: "!gateway-system"
+      server: https://kubernetes.default.svc
   # What the workloads demonstrably need at cluster scope: their namespaces.
   clusterResourceWhitelist:
     - group: ""
@@ -112,3 +116,19 @@ spec:
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"
+---
+# Argo CD creates this project itself and refuses to delete it; an
+# Application that names no project lands here and must be able to do nothing.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+  annotations:
+    # Pruning an AppProject orphans every Application in it.
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  description: Locked; every Application belongs to apps, infra or system
+  sourceRepos: []
+  destinations: []
+  clusterResourceWhitelist: []
