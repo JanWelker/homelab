@@ -2898,6 +2898,11 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>kube-state-metrics' <code>customResourceState</code> config in the chart values, one <code>rbac.extraRules</code> entry per kind</td>
 <td>A <code>StateSet</code> per enum field and a <code>Gauge</code> per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above</td>
 </tr>
+<tr>
+<td>Pod labels: OpenBao's <code>openbao-sealed</code></td>
+<td>kube-state-metrics' <code>metricLabelsAllowlist</code> in the chart values</td>
+<td>Exported as <code>label_&lt;name&gt;</code> on <code>kube_pod_labels</code>; only listed labels, since every one adds a series per pod</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition note">

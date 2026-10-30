@@ -3322,6 +3322,10 @@ that is every session, token and platform OIDC client at once:</p>
 <code>HA Mode: active</code> on one pod with <code>standby</code> on the others; it exits <code>0</code>
 unsealed, <code>2</code> sealed and <code>1</code> unreachable. Every <code>ClusterSecretStore</code> should
 report <code>Ready=True</code>.</p>
+<p><code>prometheusrule.yaml</code> mails <code>OpenBaoSealed</code> for each pod sealed for five
+minutes, read from the <code>openbao-sealed</code> pod label because a sealed pod still
+reports Ready, and <code>OpenBaoNoActiveNode</code> when no unsealed active pod is
+scraped at all.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Sealed after every restart, and Ready does not mean unsealed</p>
