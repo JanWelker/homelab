@@ -249,6 +249,14 @@ are in [Quickstart step 12](../quickstart.md#setup).
    `authentik_policies.policybinding` with the application as `target`. An
    application with no binding is open to every Authentik account.
 
+### Adding a user
+
+1. Create the account under **Directory &rarr; Users**.
+2. Add it to `infra-users`, or to a role group from
+   [Groups and roles](#groups-and-roles), under **Directory &rarr; Groups**.
+   Membership is not blueprinted because that would put a username in the
+   repository, and only a superuser passes the bindings without it.
+
 ## Health check
 
 When every login fails, in this order:
