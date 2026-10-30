@@ -64,7 +64,10 @@ def fetch(args):
     seconds = {"h": 3600, "d": 86400, "m": 60}[args.since[-1]] * int(args.since[:-1])
     start = int(time.time() - seconds) * 10**9
     end = int(time.time()) * 10**9
-    query = '{job="hubble", verdict="AUDIT"}'
+    # Enforcing: each drop also arrives as its policy verdict (event type 5).
+    query = f'{{job="hubble", verdict="{args.verdict}"}}'
+    if args.verdict == "DROPPED":
+        query += ' |= `POLICY_DENIED` | json event="flow.event_type.type" | event != "5"'
     seen = 0
     while True:
         params = urllib.parse.urlencode({"query": query, "start": start, "end": end, "limit": 5000, "direction": "forward"})
@@ -77,7 +80,7 @@ def fetch(args):
         if len(entries) < 5000:
             break
         start = entries[-1][0] + 1
-    print(f"{seen} audit entries", file=sys.stderr)
+    print(f"{seen} {args.verdict} entries", file=sys.stderr)
 
 
 # ---------------------------------------------------------------- flows
@@ -89,7 +92,7 @@ def load_flows(path):
             continue
         rec = json.loads(line)
         flow = rec.get("flow", rec)
-        if flow.get("verdict") not in (None, "AUDIT"):
+        if flow.get("verdict") not in (None, "AUDIT", "DROPPED"):
             continue
         if flow.get("is_reply"):
             continue
@@ -382,8 +385,9 @@ def consolidate(args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    f = sub.add_parser("fetch", help="print the AUDIT entries from Loki as JSON lines")
+    f = sub.add_parser("fetch", help="print the AUDIT or DROPPED entries from Loki as JSON lines")
     f.add_argument("--since", default="7d", help="e.g. 7d, 12h, 30m")
+    f.add_argument("--verdict", default="AUDIT", choices=("AUDIT", "DROPPED"))
     f.add_argument("--loki", default="http://localhost:13100")
     f.set_defaults(func=fetch)
     p = sub.add_parser("propose", help="rules for every audited flow, grouped by policy file")

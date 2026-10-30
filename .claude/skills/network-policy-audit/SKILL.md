@@ -21,12 +21,17 @@ changes the cluster: the output is YAML for a pull request.
 ```bash
 export KUBECONFIG=$PWD/output/kubeconfig
 kubectl -n logging port-forward svc/loki 13100:3100 &
-uv run python .claude/skills/network-policy-audit/policy_audit.py fetch --since 7d > /tmp/audit.jsonl
+uv run python .claude/skills/network-policy-audit/policy_audit.py fetch --since 7d --verdict DROPPED > /tmp/audit.jsonl
 ```
 
-`fetch` pages `{job="hubble", verdict="AUDIT"}` out of Loki. Once
-`policyAuditMode` is off the same lines carry `verdict="DROPPED"` and
-`drop_reason_desc="POLICY_DENIED"`; feed them the same way. For the last
+The cluster enforces, so the verdict is `DROPPED`; `fetch` keeps the
+`POLICY_DENIED` drops and leaves out the policy-verdict copy (event type 5)
+Hubble sends with each. `--verdict AUDIT` reads an audit week. Most of a
+week's volume is history: group by workload, peer and port, and look only
+at groups whose last drop is after the latest fix merged. A connection with
+five to seven SYNs failed outright; one or two per connection is the
+FQDN first-SYN race, and a burst to pod IPs with a local CIDR identity
+(`16777216` and up) during a restart is the ipcache catching up. For the last
 few minutes without Loki, `hubble observe --verdict AUDIT -o json` produces
 the same records.
 
