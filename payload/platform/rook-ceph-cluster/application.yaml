@@ -19,6 +19,22 @@ spec:
         monitoring:
           enabled: true
           createPrometheusRules: true
+          # Containerd's images share the root filesystem and the kubelet only
+          # prunes them at 85% used, so the 5-day trend warned on every pull.
+          # Same threshold as mon_data_avail_warn below.
+          prometheusRuleOverrides:
+            CephNodeDiskspaceWarning:
+              for: 30m
+              expr: >-
+                (1 - node_filesystem_avail_bytes{mountpoint="/"}
+                / node_filesystem_size_bytes{mountpoint="/"}) * on (cluster, instance)
+                group_left (nodename) node_uname_info > 0.85
+              annotations:
+                summary: Root filesystem above 85% on {{ $labels.nodename }}
+                description: >-
+                  The kubelet garbage-collects images from 85% used and should
+                  have brought {{ $labels.nodename }} back below within minutes;
+                  something else is filling the root filesystem.
 
         toolbox:
           enabled: true
