@@ -1,7 +1,9 @@
 ---
 # The dashboard and datasource sidecars read grafana_dashboard and
 # grafana_datasource ConfigMaps. The chart's ClusterRole also reads every
-# Secret; grafana.rbac.useExistingClusterRole points its binding here instead.
+# Secret; with grafana.rbac.create false the chart renders no RBAC and this
+# binding replaces its own. A roleRef is immutable, so the chart's binding
+# could not be repointed.
 # See docs/platform/monitoring.md#grafana
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -11,3 +13,16 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana-sidecar
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: grafana-sidecar
+subjects:
+  - kind: ServiceAccount
+    name: kube-prometheus-stack-grafana
+    namespace: monitoring

@@ -27,7 +27,7 @@ spec:
             rbac:
               # The chart's ClusterRole reads Secrets; grafana-sidecar-rbac.yaml
               # grants ConfigMaps alone. See docs/platform/monitoring.md#grafana
-              useExistingClusterRole: grafana-sidecar
+              create: false
 
             sidecar:
               resources:
