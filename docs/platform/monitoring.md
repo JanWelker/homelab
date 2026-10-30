@@ -108,7 +108,7 @@ namespace is on the list in `ruleNamespaceSelector`.
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
 | Prometheus and Grafana uncapped | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
-| Alertmanager `automountServiceAccountToken: false` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway |
+| Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing |
 
 ### Dashboards
 

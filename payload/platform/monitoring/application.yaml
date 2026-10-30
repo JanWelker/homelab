@@ -205,6 +205,8 @@ spec:
 
             alertmanagerSpec:
               replicas: 2
+              # The operator sets the pod field and overrides the account's.
+              automountServiceAccountToken: false
               # Worker-only, so ScheduleAnyway; see
               # docs/platform/index.md#replica-placement
               topologySpreadConstraints:
