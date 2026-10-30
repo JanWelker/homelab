@@ -20,7 +20,7 @@ spec:
         schedule: "0 */2 * * *"
         successfulJobsHistoryLimit: 1
         failedJobsHistoryLimit: 1
-        # A failed Job keeps KubeJobFailed firing until it is deleted
+        # Kept a day for the logs, as long as KubeJobFailed looks at it
         ttlSecondsAfterFinished: 86400
 
         cmdOptions:
