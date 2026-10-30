@@ -47,6 +47,7 @@ data:
                     | user_username !~ "system:(apiserver|kube-controller-manager|kube-scheduler|node:.+)"
                     | user_username !~ "system:serviceaccount:(kube-system|rook-ceph|arc-systems):.+"
                     | user_username !~ "system:serviceaccount:argocd:argocd-(application-controller|applicationset-controller|server|notifications-controller|redis-secret-init)"
+                    | user_username != "system:serviceaccount:arc-runners:homelab-runner" or objectRef_namespace != "arc-jobs"
                     | user_username !~ "system:serviceaccount:(backup:velero-server|cert-manager:cert-manager(-cainjector|-webhook)?|cnpg-system:cloudnative-pg(-plugin-barman-cloud)?|external-secrets:external-secrets(-cert-controller)?|logging:(alloy|loki)|monitoring:kube-prometheus-stack-(grafana|kube-state-metrics|operator|admission)|trivy-system:trivy-operator)"
                     | label_format sa_namespace=`{{ regexReplaceAll "^system:serviceaccount:([^:]+):.+$" .user_username "${1}" }}`
                     | label_format own_namespace=`{{ if and (hasPrefix "system:serviceaccount:" .user_username) (eq .sa_namespace .objectRef_namespace) }}true{{ end }}`
@@ -128,7 +129,7 @@ data:
       - name: openbao-audit
         rules:
           # The server's own log lines share the stream: drop them before
-          # parsing, then compare the reader exactly.
+          # parsing, then match ESO's logins with an anchored pattern.
           - alert: OpenBaoSecretReadOutsideEso
             expr: |
               sum by (auth_display_name, request_path) (
@@ -141,7 +142,7 @@ data:
                     | __error__=""
                     | request_operation="read"
                     | request_path=~"kv/data/.+"
-                    | auth_display_name != "kubernetes-external-secrets-external-secrets-vault"
+                    | auth_display_name !~ "kubernetes-[a-z0-9]([-a-z0-9]*[a-z0-9])?-external-secrets-vault"
                   [10m]
                 )
               ) > 0
