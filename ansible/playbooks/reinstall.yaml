@@ -31,6 +31,10 @@
         quiet: true
       run_once: true # noqa: run-once
 
+    - name: Check the endpoint name against a running cluster
+      ansible.builtin.import_tasks: tasks/check_endpoint_host.yaml
+      when: pxe_default == 'install' and control_plane_endpoint_host != control_plane_vip
+
     # A reinstalled node has a new host key; see docs/operations/nodes.md
     - name: Forget the node's SSH host key
       ansible.builtin.command:

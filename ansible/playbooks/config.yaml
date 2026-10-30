@@ -13,6 +13,10 @@
       - template: butane_installer_config
         suffix: "-install"
   tasks:
+    - name: Check the endpoint name against a running cluster
+      ansible.builtin.import_tasks: tasks/check_endpoint_host.yaml
+      when: control_plane_endpoint_host != control_plane_vip
+
     - name: Ensure credentials directory exists
       ansible.builtin.file:
         path: "{{ playbook_dir }}/../../output/credentials"
@@ -56,7 +60,7 @@
         kubeadm_token: "{{ kubeadm_token }}"
         certificate_key: "{{ certificate_key }}"
         encryption_key: "{{ encryption_key }}"
-        control_plane_endpoint: "{{ control_plane_vip }}:6443"
+        control_plane_endpoint: "{{ control_plane_endpoint_host }}:6443"
       no_log: true
 
     - name: Create output directories

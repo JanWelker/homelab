@@ -6,6 +6,9 @@ all:
     control_plane_vip: "10.9.2.10"
     # Interface kube-vip advertises the VIP on
     control_plane_vip_interface: "eno1"
+    # The API endpoint nodes join and use. A name only on a fresh build; see
+    # docs/operations/control-plane-vip.md#endpoint-name
+    control_plane_endpoint_host: "{{ control_plane_vip }}"
     install_disk: "/dev/nvme0n1"
     # eBGP peer; payload/platform/cilium/bgp.yaml must match. See docs/adapting.md
     router_ip: "10.9.0.1"
