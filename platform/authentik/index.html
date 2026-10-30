@@ -1484,6 +1484,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#user-settings-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        User settings flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2606,6 +2617,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#user-settings-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        User settings flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3006,7 +3028,7 @@ placement</a>.</p>
 <tbody>
 <tr>
 <td><code>authentik.disable_update_check</code>, <code>authentik.disable_startup_analytics</code> and <code>authentik.avatars</code></td>
-<td>Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. <code>avatars</code> only seeds a fresh database: since 2024.2 the setting lives in <strong>System → Settings</strong>, and an existing install keeps calling Gravatar until it is set to <code>initials</code> there. Blueprints cannot set it; the ask for a config-level opt-out is <a href="https://github.com/goauthentik/authentik/issues/26470">goauthentik/authentik#26470</a>, implemented in <a href="https://github.com/goauthentik/authentik/pull/26471">PR #26471</a></td>
+<td>Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. <code>avatars</code> only seeds a fresh database: since 2024.2 the setting lives in <strong>System → Settings</strong>, and an existing install keeps calling Gravatar until it is set to <code>initials</code> there. Blueprints cannot set it: system settings are an internally managed model, and upstream declined a config-level override in <a href="https://github.com/goauthentik/authentik/issues/26470">goauthentik/authentik#26470</a></td>
 </tr>
 <tr>
 <td><code>authentik.web.base_url</code></td>
@@ -3082,6 +3104,15 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="user-settings-flow">User settings flow<a class="headerlink" href="#user-settings-flow" title="Permanent link">&para;</a></h3>
+<p>Nextcloud and Dependency-Track key their accounts on the <code>preferred_username</code>
+claim, so a user who could rename themselves could take over another's
+account. <code>05-user-settings.yaml</code> therefore gives the default brand its own
+user settings flow with no username field; a username changes only under
+<strong>Directory &rarr; Users</strong>. It replaces the brand's flow instead of editing
+the default one because the default blueprint rewrites its own objects on
+every upgrade, and because the <strong>System &rarr; Settings</strong> switch
+<code>default_user_change_username</code> is not a model a blueprint can set.</p>
 <h3 id="bootstrap-credentials">Bootstrap credentials<a class="headerlink" href="#bootstrap-credentials" title="Permanent link">&para;</a></h3>
 <p>Authentik's built-in bootstrap blueprint creates <code>akadmin</code> from
 <code>AUTHENTIK_BOOTSTRAP_PASSWORD</code> only while no <code>akadmin</code> exists, and reads

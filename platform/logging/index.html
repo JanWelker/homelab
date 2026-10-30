@@ -2879,7 +2879,7 @@ the mixin Grafana maintains, not rules written here.</p>
 <tr>
 <td><code>KubernetesAuditSecretReadByUser</code></td>
 <td>A Secret read by a person, or by a ServiceAccount outside its own namespace that is not on the allowlist of platform controllers</td>
-<td>A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, and a ServiceAccount reading its own namespace is what its Role is for</td>
+<td>A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, plus the runner's in <code>arc-jobs</code> only, where its <a href="../github-runners/#job-pods">container hook</a> keeps each job's environment, and a ServiceAccount reading its own namespace is what its Role is for</td>
 </tr>
 <tr>
 <td><code>KubernetesAuditRbacBindingChanged</code></td>
@@ -2898,8 +2898,8 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>OpenBaoSecretReadOutsideEso</code></td>
-<td>A <code>kv/data/</code> read from OpenBao by any token whose display name is not exactly that of ESO's Kubernetes login</td>
-<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader, and a token created by hand is prefixed <code>token-</code>, so it cannot borrow that name</td>
+<td>A <code>kv/data/</code> read from OpenBao by any token whose display name is not <code>kubernetes-&lt;namespace&gt;-external-secrets-vault</code>, ESO's login for one of its <a href="../openbao/#kubernetes-auth">stores</a></td>
+<td><a href="../openbao/#audit-devices">OpenBao's audit device</a> writes to stdout; ESO is the only day-to-day reader, every Kubernetes role is bound to that ServiceAccount name, and a token created by hand is prefixed <code>token-</code>, so it cannot borrow the name</td>
 </tr>
 <tr>
 <td><code>TetragonSudoInContainer</code></td>
