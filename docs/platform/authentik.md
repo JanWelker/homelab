@@ -101,7 +101,7 @@ placement](index.md#replica-placement).
 
 | Setting | Why |
 | --- | --- |
-| `authentik.disable_update_check`, `authentik.disable_startup_analytics` and `authentik.avatars` | Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. `avatars` only seeds a fresh database: since 2024.2 the setting lives in **System → Settings**, and an existing install keeps calling Gravatar until it is set to `initials` there. Blueprints cannot set it; the ask for a config-level opt-out is [goauthentik/authentik#26470](https://github.com/goauthentik/authentik/issues/26470), implemented in [PR #26471](https://github.com/goauthentik/authentik/pull/26471) |
+| `authentik.disable_update_check`, `authentik.disable_startup_analytics` and `authentik.avatars` | Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. `avatars` only seeds a fresh database: since 2024.2 the setting lives in **System → Settings**, and an existing install keeps calling Gravatar until it is set to `initials` there. Blueprints cannot set it: system settings are an internally managed model, and upstream declined a config-level override in [goauthentik/authentik#26470](https://github.com/goauthentik/authentik/issues/26470) |
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
@@ -126,6 +126,17 @@ against a provider must tolerate it not existing yet.
 | The mount entry and `secret-generation` | `application.yaml` | One projected-volume source per workload; a new credential needs the worker restarted |
 | The outpost's `providers:` list | `blueprints.yaml` | It replaces one global object; two repositories writing it would overwrite each other |
 | `referencegrant.yaml` | Here | A proxied workload's route needs granting from this side |
+
+### User settings flow
+
+Nextcloud and Dependency-Track key their accounts on the `preferred_username`
+claim, so a user who could rename themselves could take over another's
+account. `05-user-settings.yaml` therefore gives the default brand its own
+user settings flow with no username field; a username changes only under
+**Directory &rarr; Users**. It replaces the brand's flow instead of editing
+the default one because the default blueprint rewrites its own objects on
+every upgrade, and because the **System &rarr; Settings** switch
+`default_user_change_username` is not a model a blueprint can set.
 
 ### Bootstrap credentials
 
