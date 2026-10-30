@@ -55,6 +55,10 @@ redis-ha:
         memory: 128Mi
       limits:
         memory: 320Mi
+    # HAProxy resolves the announce Services over DNS; the chart's Role goes
+    # unused. See docs/platform/security-policies.md#default-serviceaccount-tokens
+    serviceAccount:
+      automountToken: false
   splitBrainDetection:
     resources:
       requests:

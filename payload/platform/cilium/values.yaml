@@ -64,6 +64,12 @@ envoy:
     limits:
       memory: 128Mi
 
+# Envoy takes its config from the agent over a socket; nothing binds its
+# ServiceAccount. See docs/platform/security-policies.md#default-serviceaccount-tokens
+serviceAccounts:
+  envoy:
+    automount: false
+
 # The chart creates cilium-secrets, so its Pod Security labels are set here;
 # see docs/platform/security-policies.md#pod-security-admission
 secretsNamespaceLabels:

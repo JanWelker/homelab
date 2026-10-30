@@ -142,9 +142,15 @@ API through `default` is already a misconfiguration, so
 `default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it
 in every namespace with nothing to preserve, empty namespaces included. Left
 out: `kube-system`, where the control plane authenticates with client
-certificates and "very likely fine" is not the standard, and `authentik`,
-where `authentik-server` sets no `serviceAccountName` — an upstream chart
-default, to be fixed at the source.
+certificates and "very likely fine" is not the standard. `authentik-server`
+runs on `default` by chart default and is covered: Authentik's Kubernetes
+calls are worker tasks, which run under the `authentik` account.
+
+The same rule applies to a chart workload whose own ServiceAccount has no
+binding — Alertmanager, Cilium's Envoy and Argo CD's HAProxy switch the mount
+off in their values — unless the process needs the in-cluster config to start
+at all ([the External Secrets webhook](external-secrets.md#configuration)) or
+the chart offers no switch (Rook's `rook-ceph-default` and `rook-ceph-rgw`).
 
 ### Agent RBAC
 
