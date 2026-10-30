@@ -81,7 +81,8 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
-        # Host only: in a container a shadow read is PAM in the image.
+        # Host only: in a container a shadow read is PAM in the image. PAM's
+        # own helper reads it on every login and sudo; its writes still count.
         - matchArgs:
             - index: 0
               operator: Equal
@@ -92,6 +93,10 @@ spec:
               operator: In
               values:
                 - host_ns
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - /sbin/unix_chkpwd
           matchActions:
             - action: Post
               rateLimit: 1m
