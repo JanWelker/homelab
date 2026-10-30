@@ -126,6 +126,22 @@ spec:
                   severity: critical
                 annotations:
                   message: Velero schedule {{ $labels.schedule }} has had no successful backup for more than 36 hours.
+              # Kured's reboot gate, not a problem to mail; ends on its own after
+              # six hours. See docs/platform/kured.md#configuration
+              - alert: VeleroBackupInProgress
+                expr: >-
+                  (
+                    sum by (pod) (increase(velero_backup_attempt_total[6h]))
+                    - sum by (pod) (increase(velero_backup_success_total[6h]))
+                    - sum by (pod) (increase(velero_backup_failure_total[6h]))
+                    - sum by (pod) (increase(velero_backup_partial_failure_total[6h]))
+                    > 0.5
+                  )
+                  and on (pod) up{job="velero"} == 1
+                labels:
+                  severity: info
+                annotations:
+                  message: Velero pod {{ $labels.pod }} has a backup running; Kured holds reboots until it ends.
 
         schedules:
           daily:

@@ -55,6 +55,7 @@ login and recipient are e-mail addresses that do not belong in Git.
 | `smtp_from` equals the login | mailbox.org refuses a sender the login does not own |
 | Grouping by `namespace`, a group re-sent at most every 30 minutes and repeated daily; `critical` every 5 minutes and repeated every 3 hours; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to 300–700 a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together |
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender |
+| `VeleroBackupInProgress` routed to `null` | It fires for every nightly backup as [Kured's gate](kured.md#configuration), not as a problem |
 | Inhibit rules repeated from the chart defaults | A supplied config replaces the whole document, so nothing is inherited |
 | Every templated value through `toJson` | A password containing `:`, `#` or a quote cannot break the rendered file |
 | `externalUrl` on both `prometheusSpec` and `alertmanagerSpec` in `application.yaml` | The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside the cluster can open |
