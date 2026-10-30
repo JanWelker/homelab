@@ -223,7 +223,7 @@ objects through kube-state-metrics'
 - **A full volume is not resized by the operator.** An instance stopped with
   `no free disk space for WALs` keeps its PVC size although `storage.size`
   grew; patch that PVC to the new size by hand, as
-  [upstream documents](https://cloudnative-pg.io/documentation/current/instance_manager/#disk-full-failure).
+  [upstream documents](https://cloudnative-pg.io/documentation/current/instance_manager/) under "Disk full failure".
 - **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from
   the bucket; it never rewinds a running one. Give the new cluster its own
   `ObjectStore` destination, or its archive would mix with the one it was
