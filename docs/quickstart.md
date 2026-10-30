@@ -317,26 +317,31 @@ the same L2 network segment as the nodes.
     re-checked every few minutes, so that can take that long to start.
 
 12. **Create the first administrator**:
-    Authentik ships the built-in `akadmin` account; its password is the
-    `bootstrap-password` its `PushSecret` generated. Read it back out of
-    OpenBao (needs a token — `bao login -method=userpass username=operator` inside the pod, or the port-forward in
+    Authentik ships the built-in `akadmin` account, and the blueprints switch
+    it off as soon as it exists — see
+    [Bootstrap credentials](platform/authentik.md#bootstrap-credentials).
+    Switch it on, and read its password back out of OpenBao (needs a token —
+    `bao login -method=userpass username=operator` inside the pod, or the port-forward in
     [OpenBao &rarr; Authenticating locally](platform/openbao.md#authenticating-locally)):
 
     ```bash
+    kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
+      'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'
     kubectl -n openbao exec openbao-0 -- \
       bao kv get -mount=kv -field=bootstrap-password authentik/config
     ```
 
     Log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
-    `akadmin`, then add yourself to the groups listed in
+    `akadmin`; the first login enrols a second factor. Create a personal
+    account in *Directory &rarr; Users* and put it in `authentik Admins` and
+    the groups listed in
     [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles)
     under *Directory &rarr; Groups*; the blueprints create them.
 
     ArgoCD's `policy.default` is empty, so an SSO login that lands on an
     ArgoCD with no applications means a missing group, not a broken
-    integration. Then create a personal account in *Directory &rarr; Users*,
-    put it in the groups, and keep `akadmin` and its `bootstrap-password` in
-    OpenBao as the break-glass identity — see
+    integration. Then switch `akadmin` off again with the same command and
+    `is_active=False`; when Authentik itself is unavailable, see
     [When Authentik is down](platform/authentik.md#when-authentik-is-down).
 
 ## Single-node clusters

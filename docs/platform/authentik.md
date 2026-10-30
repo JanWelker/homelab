@@ -138,15 +138,51 @@ the default one because the default blueprint rewrites its own objects on
 every upgrade, and because the **System &rarr; Settings** switch
 `default_user_change_username` is not a model a blueprint can set.
 
+### Authentication flow
+
+`auth.k8s.wlkr.ch` is reachable from the Internet, and the default
+authentication flow lets a user without a device in on a password alone.
+`06-authentication.yaml` gives the default brand its own flow out of the
+default identification, password and login stages, with two additions. It is
+an own flow for the same reason as the [user settings
+flow](#user-settings-flow): the default blueprint rewrites its own objects on
+every upgrade.
+
+| Addition | Why |
+| --- | --- |
+| Authenticator validation with `not_configured_action: configure`; TOTP and WebAuthn as setup stages, static tokens accepted as a device class | A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under **Settings &rarr; MFA devices**, which is why they are not offered as the first device |
+| A deny stage after identification, selected by a reputation policy on the address and the username with threshold `-5` | Every failed login scores both `-1`, so after five an address or a username is refused for a day (`AUTHENTIK_REPUTATION__EXPIRY`); the password stage's own five-attempt cancel only ends the current attempt. The policy *passes* for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known |
+
+To lift a lockout early, delete the score under **Customization &rarr;
+Policies &rarr; Reputation scores**.
+
 ### Bootstrap credentials
 
 Authentik's built-in bootstrap blueprint creates `akadmin` from
 `AUTHENTIK_BOOTSTRAP_PASSWORD` only while no `akadmin` exists, and reads
-nothing from it afterwards.
+nothing from it afterwards. `06-authentication.yaml` then sets the account
+`is_active: false`: a password-only superuser that never logs in is the one
+worth guessing, and a disabled one authenticates nowhere. The blueprint
+touches only `is_active`, so the password and the `authentik Admins`
+membership stay for break-glass.
+
+Break-glass is `ak shell` from a cluster-admin kubeconfig, which nothing
+in Authentik can lock out:
+
+```bash
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
+  'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'
+```
+
+Then log in with `bootstrap-password` from OpenBao — see [Generated
+secrets](openbao.md#generated-secrets) — enrol a second factor like any
+user, and switch the account off again with the same command and
+`is_active=False`: a blueprint is re-applied only when its file changes, so
+nothing switches it off for you.
 
 | Variable | Set | Why |
 | --- | --- | --- |
-| `AUTHENTIK_BOOTSTRAP_PASSWORD` | Always, from `bootstrap-password` | Without it a fresh install creates `akadmin` with no usable password, and the initial-setup flow that sets one is open to whoever reaches `auth.k8s.wlkr.ch` first. Blanking it after the first start buys nothing: the account keeps the password, and it stays the break-glass identity |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD` | Always, from `bootstrap-password` | Without it a fresh install creates `akadmin` with no usable password, and the initial-setup flow that sets one is open to whoever reaches `auth.k8s.wlkr.ch` first. Blanking it after the first start buys nothing: the account keeps the password |
 | `AUTHENTIK_BOOTSTRAP_TOKEN` | Never | It mints a non-expiring superuser API token, `authentik-bootstrap-token`, which nothing here uses, and while the variable is set the blueprint recreates the token whenever it is deleted |
 
 A cluster installed before the token was dropped still holds it: delete
@@ -195,8 +231,9 @@ that signs every session and token, and External Secrets fails an
 `ExternalSecret` whole when one key is missing, so a shared one would leave
 a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
-Then log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
-`akadmin` with `bootstrap-password` and add your user to the groups above.
+The first administrator is created through `akadmin`, switched on for the
+occasion as in [Bootstrap credentials](#bootstrap-credentials); the steps
+are in [Quickstart step 12](../quickstart.md#setup).
 
 ### Adding an application
 

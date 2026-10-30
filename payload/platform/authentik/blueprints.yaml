@@ -148,6 +148,139 @@ data:
         attrs:
           flow_user_settings: !KeyOf user-settings-flow
 
+  # Second factor required, lockout by reputation, akadmin off; see docs/platform/authentik.md#authentication-flow
+  06-authentication.yaml: |
+    version: 1
+    metadata:
+      name: homelab-authentication
+    entries:
+      # The default stages, setup flows and brand must exist before this flow can use them.
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - Authentication flow
+          required: false
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - TOTP MFA setup flow
+          required: false
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - WebAuthn MFA setup flow
+          required: false
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - Static MFA setup flow
+          required: false
+      - model: authentik_blueprints.metaapplyblueprint
+        attrs:
+          identifiers:
+            name: Default - Brand
+          required: false
+      - model: authentik_flows.flow
+        state: present
+        id: authentication-flow
+        identifiers:
+          slug: homelab-authentication
+        attrs:
+          name: Authentication
+          title: Sign in
+          designation: authentication
+          authentication: none
+      # Passes when the score of the address or the identified user is at or
+      # below the threshold, so it selects the deny stage rather than the flow.
+      - model: authentik_policies_reputation.reputationpolicy
+        state: present
+        id: authentication-reputation
+        identifiers:
+          name: homelab-authentication-reputation
+        attrs:
+          check_ip: true
+          check_username: true
+          threshold: -5
+      - model: authentik_stages_deny.denystage
+        state: present
+        id: authentication-deny
+        identifiers:
+          name: homelab-authentication-deny
+        attrs:
+          deny_message: Too many failed logins from this address or for this user. Try again tomorrow.
+      # A user without a device enrols one here instead of being let through.
+      - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+        state: present
+        id: authentication-mfa-validation
+        identifiers:
+          name: homelab-authentication-mfa-validation
+        attrs:
+          not_configured_action: configure
+          device_classes:
+            - totp
+            - webauthn
+            - static
+          configuration_stages:
+            - !Find [authentik_stages_authenticator_totp.authenticatortotpstage, [name, default-authenticator-totp-setup]]
+            - !Find [authentik_stages_authenticator_webauthn.authenticatorwebauthnstage, [name, default-authenticator-webauthn-setup]]
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !Find [authentik_stages_identification.identificationstage, [name, default-authentication-identification]]
+          order: 10
+      # Evaluated once the user is identified, so the username counts as well as the address.
+      - model: authentik_flows.flowstagebinding
+        state: present
+        id: authentication-deny-binding
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !KeyOf authentication-deny
+          order: 15
+        attrs:
+          evaluate_on_plan: false
+          re_evaluate_policies: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-deny-binding
+          policy: !KeyOf authentication-reputation
+        attrs:
+          order: 0
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
+          order: 20
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !KeyOf authentication-mfa-validation
+          order: 30
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+          order: 100
+      - model: authentik_brands.brand
+        state: present
+        identifiers:
+          default: true
+        attrs:
+          flow_authentication: !KeyOf authentication-flow
+      # Only while akadmin exists: the bootstrap blueprint creates it, this one switches it off.
+      - model: authentik_core.user
+        state: present
+        conditions:
+          - !Find [authentik_core.user, [username, akadmin]]
+        identifiers:
+          username: akadmin
+        attrs:
+          is_active: false
+
   10-oidc-argocd.yaml: |
     version: 1
     metadata:
