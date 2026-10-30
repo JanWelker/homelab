@@ -5,8 +5,8 @@ metadata:
   name: etcd-defrag
   namespace: backup
 spec:
-  # Sunday 03:30: clear of the etcd backup at 01:00 and Velero at 02:00
-  schedule: "30 3 * * 0"
+  # Nightly, clear of the etcd backup at 01:00 and Velero at 02:00
+  schedule: "30 3 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2
   failedJobsHistoryLimit: 2
