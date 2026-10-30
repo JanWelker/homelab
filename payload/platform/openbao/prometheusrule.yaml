@@ -1,0 +1,39 @@
+---
+# A sealed pod still reports Ready, and only the active pod is scraped, so
+# the seal state comes from the pod label OpenBao's service registration sets.
+# See docs/platform/openbao.md#health-check
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: openbao-seal
+  namespace: openbao
+  labels:
+    app.kubernetes.io/name: openbao
+spec:
+  groups:
+    - name: openbao-seal
+      rules:
+        - alert: OpenBaoSealed
+          expr: |
+            kube_pod_labels{namespace="openbao", label_openbao_sealed="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: OpenBao pod {{ $labels.pod }} is sealed
+            description: >-
+              {{ $labels.pod }} has been sealed for five minutes, usually after
+              a restart. It serves nothing and does not count towards the Raft
+              quorum until it is unsealed with make bao-unseal.
+        - alert: OpenBaoNoActiveNode
+          expr: |
+            absent(vault_core_unsealed{namespace="openbao"} == 1)
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: No unsealed active OpenBao node
+            description: >-
+              Prometheus has scraped no unsealed active OpenBao pod for five
+              minutes. No ExternalSecret resolves until make bao-unseal; see
+              docs/platform/openbao.md#recovery.
