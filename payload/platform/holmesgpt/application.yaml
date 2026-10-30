@@ -100,6 +100,9 @@ spec:
             # Claude 5.5 rejects the parameter; "none" sends none at all.
             - name: TEMPERATURE
               value: none
+            # LiteLLM's bundled price list instead of a fetch from GitHub at start.
+            - name: LITELLM_LOCAL_MODEL_COST_MAP
+              value: "True"
             - name: ARGOCD_SERVER
               value: argocd-server.argocd.svc:80
             - name: ARGOCD_OPTS
