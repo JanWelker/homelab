@@ -2939,6 +2939,10 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and <code>checksum/secret</code> restarts Grafana on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
 </tr>
 <tr>
+<td><code>grafana.rbac.useExistingClusterRole</code> with <code>grafana-sidecar-rbac.yaml</code>, and <code>sidecar.*.resource: configmap</code></td>
+<td>Dashboards and datasources are ConfigMaps, so the sidecars' ClusterRole grants those alone instead of the chart's ConfigMaps-and-Secrets one, for the reason given with <a href="../logging/#alloy-pipeline">Alloy's <code>rbac.rules</code></a></td>
+</tr>
+<tr>
 <td><code>Recreate</code> strategy</td>
 <td>The dashboard PVC is RWO; under <code>RollingUpdate</code> the new pod waits for a volume the old pod releases only once the new one is Ready, parking on <code>FailedAttachVolume</code></td>
 </tr>
@@ -2951,8 +2955,8 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus</td>
 </tr>
 <tr>
-<td>Alertmanager <code>automountServiceAccountToken: false</code></td>
-<td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway</td>
+<td>Alertmanager <code>automountServiceAccountToken: false</code>, on the ServiceAccount and in <code>alertmanagerSpec</code></td>
+<td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing</td>
 </tr>
 </tbody>
 </table>
@@ -3025,10 +3029,11 @@ its upstream tag.</p>
 <h3 id="adding-a-dashboard">Adding a dashboard<a class="headerlink" href="#adding-a-dashboard" title="Permanent link">&para;</a></h3>
 <p>Add a ConfigMap labelled <code>grafana_dashboard: "1"</code> next to the component it
 describes, in a file named <code>grafana-dashboards.yaml</code> and a ConfigMap named
-<code>&lt;component&gt;-grafana-dashboards</code>. The sidecar watches only the platform
-namespaces listed in <code>sidecar.dashboards.searchNamespace</code>, so a workload
-cannot replace a dashboard; a component in a new namespace adds it there, and
-the <code>apps</code> project must not be able to deploy to it. Prefer the chart's own dashboard
+<code>&lt;component&gt;-grafana-dashboards</code>; a Secret carrying the label is not read. The
+sidecar watches only the platform namespaces listed in
+<code>sidecar.dashboards.searchNamespace</code>, so a workload cannot replace a
+dashboard; a component in a new namespace adds it there, and the <code>apps</code>
+project must not be able to deploy to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
 <h3 id="growing-the-prometheus-volume">Growing the Prometheus volume<a class="headerlink" href="#growing-the-prometheus-volume" title="Permanent link">&para;</a></h3>

@@ -2717,7 +2717,10 @@ and referenced <strong>without</strong> the <code>oci://</code> scheme (<code>gh
 <code>sourceRepos</code> entry and as the Application's <code>repoURL</code>, with <code>chart:</code> naming
 the chart): Argo CD compares the two strings after normalising, and treats a
 <code>repoURL</code> with no scheme as OCI, so a public registry needs no repository
-Secret and no <code>enableOCI</code>.</p>
+Secret and no <code>enableOCI</code>.
+The <code>default</code> project Argo CD creates on install is declared in the same file
+with empty lists: it cannot be deleted, so an Application that names no
+project lands there and must be able to do nothing.</p>
 <h2 id="agent-account">Agent account<a class="headerlink" href="#agent-account" title="Permanent link">&para;</a></h2>
 <p>The <code>claude</code> account is the in-cluster Claude Code agents' API identity. It
 may read everything <code>role:readonly</code> reads, <code>argocd app get --refresh</code>

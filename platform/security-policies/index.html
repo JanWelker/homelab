@@ -3066,9 +3066,14 @@ API through <code>default</code> is already a misconfiguration, so
 <code>default-serviceaccounts.yaml</code> sets <code>automountServiceAccountToken: false</code> on it
 in every namespace with nothing to preserve, empty namespaces included. Left
 out: <code>kube-system</code>, where the control plane authenticates with client
-certificates and "very likely fine" is not the standard, and <code>authentik</code>,
-where <code>authentik-server</code> sets no <code>serviceAccountName</code> — an upstream chart
-default, to be fixed at the source.</p>
+certificates and "very likely fine" is not the standard. <code>authentik-server</code>
+runs on <code>default</code> by chart default and is covered: Authentik's Kubernetes
+calls are worker tasks, which run under the <code>authentik</code> account.</p>
+<p>The same rule applies to a chart workload whose own ServiceAccount has no
+binding — Alertmanager, Cilium's Envoy and Argo CD's HAProxy switch the mount
+off in their values — unless the process needs the in-cluster config to start
+at all (<a href="../external-secrets/#configuration">the External Secrets webhook</a>) or
+the chart offers no switch (Rook's <code>rook-ceph-default</code> and <code>rook-ceph-rgw</code>).</p>
 <h3 id="agent-rbac">Agent RBAC<a class="headerlink" href="#agent-rbac" title="Permanent link">&para;</a></h3>
 <p><code>claude-agent-rbac.yaml</code> gives the in-cluster Claude Code agents two
 ClusterRoles for the <code>claude-reader</code> and <code>claude-writer</code> ServiceAccounts of the

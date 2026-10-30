@@ -1495,6 +1495,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2628,6 +2639,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Authentication flow
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3113,10 +3135,52 @@ user settings flow with no username field; a username changes only under
 the default one because the default blueprint rewrites its own objects on
 every upgrade, and because the <strong>System &rarr; Settings</strong> switch
 <code>default_user_change_username</code> is not a model a blueprint can set.</p>
+<h3 id="authentication-flow">Authentication flow<a class="headerlink" href="#authentication-flow" title="Permanent link">&para;</a></h3>
+<p><code>auth.k8s.wlkr.ch</code> is reachable from the Internet, and the default
+authentication flow lets a user without a device in on a password alone.
+<code>06-authentication.yaml</code> gives the default brand its own flow out of the
+default identification, password and login stages, with two additions. It is
+an own flow for the same reason as the <a href="#user-settings-flow">user settings
+flow</a>: the default blueprint rewrites its own objects on
+every upgrade.</p>
+<table>
+<thead>
+<tr>
+<th>Addition</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Authenticator validation with <code>not_configured_action: configure</code>; TOTP and WebAuthn as setup stages, static tokens accepted as a device class</td>
+<td>A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under <strong>Settings &rarr; MFA devices</strong>, which is why they are not offered as the first device</td>
+</tr>
+<tr>
+<td>A deny stage after identification, selected by a reputation policy on the address and the username with threshold <code>-5</code></td>
+<td>Every failed login scores both <code>-1</code>, so after five an address or a username is refused for a day (<code>AUTHENTIK_REPUTATION__EXPIRY</code>); the password stage's own five-attempt cancel only ends the current attempt. The policy <em>passes</em> for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known</td>
+</tr>
+</tbody>
+</table>
+<p>To lift a lockout early, delete the score under <strong>Customization &rarr;
+Policies &rarr; Reputation scores</strong>.</p>
 <h3 id="bootstrap-credentials">Bootstrap credentials<a class="headerlink" href="#bootstrap-credentials" title="Permanent link">&para;</a></h3>
 <p>Authentik's built-in bootstrap blueprint creates <code>akadmin</code> from
 <code>AUTHENTIK_BOOTSTRAP_PASSWORD</code> only while no <code>akadmin</code> exists, and reads
-nothing from it afterwards.</p>
+nothing from it afterwards. <code>06-authentication.yaml</code> then sets the account
+<code>is_active: false</code>: a password-only superuser that never logs in is the one
+worth guessing, and a disabled one authenticates nowhere. The blueprint
+touches only <code>is_active</code>, so the password and the <code>authentik Admins</code>
+membership stay for break-glass.</p>
+<p>Break-glass is <code>ak shell</code> from a cluster-admin kubeconfig, which nothing
+in Authentik can lock out:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/authentik-server<span class="w"> </span>-c<span class="w"> </span>server<span class="w"> </span>--<span class="w"> </span>ak<span class="w"> </span>shell<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="s1">'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'</span>
+</span></code></pre></div>
+<p>Then log in with <code>bootstrap-password</code> from OpenBao — see <a href="../openbao/#generated-secrets">Generated
+secrets</a> — enrol a second factor like any
+user, and switch the account off again with the same command and
+<code>is_active=False</code>: a blueprint is re-applied only when its file changes, so
+nothing switches it off for you.</p>
 <table>
 <thead>
 <tr>
@@ -3129,7 +3193,7 @@ nothing from it afterwards.</p>
 <tr>
 <td><code>AUTHENTIK_BOOTSTRAP_PASSWORD</code></td>
 <td>Always, from <code>bootstrap-password</code></td>
-<td>Without it a fresh install creates <code>akadmin</code> with no usable password, and the initial-setup flow that sets one is open to whoever reaches <code>auth.k8s.wlkr.ch</code> first. Blanking it after the first start buys nothing: the account keeps the password, and it stays the break-glass identity</td>
+<td>Without it a fresh install creates <code>akadmin</code> with no usable password, and the initial-setup flow that sets one is open to whoever reaches <code>auth.k8s.wlkr.ch</code> first. Blanking it after the first start buys nothing: the account keeps the password</td>
 </tr>
 <tr>
 <td><code>AUTHENTIK_BOOTSTRAP_TOKEN</code></td>
@@ -3199,8 +3263,9 @@ each read by its own <code>secrets-&lt;workload&gt;.yaml</code>, mounted <code>o
 that signs every session and token, and External Secrets fails an
 <code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
 a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
-<p>Then log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
-<code>akadmin</code> with <code>bootstrap-password</code> and add your user to the groups above.</p>
+<p>The first administrator is created through <code>akadmin</code>, switched on for the
+occasion as in <a href="#bootstrap-credentials">Bootstrap credentials</a>; the steps
+are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <h3 id="adding-an-application">Adding an application<a class="headerlink" href="#adding-an-application" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Generate its client credentials into OpenBao with a <code>PushSecret</code> beside
@@ -3220,22 +3285,22 @@ a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.
 <ol>
 <li>
 <p>Server and worker are Ready and the database is healthy:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>get<span class="w"> </span>pods,clusters
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>get<span class="w"> </span>pods,clusters
 </span></code></pre></div>
 </li>
 <li>
 <p>The discovery document names the one hostname as <code>issuer</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://auth.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.issuer
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>https://auth.k8s.wlkr.ch/application/o/argocd/.well-known/openid-configuration<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.issuer
 </span></code></pre></div>
 </li>
 <li>
 <p>The embedded outpost is healthy (<code>Outposts</code> in the admin UI, or):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>outpost<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-server<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>outpost<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
 </span></code></pre></div>
 </li>
 <li>
 <p>The worker applied the blueprints — a failed one names its file:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>blueprint<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span>logs<span class="w"> </span>deploy/authentik-worker<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>blueprint<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail
 </span></code></pre></div>
 </li>
 </ol>
@@ -3265,15 +3330,15 @@ a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.
 <p>Single sign-on is a single point of failure for logging in at all. The ArgoCD
 path needs a working <code>kubectl</code>, so keep a kubeconfig off-cluster.</p>
 <p><strong>ArgoCD</strong> — re-enable the local admin account:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
 </span></code></pre></div>
 <p><strong>Grafana</strong> — the login form is hidden, not removed: the admin account works
 through the API, and <code>GF_AUTH_DISABLE_LOGIN_FORM=false</code> brings the form back.</p>
 <p><strong>Proxied dashboards</strong> have no bypass; port-forward instead:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
 </span></code></pre></div>
 <h3 id="argocds-api-key-account">ArgoCD's API key account<a class="headerlink" href="#argocds-api-key-account" title="Permanent link">&para;</a></h3>
 <p>Disabling the local admin also removes its <code>apiKey</code> capability. If a token is
@@ -3281,13 +3346,13 @@ needed, add an account scoped to what the token is for rather than
 re-enabling admin:</p>
 <p>The <code>claude</code> account is one, for the in-cluster agents; see
 <a href="../argocd/#agent-account">Agent account</a>. The shape:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">configs</span><span class="p">:</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">configs</span><span class="p">:</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
 </span></code></pre></div>
 
 

@@ -2937,22 +2937,27 @@ re-checked every few minutes, so that can take that long to start.</p>
 </li>
 <li>
 <p><strong>Create the first administrator</strong>:
-    Authentik ships the built-in <code>akadmin</code> account; its password is the
-    <code>bootstrap-password</code> its <code>PushSecret</code> generated. Read it back out of
-    OpenBao (needs a token — <code>bao login -method=userpass username=operator</code> inside the pod, or the port-forward in
+    Authentik ships the built-in <code>akadmin</code> account, and the blueprints switch
+    it off as soon as it exists — see
+    <a href="../platform/authentik/#bootstrap-credentials">Bootstrap credentials</a>.
+    Switch it on, and read its password back out of OpenBao (needs a token —
+    <code>bao login -method=userpass username=operator</code> inside the pod, or the port-forward in
     <a href="../platform/openbao/#authenticating-locally">OpenBao &rarr; Authenticating locally</a>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/authentik-server<span class="w"> </span>-c<span class="w"> </span>server<span class="w"> </span>--<span class="w"> </span>ak<span class="w"> </span>shell<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="s1">'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
 </span></code></pre></div>
 <p>Log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
-<code>akadmin</code>, then add yourself to the groups listed in
+<code>akadmin</code>; the first login enrols a second factor. Create a personal
+account in <em>Directory &rarr; Users</em> and put it in <code>authentik Admins</code> and
+the groups listed in
 <a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>
 under <em>Directory &rarr; Groups</em>; the blueprints create them.</p>
 <p>ArgoCD's <code>policy.default</code> is empty, so an SSO login that lands on an
 ArgoCD with no applications means a missing group, not a broken
-integration. Then create a personal account in <em>Directory &rarr; Users</em>,
-put it in the groups, and keep <code>akadmin</code> and its <code>bootstrap-password</code> in
-OpenBao as the break-glass identity — see
+integration. Then switch <code>akadmin</code> off again with the same command and
+<code>is_active=False</code>; when Authentik itself is unavailable, see
 <a href="../platform/authentik/#when-authentik-is-down">When Authentik is down</a>.</p>
 </li>
 </ol>

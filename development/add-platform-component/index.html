@@ -2465,7 +2465,10 @@ Application on the next poll. Workloads go in the
    <a href="../../platform/security-policies/#pod-security-admission">Security Policies</a>.
    Then <strong>deny it to workloads</strong>: add <code>"!&lt;namespace&gt;"</code> to the <code>apps</code> project's
    destinations in <code>payload/platform/argocd-projects/projects.yaml</code>, which
-   otherwise lets every workload Application write into it.</p>
+   otherwise lets every workload Application write into it. A <code>privileged</code>
+   namespace is the one that matters: the admission policy guards new
+   Namespaces, not deployments into an existing one, so a workload commit
+   could place a host-networked pod on every node.</p>
 </li>
 <li>
 <p><strong>Write its network policy</strong> as
