@@ -59,6 +59,16 @@ the API away from the workers and from every kubeconfig.
 | Capabilities identical to the static pod | The first sync replaces all three at once; untested hardening takes the VIP down everywhere |
 | Liveness probe on `/metrics` | Every kube-vip serves it, leader or not, so a hung process holding the Lease is restarted instead of keeping the VIP dead until another node's renew fails too; the long failure window keeps a slow API server from recycling a healthy pod |
 
+### The `adopt` trade-off
+
+`adopt` and its writable hostPath stay after the handover, although on an
+adopted node they do nothing and every pod start still runs a container that
+can delete the control plane's static pod manifests. A reinstalled
+control-plane node gets the static manifest back from Ignition and needs
+adoption again, and forgetting to re-add it for that one reinstall leaves two
+kube-vips contending for the API VIP; the exposure is limited to the pinned
+image.
+
 !!! danger "If the DaemonSet pods do not come up"
     The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node's `ansible_host` from `ansible/inventory.yaml` with `--server https://<address>:6443` (the node addresses are in the certificate SANs), write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
 
