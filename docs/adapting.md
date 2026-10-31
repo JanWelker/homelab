@@ -99,6 +99,7 @@ Edit `ansible/inventory.yaml`; the variables are listed under
 | --- | --- |
 | `control_plane_vip` | Free address on the nodes' subnet, outside DHCP and distinct from the LoadBalancer pools. Becomes the API endpoint in the cluster certificates. |
 | `control_plane_vip_interface` | The NIC kube-vip advertises on; check `ip link` on a provisioned node. |
+| `control_plane_endpoint_host` | Set a name on a fresh build, see [Endpoint name](operations/control-plane-vip.md#endpoint-name); a running cluster keeps the VIP. |
 | host entries | Replace the hosts with yours. Each needs `ansible_host` and `mac_address` (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from `ansible_host` — see [Quickstart &rarr; Other requirements](quickstart.md#other-requirements). |
 | `control_plane` / `workers` | Group membership decides the node role. |
 | `pod_subnet`, `service_subnet` | Only change if they collide with your LAN. |

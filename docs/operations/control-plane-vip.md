@@ -19,7 +19,7 @@ the VIP is [migrated in place](#migrating-a-cluster-built-without-a-vip).
 | VIP address and interface | `control_plane_vip`, `control_plane_vip_interface` in `ansible/inventory.yaml` |
 | Bootstrap static pod | Written by Ignition to `/etc/kubernetes/manifests/kube-vip.yaml` on control-plane nodes, at `kube_vip_version`, because it must run before `kubeadm init` writes the endpoint into the certificates |
 | Running kube-vip | DaemonSet in `payload/platform/kube-vip/`, synced by ArgoCD; its image is tracked by Renovate |
-| Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join` |
+| Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join`, from `control_plane_endpoint_host` in `ansible/inventory.yaml` |
 | Cilium's API address | `k8sServiceHost` in `payload/platform/cilium/values.yaml` |
 
 kube-vip runs in ARP mode with leader election, advertising a `/32`, with
@@ -74,6 +74,39 @@ image.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init` finishes, so the bootstrap unit points kube-vip's `hostPath` at `super-admin.conf` during init and moves it back afterwards. Inside the container the file stays at `/etc/kubernetes/admin.conf`.
+
+## Endpoint name
+
+The next cluster build uses a DNS name as `controlPlaneEndpoint`, so moving the
+VIP later no longer means rewriting every node's kubeconfig; `certSANs` still
+needs regenerating for the new address. The running cluster keeps
+the bare VIP: there is no migration, because its certificates and stored
+configuration do not carry a name.
+
+| Piece | With a name | Why |
+| --- | --- | --- |
+| `/etc/hosts` from Ignition, every node | Resolves the name to the VIP | The API endpoint must not depend on LAN DNS |
+| `apiServer.certSANs` | Holds the VIP | Cilium's `k8sServiceHost` and `make kubeconfig` keep using the VIP |
+| `make kubeconfig` | Writes the VIP as `server` | Only the nodes resolve the name |
+| `make config`, `make reinstall` | Refuse a name the answering cluster does not publish | A node rendered with it fails certificate verification on join, after its disk is wiped |
+
+To build with a name:
+
+1. Set `control_plane_endpoint_host` in `ansible/inventory.yaml` to the name,
+   before the first `make config` of the build, and keep it there.
+
+    ```yaml
+    control_plane_endpoint_host: k8s-api.<lan domain>
+    ```
+
+2. Continue with the [Quickstart](../quickstart.md). Everything else follows
+   from that variable.
+
+Check that nodes and the cluster agree once the first control plane is up.
+
+```bash
+kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig}' | grep server
+```
 
 ## Choosing the address
 

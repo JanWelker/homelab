@@ -1,0 +1,25 @@
+---
+# A running cluster's certificates carry only the endpoint it was built with,
+# so a node rendered with another one cannot join; see
+# docs/operations/control-plane-vip.md#endpoint-name
+- name: Read the endpoint the running cluster publishes
+  ansible.builtin.uri:
+    url: "https://{{ control_plane_vip }}:6443/api/v1/namespaces/kube-public/configmaps/cluster-info"
+    validate_certs: false
+    timeout: 5
+    return_content: true
+  register: endpoint_probe
+  failed_when: false
+  run_once: true # noqa: run-once
+
+- name: Refuse an endpoint name the running cluster was not built with
+  ansible.builtin.assert:
+    that: endpoint_probe.status == -1 or ('https://' ~ control_plane_endpoint_host ~ ':6443') in endpoint_probe.content | default('')
+    fail_msg: >-
+      control_plane_endpoint_host is {{ control_plane_endpoint_host }} in
+      ansible/inventory.yaml, but the cluster answering on
+      {{ control_plane_vip }}:6443 does not publish that endpoint, so a node
+      rendered with it cannot join. The name is for a fresh build only: set it
+      back to the VIP.
+    quiet: true
+  run_once: true # noqa: run-once

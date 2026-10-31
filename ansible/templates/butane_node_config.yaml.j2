@@ -53,6 +53,18 @@ storage:
       mode: 0644
       contents:
         inline: "{{ inventory_hostname }}"
+{% if control_plane_endpoint_host != control_plane_vip %}
+
+    # So the API endpoint does not depend on LAN DNS; replaces the shipped file.
+    - path: /etc/hosts
+      mode: 0644
+      overwrite: true
+      contents:
+        inline: |
+          127.0.0.1 localhost
+          ::1 localhost
+          {{ control_plane_vip }} {{ control_plane_endpoint_host }}
+{% endif %}
 
     # CIS file modes; see docs/architecture/security.md#node-hardening
     - path: /etc/tmpfiles.d/kubernetes-cis.conf
