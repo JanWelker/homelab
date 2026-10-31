@@ -1,0 +1,73 @@
+---
+# Temporary: goes when the last node enforces. See
+# docs/platform/security-policies.md#host-firewall-rollout
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: host-firewall-audit
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: host-firewall-audit
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: host-firewall-audit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: host-firewall-audit
+    spec:
+      # Up before the CNI after a reboot, and it needs no network, only the socket.
+      hostNetwork: true
+      automountServiceAccountToken: false
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: host-firewall.wlkr.ch/enforce
+                    operator: DoesNotExist
+      containers:
+        - name: hold-audit
+          # The agent's image: already on every node, so a reboot pulls nothing.
+          image: quay.io/cilium/cilium:v1.20.4@sha256:20fe92e4c86641233a450098c158d2d29085f3419931ab6bf681d2485dedf16e
+          command:
+            - sh
+            - -c
+            - |
+              while :; do
+                id=$(cilium-dbg endpoint get -l reserved:host -o 'jsonpath={$[0].id}' 2>/dev/null)
+                if [ -n "$id" ] && ! cilium-dbg endpoint config "$id" 2>/dev/null | grep -q 'PolicyAuditMode .*: Enabled'; then
+                  cilium-dbg endpoint config "$id" PolicyAuditMode=Enabled
+                fi
+                sleep 5
+              done
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 0
+            capabilities:
+              drop:
+                - ALL
+            seLinuxOptions:
+              level: s0
+              type: spc_t
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: cilium-run
+              mountPath: /var/run/cilium
+      volumes:
+        - name: cilium-run
+          hostPath:
+            path: /var/run/cilium
+            type: Directory
