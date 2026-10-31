@@ -98,10 +98,15 @@ only frees pages inside the database file; the file itself never shrinks until
 a member is defragmented, and once less than half of it is in use
 `etcdDatabaseHighFragmentationRatio` fires. A second CronJob in
 `payload/platform/backup/etcd-defrag.yaml` runs `etcdctl defrag --cluster`
-weekly from the same kind of host-network pod as the backup, one member after
+nightly from the same kind of host-network pod as the backup, one member after
 another, and prints `endpoint status` before and after so the log shows the
-size reclaimed. Each member blocks for well under a second at this database
-size, so leadership is not a concern.
+size reclaimed.
+
+| Property | Why |
+| --- | --- |
+| Nightly | This cluster's churn crosses the alert's ratio about a day and a half after a defrag, so the alert firing means a run failed or did not help, not that the next one is due |
+| One member at a time | A member blocks for seconds while it rewrites its file; the other two keep quorum |
+| Fails when a member is unreachable | `endpoint status --cluster` exits non-zero, so a cluster already short of a member is not defragmented |
 
 ```bash
 kubectl -n backup get cronjob etcd-defrag
