@@ -1,0 +1,46 @@
+---
+# The nodes' own addresses, on nodes carrying the label; see
+# docs/platform/security-policies.md#host-firewall
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: host-firewall
+spec:
+  description: >-
+    The LAN reaches SSH, the API server, the DHCP client and ping; the cluster
+    reaches everything, because a pod on another node arrives as its node, so
+    which pod may scrape what is its egress policy's business. Ports not
+    listening on a worker are harmless there, so the one policy serves both
+    roles. The node range admits etcd for a control plane joining before its
+    agent has registered it. Ingress only: a node's own connections stay
+    unfiltered.
+  nodeSelector:
+    matchLabels:
+      host-firewall.wlkr.ch/selected: "true"
+  ingress:
+    - fromEntities:
+        - cluster
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "22"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+            - port: "68"
+              protocol: UDP
+    - fromEntities:
+        - world
+      icmps:
+        - fields:
+            - type: 8
+              family: IPv4
+    - fromCIDR:
+        - 10.9.2.0/24
+      toPorts:
+        - ports:
+            - port: "2379"
+              protocol: TCP
+            - port: "2380"
+              protocol: TCP

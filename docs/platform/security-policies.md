@@ -150,6 +150,11 @@ it on the native device and `cilium_host`. What each port is for is in
 | Host endpoint labels are filtered | `kubernetes.io/hostname` is not among them, so a node can only be chosen by a label such as `node-access` in the upstream example, or by the `control-plane` role label |
 | A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
 
+`network-policies/host-firewall.yaml` selects the nodes carrying
+`host-firewall.wlkr.ch/selected`. It denies the LAN everything but SSH, the API
+server, DHCP and ping, and admits the whole cluster to every port, since a
+narrower cluster rule could not name Prometheus and could lock out a node.
+
 ### Default ServiceAccount tokens
 
 A pod that names no `serviceAccountName` lands on `default`, which nothing
@@ -334,6 +339,40 @@ enforcement is reversible by removing that label.
         sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") | grep PolicyAuditMode'
     done
     ```
+
+4. Merge the policy; it selects nothing. Select one worker, with its console
+   within reach, and confirm `Disabled (Audit)` on its `reserved:host` line:
+
+    ```bash
+    kubectl label node <worker> host-firewall.wlkr.ch/selected=true
+    kubectl -n kube-system exec <agent-on-worker> -c cilium-agent -- cilium-dbg endpoint list
+    ```
+
+5. Reboot that worker. It must return `Ready`, and audit mode `Enabled` within
+   a minute; if it does not, go to [Host firewall lockout](#host-firewall-lockout)
+   and stop the rollout.
+6. Select the other workers, then one control plane and reboot it, then the
+   other two. Only then start the audit week.
+7. Read a week of what enforcement would refuse. Pods and nodes are admitted, so
+   anything here came from the LAN. Add a rule for what is legitimate:
+
+    ```logql
+    {job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -> {{.dst}} {{.tcp}}{{.udp}}"
+    ```
+
+8. Enforce one worker: its label sends the DaemonSet away, and restarting its
+   agent drops audit mode, rather than switching audit off at runtime. Check
+   that `bpf policy get` lists separate identities and not one wildcard, and
+   that SSH and the node's pods still work. Reboot it once more.
+
+    ```bash
+    kubectl label node <worker> host-firewall.wlkr.ch/enforce=true
+    kubectl -n kube-system delete pod -l k8s-app=cilium --field-selector spec.nodeName=<worker>
+    kubectl -n kube-system exec <agent-on-worker> -c cilium-agent -- cilium-dbg bpf policy get <host-endpoint-id>
+    ```
+
+9. Repeat for the workers, then the control planes one at a time. Then delete
+   `host-firewall-audit.yaml` in a pull request.
 
 ## Health check
 
