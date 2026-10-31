@@ -2785,6 +2785,10 @@ left out rather than reported as failing.</p>
 <td>Those images carry thousands of unfixed Debian findings and their reports exceed the etcd request limit. The Rego (v0 syntax, <code>object.get</code> because <code>FixedVersion</code> is absent when there is no fix) drops only findings that have no fix <em>and</em> are below HIGH</td>
 </tr>
 <tr>
+<td><code>skipFiles</code></td>
+<td>Debian's placeholder key in every CloudNativePG image, which serves TLS from certificates of its own, would otherwise sit in every Postgres report. Trivy's Rego input for a secret has no path, so an ignore policy could only drop the <code>private-key</code> rule and every real key with it; this skips one exact path</td>
+</tr>
+<tr>
 <td><code>additionalVulnerabilityReportFields</code> without <code>Description</code> and <code>Links</code></td>
 <td>A report is one API write, capped at 2 MiB; <code>Links</code> alone is over half the payload. An oversized report is rejected with nothing but an operator log line</td>
 </tr>
@@ -2851,7 +2855,7 @@ than from the previous scrape, and every rule waits longer than a rebuild.</p>
 <tr>
 <td><code>TrivyExposedSecretNew</code></td>
 <td>A secret finding, by rule and path, was in no report two days ago, whichever container carried it</td>
-<td>The known findings (snake-oil keys, a vendored SDK's public test key) never clear, so an absolute rule would fire forever; and the snake-oil key in a new Postgres pod is not new</td>
+<td>An accepted finding never clears, so an absolute rule would fire forever; and the same finding in a new pod is not new</td>
 </tr>
 <tr>
 <td><code>TrivyRbacCriticalNew</code></td>

@@ -2528,11 +2528,11 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 </tr>
 <tr>
 <td><code>reinstall.yaml</code></td>
-<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. Arming refuses while <code>bootstrap_cluster</code> is <code>true</code> and the API VIP answers. It touches only <code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe default. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
+<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. Arming refuses while <code>bootstrap_cluster</code> is <code>true</code> and the API VIP answers, or when an <a href="../../operations/control-plane-vip/#endpoint-name">endpoint name</a> is not the one the cluster publishes. It touches only <code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe default. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
 </tr>
 <tr>
 <td><code>kubeconfig.yaml</code></td>
-<td>Copies the admin kubeconfig over SSH to <code>output/kubeconfig</code>, mode <code>0600</code></td>
+<td>Copies the admin kubeconfig over SSH to <code>output/kubeconfig</code>, mode <code>0600</code>, with the VIP as its <code>server</code></td>
 </tr>
 </tbody>
 </table>

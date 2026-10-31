@@ -2631,8 +2631,8 @@ fixable here rather than upstream. Two checks are most of the volume:
 <td>A chart's operator role, or Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>; not narrowable without forking a chart — see <a href="../../architecture/security/#authorization">Security Posture</a></td>
 </tr>
 <tr>
-<td>Node file modes kubeadm resets</td>
-<td>Handled at provisioning time — see <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
+<td>Node files at 644: <code>KCV-0056</code>, <code>KCV-0069</code>, <code>KCV-0075</code>, <code>KCV-0077</code></td>
+<td>Accepted: the CNI files, the kubelet unit and config and the public CA certificate hold no secret, so reading them gains nothing — see <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a> for the modes provisioning still applies</td>
 </tr>
 </tbody>
 </table>

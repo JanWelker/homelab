@@ -2924,10 +2924,31 @@ only frees pages inside the database file; the file itself never shrinks until
 a member is defragmented, and once less than half of it is in use
 <code>etcdDatabaseHighFragmentationRatio</code> fires. A second CronJob in
 <code>payload/platform/backup/etcd-defrag.yaml</code> runs <code>etcdctl defrag --cluster</code>
-weekly from the same kind of host-network pod as the backup, one member after
+nightly from the same kind of host-network pod as the backup, one member after
 another, and prints <code>endpoint status</code> before and after so the log shows the
-size reclaimed. Each member blocks for well under a second at this database
-size, so leadership is not a concern.</p>
+size reclaimed.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nightly</td>
+<td>This cluster's churn crosses the alert's ratio about a day and a half after a defrag, so the alert firing means a run failed or did not help, not that the next one is due</td>
+</tr>
+<tr>
+<td>One member at a time</td>
+<td>A member blocks for seconds while it rewrites its file; the other two keep quorum</td>
+</tr>
+<tr>
+<td>Fails when a member is unreachable</td>
+<td><code>endpoint status --cluster</code> exits non-zero, so a cluster already short of a member is not defragmented</td>
+</tr>
+</tbody>
+</table>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>etcd-defrag
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>--from<span class="o">=</span>cronjob/etcd-defrag<span class="w"> </span>etcd-defrag-manual
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/etcd-defrag-manual

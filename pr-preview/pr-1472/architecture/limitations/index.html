@@ -2403,7 +2403,7 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <tr>
 <td><strong>The API endpoint address is fixed at <code>kubeadm init</code></strong></td>
 <td><code>controlPlaneEndpoint</code> is the kube-vip VIP, and <code>kubeadm</code> bakes it into the API server certificates, every node's kubeconfig and the stored <code>ClusterConfiguration</code>; Cilium's <code>k8sServiceHost</code> names the same address. Moving the VIP to another address is therefore a certificate regeneration on every control-plane node and a kubeconfig rewrite on every node, not a config change that can be synced</td>
-<td>Choose the address once, outside any DHCP range and apart from the LoadBalancer pools. The in-place procedure exists for the day it has to move</td>
+<td>Choose the address once, outside any DHCP range and apart from the LoadBalancer pools. The in-place procedure exists for the day it has to move; the next build <a href="../../operations/control-plane-vip/#endpoint-name">uses a name</a></td>
 <td><a href="../../operations/control-plane-vip/#choosing-the-address">Choosing the address</a>, <a href="../../operations/control-plane-vip/#in-place">migrating in place</a></td>
 </tr>
 <tr>
@@ -2441,6 +2441,12 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <td>Rebuilding a node means <code>make serve</code> on a machine on the nodes' L2 segment, the external DHCP pointing at it, <code>make reinstall LIMIT=&lt;node&gt;</code>, and a power cycle. There is no remote rebuild, and the deployment host is not part of the cluster</td>
 <td>Only <em>re</em>provisioning: Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server off</td>
 <td><a href="../boot-process/#every-boot-after-the-first">Boot &amp; Bootstrap Process</a></td>
+</tr>
+<tr>
+<td><strong>The object store survives one host down, no more</strong></td>
+<td>During every Kured reboot the RGW data pool, which holds the Velero backups and Loki chunks, has no redundancy left, while <code>rbd-pool</code> still has some</td>
+<td>Accepted, no migration: Ceph cannot change the erasure profile of an existing pool, so changing it means a new pool and moving every bucket</td>
+<td><a href="../../platform/rook-ceph/#object-storage">Object storage</a></td>
 </tr>
 <tr>
 <td><strong>Single region, site and rack</strong></td>
