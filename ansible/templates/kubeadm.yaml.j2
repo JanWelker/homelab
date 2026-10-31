@@ -34,6 +34,12 @@ controlPlaneEndpoint: "{{ control_plane_endpoint }}"
 proxy:
   disabled: true
 apiServer:
+{% if control_plane_endpoint_host != control_plane_vip %}
+  # kubeadm adds controlPlaneEndpoint itself; the VIP is what Cilium and the
+  # operator's kubeconfig use.
+  certSANs:
+    - "{{ control_plane_vip }}"
+{% endif %}
   extraArgs:
     # Needs serverTLSBootstrap below and kubelet-csr-approver.
     - name: kubelet-certificate-authority

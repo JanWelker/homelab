@@ -21,6 +21,11 @@ spec:
           crds:
             enabled: false
 
+          # Redefined in job-rules.yaml; see docs/platform/monitoring.md#alerting
+          defaultRules:
+            disabled:
+              KubeJobFailed: true
+
           grafana:
             enabled: true
 

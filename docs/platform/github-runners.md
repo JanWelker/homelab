@@ -54,6 +54,11 @@ and a step without `container:` runs in the runner pod with that token. The
 | The Role is the hook's `requiredPermissions`, Secret `get` and `list` included | The hook checks every verb before each command and fails the job if one is missing; a step can still read the environment of another job running at the same time, from the same repository |
 | `default` ServiceAccount in `arc-jobs` without a token | A job pod never calls the API server |
 
+All jobs share `arc-jobs` and one Role, so a job can reach the pods and Secrets
+of any job running beside it. That is accepted because no repository with other
+contributors will use these runners; if that changes, it takes one scale set
+and namespace per trust level, each with its own Role.
+
 ### Controller
 
 The `arc-controller` values, and why:

@@ -126,6 +126,30 @@ data:
                 The health endpoints are the only anonymous paths, and the
                 audit policy drops them. Anything else anonymous that succeeded
                 should not have.
+          - alert: KubernetesAuditEsoTokenMinted
+            expr: |
+              sum by (user_username, objectRef_namespace) (
+                count_over_time(
+                  {job="kubernetes-audit", verb="create"}
+                    |= `external-secrets-vault/token`
+                    | json
+                    | objectRef_subresource="token"
+                    | objectRef_name="external-secrets-vault"
+                    | user_username != "system:serviceaccount:external-secrets:external-secrets"
+                    | responseStatus_code < 400
+                  [10m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                {{ $labels.user_username }} minted a token for {{ $labels.objectRef_namespace }}/external-secrets-vault
+              description: >-
+                Only the External Secrets controller mints tokens for this
+                ServiceAccount. OpenBao accepts the result as ESO, limited to
+                that role's policy, and OpenBaoSecretReadOutsideEso cannot
+                tell the difference.
       - name: openbao-audit
         rules:
           # The server's own log lines share the stream: drop them before
