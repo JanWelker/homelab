@@ -83,4 +83,4 @@ fixable here rather than upstream. Two checks are most of the volume:
 | Images that start as root by design (Nextcloud, Home Assistant) | `runAsNonRoot` or a read-only root would change how they run; seccomp is set |
 | Read-only root on charts that write under `/` at runtime (Grafana sidecars, OpenBao) | The chart or image decides where; guessing costs an outage (#663) |
 | Every critical or high `ClusterRole` | A chart's operator role, or Kubernetes' own `admin`, `edit` and `cluster-admin`; not narrowable without forking a chart — see [Security Posture](../architecture/security.md#authorization) |
-| Node file modes kubeadm resets | Handled at provisioning time — see [Triage 2026-09-20](triage-2026-09-20.md#infra-the-nodes) |
+| Node files at 644: `KCV-0056`, `KCV-0069`, `KCV-0075`, `KCV-0077` | Accepted: the CNI files, the kubelet unit and config and the public CA certificate hold no secret, so reading them gains nothing — see [Triage 2026-09-20](triage-2026-09-20.md#infra-the-nodes) for the modes provisioning still applies |
