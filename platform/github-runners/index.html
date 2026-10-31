@@ -2799,6 +2799,10 @@ and a step without <code>container:</code> runs in the runner pod with that toke
 </tr>
 </tbody>
 </table>
+<p>All jobs share <code>arc-jobs</code> and one Role, so a job can reach the pods and Secrets
+of any job running beside it. That is accepted because no repository with other
+contributors will use these runners; if that changes, it takes one scale set
+and namespace per trust level, each with its own Role.</p>
 <h3 id="controller">Controller<a class="headerlink" href="#controller" title="Permanent link">&para;</a></h3>
 <p>The <code>arc-controller</code> values, and why:</p>
 <table>

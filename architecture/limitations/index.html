@@ -2412,6 +2412,12 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <td><a href="../boot-process/#every-boot-after-the-first">Boot &amp; Bootstrap Process</a></td>
 </tr>
 <tr>
+<td><strong>The object store survives one host down, no more</strong></td>
+<td>During every Kured reboot the RGW data pool, which holds the Velero backups and Loki chunks, has no redundancy left, while <code>rbd-pool</code> still has some</td>
+<td>Accepted, no migration: Ceph cannot change the erasure profile of an existing pool, so changing it means a new pool and moving every bucket</td>
+<td><a href="../../platform/rook-ceph/#object-storage">Object storage</a></td>
+</tr>
+<tr>
 <td><strong>Single region, site and rack</strong></td>
 <td>No failure domain larger than a node. Ceph replicates across nodes on one power feed; a site-level event takes everything</td>
 <td>The honest limit of a homelab</td>

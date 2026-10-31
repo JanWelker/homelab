@@ -1927,6 +1927,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-adopt-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>adopt</code> trade-off
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2434,6 +2445,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-adopt-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>adopt</code> trade-off
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2717,6 +2739,14 @@ the API away from the workers and from every kubeconfig.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="the-adopt-trade-off">The <code>adopt</code> trade-off<a class="headerlink" href="#the-adopt-trade-off" title="Permanent link">&para;</a></h3>
+<p><code>adopt</code> and its writable hostPath stay after the handover, although on an
+adopted node they do nothing and every pod start still runs a container that
+can delete the control plane's static pod manifests. A reinstalled
+control-plane node gets the static manifest back from Ignition and needs
+adoption again, and forgetting to re-add it for that one reinstall leaves two
+kube-vips contending for the API VIP; the exposure is limited to the pinned
+image.</p>
 <div class="admonition danger">
 <p class="admonition-title">If the DaemonSet pods do not come up</p>
 <p>The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's <code>k8sServiceHost</code> point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point <code>kubectl</code> at a control-plane node's <code>ansible_host</code> from <code>ansible/inventory.yaml</code> with <code>--server https://&lt;address&gt;:6443</code> (the node addresses are in the certificate SANs), write <code>/etc/kubernetes/manifests/kube-vip.yaml</code> back onto one control-plane node from <code>ansible/templates/butane_node_config.yaml.j2</code> so that the VIP answers again, then read <code>kubectl -n kube-system logs ds/kube-vip -c kube-vip</code> and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, <code>adopt</code> removes the file again.</p>
