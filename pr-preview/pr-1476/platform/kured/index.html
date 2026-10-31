@@ -2591,7 +2591,7 @@ marker clears itself on reboot.</p>
     SEN["/run/reboot-required&lt;br/&gt;sentinel, on tmpfs"] --&gt; TICK{"Kured checks&lt;br/&gt;every period"}
 
     TICK --&gt;|"no sentinel"| SLEEP["Nothing to do until&lt;br/&gt;an update stages one"]
-    TICK --&gt;|"sentinel present"| ALERT{"Blocking alert firing?&lt;br/&gt;Ceph, etcd, node, API"}
+    TICK --&gt;|"sentinel present"| ALERT{"Blocking alert firing?&lt;br/&gt;Ceph, etcd, node, API, Velero"}
     ALERT --&gt;|"yes"| HELD["Reboot deferred while&lt;br/&gt;the cluster is unhealthy"]
     ALERT --&gt;|"no"| LOCK{"Cluster lock free?"}
     LOCK --&gt;|"another node&lt;br/&gt;is rebooting"| TAINT["Taint PreferNoSchedule,&lt;br/&gt;wait for the lock"]
@@ -2632,6 +2632,10 @@ marker clears itself on reboot.</p>
 <td><code>kubectl get node -o yaml</code> shows why a node is cordoned</td>
 </tr>
 <tr>
+<td><code>VeleroBackupInProgress</code> on the alert list</td>
+<td>Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in <code>payload/platform/velero/application.yaml</code> compares attempts with outcomes per live Velero pod over a six-hour window, longer than Velero's default four-hour limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for six hours at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the <code>null</code> receiver because it fires every night</td>
+</tr>
+<tr>
 <td><code>alertFilterRegexp</code> with <code>alertFilterMatchOnly: true</code></td>
 <td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from <a href="../../operations/nodes/">Rebooting a node</a>: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from <a href="../monitoring/#scrape-targets">platform namespaces only</a></td>
 </tr>
@@ -2660,7 +2664,7 @@ a blocked node, not a queued one.</p>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># The alert names the gate may use: every entry in alertFilterRegexp must be here</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>kubectl<span class="w"> </span>get<span class="w"> </span>prometheusrule<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.groups[].rules[] | select(.alert) | .alert'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'Ceph|etcd|KubeNode|KubeAPI'</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>kubectl<span class="w"> </span>get<span class="w"> </span>prometheusrule<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.groups[].rules[] | select(.alert) | .alert'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'</span>
 </span></code></pre></div>
 
 
