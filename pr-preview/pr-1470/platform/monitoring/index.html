@@ -2838,6 +2838,10 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 <td>It fires for every nightly backup as <a href="../kured/#configuration">Kured's gate</a>, not as a problem</td>
 </tr>
 <tr>
+<td><code>KubeJobFailed</code> disabled in the chart (<code>defaultRules.disabled</code>) and redefined in <code>job-rules.yaml</code>, bound to Jobs started in the last day</td>
+<td>The chart's rule fires for as long as a failed Job object exists, so one old failure reads as an outage for weeks. Failed Jobs carry no failure time, so the bound counts from the start</td>
+</tr>
+<tr>
 <td>Inhibit rules repeated from the chart defaults</td>
 <td>A supplied config replaces the whole document, so nothing is inherited</td>
 </tr>

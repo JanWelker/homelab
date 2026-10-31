@@ -2683,6 +2683,10 @@ and adjust the credential path in OpenBao accordingly.</p>
 <td>The NIC kube-vip advertises on; check <code>ip link</code> on a provisioned node.</td>
 </tr>
 <tr>
+<td><code>control_plane_endpoint_host</code></td>
+<td>Set a name on a fresh build, see <a href="../operations/control-plane-vip/#endpoint-name">Endpoint name</a>; a running cluster keeps the VIP.</td>
+</tr>
+<tr>
 <td>host entries</td>
 <td>Replace the hosts with yours. Each needs <code>ansible_host</code> and <code>mac_address</code> (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from <code>ansible_host</code> — see <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>.</td>
 </tr>
