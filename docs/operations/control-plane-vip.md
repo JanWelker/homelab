@@ -19,7 +19,7 @@ the VIP is [migrated in place](#migrating-a-cluster-built-without-a-vip).
 | VIP address and interface | `control_plane_vip`, `control_plane_vip_interface` in `ansible/inventory.yaml` |
 | Bootstrap static pod | Written by Ignition to `/etc/kubernetes/manifests/kube-vip.yaml` on control-plane nodes, at `kube_vip_version`, because it must run before `kubeadm init` writes the endpoint into the certificates |
 | Running kube-vip | DaemonSet in `payload/platform/kube-vip/`, synced by ArgoCD; its image is tracked by Renovate |
-| Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join` |
+| Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join`, from `control_plane_endpoint_host` in `ansible/inventory.yaml` |
 | Cilium's API address | `k8sServiceHost` in `payload/platform/cilium/values.yaml` |
 
 kube-vip runs in ARP mode with leader election, advertising a `/32`, with
@@ -59,11 +59,54 @@ the API away from the workers and from every kubeconfig.
 | Capabilities identical to the static pod | The first sync replaces all three at once; untested hardening takes the VIP down everywhere |
 | Liveness probe on `/metrics` | Every kube-vip serves it, leader or not, so a hung process holding the Lease is restarted instead of keeping the VIP dead until another node's renew fails too; the long failure window keeps a slow API server from recycling a healthy pod |
 
+### The `adopt` trade-off
+
+`adopt` and its writable hostPath stay after the handover, although on an
+adopted node they do nothing and every pod start still runs a container that
+can delete the control plane's static pod manifests. A reinstalled
+control-plane node gets the static manifest back from Ignition and needs
+adoption again, and forgetting to re-add it for that one reinstall leaves two
+kube-vips contending for the API VIP; the exposure is limited to the pinned
+image.
+
 !!! danger "If the DaemonSet pods do not come up"
     The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node's `ansible_host` from `ansible/inventory.yaml` with `--server https://<address>:6443` (the node addresses are in the certificate SANs), write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init` finishes, so the bootstrap unit points kube-vip's `hostPath` at `super-admin.conf` during init and moves it back afterwards. Inside the container the file stays at `/etc/kubernetes/admin.conf`.
+
+## Endpoint name
+
+The next cluster build uses a DNS name as `controlPlaneEndpoint`, so moving the
+VIP later no longer means rewriting every node's kubeconfig; `certSANs` still
+needs regenerating for the new address. The running cluster keeps
+the bare VIP: there is no migration, because its certificates and stored
+configuration do not carry a name.
+
+| Piece | With a name | Why |
+| --- | --- | --- |
+| `/etc/hosts` from Ignition, every node | Resolves the name to the VIP | The API endpoint must not depend on LAN DNS |
+| `apiServer.certSANs` | Holds the VIP | Cilium's `k8sServiceHost` and `make kubeconfig` keep using the VIP |
+| `make kubeconfig` | Writes the VIP as `server` | Only the nodes resolve the name |
+| `make config`, `make reinstall` | Refuse a name the answering cluster does not publish | A node rendered with it fails certificate verification on join, after its disk is wiped |
+
+To build with a name:
+
+1. Set `control_plane_endpoint_host` in `ansible/inventory.yaml` to the name,
+   before the first `make config` of the build, and keep it there.
+
+    ```yaml
+    control_plane_endpoint_host: k8s-api.<lan domain>
+    ```
+
+2. Continue with the [Quickstart](../quickstart.md). Everything else follows
+   from that variable.
+
+Check that nodes and the cluster agree once the first control plane is up.
+
+```bash
+kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig}' | grep server
+```
 
 ## Choosing the address
 

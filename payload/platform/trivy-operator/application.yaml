@@ -89,6 +89,9 @@ spec:
             ignoreUnfixed: false
             severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 
+            # Debian's placeholder key; why here: docs/platform/trivy-operator.md#configuration
+            skipFiles: /etc/ssl/private/ssl-cert-snakeoil.key
+
             # Mounted into every scan job as trivy.yaml; no phone-home.
             configFile:
               scan:
