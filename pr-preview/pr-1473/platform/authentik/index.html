@@ -1568,6 +1568,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adding-a-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a user
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2741,6 +2752,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adding-a-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a user
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3310,6 +3332,14 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <li>Bind <code>infra-users</code> to an infra application in the blueprint, as an
    <code>authentik_policies.policybinding</code> with the application as <code>target</code>. An
    application with no binding is open to every Authentik account.</li>
+</ol>
+<h3 id="adding-a-user">Adding a user<a class="headerlink" href="#adding-a-user" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Create the account under <strong>Directory &rarr; Users</strong>.</li>
+<li>Add it to <code>infra-users</code>, or to a role group from
+   <a href="#groups-and-roles">Groups and roles</a>, under <strong>Directory &rarr; Groups</strong>.
+   Membership is not blueprinted because that would put a username in the
+   repository, and only a superuser passes the bindings without it.</li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <p>When every login fails, in this order:</p>

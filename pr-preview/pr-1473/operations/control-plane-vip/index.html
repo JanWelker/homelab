@@ -1931,8 +1931,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-adopt-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>adopt</code> trade-off
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoint-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Endpoint name
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2465,8 +2487,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#the-adopt-trade-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The <code>adopt</code> trade-off
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#endpoint-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Endpoint name
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -2678,7 +2722,7 @@ the VIP is <a href="#migrating-a-cluster-built-without-a-vip">migrated in place<
 </tr>
 <tr>
 <td>Cluster endpoint</td>
-<td><code>controlPlaneEndpoint</code> in the generated kubeadm config, and every <code>kubeadm join</code></td>
+<td><code>controlPlaneEndpoint</code> in the generated kubeadm config, and every <code>kubeadm join</code>, from <code>control_plane_endpoint_host</code> in <code>ansible/inventory.yaml</code></td>
 </tr>
 <tr>
 <td>Cilium's API address</td>
@@ -2750,6 +2794,14 @@ the API away from the workers and from every kubeconfig.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="the-adopt-trade-off">The <code>adopt</code> trade-off<a class="headerlink" href="#the-adopt-trade-off" title="Permanent link">&para;</a></h3>
+<p><code>adopt</code> and its writable hostPath stay after the handover, although on an
+adopted node they do nothing and every pod start still runs a container that
+can delete the control plane's static pod manifests. A reinstalled
+control-plane node gets the static manifest back from Ignition and needs
+adoption again, and forgetting to re-add it for that one reinstall leaves two
+kube-vips contending for the API VIP; the exposure is limited to the pinned
+image.</p>
 <div class="admonition danger">
 <p class="admonition-title">If the DaemonSet pods do not come up</p>
 <p>The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's <code>k8sServiceHost</code> point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point <code>kubectl</code> at a control-plane node's <code>ansible_host</code> from <code>ansible/inventory.yaml</code> with <code>--server https://&lt;address&gt;:6443</code> (the node addresses are in the certificate SANs), write <code>/etc/kubernetes/manifests/kube-vip.yaml</code> back onto one control-plane node from <code>ansible/templates/butane_node_config.yaml.j2</code> so that the VIP answers again, then read <code>kubectl -n kube-system logs ds/kube-vip -c kube-vip</code> and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, <code>adopt</code> removes the file again.</p>
@@ -2758,6 +2810,59 @@ the API away from the workers and from every kubeconfig.</p>
 <p class="admonition-title">Note</p>
 <p>Since Kubernetes 1.29, <code>admin.conf</code> is not usable until <code>kubeadm init</code> finishes, so the bootstrap unit points kube-vip's <code>hostPath</code> at <code>super-admin.conf</code> during init and moves it back afterwards. Inside the container the file stays at <code>/etc/kubernetes/admin.conf</code>.</p>
 </div>
+<h2 id="endpoint-name">Endpoint name<a class="headerlink" href="#endpoint-name" title="Permanent link">&para;</a></h2>
+<p>The next cluster build uses a DNS name as <code>controlPlaneEndpoint</code>, so moving the
+VIP later no longer means rewriting every node's kubeconfig; <code>certSANs</code> still
+needs regenerating for the new address. The running cluster keeps
+the bare VIP: there is no migration, because its certificates and stored
+configuration do not carry a name.</p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>With a name</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/etc/hosts</code> from Ignition, every node</td>
+<td>Resolves the name to the VIP</td>
+<td>The API endpoint must not depend on LAN DNS</td>
+</tr>
+<tr>
+<td><code>apiServer.certSANs</code></td>
+<td>Holds the VIP</td>
+<td>Cilium's <code>k8sServiceHost</code> and <code>make kubeconfig</code> keep using the VIP</td>
+</tr>
+<tr>
+<td><code>make kubeconfig</code></td>
+<td>Writes the VIP as <code>server</code></td>
+<td>Only the nodes resolve the name</td>
+</tr>
+<tr>
+<td><code>make config</code>, <code>make reinstall</code></td>
+<td>Refuse a name the answering cluster does not publish</td>
+<td>A node rendered with it fails certificate verification on join, after its disk is wiped</td>
+</tr>
+</tbody>
+</table>
+<p>To build with a name:</p>
+<ol>
+<li>
+<p>Set <code>control_plane_endpoint_host</code> in <code>ansible/inventory.yaml</code> to the name,
+   before the first <code>make config</code> of the build, and keep it there.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">control_plane_endpoint_host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">k8s-api.&lt;lan domain&gt;</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Continue with the <a href="../../quickstart/">Quickstart</a>. Everything else follows
+   from that variable.</p>
+</li>
+</ol>
+<p>Check that nodes and the cluster agree once the first control plane is up.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-public<span class="w"> </span>get<span class="w"> </span>configmap<span class="w"> </span>cluster-info<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.kubeconfig}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>server
+</span></code></pre></div>
 <h2 id="choosing-the-address">Choosing the address<a class="headerlink" href="#choosing-the-address" title="Permanent link">&para;</a></h2>
 <p>A free address on the nodes' subnet, outside any DHCP range, and distinct from
 the Cilium LoadBalancer pools. Nothing validates this: a collision shows up as
@@ -2776,29 +2881,29 @@ because several steps can leave you unable to open a new one.</p>
 <ol>
 <li>
 <p>Confirm the address is free.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ping<span class="w"> </span>-c2<span class="w"> </span>&lt;vip&gt;<span class="w">        </span><span class="c1"># must not answer</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>arping<span class="w"> </span>-c2<span class="w"> </span>&lt;vip&gt;<span class="w">      </span><span class="c1"># from a node on the segment</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ping<span class="w"> </span>-c2<span class="w"> </span>&lt;vip&gt;<span class="w">        </span><span class="c1"># must not answer</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>arping<span class="w"> </span>-c2<span class="w"> </span>&lt;vip&gt;<span class="w">      </span><span class="c1"># from a node on the segment</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Add the VIP under <code>apiServer.certSANs</code> in the stored <code>ClusterConfiguration</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>edit<span class="w"> </span>configmap<span class="w"> </span>kubeadm-config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>edit<span class="w"> </span>configmap<span class="w"> </span>kubeadm-config
 </span></code></pre></div>
 </li>
 <li>
 <p>Regenerate the API server certificate on <strong>each</strong> control-plane node.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt.bak
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/pki/apiserver.key<span class="w"> </span>/etc/kubernetes/pki/apiserver.key.bak
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>certs<span class="w"> </span>apiserver
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kube-apiserver<span class="w">   </span><span class="c1"># confirm it restarted</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt<span class="w"> </span>/etc/kubernetes/pki/apiserver.crt.bak
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/pki/apiserver.key<span class="w"> </span>/etc/kubernetes/pki/apiserver.key.bak
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>certs<span class="w"> </span>apiserver
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>kube-apiserver<span class="w">   </span><span class="c1"># confirm it restarted</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Deploy the kube-vip static pod to each control-plane node, generated from
    the template's values or copied from a node provisioned with the new
    configuration, and verify the VIP answers.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>https://&lt;vip&gt;:6443/healthz
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>curl<span class="w"> </span>-k<span class="w"> </span>https://&lt;vip&gt;:6443/healthz
 </span></code></pre></div>
 </li>
 <li>
@@ -2811,12 +2916,12 @@ because several steps can leave you unable to open a new one.</p>
 <p><strong>Only now</strong> change <code>k8sServiceHost</code> in <code>payload/platform/cilium/values.yaml</code>
    to the VIP and commit. The merge rolls every agent, so the VIP must
    answer before it lands; watch the rollout.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
 </span></code></pre></div>
 </li>
 <li>
 <p>Re-fetch your kubeconfig so it uses the VIP.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>kubeconfig
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 </li>
 </ol>
@@ -2825,12 +2930,12 @@ because several steps can leave you unable to open a new one.</p>
 <p>Cilium replaces kube-proxy, so if <code>k8sServiceHost</code> names an address that is not answering, every Cilium pod loses the API server and the cluster's networking goes with it, including the networking you would fix it through. Do not commit step 6 until <code>curl -k https://&lt;vip&gt;:6443/healthz</code> succeeds.</p>
 </div>
 <h2 id="verifying">Verifying<a class="headerlink" href="#verifying" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># which node currently holds the VIP</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>lease<span class="w"> </span>plndr-cp-lock<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.holderIdentity}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kube-vip<span class="w"> </span>-o<span class="w"> </span>wide
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># the endpoint your kubeconfig actually uses</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>kubectl<span class="w"> </span>config<span class="w"> </span>view<span class="w"> </span>--minify<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.clusters[0].cluster.server}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># which node currently holds the VIP</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>lease<span class="w"> </span>plndr-cp-lock<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.spec.holderIdentity}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kube-vip<span class="w"> </span>-o<span class="w"> </span>wide
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># the endpoint your kubeconfig actually uses</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>kubectl<span class="w"> </span>config<span class="w"> </span>view<span class="w"> </span>--minify<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.clusters[0].cluster.server}'</span><span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span></code></pre></div>
 <p>Test failover once, deliberately: reboot the leader per
 <a href="../nodes/#rebooting-a-node">Rebooting a node</a> and confirm <code>kubectl</code> keeps
