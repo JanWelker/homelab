@@ -399,6 +399,8 @@
       
         
       
+        
+      
     
     
     
@@ -1695,6 +1697,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#host-firewall" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#default-serviceaccount-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1777,6 +1790,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#host-firewall-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall rollout
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1801,6 +1825,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#host-firewall-lockout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall lockout
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1886,6 +1938,8 @@
       
         
           
+        
+      
         
       
         
@@ -2258,6 +2312,33 @@
 
                 
               
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/host-firewall-inventory-2026-10-30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Host Firewall Inventory 2026-10-30
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
             </ul>
           </nav>
         
@@ -2579,6 +2660,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#host-firewall" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#default-serviceaccount-tokens" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2661,6 +2753,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#host-firewall-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall rollout
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2685,6 +2788,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#host-firewall-lockout" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Host firewall lockout
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2823,10 +2954,10 @@
 
 
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
-<p>Four cluster-wide controls: Pod Security Admission, default-deny network
-policy in both directions, no API token on the <code>default</code> ServiceAccount, and
-admission policies on image references, namespace labels and the <code>authentik</code>
-namespace. Each is easy to turn on and hard to
+<p>Five cluster-wide controls: Pod Security Admission, default-deny network
+policy in both directions, a host firewall on the nodes, no API token on the
+<code>default</code> ServiceAccount, and admission policies on image references, namespace
+labels and the <code>authentik</code> namespace. Each is easy to turn on and hard to
 turn on safely, so the pattern is the same for all of them: measure first,
 enforce second, one namespace at a time.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -3059,6 +3190,42 @@ therefore covers only its pod-networked workloads, each selected by label.</p>
 <p>Where a chart ships <code>NetworkPolicy</code> objects of its own (<code>argocd</code>) they are
 switched off in its values: Cilium unions the two kinds, so a chart rule
 that allows everything would silently override the default-deny.</p>
+<h3 id="host-firewall">Host firewall<a class="headerlink" href="#host-firewall" title="Permanent link">&para;</a></h3>
+<p>Pod policies cannot select a host-networked port. A <code>CiliumClusterwideNetworkPolicy</code>
+with a <code>nodeSelector</code> can, and Cilium's
+<a href="https://docs.cilium.io/en/stable/security/host-firewall/">host firewall</a> enforces
+it on the native device and <code>cilium_host</code>. What each port is for is in
+<a href="../../operations/host-firewall-inventory-2026-10-30/">Host Firewall Inventory 2026-10-30</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Behaviour</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Only packets addressed to a node IP are checked</td>
+<td>The kube-vip address counts on the node holding it; Gateway addresses and NodePorts are translated first, so their policy is the backend pod's</td>
+</tr>
+<tr>
+<td>A node with no selecting policy is not denied anything on IPv4</td>
+<td>The switch can merge alone, and reverting the policy needs no second rollout</td>
+</tr>
+<tr>
+<td>No rule in a direction leaves that direction unenforced</td>
+<td>A host policy with <code>ingress</code> only never blocks a node's own connections, and their replies pass through conntrack</td>
+</tr>
+<tr>
+<td>Host endpoint labels are filtered</td>
+<td><code>kubernetes.io/hostname</code> is not among them, so a node can only be chosen by a label such as <code>node-access</code> in the upstream example, or by the <code>control-plane</code> role label</td>
+</tr>
+<tr>
+<td>A pod reaching another node's IP is masqueraded to its own node</td>
+<td>The target sees <code>remote-node</code>, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that</td>
+</tr>
+</tbody>
+</table>
 <h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
 <p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code>, which nothing
 configures, and gets an API token it has no use for. A workload reaching the
@@ -3245,11 +3412,29 @@ it alone, until the agent restarts:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>cilium-dbg<span class="w"> </span>endpoint<span class="w"> </span>config<span class="w"> </span>&lt;endpoint-id&gt;<span class="w"> </span><span class="nv">PolicyAuditMode</span><span class="o">=</span>Enabled
 </span></code></pre></div>
+<h3 id="host-firewall-rollout">Host firewall rollout<a class="headerlink" href="#host-firewall-rollout" title="Permanent link">&para;</a></h3>
+<p>Audit is per host endpoint, a setting of the running agent: <code>policyAuditMode</code>
+would stop enforcing the pod policies, and upstream says the per-endpoint
+setting does not survive an agent restart, after which the node enforces.
+The audit week therefore runs through a node label, and every step before
+enforcement is reversible by removing that label.</p>
+<ol>
+<li>
+<p>Merge the switch; the agents roll, one node at a time. Every agent reports
+   the firewall on the native device:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span>cilium-dbg<span class="w"> </span>status<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'Host firewall'</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Reboot one worker with no policy selecting it and watch it return <code>Ready</code>,
+   as in <a href="../../operations/nodes/#rebooting-a-node">Rebooting a node</a>.</p>
+</li>
+</ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
@@ -3264,6 +3449,58 @@ it alone, until the agent restarts:</p>
 <p class="admonition-title">The token change is not retroactive</p>
 <p>The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.</p>
 </div>
+<div class="admonition danger">
+<p class="admonition-title">A reboot can isolate a node a host policy selects</p>
+<p><a href="https://github.com/cilium/cilium/issues/48070">Upstream</a> reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here, and a power cut would hit every selected node at once. That is why the rollout selects one worker first and reboots it.</p>
+</div>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h3 id="host-firewall-lockout">Host firewall lockout<a class="headerlink" href="#host-firewall-lockout" title="Permanent link">&para;</a></h3>
+<p>Work down until the node answers. An agent that cannot reach the API server
+hears neither a policy change nor a label removal, so step 1 alone does not
+free a node that is already cut off.</p>
+<ol>
+<li>
+<p>API server answering: take the node out of the policy. Argo CD does not own
+   node labels, so nothing puts it back. Use <code>--all</code> instead of a name for every
+   node.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>host-firewall.wlkr.ch/selected-
+</span></code></pre></div>
+</li>
+<li>
+<p>SSH answering: put the node in audit mode, which needs no API server and
+   lasts until the agent restarts.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s">id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s">crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s">EOF</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Nothing answering, the API server up: nothing filters a node until its agent
+   has started after boot, so stop the agent coming back. Run this from the
+   workstation, then power-cycle the node, then do step 1 and start the kubelet
+   again with <code>sudo systemctl unmask kubelet &amp;&amp; sudo systemctl start kubelet</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">ConnectTimeout</span><span class="o">=</span><span class="m">2</span><span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>mask<span class="w"> </span>--now<span class="w"> </span>kubelet<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Every control plane cut off: the API server needs no CNI, so it comes up
+   before the agent does. Power-cycle all three and take the label off in that
+   window.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">until</span><span class="w"> </span>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>host-firewall.wlkr.ch/selected-<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Still nothing: at the node's console, add <code>flatcar.autologin</code> to the boot
+   entry in the GRUB menu, since <code>core</code> has no password, then run the inner
+   command of step 2. Failing that, <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">rebuild the node</a>.</p>
+</li>
+<li>
+<p>Then <a href="../../operations/nodes/#after-any-node-reboot-unseal-openbao">unseal OpenBao</a>
+   and revert in Git: the policy first; the switch only if the firewall itself
+   is the fault, since that revert rolls every agent again.</p>
+</li>
+</ol>
 
 
 
