@@ -64,8 +64,7 @@ spec:
               in container {{ $labels.container_name }} of namespace
               {{ $labels.namespace }} that no report in the cluster carried
               two days ago. The same rule at the same path in another
-              container, such as Debian's snake-oil key in every Postgres
-              image, is not new.
+              container is not new.
         - alert: TrivyRbacCriticalNew
           expr: |
             (

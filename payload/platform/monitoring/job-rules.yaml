@@ -1,0 +1,27 @@
+---
+# The chart's KubeJobFailed, disabled in application.yaml, bound to the last day.
+# See docs/platform/monitoring.md#alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: job-failures
+  namespace: monitoring
+spec:
+  groups:
+    - name: job-failures
+      rules:
+        - alert: KubeJobFailed
+          expr: >-
+            kube_job_failed{job="kube-state-metrics"} > 0
+            and on (namespace, job_name)
+            (time() - kube_job_status_start_time < 86400)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Job failed to complete.
+            description: >-
+              Job {{ $labels.namespace }}/{{ $labels.job_name }} failed within
+              the last day. The alert ends a day after the Job started, whether
+              or not the Job object is still there.
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubejobfailed
