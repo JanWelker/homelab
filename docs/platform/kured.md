@@ -39,7 +39,7 @@ flowchart TD
     SEN["/run/reboot-required<br/>sentinel, on tmpfs"] --> TICK{"Kured checks<br/>every period"}
 
     TICK -->|"no sentinel"| SLEEP["Nothing to do until<br/>an update stages one"]
-    TICK -->|"sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API"}
+    TICK -->|"sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API, Velero"}
     ALERT -->|"yes"| HELD["Reboot deferred while<br/>the cluster is unhealthy"]
     ALERT -->|"no"| LOCK{"Cluster lock free?"}
     LOCK -->|"another node<br/>is rebooting"| TAINT["Taint PreferNoSchedule,<br/>wait for the lock"]
@@ -61,6 +61,7 @@ The values are in `payload/platform/kured/application.yaml`; the reasoning:
 | `forceReboot: false` | A node that will not drain is a node worth looking at |
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
+| `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a six-hour window, longer than Velero's default four-hour limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for six hours at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
 | `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from [Rebooting a node](../operations/nodes.md): a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](monitoring.md#scrape-targets) |
 
 !!! note "The regex means the opposite of what it looks like"
@@ -92,5 +93,5 @@ ssh core@<node> 'ls -l /run/reboot-required; update_engine_client -status'
 kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50
 
 # The alert names the gate may use: every entry in alertFilterRegexp must be here
-kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI'
+kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'
 ```

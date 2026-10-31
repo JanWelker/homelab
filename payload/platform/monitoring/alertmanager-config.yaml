@@ -68,6 +68,10 @@ spec:
               - receiver: "null"
                 matchers:
                   - alertname = "Watchdog"
+              # Fires every night as Kured's gate, see docs/platform/kured.md
+              - receiver: "null"
+                matchers:
+                  - alertname = "VeleroBackupInProgress"
               - receiver: email
                 matchers:
                   - severity = "critical"
