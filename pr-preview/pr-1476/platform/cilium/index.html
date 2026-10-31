@@ -399,6 +399,8 @@
       
         
       
+        
+      
     
     
     
@@ -1771,6 +1773,8 @@
       
         
       
+        
+      
     
     
     
@@ -2107,6 +2111,33 @@
     
   
   Network Policy Audit 2026-10-16
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/host-firewall-inventory-2026-10-30/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Host Firewall Inventory 2026-10-30
 
     
   </span>
@@ -2635,6 +2666,10 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>Every header except <code>User-Agent</code> and <code>Content-Type</code>, and the password of a basic-auth URL, is replaced before a flow leaves the agent, for the export file and Relay alike. An L7 rule proxies the requests that carry credentials: External Secrets' <code>X-Vault-Token</code>, the bearer tokens Prometheus scrapes with, Velero's signed S3 requests, Authentik's cookies. The method, path and query the L7 rules are tightened from survive</td>
 </tr>
 <tr>
+<td><code>hostFirewall.enabled: true</code></td>
+<td>Filters traffic to the node's own addresses, which is every host-networked port, with <code>CiliumClusterwideNetworkPolicy</code> objects that select nodes. Attaching it denies nothing on IPv4 until a policy selects the node; IPv6 is another matter, see <a href="#pitfalls">Pitfalls</a>. Rollout and policy in <a href="../security-policies/#host-firewall">Host firewall</a></td>
+</tr>
+<tr>
 <td><code>policyAuditMode: false</code></td>
 <td>Policies are enforced. On, verdicts are logged and not enforced, which is how a rollout's observation week runs — see <a href="../security-policies/#rollout">Security Policies</a>. Cluster-wide, and blind to L7 rules</td>
 </tr>
@@ -2702,6 +2737,10 @@ advertised:</p>
 <div class="admonition danger">
 <p class="admonition-title">A chart default that disappears stays in <code>cilium-config</code></p>
 <p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When 1.20.4 dropped the <code>envoy.xdsMode</code> default, the agents kept <code>envoy-xds-mode: ads</code> while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">The host firewall drops all node IPv6, with or without a policy</p>
+<p>With <code>enable-ipv6: false</code> the datapath has no IPv6 branch, so on the native device and <code>cilium_host</code> every IPv6 packet is dropped as <code>DROP_UNKNOWN_L3</code> in both directions, before any policy or audit mode (<a href="https://github.com/cilium/cilium/issues/47307">upstream</a>). A node keeps its SLAAC address until the lifetime runs out, and a client that does not fall back to IPv4 stalls until then. The drops reach Loki as <code>DROPPED</code> flows with a reason other than <code>POLICY_DENIED</code>, so <code>HubblePolicyDrops</code> stays quiet.</p>
 </div>
 
 
