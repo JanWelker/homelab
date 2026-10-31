@@ -3226,6 +3226,10 @@ it on the native device and <code>cilium_host</code>. What each port is for is i
 </tr>
 </tbody>
 </table>
+<p><code>network-policies/host-firewall.yaml</code> selects the nodes carrying
+<code>host-firewall.wlkr.ch/selected</code>. It denies the LAN everything but SSH, the API
+server, DHCP and ping, and admits the whole cluster to every port, since a
+narrower cluster rule could not name Prometheus and could lock out a node.</p>
 <h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
 <p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code>, which nothing
 configures, and gets an API token it has no use for. A workload reaching the
@@ -3440,12 +3444,46 @@ enforcement is reversible by removing that label.</p>
 </span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">done</span>
 </span></code></pre></div>
 </li>
+<li>
+<p>Merge the policy; it selects nothing. Select one worker, with its console
+   within reach, and confirm <code>Disabled (Audit)</code> on its <code>reserved:host</code> line:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;worker&gt;<span class="w"> </span>host-firewall.wlkr.ch/selected<span class="o">=</span><span class="nb">true</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;agent-on-worker&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span>cilium-dbg<span class="w"> </span>endpoint<span class="w"> </span>list
+</span></code></pre></div>
+</li>
+<li>
+<p>Reboot that worker. It must return <code>Ready</code>, and audit mode <code>Enabled</code> within
+   a minute; if it does not, go to <a href="#host-firewall-lockout">Host firewall lockout</a>
+   and stop the rollout.</p>
+</li>
+<li>Select the other workers, then one control plane and reboot it, then the
+   other two. Only then start the audit week.</li>
+<li>
+<p>Read a week of what enforcement would refuse. Pods and nodes are admitted, so
+   anything here came from the LAN. Add a rule for what is legitimate:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>{job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -&gt; {{.dst}} {{.tcp}}{{.udp}}"
+</span></code></pre></div>
+</li>
+<li>
+<p>Enforce one worker: its label sends the DaemonSet away, and restarting its
+   agent drops audit mode, rather than switching audit off at runtime. Check
+   that <code>bpf policy get</code> lists separate identities and not one wildcard, and
+   that SSH and the node's pods still work. Reboot it once more.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;worker&gt;<span class="w"> </span>host-firewall.wlkr.ch/enforce<span class="o">=</span><span class="nb">true</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;worker&gt;
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;agent-on-worker&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span>cilium-dbg<span class="w"> </span>bpf<span class="w"> </span>policy<span class="w"> </span>get<span class="w"> </span>&lt;host-endpoint-id&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Repeat for the workers, then the control planes one at a time. Then delete
+   <code>host-firewall-audit.yaml</code> in a pull request.</p>
+</li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
@@ -3474,16 +3512,16 @@ free a node that is already cut off.</p>
 <p>API server answering: take the node out of the policy. Argo CD does not own
    node labels, so nothing puts it back. Use <code>--all</code> instead of a name for every
    node.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>host-firewall.wlkr.ch/selected-
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>host-firewall.wlkr.ch/selected-
 </span></code></pre></div>
 </li>
 <li>
 <p>SSH answering: put the node in audit mode, which needs no API server and
    lasts until the agent restarts.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="s">id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)</span>
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="s">crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="s">EOF</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="s">id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="s">crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="s">EOF</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -3491,14 +3529,14 @@ free a node that is already cut off.</p>
    has started after boot, so stop the agent coming back. Run this from the
    workstation, then power-cycle the node, then do step 1 and start the kubelet
    again with <code>sudo systemctl unmask kubelet &amp;&amp; sudo systemctl start kubelet</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">ConnectTimeout</span><span class="o">=</span><span class="m">2</span><span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>mask<span class="w"> </span>--now<span class="w"> </span>kubelet<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">ConnectTimeout</span><span class="o">=</span><span class="m">2</span><span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>mask<span class="w"> </span>--now<span class="w"> </span>kubelet<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Every control plane cut off: the API server needs no CNI, so it comes up
    before the agent does. Power-cycle all three and take the label off in that
    window.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">until</span><span class="w"> </span>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>host-firewall.wlkr.ch/selected-<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="k">until</span><span class="w"> </span>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>host-firewall.wlkr.ch/selected-<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
 </span></code></pre></div>
 </li>
 <li>
