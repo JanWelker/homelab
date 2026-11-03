@@ -102,21 +102,6 @@ spec:
             additionalVulnerabilityReportFields: CVSS,Target,Class,PackagePath,PackageType
 
             # Rego v0, per namespace; only where the full report exceeds the etcd limit.
-            ignorePolicy.nextcloud: |
-              package trivy
-
-              default ignore = false
-
-              ignore {
-                object.get(input, "FixedVersion", "") == ""
-                input.Severity != "HIGH"
-                input.Severity != "CRITICAL"
-              }
-
-              # Azurite's public development key, shipped in azure-storage-common.
-              ignore {
-                input.RuleID == "azure-storage-account-key"
-              }
             ignorePolicy.authentik: |
               package trivy
 

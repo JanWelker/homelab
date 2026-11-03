@@ -938,7 +938,7 @@ data:
           },
           "options": {
             "mode": "markdown",
-            "content": "```bash\n# Live events for one namespace, compact\nkubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compact --namespaces nextcloud\n\n# Is every policy loaded on every node\nkubectl get tracingpolicies -o wide\n\n# The same stream this dashboard reads\nkubectl -n kube-system logs ds/tetragon -c export-stdout --since=10m | jq -c 'select(.process_kprobe)'\n```\n\nPolicies and alerts: [Tetragon](https://homelab.wlkr.ch/platform/tetragon/)."
+            "content": "```bash\n# Live events for one namespace, compact\nkubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compact --namespaces home-assistant\n\n# Is every policy loaded on every node\nkubectl get tracingpolicies -o wide\n\n# The same stream this dashboard reads\nkubectl -n kube-system logs ds/tetragon -c export-stdout --since=10m | jq -c 'select(.process_kprobe)'\n```\n\nPolicies and alerts: [Tetragon](https://homelab.wlkr.ch/platform/tetragon/)."
           }
         }
       ],

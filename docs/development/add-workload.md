@@ -98,7 +98,7 @@ spec:
 
 For a Helm chart that also needs manifests of its own, use a `sources` list
 with the chart in one entry and this repository in another;
-`nextcloud/application.yaml` is the worked example. The `syncPolicy` is the
+`dependency-track/application.yaml` is the worked example. The `syncPolicy` is the
 one every platform Application carries, `retry` included; without it a
 workload that referenced a platform resource a minute too early stays failed
 — see [Sync policy](../architecture/gitops.md#sync-policy).
