@@ -201,8 +201,6 @@ configs:
 
     # The in-cluster Claude Code agents; see docs/platform/authentik.md#argocds-api-key-account
     accounts.claude: apiKey
-    # HolmesGPT's argocd CLI; see docs/platform/holmesgpt.md#secrets
-    accounts.holmesgpt: apiKey
 
     oidc.config: |
       name: Authentik
@@ -278,5 +276,4 @@ configs:
       g, argocd-viewers, role:readonly
       g, role:claude, role:readonly
       g, claude, role:claude
-      g, holmesgpt, role:readonly
     scopes: "[groups, email]"
