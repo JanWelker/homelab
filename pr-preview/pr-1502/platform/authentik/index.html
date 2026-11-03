@@ -1482,6 +1482,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-issuer-for-opencloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        One issuer for OpenCloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#user-settings-flow" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2639,6 +2650,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-issuer-for-opencloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        One issuer for OpenCloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#user-settings-flow" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3142,6 +3164,18 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="one-issuer-for-opencloud">One issuer for OpenCloud<a class="headerlink" href="#one-issuer-for-opencloud" title="Permanent link">&para;</a></h3>
+<p>OpenCloud's web, desktop, iOS and Android clients are four OIDC clients with
+IDs fixed by the clients, so four providers in Authentik, each under an
+application of its own. The server and the native clients verify every
+token against one issuer, and Authentik derives a provider's issuer from its
+application slug, so the four would disagree. All four therefore use
+<code>issuer_mode: global</code>, whose issuer is the bare hostname, and the
+<code>HTTPRoute</code> rewrites <code>/.well-known/openid-configuration</code> on that hostname to
+the <code>opencloud</code> application's discovery document, which is where OpenCloud
+and its clients fetch it. The document names the global issuer and the
+shared endpoints, so it serves the other three providers as well. Nothing
+else uses the root path: every other provider is found under its slug.</p>
 <h3 id="user-settings-flow">User settings flow<a class="headerlink" href="#user-settings-flow" title="Permanent link">&para;</a></h3>
 <p>Dependency-Track keys its accounts on the <code>preferred_username</code>
 claim, so a user who could rename themselves could take over another's
