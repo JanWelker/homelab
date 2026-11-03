@@ -3075,11 +3075,6 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td><code>password</code></td>
 <td>Velero, as the kopia password of every backup repository — <a href="../velero/#repository-password">Repository password</a>; changing it orphans every volume backup</td>
 </tr>
-<tr>
-<td><code>nextcloud/config</code> (generated)</td>
-<td><code>username</code>, <code>password</code>, <code>oidc-client-id</code>, <code>oidc-client-secret</code></td>
-<td>Nextcloud, and Authentik for the two <code>oidc-*</code> keys — a separate path so rotating it cannot take Authentik's own credentials with it</td>
-</tr>
 </tbody>
 </table>
 <p>The two <code>route53</code> leaves are separate IAM users on purpose: cert-manager's
@@ -3116,7 +3111,7 @@ repository.</p>
 </tr>
 <tr>
 <td><code>encoding</code> or a <code>template</code> where the reader wants a format</td>
-<td>Umami's keys are hex, Dependency-Track's KEK is base64 of 32 bytes, Nextcloud's admin user is the literal <code>admin</code></td>
+<td>Umami's keys are hex, Dependency-Track's KEK is base64 of 32 bytes</td>
 </tr>
 <tr>
 <td>One <code>Password</code> per path, its <code>secretKeys</code> the property names</td>

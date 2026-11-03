@@ -2952,10 +2952,6 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 <td>OIDC, login form disabled</td>
 </tr>
 <tr>
-<td>Nextcloud</td>
-<td>OIDC, login form hidden, local admin break-glass</td>
-</tr>
-<tr>
 <td>Home Assistant</td>
 <td>Proxy outpost <strong>in front of</strong> its own login — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
@@ -3090,7 +3086,7 @@ placement</a>.</p>
 </tr>
 <tr>
 <td><code>worker.podAnnotations</code> <code>homelab.wlkr.ch/secret-generation</code></td>
-<td>Bumped whenever <code>authentik-secrets</code> or <code>authentik-secrets-nextcloud</code> gains a key, so ArgoCD restarts the worker in the same sync — see <a href="#pitfalls">Pitfalls</a></td>
+<td>Bumped whenever <code>authentik-secrets</code> or a workload's <code>authentik-secrets-&lt;workload&gt;</code> gains a key, so ArgoCD restarts the worker in the same sync — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
 <tr>
 <td>Workload blueprints as a <code>projected</code> volume, <code>optional: true</code></td>
@@ -3147,7 +3143,7 @@ against a provider must tolerate it not existing yet.</p>
 </tbody>
 </table>
 <h3 id="user-settings-flow">User settings flow<a class="headerlink" href="#user-settings-flow" title="Permanent link">&para;</a></h3>
-<p>Nextcloud and Dependency-Track key their accounts on the <code>preferred_username</code>
+<p>Dependency-Track keys its accounts on the <code>preferred_username</code>
 claim, so a user who could rename themselves could take over another's
 account. <code>05-user-settings.yaml</code> therefore gives the default brand its own
 user settings flow with no username field; a username changes only under
@@ -3277,8 +3273,8 @@ nothing is copied out of a UI. The <code>PushSecret</code> in <code>secrets.yaml
 <a href="../openbao/#generated-secrets">Generated secrets</a> — with the secret key, the
 bootstrap password and the ArgoCD and Grafana client pairs; its
 <code>Password</code> generator's <code>secretKeys</code> is the list of keys. A
-workload's client credentials go in the workload's own path (Nextcloud's in
-<code>kv/nextcloud/config</code>, Dependency-Track's in <code>kv/dependency-track/config</code>,
+workload's client credentials go in the workload's own path (Dependency-Track's in
+<code>kv/dependency-track/config</code>,
 each read by its own <code>secrets-&lt;workload&gt;.yaml</code>, mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the secret key
 that signs every session and token, and External Secrets fails an
 <code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
@@ -3290,7 +3286,7 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <ol>
 <li>Generate its client credentials into OpenBao with a <code>PushSecret</code> beside
    the workload's own <code>ExternalSecret</code>, and read them here with an
-   <code>ExternalSecret</code> mounted <code>optional</code>, like <code>secrets-nextcloud.yaml</code>.</li>
+   <code>ExternalSecret</code> mounted <code>optional</code>, like <code>secrets-dependency-track.yaml</code>.</li>
 <li>Bump <code>homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code>.</li>
 <li>Add the provider and application blueprint: an OAuth2 provider with
    <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
