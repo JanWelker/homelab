@@ -16,7 +16,26 @@ spec:
   hostnames:
     - "auth.k8s.wlkr.ch"
   rules:
-    - filters:
+    # The root discovery document, for OpenCloud's four providers in global
+    # issuer mode; see docs/platform/authentik.md#one-issuer-for-opencloud
+    - matches:
+        - path:
+            type: Exact
+            value: /.well-known/openid-configuration
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /application/o/opencloud/.well-known/openid-configuration
+      backendRefs:
+        - name: authentik-server
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
             add:

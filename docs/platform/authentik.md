@@ -126,6 +126,20 @@ against a provider must tolerate it not existing yet.
 | The outpost's `providers:` list | `blueprints.yaml` | It replaces one global object; two repositories writing it would overwrite each other |
 | `referencegrant.yaml` | Here | A proxied workload's route needs granting from this side |
 
+### One issuer for OpenCloud
+
+OpenCloud's web, desktop, iOS and Android clients are four OIDC clients with
+IDs fixed by the clients, so four providers in Authentik, each under an
+application of its own. The server and the native clients verify every
+token against one issuer, and Authentik derives a provider's issuer from its
+application slug, so the four would disagree. All four therefore use
+`issuer_mode: global`, whose issuer is the bare hostname, and the
+`HTTPRoute` rewrites `/.well-known/openid-configuration` on that hostname to
+the `opencloud` application's discovery document, which is where OpenCloud
+and its clients fetch it. The document names the global issuer and the
+shared endpoints, so it serves the other three providers as well. Nothing
+else uses the root path: every other provider is found under its slug.
+
 ### User settings flow
 
 Dependency-Track keys its accounts on the `preferred_username`
