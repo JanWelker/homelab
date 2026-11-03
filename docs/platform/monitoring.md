@@ -91,7 +91,7 @@ namespace is on the list in `ruleNamespaceSelector`.
 | etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP on 2381, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](rook-ceph.md#monitoring) | |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
-| CRD status fields: HolmesGPT's HealthChecks, CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above |
+| CRD status fields: CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above |
 | Pod labels: OpenBao's `openbao-sealed` | kube-state-metrics' `metricLabelsAllowlist` in the chart values | Exported as `label_<name>` on `kube_pod_labels`; only listed labels, since every one adds a series per pod |
 
 !!! note
