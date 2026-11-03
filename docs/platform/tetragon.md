@@ -94,14 +94,14 @@ The dashboard is the summary; the queries below are what its Loki panels run.
 {namespace="kube-system", container="export-stdout"} | json | process_kprobe_policy_name!=""
 
 # Every exec in one namespace, with arguments
-{namespace="kube-system", container="export-stdout"} | json | process_exec_process_pod_namespace="nextcloud"
+{namespace="kube-system", container="export-stdout"} | json | process_exec_process_pod_namespace="home-assistant"
   | line_format "{{.process_exec_process_binary}} {{.process_exec_process_arguments}}"
 ```
 
 The `tetra` CLI in the agent pod does the same live:
 
 ```bash
-kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compact --namespaces nextcloud
+kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compact --namespaces home-assistant
 ```
 
 ## Health check

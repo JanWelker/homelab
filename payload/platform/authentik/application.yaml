@@ -22,11 +22,7 @@ spec:
               # From secrets.yaml; the blueprints read it via !Env.
               - secretRef:
                   name: authentik-secrets
-              # From secrets-nextcloud.yaml; optional so a cluster without Nextcloud starts.
-              - secretRef:
-                  name: authentik-secrets-nextcloud
-                  optional: true
-              # From secrets-dependency-track.yaml; optional for the same reason.
+              # From secrets-dependency-track.yaml; optional so a cluster without Dependency-Track starts.
               - secretRef:
                   name: authentik-secrets-dependency-track
                   optional: true
@@ -127,9 +123,6 @@ spec:
               - name: blueprints-workloads
                 projected:
                   sources:
-                    - configMap:
-                        name: authentik-blueprint-nextcloud
-                        optional: true
                     - configMap:
                         name: authentik-blueprint-dependency-track
                         optional: true

@@ -100,7 +100,6 @@ a `bao kv put` replaces the whole path.
 | `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](github-runners.md#github-app); empty until the app is created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](velero.md#repository-password); changing it orphans every volume backup |
-| `nextcloud/config` (generated) | `username`, `password`, `oidc-client-id`, `oidc-client-secret` | Nextcloud, and Authentik for the two `oidc-*` keys — a separate path so rotating it cannot take Authentik's own credentials with it |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's
 key only writes `_acme-challenge` TXT records, so stolen it can issue
@@ -122,7 +121,7 @@ repository.
 | `updatePolicy: IfNotExists` | ESO checks each property before writing it and skips one that exists, so a value is written once and the next reconcile's freshly generated one is discarded |
 | `deletionPolicy: None` | Deleting the `PushSecret`, or its Application, leaves the value in OpenBao; the policy grants no `delete` either |
 | `symbols: 0`, `allowRepeat: true` | Alphanumeric only, so a value survives a URL, a `.env` line and a shell unquoted; repeats allowed because without them the generator cannot produce more than ten digits |
-| `encoding` or a `template` where the reader wants a format | Umami's keys are hex, Dependency-Track's KEK is base64 of 32 bytes, Nextcloud's admin user is the literal `admin` |
+| `encoding` or a `template` where the reader wants a format | Umami's keys are hex, Dependency-Track's KEK is base64 of 32 bytes |
 | One `Password` per path, its `secretKeys` the property names | A generator produces one map per call; one key per property keeps every value independent |
 | Sync wave `-2` in the workloads repository | Its `ExternalSecret`s sit at `-1`, and ArgoCD waits for a wave to be healthy before the next |
 

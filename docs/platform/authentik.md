@@ -13,7 +13,6 @@ every network flow in the cluster to anyone who could reach the hostname.
 | --- | --- |
 | ArgoCD | OIDC, local admin **disabled** |
 | Grafana | OIDC, login form disabled |
-| Nextcloud | OIDC, login form hidden, local admin break-glass |
 | Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](#pitfalls) |
 | Umami | Proxy outpost **in front of** its own login; the tracker paths pass through — see [Pitfalls](#pitfalls) |
 | Rook dashboard, Hubble UI, Prometheus, Alertmanager, Extractor admin UI | Proxy outpost |
@@ -106,7 +105,7 @@ placement](index.md#replica-placement).
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
 | `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold two replicas apart — see [Replica placement](index.md#replica-placement). The worker runs a single replica and needs none |
-| `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or `authentik-secrets-nextcloud` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
+| `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
 | Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](../architecture/gitops.md#workloads-live-in-a-second-repository), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 
 ### Where a blueprint lives
@@ -129,7 +128,7 @@ against a provider must tolerate it not existing yet.
 
 ### User settings flow
 
-Nextcloud and Dependency-Track key their accounts on the `preferred_username`
+Dependency-Track keys its accounts on the `preferred_username`
 claim, so a user who could rename themselves could take over another's
 account. `05-user-settings.yaml` therefore gives the default brand its own
 user settings flow with no username field; a username changes only under
@@ -224,8 +223,8 @@ nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes
 [Generated secrets](openbao.md#generated-secrets) — with the secret key, the
 bootstrap password and the ArgoCD and Grafana client pairs; its
 `Password` generator's `secretKeys` is the list of keys. A
-workload's client credentials go in the workload's own path (Nextcloud's in
-`kv/nextcloud/config`, Dependency-Track's in `kv/dependency-track/config`,
+workload's client credentials go in the workload's own path (Dependency-Track's in
+`kv/dependency-track/config`,
 each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key
 that signs every session and token, and External Secrets fails an
 `ExternalSecret` whole when one key is missing, so a shared one would leave
@@ -239,7 +238,7 @@ are in [Quickstart step 12](../quickstart.md#setup).
 
 1. Generate its client credentials into OpenBao with a `PushSecret` beside
    the workload's own `ExternalSecret`, and read them here with an
-   `ExternalSecret` mounted `optional`, like `secrets-nextcloud.yaml`.
+   `ExternalSecret` mounted `optional`, like `secrets-dependency-track.yaml`.
 2. Bump `homelab.wlkr.ch/secret-generation` in `application.yaml`.
 3. Add the provider and application blueprint: an OAuth2 provider with
    `grant_types`, or a proxy provider added to the outpost's `providers:` list.

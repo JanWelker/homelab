@@ -106,7 +106,6 @@ HTTPRoutes are co-located with their respective apps:
 | OpenBao UI       | `vault.infra.k8s.wlkr.ch`        | `payload/platform/openbao/httproute.yaml`                                                    |
 | Rook Dashboard   | `rook.infra.k8s.wlkr.ch`         | `payload/platform/rook-ceph/httproute.yaml`                                                  |
 | Home Assistant   | `home.k8s.wlkr.ch`               | `home-assistant/httproute.yaml` in [homelab-apps](https://github.com/JanWelker/homelab-apps) |
-| Nextcloud        | `cloud.k8s.wlkr.ch`              | `nextcloud/httproute.yaml` in [homelab-apps](https://github.com/JanWelker/homelab-apps)      |
 
 ## Deployment
 
