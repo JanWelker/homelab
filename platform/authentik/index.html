@@ -1482,6 +1482,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-issuer-for-opencloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        One issuer for OpenCloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#user-settings-flow" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2639,6 +2650,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#one-issuer-for-opencloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        One issuer for OpenCloud
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#user-settings-flow" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3128,7 +3150,7 @@ against a provider must tolerate it not existing yet.</p>
 <tr>
 <td>The mount entry and <code>secret-generation</code></td>
 <td><code>application.yaml</code></td>
-<td>One projected-volume source per workload; a new credential needs the worker restarted</td>
+<td>One projected-volume source per workload, with or without credentials; a new credential needs the worker restarted</td>
 </tr>
 <tr>
 <td>The outpost's <code>providers:</code> list</td>
@@ -3142,6 +3164,18 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="one-issuer-for-opencloud">One issuer for OpenCloud<a class="headerlink" href="#one-issuer-for-opencloud" title="Permanent link">&para;</a></h3>
+<p>OpenCloud's web, desktop, iOS and Android clients are four OIDC clients with
+IDs fixed by the clients, so four providers in Authentik, each under an
+application of its own. The server and the native clients verify every
+token against one issuer, and Authentik derives a provider's issuer from its
+application slug, so the four would disagree. All four therefore use
+<code>issuer_mode: global</code>, whose issuer is the bare hostname, and the
+<code>HTTPRoute</code> rewrites <code>/.well-known/openid-configuration</code> on that hostname to
+the <code>opencloud</code> application's discovery document, which is where OpenCloud
+and its clients fetch it. The document names the global issuer and the
+shared endpoints, so it serves the other three providers as well. Nothing
+else uses the root path: every other provider is found under its slug.</p>
 <h3 id="user-settings-flow">User settings flow<a class="headerlink" href="#user-settings-flow" title="Permanent link">&para;</a></h3>
 <p>Dependency-Track keys its accounts on the <code>preferred_username</code>
 claim, so a user who could rename themselves could take over another's
@@ -3286,7 +3320,10 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <ol>
 <li>Generate its client credentials into OpenBao with a <code>PushSecret</code> beside
    the workload's own <code>ExternalSecret</code>, and read them here with an
-   <code>ExternalSecret</code> mounted <code>optional</code>, like <code>secrets-dependency-track.yaml</code>.</li>
+   <code>ExternalSecret</code> mounted <code>optional</code>, like <code>secrets-dependency-track.yaml</code>.
+   A public client (PKCE, as OpenCloud's web and native clients) has no
+   credentials: its client IDs are fixed by the client and sit in the
+   blueprint in clear, so this step and the next do not apply.</li>
 <li>Bump <code>homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code>.</li>
 <li>Add the provider and application blueprint: an OAuth2 provider with
    <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
