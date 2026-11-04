@@ -58,6 +58,11 @@ the same two at <https://homelab.wlkr.ch/llms.txt> and
   The reference page keeps the method and links the log.
 - The build validates links and anchors. Grep for `#anchor` before renaming a
   heading.
+- **A gap found is a gap closed now.** Whenever a question is answered from
+  the manifests, the Ansible inventory, a chart's values or the live cluster
+  because the docs did not have it, write it into the page where a reader
+  would look for it, in the same PR. The docs are the reference; a fact that
+  only lives in a config file is the next lookup.
 
 ## Bootstrap
 
