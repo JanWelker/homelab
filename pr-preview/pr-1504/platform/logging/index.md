@@ -1,0 +1,126 @@
+# Logging
+
+[Loki](<https://grafana.com/oss/loki/>) stores logs; [Grafana Alloy](<https://grafana.com/docs/alloy/latest/>) collects them. Both are queried from the existing Grafana at [monitoring.infra.k8s.wlkr.ch](<https://monitoring.infra.k8s.wlkr.ch>). Without them a crashed pod's logs are gone with the container, and on Flatcar the `kubelet`, `containerd`, `systemd-sysupdate` and `update-engine` logs live in journald and are reachable only over SSH to the node that is misbehaving.
+
+## At a glance
+
+|  |  |
+| --- | --- |
+| Namespace | `logging` |
+| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) object storage for chunks, [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) for the Grafana that queries it |
+| If it is down | Logs stop being collected and are not backfilled. The [audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) loses its durable copy, and the [log alerts](<#alerting>) stop |
+| Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
+| Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; both sets of dashboards are listed under [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/#dashboards>) |
+| Files | `payload/platform/logging/`, `payload/platform/loki/`, `payload/platform/alloy/` |
+
+> [!NOTE]
+>
+> **Not Promtail, and not the `grafana/loki` chart**
+>
+> Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from `grafana-community/loki`: the OSS chart moved to [grafana-community/helm-charts](<https://github.com/grafana-community/helm-charts>) in March 2026, and what stayed in `grafana/loki` is maintained for Grafana Enterprise Logs customers, pins a `k8s-sidecar` several minor releases behind and closes open-source pull requests with a pointer to the community repository.
+
+## Configuration
+
+### Sources
+
+| Source | Path | Labels |
+| --- | --- | --- |
+| Container logs | `/var/log/pods/<ns>_<pod>_<uid>/<container>/*.log` | `namespace`, `pod`, `container`, `node`, `app` |
+| Node journal | `/var/log/journal` | `unit`, `node`, `job="systemd-journal"` |
+| API server audit log | `/var/log/kubernetes/audit/audit.log` | `verb`, `audit_level`, `node`, `job="kubernetes-audit"` |
+| Hubble policy verdicts | `/var/run/cilium/hubble/events.log` | `verdict`, `node`, `job="hubble"` |
+
+The first three are on the root filesystem, so one `varlog: true` mount covers them; the Hubble export is a separate read-only hostPath — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#configuration>). The audit log exists only on the control-plane nodes; Alloy runs everywhere and `local.file_match` finds nothing on the workers. Audit events keep only `verb` and `audit_level` as labels — small closed sets — while user and resource stay in the line where `| json` can reach them. See [Audit logging](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) for what is recorded.
+
+### Alloy pipeline
+
+| Stage | Why |
+| --- | --- |
+| `discovery.kubernetes` with a `spec.nodeName` field selector | Each agent discovers only its own node's pods; without it every agent watches every pod and discards all but its own |
+| `stage.cri {}` on container logs | containerd writes `<timestamp> <stream> <flags> <message>`; without it the timestamp lands inside the line and Loki stamps everything at ingest time |
+| `discovery.relabel "journal"` sets `job` | `loki.source.journal` overwrites `job` with its component ID after applying `labels`; only relabel rules run after that |
+| `stage.json`, `stage.labels`, `stage.timestamp` on audit events | Stamps each event with its `requestReceivedTimestamp` rather than when Alloy read the file |
+
+| Setting in `alloy/application.yaml` | Why |
+| --- | --- |
+| Control-plane toleration | Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki |
+| `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
+| `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
+| `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
+| `rbac.rules` without `secrets` | The chart's ClusterRole reads every Secret for `remote.kubernetes.secret`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](<#alerting>) would show such a read, but a grant with no purpose is better not made |
+
+### Storage
+
+Loki runs as a single binary (`deploymentMode: Monolithic`) and keeps chunks in the [Ceph object store](<https://homelab.wlkr.ch/platform/rook-ceph/#object-storage>); a local PVC on `rook-ceph-block` holds the WAL and the index being built.
+
+| Setting in `loki/application.yaml` | Why |
+| --- | --- |
+| Fixed `bucketName` on the `ObjectBucketClaim` | A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild |
+| `singleBinary.extraArgs` `-config.expand-env=true` and `singleBinary.extraEnvFrom` | Rook writes the bucket credentials to a Secret, Loki reads them as `${AWS_ACCESS_KEY_ID}` — nothing in Git |
+| `loki.analytics.reporting_enabled: false` | Loki otherwise sends usage statistics to `stats.grafana.org` a few times a day; same reason as Alloy's switch above |
+| `chunksCache` and `resultsCache` off | Four memcached pods in front of a Loki this size |
+| `loki.podSecurityContext` | Adds `RuntimeDefault` seccomp at pod level, covering the rules sidecar too |
+| Retention with the compactor enabled | Old chunks are actually deleted |
+| `rulerConfig` | The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of `loki_rule` ConfigMaps, so `storage.type` is `local` rather than the bucket the chart would pick; `rule_path` is the ruler's scratch directory and must not be the rules directory |
+| `rbac.namespaced: true` and `sidecar.rules.resource: configmap` | The rules are ConfigMaps in `logging`, so a Role there replaces the chart's cluster-wide ClusterRole, for the same reason as Alloy's `rbac.rules` above; the chart's binding could not be repointed because a `roleRef` is immutable. `resource: configmap` keeps the sidecar from listing Secrets |
+| `retention_stream` for the `findings-history` container | The daily [Trivy summary](<https://homelab.wlkr.ch/platform/trivy-operator/#history>) is a few lines and the only long-range record of findings, so that one stream stays a year |
+
+### Alerting
+
+Alerts over logs live in `logging/loki-rules.yaml`, a ConfigMap labelled `loki_rule` in the same format as a `PrometheusRule` group with LogQL expressions. The `k8s-sidecar-target-directory: fake` annotation puts the file under the tenant directory the ruler reads (`fake` is the tenant when `auth_enabled` is off). Prometheus-side rules stay with their components; these are the events only a log carries. Loki's own health alerts (request errors, latency, panics, the compactor) are the chart's `monitoring.alerts`, the mixin Grafana maintains, not rules written here.
+
+| Alert | Fires on | Why it is a log alert |
+| --- | --- | --- |
+| `KubernetesAuditExecIntoPod` | A successful `exec` or `attach` | Only the [audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) records who ran what in which pod |
+| `KubernetesAuditSecretReadByUser` | A Secret read by a person, or by a ServiceAccount outside its own namespace that is not on the allowlist of platform controllers | A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, plus the runner's in `arc-jobs` only, where its [container hook](<https://homelab.wlkr.ch/platform/github-runners/#job-pods>) keeps each job's environment, and a ServiceAccount reading its own namespace is what its Role is for |
+| `KubernetesAuditRbacBindingChanged` | A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a `kube-system` controller | Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously |
+| `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
+| `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
+| `KubernetesAuditEsoTokenMinted` | A successful `serviceaccounts/token` create for an `external-secrets-vault` ServiceAccount by anyone but ESO's controller, a kubelet starting a pod under that ServiceAccount included | OpenBao records the same role and ServiceAccount whoever minted the token, so only the audit log names the minter. A stolen controller token or a legacy token Secret does not trip it: neither shows a different user on this request |
+| `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by any token whose display name is not `kubernetes-<namespace>-external-secrets-vault`, ESO's login for one of its [stores](<https://homelab.wlkr.ch/platform/openbao/#kubernetes-auth>) | [OpenBao's audit device](<https://homelab.wlkr.ch/platform/openbao/#audit-devices>) writes to stdout; ESO is the only day-to-day reader, every Kubernetes role is bound to that ServiceAccount name, and a token created by hand is prefixed `token-`, so it cannot borrow the name |
+| `TetragonSudoInContainer` | `sudo` executed in a container, except the `smartctl` and `nvme` calls `ceph-osd` makes once a day for its device health report | Only the exec event carries the binary and its parent |
+| `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec, with the same `ceph-osd` exception | The `binary_properties` field exists only in the exec event |
+| `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor, except runc's sealed self-copy on every `exec` | Same |
+| `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](<https://homelab.wlkr.ch/platform/tetragon/#policies>) |
+| `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The signature result is an argument of the kprobe event, not a metric label |
+| `HubblePolicyDrops` | More than three `POLICY_DENIED` packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the `init` identity and addresses with no pod behind them are left out. The `namespace` label is the policy that refused, so the mail names the file to edit | A connection's retransmits pass the threshold and a name rule's single early `SYN` does not; the metric counts per namespace pair only and misses the first burst of a new pair |
+| `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
+| `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
+
+To confirm the ruler loaded a rule:
+
+```bash
+kubectl -n logging port-forward svc/loki 3100:3100
+curl -s localhost:3100/loki/api/v1/rules
+```
+
+### Dashboards
+
+`grafana-dashboards.yaml` carries three dashboards from the Alloy mixin (`operations/alloy-mixin/rendered/dashboards/`), unmodified; the chart renders none and Renovate does not see the copy, so re-copy them when Alloy moves a minor version. The mixin's other dashboards cover features this Alloy does not use. The Loki datasource in `grafana-datasource.yaml` declares its namespace as `monitoring`, the only namespace the Grafana sidecar watches for `grafana_datasource` ConfigMaps.
+
+## Usage
+
+Choose **Loki** as the datasource in Grafana and query by label:
+
+```text
+{namespace="rook-ceph"} |= "error"
+{unit="kubelet.service", node="odin"}
+{namespace="openbao"} |= "sealed"
+{job="kubernetes-audit"} | json | objectRef_resource="secrets"
+```
+
+## Health check
+
+```bash
+kubectl -n logging get pods
+```
+
+Then run a `{job="kubernetes-audit"}` query in Grafana; an empty result with healthy pods means the control-plane agents are not reading the file.
+
+## Pitfalls
+
+> [!WARNING]
+>
+> **Loki settings belong on `singleBinary`, not `global`**
+>
+> `global.extraArgs` and `global.extraEnvFrom` look right, but the single-binary StatefulSet reads only `singleBinary.extraArgs` and `singleBinary.extraEnvFrom`. Set globally, the config is full of unexpanded `${...}` and Loki cannot authenticate to RGW, with an error pointing nowhere near the cause. Likewise `singleBinary.podSecurityContext` does not exist and is silently inert.
