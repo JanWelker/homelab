@@ -31,12 +31,14 @@ Cilium is the CNI, and on this cluster considerably more: it replaces `kube-prox
 | `policyAuditMode: false` | Policies are enforced. On, verdicts are logged and not enforced, which is how a rollout's observation week runs — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#rollout>). Cluster-wide, and blind to L7 rules |
 | `rollOutCiliumPods` and the four `rollOutPods` | The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to `cilium-config` is a rolling restart of the CNI on every node: running pods keep their networking, policy updates pause per node for the seconds its agent is down, and the [`k8sServiceHost` pitfall](<#pitfalls>) bites at merge, not later |
 | `updateStrategy.rollingUpdate.maxUnavailable: 1` | The chart default restarts the agent on two nodes at once, which can be two of the three control planes that hold the L2 leases and BGP sessions; one at a time keeps every Gateway address announced throughout a rollout |
-| `operator.replicas: 2` | The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the `cilium-secrets` sync; with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the two apart, so the standby is already running — see the [operator pitfall](<#pitfalls>) |
+| `operator.replicas` above one | The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the `cilium-secrets` sync; with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the replicas apart, so the standby is already running — see the [operator pitfall](<#pitfalls>) |
 | `lb-pools.yaml` on `cilium.io/v2` | The storage version for `CiliumLoadBalancerIPPool`; `v2alpha1` is served as deprecated and warns on every sync. `CiliumL2AnnouncementPolicy` has no `v2` yet and stays |
 | `cilium-agent` memory limit | It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, not a day, before the [platform rule](<https://homelab.wlkr.ch/platform/index.md>) applied |
 | `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `prometheus-operator-crds` has synced, and the diff preview's throwaway cluster |
 
-## Installation
+## Usage
+
+### Installation
 
 Cilium is installed twice, in a sense. `make install-cilium` installs it by Helm, because no pod runs without a CNI and ArgoCD is a pod; ArgoCD then adopts the release. The version comes from `targetRevision` in `application.yaml` — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md>).
 
@@ -48,15 +50,17 @@ The bootstrap install uses the same `values.yaml`, and has to: the pods roll whe
 kubectl -n kube-system exec ds/cilium -- cilium status --brief
 ```
 
-The BGP session on each control-plane node, `established` with two routes advertised:
+The BGP session on each control-plane node, `established` with two routes advertised. `bgp.yaml` selects the control planes only, so ask that node's agent rather than whichever pod `ds/cilium` resolves to:
 
 ```bash
-kubectl -n kube-system exec ds/cilium -- cilium bgp peers
+kubectl -n kube-system exec "$(kubectl -n kube-system get pod -l k8s-app=cilium \
+  --field-selector spec.nodeName=<control-plane> -o name)" -- cilium bgp peers
 ```
 
-Hubble answers *what did I just break?* during a network policy rollout — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#usage>):
+Hubble answers *what did I just break?* during a network policy rollout — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#usage>). The `hubble` CLI talks to Relay through a port-forward on its default port:
 
 ```bash
+kubectl -n kube-system port-forward deploy/hubble-relay 4245:4245 &
 hubble observe --verdict DROPPED --follow
 ```
 
@@ -84,7 +88,7 @@ The same verdicts, for the whole Loki retention window, in Grafana:
 >
 > **A chart default that disappears stays in `cilium-config`**
 >
-> The bootstrap install's `helm` field manager still co-owns every `cilium-config` key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When 1.20.4 dropped the `envoy.xdsMode` default, the agents kept `envoy-xds-mode: ads` while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in `values.yaml` rather than relying on the default.
+> The bootstrap install's `helm` field manager still co-owns every `cilium-config` key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When a chart release dropped the `envoy.xdsMode` default, the agents kept `envoy-xds-mode: ads` while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in `values.yaml` rather than relying on the default.
 
 > [!WARNING]
 >

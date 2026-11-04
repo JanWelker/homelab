@@ -3011,63 +3011,29 @@ Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 <p>Enforcement is set to what already works, so nothing running breaks, while
 <code>warn</code> and <code>audit</code> show what a stricter level would catch; tightening later is
 an informed change.</p>
+<p>The level per namespace is in <code>pod-security.yaml</code>; the rule behind it:</p>
 <table>
 <thead>
 <tr>
-<th>Namespace</th>
 <th>Enforce</th>
+<th>Which namespaces</th>
 <th>Why not stricter</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>kube-system</code></td>
 <td><code>privileged</code></td>
-<td>Cilium, kube-vip and the control plane use host networking and host paths</td>
+<td>Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured</td>
+<td>Host networking, the host PID namespace, raw block devices or a hostPath under the kubelet, etcd or log directories, all of which <code>baseline</code> forbids. node-exporter has a namespace of its own (<code>namespaceOverride</code>) so the rest of the monitoring stack need not follow it</td>
 </tr>
 <tr>
-<td><code>rook-ceph</code></td>
-<td><code>privileged</code></td>
-<td>OSDs need raw block devices</td>
-</tr>
-<tr>
-<td><code>node-exporter</code></td>
-<td><code>privileged</code></td>
-<td>node-exporter is host-networked and reads <code>/proc</code> and <code>/sys</code>; kube-prometheus-stack places it here with <code>namespaceOverride</code> so the rest of the stack need not follow</td>
-</tr>
-<tr>
-<td><code>trivy-system</code></td>
-<td><code>privileged</code></td>
-<td>node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks</td>
-</tr>
-<tr>
-<td><code>backup</code></td>
-<td><code>privileged</code></td>
-<td>The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory</td>
-</tr>
-<tr>
-<td><code>logging</code></td>
-<td><code>privileged</code></td>
-<td>Alloy hostPath-mounts the pod logs and the Hubble export</td>
-</tr>
-<tr>
-<td><code>kured</code></td>
-<td><code>privileged</code></td>
-<td>kured runs privileged in the host PID namespace to reboot the node</td>
-</tr>
-<tr>
-<td><code>monitoring</code></td>
 <td><code>baseline</code></td>
-<td>Grafana's <code>init-chown-data</code> container runs as root to own the data volume</td>
+<td>Those with a container that starts as root or escalates: Grafana's <code>init-chown-data</code>, the runners and their job pods, and the operators not yet checked against <code>restricted</code></td>
+<td>Reduced when the chart offers a non-root path, one namespace at a time</td>
 </tr>
 <tr>
-<td><code>cert-manager</code>, <code>external-secrets</code>, <code>argocd</code></td>
-<td><code>baseline</code></td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>authentik</code>, <code>descheduler</code>, <code>external-dns</code>, <code>kubelet-csr-approver</code>, <code>openbao</code>, <code>cilium-secrets</code>, <code>default</code>, <code>kube-public</code>, <code>kube-node-lease</code></td>
 <td><code>restricted</code></td>
+<td>Everything else, and the namespaces that run no pods</td>
 <td>—</td>
 </tr>
 </tbody>
@@ -3348,11 +3314,12 @@ matches one identity.</p>
 </li>
 </ol>
 <h3 id="rollout">Rollout<a class="headerlink" href="#rollout" title="Permanent link">&para;</a></h3>
-<p>A new policy is not enforced on arrival. <code>policyAuditMode</code> in
-<code>payload/platform/cilium/values.yaml</code> makes every agent evaluate each verdict
-and log it with <code>AUDIT</code> instead of dropping, and those verdicts reach Loki the
-way drops do. The mode is cluster-wide, so while it is on the older policies
-are not enforced either.</p>
+<p>A new policy is enforced on arrival: <code>policyAuditMode</code> in
+<code>payload/platform/cilium/values.yaml</code> is off. Switched on, it makes every
+agent evaluate each verdict and log it with <code>AUDIT</code> instead of dropping, and
+those verdicts reach Loki the way drops do. The mode is cluster-wide, so
+while it is on the older policies are not enforced either, which is why a
+batch of new policies goes through it together.</p>
 <ol>
 <li>
 <p>Merge the values change; the agents roll on their own. <code>Enabled</code> on
@@ -3411,7 +3378,7 @@ enforcement is reversible by removing that label.</p>
    as in <a href="../../operations/nodes/#rebooting-a-node">Rebooting a node</a>.</p>
 </li>
 <li>
-<p>Merge <code>host-firewall-audit.yaml</code>, a DaemonSet that puts each host endpoint
+<p>Merge <code>payload/platform/cilium/host-firewall-audit.yaml</code>, a DaemonSet that puts each host endpoint
    back in audit mode within seconds of an agent restart, because any restart
    would otherwise start enforcing that node: a Renovate bump, a value change,
    Kured. Every node must answer <code>Enabled</code> before the policy merges:</p>
@@ -3453,7 +3420,7 @@ enforcement is reversible by removing that label.</p>
 </li>
 <li>
 <p>Repeat for the workers, then the control planes one at a time. Then delete
-   <code>host-firewall-audit.yaml</code> in a pull request.</p>
+   <code>payload/platform/cilium/host-firewall-audit.yaml</code> in a pull request.</p>
 </li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>

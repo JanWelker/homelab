@@ -50,7 +50,7 @@ for pod in openbao-0 openbao-1 openbao-2; do
 done
 ```
 
-`make bao-unseal` reads the key shares from `output/credentials/openbao-init.json`. If that file has been moved into a password manager, each pod wants 3 of the 5 shares by hand, per [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>).
+`make bao-unseal` reads the key shares from `output/credentials/openbao-init.json`. If that file has been moved into a password manager, each pod wants the threshold of shares by hand, per [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#unsealing-after-a-restart>).
 
 ## Adding a node
 
@@ -60,11 +60,16 @@ done
    make config && make serve
    ```
 
-   In the same commit, add the node name to `providerRegex` in `payload/platform/kubelet-csr-approver/application.yaml`: a node the regex does not name has its kubelet certificate denied and [silently drops out of `kubectl top`](<https://homelab.wlkr.ch/platform/metrics-server/#pitfalls>).
+   In the same commit, add the node name to `providerRegex` in `payload/platform/kubelet-csr-approver/application.yaml`, and let that PR merge and sync before the node boots: a node the regex does not name has its kubelet certificate denied and [silently drops out of `kubectl top`](<https://homelab.wlkr.ch/platform/metrics-server/#pitfalls>).
 
    Against a running cluster, `make config` also re-creates the bootstrap token baked into the Ignition configs for 24 hours and uploads the control-plane certificates for two, on [whichever control plane answers](<https://homelab.wlkr.ch/architecture/ansible/#playbooks>), so the node joins on its own.
-2. Network-boot the new node within those windows: two hours for a **control-plane** node, 24 for a worker. `bootstrap-k8s.service` runs the join once and only while `/etc/kubernetes/kubelet.conf` is absent, so it does not interfere with a node that has joined.
-3. If the window has passed, run `make config` again, then retry the join on the node.
+2. Arm the node: the generated menu defaults to the local disk, so an unarmed node never installs, per [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/#switching-back-to-local-boot>).
+
+   ```bash
+   make reinstall LIMIT=<node>
+   ```
+3. Network-boot it within those windows: two hours for a **control-plane** node, 24 for a worker. `bootstrap-k8s.service` runs the join once and only while `/etc/kubernetes/kubelet.conf` is absent, so it does not interfere with a node that has joined.
+4. If the window has passed, run `make config` again, then retry the join on the node.
 
    ```bash
    ssh <node> sudo systemctl restart bootstrap-k8s
@@ -89,7 +94,7 @@ done
      member list
    # then: member remove <id>
    ```
-4. Reprovision the replacement per [Adding a node](<#adding-a-node>).
+4. Reprovision the replacement per [Adding a node](<#adding-a-node>): the inventory and regex change, then arm, then boot.
 
 > [!CAUTION]
 >
@@ -107,14 +112,14 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
 >
 > Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/#what-is-not-covered>). Copy anything you intend to restore from **off-cluster** first.
 
-1. Copy what matters off the cluster: Velero backups, the latest etcd snapshot, and anything in a PVC not reproducible from Git.
+1. Copy what matters off the cluster: the `velero` and `etcd-backup` buckets per [Copying a bucket off the cluster](<https://homelab.wlkr.ch/operations/backups/#copying-a-bucket-off-the-cluster>), and anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
 3. Regenerate both Ignition configs and serve them.
 
    ```bash
    make config && make serve
    ```
-4. For a **control-plane** node, remove it from the cluster first: the drain, `kubectl delete node` and the etcd `member remove` are steps 1 and 3 of [Replacing a failed node](<#replacing-a-failed-node>). The wiped node comes back with an empty etcd under its old peer URL, and kubeadm treats a known peer as already joined; two of three members keep quorum meanwhile.
+4. Drain the node, as in [Rebooting a node](<#rebooting-a-node>). For a **control-plane** node, remove it from the cluster too: the `kubectl delete node` and the etcd `member remove` are steps 1 and 3 of [Replacing a failed node](<#replacing-a-failed-node>). The wiped node comes back with an empty etcd under its old peer URL, and kubeadm treats a known peer as already joined; two of three members keep quorum meanwhile.
 5. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows no prompt), a later `make config` keeps a node armed, and the boot server disarms it once it has the image, so the reboot at the end of the install does not start a second one — see [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/#switching-back-to-local-boot>).
 
    ```bash
@@ -124,5 +129,7 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
    Every control plane joins the running cluster; only [`bootstrap_cluster`](<https://homelab.wlkr.ch/architecture/ansible/#inventory>) renders `kubeadm init`, and arming refuses while it is set and the VIP answers.
 6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`, and reboots into the installed system, which then runs `kubeadm`. The node comes back with a new SSH host key; `make reinstall` already forgot the old one, or `StrictHostKeyChecking=accept-new` would refuse the first `make kubeconfig`.
 7. Leave the boot server up until the node is `Ready` (the sysext images are fetched from it on that first boot), then stop it.
+8. Wait for Ceph before the next node, as in [Rebooting a node](<#rebooting-a-node>): the OSD is new and backfills from the other two copies, and [`make storage-check`](<https://homelab.wlkr.ch/platform/rook-ceph/#is-storage-ready>) proves it took the disk.
+9. [Unseal OpenBao](<#after-any-node-reboot-unseal-openbao>) if a replica moved.
 
 One node at a time is safe when rebuilding: etcd keeps quorum once the old member is removed and Ceph backfills, as in [Replacing a failed node](<#replacing-a-failed-node>). Repartitioning destroys every OSD as it goes, so a rolling repartition across every node destroys all replicas of everything; step 1 is not optional for that case.

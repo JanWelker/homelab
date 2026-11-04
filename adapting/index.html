@@ -2592,12 +2592,20 @@ Quickstart.</p>
 <p>Every ArgoCD <code>Application</code> points at this repository by URL. Until you change
 them, your cluster pulls its desired state from here and your own commits have
 no effect.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-l<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab'</span><span class="w"> </span>--<span class="w"> </span>payload/
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-l<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab.git'</span><span class="w"> </span>--<span class="w"> </span>payload/
 </span></code></pre></div>
-<p>Rewrite them to your fork:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s1">'s|github.com/JanWelker/homelab|github.com/YOUR_USER/YOUR_REPO|g'</span>
+<p>Rewrite them to your fork. The match ends in <code>.git</code>, so the workloads
+repository below is left alone:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab.git'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s1">'s|github.com/JanWelker/homelab.git|github.com/YOUR_USER/YOUR_REPO.git|g'</span>
 </span></code></pre></div>
+<p>The workloads repository is a second URL, in
+<code>payload/platform/argocd-projects/projects.yaml</code> (the <code>apps</code> project's
+<code>sourceRepos</code>), <code>payload/workloads/applicationset.yaml</code> and
+<code>payload/workloads/applicationset-previews.yaml</code>; the previews generator also
+names the GitHub <code>owner</code> whose pull requests it lists. Point all four at your
+fork of <a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a>, or delete
+the previews ApplicationSet if you have no sites to preview.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code>sed -i ''</code> is the BSD/macOS form. On Linux use <code>sed -i</code> with no argument.</p>
@@ -2605,26 +2613,44 @@ no effect.</p>
 <p>If your fork is private, ArgoCD also needs repository credentials — see the
 <a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories">ArgoCD private repository docs</a>.</p>
 <h2 id="2-choose-your-domain">2. Choose your domain<a class="headerlink" href="#2-choose-your-domain" title="Permanent link">&para;</a></h2>
-<p>Two DNS zones carry all traffic:</p>
+<p>Four hostname patterns carry traffic. Each is a listener in
+<code>payload/platform/gateway-api/gateways.yaml</code> and a zone in external-dns's
+<code>domainFilters</code> (<code>payload/platform/external-dns/application.yaml</code>); the HTTPS
+ones also have a wildcard <code>Certificate</code> in
+<code>payload/platform/certificates/certificates.yaml</code>:</p>
 <table>
 <thead>
 <tr>
 <th>Pattern</th>
 <th>Purpose</th>
+<th>In a fork</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>*.k8s.&lt;your-domain&gt;</code></td>
 <td>user-facing workloads, via <code>apps-gateway</code></td>
+<td>rename</td>
 </tr>
 <tr>
 <td><code>*.infra.k8s.&lt;your-domain&gt;</code></td>
 <td>platform UIs (ArgoCD, Grafana, Hubble, OpenBao, Rook), via <code>infra-gateway</code></td>
+<td>rename</td>
+</tr>
+<tr>
+<td><code>*.ssh.&lt;your-domain&gt;</code></td>
+<td>the <a href="../platform/gateway-api/#ssh-listener">SSH listener</a> for in-cluster agent sessions</td>
+<td>rename, or delete the listener and the zone</td>
+</tr>
+<tr>
+<td><code>*.wollbi.ch</code></td>
+<td>a second site family on <code>apps-gateway</code>, with its own listener, certificate and PR previews</td>
+<td>delete or rename every file <code>git grep -l wollbi -- payload/</code> lists</td>
 </tr>
 </tbody>
 </table>
-<p>Replace the domain everywhere:</p>
+<p>Replace the first three in one pass; <code>wollbi.ch</code> does not match the pattern
+and is handled by hand:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'wlkr\.ch'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s1">'s|wlkr\.ch|YOUR-DOMAIN.example|g'</span>
 </span></code></pre></div>
@@ -2635,7 +2661,7 @@ no effect.</p>
 a DNS-01 challenge, which requires write access to the zone. <code>.local</code>, <code>.lan</code>
 and made-up TLDs will not work.</p>
 <h2 id="3-point-dns-at-the-gateway-ips">3. Point DNS at the gateway IPs<a class="headerlink" href="#3-point-dns-at-the-gateway-ips" title="Permanent link">&para;</a></h2>
-<p>The two Gateways take fixed addresses from the Cilium L2 pools in
+<p>The two Gateways take fixed addresses from the Cilium pools in
 <code>payload/platform/cilium/lb-pools.yaml</code>:</p>
 <table>
 <thead>
@@ -2655,10 +2681,20 @@ and made-up TLDs will not work.</p>
 </tr>
 </tbody>
 </table>
-<p>Change both CIDRs to free addresses on your LAN — in the nodes' subnet, since
-Cilium announces them over L2 ARP, and outside the DHCP range, or the router
-will eventually hand one to a laptop — then create the two wildcard <code>A</code>
-records.</p>
+<p>Change both CIDRs to free addresses on your LAN, outside the DHCP range, or
+the router will eventually hand one to a laptop, then create the two wildcard
+<code>A</code> records. Two more things in the same component decide whether anything
+answers on those addresses:</p>
+<ul>
+<li>The <code>CiliumL2AnnouncementPolicy</code> in <code>lb-pools.yaml</code> answers ARP for them
+  from the control-plane nodes only, on interfaces matching a name pattern.
+  Change the <code>nodeSelector</code> if your control planes should not carry the
+  traffic and <code>interfaces</code> if the pattern does not match your NICs; L2 needs
+  the addresses in the nodes' subnet.</li>
+<li><code>payload/platform/cilium/bgp.yaml</code> also announces them to the router over
+  eBGP, and its peer and ASNs must match the inventory (step 5). With no BGP
+  router, delete the file.</li>
+</ul>
 <h2 id="4-set-up-the-dns-01-solver">4. Set up the DNS-01 solver<a class="headerlink" href="#4-set-up-the-dns-01-solver" title="Permanent link">&para;</a></h2>
 <p><code>payload/platform/certificates/cluster-issuers.yaml</code> is written for <strong>AWS
 Route53</strong>. Update:</p>
@@ -2674,8 +2710,9 @@ and adjust the credential path in OpenBao accordingly.</p>
 <p>Switch <code>issuerRef</code> in <code>certificates.yaml</code> to <code>letsencrypt-staging</code> while you are still iterating. Production allows 5 duplicate certificates per week, and a misconfigured solver burns through that in minutes.</p>
 </div>
 <h2 id="5-describe-your-hardware">5. Describe your hardware<a class="headerlink" href="#5-describe-your-hardware" title="Permanent link">&para;</a></h2>
-<p>Edit <code>ansible/inventory.yaml</code>; the variables are listed under
-<a href="../quickstart/#setup">Quickstart &rarr; step 2</a>. Beyond those:</p>
+<p>Edit <code>ansible/inventory.yaml</code>; every variable is listed under
+<a href="../quickstart/#setup">Quickstart &rarr; step 2</a>. The ones a fork must choose
+rather than copy:</p>
 <table>
 <thead>
 <tr>
@@ -2701,16 +2738,8 @@ and adjust the credential path in OpenBao accordingly.</p>
 <td>Replace the hosts with yours. Each needs <code>ansible_host</code> and <code>mac_address</code> (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from <code>ansible_host</code> — see <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>.</td>
 </tr>
 <tr>
-<td><code>control_plane</code> / <code>workers</code></td>
-<td>Group membership decides the node role.</td>
-</tr>
-<tr>
-<td><code>pod_subnet</code>, <code>service_subnet</code></td>
-<td>Only change if they collide with your LAN.</td>
-</tr>
-<tr>
 <td><code>router_ip</code>, <code>router_asn</code>, <code>cluster_asn</code></td>
-<td>The eBGP peer for the Gateway addresses; <code>payload/platform/cilium/bgp.yaml</code> must name the same values, since the payload cannot read the inventory. <code>make config</code> renders the router's FRR config into <code>output/router/</code> — see <a href="../platform/cilium/#configuration">Cilium</a>.</td>
+<td>The eBGP peer for the Gateway addresses; <code>payload/platform/cilium/bgp.yaml</code> must name the same values, since the payload cannot read the inventory — see <a href="../platform/cilium/#configuration">Cilium</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -2731,22 +2760,24 @@ bootstrap static pod once ArgoCD syncs and cannot read the inventory:</p>
 <p>A mismatch here does not fail at provisioning. It fails on the first sync, when
 the DaemonSet removes the static pods and starts advertising somewhere else.</p>
 <h2 id="6-provisioning-access">6. Provisioning access<a class="headerlink" href="#6-provisioning-access" title="Permanent link">&para;</a></h2>
-<p><code>ansible/templates/butane_node_config.yaml.j2</code> injects
-<code>~/.ssh/id_ed25519.pub</code> as the authorized key for the <code>core</code> user. Point it at
-your own key if you use a different path or algorithm. There is no password,
+<p>Both Butane templates, <code>ansible/templates/butane_node_config.yaml.j2</code> and
+<code>butane_installer_config.yaml.j2</code>, inject <code>~/.ssh/id_ed25519.pub</code> as the
+authorized key for the <code>core</code> user. Point both at your own key if you use a
+different path or algorithm. There is no password,
 no console login, and no rescue path short of reprovisioning, so this is the
 only way into the nodes afterwards.</p>
 <h2 id="7-the-documentation-site">7. The documentation site<a class="headerlink" href="#7-the-documentation-site" title="Permanent link">&para;</a></h2>
 <p>If you want your fork to publish its own copy of these docs, update
-<code>zensical.toml</code>: <code>site_url</code>, <code>repo_url</code>, <code>repo_name</code>, and <code>copyright</code>. The
-<code>docs.yaml</code> workflow then publishes to your own GitHub Pages. Otherwise, delete
+<code>zensical.toml</code>: <code>site_url</code>, <code>repo_url</code>, <code>repo_name</code>, and <code>copyright</code>, and
+<code>docs/CNAME</code>, which binds the Pages site to a custom domain; delete it if you
+have none. The <code>docs.yaml</code> workflow then publishes to your own GitHub Pages. Otherwise, delete
 <code>.github/workflows/docs.yaml</code> to stop the build from running.</p>
 <h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
 <p>Before <code>make config</code>:</p>
 <ul>
-<li>[ ] <code>repoURL</code> points at your fork in all of <code>payload/</code></li>
-<li>[ ] Domain replaced throughout <code>payload/</code></li>
-<li>[ ] LoadBalancer IPs are free addresses on your subnet</li>
+<li>[ ] <code>repoURL</code> points at your fork in all of <code>payload/</code>, the workloads URLs and the previews <code>owner</code> at yours</li>
+<li>[ ] Domain replaced throughout <code>payload/</code>, <code>wollbi.ch</code> renamed or removed</li>
+<li>[ ] LoadBalancer IPs are free addresses on your subnet, and the L2 policy or BGP peer announces them</li>
 <li>[ ] Wildcard DNS records created for both gateways</li>
 <li>[ ] ACME email and DNS-01 provider match your setup</li>
 <li>[ ] <code>inventory.yaml</code> describes your nodes, with the right <code>boot_server_ip</code></li>

@@ -25,7 +25,7 @@ This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and G
 
   ---
 
-  Seven choices, each as *X, not Y*, each with its cost. Read before proposing a simpler alternative.
+  Each choice as *X, not Y*, with its cost. Read before proposing a simpler alternative.
 - **[Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md>)** · **[Audit Logging](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>)**
 
   ---
@@ -41,23 +41,12 @@ This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and G
 
 The deployment host — the laptop running Ansible and the boot server — is **not** part of the cluster and nothing depends on it once provisioning is done.
 
-| Node | Role | IP |
+| Role | Nodes | Purpose |
 | --- | --- | --- |
-| odin | Control Plane | 10.9.2.1 |
-| thor | Control Plane | 10.9.2.2 |
-| loki | Control Plane | 10.9.2.3 |
-| freya | Worker | 10.9.2.4 |
-| heimdall | Worker | 10.9.2.5 |
-| valkyrie | Worker | 10.9.2.6 |
-| baldur | Worker | 10.9.2.7 |
-| tyr | Worker | 10.9.2.8 |
-| frigg | Worker | 10.9.2.9 |
-| bragi | Worker | 10.9.2.11 |
-| idun | Worker | 10.9.2.12 |
+| Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph OSD |
+| Worker | freya, heimdall, valkyrie, baldur, tyr, frigg, bragi, idun | Everything else, and a Ceph OSD partition each |
 
-Three control-plane nodes because etcd needs an odd number, and two is the worst answer: twice the hardware and quorum still lost when one dies. The API server is reached through a kube-vip virtual IP (`10.9.2.10` by default) rather than any single node — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>).
-
-**Networks**: pod subnet `10.244.0.0/16`, service subnet `10.96.0.0/12`.
+Three control-plane nodes because etcd needs an odd number, and two is the worst answer: twice the hardware and quorum still lost when one dies. The API server is reached through a kube-vip virtual IP rather than any single node — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>). Addresses, the VIP and the pod and service subnets are in `ansible/inventory.yaml`.
 
 ## Repository layout
 
@@ -65,6 +54,7 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 
 ```text
 .
+├── .github/workflows       # CI: linters, docs build and preview, argo-diff-preview -- see Maintenance
 ├── ansible                 # Inventory, playbooks and templates -- see Ansible
 ├── boot_server
 │   └── serve.py            # TFTP + HTTP boot server
@@ -74,13 +64,19 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 │   │                       # encryption key, OpenBao unseal keys -- 0700
 │   ├── http/               # Ignition, Flatcar artifacts, sysext images
 │   ├── kubeconfig          # Admin kubeconfig
+│   ├── router/             # FRR BGP config for the router
 │   ├── tftp/               # PXE bootloader and menus
-│   └── tmp/                # Temporary workspace
+│   └── tmp/                # Readable copies of the rendered Butane and kubeadm configs
+├── overrides               # Theme template overrides for the docs site
 ├── payload                 # Everything ArgoCD deploys
 │   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
 │   ├── platform/           # One directory per component, each with one
 │   │   └── ...             #   application.yaml -- see Platform
 │   └── workloads/          # The handover to homelab-apps
+├── scripts                 # What the make targets run: OpenBao bootstrap, storage check, fonts
+├── tests                   # pytest for the boot server
+├── Makefile                # Every operator command, one target each
+├── renovate.json           # The version pins Renovate tracks -- see Maintenance
 ├── zensical.toml           # Documentation site configuration
 └── README.md
 ```
@@ -91,5 +87,5 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 
 | Target | Removes | Keeps |
 | --- | --- | --- |
-| `make clean-artifacts` | `output/http`, `output/tftp`, `output/tmp` | `output/credentials/`, `output/kubeconfig` |
+| `make clean-artifacts` | `output/http`, `output/tftp`, `output/tmp`, `output/router` | `output/credentials/`, `output/kubeconfig` |
 | `make clean` | everything under `output/` | nothing — it asks first |

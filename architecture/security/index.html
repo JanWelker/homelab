@@ -2654,8 +2654,9 @@ from that. They are listed so that someone reading the manifests can tell a
 decision from an oversight.</p>
 <h2 id="assumed-trust-boundary">Assumed trust boundary<a class="headerlink" href="#assumed-trust-boundary" title="Permanent link">&para;</a></h2>
 <p>The cluster assumes a <strong>trusted L2 network segment</strong>: anything with a port on
-it is treated as friendly. There is no VPN requirement, no mutual TLS between
-components, and no network segmentation inside the cluster.</p>
+it is treated as friendly. There is no VPN requirement and no mutual TLS
+between components; inside the cluster, the default-deny network policies in
+<a href="#authorization">Authorization</a> are the segmentation.</p>
 <p>The published hostnames are a partial exception. Certificates come from Let's
 Encrypt through a DNS-01 challenge against a public zone, so
 <code>argo.infra.k8s.wlkr.ch</code> and its siblings are publicly resolvable and appear in
@@ -2703,8 +2704,9 @@ of the cluster's own security exists.</p>
 </tbody>
 </table>
 <p>The mitigation is time: <code>make serve</code> is a foreground command, the bootstrap
-token has a 24 hour TTL and the certificate key expires after two hours, and
-<code>make config</code> re-arms both only for those windows. The
+token and the certificate key expire (the windows are in
+<a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a>),
+and <code>make config</code> re-arms both only for those windows. The
 encryption key has no clock, which is why the HTTP server listens only on
 <code>boot_server_ip</code>, serves files by name and lists nothing. TFTP listens on
 every interface, because macOS lets an unprivileged process bind port 69 only
@@ -2876,7 +2878,7 @@ go without it. Policy, retention and queries are in
 <a href="../audit-logging/">Audit Logging</a>.</p>
 <h2 id="authorization">Authorization<a class="headerlink" href="#authorization" title="Permanent link">&para;</a></h2>
 <p><strong>AppProjects constrain the workloads, not the platform.</strong>
-<code>payload/platform/argocd-projects/projects.yaml</code> defines three. <code>infra</code> allows
+<code>payload/platform/argocd-projects/projects.yaml</code> defines them. <code>infra</code> allows
 <code>sourceRepos: "*"</code> and every group and kind in every namespace: it is this
 repository deploying this repository, and a restriction there guards against
 nothing the PR review does not. <code>system</code> is confined to the <code>argocd</code> namespace.

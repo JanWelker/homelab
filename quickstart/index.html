@@ -2628,9 +2628,10 @@ afternoon anyway, because step 7 depends on your DHCP server behaving.</p>
 <ul>
 <li>A NIC that supports PXE booting</li>
 <li>An NVMe drive, or a different <code>install_disk</code> in <code>inventory.yaml</code></li>
-<li>Enough disk for Flatcar, the root filesystem (<code>size_mib</code> in
-  <code>ansible/templates/butane_node_config.yaml.j2</code>), and the remainder, which
-  Rook-Ceph takes as OSD storage</li>
+<li>Enough disk for Flatcar and the root filesystem. On workers the root
+  partition is capped (<code>size_mib</code> in
+  <code>ansible/templates/butane_node_config.yaml.j2</code>) and Rook-Ceph takes the
+  remainder as OSD storage; control planes keep the whole disk</li>
 <li>At least 4 GB of RAM: the installer runs from a RAM disk and streams the
   Flatcar image straight to disk</li>
 </ul>
@@ -2712,37 +2713,86 @@ the same L2 network segment as the nodes.</p>
 <li>
 <p><strong>Configure Inventory</strong>:
     Edit <code>ansible/inventory.yaml</code> to define your target nodes and settings.</p>
+<p>Every variable, and the <code>make</code> target that bakes it into <code>output/</code>, so
+you know what to re-run after an edit:</p>
 <table>
 <thead>
 <tr>
 <th>Variable</th>
 <th>Why it matters</th>
+<th>Read by</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>boot_server_ip</code></td>
 <td><strong>Most commonly missed.</strong> Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run <code>make serve</code>, nodes load the bootloader and then hang.</td>
+<td><code>make config</code>, <code>make serve</code></td>
 </tr>
 <tr>
 <td><code>mac_address</code> (per host)</td>
 <td>Selects which generated PXE menu a node picks up</td>
+<td><code>make config</code>, <code>make reinstall</code>, <code>make serve</code></td>
 </tr>
 <tr>
 <td><code>ansible_host</code> (per host)</td>
 <td>The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs</td>
+<td><code>make config</code>, <code>make reinstall</code></td>
 </tr>
 <tr>
 <td><code>install_disk</code></td>
-<td>Target disk for the Flatcar install (<code>/dev/nvme0n1</code> by default). <strong>Wiped completely</strong> — partitions, GPT and a device-level discard — before the install</td>
+<td>Target disk for the Flatcar install, overridable per host for a node whose disk sits elsewhere. <strong>Wiped completely</strong> — partitions, GPT and a device-level discard — before the install</td>
+<td><code>make config</code></td>
 </tr>
 <tr>
-<td><code>kubernetes_version</code>, <code>flatcar_version</code></td>
-<td>Artifact versions to download</td>
+<td><code>control_plane_vip</code>, <code>control_plane_vip_interface</code></td>
+<td>The API endpoint kubeadm bakes into every certificate and kubeconfig, and the NIC kube-vip advertises it on; see <a href="../operations/control-plane-vip/">Control Plane VIP</a></td>
+<td><code>make config</code>; the VIP also <code>make kubeconfig</code>, <code>make reinstall</code></td>
 </tr>
 <tr>
-<td><code>bootstrap_cluster</code></td>
+<td><code>control_plane_endpoint_host</code></td>
+<td>The name or address nodes join through; a name only on a fresh build, see <a href="../operations/control-plane-vip/#endpoint-name">Endpoint name</a></td>
+<td><code>make config</code>, <code>make kubeconfig</code>, <code>make reinstall</code></td>
+</tr>
+<tr>
+<td><code>pod_subnet</code>, <code>service_subnet</code></td>
+<td>kubeadm's cluster networks; change only on a collision with your LAN</td>
+<td><code>make config</code></td>
+</tr>
+<tr>
+<td><code>router_ip</code>, <code>router_asn</code>, <code>cluster_asn</code></td>
+<td>The eBGP peer the Gateway addresses are announced to; rendered into <code>output/router/frr-bgp.conf</code> for the router, and <code>payload/platform/cilium/bgp.yaml</code> must say the same; see <a href="../platform/cilium/#configuration">Cilium</a></td>
+<td><code>make config</code></td>
+</tr>
+<tr>
+<td><code>flatcar_channel</code>, <code>flatcar_version</code>, <code>syslinux_version</code></td>
+<td>The OS image and bootloader to fetch; <code>flatcar_version</code> also names the image the installer writes</td>
+<td><code>make download</code>; <code>flatcar_version</code> also <code>make config</code></td>
+</tr>
+<tr>
+<td><code>kubernetes_version</code></td>
+<td>The sysext image to fetch, and the version kubeadm and sysupdate are rendered with</td>
+<td><code>make download</code>, <code>make config</code></td>
+</tr>
+<tr>
+<td><code>kube_vip_version</code></td>
+<td>The bootstrap static pod only; the running image is pinned in <code>payload/platform/kube-vip/</code>; see <a href="../architecture/ansible/#inventory">Inventory</a></td>
+<td><code>make config</code></td>
+</tr>
+<tr>
+<td><code>bootstrap_cluster</code> (<code>control_plane</code> group)</td>
 <td><code>true</code> for this first install, so the first control-plane node runs <code>kubeadm init</code>; back to <code>false</code> once the cluster is up — see <a href="../architecture/ansible/#inventory">Inventory</a></td>
+<td><code>make config</code>, <code>make reinstall</code></td>
+</tr>
+<tr>
+<td><code>control_plane</code> / <code>workers</code> membership</td>
+<td>Decides the node role, and with it the partition layout and the kubeadm command</td>
+<td><code>make config</code></td>
+</tr>
+<tr>
+<td><code>ansible_user</code>, <code>ansible_ssh_common_args</code> (<code>k8s_nodes</code> group)</td>
+<td>How the playbooks reach a running node for the kubeconfig and the join-credential renewal</td>
+<td><code>make kubeconfig</code>, <code>make config</code></td>
 </tr>
 </tbody>
 </table>
@@ -2822,7 +2872,7 @@ menu the server recognises.</p>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Watching an install</p>
-<p><code>journalctl -u flatcar-install -f</code> as <code>core@&lt;node&gt;</code> shows the wipe and the write (so does a monitor on the node). A failed install does <em>not</em> reboot — the node stays in the PXE environment with the journal intact.</p>
+<p><code>journalctl -u flatcar-install -f</code> as <code>core@&lt;node&gt;</code> (<code>flatcar-install-uefi</code> on UEFI firmware) shows the wipe and the write (so does a monitor on the node). A failed install does <em>not</em> reboot — the node stays in the PXE environment with the journal intact.</p>
 </div>
 </li>
 <li>
@@ -2869,8 +2919,14 @@ and <a href="../platform/cilium/#installation">Cilium &rarr; Installation</a>).
 <code>payload/argocd/values.yaml</code> and Authentik arrives later through
 GitOps. Follow the bootstrap with <code>kubectl</code> instead.</p>
 <p><strong>Tip — the UI before Authentik exists:</strong> re-enable the local admin
-for as long as you need it. The restart is what generates the
-password Secret:</p>
+with a patch. It holds only until the next step: right now ArgoCD is
+the plain Helm release <code>make install-argo</code> made, and
+<code>make bootstrap-apps</code> hands it to the self-healing <code>argocd</code>
+Application, whose first sync puts <code>admin.enabled</code> back to what
+<code>payload/argocd/values.yaml</code> says. After that the only way in is the
+pull request in
+<a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>.
+The restart is what generates the password Secret:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
 </span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
@@ -2880,15 +2936,13 @@ password Secret:</p>
 </span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80<span class="w">   </span><span class="c1"># http://localhost:8080, user admin</span>
 </span></code></pre></div>
-<p>Set <code>admin.enabled</code> back to <code>"false"</code> once Authentik can log you in —
-see <a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>.</p>
+<p>Nothing to undo: the handover reverts the patch.</p>
 </li>
 <li>
 <p><strong>Hand the cluster over to ArgoCD</strong>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
-<p>Applies the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects, then the
-self-managing <code>argocd</code> Application, which brings the <code>platform</code>
+<p>Applies the AppProjects, then the self-managing <code>argocd</code> Application, which brings the <code>platform</code>
 ApplicationSet and with it every component at once. They converge in
 the <a href="../platform/#rollout-order">order their dependencies allow</a>;
 watch them settle:</p>
@@ -2928,10 +2982,13 @@ in <code>openbao-operator.json</code> beside it.</p>
 <p>Then populate the paths the cluster reads:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
-<p>It prompts, with input hidden, for the values that belong to accounts
-outside the cluster: two Route53 IAM key pairs (why two is in
-<a href="../platform/openbao/">OpenBao</a>), and the SMTP login, password and alert
-recipient. Everything random — <code>kv/authentik/config</code> with the OIDC client
+<p>It prompts, with input hidden, for every value that belongs to an
+account outside the cluster: the DNS, mail and other third-party logins
+listed at the top of <code>scripts/bao-secrets.sh</code>, each against a path in
+<a href="../platform/openbao/#kv-layout">OpenBao &rarr; KV layout</a>. A required
+value has no skip; an optional one is issued by something that runs on
+the cluster and takes Enter until it exists. A fork without one of those
+accounts removes its prompt from the script. Everything random — <code>kv/authentik/config</code> with the OIDC client
 credentials ArgoCD and Grafana read back, Grafana's break-glass admin
 password — is not prompted for: a <code>PushSecret</code> writes it once the store
 validates, see <a href="../platform/openbao/#generated-secrets">Generated secrets</a>.
@@ -2976,8 +3033,8 @@ integration. Then switch <code>akadmin</code> off again with the same command an
 workers, so the control-plane taint stays. On a single node:</p>
 <ul>
 <li>
-<p>Remove the taint any time after step 8 and <strong>before step 9</strong>. Cilium
-  tolerates the taint, but ArgoCD does not, so <code>make install-argo</code> would wait
+<p>Remove the taint once <code>make kubeconfig</code> has answered and <strong>before
+  <code>make install-argo</code></strong>. Cilium tolerates the taint, but ArgoCD does not, so <code>make install-argo</code> would wait
   on unschedulable pods until Helm's <code>--wait</code> times out:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>untaint
 </span></code></pre></div>

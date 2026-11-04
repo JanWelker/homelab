@@ -2834,8 +2834,8 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 <td>mailbox.org refuses a sender the login does not own</td>
 </tr>
 <tr>
-<td>Grouping by <code>namespace</code>, a group re-sent at most every 30 minutes and repeated daily; <code>critical</code> every 5 minutes and repeated every 3 hours; resolved notifications sent</td>
-<td>mailbox.org caps what an account may send. One mail per alert and namespace came to 300–700 a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together</td>
+<td>Grouping by <code>namespace</code>, with <code>group_interval</code> and <code>repeat_interval</code> in hours and a shorter pair for <code>critical</code>; resolved notifications sent</td>
+<td>mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together</td>
 </tr>
 <tr>
 <td><code>Watchdog</code> routed to <code>null</code></td>
@@ -2936,7 +2936,7 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tbody>
 <tr>
 <td><code>disable_login_form</code> and <code>oauth_auto_login</code></td>
-<td>Opening the URL bounces straight to Authentik and back; <code>role_attribute_path</code> maps <code>grafana-admins</code> to <code>Admin</code>, <code>grafana-editors</code> to <code>Editor</code>, anyone else to <code>Viewer</code></td>
+<td>Opening the URL bounces straight to Authentik and back; <code>role_attribute_path</code> with <code>role_attribute_strict</code> maps the three Grafana groups and refuses everyone else, see <a href="../authentik/#groups-and-roles">Groups and roles</a></td>
 </tr>
 <tr>
 <td><code>analytics.*</code> off and <code>disable_gravatar</code></td>
@@ -2963,8 +2963,8 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>The dashboard PVC is RWO; under <code>RollingUpdate</code> the new pod waits for a volume the old pod releases only once the new one is Ready, parking on <code>FailedAttachVolume</code></td>
 </tr>
 <tr>
-<td>Prometheus and Grafana uncapped</td>
-<td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding</td>
+<td>Prometheus and Grafana memory limits well above their requests</td>
+<td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the <a href="../#components">2.5x-peak rule</a>, not a budget</td>
 </tr>
 <tr>
 <td>Prometheus <code>retention</code> and <code>retentionSize</code></td>
@@ -3092,9 +3092,14 @@ hand; <code>--cascade=orphan</code> keeps the pod and the claim.</p>
 <p>Alertmanager and Grafana take the same two steps, with their own claim names.</p>
 <h3 id="resetting-the-grafana-admin-password">Resetting the Grafana admin password<a class="headerlink" href="#resetting-the-grafana-admin-password" title="Permanent link">&para;</a></h3>
 <p>Grafana reads the password only when it creates its database, so changing
-<code>kv/monitoring/grafana-admin</code> later does not change what it checks:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
+<code>kv/monitoring/grafana-admin</code> later does not change what it checks. Reset it
+to the value in OpenBao rather than a new one: <code>grafana-admin.yaml</code> pushes
+the generated password with <code>updatePolicy: IfNotExists</code>, so OpenBao keeps the
+first value forever and a rebuilt Grafana starts from it.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">PASSWORD</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>password<span class="w"> </span>monitoring/grafana-admin<span class="k">)</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>grafana<span class="w"> </span>cli<span class="w"> </span>admin<span class="w"> </span>reset-admin-password<span class="w"> </span><span class="s2">"</span><span class="nv">$PASSWORD</span><span class="s2">"</span>
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>prometheus,alertmanager
@@ -3109,7 +3114,7 @@ Send yourself a test alert once and confirm it arrives.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Prometheus is a single replica, Alertmanager is not</p>
-<p>Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a <a href="../kured/">Kured</a> drain keeps alerting up. A second Prometheus would double the memory limit and the volume in <code>application.yaml</code>, which the <a href="../#components">2.5x-peak rule</a> leaves no room for on an 8&nbsp;GiB node, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.</p>
+<p>Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a <a href="../kured/">Kured</a> drain keeps alerting up. A second Prometheus would double the memory limit and the volume in <code>application.yaml</code>, which the <a href="../#components">2.5x-peak rule</a> leaves no room for on a worker, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.</p>
 </div>
 
 

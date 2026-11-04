@@ -2639,13 +2639,16 @@ is.</p>
     App-&gt;&gt;K: mount / envFrom</code></pre>
 <p>ESO mints a short-lived token for an <code>external-secrets-vault</code> ServiceAccount
 through the TokenRequest API, which the chart's controller ClusterRole allows
-in every namespace; OpenBao validates it against the TokenReview API
+in every namespace (<code>cluster-secret-store.yaml</code> binds its own
+<code>external-secrets-vault-token-creator</code> ClusterRole, scoped to that
+ServiceAccount name, beside it); OpenBao validates it against the TokenReview API
 and issues a token bound to that store's policy. Platform namespaces use the
 <code>openbao</code> store and the ServiceAccount in <code>external-secrets</code>; a workload uses
 <code>openbao-apps</code> and its own, which confines it to <code>kv/&lt;namespace&gt;/</code> — see
 <a href="../openbao/#kubernetes-auth">Kubernetes auth</a>. No long-lived credential exists
 anywhere. The stores use ESO's <code>vault</code> provider unchanged against the
 in-cluster Service.</p>
+<p>In <code>application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
 <tr>
@@ -2759,7 +2762,7 @@ so their auth failures show on the <code>ExternalSecret</code> instead:</p>
 </tr>
 <tr>
 <td>Kubernetes auth role missing</td>
-<td><code>make bao-policies</code> writes all three roles</td>
+<td><code>make bao-policies</code> writes all three roles; it needs a <a href="../openbao/#generating-a-root-token">root token</a></td>
 </tr>
 <tr>
 <td>Wrong <code>serviceAccountRef</code></td>

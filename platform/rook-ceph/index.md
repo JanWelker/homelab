@@ -11,7 +11,7 @@ Distributed block storage using [Rook](<https://rook.io/>) as the Kubernetes ope
 | If it is down | Every pod with a volume — `openbao` first, which turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
 | UI | `rook.infra.k8s.wlkr.ch` |
-| Files | `payload/platform/rook-ceph-operator/`, `payload/platform/rook-ceph-cluster/`, `payload/platform/rook-ceph/` |
+| Files | `payload/platform/rook-ceph-operator/`: the `rook-ceph` chart, the operator itself. `payload/platform/rook-ceph-cluster/`: the `rook-ceph-cluster` chart, whose `valuesObject` holds the `CephCluster`, the object store and the storage classes. `payload/platform/rook-ceph/`: the CSI driver and its RBAC, the dashboards and the UI route |
 
 ## Configuration
 
@@ -30,9 +30,11 @@ Ignition declares it with `format: none` and `wipe_filesystem: true`, because `c
 
 ### Object storage
 
-A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>), whose S3 client only signs cleanly over TLS. Two RGW instances keep a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: both gateways are daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at `failureDomain: host` with three or more workers.
+A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
 
 ### Monitoring
+
+In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
@@ -75,7 +77,7 @@ From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart, wh
 
 ### cephx keys stay on aes
 
-Ceph 20 warns about the legacy `aes` cipher, and every key here is deliberately on it: the kernel client krbd does not implement `aes256k`, so CSI keys moved to it make every `rbd map` fail with `map failed: (22) Invalid argument` while Ceph reports the rotation a success. Two ciphers in one cluster trigger `AUTH_EMERGENCY_CIPHERS_SET` and buy no security.
+Ceph 20 warns about the legacy `aes` cipher, and every key here is deliberately on it: the kernel client krbd does not implement `aes256k`, so CSI keys moved to it make every `rbd map` fail with `map failed: (22) Invalid argument` while Ceph reports the rotation a success. Two ciphers in one cluster trigger `AUTH_EMERGENCY_CIPHERS_SET` and buy no security. In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
@@ -141,7 +143,7 @@ Run it after the GitOps handover, before trusting anything that mounts a volume:
 | node plugin and provisioner are up | usually a ServiceAccount the DaemonSet cannot find |
 | a 1 GiB PVC binds and is cleaned up | the only check that proves the other five |
 
-The last one asks for a volume the way a workload would and waits `TIMEOUT` seconds (120 by default); `NAMESPACE` and `CLASS` override where and what it asks for.
+The last one asks for a volume the way a workload would and waits `TIMEOUT` seconds (default in `scripts/storage-check.sh`); `NAMESPACE` and `CLASS` override where and what it asks for.
 
 ## Pitfalls
 
@@ -173,15 +175,11 @@ A node whose `rook-osd` partition still carries a previous cluster's BlueStore s
 
    ```bash
    kubectl -n rook-ceph logs job/rook-ceph-osd-prepare-<node> | tail -3
-   # skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"
+   # skipping device "nvme0n1p10" because it contains a filesystem "ceph_bluestore"
    # skipping osd.3: "..." belonging to a different ceph cluster "..."
    ```
-2. Rebuild the node; the [installer](<https://homelab.wlkr.ch/architecture/boot-process/index.md>) wipes the disk:
-
-   ```bash
-   make reinstall LIMIT=<node>
-   ```
-3. If the node cannot be rebuilt now, wipe the partition by hand over SSH. `wipefs` removes the signature Rook skips on; the `dd` removes the BlueStore label behind it. Address it by label — the partition number differs between control-plane and worker nodes:
+2. Rebuild the node, steps 3 to 7 of [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/#rebuilding-or-repartitioning-a-node>): `make reinstall` only arms the PXE menu, and the [installer](<https://homelab.wlkr.ch/architecture/boot-process/index.md>) wipes the disk when the node network-boots.
+3. If the node cannot be rebuilt now, wipe the partition by hand over SSH. `wipefs` removes the signature Rook skips on; the `dd` removes the BlueStore label behind it. Address it by label, as Ignition does, rather than by the device name in the log:
 
    ```bash
    sudo wipefs -a /dev/disk/by-partlabel/rook-osd

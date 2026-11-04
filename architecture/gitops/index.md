@@ -7,8 +7,8 @@ ArgoCD manages the cluster state declaratively: if it is not in Git, it is not i
 ```
 flowchart LR
     subgraph "Bootstrap (once, by hand)"
-        PJ[argocd-projects/projects.yaml]
-        AA[argocd/application.yaml]
+        PJ[payload/platform/argocd-projects/projects.yaml]
+        AA[payload/argocd/application.yaml]
     end
 
     AA --> AR[Application argocd]
@@ -28,10 +28,10 @@ Everything else is a component directory with one `application.yaml`, including 
 
 | Application | Holds |
 | --- | --- |
-| `argocd-projects` | the `apps`, `infra` and `system` AppProjects |
-| `argocd-config` | ArgoCD's HTTPRoute, OIDC `ExternalSecret` and Grafana dashboard |
+| `argocd-projects` | the `apps`, `infra` and `system` AppProjects, and a locked `default` so an Application that names no project can do nothing |
+| `argocd-config` | the `ExternalSecret`s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; the routes are the chart's, in `payload/argocd/values.yaml` |
 
-The AppProjects cannot arrive through ArgoCD alone: an Application naming a project that does not exist is rejected. `projects.yaml` is applied once at bootstrap, ahead of the `argocd` Application that names `system`, and `argocd-projects` adopts it on its first sync. A broken project definition is fixed with `kubectl apply`, not a sync.
+The AppProjects cannot arrive through ArgoCD alone: an Application naming a project that does not exist is rejected. `payload/platform/argocd-projects/projects.yaml` is applied once at bootstrap, ahead of the `argocd` Application that names `system`, and `argocd-projects` adopts it on its first sync. A broken project definition is fixed with `kubectl apply`, not a sync.
 
 Each `application.yaml` is a complete Application, not a fragment: the generator copies its labels, annotations, finalizers and `spec` unchanged, and Renovate and the `Makefile` read it like any other manifest.
 
@@ -47,7 +47,7 @@ Every Application, generated or not, carries the same `syncPolicy`: automated sy
   argocd app sync <application>
   ```
 - **Patching a generated Application's `spec` achieves nothing.** The next ApplicationSet reconcile copies the file back over it. That includes switching automated sync off: the only rollback is a revert commit — see [Rolling back a bad sync](<https://homelab.wlkr.ch/operations/troubleshooting/#rolling-back-a-bad-sync>).
-- **Two exceptions to `prune`.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP. `security` prunes, but its Namespaces carry a per-resource `Prune=false`, so a removed policy goes while the namespace and everything in it stays. Copy the `syncPolicy` from any other sibling.
+- **One exception to `prune`, and one annotation.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP; copy the `syncPolicy` from any other sibling. Elsewhere a resource whose deletion would take more than itself carries a per-resource `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace (everything in it), an AppProject (every Application in it is orphaned), a CloudNativePG `Cluster` and the bucket its backups land in. A removed policy or manifest still prunes; the container it lived in stays.
 
 ## Bootstrap convergence
 
@@ -64,7 +64,7 @@ Two placement rules keep this convergence short. **A resource lives with what it
 
 ### Bootstrap pauses at OpenBao
 
-A fresh cluster looks stuck at OpenBao, and that is the design. OpenBao's pods report Ready while sealed, but the `ClusterSecretStore` beside it stays Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth role, and with it every `ExternalSecret` in the platform. `make bao-init` and `make bao-unseal` clear that; `certificates` then waits for `make bao-secrets` to write the Route53 credentials, and the Gateways for the certificates. Nothing fails and nothing times out: every one of those resources applied cleanly and is waiting on status.
+A fresh cluster looks stuck at OpenBao, and that is the design. OpenBao's pods report Ready while sealed, but the `ClusterSecretStore` beside it stays Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth role, and with it every `ExternalSecret` in the platform. `make bao-init` clears that, and `make bao-unseal` after every later restart; `certificates` then waits for `make bao-secrets` to write the Route53 credentials, and the Gateways for the certificates. Nothing fails and nothing times out: every one of those resources applied cleanly and is waiting on status.
 
 ## Workloads live in a second repository
 
@@ -108,4 +108,4 @@ The annotations can go once the second change has synced everywhere.
 
 ## Version pins
 
-Each version is pinned once, in the `application.yaml` that owns the component, and never anywhere else. The `Makefile` reads `targetRevision` out of those manifests for the bootstrap installs (`make install-cilium`, `make install-argo`), so what bootstrap installs is what ArgoCD then reconciles. Renovate updates the same line; its automerge policy is in [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md>).
+Each chart version is pinned once, in the `application.yaml` that owns the component; the node-level versions (Flatcar, Kubernetes, syslinux) are pinned once in `ansible/inventory.yaml`. The `Makefile` reads `targetRevision` out of the manifests for the bootstrap installs (`make install-cilium`, `make install-argo`), so what bootstrap installs is what ArgoCD then reconciles. kube-vip is the one double pin: `kube_vip_version` in the inventory for the bootstrap static pod, and the image in `payload/platform/kube-vip/daemonset.yaml` for what runs after the first sync. Renovate tracks all of them; its automerge policy is in [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md>).

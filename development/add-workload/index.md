@@ -20,7 +20,7 @@ Workloads live in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homel
 Restated in the workloads repository's `CONVENTIONS.md`, which is the copy to keep current.
 
 1. **Exactly one `application.yaml` per directory**, a complete ArgoCD `Application`: the generator copies its labels, annotations, finalizers and `spec` through unchanged.
-2. **`project: apps`.** Anything else fails the whole ApplicationSet. The project, in `payload/platform/argocd-projects/projects.yaml`, lists the chart repositories workloads may pull from; a new chart repository extends that list first, in this repository.
+2. **`project: apps`.** Anything else fails the whole ApplicationSet. The project, in `payload/platform/argocd-projects/projects.yaml`, lists the chart repositories workloads may pull from; a new chart repository extends that list first, in this repository, and the repo-server's egress policy in `payload/platform/security/network-policies/argocd.yaml`, or the Application reads `ComparisonError`.
 3. **The workload owns its namespace.** Ship a `namespace.yaml` at sync wave `-2` with the three Pod Security Admission labels, annotated `Prune=false`, because pruning a `Namespace` deletes every PVC inside it. A namespace created by `CreateNamespace=true` has no labels and enforces nothing.
 4. **PostgreSQL is a CloudNativePG `Cluster`**, never a chart's bundled database — see [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/#the-contract>).
 5. **Ship a `CiliumNetworkPolicy`** at sync wave `-2`, not a plain `NetworkPolicy`, which blocks health probes — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy>).
@@ -157,7 +157,8 @@ spec:
     - fromEntities:
         - host
         - remote-node
-    # The Gateway, on the port the HTTPRoute targets.
+    # The Gateway, on the container port behind the Service the HTTPRoute
+    # targets: a policy matches the pod's port, not the Service's.
     - fromEntities:
         - ingress
       toPorts:
@@ -250,15 +251,17 @@ DNS and TLS need nothing further — see [Gateway API](<https://homelab.wlkr.ch/
 
 Either way it is two pull requests, one here, because a workload must not be able to put itself behind or take itself out from behind the cluster's authentication layer. Details in [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>).
 
-## Step 4: Commit and push
+## Step 4: Open the pull request
 
 ```bash
+git checkout -b feat/my-app
 git add my-app/
 git commit -m "feat: add my-app"
-git push
+git push -u origin feat/my-app
+gh pr create --fill
 ```
 
-The ApplicationSet picks the directory up within about three minutes, or immediately after **Refresh** on the `apps` ApplicationSet in the ArgoCD UI.
+Once it merges, the ApplicationSet picks the directory up within its requeue interval (`requeueAfterSeconds` in `payload/workloads/applicationset.yaml`), or immediately after **Refresh** on the `apps` ApplicationSet in the ArgoCD UI.
 
 ## Step 5: Document it
 

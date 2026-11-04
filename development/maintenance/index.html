@@ -2633,7 +2633,7 @@ everything, and Renovate, which chases dependencies.</p>
 <a href="https://github.com/JanWelker/renovate-config">JanWelker/renovate-config</a>,
 which holds the policy for every repository. Every component gets its own pull
 request so a failing update never holds up an unrelated one; the only groups
-are the pairs below that must move together.</p>
+are the sets below that must move together.</p>
 <h3 id="automerge-policy">Automerge policy<a class="headerlink" href="#automerge-policy" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>The preset's rules:</strong> three days between a release and its PR, patch and
@@ -2653,9 +2653,11 @@ are the pairs below that must move together.</p>
     <code>gitleaks</code> likewise; the <code>external-snapshotter</code> tag with the
     <code>snapshot-controller</code> image it pins, because upstream's manifest at a tag
     names the previous release's image (the image is a <code>registry.k8s.io</code> one,
-    so the pair waits for a human like every third-party image there); and every Python pin (<code>requires-python</code>, <code>.python-version</code>, the
-    <code>python</code> images), because <code>uv sync</code> fails when they name different
-    minors.</li>
+    so the pair waits for a human like every third-party image there); the
+    two ARC charts, because the controller deletes a scale set whose chart
+    version differs from its own; and every Python pin (<code>requires-python</code>,
+    <code>.python-version</code>, the <code>python</code> images), because <code>uv sync</code> fails when
+    they name different minors.</li>
 <li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new
     release already satisfies; <code>rangeStrategy: bump</code> is what makes Renovate
     open a PR for the linters and the docs generator at all.</li>
@@ -2674,8 +2676,11 @@ are the pairs below that must move together.</p>
 <p>Python (<code>pyproject.toml</code>, <code>uv.lock</code>), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (<code>payload/**/values.yaml</code>) and
 pre-commit hooks, plus custom regex managers for the versions in
-<code>ansible/inventory.yaml</code>, the font pins in <code>scripts/update-fonts.sh</code>, and any
-<code># renovate:</code> annotation under <code>payload/</code>. The <code>Makefile</code> is deliberately not
+<code>ansible/inventory.yaml</code>, the font pins in <code>scripts/update-fonts.sh</code>, any
+<code># renovate:</code> annotation and every CloudNativePG <code>imageName</code> under <code>payload/</code>,
+and the tool versions the workflows under <code>.github/workflows/</code> install by
+name rather than by action (the diff-preview image, <code>markdownlint-cli2</code>,
+<code>renovate</code> and Trivy). The <code>Makefile</code> is deliberately not
 tracked: the bootstrap targets read <code>targetRevision</code> out of the owning
 <code>application.yaml</code> — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 <h3 id="manager-rules">Manager rules<a class="headerlink" href="#manager-rules" title="Permanent link">&para;</a></h3>

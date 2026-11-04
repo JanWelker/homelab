@@ -2644,8 +2644,8 @@ in the cluster, and if you put it there anyway the next reconcile puts it back.<
 <h2 id="structure">Structure<a class="headerlink" href="#structure" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     subgraph "Bootstrap (once, by hand)"
-        PJ[argocd-projects/projects.yaml]
-        AA[argocd/application.yaml]
+        PJ[payload/platform/argocd-projects/projects.yaml]
+        AA[payload/argocd/application.yaml]
     end
 
     AA --&gt; AR[Application argocd]
@@ -2675,17 +2675,17 @@ including ArgoCD's own supporting resources:</p>
 <tbody>
 <tr>
 <td><code>argocd-projects</code></td>
-<td>the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects</td>
+<td>the <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects, and a locked <code>default</code> so an Application that names no project can do nothing</td>
 </tr>
 <tr>
 <td><code>argocd-config</code></td>
-<td>ArgoCD's HTTPRoute, OIDC <code>ExternalSecret</code> and Grafana dashboard</td>
+<td>the <code>ExternalSecret</code>s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; the routes are the chart's, in <code>payload/argocd/values.yaml</code></td>
 </tr>
 </tbody>
 </table>
 <p>The AppProjects cannot arrive through ArgoCD alone: an Application naming a
-project that does not exist is rejected. <code>projects.yaml</code> is applied once at
-bootstrap, ahead of the <code>argocd</code> Application that names <code>system</code>, and
+project that does not exist is rejected.
+<code>payload/platform/argocd-projects/projects.yaml</code> is applied once at bootstrap, ahead of the <code>argocd</code> Application that names <code>system</code>, and
 <code>argocd-projects</code> adopts it on its first sync. A broken project definition is
 fixed with <code>kubectl apply</code>, not a sync.</p>
 <p>Each <code>application.yaml</code> is a complete Application, not a fragment: the
@@ -2716,11 +2716,14 @@ backoff from 30s to 5m. That is the whole delivery contract:</p>
   switching automated sync off: the only rollback is a revert commit — see
   <a href="../../operations/troubleshooting/#rolling-back-a-bad-sync">Rolling back a bad sync</a>.</p>
 </li>
-<li><strong>Two exceptions to <code>prune</code>.</strong> <code>kube-vip</code> syncs with <code>prune: false</code>, because
-  its objects are the only thing holding the API VIP. <code>security</code> prunes, but
-  its Namespaces carry a per-resource <code>Prune=false</code>, so a removed policy goes
-  while the namespace and everything in it stays. Copy the <code>syncPolicy</code> from
-  any other sibling.</li>
+<li><strong>One exception to <code>prune</code>, and one annotation.</strong> <code>kube-vip</code> syncs with
+  <code>prune: false</code>, because its objects are the only thing holding the API VIP;
+  copy the <code>syncPolicy</code> from any other sibling. Elsewhere a resource whose
+  deletion would take more than itself carries a per-resource
+  <code>argocd.argoproj.io/sync-options: Prune=false</code> instead: a Namespace
+  (everything in it), an AppProject (every Application in it is orphaned), a
+  CloudNativePG <code>Cluster</code> and the bucket its backups land in. A removed policy
+  or manifest still prunes; the container it lived in stays.</li>
 </ul>
 <h2 id="bootstrap-convergence">Bootstrap convergence<a class="headerlink" href="#bootstrap-convergence" title="Permanent link">&para;</a></h2>
 <p>Nothing orders the Applications. On a fresh cluster the ApplicationSet
@@ -2772,8 +2775,8 @@ arriving hours late.</p>
 <p>A fresh cluster looks stuck at OpenBao, and that is the design. OpenBao's pods
 report Ready while sealed, but the <code>ClusterSecretStore</code> beside it stays
 Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth
-role, and with it every <code>ExternalSecret</code> in the platform. <code>make bao-init</code> and
-<code>make bao-unseal</code> clear that;
+role, and with it every <code>ExternalSecret</code> in the platform. <code>make bao-init</code>
+clears that, and <code>make bao-unseal</code> after every later restart;
 <code>certificates</code> then waits for <code>make bao-secrets</code> to write the Route53
 credentials, and the Gateways for the certificates. Nothing fails and nothing
 times out: every one of those resources applied cleanly and is waiting on
@@ -2841,11 +2844,15 @@ Synced while it still sees the resource.
 </ol>
 <p>The annotations can go once the second change has synced everywhere.</p>
 <h2 id="version-pins">Version pins<a class="headerlink" href="#version-pins" title="Permanent link">&para;</a></h2>
-<p>Each version is pinned once, in the <code>application.yaml</code> that owns the
-component, and never anywhere else. The <code>Makefile</code> reads <code>targetRevision</code> out
-of those manifests for the bootstrap installs (<code>make install-cilium</code>,
+<p>Each chart version is pinned once, in the <code>application.yaml</code> that owns the
+component; the node-level versions (Flatcar, Kubernetes, syslinux) are pinned
+once in <code>ansible/inventory.yaml</code>. The <code>Makefile</code> reads <code>targetRevision</code> out
+of the manifests for the bootstrap installs (<code>make install-cilium</code>,
 <code>make install-argo</code>), so what bootstrap installs is what ArgoCD then
-reconciles. Renovate updates the same line; its automerge policy is in
+reconciles. kube-vip is the one double pin: <code>kube_vip_version</code> in the
+inventory for the bootstrap static pod, and the image in
+<code>payload/platform/kube-vip/daemonset.yaml</code> for what runs after the first sync.
+Renovate tracks all of them; its automerge policy is in
 <a href="../../development/maintenance/">Maintenance</a>.</p>
 
 

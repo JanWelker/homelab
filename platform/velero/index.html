@@ -2667,7 +2667,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Nightly backups stop; <code>VeleroBackupTooOld</code> fires after 36 hours</td>
+<td>Nightly backups stop; <code>VeleroBackupTooOld</code> fires once the last success is older than the rule's threshold</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2680,6 +2680,7 @@ the chart tuning.</p>
 </tbody>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>In <code>application.yaml</code>'s <code>valuesObject</code> unless a file is named:</p>
 <table>
 <thead>
 <tr>
@@ -2694,7 +2695,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>s3Url: https://s3.infra.k8s.wlkr.ch</code>, not the RGW Service</td>
-<td>kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph 20.2.4 rejects as unsigned headers (<a href="https://docs.ceph.com/en/latest/security/CVE-2026-54330/">CVE-2026-54330</a>); over TLS it sends <code>UNSIGNED-PAYLOAD</code> and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers</td>
+<td>kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph RGW rejects as unsigned headers since <a href="https://docs.ceph.com/en/latest/security/CVE-2026-54330/">CVE-2026-54330</a>; over TLS it sends <code>UNSIGNED-PAYLOAD</code> and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers</td>
 </tr>
 <tr>
 <td><code>velero-plugin-for-aws</code> init container</td>
@@ -2730,7 +2731,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>prometheusRule</code></td>
-<td><code>VeleroBackupFailures</code> and <code>VeleroBackupTooOld</code> (critical), <code>VeleroBackupPartialFailures</code> (warning); only the age alert catches a backup that hangs <code>InProgress</code></td>
+<td>Four rules: <code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning) on a schedule's outcome, <code>VeleroBackupTooOld</code> (critical), the only one that catches a backup hanging <code>InProgress</code>, and <code>VeleroBackupInProgress</code> (info), which is <a href="../kured/#configuration">Kured</a>'s reboot gate rather than a problem to mail</td>
 </tr>
 </tbody>
 </table>

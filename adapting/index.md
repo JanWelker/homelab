@@ -9,15 +9,17 @@ Everything below is a change you make in your own fork, before step 1 of the Qui
 Every ArgoCD `Application` points at this repository by URL. Until you change them, your cluster pulls its desired state from here and your own commits have no effect.
 
 ```bash
-git grep -l 'github.com/JanWelker/homelab' -- payload/
+git grep -l 'github.com/JanWelker/homelab.git' -- payload/
 ```
 
-Rewrite them to your fork:
+Rewrite them to your fork. The match ends in `.git`, so the workloads repository below is left alone:
 
 ```bash
-git grep -lz 'github.com/JanWelker/homelab' -- payload/ | \
-  xargs -0 sed -i '' 's|github.com/JanWelker/homelab|github.com/YOUR_USER/YOUR_REPO|g'
+git grep -lz 'github.com/JanWelker/homelab.git' -- payload/ | \
+  xargs -0 sed -i '' 's|github.com/JanWelker/homelab.git|github.com/YOUR_USER/YOUR_REPO.git|g'
 ```
+
+The workloads repository is a second URL, in `payload/platform/argocd-projects/projects.yaml` (the `apps` project's `sourceRepos`), `payload/workloads/applicationset.yaml` and `payload/workloads/applicationset-previews.yaml`; the previews generator also names the GitHub `owner` whose pull requests it lists. Point all four at your fork of [homelab-apps](<https://github.com/JanWelker/homelab-apps>), or delete the previews ApplicationSet if you have no sites to preview.
 
 > [!NOTE]
 >
@@ -27,14 +29,16 @@ If your fork is private, ArgoCD also needs repository credentials — see the [A
 
 ## 2\. Choose your domain
 
-Two DNS zones carry all traffic:
+Four hostname patterns carry traffic. Each is a listener in `payload/platform/gateway-api/gateways.yaml` and a zone in external-dns's `domainFilters` (`payload/platform/external-dns/application.yaml`); the HTTPS ones also have a wildcard `Certificate` in `payload/platform/certificates/certificates.yaml`:
 
-| Pattern | Purpose |
-| --- | --- |
-| `*.k8s.<your-domain>` | user-facing workloads, via `apps-gateway` |
-| `*.infra.k8s.<your-domain>` | platform UIs (ArgoCD, Grafana, Hubble, OpenBao, Rook), via `infra-gateway` |
+| Pattern | Purpose | In a fork |
+| --- | --- | --- |
+| `*.k8s.<your-domain>` | user-facing workloads, via `apps-gateway` | rename |
+| `*.infra.k8s.<your-domain>` | platform UIs (ArgoCD, Grafana, Hubble, OpenBao, Rook), via `infra-gateway` | rename |
+| `*.ssh.<your-domain>` | the [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) for in-cluster agent sessions | rename, or delete the listener and the zone |
+| `*.wollbi.ch` | a second site family on `apps-gateway`, with its own listener, certificate and PR previews | delete or rename every file `git grep -l wollbi -- payload/` lists |
 
-Replace the domain everywhere:
+Replace the first three in one pass; `wollbi.ch` does not match the pattern and is handled by hand:
 
 ```bash
 git grep -lz 'wlkr\.ch' -- payload/ | \
@@ -47,14 +51,17 @@ You must own this domain: the certificates are issued by Let's Encrypt through a
 
 ## 3\. Point DNS at the gateway IPs
 
-The two Gateways take fixed addresses from the Cilium L2 pools in `payload/platform/cilium/lb-pools.yaml`:
+The two Gateways take fixed addresses from the Cilium pools in `payload/platform/cilium/lb-pools.yaml`:
 
 | Gateway | DNS record |
 | --- | --- |
 | `apps-gateway` | `*.k8s.<your-domain>` |
 | `infra-gateway` | `*.infra.k8s.<your-domain>` |
 
-Change both CIDRs to free addresses on your LAN — in the nodes' subnet, since Cilium announces them over L2 ARP, and outside the DHCP range, or the router will eventually hand one to a laptop — then create the two wildcard `A` records.
+Change both CIDRs to free addresses on your LAN, outside the DHCP range, or the router will eventually hand one to a laptop, then create the two wildcard `A` records. Two more things in the same component decide whether anything answers on those addresses:
+
+- The `CiliumL2AnnouncementPolicy` in `lb-pools.yaml` answers ARP for them from the control-plane nodes only, on interfaces matching a name pattern. Change the `nodeSelector` if your control planes should not carry the traffic and `interfaces` if the pattern does not match your NICs; L2 needs the addresses in the nodes' subnet.
+- `payload/platform/cilium/bgp.yaml` also announces them to the router over eBGP, and its peer and ASNs must match the inventory (step 5). With no BGP router, delete the file.
 
 ## 4\. Set up the DNS-01 solver
 
@@ -71,7 +78,7 @@ If your DNS is hosted elsewhere, replace the `dns01.route53` solver with the mat
 
 ## 5\. Describe your hardware
 
-Edit `ansible/inventory.yaml`; the variables are listed under [Quickstart → step 2](<https://homelab.wlkr.ch/quickstart/#setup>). Beyond those:
+Edit `ansible/inventory.yaml`; every variable is listed under [Quickstart → step 2](<https://homelab.wlkr.ch/quickstart/#setup>). The ones a fork must choose rather than copy:
 
 | Setting | Notes |
 | --- | --- |
@@ -79,9 +86,7 @@ Edit `ansible/inventory.yaml`; the variables are listed under [Quickstart → st
 | `control_plane_vip_interface` | The NIC kube-vip advertises on; check `ip link` on a provisioned node. |
 | `control_plane_endpoint_host` | Set a name on a fresh build, see [Endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/#endpoint-name>); a running cluster keeps the VIP. |
 | host entries | Replace the hosts with yours. Each needs `ansible_host` and `mac_address` (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from `ansible_host` — see [Quickstart → Other requirements](<https://homelab.wlkr.ch/quickstart/#other-requirements>). |
-| `control_plane` / `workers` | Group membership decides the node role. |
-| `pod_subnet`, `service_subnet` | Only change if they collide with your LAN. |
-| `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory. `make config` renders the router's FRR config into `output/router/` — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#configuration>). |
+| `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#configuration>). |
 
 Then update `payload/platform/cilium/values.yaml`:
 
@@ -97,19 +102,19 @@ A mismatch here does not fail at provisioning. It fails on the first sync, when 
 
 ## 6\. Provisioning access
 
-`ansible/templates/butane_node_config.yaml.j2` injects `~/.ssh/id_ed25519.pub` as the authorized key for the `core` user. Point it at your own key if you use a different path or algorithm. There is no password, no console login, and no rescue path short of reprovisioning, so this is the only way into the nodes afterwards.
+Both Butane templates, `ansible/templates/butane_node_config.yaml.j2` and `butane_installer_config.yaml.j2`, inject `~/.ssh/id_ed25519.pub` as the authorized key for the `core` user. Point both at your own key if you use a different path or algorithm. There is no password, no console login, and no rescue path short of reprovisioning, so this is the only way into the nodes afterwards.
 
 ## 7\. The documentation site
 
-If you want your fork to publish its own copy of these docs, update `zensical.toml`: `site_url`, `repo_url`, `repo_name`, and `copyright`. The `docs.yaml` workflow then publishes to your own GitHub Pages. Otherwise, delete `.github/workflows/docs.yaml` to stop the build from running.
+If you want your fork to publish its own copy of these docs, update `zensical.toml`: `site_url`, `repo_url`, `repo_name`, and `copyright`, and `docs/CNAME`, which binds the Pages site to a custom domain; delete it if you have none. The `docs.yaml` workflow then publishes to your own GitHub Pages. Otherwise, delete `.github/workflows/docs.yaml` to stop the build from running.
 
 ## Checklist
 
 Before `make config`:
 
-- \[ \] `repoURL` points at your fork in all of `payload/`
-- \[ \] Domain replaced throughout `payload/`
-- \[ \] LoadBalancer IPs are free addresses on your subnet
+- \[ \] `repoURL` points at your fork in all of `payload/`, the workloads URLs and the previews `owner` at yours
+- \[ \] Domain replaced throughout `payload/`, `wollbi.ch` renamed or removed
+- \[ \] LoadBalancer IPs are free addresses on your subnet, and the L2 policy or BGP peer announces them
 - \[ \] Wildcard DNS records created for both gateways
 - \[ \] ACME email and DNS-01 provider match your setup
 - \[ \] `inventory.yaml` describes your nodes, with the right `boot_server_ip`

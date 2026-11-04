@@ -2434,8 +2434,8 @@ fresh bootstrap converges without an order.</p>
 <li>
 <p><strong><a href="decisions/">Design Decisions</a></strong></p>
 <hr />
-<p>Seven choices, each as <em>X, not Y</em>, each with its cost. Read before
-proposing a simpler alternative.</p>
+<p>Each choice as <em>X, not Y</em>, with its cost. Read before proposing a
+simpler alternative.</p>
 </li>
 <li>
 <p><strong><a href="security/">Security Posture</a></strong> · <strong><a href="audit-logging/">Audit Logging</a></strong></p>
@@ -2456,75 +2456,29 @@ enforced, and what the API server records.</p>
 <table>
 <thead>
 <tr>
-<th>Node</th>
 <th>Role</th>
-<th>IP</th>
+<th>Nodes</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>odin</td>
-<td>Control Plane</td>
-<td>10.9.2.1</td>
+<td>Control plane</td>
+<td>odin, thor, loki</td>
+<td>etcd and the API server; tainted, no workloads, no Ceph OSD</td>
 </tr>
 <tr>
-<td>thor</td>
-<td>Control Plane</td>
-<td>10.9.2.2</td>
-</tr>
-<tr>
-<td>loki</td>
-<td>Control Plane</td>
-<td>10.9.2.3</td>
-</tr>
-<tr>
-<td>freya</td>
 <td>Worker</td>
-<td>10.9.2.4</td>
-</tr>
-<tr>
-<td>heimdall</td>
-<td>Worker</td>
-<td>10.9.2.5</td>
-</tr>
-<tr>
-<td>valkyrie</td>
-<td>Worker</td>
-<td>10.9.2.6</td>
-</tr>
-<tr>
-<td>baldur</td>
-<td>Worker</td>
-<td>10.9.2.7</td>
-</tr>
-<tr>
-<td>tyr</td>
-<td>Worker</td>
-<td>10.9.2.8</td>
-</tr>
-<tr>
-<td>frigg</td>
-<td>Worker</td>
-<td>10.9.2.9</td>
-</tr>
-<tr>
-<td>bragi</td>
-<td>Worker</td>
-<td>10.9.2.11</td>
-</tr>
-<tr>
-<td>idun</td>
-<td>Worker</td>
-<td>10.9.2.12</td>
+<td>freya, heimdall, valkyrie, baldur, tyr, frigg, bragi, idun</td>
+<td>Everything else, and a Ceph OSD partition each</td>
 </tr>
 </tbody>
 </table>
 <p>Three control-plane nodes because etcd needs an odd number, and two is the
 worst answer: twice the hardware and quorum still lost when one dies. The API
-server is reached through a kube-vip virtual IP (<code>10.9.2.10</code> by default) rather
-than any single node — see
-<a href="../operations/control-plane-vip/">Control Plane VIP</a>.</p>
-<p><strong>Networks</strong>: pod subnet <code>10.244.0.0/16</code>, service subnet <code>10.96.0.0/12</code>.</p>
+server is reached through a kube-vip virtual IP rather than any single node —
+see <a href="../operations/control-plane-vip/">Control Plane VIP</a>. Addresses, the
+VIP and the pod and service subnets are in <code>ansible/inventory.yaml</code>.</p>
 <h2 id="repository-layout">Repository layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
 <p><code>ansible/</code> describes the machines, <code>boot_server/</code> hands them their operating
 system, <code>payload/</code> is the platform the cluster runs on, and <code>output/</code> is
@@ -2533,24 +2487,31 @@ it. The applications the cluster exists to serve live in the separate
 <a href="https://github.com/JanWelker/homelab-apps"><code>homelab-apps</code></a> repository; see
 <a href="gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>.
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── ansible                 # Inventory, playbooks and templates -- see Ansible
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── boot_server
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   └── serve.py            # TFTP + HTTP boot server
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── docs                    # This site
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── output                  # Generated; never edited by hand
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   ├── credentials/        # Bootstrap token, certificate key, etcd
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   │                       # encryption key, OpenBao unseal keys -- 0700
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── http/               # Ignition, Flatcar artifacts, sysext images
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   ├── kubeconfig          # Admin kubeconfig
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   ├── tftp/               # PXE bootloader and menus
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   └── tmp/                # Temporary workspace
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── payload                 # Everything ArgoCD deploys
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   ├── platform/           # One directory per component, each with one
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   │   └── ...             #   application.yaml -- see Platform
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   └── workloads/          # The handover to homelab-apps
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>├── zensical.toml           # Documentation site configuration
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>└── README.md
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── .github/workflows       # CI: linters, docs build and preview, argo-diff-preview -- see Maintenance
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── ansible                 # Inventory, playbooks and templates -- see Ansible
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── boot_server
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   └── serve.py            # TFTP + HTTP boot server
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── docs                    # This site
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── output                  # Generated; never edited by hand
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── credentials/        # Bootstrap token, certificate key, etcd
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   │                       # encryption key, OpenBao unseal keys -- 0700
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   ├── http/               # Ignition, Flatcar artifacts, sysext images
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   ├── kubeconfig          # Admin kubeconfig
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   ├── router/             # FRR BGP config for the router
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   ├── tftp/               # PXE bootloader and menus
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   └── tmp/                # Readable copies of the rendered Butane and kubeadm configs
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>├── overrides               # Theme template overrides for the docs site
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>├── payload                 # Everything ArgoCD deploys
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   ├── argocd/             # ArgoCD itself: Application, ApplicationSet, values
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   ├── platform/           # One directory per component, each with one
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   │   └── ...             #   application.yaml -- see Platform
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   └── workloads/          # The handover to homelab-apps
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>├── scripts                 # What the make targets run: OpenBao bootstrap, storage check, fonts
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>├── tests                   # pytest for the boot server
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>├── Makefile                # Every operator command, one target each
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>├── renovate.json           # The version pins Renovate tracks -- see Maintenance
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>├── zensical.toml           # Documentation site configuration
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>└── README.md
 </span></code></pre></div>
 <p><code>ansible/</code> and <code>boot_server/</code> matter only while a node is being built;
 <code>payload/</code> matters every day after that. The exception is
@@ -2571,7 +2532,7 @@ deleting, and refuses without a terminal.</p>
 <tbody>
 <tr>
 <td><code>make clean-artifacts</code></td>
-<td><code>output/http</code>, <code>output/tftp</code>, <code>output/tmp</code></td>
+<td><code>output/http</code>, <code>output/tftp</code>, <code>output/tmp</code>, <code>output/router</code></td>
 <td><code>output/credentials/</code>, <code>output/kubeconfig</code></td>
 </tr>
 <tr>

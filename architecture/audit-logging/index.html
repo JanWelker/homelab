@@ -2550,7 +2550,7 @@ without it, findings at the stricter audit level go nowhere.</p>
 </tr>
 <tr>
 <td>Durable copy</td>
-<td><a href="../../platform/logging/">Loki</a>, via Alloy, on Ceph</td>
+<td><a href="../../platform/logging/">Loki</a>, via the Alloy pipeline in <code>payload/platform/alloy/application.yaml</code>, on Ceph</td>
 </tr>
 <tr>
 <td>Query it with</td>
@@ -2558,7 +2558,7 @@ without it, findings at the stricter audit level go nowhere.</p>
 </tr>
 <tr>
 <td>Worst-case disk</td>
-<td>About 1 GB per control-plane node — see <a href="#where-the-log-lives">Where the log lives</a></td>
+<td>Bounded by the rotation flags in <code>ansible/templates/kubeadm.yaml.j2</code>, see <a href="#where-the-log-lives">Where the log lives</a></td>
 </tr>
 </tbody>
 </table>
@@ -2635,7 +2635,7 @@ and <strong>the first match wins</strong>, so the order is the design:</p>
 </tr>
 <tr>
 <td>Rotation</td>
-<td>The <code>--audit-log-maxsize</code>, <code>--audit-log-maxbackup</code> and <code>--audit-log-maxage</code> flags in <code>ansible/templates/kubeadm.yaml.j2</code>; the product of size and backups bounds the footprint to about 1 GB, and the age cap keeps a quiet cluster from holding a month-old rotation forever</td>
+<td>The <code>--audit-log-maxsize</code>, <code>--audit-log-maxbackup</code> and <code>--audit-log-maxage</code> flags in <code>ansible/templates/kubeadm.yaml.j2</code>; the product of size and backups bounds the footprint, and the age cap keeps a quiet cluster from holding a month-old rotation forever</td>
 </tr>
 </tbody>
 </table>
@@ -2645,8 +2645,9 @@ only on the node is unavailable in precisely the situation where the node is
 what failed.</p>
 <h2 id="reading-it">Reading it<a class="headerlink" href="#reading-it" title="Permanent link">&para;</a></h2>
 <p>Audit events reach Loki as JSON with <code>job="kubernetes-audit"</code>, plus <code>verb</code> and
-<code>audit_level</code> as labels. Everything else stays in the line, where <code>| json</code> can
-reach it:</p>
+<code>audit_level</code> as labels, set by the Alloy pipeline in
+<code>payload/platform/alloy/application.yaml</code>. Everything else stays in the line,
+where <code>| json</code> can reach it:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Who read Secrets, and which ones
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{job="kubernetes-audit"} | json | objectRef_resource="secrets"
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -2659,7 +2660,8 @@ reach it:</p>
 <p>The last query answers "what would break if I tightened <code>enforce</code> on this
 namespace" from evidence, for the whole retention window. Exec, Secret reads
 by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts
-from Loki's ruler — see <a href="../../platform/logging/#alerting">Logging</a>.</p>
+from Loki's ruler, defined in <code>payload/platform/logging/loki-rules.yaml</code>; see
+<a href="../../platform/logging/#alerting">Logging</a>.</p>
 <h2 id="applying-it-to-a-running-cluster">Applying it to a running cluster<a class="headerlink" href="#applying-it-to-a-running-cluster" title="Permanent link">&para;</a></h2>
 <p>Changing the templates changes what a <strong>newly provisioned</strong> node gets. A
 running control-plane node keeps the <code>kube-apiserver.yaml</code> static pod manifest
@@ -2681,15 +2683,21 @@ kubeadm rendered at init time, and nothing rewrites it on its own.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>Place the policy file:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scp<span class="w"> </span>output/.../policy.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/policy.yaml
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/policy.yaml<span class="w"> </span>/etc/kubernetes/audit/policy.yaml
+<p>Place the policy file. It is inline in the Butane template, so take it
+   from the rendered copy:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>yq<span class="w"> </span><span class="s1">'.storage.files[] | select(.path == "/etc/kubernetes/audit/policy.yaml") | .contents.inline'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>output/tmp/butane/butane-&lt;node&gt;.yaml<span class="w"> </span>&gt;<span class="w"> </span>/tmp/policy.yaml
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scp<span class="w"> </span>/tmp/policy.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/policy.yaml
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/policy.yaml<span class="w"> </span>/etc/kubernetes/audit/policy.yaml
 </span></code></pre></div>
 </li>
 <li>
-<p>Re-render the API server static pod from the updated config:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>control-plane<span class="w"> </span>apiserver<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--config<span class="w"> </span>/opt/kubeadm-config.yaml
+<p>Replace the install-time kubeadm config on the node with the regenerated
+   one, then re-render the API server static pod from it:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scp<span class="w"> </span>output/tmp/kubeadm/kubeadm-config-&lt;node&gt;.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/kubeadm-config.yaml
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/kubeadm-config.yaml<span class="w"> </span>/opt/kubeadm-config.yaml
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>control-plane<span class="w"> </span>apiserver<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--config<span class="w"> </span>/opt/kubeadm-config.yaml
 </span></code></pre></div>
 </li>
 <li>

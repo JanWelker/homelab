@@ -2554,8 +2554,8 @@
 
 <h1 id="external-dns">external-dns<a class="headerlink" href="#external-dns" title="Permanent link">&para;</a></h1>
 <p><a href="https://kubernetes-sigs.github.io/external-dns/">external-dns</a> creates the
-Route53 records for this cluster's hostnames from the <code>HTTPRoute</code> objects that
-already declare them. Without it every hostname is a record made by hand in
+Route53 records for this cluster's hostnames from the <code>HTTPRoute</code>, <code>TLSRoute</code>
+and <code>GRPCRoute</code> objects that already declare them. Without it every hostname is a record made by hand in
 the AWS console, a step that lives nowhere in the repository and leaves a
 record pointing at nothing when the workload goes.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2590,6 +2590,7 @@ record pointing at nothing when the workload goes.</p>
 </tbody>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>In <code>application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
 <tr>
@@ -2599,8 +2600,8 @@ record pointing at nothing when the workload goes.</p>
 </thead>
 <tbody>
 <tr>
-<td>Source <code>gateway-httproute</code></td>
-<td><code>HTTPRoute</code> is the only thing here that publishes a hostname; the address comes from the route's parent <code>Gateway</code>, so nothing is written down twice</td>
+<td>Sources <code>gateway-httproute</code> and <code>gateway-grpcroute</code></td>
+<td>Every HTTP and gRPC hostname here is a route; the address comes from the route's parent <code>Gateway</code>, so nothing is written down twice. The <code>GRPCRoute</code> is Argo CD's, see <a href="../argocd/#cli-access">CLI access</a></td>
 </tr>
 <tr>
 <td><code>target</code> annotation on <code>apps-gateway</code></td>

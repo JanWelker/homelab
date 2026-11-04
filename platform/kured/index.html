@@ -2568,8 +2568,8 @@ without draining, on a cluster where every node is a storage node.</p>
 </tbody>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p>Three mechanisms stage an update on disk, and all three signal it by touching
-<code>/run/reboot-required</code>, Kured's default sentinel. <code>/run</code> is tmpfs, so the
+<p>An update stages on disk and signals it by touching <code>/run/reboot-required</code>,
+Kured's default sentinel. <code>/run</code> is tmpfs, so the
 marker clears itself on reboot.</p>
 <table>
 <thead>
@@ -2624,7 +2624,7 @@ marker clears itself on reboot.</p>
 <td>Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock</td>
 </tr>
 <tr>
-<td><code>concurrency</code> of one and <code>lockReleaseDelay</code> of five minutes</td>
+<td><code>concurrency</code> and <code>lockReleaseDelay</code></td>
 <td>One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the <em>next</em> node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as <code>CephOSDDown</code>'s <code>for</code>, so an OSD that did not come back is a firing alert before the next drain</td>
 </tr>
 <tr>
@@ -2641,7 +2641,7 @@ marker clears itself on reboot.</p>
 </tr>
 <tr>
 <td><code>VeleroBackupInProgress</code> on the alert list</td>
-<td>Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in <code>payload/platform/velero/application.yaml</code> compares attempts with outcomes per live Velero pod over a six-hour window, longer than Velero's default four-hour limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for six hours at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the <code>null</code> receiver because it fires every night</td>
+<td>Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in <code>payload/platform/velero/application.yaml</code> compares attempts with outcomes per live Velero pod over a window longer than Velero's default limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for that long at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the <code>null</code> receiver because it fires every night</td>
 </tr>
 <tr>
 <td><code>alertFilterRegexp</code> with <code>alertFilterMatchOnly: true</code></td>
@@ -2654,25 +2654,37 @@ marker clears itself on reboot.</p>
 <p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no <code>PrometheusRule</code> defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under <a href="#health-check">Health check</a>.</p>
 </div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>To stop Kured rebooting anything without uninstalling it, remove the sentinel
-or scale the DaemonSet to zero. To force a node to reboot on the next pass:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
+<p>To stop Kured rebooting anything without uninstalling it, take its cluster
+lock by hand; it holds until the annotation is removed. Clearing the sentinel
+does not work, because <code>flatcar-reboot-sentinel.timer</code> in
+<code>ansible/templates/butane_node_config.yaml.j2</code> re-touches it while an update
+is staged, and a DaemonSet cannot be scaled.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>annotate<span class="w"> </span>ds<span class="w"> </span>kured<span class="w"> </span>weave.works/kured-node-lock<span class="o">=</span><span class="s1">'{"nodeID":"manual"}'</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>annotate<span class="w"> </span>ds<span class="w"> </span>kured<span class="w"> </span>weave.works/kured-node-lock-<span class="w">    </span><span class="c1"># release it</span>
+</span></code></pre></div>
+<p>To force a node to reboot on the next pass:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
 </span></code></pre></div>
 <p><code>NodeRebootPending</code> in <code>payload/platform/monitoring/node-update-rules.yaml</code>
 fires when the sentinel has been there for two days: Kured reboots one node
 at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is
 a blocked node, not a queued one.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Which nodes want a reboot</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Whether a node has staged anything</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /run/reboot-required; update_engine_client -status'</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># The alert names the gate may use: every entry in alertFilterRegexp must be here</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>kubectl<span class="w"> </span>get<span class="w"> </span>prometheusrule<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.groups[].rules[] | select(.alert) | .alert'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Which nodes want a reboot: kured_reboot_required is the sentinel's presence, per node</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090<span class="w"> </span><span class="p">&amp;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:9090/api/v1/query<span class="w"> </span>--data-urlencode<span class="w"> </span><span class="s1">'query=kured_reboot_required == 1'</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.data.result[].metric.node'</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># Which node is being rebooted right now</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Whether a node has staged anything</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /run/reboot-required; update_engine_client -status'</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>logs<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>kured<span class="w"> </span>--tail<span class="o">=</span><span class="m">50</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="c1"># The alert names the gate may use: every entry in alertFilterRegexp must be here</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>kubectl<span class="w"> </span>get<span class="w"> </span>prometheusrule<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.groups[].rules[] | select(.alert) | .alert'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'</span>
 </span></code></pre></div>
 
 

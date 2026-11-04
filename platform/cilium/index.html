@@ -1150,6 +1150,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1157,6 +1169,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2383,6 +2400,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2390,6 +2419,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2659,8 +2693,8 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 <td>The chart default restarts the agent on two nodes at once, which can be two of the three control planes that hold the L2 leases and BGP sessions; one at a time keeps every Gateway address announced throughout a rollout</td>
 </tr>
 <tr>
-<td><code>operator.replicas: 2</code></td>
-<td>The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the <code>cilium-secrets</code> sync; with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the two apart, so the standby is already running — see the <a href="#pitfalls">operator pitfall</a></td>
+<td><code>operator.replicas</code> above one</td>
+<td>The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the <code>cilium-secrets</code> sync; with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the replicas apart, so the standby is already running — see the <a href="#pitfalls">operator pitfall</a></td>
 </tr>
 <tr>
 <td><code>lb-pools.yaml</code> on <code>cilium.io/v2</code></td>
@@ -2676,7 +2710,8 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 </tbody>
 </table>
-<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h3>
 <p>Cilium is installed twice, in a sense. <code>make install-cilium</code> installs it by
 Helm, because no pod runs without a CNI and ArgoCD is a pod; ArgoCD then
 adopts the release. The version comes from <code>targetRevision</code> in
@@ -2692,12 +2727,16 @@ the monitors back on adoption, rolling the agent and operator once.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
 </span></code></pre></div>
 <p>The BGP session on each control-plane node, <code>established</code> with two routes
-advertised:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
+advertised. <code>bgp.yaml</code> selects the control planes only, so ask that node's
+agent rather than whichever pod <code>ds/cilium</code> resolves to:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
 </span></code></pre></div>
 <p>Hubble answers <em>what did I just break?</em> during a network policy rollout — see
-<a href="../security-policies/#usage">Security Policies</a>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
+<a href="../security-policies/#usage">Security Policies</a>. The <code>hubble</code> CLI talks to
+Relay through a port-forward on its default port:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>deploy/hubble-relay<span class="w"> </span><span class="m">4245</span>:4245<span class="w"> </span><span class="p">&amp;</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
 </span></code></pre></div>
 <p>The same verdicts, for the whole Loki retention window, in Grafana:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
@@ -2713,7 +2752,7 @@ advertised:</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">A chart default that disappears stays in <code>cilium-config</code></p>
-<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When 1.20.4 dropped the <code>envoy.xdsMode</code> default, the agents kept <code>envoy-xds-mode: ads</code> while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
+<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When a chart release dropped the <code>envoy.xdsMode</code> default, the agents kept <code>envoy-xds-mode: ads</code> while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">The host firewall drops all node IPv6, with or without a policy</p>

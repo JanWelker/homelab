@@ -30,7 +30,9 @@ sequenceDiagram
     App->>K: mount / envFrom
 ```
 
-ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API, which the chart's controller ClusterRole allows in every namespace; OpenBao validates it against the TokenReview API and issues a token bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
+ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API, which the chart's controller ClusterRole allows in every namespace (`cluster-secret-store.yaml` binds its own `external-secrets-vault-token-creator` ClusterRole, scoped to that ServiceAccount name, beside it); OpenBao validates it against the TokenReview API and issues a token bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
+
+In `application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
@@ -121,7 +123,7 @@ kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
 | Cause | Fix |
 | --- | --- |
 | OpenBao is sealed | [Unseal it](<https://homelab.wlkr.ch/platform/openbao/#unsealing-after-a-restart>) |
-| Kubernetes auth role missing | `make bao-policies` writes all three roles |
+| Kubernetes auth role missing | `make bao-policies` writes all three roles; it needs a [root token](<https://homelab.wlkr.ch/platform/openbao/#generating-a-root-token>) |
 | Wrong `serviceAccountRef` | `external-secrets-vault`, in `external-secrets` for `openbao` and without a namespace for the other two |
 
 Then the individual object:

@@ -2475,10 +2475,10 @@ generated artifact comes from it, and the values are baked into the output
 rather than read at boot. The variables are described in
 <a href="../../quickstart/#setup">Quickstart step 2</a>. Every playbook targets the
 <code>k8s_nodes</code> group, the parent of <code>control_plane</code> and <code>workers</code>, which carries
-<code>ansible_user</code>, the Python interpreter path and the SSH options.</p>
+<code>ansible_user</code> and the SSH options.</p>
 <div class="admonition warning">
 <p class="admonition-title">Every edit needs a regeneration, and some need two</p>
-<p><code>make config</code> re-renders the Ignition configs and PXE menus from the inventory. The four version variables are consumed by <code>download.yaml</code> instead, so changing one needs <code>make download</code> as well — <code>make artifacts</code> runs both. An edit followed by neither changes nothing at all, silently.</p>
+<p><code>make config</code> re-renders the Ignition configs, PXE menus and router config from the inventory; <code>make download</code> fetches what <code>flatcar_channel</code>, <code>flatcar_version</code>, <code>syslinux_version</code> and <code>kubernetes_version</code> name. The Flatcar, Kubernetes and kube-vip versions are rendered into the configs too, so a version bump needs <code>make artifacts</code>, which runs both. Which target reads which variable is in the <a href="../../quickstart/#setup">Quickstart table</a>. An edit followed by neither changes nothing at all, silently.</p>
 </div>
 <p><code>bootstrap_cluster</code> in the <code>control_plane</code> group decides whether the first
 control-plane host renders <code>kubeadm init</code> (<code>true</code>, the first install) or, like
@@ -2499,7 +2499,7 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 <tbody>
 <tr>
 <td><code>config.yaml</code></td>
-<td>Generates the bootstrap token, certificate key and etcd encryption key into <code>output/credentials/</code> (mode <code>0700</code>); renders the Ignition configs via Butane into <code>output/http</code> (mode <code>0600</code>), the sysupdate config for running nodes beside them, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, and a readable copy of the kubeadm config into <code>output/tmp/</code> (the copy that runs is inlined into Ignition)</td>
+<td>Generates the bootstrap token, certificate key and etcd encryption key into <code>output/credentials/</code> (mode <code>0700</code>); renders the Ignition configs via Butane into <code>output/http</code> (mode <code>0600</code>), the sysupdate config for running nodes beside them, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, the router's FRR config into <code>output/router/frr-bgp.conf</code>, and a readable copy of the kubeadm config into <code>output/tmp/</code> (the copy that runs is inlined into Ignition)</td>
 </tr>
 <tr>
 <td><code>download.yaml</code></td>

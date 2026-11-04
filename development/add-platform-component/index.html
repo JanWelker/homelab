@@ -2443,7 +2443,9 @@ Application on the next poll. Workloads go in the
 <li>
 <p><strong>Create the directory</strong> with a complete <code>application.yaml</code> copied from a
    sibling: the generator copies its labels, annotations, finalizers and
-   <code>spec</code> verbatim, so a fragment is not an Application. Keep the
+   <code>spec</code> verbatim, so a fragment is not an Application. It carries
+   <code>project: infra</code>, like every component except the two that configure
+   ArgoCD itself. Keep the
    <a href="../../architecture/gitops/#sync-policy">sync policy</a> as it is — every
    component carries the same one, <code>retry</code> included, and a chart that lands
    before its CRDs stays failed without it.</p>

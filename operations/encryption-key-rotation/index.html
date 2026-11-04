@@ -2525,12 +2525,15 @@ that is the alert doing its job, not a problem to fix.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>Make the new key the one <code>make config</code> renders, and verify that the rendered
-   config carries it; <code>config.yaml</code> reads the file back instead of generating a
-   new value, so nothing else changes.</p>
+<p>Make the new key the one <code>make config</code> renders, and verify that the Butane
+   config of every control plane carries it as <code>key1</code>; <code>config.yaml</code> reads
+   the file back instead of generating a new value, so nothing else changes.
+   The Ignition JSON cannot be grepped, since Butane gzips file contents, so
+   the check reads the Butane YAML it was transpiled from in <code>output/tmp/</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mv<span class="w"> </span>output/credentials/encryption_key.new<span class="w"> </span>output/credentials/encryption_key
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>base64<span class="w"> </span>&lt;<span class="w"> </span>output/credentials/encryption_key<span class="k">)</span><span class="s2">"</span><span class="w"> </span>output/http/ignition-*.json
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span>&lt;<span class="w"> </span>output/credentials/encryption_key<span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="k">)</span><span class="s2">"</span><span class="w"> </span>output/tmp/butane/butane-*.yaml
 </span></code></pre></div>
+<p>One match per control plane, none per worker or installer config.</p>
 </li>
 <li>
 <p>Confirm against etcd that a Secret's ciphertext names the new key, with the

@@ -8,7 +8,8 @@
 | Grafana | OIDC, login form disabled |
 | Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](<#pitfalls>) |
 | Umami | Proxy outpost **in front of** its own login; the tracker paths pass through — see [Pitfalls](<#pitfalls>) |
-| Rook dashboard, Hubble UI, Prometheus, Alertmanager, Extractor admin UI | Proxy outpost |
+| Rook dashboard, Hubble UI, Prometheus, Alertmanager, Flowscape, Extractor admin UI | Proxy outpost |
+| Wollbi-Fescht, Wollbi Adventsfenster | Proxy outpost on the admin paths, with no `infra-users` binding, see [Groups and roles](<#groups-and-roles>) |
 
 ## At a glance
 
@@ -32,7 +33,7 @@ flowchart LR
     U([Browser]) --> GW[infra-gateway / apps-gateway]
     GW -->|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW -->|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin, media, claw| AK
+    GW -->|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
@@ -54,9 +55,9 @@ A proxied application's route lives with the application: Hubble's in `payload/p
 
 ### Database
 
-`database.yaml` is a CloudNativePG `Cluster` with three instances, the only one on the cluster with more than one. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with three, a replica takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/#the-contract>).
+`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, one takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/#the-contract>).
 
-Three instances only survive a node loss while they sit on three nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>).
+The replicas only survive a node loss while they sit on separate nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>).
 
 ### Chart values
 
@@ -66,7 +67,7 @@ Three instances only survive a node loss while they sit on three nodes, which th
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
-| `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold two replicas apart — see [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>). The worker runs a single replica and needs none |
+| `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>). The worker is not replicated and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](<#pitfalls>) |
 | Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](<https://homelab.wlkr.ch/architecture/gitops/#workloads-live-in-a-second-repository>), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 
@@ -146,11 +147,12 @@ The first administrator is created through `akadmin`, switched on for the occasi
 
 ### Adding an application
 
-1. Generate its client credentials into OpenBao with a `PushSecret` beside the workload's own `ExternalSecret`, and read them here with an `ExternalSecret` mounted `optional`, like `secrets-dependency-track.yaml`. A public client (PKCE, as OpenCloud's web and native clients) has no credentials: its client IDs are fixed by the client and sit in the blueprint in clear, so this step and the next do not apply.
-2. Bump `homelab.wlkr.ch/secret-generation` in `application.yaml`.
-3. Add the provider and application blueprint: an OAuth2 provider with `grant_types`, or a proxy provider added to the outpost's `providers:` list.
-4. For a proxied application, point its `HTTPRoute` at `authentik-server` and add its namespace to `referencegrant.yaml`.
-5. Bind `infra-users` to an infra application in the blueprint, as an `authentik_policies.policybinding` with the application as `target`. An application with no binding is open to every Authentik account.
+1. Generate its client credentials into OpenBao with a `PushSecret` beside the workload's own `ExternalSecret`, and read them here with an `ExternalSecret` mounted `optional`, like `secrets-dependency-track.yaml`. A public client (PKCE, as OpenCloud's web and native clients) has no credentials: its client IDs are fixed by the client and sit in the blueprint in clear, so this step and step 3 do not apply.
+2. Mount the workload's blueprint: in `application.yaml`, a `configMap` source named `authentik-blueprint-<application>` with `optional: true` under `worker.volumes`, in the `projected.sources` of `blueprints-workloads`.
+3. Hand the worker the credentials: in the same file, a `secretRef` to `authentik-secrets-<workload>` with `optional: true` under `global.envFrom`, and bump `homelab.wlkr.ch/secret-generation`.
+4. Add the provider and application blueprint: an OAuth2 provider with `grant_types`, or a proxy provider added to the outpost's `providers:` list.
+5. For a proxied application, point its `HTTPRoute` at `authentik-server` and add its namespace to `referencegrant.yaml`.
+6. Bind `infra-users` to an infra application in the blueprint, as an `authentik_policies.policybinding` with the application as `target`. An application with no binding is open to every Authentik account.
 
 ### Adding a user
 
@@ -220,11 +222,9 @@ When every login fails, in this order:
 
 Single sign-on is a single point of failure for logging in at all. The ArgoCD path needs a working `kubectl`, so keep a kubeconfig off-cluster.
 
-**ArgoCD** — re-enable the local admin account:
+**ArgoCD** — re-enable the local admin account by merging a pull request that sets `admin.enabled` in `payload/argocd/values.yaml`; the `argocd` Application self-heals, so a `kubectl patch` on `argocd-cm` is reverted at the next reconcile. ArgoCD syncs the merge without a login. Then restart the server, which generates `argocd-initial-admin-secret`, and read the password as in [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>). Revert the pull request once Authentik is back.
 
 ```bash
-kubectl -n argocd patch cm argocd-cm --type merge \
-  -p '{"data":{"admin.enabled":"true"}}'
 kubectl -n argocd rollout restart deploy/argocd-server
 ```
 

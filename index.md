@@ -28,6 +28,11 @@ It is a real cluster doing real work, built the way a production cluster is buil
   ---
 
   [Operations](<https://homelab.wlkr.ch/operations/index.md>) has the health check and the symptom-to-cause table. If it is a stalled install, the [PXE troubleshooting table](<https://homelab.wlkr.ch/quickstart/#troubleshooting-pxe-boot>).
+- **I am making a change**
+
+  ---
+
+  [Development](<https://homelab.wlkr.ch/development/index.md>) for the checks a pull request must pass, [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>) for what a merge does to the cluster, and the [repository layout](<https://homelab.wlkr.ch/architecture/#repository-layout>) for where things live.
 
 ## The stack in one table
 

@@ -2502,12 +2502,12 @@ applications</code> shows — and the namespace it lands in.</p>
 <tr>
 <td>argocd-config</td>
 <td><code>argocd</code></td>
-<td>ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see <a href="argocd/">ArgoCD</a></td>
+<td>The <code>ExternalSecret</code>s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; see <a href="argocd/">ArgoCD</a></td>
 </tr>
 <tr>
 <td>argocd-projects</td>
 <td><code>argocd</code></td>
-<td>The <code>apps</code>, <code>infra</code> and <code>system</code> AppProjects</td>
+<td>The AppProjects; see <a href="../architecture/gitops/#structure">GitOps Strategy</a></td>
 </tr>
 <tr>
 <td><a href="authentik/">authentik</a></td>
@@ -2527,7 +2527,7 @@ applications</code> shows — and the namespace it lands in.</p>
 <tr>
 <td>certificates</td>
 <td><code>cert-manager</code></td>
-<td>The Let's Encrypt issuers and the two Gateway wildcards — see <a href="cert-manager/">cert-manager</a></td>
+<td>The Let's Encrypt issuers and the Gateway wildcard certificates — see <a href="cert-manager/">cert-manager</a></td>
 </tr>
 <tr>
 <td><a href="cilium/">cilium</a></td>
@@ -2684,20 +2684,26 @@ which hop stopped, in this order: does the Gateway still hold its LoadBalancer
 IP, does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have
 endpoints.</p>
 <h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
-<p>HTTPRoutes are co-located with their respective apps:</p>
+<p>Routes sit with the component they expose, as a manifest where the component
+is plain YAML and as chart values where the chart renders its own:</p>
 <table>
 <thead>
 <tr>
 <th>Service</th>
 <th>URL</th>
-<th>HTTPRoute Location</th>
+<th>Route</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>ArgoCD</td>
 <td><code>argo.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/platform/argocd-config/httproute.yaml</code></td>
+<td><code>server.httproute</code> in <code>payload/argocd/values.yaml</code></td>
+</tr>
+<tr>
+<td>ArgoCD CLI (gRPC)</td>
+<td><code>argo-grpc.infra.k8s.wlkr.ch</code></td>
+<td><code>server.grpcroute</code> in <code>payload/argocd/values.yaml</code></td>
 </tr>
 <tr>
 <td>Authentik</td>
@@ -2707,17 +2713,17 @@ endpoints.</p>
 <tr>
 <td>Prometheus</td>
 <td><code>prometheus.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/platform/authentik/httproute.yaml</code></td>
+<td><code>payload/platform/monitoring/httproute.yaml</code></td>
 </tr>
 <tr>
 <td>Alertmanager</td>
 <td><code>alertmanager.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/platform/authentik/httproute.yaml</code></td>
+<td><code>payload/platform/monitoring/httproute.yaml</code></td>
 </tr>
 <tr>
 <td>Grafana</td>
 <td><code>monitoring.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/platform/monitoring/httproute.yaml</code></td>
+<td><code>grafana.route.main</code> in <code>payload/platform/monitoring/application.yaml</code></td>
 </tr>
 <tr>
 <td>Hubble</td>
@@ -2727,11 +2733,16 @@ endpoints.</p>
 <tr>
 <td>OpenBao UI</td>
 <td><code>vault.infra.k8s.wlkr.ch</code></td>
-<td><code>payload/platform/openbao/httproute.yaml</code></td>
+<td><code>server.gateway.httpRoute</code> in <code>payload/platform/openbao/application.yaml</code></td>
 </tr>
 <tr>
-<td>Rook Dashboard</td>
+<td>Rook dashboard</td>
 <td><code>rook.infra.k8s.wlkr.ch</code></td>
+<td><code>payload/platform/rook-ceph/httproute.yaml</code></td>
+</tr>
+<tr>
+<td>Ceph object store</td>
+<td><code>s3.infra.k8s.wlkr.ch</code></td>
 <td><code>payload/platform/rook-ceph/httproute.yaml</code></td>
 </tr>
 <tr>
@@ -2776,11 +2787,12 @@ more than one replica carries an explicit rule:</p>
 </tbody>
 </table>
 <p>Constraints carry <code>nodeTaintsPolicy: Honor</code>, so the skew is measured over the
-nodes the pod can reach rather than over the tainted control planes. The same
-components carry a PodDisruptionBudget with <code>maxUnavailable: 1</code>, so a drain or
-the <a href="descheduler/">descheduler</a> evicts one replica at a time; <code>maxUnavailable</code>
-rather than <code>minAvailable</code>, so a component scaled down to one replica never
-blocks a drain. Placement
+nodes the pod can reach rather than over the tainted control planes. Where a
+component carries a PodDisruptionBudget it says <code>maxUnavailable: 1</code>, so a drain
+or the <a href="descheduler/">descheduler</a> evicts one replica at a time;
+<code>maxUnavailable</code> rather than <code>minAvailable</code>, so a component scaled down to one
+replica never blocks a drain. The CloudNativePG operator runs two replicas
+with no budget. Placement
 is scored once, at scheduling time: pods already sharing a node stay there
 until something restarts them, and the <a href="descheduler/">descheduler</a> moves
 them back only if its evictor is allowed to touch them.</p>

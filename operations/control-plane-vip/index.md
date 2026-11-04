@@ -35,6 +35,12 @@ The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-v
 
 `adopt` and its writable hostPath stay after the handover, although on an adopted node they do nothing and every pod start still runs a container that can delete the control plane's static pod manifests. A reinstalled control-plane node gets the static manifest back from Ignition and needs adoption again, and forgetting to re-add it for that one reinstall leaves two kube-vips contending for the API VIP; the exposure is limited to the pinned image.
 
+> [!WARNING]
+>
+> **Tetragon holds `:2112` on the control planes**
+>
+> Tetragon serves its metrics on the same port, on the host network by its chart's default, so `adopt` waits for a port that is never released and gives up after its timeout on a reinstalled control plane, and the liveness probe is answered by Tetragon whether kube-vip is alive or not, as recorded in the [host firewall inventory](<https://homelab.wlkr.ch/operations/host-firewall-inventory-2026-10-30/#findings>). Not fixed yet; move one of the two ports before the next control-plane reinstall.
+
 > [!CAUTION]
 >
 > **If the DaemonSet pods do not come up**

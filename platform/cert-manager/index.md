@@ -1,12 +1,12 @@
 # cert-manager
 
-TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that Let's Encrypt cannot reach, and because it is the only way to get a wildcard: two certificates, `*.k8s.wlkr.ch` and `*.infra.k8s.wlkr.ch`, cover every hostname the cluster serves.
+TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that Let's Encrypt cannot reach, and because it is the only way to get a wildcard: one certificate per zone, listed in `payload/platform/certificates/certificates.yaml`, covers every hostname the Gateways terminate.
 
 ## At a glance
 
 |  |  |
 | --- | --- |
-| Namespace | `cert-manager`; the certificates it issues land in `kube-system` |
+| Namespace | `cert-manager`; the wildcards land in `kube-system` beside the Gateways, the agent sessions' certificates in their own namespaces; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) |
 | Depends on | [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) for the Route53 credential, so transitively on [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) |
 | If it is down | Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later |
 | Health check | `kubectl get certificate -A` → all `READY=True` |

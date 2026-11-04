@@ -27,7 +27,7 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 
 ### Policies
 
-`tracingpolicies.yaml` carries the cluster-scoped `TracingPolicy` objects, adapted from the [upstream policy library](<https://tetragon.io/docs/policy-library/observability/>). All post at most one event per minute per selector, and all but the first watch containers only: the host has the node journal. Every hook carries a `message` and one of upstream's `observability.*` tags, so an event says what it is without a lookup here.
+`tracingpolicies.yaml` carries the cluster-scoped `TracingPolicy` objects, adapted from the [upstream policy library](<https://tetragon.io/docs/policy-library/observability/>). All post at most one event per minute per selector, and most watch containers only, since the host has the node journal; `sensitive-file-access` and the signature hook of `kernel-module-load` record the host too. Every hook carries a `message` and one of upstream's `observability.*` tags, so an event says what it is without a lookup here.
 
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
@@ -93,10 +93,10 @@ Every policy but one only records. `kill-unprivileged-user-namespace` carries `p
 >
 > **A first hit is a new series, and `increase()` of one sample is zero**
 >
-> `tetragon_policy_events_total` has a pod label, so the first hit from a pod creates a counter series inside the alert window and `increase()` reports nothing until the second scrape moves it. Every policy alert therefore also matches a series absent ten minutes ago, with `unless ... offset 10m`, and holds for fifteen minutes with `keep_firing_for`, because the agent drops a pod's series when the pod exits and a one-shot pod would otherwise flap. Copy that shape for a new alert, and test it with a pod that fires once, not with one that keeps firing.
+> `tetragon_policy_events_total` has a pod label, so the first hit from a pod creates a counter series inside the alert window and `increase()` reports nothing until the second scrape moves it. Every policy alert therefore also matches a series absent one window earlier, with `unless ... offset`, and holds with `keep_firing_for`, because the agent drops a pod's series when the pod exits and a one-shot pod would otherwise flap. Copy that shape for a new alert, and test it with a pod that fires once, not with one that keeps firing.
 
 > [!WARNING]
 >
 > **A policy that does not load is silent**
 >
-> A `TracingPolicy` naming a kernel function this kernel does not export sits in state `error` and watches nothing. `TetragonPolicyNotLoaded` fires after ten minutes; check `kubectl get tracingpolicies -o wide` after every Flatcar release that moves the kernel.
+> A `TracingPolicy` naming a kernel function this kernel does not export sits in state `error` and watches nothing. `TetragonPolicyNotLoaded` fires after its `for`; check `kubectl get tracingpolicies -o wide` after every Flatcar release that moves the kernel.

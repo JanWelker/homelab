@@ -2778,8 +2778,8 @@ every database and a single-instance <code>Cluster</code> is a defensible defaul
 data survives a node loss even when the process does not. Where a workload
 cannot tolerate the restart, <code>instances: 3</code> is the change, as
 <a href="../authentik/#database">Authentik</a> shows.</p>
-<p>The operator itself runs two replicas, spread per
-<a href="../#replica-placement">Replica placement</a>: the same pod serves the
+<p>The operator itself runs two replicas (<code>replicaCount</code> in <code>application.yaml</code>'s
+<code>valuesObject</code>), spread per <a href="../#replica-placement">Replica placement</a>: the same pod serves the
 <code>Cluster</code> and <code>ScheduledBackup</code> admission webhooks with <code>failurePolicy: Fail</code>,
 so a single replica rescheduling through a Kured drain refuses every apply,
 while leader election keeps one of the two reconciling. The chart ships no
@@ -2815,8 +2815,8 @@ restores to any second inside the retention window, not just to last night.</p>
 <td>The two never contend for the object store; WAL archiving covers the hours between</td>
 </tr>
 <tr>
-<td>Retention equal to Velero's TTL</td>
-<td>One window to reason about: what Velero can no longer restore, the WAL archive cannot either</td>
+<td><code>retentionPolicy</code> equal to <code>schedules.ttl</code> in <code>payload/platform/velero/application.yaml</code></td>
+<td>One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each <code>backup.yaml</code> restates the value</td>
 </tr>
 <tr>
 <td>Preview databases have none</td>
@@ -2947,7 +2947,7 @@ empty with a plugin, which upstream documents as deprecated under CNPG-I.
 objects through kube-state-metrics'
 <a href="../monitoring/#scrape-targets">custom resource metrics</a>:
 <code>CNPGBackupStale</code> when a server's last successful base backup is older than
-36 hours, <code>CNPGBackupFailed</code> when a Backup from the last 24 hours ended in
+the rule's threshold, <code>CNPGBackupFailed</code> when a recent Backup ended in
 <code>failed</code>. Both are warnings on the daily mail.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2977,9 +2977,10 @@ objects through kube-state-metrics'
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>get<span class="w"> </span>objectstore<span class="w"> </span>&lt;db&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.serverRecoveryWindow}{"\n"}'</span>
 </span></code></pre></div>
 <ol>
-<li>In the workloads repository, rename the <code>Cluster</code> to <code>&lt;db&gt;-restore</code> and
-   replace <code>bootstrap.initdb</code> with a recovery from the old store, keeping the
-   old name as <code>serverName</code>:</li>
+<li>In the workloads repository, add a second <code>Cluster</code> named <code>&lt;db&gt;-restore</code>
+   beside the original, which stays untouched: every Application prunes, so
+   a renamed <code>Cluster</code> is a deleted one. It bootstraps from the old store,
+   keeping the old name as <code>serverName</code>:</li>
 </ol>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="nt">recovery</span><span class="p">:</span>
@@ -2997,8 +2998,15 @@ objects through kube-state-metrics'
 <p>Its own <code>plugins</code> entry keeps the same <code>barmanObjectName</code> with
    <code>serverName: &lt;db&gt;-restore</code>, so the new archive lands beside the old one.</p>
 <ol>
-<li>Merge, wait for <code>Cluster in healthy state</code>, then point the application at
-   <code>&lt;db&gt;-restore-app</code> and remove the old <code>Cluster</code> in a second PR.</li>
+<li>
+<p>Merge and wait for <code>Cluster in healthy state</code>; both databases now run,
+   and the application still reads the original.</p>
+</li>
+<li>
+<p>In a second PR, point the application at <code>&lt;db&gt;-restore-app</code>, set the
+   <code>ScheduledBackup</code>'s <code>cluster.name</code> to <code>&lt;db&gt;-restore</code>, and delete the
+   original <code>Cluster</code>; the sync prunes it.</p>
+</li>
 </ol>
 
 

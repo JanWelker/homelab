@@ -57,12 +57,14 @@ Reading or writing the file from a shell fires `TetragonSensitiveFileAccess`; th
      - name: key1
        secret: <new key, base64>
    ```
-8. Make the new key the one `make config` renders, and verify that the rendered config carries it; `config.yaml` reads the file back instead of generating a new value, so nothing else changes.
+8. Make the new key the one `make config` renders, and verify that the Butane config of every control plane carries it as `key1`; `config.yaml` reads the file back instead of generating a new value, so nothing else changes. The Ignition JSON cannot be grepped, since Butane gzips file contents, so the check reads the Butane YAML it was transpiled from in `output/tmp/`.
 
    ```bash
    mv output/credentials/encryption_key.new output/credentials/encryption_key
-   make config && grep -c "$(base64 < output/credentials/encryption_key)" output/http/ignition-*.json
+   make config && grep -c "$(tr -d '\n' < output/credentials/encryption_key | base64)" output/tmp/butane/butane-*.yaml
    ```
+
+   One match per control plane, none per worker or installer config.
 9. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key1:`.
 
    ```bash

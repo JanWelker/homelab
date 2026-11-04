@@ -18,8 +18,9 @@ flowchart LR
 | --- | --- |
 | Namespace | `openbao` |
 | Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for its Raft volumes. A fresh bootstrap [pauses here](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-pauses-at-openbao>) until OpenBao is initialised and unsealed |
+| Seal | Shamir, unsealed by hand; the share count and threshold are set in `scripts/bao-init.sh` |
 | If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside |
-| Health check | `kubectl -n openbao exec openbao-0 -- bao status` → `Sealed: false` on all three |
+| Health check | `bao status` on every pod → `Sealed: false`; see [Health check](<#health-check>) |
 | UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |
 | Files | `payload/platform/openbao/` |
 
@@ -30,7 +31,6 @@ flowchart LR
 | Mode | HA, integrated Raft on a Ceph PVC per replica; the replica count is in `application.yaml` |
 | Audit storage | Separate PVC on `rook-ceph-block`, written by the `file` audit device — see [Audit devices](<#audit-devices>) |
 | TLS | Terminates at the Gateway; plain HTTP at `http://openbao.openbao.svc.cluster.local:8200` |
-| Seal | Shamir, 5 shares, threshold 3, unsealed by hand |
 | Chart | Upstream [`openbao/openbao-helm`](<https://github.com/openbao/openbao-helm>), pinned in `application.yaml` |
 
 | Setting | Why |
@@ -70,8 +70,9 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a workloa
 | `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/#github-app>); empty until the app is created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](<https://homelab.wlkr.ch/platform/velero/#repository-password>); changing it orphans every volume backup |
+| `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/#secrets>); written even when empty, so the job fails on its own rather than stalling the sync |
 
-The two `route53` leaves are separate IAM users on purpose: cert-manager's key only writes `_acme-challenge` TXT records, so stolen it can issue certificates, while external-dns's creates and deletes A records, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
+The two `route53` leaves are separate IAM users on purpose: cert-manager only ever writes `_acme-challenge` TXT records, though its [policy](<https://homelab.wlkr.ch/platform/cert-manager/#configuration>) still allows any record change, while external-dns creates and deletes A records by design, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
 
 ### Generated secrets
 
@@ -100,7 +101,7 @@ No root token outlives the command that needs it. `make bao-init` ends by creati
 | --- | --- |
 | The `operator` policy: `kv/` read, write and delete, `sys/storage/raft/snapshot` read | Everything `make bao-secrets`, `make claude-session-pat`, [rotation](<#rotating-a-credential>) and a [snapshot](<#backups>) need; policies, auth methods and snapshot restores still need root |
 | `sys/generate-root-token/*` and `sys/decode-token` in the same policy | Since OpenBao 2.6 `bao operator generate-root` needs a token, so without these a revoked root could not be regenerated; the unseal shares still decide |
-| `token_ttl=1h`, `token_max_ttl=1h` | The scripts cache the token in the pod; one a dropped connection leaves behind expires within the hour, and the exit trap revokes it sooner |
+| `token_ttl` and `token_max_ttl`, short | The scripts cache the token in the pod; one a dropped connection leaves behind expires on its own, and the exit trap revokes it sooner |
 | Userpass, not OIDC | Authentik reads its own database password from OpenBao, so an Authentik login would be a loop |
 | The scripts fall back to the root token in `openbao-init.json` | A cluster initialised before this keeps working, with a warning, until `make bao-rotate-root` creates the login and revokes the root token |
 
@@ -135,7 +136,7 @@ The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` 
 
    > **Move the unseal keys before you do anything else**
    >
-   > `make bao-init` writes the 5 unseal keys to `output/credentials/openbao-init.json` and the [operator login](<#operator-credential>) to `openbao-operator.json` beside it (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](<https://homelab.wlkr.ch/architecture/security/index.md>). The root token in the first file is revoked before the command ends. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing all five keys means the data is unrecoverable: no support line, no recovery flow.
+   > `make bao-init` writes the unseal keys to `output/credentials/openbao-init.json` and the [operator login](<#operator-credential>) to `openbao-operator.json` beside it (mode `0600`, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the [etcd encryption key](<https://homelab.wlkr.ch/architecture/security/index.md>). The root token in the first file is revoked before the command ends. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing the keys means the data is unrecoverable: no support line, no recovery flow.
 2. Write the values that belong to outside accounts — the prompts follow [Quickstart step 11](<https://homelab.wlkr.ch/quickstart/index.md>). The generated paths need nothing: their `PushSecret`s write them once the store validates.
 
    ```bash
@@ -150,7 +151,7 @@ The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` 
 ### Authenticating locally
 
 ```bash
-kubectl -n openbao port-forward svc/openbao 8200:8200 &
+kubectl -n openbao port-forward svc/openbao-active 8200:8200 &   # a standby rejects requests
 export BAO_ADDR=http://127.0.0.1:8200
 bao login -method=userpass username=operator   # password from openbao-operator.json
 ```
@@ -159,7 +160,8 @@ bao login -method=userpass username=operator   # password from openbao-operator.
 
 ```bash
 bao kv put kv/cert-manager/route53 access-key-id='AKIA...' secret-access-key='...'
-bao kv put -mount=kv cert-manager/route53 @/tmp/secret.json   # what make bao-secrets does
+printf '%s' '{"access-key-id":"AKIA...","secret-access-key":"..."}' \
+  | bao kv put -mount=kv cert-manager/route53 -     # what make bao-secrets does: JSON on stdin
 bao kv get kv/cert-manager/route53
 ```
 
@@ -178,7 +180,7 @@ A typed value is rotated with `make bao-secrets`, which asks per existing path w
    ```bash
    kubectl -n openbao exec openbao-0 -- bao kv metadata delete -mount=kv <path>
    ```
-2. Push the new value into the `Secret` now rather than at the next hourly refresh — see [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/#usage>):
+2. Push the new value into the `Secret` now rather than at the next `refreshInterval` — see [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/#usage>):
 
    ```bash
    kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --overwrite
@@ -188,14 +190,16 @@ A typed value is rotated with `make bao-secrets`, which asks per existing path w
 ## Health check
 
 ```bash
-kubectl -n openbao exec -it openbao-0 -- bao status
+for pod in $(kubectl -n openbao get pods -l app.kubernetes.io/name=openbao -o name); do
+  kubectl -n openbao exec "$pod" -- bao status
+done
 kubectl get clustersecretstore
 kubectl get externalsecret -A
 ```
 
 `bao status` should show `Initialized: true`, `Sealed: false`, and `HA Mode: active` on one pod with `standby` on the others; it exits `0` unsealed, `2` sealed and `1` unreachable. Every `ClusterSecretStore` should report `Ready=True`.
 
-`prometheusrule.yaml` mails `OpenBaoSealed` for each pod sealed for five minutes, read from the `openbao-sealed` pod label because a sealed pod still reports Ready, and `OpenBaoNoActiveNode` when no unsealed active pod is scraped at all.
+`prometheusrule.yaml` mails `OpenBaoSealed` for each pod sealed past the rule's `for`, read from the `openbao-sealed` pod label because a sealed pod still reports Ready, and `OpenBaoNoActiveNode` when no unsealed active pod is scraped at all.
 
 ## Pitfalls
 
@@ -225,10 +229,10 @@ kubectl get externalsecret -A
 make bao-unseal
 ```
 
-It feeds three shares from `output/credentials/openbao-init.json` to each sealed replica, waits for one that has not joined Raft yet, and is idempotent. With the key file deleted, which is the correct end state, unseal by hand:
+It feeds a threshold of shares from `output/credentials/openbao-init.json` to each sealed replica, waits for one that has not joined Raft yet, and is idempotent. With the key file deleted, which is the correct end state, unseal by hand:
 
 ```bash
-for pod in openbao-0 openbao-1 openbao-2; do
+for pod in $(kubectl -n openbao get pods -l app.kubernetes.io/name=openbao -o name); do
   kubectl -n openbao exec "$pod" -- bao status >/dev/null 2>&1
   case $? in
     0) echo "$pod: already unsealed" ;;
@@ -249,7 +253,7 @@ kubectl -n openbao exec openbao-1 -- \
 
 ### Generating a root token
 
-For what the operator policy does not cover — a policy, an auth method, a snapshot restore, or the operator login itself broken. Needs the operator login and 3 unseal shares; each step runs in the pod.
+For what the operator policy does not cover — a policy, an auth method, a snapshot restore, or the operator login itself broken. Needs the operator login and a threshold of unseal shares; each step runs in the pod.
 
 1. Log in as the operator; it prompts for the password from `openbao-operator.json`.
 
@@ -262,7 +266,7 @@ For what the operator policy does not cover — a policy, an auth method, a snap
    kubectl -n openbao exec openbao-0 -- bao operator generate-root -generate-otp
    kubectl -n openbao exec openbao-0 -- bao operator generate-root -init -otp=<otp>
    ```
-3. Enter one share per run, three runs; the last prints `Encoded Token`.
+3. Enter one share per run until the threshold is met; the last prints `Encoded Token`.
 
    ```bash
    kubectl -n openbao exec -it openbao-0 -- bao operator generate-root -nonce=<nonce>
@@ -286,8 +290,10 @@ To recreate the operator login with that root token, put it as `root_token` into
 
 ### Backups
 
+Logged in as the operator through the `openbao-active` port-forward from [Authenticating locally](<#authenticating-locally>); its policy covers the snapshot, and a standby refuses it:
+
 ```bash
 bao operator raft snapshot save snapshot.bao
 ```
 
-The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the five shares, so it is exactly as recoverable as your key custody. See [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).

@@ -2713,7 +2713,7 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/logging/</code>, <code>payload/platform/loki/</code>, <code>payload/platform/alloy/</code></td>
+<td><code>payload/platform/loki/</code> and <code>payload/platform/alloy/</code>, one chart Application each (<code>loki</code>, <code>alloy</code>); <code>payload/platform/logging/</code>, the <code>logging</code> Application: the bucket claim in <code>bucket.yaml</code>, <code>loki-rules.yaml</code>, the Grafana datasource and the Alloy dashboards</td>
 </tr>
 </tbody>
 </table>
@@ -2822,7 +2822,10 @@ in the line where <code>| json</code> can reach them. See
 <h3 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h3>
 <p>Loki runs as a single binary (<code>deploymentMode: Monolithic</code>) and keeps chunks
 in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC on
-<code>rook-ceph-block</code> holds the WAL and the index being built.</p>
+<code>rook-ceph-block</code> holds the WAL and the index being built. The bucket is the
+<code>ObjectBucketClaim</code> in <code>logging/bucket.yaml</code>, with a fixed <code>bucketName</code>: a
+generated name carries a random suffix that would have to be read back at
+runtime, a fixed one keeps Loki's config static and identical after a rebuild.</p>
 <table>
 <thead>
 <tr>
@@ -2831,10 +2834,6 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>Fixed <code>bucketName</code> on the <code>ObjectBucketClaim</code></td>
-<td>A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild</td>
-</tr>
 <tr>
 <td><code>singleBinary.extraArgs</code> <code>-config.expand-env=true</code> and <code>singleBinary.extraEnvFrom</code></td>
 <td>Rook writes the bucket credentials to a Secret, Loki reads them as <code>${AWS_ACCESS_KEY_ID}</code> — nothing in Git</td>
@@ -2865,7 +2864,7 @@ in the <a href="../rook-ceph/#object-storage">Ceph object store</a>; a local PVC
 </tr>
 <tr>
 <td><code>retention_stream</code> for the <code>findings-history</code> container</td>
-<td>The daily <a href="../trivy-operator/#history">Trivy summary</a> is a few lines and the only long-range record of findings, so that one stream stays a year</td>
+<td>The daily <a href="../trivy-operator/#history">Trivy summary</a> is a few lines and the only long-range record of findings, so that one stream outlives the general <code>retention_period</code> by far</td>
 </tr>
 </tbody>
 </table>

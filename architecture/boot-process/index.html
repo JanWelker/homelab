@@ -2729,7 +2729,7 @@ on this first boot. <code>NotReady</code> after step 14 is expected: there is no
 <td>Returns the device to unwritten. Best-effort: SATA without TRIM declines</td>
 </tr>
 <tr>
-<td><code>format: none</code> on <code>rook-osd</code></td>
+<td><code>wipe_filesystem: true</code> on <code>rook-osd</code></td>
 <td><code>butane_node_config.yaml.j2</code></td>
 <td>Erases the old BlueStore signature, which <code>ceph-volume</code> reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster</td>
 </tr>
@@ -2750,8 +2750,8 @@ needs network boot first with a working <code>LOCALBOOT</code>, or the disk ahea
 in the firmware — with neither it installs and then has nothing to boot.</p>
 <h2 id="4-post-installation-bootstrap">4. Post-Installation Bootstrap<a class="headerlink" href="#4-post-installation-bootstrap" title="Permanent link">&para;</a></h2>
 <p>Once kubeadm has initialised the control plane, <code>make bootstrap</code> installs only
-what ArgoCD needs to run, and ArgoCD itself. After step 6 the repository is in
-charge.</p>
+what ArgoCD needs to run, and ArgoCD itself. Once the <code>argocd</code> Application
+is applied, the repository is in charge.</p>
 <pre class="mermaid"><code>sequenceDiagram
     participant Admin as Operator
     participant Deploy as Deployment Host
@@ -2766,7 +2766,7 @@ charge.</p>
     Deploy-&gt;&gt;Cluster: 6. Apply AppProjects + the argocd Application</code></pre>
 <div class="admonition note">
 <p class="admonition-title"><code>make untaint</code> is not part of this flow</p>
-<p>It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster, where it goes <em>before</em> step 3 — ArgoCD has no tolerations. The <a href="../#cluster-layout">documented layout</a> has dedicated workers, so the taint stays. See <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
+<p>It removes the control-plane <code>NoSchedule</code> taint and applies only to a single-node cluster, where it goes <em>before</em> <code>make install-argo</code> — ArgoCD has no tolerations. The <a href="../#cluster-layout">documented layout</a> has dedicated workers, so the taint stays. See <a href="../../quickstart/#single-node-clusters">Single-node clusters</a>.</p>
 </div>
 <h2 id="every-boot-after-the-first">Every boot after the first<a class="headerlink" href="#every-boot-after-the-first" title="Permanent link">&para;</a></h2>
 <p>The node boots from its own disk; the boot server should be off.</p>
@@ -2890,11 +2890,11 @@ and repeats the cancel command. Without a terminal on stdin it warns and leaves
 them armed.</p>
 <div class="admonition warning">
 <p class="admonition-title">It disarms on delivery, not on success</p>
-<p>The server sees a transfer complete, not whether <code>flatcar-install</code> then wrote the disk. An install that fails after the download leaves a disarmed node with no working disk — loud, because <code>flatcar-install.service</code> does not reboot on failure — and the fix is <code>make reinstall LIMIT=&lt;node&gt;</code> before the power cycle.</p>
+<p>The server sees a transfer complete, not whether <code>flatcar-install</code> then wrote the disk. An install that fails after the download leaves a disarmed node with no working disk — loud, because <code>flatcar-install.service</code> (<code>flatcar-install-uefi.service</code> on UEFI firmware) does not reboot on failure — and the fix is <code>make reinstall LIMIT=&lt;node&gt;</code> before the power cycle.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Stop it when you are done</p>
-<p>While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See <a href="../security/#provisioning">Security Posture</a>.</p>
+<p>While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours (<code>ttl</code> in <code>ansible/templates/kubeadm.yaml.j2</code>) and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See <a href="../security/#provisioning">Security Posture</a>.</p>
 </div>
 
 

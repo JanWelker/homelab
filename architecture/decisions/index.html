@@ -2660,8 +2660,9 @@ exactly: the <code>Gateway</code> is platform, the <code>HTTPRoute</code> ships 
 before anything references them, which is why they are their own Applications
 that every consumer's sync retries against.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
-<p>Every node contributes a raw partition, and Ceph turns them into replicated
-block storage that survives a node failure. Local <code>hostPath</code> volumes would be
+<p>Every worker contributes a raw partition (the control planes keep their disk
+for etcd, see <a href="../../platform/rook-ceph/#disks">Disks</a>), and Ceph turns them
+into replicated block storage that survives a node failure. Local <code>hostPath</code> volumes would be
 simpler and faster, but a node reboot would take its workloads' data with it,
 and reboots are routine here because that is
 <a href="../../operations/upgrades/">how updates get applied</a>. Longhorn is the closer

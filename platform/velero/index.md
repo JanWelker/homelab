@@ -8,16 +8,18 @@
 | --- | --- |
 | Namespace | `backup` |
 | Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for the bucket claims and RBD snapshots |
-| If it is down | Nightly backups stop; `VeleroBackupTooOld` fires after 36 hours |
+| If it is down | Nightly backups stop; `VeleroBackupTooOld` fires once the last success is older than the rule's threshold |
 | Health check | `kubectl -n backup get backupstoragelocation` reads `Available` |
 | Files | `payload/platform/velero/`, `payload/platform/backup/`, `payload/platform/snapshot-controller/` |
 
 ## Configuration
 
+In `application.yaml`'s `valuesObject` unless a file is named:
+
 | Setting | Why |
 | --- | --- |
 | `checksumAlgorithm: ""` on the `BackupStorageLocation` | The AWS plugin's SDK sends a trailing checksum that Ceph RGW rejects with `XAmzContentSHA256Mismatch`; every upload fails without it |
-| `s3Url: https://s3.infra.k8s.wlkr.ch`, not the RGW Service | kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph 20.2.4 rejects as unsigned headers ([CVE-2026-54330](<https://docs.ceph.com/en/latest/security/CVE-2026-54330/>)); over TLS it sends `UNSIGNED-PAYLOAD` and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers |
+| `s3Url: https://s3.infra.k8s.wlkr.ch`, not the RGW Service | kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph RGW rejects as unsigned headers since [CVE-2026-54330](<https://docs.ceph.com/en/latest/security/CVE-2026-54330/>); over TLS it sends `UNSIGNED-PAYLOAD` and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers |
 | `velero-plugin-for-aws` init container | The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind |
 | `credentials.useSecret: false` with `extraEnvVars` | Keys come from the environment, fed by the `Secret` Rook writes for the `velero-bucket` claim; nothing is rendered into a file or Git |
 | `defaultSnapshotMoveData`, `deployNodeAgent`, `uploaderType: kopia` | A CSI snapshot is a Ceph object in the same cluster; the data mover (run by the node agent) streams it into the bucket and deletes the snapshot |
@@ -26,7 +28,7 @@
 | `snapshot-controller` Application | Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the `VolumeSnapshotClass` applies, so it is its own Application. It applies the two kustomize directories [kubernetes-csi/external-snapshotter](<https://github.com/kubernetes-csi/external-snapshotter>) publishes at each tag, the owning project's only packaging, namespaced into `backup` with the hardening as a patch and the image pinned to the tag, because the Deployment upstream publishes at a tag still names the previous release's image, so Renovate moves the two together — see [Maintenance](<https://homelab.wlkr.ch/development/maintenance/#automerge-policy>); upstream ships no PDB for its two leader-elected replicas, so `pdb.yaml` adds one |
 | No `runAsNonRoot` on the `velero` container | Whether the plugin init container's copy into `/target` works non-root depends on the image's `USER`; confirm on a real backup first |
 | Node agent `containerSecurityContext` | Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on |
-| `prometheusRule` | `VeleroBackupFailures` and `VeleroBackupTooOld` (critical), `VeleroBackupPartialFailures` (warning); only the age alert catches a backup that hangs `InProgress` |
+| `prometheusRule` | Four rules: `VeleroBackupFailures` (critical) and `VeleroBackupPartialFailures` (warning) on a schedule's outcome, `VeleroBackupTooOld` (critical), the only one that catches a backup hanging `InProgress`, and `VeleroBackupInProgress` (info), which is [Kured](<https://homelab.wlkr.ch/platform/kured/#configuration>)'s reboot gate rather than a problem to mail |
 
 ### Repository password
 

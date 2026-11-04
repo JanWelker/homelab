@@ -2556,8 +2556,8 @@
 <p>TLS certificate automation via Let's Encrypt, using DNS-01 challenges through
 AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that
 Let's Encrypt cannot reach, and because it is the only way to get a wildcard:
-two certificates, <code>*.k8s.wlkr.ch</code> and <code>*.infra.k8s.wlkr.ch</code>, cover every
-hostname the cluster serves.</p>
+one certificate per zone, listed in <code>payload/platform/certificates/certificates.yaml</code>,
+covers every hostname the Gateways terminate.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2569,7 +2569,7 @@ hostname the cluster serves.</p>
 <tbody>
 <tr>
 <td>Namespace</td>
-<td><code>cert-manager</code>; the certificates it issues land in <code>kube-system</code></td>
+<td><code>cert-manager</code>; the wildcards land in <code>kube-system</code> beside the Gateways, the agent sessions' certificates in their own namespaces; see <a href="../gateway-api/#ssh-listener">SSH listener</a></td>
 </tr>
 <tr>
 <td>Depends on</td>

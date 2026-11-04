@@ -2676,7 +2676,7 @@ this page is the operator itself.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Reports expire after 24h and are not rebuilt; <code>TrivyContainerNotScanned</code> fires for every container</td>
+<td>Reports expire after <code>scannerReportTTL</code> and are not rebuilt; <code>TrivyContainerNotScanned</code> fires for every container</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2746,7 +2746,7 @@ left out rather than reported as failing.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>scannerReportTTL: 24h</code>, <code>scanOnlyCurrentRevisions</code>, <code>scanJobTTL: 10m</code></td>
+<td><code>scannerReportTTL</code>, <code>vulnerabilityScannerScanOnlyCurrentRevisions</code>, <code>configAuditScannerScanOnlyCurrentRevisions</code>, <code>scanJobTTL</code></td>
 <td>Reports live in etcd. A stale report is rebuilt, superseded ReplicaSets are not scanned, and finished jobs do not accumulate</td>
 </tr>
 <tr>
@@ -2770,7 +2770,7 @@ left out rather than reported as failing.</p>
 <td>A report is one API write, capped at 2 MiB; <code>Links</code> alone is over half the payload. An oversized report is rejected with nothing but an operator log line</td>
 </tr>
 <tr>
-<td><code>operator.scanJobTimeout</code> and <code>trivy.timeout</code>, both 20m</td>
+<td><code>operator.scanJobTimeout</code> and <code>trivy.timeout</code>, kept equal</td>
 <td>The first is the Job's <code>activeDeadlineSeconds</code> and kills the pod whatever Trivy is doing; the second is Trivy's own flag and only fires if it is the shorter. Raising one alone does nothing</td>
 </tr>
 <tr>
@@ -2798,7 +2798,7 @@ left out rather than reported as failing.</p>
 <td>Without them the CIS infra assessment covers only the workers and reports a clean control plane it never looked at</td>
 </tr>
 <tr>
-<td>Namespace <code>enforce: privileged</code>, <code>audit</code>/<code>warn: restricted</code></td>
+<td><code>enforce: privileged</code>, <code>audit</code>/<code>warn: restricted</code> on the namespace, in <code>payload/platform/security/pod-security.yaml</code></td>
 <td>node-collector hostPath-mounts <code>/var/lib/etcd</code>, <code>/var/lib/kubelet</code>, <code>/etc/kubernetes</code> and <code>/etc/cni/net.d</code>, which <code>baseline</code> forbids. Scan jobs themselves drop all capabilities and run read-only</td>
 </tr>
 <tr>
@@ -2812,8 +2812,8 @@ left out rather than reported as failing.</p>
 </tbody>
 </table>
 <h3 id="alerting">Alerting<a class="headerlink" href="#alerting" title="Permanent link">&para;</a></h3>
-<p>Five rules in <code>prometheusrule.yaml</code>. Reports expire and are rebuilt every
-24h, so a "new" finding is one absent from the reports two days ago rather
+<p>The rules in <code>prometheusrule.yaml</code>. Reports expire and are rebuilt every
+<code>scannerReportTTL</code>, so a "new" finding is one absent from the reports two days ago rather
 than from the previous scrape, and every rule waits longer than a rebuild.</p>
 <table>
 <thead>
@@ -2870,7 +2870,7 @@ containers that have a <code>VulnerabilityReport</code> and names the difference
   platform digest and the registry's tag digest differ permanently for
   mirrored images.</li>
 <li><strong>Restricted to <code>Running</code> pods</strong>, or every completed Job counts as unscanned.</li>
-<li><strong><code>for: 2h</code></strong>, several times a full sweep, so the 24h TTL churn does not page.</li>
+<li><strong>A <code>for</code> of several full sweeps</strong>, so the TTL churn does not page.</li>
 </ul>
 <p>The dashboard's stat and by-severity panels take <code>max by (image_digest)</code>
 before summing, and workload panels join ReplicaSets against
@@ -2878,12 +2878,13 @@ before summing, and workload panels join ReplicaSets against
 superseded revision drops out. The "Worst workloads" table stays per container
 on purpose: it answers where a finding runs.</p>
 <h3 id="history">History<a class="headerlink" href="#history" title="Permanent link">&para;</a></h3>
-<p>Reports live 24h and Prometheus keeps ten days, so neither can answer whether a
-count went up over a quarter. The <code>findings-history</code> CronJob in
-<code>findings-history.yaml</code> lists every report kind once a day and prints one JSON
-line per namespace, and per compliance framework, to stdout; Alloy ships it
-like any container log and Loki keeps that one stream for a year
-(<code>retention_stream</code> in <code>loki/application.yaml</code>). The dashboard's last row
+<p>Reports live for <code>scannerReportTTL</code> and Prometheus for its <code>retention</code>, so
+neither can answer whether a count went up over a quarter. The
+<code>findings-history</code> CronJob in <code>findings-history.yaml</code> lists every report kind
+once a day and prints one JSON line per namespace, and per compliance
+framework, to stdout; Alloy ships it like any container log and Loki keeps
+that one stream far longer than the rest (<code>retention_stream</code> in
+<code>loki/application.yaml</code>). The dashboard's last row
 reads it. Images are counted once per digest per namespace, the same rule the
 dashboard applies.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{namespace="trivy-system", container="findings-history"} | json | kind="vulnerabilities" | namespace="argocd"
@@ -2906,8 +2907,8 @@ Those SBOMs were over half the reports' bytes in etcd, and each API server holds
 them decoded in its watch cache.
 The <code>report-prune</code> CronJob in <code>report-prune.yaml</code> deletes the two kinds for
 every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
-skips those reports anyway. <code>scanOnlyCurrentRevisions</code> keeps the operator from
-writing them again. Its log is one JSON line per kind with the count deleted.</p>
+skips those reports anyway. The two <code>ScanOnlyCurrentRevisions</code> settings keep
+the operator from writing them again. Its log is one JSON line per kind with the count deleted.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is a summary; the objects have the detail.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># What has been scanned, worst first</span>
@@ -2931,12 +2932,14 @@ writing them again. Its log is one JSON line per kind with the count deleted.</p
 </span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="s1">        | select(.totalFail &gt; 0))'</span>
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<p>Reconcile running images against scanned ones; treat a difference as a missing
-scan until proven otherwise:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].spec.containers[].image'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[].report.artifact.repository'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+<p>Reconcile running containers against scanned ones, keyed on <code>(namespace,
+container)</code> like the alert; the output is every running container with no
+<code>VulnerabilityReport</code>, and healthy is an empty output:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>comm<span class="w"> </span>-23<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>&lt;<span class="o">(</span>kubectl<span class="w"> </span>get<span class="w"> </span>pods<span class="w"> </span>-A<span class="w"> </span>--field-selector<span class="w"> </span>status.phase<span class="o">=</span>Running<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">      </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | .metadata.namespace as $ns | .spec.containers[] | "\($ns) \(.name)"'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>&lt;<span class="o">(</span>kubectl<span class="w"> </span>get<span class="w"> </span>vulnerabilityreports<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.items[] | "\(.metadata.namespace) \(.metadata.labels["trivy-operator.container.name"])"'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="o">)</span>
 </span></code></pre></div>
 <div class="admonition danger">
 <p class="admonition-title">Zero is not the same as clean</p>
@@ -2982,8 +2985,8 @@ the outside:</p>
 </tbody>
 </table>
 <p>A completed scan job counts against <code>concurrentScanJobsLimit</code> until
-<code>scanJobTTL</code> deletes it, so a backlog drains in batches of ten every ten
-minutes; that is the expected shape, not a stall.</p>
+<code>scanJobTTL</code> deletes it, so a backlog drains in batches of the limit, the
+chart's default, once per TTL; that is the expected shape, not a stall.</p>
 
 
 

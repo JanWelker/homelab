@@ -2992,8 +2992,12 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 <td>Proxy outpost <strong>in front of</strong> its own login; the tracker paths pass through — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
 <tr>
-<td>Rook dashboard, Hubble UI, Prometheus, Alertmanager, Extractor admin UI</td>
+<td>Rook dashboard, Hubble UI, Prometheus, Alertmanager, Flowscape, Extractor admin UI</td>
 <td>Proxy outpost</td>
+</tr>
+<tr>
+<td>Wollbi-Fescht, Wollbi Adventsfenster</td>
+<td>Proxy outpost on the admin paths, with no <code>infra-users</code> binding, see <a href="#groups-and-roles">Groups and roles</a></td>
 </tr>
 </tbody>
 </table>
@@ -3043,7 +3047,7 @@ application and protects exactly as far as nothing else can reach the backend.</
     U([Browser]) --&gt; GW[infra-gateway / apps-gateway]
     GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
     APP -.-&gt;|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW --&gt;|hubble, rook, prometheus, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin, media, claw| AK
+    GW --&gt;|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
 <h3 id="one-hostname">One hostname<a class="headerlink" href="#one-hostname" title="Permanent link">&para;</a></h3>
 <p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
@@ -3076,14 +3080,14 @@ namespaces to that Service only. A proxied workload is therefore two pull
 requests, by design: a workload cannot take itself out from behind the
 authentication layer on its own.</p>
 <h3 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h3>
-<p><code>database.yaml</code> is a CloudNativePG <code>Cluster</code> with three instances, the only
-one on the cluster with more than one. Every login on every platform UI
-goes through Authentik, so its database must survive a node drain: with one
-instance a reboot kills the database; with three, a replica takes over
-within a minute, once <code>enablePDB: false</code> lets the drain evict the primary.
+<p><code>database.yaml</code> is a CloudNativePG <code>Cluster</code> with replicas, the only one on
+the cluster that has any. Every login on every platform UI goes through
+Authentik, so its database must survive a node drain: with one instance a
+reboot kills the database; with replicas, one takes over within a minute,
+once <code>enablePDB: false</code> lets the drain evict the primary.
 The chart's own Postgres subchart is off — both rules are in
 <a href="../cloudnative-pg/#the-contract">the contract</a>.</p>
-<p>Three instances only survive a node loss while they sit on three nodes, which
+<p>The replicas only survive a node loss while they sit on separate nodes, which
 the operator's own <code>preferred</code> anti-affinity does not guarantee — hence the
 <code>topologySpreadConstraints</code> block, under the rule in <a href="../#replica-placement">Replica
 placement</a>.</p>
@@ -3114,7 +3118,7 @@ placement</a>.</p>
 </tr>
 <tr>
 <td><code>server.topologySpreadConstraints</code></td>
-<td>The chart's <code>podAntiAffinity</code> preset is <code>soft</code>, which is not enough to hold two replicas apart — see <a href="../#replica-placement">Replica placement</a>. The worker runs a single replica and needs none</td>
+<td>The chart's <code>podAntiAffinity</code> preset is <code>soft</code>, which is not enough to hold the replicas apart — see <a href="../#replica-placement">Replica placement</a>. The worker is not replicated and needs none</td>
 </tr>
 <tr>
 <td><code>worker.podAnnotations</code> <code>homelab.wlkr.ch/secret-generation</code></td>
@@ -3333,8 +3337,14 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
    <code>ExternalSecret</code> mounted <code>optional</code>, like <code>secrets-dependency-track.yaml</code>.
    A public client (PKCE, as OpenCloud's web and native clients) has no
    credentials: its client IDs are fixed by the client and sit in the
-   blueprint in clear, so this step and the next do not apply.</li>
-<li>Bump <code>homelab.wlkr.ch/secret-generation</code> in <code>application.yaml</code>.</li>
+   blueprint in clear, so this step and step 3 do not apply.</li>
+<li>Mount the workload's blueprint: in <code>application.yaml</code>, a <code>configMap</code>
+   source named <code>authentik-blueprint-&lt;application&gt;</code> with <code>optional: true</code>
+   under <code>worker.volumes</code>, in the <code>projected.sources</code> of
+   <code>blueprints-workloads</code>.</li>
+<li>Hand the worker the credentials: in the same file, a <code>secretRef</code> to
+   <code>authentik-secrets-&lt;workload&gt;</code> with <code>optional: true</code> under
+   <code>global.envFrom</code>, and bump <code>homelab.wlkr.ch/secret-generation</code>.</li>
 <li>Add the provider and application blueprint: an OAuth2 provider with
    <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
 <li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code> and
@@ -3400,10 +3410,14 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <h3 id="when-authentik-is-down">When Authentik is down<a class="headerlink" href="#when-authentik-is-down" title="Permanent link">&para;</a></h3>
 <p>Single sign-on is a single point of failure for logging in at all. The ArgoCD
 path needs a working <code>kubectl</code>, so keep a kubeconfig off-cluster.</p>
-<p><strong>ArgoCD</strong> — re-enable the local admin account:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+<p><strong>ArgoCD</strong> — re-enable the local admin account by merging a pull request
+that sets <code>admin.enabled</code> in <code>payload/argocd/values.yaml</code>; the <code>argocd</code>
+Application self-heals, so a <code>kubectl patch</code> on <code>argocd-cm</code> is reverted at
+the next reconcile. ArgoCD syncs the merge without a login. Then restart the
+server, which generates <code>argocd-initial-admin-secret</code>, and read the password
+as in <a href="../../quickstart/#setup">Quickstart</a>. Revert the pull request once
+Authentik is back.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
 </span></code></pre></div>
 <p><strong>Grafana</strong> — the login form is hidden, not removed: the admin account works
 through the API, and <code>GF_AUTH_DISABLE_LOGIN_FORM=false</code> brings the form back.</p>

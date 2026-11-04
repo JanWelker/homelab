@@ -33,7 +33,7 @@ Alertmanager routes to email. The chart's `config` is off (`alertmanagerSpec.use
 | --- | --- |
 | `smtp_smarthost` on port 465 | Implicit TLS, which Alertmanager selects from the port; `smtp_require_tls` stays on so a move back to 587 cannot fall to plaintext |
 | `smtp_from` equals the login | mailbox.org refuses a sender the login does not own |
-| Grouping by `namespace`, a group re-sent at most every 30 minutes and repeated daily; `critical` every 5 minutes and repeated every 3 hours; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to 300–700 a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together |
+| Grouping by `namespace`, with `group_interval` and `repeat_interval` in hours and a shorter pair for `critical`; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together |
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender |
 | `VeleroBackupInProgress` routed to `null` | It fires for every nightly backup as [Kured's gate](<https://homelab.wlkr.ch/platform/kured/#configuration>), not as a problem |
 | `KubeJobFailed` disabled in the chart (`defaultRules.disabled`) and redefined in `job-rules.yaml`, bound to Jobs started in the last day | The chart's rule fires for as long as a failed Job object exists, so one old failure reads as an outage for weeks. Failed Jobs carry no failure time, so the bound counts from the start |
@@ -72,14 +72,14 @@ Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*S
 
 | Setting | Why |
 | --- | --- |
-| `disable_login_form` and `oauth_auto_login` | Opening the URL bounces straight to Authentik and back; `role_attribute_path` maps `grafana-admins` to `Admin`, `grafana-editors` to `Editor`, anyone else to `Viewer` |
+| `disable_login_form` and `oauth_auto_login` | Opening the URL bounces straight to Authentik and back; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/#groups-and-roles>) |
 | `analytics.*` off and `disable_gravatar` | Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches every user's avatar from Gravatar; the Grafana network policy names none of those and the policy audit showed the Gravatar call. Telemetry is off in every component here |
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](<https://homelab.wlkr.ch/platform/authentik/#client-secrets>) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
 | `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
 | `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with [Alloy's `rbac.rules`](<https://homelab.wlkr.ch/platform/logging/#alloy-pipeline>); the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
-| Prometheus and Grafana uncapped | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding |
+| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/#components>), not a budget |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing |
 
@@ -142,9 +142,11 @@ Alertmanager and Grafana take the same two steps, with their own claim names.
 
 ### Resetting the Grafana admin password
 
-Grafana reads the password only when it creates its database, so changing `kv/monitoring/grafana-admin` later does not change what it checks:
+Grafana reads the password only when it creates its database, so changing `kv/monitoring/grafana-admin` later does not change what it checks. Reset it to the value in OpenBao rather than a new one: `grafana-admin.yaml` pushes the generated password with `updatePolicy: IfNotExists`, so OpenBao keeps the first value forever and a rebuilt Grafana starts from it.
 
 ```bash
+PASSWORD=$(kubectl -n openbao exec openbao-0 -- \
+  bao kv get -mount=kv -field=password monitoring/grafana-admin)
 kubectl -n monitoring exec deploy/kube-prometheus-stack-grafana -c grafana -- \
   grafana cli admin reset-admin-password "$PASSWORD"
 ```
@@ -167,4 +169,4 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 >
 > **Prometheus is a single replica, Alertmanager is not**
 >
-> Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) drain keeps alerting up. A second Prometheus would double the memory limit and the volume in `application.yaml`, which the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/#components>) leaves no room for on an 8 GiB node, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.
+> Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) drain keeps alerting up. A second Prometheus would double the memory limit and the volume in `application.yaml`, which the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/#components>) leaves no room for on a worker, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.

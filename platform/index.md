@@ -12,12 +12,12 @@ One row per directory under `payload/platform/`, with the Application name where
 | arc-controller | `arc-systems` | The Actions Runner Controller — see [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) |
 | [arc-runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | `arc-runners`, `arc-jobs` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](<https://homelab.wlkr.ch/platform/argocd/index.md>) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
-| argocd-config | `argocd` | ArgoCD's own HTTPRoute, OIDC credentials and Grafana dashboard — see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
-| argocd-projects | `argocd` | The `apps`, `infra` and `system` AppProjects |
+| argocd-config | `argocd` | The `ExternalSecret`s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
+| argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#structure>) |
 | [authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) | `authentik` | Single sign-on for every platform UI |
 | backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) | `cert-manager` | The cert-manager chart |
-| certificates | `cert-manager` | The Let's Encrypt issuers and the two Gateway wildcards — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
+| certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
 | [cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) | `cnpg-system` | The PostgreSQL operator every workload database runs on |
 | [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) | `descheduler` | Evicts pods a drain or reboot left piled on the surviving nodes |
@@ -66,18 +66,20 @@ Four hops, and Cilium is three of them. When a hostname stops answering, ask whi
 
 ## HTTPRoute Locations
 
-HTTPRoutes are co-located with their respective apps:
+Routes sit with the component they expose, as a manifest where the component is plain YAML and as chart values where the chart renders its own:
 
-| Service | URL | HTTPRoute Location |
+| Service | URL | Route |
 | --- | --- | --- |
-| ArgoCD | `argo.infra.k8s.wlkr.ch` | `payload/platform/argocd-config/httproute.yaml` |
+| ArgoCD | `argo.infra.k8s.wlkr.ch` | `server.httproute` in `payload/argocd/values.yaml` |
+| ArgoCD CLI (gRPC) | `argo-grpc.infra.k8s.wlkr.ch` | `server.grpcroute` in `payload/argocd/values.yaml` |
 | Authentik | `auth.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml` |
-| Prometheus | `prometheus.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml` |
-| Alertmanager | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/authentik/httproute.yaml` |
-| Grafana | `monitoring.infra.k8s.wlkr.ch` | `payload/platform/monitoring/httproute.yaml` |
+| Prometheus | `prometheus.infra.k8s.wlkr.ch` | `payload/platform/monitoring/httproute.yaml` |
+| Alertmanager | `alertmanager.infra.k8s.wlkr.ch` | `payload/platform/monitoring/httproute.yaml` |
+| Grafana | `monitoring.infra.k8s.wlkr.ch` | `grafana.route.main` in `payload/platform/monitoring/application.yaml` |
 | Hubble | `hubble.infra.k8s.wlkr.ch` | `payload/platform/cilium/httproute.yaml` |
-| OpenBao UI | `vault.infra.k8s.wlkr.ch` | `payload/platform/openbao/httproute.yaml` |
-| Rook Dashboard | `rook.infra.k8s.wlkr.ch` | `payload/platform/rook-ceph/httproute.yaml` |
+| OpenBao UI | `vault.infra.k8s.wlkr.ch` | `server.gateway.httpRoute` in `payload/platform/openbao/application.yaml` |
+| Rook dashboard | `rook.infra.k8s.wlkr.ch` | `payload/platform/rook-ceph/httproute.yaml` |
+| Ceph object store | `s3.infra.k8s.wlkr.ch` | `payload/platform/rook-ceph/httproute.yaml` |
 | Home Assistant | `home.k8s.wlkr.ch` | `home-assistant/httproute.yaml` in [homelab-apps](<https://github.com/JanWelker/homelab-apps>) |
 
 ## Deployment
@@ -97,7 +99,7 @@ Two replicas on one node are not redundancy. Every chart's default is a single `
 | `topologySpreadConstraints`, `maxSkew: 1`, `whenUnsatisfiable: ScheduleAnyway` | the component runs on the three workers only, where a hard rule would leave a replica `Pending` through a Kured drain |
 | `podAntiAffinity` `requiredDuringSchedulingIgnoredDuringExecution` | the component tolerates the control planes, so every node is a candidate and a drain always leaves room — or its chart exposes no spread constraint |
 
-Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the nodes the pod can reach rather than over the tainted control planes. The same components carry a PodDisruptionBudget with `maxUnavailable: 1`, so a drain or the [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) evicts one replica at a time; `maxUnavailable` rather than `minAvailable`, so a component scaled down to one replica never blocks a drain. Placement is scored once, at scheduling time: pods already sharing a node stay there until something restarts them, and the [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) moves them back only if its evictor is allowed to touch them.
+Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the nodes the pod can reach rather than over the tainted control planes. Where a component carries a PodDisruptionBudget it says `maxUnavailable: 1`, so a drain or the [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) evicts one replica at a time; `maxUnavailable` rather than `minAvailable`, so a component scaled down to one replica never blocks a drain. The CloudNativePG operator runs two replicas with no budget. Placement is scored once, at scheduling time: pods already sharing a node stay there until something restarts them, and the [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) moves them back only if its evictor is allowed to touch them.
 
 ## Rollout order
 

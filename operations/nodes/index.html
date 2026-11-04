@@ -2597,8 +2597,8 @@ it for you — see <a href="../../platform/openbao/">OpenBao</a> for what that c
 </span></code></pre></div>
 <p><code>make bao-unseal</code> reads the key shares from
 <code>output/credentials/openbao-init.json</code>. If that file has been moved into a
-password manager, each pod wants 3 of the 5 shares by hand, per
-<a href="../../platform/openbao/">OpenBao</a>.</p>
+password manager, each pod wants the threshold of shares by hand, per
+<a href="../../platform/openbao/#unsealing-after-a-restart">OpenBao</a>.</p>
 <h2 id="adding-a-node">Adding a node<a class="headerlink" href="#adding-a-node" title="Permanent link">&para;</a></h2>
 <ol>
 <li>
@@ -2611,8 +2611,9 @@ password manager, each pod wants 3 of the 5 shares by hand, per
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
 </span></code></pre></div>
 <p>In the same commit, add the node name to <code>providerRegex</code> in
-<code>payload/platform/kubelet-csr-approver/application.yaml</code>: a node the regex
-does not name has its kubelet certificate denied and
+<code>payload/platform/kubelet-csr-approver/application.yaml</code>, and let that PR
+merge and sync before the node boots: a node the regex does not name has
+its kubelet certificate denied and
 <a href="../../platform/metrics-server/#pitfalls">silently drops out of <code>kubectl top</code></a>.</p>
 <p>Against a running cluster, <code>make config</code> also re-creates the bootstrap
 token baked into the Ignition configs for 24 hours and uploads the
@@ -2621,15 +2622,22 @@ control-plane certificates for two, on
 so the node joins on its own.</p>
 </li>
 <li>
-<p>Network-boot the new node within those windows: two hours for a
-   <strong>control-plane</strong> node, 24 for a worker. <code>bootstrap-k8s.service</code> runs the
-   join once and only while <code>/etc/kubernetes/kubelet.conf</code> is absent, so it
-   does not interfere with a node that has joined.</p>
+<p>Arm the node: the generated menu defaults to the local disk, so an unarmed
+   node never installs, per
+   <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Network-boot it within those windows: two hours for a <strong>control-plane</strong>
+   node, 24 for a worker. <code>bootstrap-k8s.service</code> runs the join once and only
+   while <code>/etc/kubernetes/kubelet.conf</code> is absent, so it does not interfere
+   with a node that has joined.</p>
 </li>
 <li>
 <p>If the window has passed, run <code>make config</code> again, then retry the join on
    the node.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>bootstrap-k8s
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>restart<span class="w"> </span>bootstrap-k8s
 </span></code></pre></div>
 </li>
 </ol>
@@ -2637,8 +2645,8 @@ so the node joins on its own.</p>
 <ol>
 <li>
 <p>Remove it from the cluster.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>drain<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--ignore-daemonsets<span class="w"> </span>--delete-emptydir-data<span class="w"> </span>--force
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;
 </span></code></pre></div>
 </li>
 <li>
@@ -2648,16 +2656,17 @@ so the node joins on its own.</p>
 <li>
 <p>If it was a control-plane node, remove its etcd member; a dead member still
    counts toward quorum.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>member<span class="w"> </span>list
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>etcd-&lt;healthy-node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>member<span class="w"> </span>list
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># then: member remove &lt;id&gt;</span>
 </span></code></pre></div>
 </li>
 <li>
-<p>Reprovision the replacement per <a href="#adding-a-node">Adding a node</a>.</p>
+<p>Reprovision the replacement per <a href="#adding-a-node">Adding a node</a>: the
+   inventory and regex change, then arm, then boot.</p>
 </li>
 </ol>
 <div class="admonition danger">
@@ -2678,16 +2687,18 @@ the space.</p>
 <p>Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see <a href="../backups/#what-is-not-covered">Backups &amp; Recovery</a>. Copy anything you intend to restore from <strong>off-cluster</strong> first.</p>
 </div>
 <ol>
-<li>Copy what matters off the cluster: Velero backups, the latest etcd snapshot,
+<li>Copy what matters off the cluster: the <code>velero</code> and <code>etcd-backup</code> buckets
+   per <a href="../backups/#copying-a-bucket-off-the-cluster">Copying a bucket off the cluster</a>,
    and anything in a PVC not reproducible from Git.</li>
 <li>Edit whatever needs editing under <code>ansible/</code>.</li>
 <li>
 <p>Regenerate both Ignition configs and serve them.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>serve
 </span></code></pre></div>
 </li>
 <li>
-<p>For a <strong>control-plane</strong> node, remove it from the cluster first: the drain,
+<p>Drain the node, as in <a href="#rebooting-a-node">Rebooting a node</a>. For a
+   <strong>control-plane</strong> node, remove it from the cluster too: the
    <code>kubectl delete node</code> and the etcd <code>member remove</code> are steps 1 and 3 of
    <a href="#replacing-a-failed-node">Replacing a failed node</a>. The wiped node comes
    back with an empty etcd under its old peer URL, and kubeadm treats a known
@@ -2699,7 +2710,7 @@ the space.</p>
    disarms it once it has the image, so the reboot at the end of the install
    does not start a second one — see
    <a href="../../architecture/boot-process/#switching-back-to-local-boot">Switching back to local boot</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>odin<span class="w">   </span><span class="c1"># `make reinstall` alone asks, then arms every host</span>
 </span></code></pre></div>
 <p>Every control plane joins the running cluster; only
 <a href="../../architecture/ansible/#inventory"><code>bootstrap_cluster</code></a> renders
@@ -2714,6 +2725,13 @@ the space.</p>
 </li>
 <li>Leave the boot server up until the node is <code>Ready</code> (the sysext images are
    fetched from it on that first boot), then stop it.</li>
+<li>Wait for Ceph before the next node, as in
+   <a href="#rebooting-a-node">Rebooting a node</a>: the OSD is new and backfills from
+   the other two copies, and
+   <a href="../../platform/rook-ceph/#is-storage-ready"><code>make storage-check</code></a> proves
+   it took the disk.</li>
+<li><a href="#after-any-node-reboot-unseal-openbao">Unseal OpenBao</a> if a replica
+   moved.</li>
 </ol>
 <p>One node at a time is safe when rebuilding: etcd keeps quorum once the old
 member is removed and Ceph backfills, as in

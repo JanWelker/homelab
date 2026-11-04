@@ -70,7 +70,7 @@ Step 10 is the point of no return, and the wipe has three parts:
 | --- | --- | --- |
 | `wipe_table: true` | `ignition-<host>-install.json` only | Destroys the GPT before the installer runs, so partition numbers and offsets come out the same whether the disk was empty or held the last cluster. Without it a rebuild inherits the old layout and `ignition-disks.service` fails on an `sgdisk` overlap |
 | `blkdiscard` | installer | Returns the device to unwritten. Best-effort: SATA without TRIM declines |
-| `format: none` on `rook-osd` | `butane_node_config.yaml.j2` | Erases the old BlueStore signature, which `ceph-volume` reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster |
+| `wipe_filesystem: true` on `rook-osd` | `butane_node_config.yaml.j2` | Erases the old BlueStore signature, which `ceph-volume` reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster |
 
 The installed system's config must not wipe: Ignition refuses to touch the disk it booted from (`refusing to wipe active disk`) and the first boot fails before anything is written. `storage.filesystems` follows the same split — `rook-osd` does not exist in the installer, and Ignition would block waiting for it.
 
@@ -82,7 +82,7 @@ The install leaves the firmware's boot order alone (`flatcar-install -u`, which 
 
 ## 4\. Post-Installation Bootstrap
 
-Once kubeadm has initialised the control plane, `make bootstrap` installs only what ArgoCD needs to run, and ArgoCD itself. After step 6 the repository is in charge.
+Once kubeadm has initialised the control plane, `make bootstrap` installs only what ArgoCD needs to run, and ArgoCD itself. Once the `argocd` Application is applied, the repository is in charge.
 
 ```
 sequenceDiagram
@@ -103,7 +103,7 @@ sequenceDiagram
 >
 > **`make untaint` is not part of this flow**
 >
-> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* step 3 — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/#cluster-layout>) has dedicated workers, so the taint stays. See [Single-node clusters](<https://homelab.wlkr.ch/quickstart/#single-node-clusters>).
+> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/#cluster-layout>) has dedicated workers, so the taint stays. See [Single-node clusters](<https://homelab.wlkr.ch/quickstart/#single-node-clusters>).
 
 ## Every boot after the first
 
@@ -179,10 +179,10 @@ Arming survives the boot server, because the menu is a file on disk. `Ctrl-C` th
 >
 > **It disarms on delivery, not on success**
 >
-> The server sees a transfer complete, not whether `flatcar-install` then wrote the disk. An install that fails after the download leaves a disarmed node with no working disk — loud, because `flatcar-install.service` does not reboot on failure — and the fix is `make reinstall LIMIT=<node>` before the power cycle.
+> The server sees a transfer complete, not whether `flatcar-install` then wrote the disk. An install that fails after the download leaves a disarmed node with no working disk — loud, because `flatcar-install.service` (`flatcar-install-uefi.service` on UEFI firmware) does not reboot on failure — and the fix is `make reinstall LIMIT=<node>` before the power cycle.
 
 > [!WARNING]
 >
 > **Stop it when you are done**
 >
-> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/#provisioning>).
+> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours (`ttl` in `ansible/templates/kubeadm.yaml.j2`) and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/#provisioning>).

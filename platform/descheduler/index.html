@@ -2603,8 +2603,8 @@ reasoning:</p>
 </thead>
 <tbody>
 <tr>
-<td><code>kind: CronJob</code> on a two-hour schedule</td>
-<td>A Deployment would poll continuously for a cluster that changes shape once per Flatcar update. A pass every two hours drifts a rebooted cluster back into balance the same day</td>
+<td><code>kind: CronJob</code> with a <code>schedule</code></td>
+<td>A Deployment would poll continuously for a cluster that changes shape once per Flatcar update. A pass every few hours drifts a rebooted cluster back into balance the same day</td>
 </tr>
 <tr>
 <td><code>nodeFit: true</code></td>
@@ -2662,12 +2662,12 @@ reasoning:</p>
   decision; the descheduler assumes the scheduler will do better the second
   time, which holds after a drain and not much else.</li>
 <li><strong>It honours PodDisruptionBudgets.</strong> An eviction that would violate a PDB
-  is refused, so a single-instance <a href="../cloudnative-pg/">CloudNativePG</a> cluster
-  with a PDB is never moved — the same PDB that blocks a drain blocks the
-  descheduler.</li>
+  is refused. The single-instance <a href="../cloudnative-pg/">CloudNativePG</a> clusters
+  carry none, so that Kured can drain; <code>PodsWithPVC</code> is what keeps the
+  descheduler off them.</li>
 <li><strong>One pod per over-utilized node per pass</strong> when usage comes from
   metrics-server. A badly skewed cluster takes several passes, which is the
-  point of running it every two hours rather than once.</li>
+  point of running it on a schedule rather than once.</li>
 <li><strong>A move is a restart.</strong> Anything without a second replica is briefly down
   when it is evicted; <code>nodeFit</code> guarantees a place to go, not zero downtime.</li>
 </ul>

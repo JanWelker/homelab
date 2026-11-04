@@ -2537,8 +2537,9 @@ Dependency-Track portfolio, <a href="../triage-2026-09-29/">Triage 2026-09-29</a
     the <code>TrivyContainerNotScanned</code> alert reconciles running images against
     scanned ones continuously.</li>
 <li><strong>An empty <code>fixedVersion</code> means no fix is known, not no problem.</strong> Unfixed
-    findings are kept (<code>ignoreUnfixed: false</code>) because a cluster of them in one
-    base image says the base image is the wrong one.</li>
+    findings are kept (<code>ignoreUnfixed</code> in
+    <code>payload/platform/trivy-operator/application.yaml</code>) because a cluster of
+    them in one base image says the base image is the wrong one.</li>
 <li><strong>The worst findings are usually not the project's code.</strong> The <code>target</code>
     names the binary, and which binary decides whether anything can be done and
     by whom.</li>
@@ -2547,8 +2548,10 @@ Dependency-Track portfolio, <a href="../triage-2026-09-29/">Triage 2026-09-29</a
     by the advisory's score and Trivy by the distribution's; a finding Trivy
     has at <code>UNKNOWN</code> can be critical there. Use it for which images share a
     component and for what changed between two tags.</li>
-<li><strong>Ten days of Prometheus is not a trend.</strong> The daily summary the operator
-    ships to Loki is: see <a href="../../platform/trivy-operator/#history">History</a>.</li>
+<li><strong>Prometheus is not a trend.</strong> It keeps the <code>retention</code> in
+    <code>payload/platform/monitoring/application.yaml</code>; the daily summary the
+    operator ships to Loki is the history, see
+    <a href="../../platform/trivy-operator/#history">History</a>.</li>
 </ul>
 <p>Two artifacts recur. A <code>ConfigAuditReport</code> has no TTL and goes only when its
 ReplicaSet is garbage-collected, so superseded revisions keep their findings on
@@ -2610,8 +2613,8 @@ fixable here rather than upstream. Two checks are most of the volume:
 <td>A chart's operator role, or Kubernetes' own <code>admin</code>, <code>edit</code> and <code>cluster-admin</code>; not narrowable without forking a chart — see <a href="../../architecture/security/#authorization">Security Posture</a></td>
 </tr>
 <tr>
-<td>Node files at 644: <code>KCV-0056</code>, <code>KCV-0069</code>, <code>KCV-0075</code>, <code>KCV-0077</code></td>
-<td>Accepted: the CNI files, the kubelet unit and config and the public CA certificate hold no secret, so reading them gains nothing — see <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a> for the modes provisioning still applies</td>
+<td>The kubelet unit at 644: <code>KCV-0069</code></td>
+<td>Accepted: it ships in the signed, read-only sysext and holds no secret. The kubelet config, the CA certificate and the CNI directory (<code>KCV-0077</code>, <code>KCV-0075</code>, <code>KCV-0056</code>) are set to the CIS modes by the <code>tmpfiles</code> rule in <code>ansible/templates/butane_node_config.yaml.j2</code>, because kubeadm rewrites them at 644 on every <code>init</code>, <code>join</code> and <code>upgrade</code>; the dispositions are in <a href="../triage-2026-09-20/#infra-the-nodes">Triage 2026-09-20</a></td>
 </tr>
 </tbody>
 </table>

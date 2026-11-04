@@ -2566,8 +2566,9 @@
 
 <h1 id="metrics-server">metrics-server<a class="headerlink" href="#metrics-server" title="Permanent link">&para;</a></h1>
 <p><a href="https://github.com/kubernetes-sigs/metrics-server">metrics-server</a> serves the
-<code>metrics.k8s.io</code> API that the scheduler, <code>kubectl top</code> and every
-<code>HorizontalPodAutoscaler</code> read. Without it <code>kubectl top</code> errors and an HPA sits
+<code>metrics.k8s.io</code> API that <code>kubectl top</code>, every <code>HorizontalPodAutoscaler</code> and
+the <a href="../descheduler/">descheduler</a> read; the scheduler does not, it places on
+requests. Without it <code>kubectl top</code> errors and an HPA sits
 at <code>&lt;unknown&gt;/&lt;target&gt;</code> with no logs, events or clue. Prometheus is not a
 substitute: it answers PromQL from its own store, while the resource metrics
 API is an aggregated Kubernetes API that core controllers read directly.</p>

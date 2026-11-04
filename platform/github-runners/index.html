@@ -1707,12 +1707,7 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#github-app" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1720,6 +1715,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1731,6 +1731,23 @@
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-scale-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a scale set
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2488,12 +2505,7 @@
   
 </li>
         
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
+          <li class="md-nav__item">
   <a href="#github-app" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2501,6 +2513,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2512,6 +2529,23 @@
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-scale-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Adding a scale set
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2708,6 +2742,10 @@ stay on GitHub.</p>
 <td>Jobs on <code>runs-on: homelab</code> queue on GitHub until a runner registers; nothing else notices</td>
 </tr>
 <tr>
+<td>Health check</td>
+<td><code>kubectl -n arc-systems get pods</code> &rarr; the controller and one listener per scale set Running</td>
+</tr>
+<tr>
 <td>Namespaces</td>
 <td><code>arc-systems</code> for the controller and the listeners, <code>arc-runners</code> for the runner pods, <code>arc-jobs</code> for the job pods the container hook starts</td>
 </tr>
@@ -2743,8 +2781,8 @@ stay on GitHub.</p>
 <td>The chart finds the controller with Helm <code>lookup</code>, which Argo CD does not run</td>
 </tr>
 <tr>
-<td><code>minRunners: 0</code>, <code>maxRunners: 10</code></td>
-<td>No idle pods between pushes; ten lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory</td>
+<td><code>minRunners</code> and <code>maxRunners</code></td>
+<td>No idle pods between pushes; the ceiling lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory</td>
 </tr>
 <tr>
 <td><code>containerMode: kubernetes-novolume</code></td>
@@ -2767,8 +2805,8 @@ stay on GitHub.</p>
 <td>Renovate tracks it; the chart passes the same image to the hook for the job pod's init container</td>
 </tr>
 <tr>
-<td><code>resources</code>: 1Gi requested, 4Gi limit</td>
-<td>Unmeasured; a test suite with a database beside it fits, and the limit stops a runaway build before it starves the node</td>
+<td><code>resources</code></td>
+<td>Unmeasured; the request fits a test suite with a database beside it, and the limit stops a runaway build before it starves the node</td>
 </tr>
 <tr>
 <td>A second scale set, <code>homelab-wait</code>, for <code>ci-ok</code> alone</td>
@@ -2878,7 +2916,7 @@ egress is every public address rather than a list of names.</p>
 <p>The controller's and listeners' egress, GitHub's API and the Actions service
 only, and Prometheus' scrape of their metrics port, are in
 <code>payload/platform/security/network-policies/arc-systems.yaml</code>.</p>
-<h2 id="github-app">GitHub App<a class="headerlink" href="#github-app" title="Permanent link">&para;</a></h2>
+<h3 id="github-app">GitHub App<a class="headerlink" href="#github-app" title="Permanent link">&para;</a></h3>
 <p>One app per organisation, installed on each repository that has a scale set.</p>
 <ol>
 <li>Create the app under the organisation's <strong>Settings → Developer settings →
@@ -2932,9 +2970,23 @@ Runners</strong>.</p>
 not the hosted <code>ubuntu-latest</code>: <code>git</code>, <code>curl</code>, <code>jq</code>, <code>unzip</code> and <code>sudo</code>, and
 no language toolchains. A job installs what it needs, pinned, or uses a
 <code>setup-*</code> action.</p>
-<p>To add a repository, install the app on it and add a second chart source to
-<code>application.yaml</code> with its own <code>releaseName</code>, <code>githubConfigUrl</code> and
-<code>runnerScaleSetName</code>.</p>
+<h3 id="adding-a-scale-set">Adding a scale set<a class="headerlink" href="#adding-a-scale-set" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install the <a href="#github-app">GitHub App</a> on the repository.</li>
+<li>In <code>payload/platform/arc-runners/application.yaml</code>, copy a chart source
+   with its own <code>helm.releaseName</code>, <code>githubConfigUrl</code> and
+   <code>runnerScaleSetName</code>; a set that runs job pods keeps <code>containerMode</code>,
+   <code>serviceAccountName</code> and <code>ACTIONS_RUNNER_KUBERNETES_NAMESPACE</code>.</li>
+<li>In <code>job-pods-rbac.yaml</code>, a ServiceAccount, Role and binding for the set's
+   hook, or <code>homelab-runner</code> again when the jobs share its trust level, see
+   <a href="#job-pods">Job pods</a>.</li>
+<li>In <code>payload/platform/security/network-policies/arc-runners.yaml</code>, the
+   <code>container-hook</code> policy selects <code>actions.github.com/scale-set-name</code>
+   <code>homelab</code> only; a set that runs a hook needs the same rule for its name.</li>
+<li>A repository that runs <code>ci-ok</code> needs a <code>-wait</code> twin of the set, like
+   <code>homelab-wait</code>, for the reason in <a href="#configuration">Configuration</a>.</li>
+<li>Workflows opt in with <code>runs-on: &lt;runnerScaleSetName&gt;</code>.</li>
+</ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>arc-runners<span class="w"> </span>get<span class="w"> </span>autoscalingrunnerset,ephemeralrunner
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>arc-systems<span class="w"> </span>get<span class="w"> </span>pods

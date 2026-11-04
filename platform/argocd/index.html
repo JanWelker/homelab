@@ -1177,6 +1177,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#projects" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1186,8 +1198,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#agent-account" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1197,8 +1209,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#pull-request-previews" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1208,8 +1220,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#cli-access" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1217,6 +1229,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1239,6 +1256,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reinstalling-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reinstalling the chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2416,6 +2461,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Usage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#projects" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2425,8 +2482,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#agent-account" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2436,8 +2493,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#pull-request-previews" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2447,8 +2504,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#cli-access" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2456,6 +2513,11 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2478,6 +2540,34 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Recovery
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reinstalling-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reinstalling the chart
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2645,6 +2735,10 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>Nothing syncs. Running workloads are unaffected</td>
 </tr>
 <tr>
+<td>Health check</td>
+<td><code>kubectl -n argocd get applications</code> &rarr; every one <code>Synced</code> and <code>Healthy</code></td>
+</tr>
+<tr>
 <td>Files</td>
 <td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (OIDC and preview-token <code>ExternalSecret</code>s, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects), <code>payload/workloads/applicationset-previews.yaml</code></td>
 </tr>
@@ -2705,7 +2799,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>An authenticated user with no matching Authentik group gets no access, not read-only-everything</td>
 </tr>
 <tr>
-<td><code>timeout.reconciliation</code> and the ApplicationSets' <code>requeueAfterSeconds</code>, both one minute</td>
+<td><code>timeout.reconciliation</code> and the ApplicationSets' <code>requeueAfterSeconds</code></td>
 <td>ArgoCD listens on a private address, so GitHub's webhook cannot reach it and a commit waits for the next poll. The two run separately: the first refreshes Applications, the second re-reads the generator paths. The repo-server caches a revision for the first, so it must not exceed the second or a new commit's files stay invisible to the generator until the cache expires</td>
 </tr>
 </tbody>
@@ -2718,7 +2812,8 @@ a Secret labelled <code>app.kubernetes.io/part-of: argocd</code>, which the
 <p>The Grafana dashboard in <code>grafana-dashboards.yaml</code> is upstream's
 <code>examples/dashboard.json</code>, unmodified, at the ArgoCD version the chart deploys.
 Renovate does not see it: re-copy it when ArgoCD moves a minor version.</p>
-<h2 id="projects">Projects<a class="headerlink" href="#projects" title="Permanent link">&para;</a></h2>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<h3 id="projects">Projects<a class="headerlink" href="#projects" title="Permanent link">&para;</a></h3>
 <p>The <code>apps</code> project lists the repositories its Applications may pull from in
 <code>payload/platform/argocd-projects/projects.yaml</code>. An OCI Helm chart is listed
 and referenced <strong>without</strong> the <code>oci://</code> scheme (<code>ghcr.io/janwelker/charts</code> as
@@ -2729,7 +2824,7 @@ Secret and no <code>enableOCI</code>.
 The <code>default</code> project Argo CD creates on install is declared in the same file
 with empty lists: it cannot be deleted, so an Application that names no
 project lands there and must be able to do nothing.</p>
-<h2 id="agent-account">Agent account<a class="headerlink" href="#agent-account" title="Permanent link">&para;</a></h2>
+<h3 id="agent-account">Agent account<a class="headerlink" href="#agent-account" title="Permanent link">&para;</a></h3>
 <p>The <code>claude</code> account is the in-cluster Claude Code agents' API identity. It
 may read everything <code>role:readonly</code> reads, <code>argocd app get --refresh</code>
 included, and nothing else: the sessions investigate and open pull requests,
@@ -2750,7 +2845,7 @@ is a few commands with no restart. An expired token fails every agent
    (<code>token</code>).</p>
 </li>
 <li>
-<p>Pull it into the sessions now instead of at the next hourly refresh. The
+<p>Pull it into the sessions now instead of at the next <code>refreshInterval</code>. The
    chart mounts the token as a file that the <code>argocd</code> wrapper reads on every
    call, so no pod restarts; only a shell opened earlier keeps the old token
    in its environment:</p>
@@ -2790,7 +2885,7 @@ serves (<a href="../security-policies/#network-policies">Security Policies</a>):
 chart's own policy has only the name rule
 (<a href="https://github.com/JanWelker/claude-agent/issues/3">claude-agent#3</a>), so
 any other session with <code>argocd.enabled</code> gets a 403 on every call.</p>
-<h2 id="pull-request-previews">Pull request previews<a class="headerlink" href="#pull-request-previews" title="Permanent link">&para;</a></h2>
+<h3 id="pull-request-previews">Pull request previews<a class="headerlink" href="#pull-request-previews" title="Permanent link">&para;</a></h3>
 <p>The <code>previews</code> ApplicationSet deploys every open pull request labelled
 <code>preview</code> on the two neighbourhood sites, from <code>&lt;site&gt;/preview/</code> in the
 workloads repository, at <code>&lt;site&gt;-pr-&lt;n&gt;.k8s.wlkr.ch</code>. Closing the pull request
@@ -2845,7 +2940,7 @@ repository's <a href="https://homelab-apps.wlkr.ch/previews/">Previews</a> page.
 <p>A generator that fails, a missing or expired token included, stops the whole
 set: <code>kubectl -n argocd get applicationset previews -o
 jsonpath='{.status.conditions}'</code> names the error.</p>
-<h2 id="cli-access">CLI access<a class="headerlink" href="#cli-access" title="Permanent link">&para;</a></h2>
+<h3 id="cli-access">CLI access<a class="headerlink" href="#cli-access" title="Permanent link">&para;</a></h3>
 <p>The <code>argocd</code> CLI talks gRPC, which the browser route cannot carry: Cilium's
 Gateway translates gRPC-web into native gRPC, and native gRPC needs an HTTP/2
 backend, which the plain <code>http</code> port is not. The chart therefore adds an <code>h2c</code>
@@ -2865,8 +2960,10 @@ has exhausted its retries and waits for a hand sync — see
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">The local admin is disabled; Authentik is the login</p>
-<p>With Authentik down there is no way into the UI. The break-glass path is to re-enable <code>admin.enabled</code> and read the initial password, as in <a href="../../quickstart/#setup">Quickstart step 10</a> — see <a href="../authentik/#when-authentik-is-down">When Authentik is down</a>.</p>
+<p>With Authentik down there is no way into the UI. The break-glass path is a pull request that re-enables <code>admin.enabled</code>, since selfHeal reverts a <code>kubectl patch</code>; the steps are in <a href="../authentik/#when-authentik-is-down">When Authentik is down</a>.</p>
 </div>
+<h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
+<h3 id="reinstalling-the-chart">Reinstalling the chart<a class="headerlink" href="#reinstalling-the-chart" title="Permanent link">&para;</a></h3>
 <p>ArgoCD manages ArgoCD, and the ApplicationSet that deploys the cluster sits
 inside that same Application. When a broken ArgoCD config has been synced by
 ArgoCD, <code>make install-argo</code> reinstalls the chart from the deployment host, and

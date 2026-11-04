@@ -2878,7 +2878,7 @@ data after a node dies, and the one with the steepest learning curve. Check
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/rook-ceph-operator/</code>, <code>payload/platform/rook-ceph-cluster/</code>, <code>payload/platform/rook-ceph/</code></td>
+<td><code>payload/platform/rook-ceph-operator/</code>: the <code>rook-ceph</code> chart, the operator itself. <code>payload/platform/rook-ceph-cluster/</code>: the <code>rook-ceph-cluster</code> chart, whose <code>valuesObject</code> holds the <code>CephCluster</code>, the object store and the storage classes. <code>payload/platform/rook-ceph/</code>: the CSI driver and its RBAC, the dashboards and the UI route</td>
 </tr>
 </tbody>
 </table>
@@ -2927,16 +2927,18 @@ filesystem — the first thing to check when an OSD refuses to appear, see
 live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as <code>https://s3.infra.k8s.wlkr.ch</code> for
 <a href="../velero/#configuration">Velero</a>, whose S3 client only signs cleanly over
-TLS. Two RGW instances keep
+TLS. More than one RGW instance (<code>gateway.instances</code>) keeps
 a node reboot from stalling a backup, which only holds while they sit on
 separate nodes: <code>gateway.placement</code> carries the spread constraint, because the
 <code>placement.all</code> block belongs to the <code>CephCluster</code> and never reaches this CR.
-It is a hard one: both gateways are daemon <code>a</code>, so on one node the exporter
+It is a hard one: every gateway is daemon <code>a</code>, so on one node the exporter
 reports their counters under the same labels and Prometheus drops them, and
 the descheduler never evicts a <code>system-cluster-critical</code> pod to fix that.
-The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at
-<code>failureDomain: host</code> with three or more workers.</p>
+The data pool is erasure coded (<code>dataChunks</code> and <code>codingChunks</code>): less
+overhead than three replicas, safe at <code>failureDomain: host</code> only with more
+workers than chunks.</p>
 <h3 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h3>
+<p>In <code>rook-ceph-cluster/application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
 <tr>
@@ -3031,7 +3033,7 @@ deliberately on it: the kernel client krbd does not implement <code>aes256k</cod
 CSI keys moved to it make every <code>rbd map</code> fail with
 <code>map failed: (22) Invalid argument</code> while Ceph reports the rotation a success.
 Two ciphers in one cluster trigger <code>AUTH_EMERGENCY_CIPHERS_SET</code> and buy no
-security.</p>
+security. In <code>rook-ceph-cluster/application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
 <tr>
@@ -3136,8 +3138,8 @@ chain in the order it breaks and stops at the first missing link:</p>
 </tbody>
 </table>
 <p>The last one asks for a volume the way a workload would and waits <code>TIMEOUT</code>
-seconds (120 by default); <code>NAMESPACE</code> and <code>CLASS</code> override where and what it
-asks for.</p>
+seconds (default in <code>scripts/storage-check.sh</code>); <code>NAMESPACE</code> and <code>CLASS</code>
+override where and what it asks for.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Ceph warnings show as Degraded</p>
@@ -3161,33 +3163,34 @@ PVC — <code>data-openbao-0</code> on a fresh bootstrap — stays <code>Pending
 <li>
 <p>Confirm the cause:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>logs<span class="w"> </span>job/rook-ceph-osd-prepare-&lt;node&gt;<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-3
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="c1"># skipping device "nvme0n1p10" because it contains a filesystem "ceph_bluestore"</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># skipping osd.3: "..." belonging to a different ceph cluster "..."</span>
 </span></code></pre></div>
 </li>
 <li>
-<p>Rebuild the node; the <a href="../../architecture/boot-process/">installer</a> wipes
-   the disk:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>reinstall<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
-</span></code></pre></div>
+<p>Rebuild the node, steps 3 to 7 of
+   <a href="../../operations/nodes/#rebuilding-or-repartitioning-a-node">Rebuilding or repartitioning a node</a>:
+   <code>make reinstall</code> only arms the PXE menu, and the
+   <a href="../../architecture/boot-process/">installer</a> wipes the disk when the node
+   network-boots.</p>
 </li>
 <li>
 <p>If the node cannot be rebuilt now, wipe the partition by hand over SSH.
    <code>wipefs</code> removes the signature Rook skips on; the <code>dd</code> removes the
-   BlueStore label behind it. Address it by label — the partition number
-   differs between control-plane and worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>wipefs<span class="w"> </span>-a<span class="w"> </span>/dev/disk/by-partlabel/rook-osd
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>sudo<span class="w"> </span>dd<span class="w"> </span><span class="k">if</span><span class="o">=</span>/dev/zero<span class="w"> </span><span class="nv">of</span><span class="o">=</span>/dev/disk/by-partlabel/rook-osd<span class="w"> </span><span class="nv">bs</span><span class="o">=</span>1M<span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">200</span>
+   BlueStore label behind it. Address it by label, as Ignition does, rather
+   than by the device name in the log:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>wipefs<span class="w"> </span>-a<span class="w"> </span>/dev/disk/by-partlabel/rook-osd
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>sudo<span class="w"> </span>dd<span class="w"> </span><span class="k">if</span><span class="o">=</span>/dev/zero<span class="w"> </span><span class="nv">of</span><span class="o">=</span>/dev/disk/by-partlabel/rook-osd<span class="w"> </span><span class="nv">bs</span><span class="o">=</span>1M<span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">200</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Restart the operator so it recreates the <code>osd-prepare</code> jobs:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/rook-ceph-operator
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/rook-ceph-operator
 </span></code></pre></div>
 </li>
 <li>
 <p>Confirm an OSD per node and a binding PVC:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>storage-check
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 </li>
 </ol>

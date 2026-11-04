@@ -2659,35 +2659,55 @@ termination. The improvement is the split in ownership: the cluster owns the
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>Two Gateways in <code>kube-system</code>, each with a dedicated address from the Cilium
-L2 pool, defined in <code>gateways.yaml</code>:</p>
+L2 pool, defined in <code>gateways.yaml</code>. <code>apps-gateway</code> serves user-facing
+workloads under the router's public address; <code>infra-gateway</code> serves the
+platform UIs, LAN only. A route names a listener by <code>sectionName</code>:</p>
 <table>
 <thead>
 <tr>
 <th>Gateway</th>
-<th>Hostname pattern</th>
-<th>Used for</th>
+<th>Listener</th>
+<th>Hostnames</th>
+<th>Certificate</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>apps-gateway</code></td>
+<td><code>https</code></td>
 <td><code>*.k8s.wlkr.ch</code></td>
-<td>User-facing workloads, published under the router's public address</td>
+<td><code>apps-gateway-tls</code></td>
+</tr>
+<tr>
+<td><code>apps-gateway</code></td>
+<td><code>https-wollbi</code></td>
+<td><code>*.wollbi.ch</code>, the neighbourhood sites</td>
+<td><code>wollbi-gateway-tls</code></td>
+</tr>
+<tr>
+<td><code>apps-gateway</code></td>
+<td><code>ssh</code></td>
+<td><code>*.ssh.wlkr.ch</code>, passthrough; see <a href="#ssh-listener">SSH listener</a></td>
+<td>None here</td>
 </tr>
 <tr>
 <td><code>infra-gateway</code></td>
+<td><code>https</code></td>
 <td><code>*.infra.k8s.wlkr.ch</code></td>
-<td>Platform services (Grafana, Hubble, etc.), LAN only</td>
+<td><code>infra-gateway-tls</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>apps-gateway</code> has a second HTTPS listener for <code>*.wollbi.ch</code>, the
-neighbourhood sites. A listener pins one hostname pattern and a wildcard
-certificate covers one zone, so a second domain is a second listener and a
-second <code>Certificate</code> rather than a name added to the first.</p>
-<p><code>apps-gateway</code> also has a <code>TLS</code> listener, <code>ssh</code>, for <code>*.ssh.wlkr.ch</code>; see
-<a href="#ssh-listener">SSH listener</a>.</p>
-<p>Both HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
+<p>A listener pins one hostname pattern and a wildcard certificate covers one
+zone, so a new domain is three files, never a name added to an existing
+listener:</p>
+<ol>
+<li>A <code>Certificate</code> in <code>payload/platform/certificates/certificates.yaml</code>.</li>
+<li>An HTTPS listener in <code>gateways.yaml</code> referencing it.</li>
+<li>The zone in <code>domainFilters</code> in <code>payload/platform/external-dns/application.yaml</code>,
+   or its routes are silently ignored.</li>
+</ol>
+<p>The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
 its Gateway's tree. A wildcard is a suffix match, so <code>*.k8s.wlkr.ch</code> still
@@ -2701,8 +2721,8 @@ address instead of the Gateway's LAN one; the router forwards ports 80 and
 443 to that LAN address.</p>
 <p><code>payload/platform/cilium/rbac-gateway-fix.yaml</code> grants the operator read
 access to Ingresses and IngressClasses: its Gateway API controller lists them
-too, and the chart grants that only with the Ingress controller enabled. Its
-header names the chart version last checked; retry removing it on a major.</p>
+too, and the chart grants that only with the Ingress controller enabled.
+Retry removing it on a chart major.</p>
 <h3 id="backend-protocol">Backend protocol<a class="headerlink" href="#backend-protocol" title="Permanent link">&para;</a></h3>
 <p>Envoy speaks HTTP/1.1 to every backend unless the Service port says
 otherwise: Cilium's <code>gatewayAPI.enableAppProtocol</code> makes it honour
@@ -2741,7 +2761,8 @@ name:</p>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-svc</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
-<p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for platform tools.</p>
+<p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for platform tools,
+and the listener from the table above whose hostnames cover the name.</p>
 <h3 id="ssh-listener">SSH listener<a class="headerlink" href="#ssh-listener" title="Permanent link">&para;</a></h3>
 <p>The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
 port 443, the only port the router forwards to <code>apps-gateway</code>. Each agent's
@@ -2788,7 +2809,7 @@ exactly <code>1</code>:</p>
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">
-<p class="admonition-title">Always set <code>sectionName: https</code></p>
+<p class="admonition-title">Always set <code>sectionName</code></p>
 <p>A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is <code>Accepted</code>.</p>
 </div>
 <div class="admonition warning">

@@ -2387,7 +2387,7 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 </tr>
 <tr>
 <td><strong>OpenBao needs an operator to unseal it</strong></td>
-<td>Shamir seal, no auto-unseal: every restart (node reboot, Kured cycle, chart bump) leaves each replica sealed until 3 of 5 key shares are supplied. Sealed, no <code>ExternalSecret</code> resolves and cert-manager cannot renew. The cluster looks healthy; the consequence surfaces when a certificate expires</td>
+<td>Shamir seal, no auto-unseal: every restart (node reboot, Kured cycle, chart bump) leaves each replica sealed until the <a href="../../platform/openbao/#at-a-glance">threshold of key shares</a> is supplied. Sealed, no <code>ExternalSecret</code> resolves and cert-manager cannot renew. The cluster looks healthy; the consequence surfaces when a certificate expires</td>
 <td>Check <code>bao status</code> after every reboot. Auto-unseal against a KMS or a second OpenBao would remove the step at the price of an external hard dependency; the key shares stay in the operator's hands on purpose</td>
 <td><a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>, <a href="../../operations/nodes/#after-any-node-reboot-unseal-openbao">after any node reboot</a></td>
 </tr>

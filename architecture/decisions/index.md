@@ -30,7 +30,7 @@ The cost is a smaller ecosystem and more moving parts: CRDs must be installed be
 
 ## Rook-Ceph, not Longhorn or local volumes
 
-Every node contributes a raw partition, and Ceph turns them into replicated block storage that survives a node failure. Local `hostPath` volumes would be simpler and faster, but a node reboot would take its workloads' data with it, and reboots are routine here because that is [how updates get applied](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster can later serve object and file storage.
+Every worker contributes a raw partition (the control planes keep their disk for etcd, see [Disks](<https://homelab.wlkr.ch/platform/rook-ceph/#disks>)), and Ceph turns them into replicated block storage that survives a node failure. Local `hostPath` volumes would be simpler and faster, but a node reboot would take its workloads' data with it, and reboots are routine here because that is [how updates get applied](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster can later serve object and file storage.
 
 The cost: Ceph is the heaviest component in the cluster, wants at least three nodes, and has its own failure modes and vocabulary. It also only provides `ReadWriteOnce` here, since CephFS is not deployed.
 

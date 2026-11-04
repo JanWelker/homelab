@@ -25,4 +25,4 @@ The only fix is a revert commit. Every Application runs with automated sync, so 
 
 > [!WARNING]
 >
-> Do not fix a broken workload with `kubectl edit`. Under the ApplicationSet nothing reverts the edit, so the cluster quietly stops matching Git and the next sync of that Application undoes your fix without warning. Change the manifest instead.
+> Do not fix a broken workload with `kubectl edit`. `selfHeal` on every Application ([Sync policy](<https://homelab.wlkr.ch/architecture/gitops/#sync-policy>)) puts the manifest back on the next reconcile, so the fix lasts minutes and leaves no trace of what it was. Change the manifest instead.
