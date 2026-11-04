@@ -2716,6 +2716,11 @@ backoff from 30s to 5m. That is the whole delivery contract:</p>
   switching automated sync off: the only rollback is a revert commit — see
   <a href="../../operations/troubleshooting/#rolling-back-a-bad-sync">Rolling back a bad sync</a>.</p>
 </li>
+<li><strong>Two exceptions to <code>prune</code>.</strong> <code>kube-vip</code> syncs with <code>prune: false</code>, because
+  its objects are the only thing holding the API VIP. <code>security</code> prunes, but
+  its Namespaces carry a per-resource <code>Prune=false</code>, so a removed policy goes
+  while the namespace and everything in it stays. Copy the <code>syncPolicy</code> from
+  any other sibling.</li>
 </ul>
 <h2 id="bootstrap-convergence">Bootstrap convergence<a class="headerlink" href="#bootstrap-convergence" title="Permanent link">&para;</a></h2>
 <p>Nothing orders the Applications. On a fresh cluster the ApplicationSet
