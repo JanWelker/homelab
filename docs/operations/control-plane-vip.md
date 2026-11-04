@@ -69,6 +69,9 @@ adoption again, and forgetting to re-add it for that one reinstall leaves two
 kube-vips contending for the API VIP; the exposure is limited to the pinned
 image.
 
+!!! warning "Tetragon holds `:2112` on the control planes"
+    Tetragon serves its metrics on the same port, on the host network by its chart's default, so `adopt` waits for a port that is never released and gives up after its timeout on a reinstalled control plane, and the liveness probe is answered by Tetragon whether kube-vip is alive or not, as recorded in the [host firewall inventory](host-firewall-inventory-2026-10-30.md#findings). Not fixed yet; move one of the two ports before the next control-plane reinstall.
+
 !!! danger "If the DaemonSet pods do not come up"
     The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node's `ansible_host` from `ansible/inventory.yaml` with `--server https://<address>:6443` (the node addresses are in the certificate SANs), write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
 

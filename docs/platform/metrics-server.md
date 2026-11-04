@@ -5,8 +5,9 @@ description: "The resource metrics API: why kubectl top and HPAs need it, and ho
 # metrics-server
 
 [metrics-server](https://github.com/kubernetes-sigs/metrics-server) serves the
-`metrics.k8s.io` API that the scheduler, `kubectl top` and every
-`HorizontalPodAutoscaler` read. Without it `kubectl top` errors and an HPA sits
+`metrics.k8s.io` API that `kubectl top`, every `HorizontalPodAutoscaler` and
+the [descheduler](descheduler.md) read; the scheduler does not, it places on
+requests. Without it `kubectl top` errors and an HPA sits
 at `<unknown>/<target>` with no logs, events or clue. Prometheus is not a
 substitute: it answers PromQL from its own store, while the resource metrics
 API is an aggregated Kubernetes API that core controllers read directly.

@@ -29,7 +29,7 @@ reasoning:
 
 | Setting | Why |
 | --- | --- |
-| `kind: CronJob` on a two-hour schedule | A Deployment would poll continuously for a cluster that changes shape once per Flatcar update. A pass every two hours drifts a rebooted cluster back into balance the same day |
+| `kind: CronJob` with a `schedule` | A Deployment would poll continuously for a cluster that changes shape once per Flatcar update. A pass every few hours drifts a rebooted cluster back into balance the same day |
 | `nodeFit: true` | A pod is only evicted when another node has room for it, so an eviction never turns into a Pending pod |
 | `podProtections.extraEnabled: PodsWithPVC` | Ceph volumes would follow an evicted pod, but the pods that own them run alone: a moved [CloudNativePG](cloudnative-pg.md) primary is a failover and a cold restart of its application, a moved Loki a detach and reattach. Their PDBs are off so that Kured can drain, so this is the only guard. `emptyDir` pods stay protected at the default because their data goes with them |
 | System-critical pods at the default | `evictSystemCriticalPods` stays off, so nothing with `priorityClassName: system-cluster-critical` is ever moved. Those components hold their own placement rule instead — see [Replica placement](index.md#replica-placement) |
@@ -66,11 +66,11 @@ kubectl top nodes    # what LowNodeUtilization sees
   decision; the descheduler assumes the scheduler will do better the second
   time, which holds after a drain and not much else.
 - **It honours PodDisruptionBudgets.** An eviction that would violate a PDB
-  is refused, so a single-instance [CloudNativePG](cloudnative-pg.md) cluster
-  with a PDB is never moved — the same PDB that blocks a drain blocks the
-  descheduler.
+  is refused. The single-instance [CloudNativePG](cloudnative-pg.md) clusters
+  carry none, so that Kured can drain; `PodsWithPVC` is what keeps the
+  descheduler off them.
 - **One pod per over-utilized node per pass** when usage comes from
   metrics-server. A badly skewed cluster takes several passes, which is the
-  point of running it every two hours rather than once.
+  point of running it on a schedule rather than once.
 - **A move is a restart.** Anything without a second replica is briefly down
   when it is evicted; `nodeFit` guarantees a place to go, not zero downtime.

@@ -39,4 +39,4 @@ copies the file back over it — see
 none` holds a rollback until `syncPolicy.automated` is restored.
 
 !!! warning
-    Do not fix a broken workload with `kubectl edit`. Under the ApplicationSet nothing reverts the edit, so the cluster quietly stops matching Git and the next sync of that Application undoes your fix without warning. Change the manifest instead.
+    Do not fix a broken workload with `kubectl edit`. `selfHeal` on every Application ([Sync policy](../architecture/gitops.md#sync-policy)) puts the manifest back on the next reconcile, so the fix lasts minutes and leaves no trace of what it was. Change the manifest instead.

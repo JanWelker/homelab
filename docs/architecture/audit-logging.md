@@ -15,9 +15,9 @@ without it, findings at the stricter audit level go nowhere.
 | --- | --- |
 | Policy file | `/etc/kubernetes/audit/policy.yaml`, written by Ignition from `ansible/templates/butane_node_config.yaml.j2` |
 | Log file | `/var/log/kubernetes/audit/audit.log` on each control-plane node |
-| Durable copy | [Loki](../platform/logging.md), via Alloy, on Ceph |
+| Durable copy | [Loki](../platform/logging.md), via the Alloy pipeline in `payload/platform/alloy/application.yaml`, on Ceph |
 | Query it with | `{job="kubernetes-audit"}` in Grafana |
-| Worst-case disk | About 1 GB per control-plane node — see [Where the log lives](#where-the-log-lives) |
+| Worst-case disk | Bounded by the rotation flags in `ansible/templates/kubeadm.yaml.j2`, see [Where the log lives](#where-the-log-lives) |
 
 ## The policy decides everything
 
@@ -44,7 +44,7 @@ and **the first match wins**, so the order is the design:
 | --- | --- |
 | Path | `/var/log/kubernetes/audit/audit.log` |
 | Filesystem | root, ext4 |
-| Rotation | The `--audit-log-maxsize`, `--audit-log-maxbackup` and `--audit-log-maxage` flags in `ansible/templates/kubeadm.yaml.j2`; the product of size and backups bounds the footprint to about 1 GB, and the age cap keeps a quiet cluster from holding a month-old rotation forever |
+| Rotation | The `--audit-log-maxsize`, `--audit-log-maxbackup` and `--audit-log-maxage` flags in `ansible/templates/kubeadm.yaml.j2`; the product of size and backups bounds the footprint, and the age cap keeps a quiet cluster from holding a month-old rotation forever |
 
 The root filesystem persists across reboots, so the log survives on the node.
 Alloy still tails it into Loki, which is the copy that matters: a log stored
@@ -54,8 +54,9 @@ what failed.
 ## Reading it
 
 Audit events reach Loki as JSON with `job="kubernetes-audit"`, plus `verb` and
-`audit_level` as labels. Everything else stays in the line, where `| json` can
-reach it:
+`audit_level` as labels, set by the Alloy pipeline in
+`payload/platform/alloy/application.yaml`. Everything else stays in the line,
+where `| json` can reach it:
 
 ```logql
 # Who read Secrets, and which ones
@@ -71,7 +72,8 @@ reach it:
 The last query answers "what would break if I tightened `enforce` on this
 namespace" from evidence, for the whole retention window. Exec, Secret reads
 by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts
-from Loki's ruler — see [Logging](../platform/logging.md#alerting).
+from Loki's ruler, defined in `payload/platform/logging/loki-rules.yaml`; see
+[Logging](../platform/logging.md#alerting).
 
 ## Applying it to a running cluster
 
@@ -95,16 +97,22 @@ kubeadm rendered at init time, and nothing rewrites it on its own.
     ssh core@<node> sudo chmod 0700 /etc/kubernetes/audit /var/log/kubernetes/audit
     ```
 
-3. Place the policy file:
+3. Place the policy file. It is inline in the Butane template, so take it
+   from the rendered copy:
 
     ```bash
-    scp output/.../policy.yaml core@<node>:/tmp/policy.yaml
+    yq '.storage.files[] | select(.path == "/etc/kubernetes/audit/policy.yaml") | .contents.inline' \
+      output/tmp/butane/butane-<node>.yaml > /tmp/policy.yaml
+    scp /tmp/policy.yaml core@<node>:/tmp/policy.yaml
     ssh core@<node> sudo install -m 0600 /tmp/policy.yaml /etc/kubernetes/audit/policy.yaml
     ```
 
-4. Re-render the API server static pod from the updated config:
+4. Replace the install-time kubeadm config on the node with the regenerated
+   one, then re-render the API server static pod from it:
 
     ```bash
+    scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
+    ssh core@<node> sudo install -m 0600 /tmp/kubeadm-config.yaml /opt/kubeadm-config.yaml
     ssh core@<node> sudo kubeadm init phase control-plane apiserver \
       --config /opt/kubeadm-config.yaml
     ```

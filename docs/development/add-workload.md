@@ -34,7 +34,9 @@ keep current.
 2. **`project: apps`.** Anything else fails the whole ApplicationSet. The
    project, in `payload/platform/argocd-projects/projects.yaml`, lists the chart
    repositories workloads may pull from; a new chart repository extends that
-   list first, in this repository.
+   list first, in this repository, and the repo-server's egress policy in
+   `payload/platform/security/network-policies/argocd.yaml`, or the
+   Application reads `ComparisonError`.
 3. **The workload owns its namespace.** Ship a `namespace.yaml` at sync wave
    `-2` with the three Pod Security Admission labels, annotated `Prune=false`,
    because pruning a `Namespace` deletes every PVC inside it. A namespace
@@ -188,7 +190,8 @@ spec:
     - fromEntities:
         - host
         - remote-node
-    # The Gateway, on the port the HTTPRoute targets.
+    # The Gateway, on the container port behind the Service the HTTPRoute
+    # targets: a policy matches the pod's port, not the Service's.
     - fromEntities:
         - ingress
       toPorts:
@@ -298,16 +301,20 @@ Either way it is two pull requests, one here, because a workload must not be
 able to put itself behind or take itself out from behind the cluster's
 authentication layer. Details in [Authentik](../platform/authentik.md).
 
-## Step 4: Commit and push
+## Step 4: Open the pull request
 
 ```bash
+git checkout -b feat/my-app
 git add my-app/
 git commit -m "feat: add my-app"
-git push
+git push -u origin feat/my-app
+gh pr create --fill
 ```
 
-The ApplicationSet picks the directory up within about three minutes, or
-immediately after **Refresh** on the `apps` ApplicationSet in the ArgoCD UI.
+Once it merges, the ApplicationSet picks the directory up within its requeue
+interval (`requeueAfterSeconds` in `payload/workloads/applicationset.yaml`),
+or immediately after **Refresh** on the `apps` ApplicationSet in the ArgoCD
+UI.
 
 ## Step 5: Document it
 

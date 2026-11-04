@@ -73,8 +73,8 @@ done
 
 `make bao-unseal` reads the key shares from
 `output/credentials/openbao-init.json`. If that file has been moved into a
-password manager, each pod wants 3 of the 5 shares by hand, per
-[OpenBao](../platform/openbao.md).
+password manager, each pod wants the threshold of shares by hand, per
+[OpenBao](../platform/openbao.md#unsealing-after-a-restart).
 
 ## Adding a node
 
@@ -90,8 +90,9 @@ password manager, each pod wants 3 of the 5 shares by hand, per
     ```
 
     In the same commit, add the node name to `providerRegex` in
-    `payload/platform/kubelet-csr-approver/application.yaml`: a node the regex
-    does not name has its kubelet certificate denied and
+    `payload/platform/kubelet-csr-approver/application.yaml`, and let that PR
+    merge and sync before the node boots: a node the regex does not name has
+    its kubelet certificate denied and
     [silently drops out of `kubectl top`](../platform/metrics-server.md#pitfalls).
 
     Against a running cluster, `make config` also re-creates the bootstrap
@@ -100,12 +101,20 @@ password manager, each pod wants 3 of the 5 shares by hand, per
     [whichever control plane answers](../architecture/ansible.md#playbooks),
     so the node joins on its own.
 
-2. Network-boot the new node within those windows: two hours for a
-   **control-plane** node, 24 for a worker. `bootstrap-k8s.service` runs the
-   join once and only while `/etc/kubernetes/kubelet.conf` is absent, so it
-   does not interfere with a node that has joined.
+2. Arm the node: the generated menu defaults to the local disk, so an unarmed
+   node never installs, per
+   [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot).
 
-3. If the window has passed, run `make config` again, then retry the join on
+    ```bash
+    make reinstall LIMIT=<node>
+    ```
+
+3. Network-boot it within those windows: two hours for a **control-plane**
+   node, 24 for a worker. `bootstrap-k8s.service` runs the join once and only
+   while `/etc/kubernetes/kubelet.conf` is absent, so it does not interfere
+   with a node that has joined.
+
+4. If the window has passed, run `make config` again, then retry the join on
    the node.
 
     ```bash
@@ -136,7 +145,8 @@ password manager, each pod wants 3 of the 5 shares by hand, per
     # then: member remove <id>
     ```
 
-4. Reprovision the replacement per [Adding a node](#adding-a-node).
+4. Reprovision the replacement per [Adding a node](#adding-a-node): the
+   inventory and regex change, then arm, then boot.
 
 !!! danger
     On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
@@ -155,7 +165,8 @@ the space.
 !!! danger "The backups are inside the thing being wiped"
     Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see [Backups & Recovery](backups.md#what-is-not-covered). Copy anything you intend to restore from **off-cluster** first.
 
-1. Copy what matters off the cluster: Velero backups, the latest etcd snapshot,
+1. Copy what matters off the cluster: the `velero` and `etcd-backup` buckets
+   per [Copying a bucket off the cluster](backups.md#copying-a-bucket-off-the-cluster),
    and anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
 3. Regenerate both Ignition configs and serve them.
@@ -164,7 +175,8 @@ the space.
     make config && make serve
     ```
 
-4. For a **control-plane** node, remove it from the cluster first: the drain,
+4. Drain the node, as in [Rebooting a node](#rebooting-a-node). For a
+   **control-plane** node, remove it from the cluster too: the
    `kubectl delete node` and the etcd `member remove` are steps 1 and 3 of
    [Replacing a failed node](#replacing-a-failed-node). The wiped node comes
    back with an empty etcd under its old peer URL, and kubeadm treats a known
@@ -191,6 +203,13 @@ the space.
    `make kubeconfig`.
 7. Leave the boot server up until the node is `Ready` (the sysext images are
    fetched from it on that first boot), then stop it.
+8. Wait for Ceph before the next node, as in
+   [Rebooting a node](#rebooting-a-node): the OSD is new and backfills from
+   the other two copies, and
+   [`make storage-check`](../platform/rook-ceph.md#is-storage-ready) proves
+   it took the disk.
+9. [Unseal OpenBao](#after-any-node-reboot-unseal-openbao) if a replica
+   moved.
 
 One node at a time is safe when rebuilding: etcd keeps quorum once the old
 member is removed and Ceph backfills, as in
