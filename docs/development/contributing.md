@@ -67,7 +67,10 @@ The site is built with [Zensical](https://zensical.org/) from `docs/`,
 configured in `zensical.toml`, and published to GitHub Pages by
 `.github/workflows/docs.yaml` at <https://homelab.wlkr.ch/>. It is
 deliberately not hosted on the cluster, so it stays readable when the cluster
-is not.
+is not. The build also writes `llms.txt`, `llms-full.txt` and a `.md` twin of
+every page for LLM clients ([llmstxt.org](https://llmstxt.org/)); the sections of
+`llms.txt` are listed in `zensical.toml` under `plugins.llmstxt`, so a new
+section in `nav` needs an entry there too.
 
 | Stage | What happens |
 | --- | --- |
