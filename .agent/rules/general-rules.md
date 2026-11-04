@@ -9,7 +9,10 @@ trigger: always_on
    bootstrap. `CLAUDE.md` holds the deployment model in detail.
 2. Documentation lives in `docs/`, built with Zensical and configured in
    `zensical.toml`. Every page must be registered in `nav`; the build runs with
-   `--strict`.
+   `--strict`. The published site is LLM-readable at
+   <https://homelab.wlkr.ch/llms.txt> and <https://homelab.wlkr.ch/llms-full.txt>;
+   the applications site at <https://homelab-apps.wlkr.ch/llms.txt> and
+   <https://homelab-apps.wlkr.ch/llms-full.txt>.
 3. Do not write version numbers into prose or bump them by hand. `targetRevision`
    in the manifests and the versions in `ansible/inventory.yaml` are the sources
    of truth, and Renovate keeps them current. The `Makefile` pins nothing: it

@@ -40,6 +40,16 @@ two wollbi sites. There is no app-of-apps tree.
 
 The reasoning is in `docs/architecture/gitops.md`.
 
+## Reading the docs
+
+Both documentation sites publish an LLM-readable copy of themselves. Read
+`docs/` directly for this repository; for the applications site, fetch
+<https://homelab-apps.wlkr.ch/llms.txt> for the page index or
+<https://homelab-apps.wlkr.ch/llms-full.txt> for every page in one file. This
+site's own copies are <https://homelab.wlkr.ch/llms.txt> and
+<https://homelab.wlkr.ch/llms-full.txt>; every page also has a `.md` twin at
+its URL plus `index.md`.
+
 ## Editing the platform
 
 - **Moving a resource between Applications takes two merges.** First annotate it
