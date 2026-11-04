@@ -13,6 +13,11 @@
         <link rel="canonical" href="https://homelab.wlkr.ch/development/contributing/">
       
       
+        <link rel="describedby" href="../../llms.txt">
+        
+          <link rel="alternate" type="text/markdown" href="./index.md">
+        
+      
       
         <link rel="prev" href="../">
       
@@ -2548,6 +2553,11 @@
                 <a id="__skip" tabindex="-1"></a>
                 
                   
+  <button type="button" title="Copy as Markdown" aria-label="Copy as Markdown" class="md-content__button md-icon" data-md-copy-url="./index.md">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12z"/></svg>
+  </button>
+
 
   
     <a href="https://github.com/JanWelker/homelab/edit/main/docs/development/contributing.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
@@ -2614,7 +2624,10 @@ sync when those conventions change.</p>
 configured in <code>zensical.toml</code>, and published to GitHub Pages by
 <code>.github/workflows/docs.yaml</code> at <a href="https://homelab.wlkr.ch/">https://homelab.wlkr.ch/</a>. It is
 deliberately not hosted on the cluster, so it stays readable when the cluster
-is not.</p>
+is not. The build also writes <code>llms.txt</code>, <code>llms-full.txt</code> and a <code>.md</code> twin of
+every page for LLM clients (<a href="https://llmstxt.org/">llmstxt.org</a>); the sections of
+<code>llms.txt</code> are listed in <code>zensical.toml</code> under <code>plugins.llmstxt</code>, so a new
+section in <code>nav</code> needs an entry there too.</p>
 <table>
 <thead>
 <tr>
@@ -2784,7 +2797,7 @@ Renovate tracks the pins.</p>
       
         
         
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["content.action.copy","content.action.edit","content.action.view","content.code.copy","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow"],"redirect":null,"search":"../../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
     
     
       <script src="../../assets/javascripts/bundle.d31f0ffa.min.js"></script>
