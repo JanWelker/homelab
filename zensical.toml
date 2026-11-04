@@ -99,6 +99,7 @@ custom_dir = "overrides"
 logo = "assets/images/logo.png"
 favicon = "assets/images/logo.png"
 features = [
+  "content.action.copy",
   "content.action.edit",
   "content.action.view",
   "content.code.copy",
@@ -147,6 +148,25 @@ primary = "custom"
 accent = "custom"
 toggle.icon = "lucide/moon"
 toggle.name = "Pinned to dark -- follow your system theme"
+
+# Machine-readable index of the site for LLM clients (llmstxt.org):
+# /llms.txt lists every page with a one-line description, /llms-full.txt
+# carries the whole site as one Markdown file, and every page gets a .md twin
+# plus a "Copy as Markdown" button (content.action.copy).
+[project.plugins.llmstxt]
+full_output = "llms-full.txt"
+markdown_description = """
+Bare-metal Kubernetes on Flatcar Container Linux. Ansible and a PXE boot
+server bring the nodes up; Argo CD owns everything after that. The pages are
+reference material: architecture decisions, one page per platform component,
+operations runbooks and the contribution workflow."""
+
+[project.plugins.llmstxt.sections]
+"Get started" = ["index.md", "concepts.md", "quickstart.md", "adapting.md"]
+"Architecture" = ["architecture/index.md", "architecture/*.md"]
+"Platform" = ["platform/index.md", "platform/*.md"]
+"Operations" = ["operations/index.md", "operations/*.md"]
+"Development" = ["development/index.md", "development/*.md"]
 
 [project.validation]
 invalid_links = true
