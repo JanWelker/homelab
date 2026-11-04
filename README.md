@@ -14,7 +14,9 @@ Welcome to the **Flatcar Homelab** project. This repository contains the configu
 ## Documentation
 
 The full project documentation is published to GitHub Pages at
-**[https://homelab.wlkr.ch/](https://homelab.wlkr.ch/)**.
+**[https://homelab.wlkr.ch/](https://homelab.wlkr.ch/)**. LLM clients can read
+it as [llms.txt](https://homelab.wlkr.ch/llms.txt) or in full as
+[llms-full.txt](https://homelab.wlkr.ch/llms-full.txt).
 
 - **[Quickstart Guide](https://homelab.wlkr.ch/quickstart/)**: Instructions for bootstrapping the cluster.
 - **[Adapting This for Your Cluster](https://homelab.wlkr.ch/adapting/)**: What to change before running this against your own hardware.

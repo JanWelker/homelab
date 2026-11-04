@@ -5,59 +5,33 @@ bring the nodes up; ArgoCD owns everything after that.
 
 ## Deployment model
 
-`payload/` is the cluster. One hand-applied Application,
-`payload/argocd/application.yaml`, syncs the argo-cd chart and
-`payload/argocd/applicationset-platform.yaml`. That ApplicationSet generates one
-Application per `payload/platform/*/application.yaml`, plus
-`payload/workloads/application.yaml`. The latter deploys the two other
-ApplicationSets: `payload/workloads/applicationset.yaml` generates one
-Application per directory of the separate `homelab-apps` repository, and
-`applicationset-previews.yaml` one per pull request labelled `preview` on the
-two wollbi sites. There is no app-of-apps tree.
+`payload/` is the cluster and ArgoCD syncs all of it; nothing is applied by
+hand after bootstrap. Read `docs/architecture/gitops.md` before touching
+`payload/`. The rules there that cost the most when skipped:
 
-- A component is a directory with exactly one `application.yaml` plus the
-  manifests it deploys. The generator copies that file's labels, annotations,
-  finalizers and `spec` verbatim, so it is a complete Application, not a
-  fragment.
-- Every `application.yaml` carries the same `syncPolicy`: `automated` with
-  `prune` and `selfHeal`, plus the `retry` block (limit 10, 30s backoff up to
-  5m). Copy it from any sibling except `kube-vip`, whose `prune: false` is
-  deliberate: it holds the API VIP. `security` prunes too; its Namespaces
-  carry a per-resource `Prune=false` instead. ArgoCD never re-attempts a
-  failed sync of the same revision without `retry`, so a component that
-  lands a minute before its CRDs stays failed until `argocd app sync <app>`.
-- **Nothing orders the Applications.** All of them sync at once and converge:
-  a missing kind fails the sync and retries, a resource that applies but
-  cannot go Ready just waits. Put a resource with what it needs, not with what
-  it configures: the `ClusterSecretStore` sits with OpenBao, the issuers and
-  certificates are their own `certificates` component.
-- A fresh cluster looks stuck at OpenBao: every `ExternalSecret` is Degraded
-  until `make bao-init`, `make bao-unseal` and `make bao-secrets`. Nothing
-  fails or times out there.
-- Patching a generated Application's `spec` achieves nothing — the next
-  reconcile copies the file back over it. That includes switching automated
-  sync off: the only rollback is a revert commit.
+- Nothing orders the Applications and every `application.yaml` carries the
+  same `syncPolicy` with `retry`; copy it from a sibling, except `kube-vip`
+  ([Sync policy](docs/architecture/gitops.md#sync-policy)).
+- A fresh cluster looks stuck at OpenBao until the `make bao-*` targets run
+  ([Bootstrap convergence](docs/architecture/gitops.md#bootstrap-convergence)).
+- Moving a resource between Applications takes two merges, and deleting an
+  Application by hand means stripping its finalizer first
+  ([Moving a resource](docs/architecture/gitops.md#moving-a-resource-to-another-application)).
+- Each version is pinned once, in the owning `application.yaml`; the
+  `Makefile` reads it from there
+  ([Version pins](docs/architecture/gitops.md#version-pins)). Renovate's
+  grouping is in `docs/development/maintenance.md`.
+- Long explanations belong in `docs/`, not in YAML comments. Changes land
+  through PRs off `main`.
 
-The reasoning is in `docs/architecture/gitops.md`.
+## Reading the docs
 
-## Editing the platform
-
-- **Moving a resource between Applications takes two merges.** First annotate it
-  `argocd.argoproj.io/sync-options: Prune=false` and
-  `argocd.argoproj.io/compare-options: IgnoreExtraneous`, and let that sync —
-  ArgoCD reads both off the *live* object. Then move the file. Skip it and the
-  old owner deletes the resource before the new one recreates it.
-- **Deleting an Application by hand: strip
-  `resources-finalizer.argocd.argoproj.io` first**, or the deletion cascades
-  into everything that Application manages.
-- Each version is pinned once, in the `application.yaml` that owns the
-  component. The `Makefile` reads `targetRevision` out of those manifests for
-  the bootstrap installs — never add a second pin.
-- Renovate opens one PR per component and automerges patch and minor.
-  `prometheus-operator-crds` must not lag `kube-prometheus-stack`, so the two
-  are grouped and arrive as one PR, as are the two Rook charts.
-- Long explanations belong in `docs/`, not in YAML comments.
-- Changes land through PRs off `main`.
+`docs/` is the reference for this repository; read it before asking. The
+applications repository's docs are one fetch away at
+<https://homelab-apps.wlkr.ch/llms.txt> (page index) or
+<https://homelab-apps.wlkr.ch/llms-full.txt> (every page). This site publishes
+the same two at <https://homelab.wlkr.ch/llms.txt> and
+<https://homelab.wlkr.ch/llms-full.txt>.
 
 ## Writing docs
 
@@ -87,18 +61,10 @@ The reasoning is in `docs/architecture/gitops.md`.
 
 ## Bootstrap
 
-`make bootstrap` runs `install-cilium` (Gateway API CRDs + Cilium) →
-`install-argo` → `bootstrap-apps` (the AppProjects, then the `argocd`
-Application). `make` installs only what ArgoCD needs in order to run; cert-manager,
-the LoadBalancer pools and the Prometheus operator CRDs all arrive through ArgoCD.
-
-A fresh cluster **looks stuck at OpenBao**: every `ExternalSecret` stays
-Degraded until `make bao-init` and `make bao-unseal`, and `certificates` until
-`make bao-secrets`. That is the design, not a hang.
-
-`make kubeconfig` writes `output/kubeconfig`. `output/credentials/` holds the
-OpenBao unseal keys and the etcd encryption key: generated once, never
-regenerated identically, and `make clean` deletes them.
+`make bootstrap` installs only what ArgoCD needs to run; the steps, what each
+one waits for and where `output/credentials/` comes from are in
+`docs/quickstart.md`. `make clean` deletes the credentials and they cannot be
+regenerated identically.
 
 ## Checks before pushing
 
