@@ -21,10 +21,10 @@ generated artifact comes from it, and the values are baked into the output
 rather than read at boot. The variables are described in
 [Quickstart step 2](../quickstart.md#setup). Every playbook targets the
 `k8s_nodes` group, the parent of `control_plane` and `workers`, which carries
-`ansible_user`, the Python interpreter path and the SSH options.
+`ansible_user` and the SSH options.
 
 !!! warning "Every edit needs a regeneration, and some need two"
-    `make config` re-renders the Ignition configs and PXE menus from the inventory. The four version variables are consumed by `download.yaml` instead, so changing one needs `make download` as well — `make artifacts` runs both. An edit followed by neither changes nothing at all, silently.
+    `make config` re-renders the Ignition configs, PXE menus and router config from the inventory; `make download` fetches what `flatcar_channel`, `flatcar_version`, `syslinux_version` and `kubernetes_version` name. The Flatcar, Kubernetes and kube-vip versions are rendered into the configs too, so a version bump needs `make artifacts`, which runs both. Which target reads which variable is in the [Quickstart table](../quickstart.md#setup). An edit followed by neither changes nothing at all, silently.
 
 `bootstrap_cluster` in the `control_plane` group decides whether the first
 control-plane host renders `kubeadm init` (`true`, the first install) or, like
@@ -40,7 +40,7 @@ is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
 
 | Playbook | Does |
 | --- | --- |
-| `config.yaml` | Generates the bootstrap token, certificate key and etcd encryption key into `output/credentials/` (mode `0700`); renders the Ignition configs via Butane into `output/http` (mode `0600`), the sysupdate config for running nodes beside them, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, and a readable copy of the kubeadm config into `output/tmp/` (the copy that runs is inlined into Ignition) |
+| `config.yaml` | Generates the bootstrap token, certificate key and etcd encryption key into `output/credentials/` (mode `0700`); renders the Ignition configs via Butane into `output/http` (mode `0600`), the sysupdate config for running nodes beside them, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable copy of the kubeadm config into `output/tmp/` (the copy that runs is inlined into Ignition) |
 | `download.yaml` | Fetches the Flatcar kernel, initrd, OS image and its detached signature, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext image; and the syslinux bootloader files, checked the same way against `sha256sums.asc`. The signing keys are fetched and trusted through the primary fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](../operations/control-plane-vip.md#endpoint-name) is not the one the cluster publishes. It touches only `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe default. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |

@@ -64,8 +64,9 @@ that every consumer's sync retries against.
 
 ## Rook-Ceph, not Longhorn or local volumes
 
-Every node contributes a raw partition, and Ceph turns them into replicated
-block storage that survives a node failure. Local `hostPath` volumes would be
+Every worker contributes a raw partition (the control planes keep their disk
+for etcd, see [Disks](../platform/rook-ceph.md#disks)), and Ceph turns them
+into replicated block storage that survives a node failure. Local `hostPath` volumes would be
 simpler and faster, but a node reboot would take its workloads' data with it,
 and reboots are routine here because that is
 [how updates get applied](../operations/upgrades.md). Longhorn is the closer

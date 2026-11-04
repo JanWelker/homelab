@@ -21,7 +21,7 @@ journald and are reachable only over SSH to the node that is misbehaving.
 | If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy, and the [log alerts](#alerting) stop |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
 | Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; both sets of dashboards are listed under [Monitoring](monitoring.md#dashboards) |
-| Files | `payload/platform/logging/`, `payload/platform/loki/`, `payload/platform/alloy/` |
+| Files | `payload/platform/loki/` and `payload/platform/alloy/`, one chart Application each (`loki`, `alloy`); `payload/platform/logging/`, the `logging` Application: the bucket claim in `bucket.yaml`, `loki-rules.yaml`, the Grafana datasource and the Alloy dashboards |
 
 !!! note "Not Promtail, and not the `grafana/loki` chart"
     Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from `grafana-community/loki`: the OSS chart moved to [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) in March 2026, and what stayed in `grafana/loki` is maintained for Grafana Enterprise Logs customers, pins a `k8s-sidecar` several minor releases behind and closes open-source pull requests with a pointer to the community repository.
@@ -67,11 +67,13 @@ in the line where `| json` can reach them. See
 
 Loki runs as a single binary (`deploymentMode: Monolithic`) and keeps chunks
 in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
-`rook-ceph-block` holds the WAL and the index being built.
+`rook-ceph-block` holds the WAL and the index being built. The bucket is the
+`ObjectBucketClaim` in `logging/bucket.yaml`, with a fixed `bucketName`: a
+generated name carries a random suffix that would have to be read back at
+runtime, a fixed one keeps Loki's config static and identical after a rebuild.
 
 | Setting in `loki/application.yaml` | Why |
 | --- | --- |
-| Fixed `bucketName` on the `ObjectBucketClaim` | A generated name carries a random suffix that would have to be read back at runtime; a fixed one keeps the config static and identical after a rebuild |
 | `singleBinary.extraArgs` `-config.expand-env=true` and `singleBinary.extraEnvFrom` | Rook writes the bucket credentials to a Secret, Loki reads them as `${AWS_ACCESS_KEY_ID}` — nothing in Git |
 | `loki.analytics.reporting_enabled: false` | Loki otherwise sends usage statistics to `stats.grafana.org` a few times a day; same reason as Alloy's switch above |
 | `chunksCache` and `resultsCache` off | Four memcached pods in front of a Loki this size |
@@ -79,7 +81,7 @@ in the [Ceph object store](rook-ceph.md#object-storage); a local PVC on
 | Retention with the compactor enabled | Old chunks are actually deleted |
 | `rulerConfig` | The ruler evaluates LogQL alerts and posts them to Alertmanager; without it the audit log and the journal are query-only. Rules come from local files the chart's sidecar copies out of `loki_rule` ConfigMaps, so `storage.type` is `local` rather than the bucket the chart would pick; `rule_path` is the ruler's scratch directory and must not be the rules directory |
 | `rbac.namespaced: true` and `sidecar.rules.resource: configmap` | The rules are ConfigMaps in `logging`, so a Role there replaces the chart's cluster-wide ClusterRole, for the same reason as Alloy's `rbac.rules` above; the chart's binding could not be repointed because a `roleRef` is immutable. `resource: configmap` keeps the sidecar from listing Secrets |
-| `retention_stream` for the `findings-history` container | The daily [Trivy summary](trivy-operator.md#history) is a few lines and the only long-range record of findings, so that one stream stays a year |
+| `retention_stream` for the `findings-history` container | The daily [Trivy summary](trivy-operator.md#history) is a few lines and the only long-range record of findings, so that one stream outlives the general `retention_period` by far |
 
 ### Alerting
 

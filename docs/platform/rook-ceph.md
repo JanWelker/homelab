@@ -18,7 +18,7 @@ data after a node dies, and the one with the steepest learning curve. Check
 | If it is down | Every pod with a volume — `openbao` first, which turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
 | UI | `rook.infra.k8s.wlkr.ch` |
-| Files | `payload/platform/rook-ceph-operator/`, `payload/platform/rook-ceph-cluster/`, `payload/platform/rook-ceph/` |
+| Files | `payload/platform/rook-ceph-operator/`: the `rook-ceph` chart, the operator itself. `payload/platform/rook-ceph-cluster/`: the `rook-ceph-cluster` chart, whose `valuesObject` holds the `CephCluster`, the object store and the storage classes. `payload/platform/rook-ceph/`: the CSI driver and its RBAC, the dashboards and the UI route |
 
 ## Configuration
 
@@ -55,17 +55,20 @@ A `CephObjectStore` provides an S3 endpoint at
 live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for
 [Velero](velero.md#configuration), whose S3 client only signs cleanly over
-TLS. Two RGW instances keep
+TLS. More than one RGW instance (`gateway.instances`) keeps
 a node reboot from stalling a backup, which only holds while they sit on
 separate nodes: `gateway.placement` carries the spread constraint, because the
 `placement.all` block belongs to the `CephCluster` and never reaches this CR.
-It is a hard one: both gateways are daemon `a`, so on one node the exporter
+It is a hard one: every gateway is daemon `a`, so on one node the exporter
 reports their counters under the same labels and Prometheus drops them, and
 the descheduler never evicts a `system-cluster-critical` pod to fix that.
-The data pool is erasure coded 2+1 — 1.5x overhead rather than 3x, safe at
-`failureDomain: host` with three or more workers.
+The data pool is erasure coded (`dataChunks` and `codingChunks`): less
+overhead than three replicas, safe at `failureDomain: host` only with more
+workers than chunks.
 
 ### Monitoring
+
+In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
@@ -122,7 +125,7 @@ deliberately on it: the kernel client krbd does not implement `aes256k`, so
 CSI keys moved to it make every `rbd map` fail with
 `map failed: (22) Invalid argument` while Ceph reports the rotation a success.
 Two ciphers in one cluster trigger `AUTH_EMERGENCY_CIPHERS_SET` and buy no
-security.
+security. In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
@@ -196,8 +199,8 @@ chain in the order it breaks and stops at the first missing link:
 | a 1 GiB PVC binds and is cleaned up | the only check that proves the other five |
 
 The last one asks for a volume the way a workload would and waits `TIMEOUT`
-seconds (120 by default); `NAMESPACE` and `CLASS` override where and what it
-asks for.
+seconds (default in `scripts/storage-check.sh`); `NAMESPACE` and `CLASS`
+override where and what it asks for.
 
 ## Pitfalls
 
@@ -223,21 +226,20 @@ PVC — `data-openbao-0` on a fresh bootstrap — stays `Pending`.
 
     ```bash
     kubectl -n rook-ceph logs job/rook-ceph-osd-prepare-<node> | tail -3
-    # skipping device "nvme0n1p2" because it contains a filesystem "ceph_bluestore"
+    # skipping device "nvme0n1p10" because it contains a filesystem "ceph_bluestore"
     # skipping osd.3: "..." belonging to a different ceph cluster "..."
     ```
 
-2. Rebuild the node; the [installer](../architecture/boot-process.md) wipes
-   the disk:
-
-    ```bash
-    make reinstall LIMIT=<node>
-    ```
+2. Rebuild the node, steps 3 to 7 of
+   [Rebuilding or repartitioning a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node):
+   `make reinstall` only arms the PXE menu, and the
+   [installer](../architecture/boot-process.md) wipes the disk when the node
+   network-boots.
 
 3. If the node cannot be rebuilt now, wipe the partition by hand over SSH.
    `wipefs` removes the signature Rook skips on; the `dd` removes the
-   BlueStore label behind it. Address it by label — the partition number
-   differs between control-plane and worker nodes:
+   BlueStore label behind it. Address it by label, as Ignition does, rather
+   than by the device name in the log:
 
     ```bash
     sudo wipefs -a /dev/disk/by-partlabel/rook-osd

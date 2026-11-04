@@ -50,6 +50,16 @@ incident review.
     symptom-to-cause table. If it is a stalled install, the
     [PXE troubleshooting table](quickstart.md#troubleshooting-pxe-boot).
 
+- **I am making a change**
+
+    ---
+
+    [Development](development/index.md) for the checks a pull request must
+    pass, [GitOps Strategy](architecture/gitops.md) for what a merge does to
+    the cluster, and the
+    [repository layout](architecture/index.md#repository-layout) for where
+    things live.
+
 </div>
 
 ## The stack in one table

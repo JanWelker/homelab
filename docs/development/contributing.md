@@ -18,12 +18,27 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # ansible-lint, gitleaks, markdownlint, ruff, pytest, yamllint, docs build
-uv run zensical build --clean --strict  # docs alone; strict fails on broken links and orphan pages
+uv run pre-commit run --all-files       # everything below, plus gitleaks
+```
 
-# Before touching payload/: valid objects, and what Helm will actually render
-kubectl apply --dry-run=client -f payload/platform/<component>/
+The same checks, one at a time:
+
+```bash
+uv run yamllint -f github .
+uv run zensical build --clean --strict        # docs site
+markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
+uv run ruff check . && uv run ruff format --check .   # python only
+uv run pytest -q                              # python only
+cd ansible && uv run ansible-lint             # ansible only
+```
+
+Before touching `payload/`, render what Helm will actually apply; the
+`kubectl` line needs a kubeconfig, since even a client-side dry run asks the
+API server for its resource types.
+
+```bash
 helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
+kubectl apply --dry-run=client -f payload/platform/<component>/
 ```
 
 `--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
@@ -32,6 +47,38 @@ workflow comments the rendered ArgoCD manifest diff between `main` and your
 branch; read it, since a three-line values change can render as two hundred
 lines of different objects. The full list of workflows is in
 [Maintenance](maintenance.md#ci-workflows).
+
+## Make targets
+
+Every target in the `Makefile`, and the page that explains it. The ones that
+touch the cluster read `output/kubeconfig` (`KUBECONFIG=<file>` picks
+another).
+
+| Target | Does | Page |
+| --- | --- | --- |
+| `setup` | Creates the virtualenv with every tool | [Setup](#setup) |
+| `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](../quickstart.md#setup) |
+| `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](../quickstart.md#setup), [Ansible](../architecture/ansible.md#playbooks) |
+| `artifacts` | `download` then `config` | [Quickstart](../quickstart.md#setup) |
+| `serve` | Runs the DHCP-proxy, TFTP and HTTP boot server | [Boot server](../architecture/boot-process.md#boot-server) |
+| `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](../operations/nodes.md#rebuilding-or-repartitioning-a-node) |
+| `reinstall-cancel` | Disarms them again | [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot) |
+| `kubeconfig` | Copies the admin kubeconfig to `output/kubeconfig` | [Quickstart](../quickstart.md#setup) |
+| `check-context` | Guard the cluster targets depend on: fails without a kubeconfig | |
+| `bootstrap` | `install-cilium`, `install-argo`, `bootstrap-apps` in one go | [Quickstart](../quickstart.md#setup) |
+| `install-cilium` | Gateway API CRDs and Cilium, at the pinned versions | [Quickstart](../quickstart.md#setup) |
+| `install-argo` | The argo-cd chart, at the pinned version | [Quickstart](../quickstart.md#setup) |
+| `bootstrap-apps` | The AppProjects and the `argocd` Application; ArgoCD owns everything after | [Quickstart](../quickstart.md#setup) |
+| `storage-check` | Walks the Rook chain and binds a test PVC | [Is storage ready?](../platform/rook-ceph.md#is-storage-ready) |
+| `bao-init` | Initialises, unseals and configures OpenBao once | [OpenBao](../platform/openbao.md#bootstrap) |
+| `bao-unseal` | Unseals every sealed replica from the key file (`KEYFILE=<file>` picks another) | [OpenBao](../platform/openbao.md#unsealing-after-a-restart) |
+| `bao-policies` | Rewrites ESO's policies and Kubernetes auth roles | [OpenBao](../platform/openbao.md#kubernetes-auth) |
+| `bao-secrets` | Prompts for the typed secrets and writes them | [OpenBao](../platform/openbao.md#bootstrap) |
+| `bao-rotate-root` | Replaces a kept root token with the operator login | [OpenBao](../platform/openbao.md#operator-credential) |
+| `claude-session-pat` | Stores (`SESSION=<name>`) or removes (`DELETE=1`) one agent session's GitHub token | [Claude agents](https://homelab-apps.wlkr.ch/claude-agents/) |
+| `untaint`, `taint` | Removes and restores the control-plane taint | [Single-node clusters](../quickstart.md#single-node-clusters) |
+| `fonts`, `fonts-check` | Downloads the pinned webfonts, or diffs them against what is committed | [Fonts](#fonts) |
+| `clean-artifacts`, `clean` | Deletes the generated files, or everything under `output/` after asking | [Repository layout](../architecture/index.md#repository-layout) |
 
 ## Branches and commits
 
@@ -53,9 +100,8 @@ The body explains *why*; the diff already says what.
 
 `.github/CODEOWNERS` assigns every path to the repository owner, which requests
 that review; it is not required, because an author cannot approve their own
-pull request. What `main` requires is the `ci-ok` check. Renovate PRs for patch
-and minor updates automerge once it is green; majors wait for a human — see
-[Automerge policy](maintenance.md#automerge-policy).
+pull request. What `main` requires is the `ci-ok` check; which Renovate PRs
+merge on it alone is in [Automerge policy](maintenance.md#automerge-policy).
 
 `.agent/rules/general-rules.md` holds the standing rules for AI coding agents
 working here: GitOps only, docs in `docs/`, no hand-edited versions. Keep it in

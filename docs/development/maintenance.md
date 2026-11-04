@@ -32,7 +32,7 @@ Configured in `renovate.json`, on top of the shared preset
 [JanWelker/renovate-config](https://github.com/JanWelker/renovate-config),
 which holds the policy for every repository. Every component gets its own pull
 request so a failing update never holds up an unrelated one; the only groups
-are the pairs below that must move together.
+are the sets below that must move together.
 
 ### Automerge policy
 
@@ -53,9 +53,11 @@ are the pairs below that must move together.
     `gitleaks` likewise; the `external-snapshotter` tag with the
     `snapshot-controller` image it pins, because upstream's manifest at a tag
     names the previous release's image (the image is a `registry.k8s.io` one,
-    so the pair waits for a human like every third-party image there); and every Python pin (`requires-python`, `.python-version`, the
-    `python` images), because `uv sync` fails when they name different
-    minors.
+    so the pair waits for a human like every third-party image there); the
+    two ARC charts, because the controller deletes a scale set whose chart
+    version differs from its own; and every Python pin (`requires-python`,
+    `.python-version`, the `python` images), because `uv sync` fails when
+    they name different minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new
     release already satisfies; `rangeStrategy: bump` is what makes Renovate
     open a PR for the linters and the docs generator at all.
@@ -75,8 +77,11 @@ are the pairs below that must move together.
 Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and
 pre-commit hooks, plus custom regex managers for the versions in
-`ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, and any
-`# renovate:` annotation under `payload/`. The `Makefile` is deliberately not
+`ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, any
+`# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
+and the tool versions the workflows under `.github/workflows/` install by
+name rather than by action (the diff-preview image, `markdownlint-cli2`,
+`renovate` and Trivy). The `Makefile` is deliberately not
 tracked: the bootstrap targets read `targetRevision` out of the owning
 `application.yaml` — see [Version pins](../architecture/gitops.md#version-pins).
 

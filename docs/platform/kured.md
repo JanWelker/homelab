@@ -22,8 +22,8 @@ without draining, on a cluster where every node is a storage node.
 
 ## Configuration
 
-Three mechanisms stage an update on disk, and all three signal it by touching
-`/run/reboot-required`, Kured's default sentinel. `/run` is tmpfs, so the
+An update stages on disk and signals it by touching `/run/reboot-required`,
+Kured's default sentinel. `/run` is tmpfs, so the
 marker clears itself on reboot.
 
 | Mechanism | Stages | Signals by |
@@ -57,11 +57,11 @@ The values are in `payload/platform/kured/application.yaml`; the reasoning:
 | Setting | Why |
 | --- | --- |
 | No reboot window | Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock |
-| `concurrency` of one and `lockReleaseDelay` of five minutes | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
+| `concurrency` and `lockReleaseDelay` | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
 | `forceReboot: false` | A node that will not drain is a node worth looking at |
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
-| `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a six-hour window, longer than Velero's default four-hour limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for six hours at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
+| `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a window longer than Velero's default limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for that long at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
 | `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from [Rebooting a node](../operations/nodes.md): a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](monitoring.md#scrape-targets) |
 
 !!! note "The regex means the opposite of what it looks like"
@@ -69,8 +69,18 @@ The values are in `payload/platform/kured/application.yaml`; the reasoning:
 
 ## Usage
 
-To stop Kured rebooting anything without uninstalling it, remove the sentinel
-or scale the DaemonSet to zero. To force a node to reboot on the next pass:
+To stop Kured rebooting anything without uninstalling it, take its cluster
+lock by hand; it holds until the annotation is removed. Clearing the sentinel
+does not work, because `flatcar-reboot-sentinel.timer` in
+`ansible/templates/butane_node_config.yaml.j2` re-touches it while an update
+is staged, and a DaemonSet cannot be scaled.
+
+```bash
+kubectl -n kured annotate ds kured weave.works/kured-node-lock='{"nodeID":"manual"}'
+kubectl -n kured annotate ds kured weave.works/kured-node-lock-    # release it
+```
+
+To force a node to reboot on the next pass:
 
 ```bash
 ssh core@<node> sudo touch /run/reboot-required
@@ -84,7 +94,12 @@ a blocked node, not a queued one.
 ## Health check
 
 ```bash
-# Which nodes want a reboot
+# Which nodes want a reboot: kured_reboot_required is the sentinel's presence, per node
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090 &
+curl -s localhost:9090/api/v1/query --data-urlencode 'query=kured_reboot_required == 1' \
+  | jq -r '.data.result[].metric.node'
+
+# Which node is being rebooted right now
 kubectl get nodes -o json | jq -r '.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'
 
 # Whether a node has staged anything

@@ -5,8 +5,8 @@ description: "external-dns publishes Route53 records from HTTPRoutes, closing th
 # external-dns
 
 [external-dns](https://kubernetes-sigs.github.io/external-dns/) creates the
-Route53 records for this cluster's hostnames from the `HTTPRoute` objects that
-already declare them. Without it every hostname is a record made by hand in
+Route53 records for this cluster's hostnames from the `HTTPRoute`, `TLSRoute`
+and `GRPCRoute` objects that already declare them. Without it every hostname is a record made by hand in
 the AWS console, a step that lives nowhere in the repository and leaves a
 record pointing at nothing when the workload goes.
 
@@ -22,9 +22,11 @@ record pointing at nothing when the workload goes.
 
 ## Configuration
 
+In `application.yaml`'s `valuesObject`:
+
 | Setting | Why |
 | --- | --- |
-| Source `gateway-httproute` | `HTTPRoute` is the only thing here that publishes a hostname; the address comes from the route's parent `Gateway`, so nothing is written down twice |
+| Sources `gateway-httproute` and `gateway-grpcroute` | Every HTTP and gRPC hostname here is a route; the address comes from the route's parent `Gateway`, so nothing is written down twice. The `GRPCRoute` is Argo CD's, see [CLI access](argocd.md#cli-access) |
 | `target` annotation on `apps-gateway` | The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every `*.k8s.wlkr.ch` record gets it once. `infra-gateway` has none: those names stay LAN-only on purpose |
 | Source `gateway-tlsroute` | The agents' SSH hostnames are `TLSRoute`s, one per session. This version reads `TLSRoute` `v1`, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see [SSH listener](gateway-api.md#ssh-listener) |
 | Domain filter | Nothing outside that subtree is touched |

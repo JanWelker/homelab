@@ -19,9 +19,10 @@ Each node must have:
 
 - A NIC that supports PXE booting
 - An NVMe drive, or a different `install_disk` in `inventory.yaml`
-- Enough disk for Flatcar, the root filesystem (`size_mib` in
-  `ansible/templates/butane_node_config.yaml.j2`), and the remainder, which
-  Rook-Ceph takes as OSD storage
+- Enough disk for Flatcar and the root filesystem. On workers the root
+  partition is capped (`size_mib` in
+  `ansible/templates/butane_node_config.yaml.j2`) and Rook-Ceph takes the
+  remainder as OSD storage; control planes keep the whole disk
 - At least 4 GB of RAM: the installer runs from a RAM disk and streams the
   Flatcar image straight to disk
 
@@ -70,14 +71,25 @@ the same L2 network segment as the nodes.
 2. **Configure Inventory**:
     Edit `ansible/inventory.yaml` to define your target nodes and settings.
 
-    | Variable | Why it matters |
-    | --- | --- |
-    | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. |
-    | `mac_address` (per host) | Selects which generated PXE menu a node picks up |
-    | `ansible_host` (per host) | The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs |
-    | `install_disk` | Target disk for the Flatcar install (`/dev/nvme0n1` by default). **Wiped completely** — partitions, GPT and a device-level discard — before the install |
-    | `kubernetes_version`, `flatcar_version` | Artifact versions to download |
-    | `bootstrap_cluster` | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) |
+    Every variable, and the `make` target that bakes it into `output/`, so
+    you know what to re-run after an edit:
+
+    | Variable | Why it matters | Read by |
+    | --- | --- | --- |
+    | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. | `make config`, `make serve` |
+    | `mac_address` (per host) | Selects which generated PXE menu a node picks up | `make config`, `make reinstall`, `make serve` |
+    | `ansible_host` (per host) | The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs | `make config`, `make reinstall` |
+    | `install_disk` | Target disk for the Flatcar install, overridable per host for a node whose disk sits elsewhere. **Wiped completely** — partitions, GPT and a device-level discard — before the install | `make config` |
+    | `control_plane_vip`, `control_plane_vip_interface` | The API endpoint kubeadm bakes into every certificate and kubeconfig, and the NIC kube-vip advertises it on; see [Control Plane VIP](operations/control-plane-vip.md) | `make config`; the VIP also `make kubeconfig`, `make reinstall` |
+    | `control_plane_endpoint_host` | The name or address nodes join through; a name only on a fresh build, see [Endpoint name](operations/control-plane-vip.md#endpoint-name) | `make config`, `make kubeconfig`, `make reinstall` |
+    | `pod_subnet`, `service_subnet` | kubeadm's cluster networks; change only on a collision with your LAN | `make config` |
+    | `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer the Gateway addresses are announced to; rendered into `output/router/frr-bgp.conf` for the router, and `payload/platform/cilium/bgp.yaml` must say the same; see [Cilium](platform/cilium.md#configuration) | `make config` |
+    | `flatcar_channel`, `flatcar_version`, `syslinux_version` | The OS image and bootloader to fetch; `flatcar_version` also names the image the installer writes | `make download`; `flatcar_version` also `make config` |
+    | `kubernetes_version` | The sysext image to fetch, and the version kubeadm and sysupdate are rendered with | `make download`, `make config` |
+    | `kube_vip_version` | The bootstrap static pod only; the running image is pinned in `payload/platform/kube-vip/`; see [Inventory](architecture/ansible.md#inventory) | `make config` |
+    | `bootstrap_cluster` (`control_plane` group) | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) | `make config`, `make reinstall` |
+    | `control_plane` / `workers` membership | Decides the node role, and with it the partition layout and the kubeadm command | `make config` |
+    | `ansible_user`, `ansible_ssh_common_args` (`k8s_nodes` group) | How the playbooks reach a running node for the kubeconfig and the join-credential renewal | `make kubeconfig`, `make config` |
 
 3. **Initialize Environment**:
     Creates the `uv` virtual environment and installs dependencies:
@@ -167,7 +179,7 @@ the same L2 network segment as the nodes.
     - If a node stalls, see [Troubleshooting PXE boot](#troubleshooting-pxe-boot).
 
     !!! tip "Watching an install"
-        `journalctl -u flatcar-install -f` as `core@<node>` shows the wipe and the write (so does a monitor on the node). A failed install does *not* reboot — the node stays in the PXE environment with the journal intact.
+        `journalctl -u flatcar-install -f` as `core@<node>` (`flatcar-install-uefi` on UEFI firmware) shows the wipe and the write (so does a monitor on the node). A failed install does *not* reboot — the node stays in the PXE environment with the journal intact.
 
 8. **Retrieve Kubeconfig**:
     Once the control plane node responds to SSH:
@@ -227,8 +239,14 @@ the same L2 network segment as the nodes.
         GitOps. Follow the bootstrap with `kubectl` instead.
 
         **Tip — the UI before Authentik exists:** re-enable the local admin
-        for as long as you need it. The restart is what generates the
-        password Secret:
+        with a patch. It holds only until the next step: right now ArgoCD is
+        the plain Helm release `make install-argo` made, and
+        `make bootstrap-apps` hands it to the self-healing `argocd`
+        Application, whose first sync puts `admin.enabled` back to what
+        `payload/argocd/values.yaml` says. After that the only way in is the
+        pull request in
+        [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down).
+        The restart is what generates the password Secret:
 
         ```bash
         kubectl -n argocd patch cm argocd-cm --type merge \
@@ -241,8 +259,7 @@ the same L2 network segment as the nodes.
         kubectl -n argocd port-forward svc/argocd-server 8080:80   # http://localhost:8080, user admin
         ```
 
-        Set `admin.enabled` back to `"false"` once Authentik can log you in —
-        see [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down).
+        Nothing to undo: the handover reverts the patch.
 
     - **Hand the cluster over to ArgoCD**:
 
@@ -250,8 +267,7 @@ the same L2 network segment as the nodes.
         make bootstrap-apps
         ```
 
-        Applies the `apps`, `infra` and `system` AppProjects, then the
-        self-managing `argocd` Application, which brings the `platform`
+        Applies the AppProjects, then the self-managing `argocd` Application, which brings the `platform`
         ApplicationSet and with it every component at once. They converge in
         the [order their dependencies allow](platform/index.md#rollout-order);
         watch them settle:
@@ -299,10 +315,13 @@ the same L2 network segment as the nodes.
     make bao-secrets
     ```
 
-    It prompts, with input hidden, for the values that belong to accounts
-    outside the cluster: two Route53 IAM key pairs (why two is in
-    [OpenBao](platform/openbao.md)), and the SMTP login, password and alert
-    recipient. Everything random — `kv/authentik/config` with the OIDC client
+    It prompts, with input hidden, for every value that belongs to an
+    account outside the cluster: the DNS, mail and other third-party logins
+    listed at the top of `scripts/bao-secrets.sh`, each against a path in
+    [OpenBao &rarr; KV layout](platform/openbao.md#kv-layout). A required
+    value has no skip; an optional one is issued by something that runs on
+    the cluster and takes Enter until it exists. A fork without one of those
+    accounts removes its prompt from the script. Everything random — `kv/authentik/config` with the OIDC client
     credentials ArgoCD and Grafana read back, Grafana's break-glass admin
     password — is not prompted for: a `PushSecret` writes it once the store
     validates, see [Generated secrets](platform/openbao.md#generated-secrets).
@@ -349,8 +368,8 @@ the same L2 network segment as the nodes.
 The [documented layout](architecture/index.md#cluster-layout) has dedicated
 workers, so the control-plane taint stays. On a single node:
 
-- Remove the taint any time after step 8 and **before step 9**. Cilium
-  tolerates the taint, but ArgoCD does not, so `make install-argo` would wait
+- Remove the taint once `make kubeconfig` has answered and **before
+  `make install-argo`**. Cilium tolerates the taint, but ArgoCD does not, so `make install-argo` would wait
   on unschedulable pods until Helm's `--wait` times out:
 
     ```bash

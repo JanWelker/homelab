@@ -30,8 +30,9 @@ jq -r '.items[] | .metadata.namespace as $ns
     the `TrivyContainerNotScanned` alert reconciles running images against
     scanned ones continuously.
 - **An empty `fixedVersion` means no fix is known, not no problem.** Unfixed
-    findings are kept (`ignoreUnfixed: false`) because a cluster of them in one
-    base image says the base image is the wrong one.
+    findings are kept (`ignoreUnfixed` in
+    `payload/platform/trivy-operator/application.yaml`) because a cluster of
+    them in one base image says the base image is the wrong one.
 - **The worst findings are usually not the project's code.** The `target`
     names the binary, and which binary decides whether anything can be done and
     by whom.
@@ -40,8 +41,10 @@ jq -r '.items[] | .metadata.namespace as $ns
     by the advisory's score and Trivy by the distribution's; a finding Trivy
     has at `UNKNOWN` can be critical there. Use it for which images share a
     component and for what changed between two tags.
-- **Ten days of Prometheus is not a trend.** The daily summary the operator
-    ships to Loki is: see [History](../platform/trivy-operator.md#history).
+- **Prometheus is not a trend.** It keeps the `retention` in
+    `payload/platform/monitoring/application.yaml`; the daily summary the
+    operator ships to Loki is the history, see
+    [History](../platform/trivy-operator.md#history).
 
 Two artifacts recur. A `ConfigAuditReport` has no TTL and goes only when its
 ReplicaSet is garbage-collected, so superseded revisions keep their findings on
@@ -83,4 +86,4 @@ fixable here rather than upstream. Two checks are most of the volume:
 | Images that start as root by design (Home Assistant) | `runAsNonRoot` or a read-only root would change how they run; seccomp is set |
 | Read-only root on charts that write under `/` at runtime (Grafana sidecars, OpenBao) | The chart or image decides where; guessing costs an outage (#663) |
 | Every critical or high `ClusterRole` | A chart's operator role, or Kubernetes' own `admin`, `edit` and `cluster-admin`; not narrowable without forking a chart — see [Security Posture](../architecture/security.md#authorization) |
-| Node files at 644: `KCV-0056`, `KCV-0069`, `KCV-0075`, `KCV-0077` | Accepted: the CNI files, the kubelet unit and config and the public CA certificate hold no secret, so reading them gains nothing — see [Triage 2026-09-20](triage-2026-09-20.md#infra-the-nodes) for the modes provisioning still applies |
+| The kubelet unit at 644: `KCV-0069` | Accepted: it ships in the signed, read-only sysext and holds no secret. The kubelet config, the CA certificate and the CNI directory (`KCV-0077`, `KCV-0075`, `KCV-0056`) are set to the CIS modes by the `tmpfiles` rule in `ansible/templates/butane_node_config.yaml.j2`, because kubeadm rewrites them at 644 on every `init`, `join` and `upgrade`; the dispositions are in [Triage 2026-09-20](triage-2026-09-20.md#infra-the-nodes) |

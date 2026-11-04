@@ -45,18 +45,13 @@ Enforcement is set to what already works, so nothing running breaks, while
 `warn` and `audit` show what a stricter level would catch; tightening later is
 an informed change.
 
-| Namespace | Enforce | Why not stricter |
+The level per namespace is in `pod-security.yaml`; the rule behind it:
+
+| Enforce | Which namespaces | Why not stricter |
 | --- | --- | --- |
-| `kube-system` | `privileged` | Cilium, kube-vip and the control plane use host networking and host paths |
-| `rook-ceph` | `privileged` | OSDs need raw block devices |
-| `node-exporter` | `privileged` | node-exporter is host-networked and reads `/proc` and `/sys`; kube-prometheus-stack places it here with `namespaceOverride` so the rest of the stack need not follow |
-| `trivy-system` | `privileged` | node-collector hostPath-mounts the kubelet, etcd and CNI directories for the CIS node checks |
-| `backup` | `privileged` | The etcd snapshot and defrag jobs use host networking and the etcd certificates; Velero's node-agent mounts the kubelet's pod directory |
-| `logging` | `privileged` | Alloy hostPath-mounts the pod logs and the Hubble export |
-| `kured` | `privileged` | kured runs privileged in the host PID namespace to reboot the node |
-| `monitoring` | `baseline` | Grafana's `init-chown-data` container runs as root to own the data volume |
-| `cert-manager`, `external-secrets`, `argocd` | `baseline` | — |
-| `authentik`, `descheduler`, `external-dns`, `kubelet-csr-approver`, `openbao`, `cilium-secrets`, `default`, `kube-public`, `kube-node-lease` | `restricted` | — |
+| `privileged` | Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured | Host networking, the host PID namespace, raw block devices or a hostPath under the kubelet, etcd or log directories, all of which `baseline` forbids. node-exporter has a namespace of its own (`namespaceOverride`) so the rest of the monitoring stack need not follow it |
+| `baseline` | Those with a container that starts as root or escalates: Grafana's `init-chown-data`, the runners and their job pods, and the operators not yet checked against `restricted` | Reduced when the chart offers a non-root path, one namespace at a time |
+| `restricted` | Everything else, and the namespaces that run no pods | — |
 
 `privileged` here means "not yet reduced", not "unexamined": `audit` and `warn`
 are still `baseline` or `restricted` on all of them. Namespace objects are
@@ -258,11 +253,12 @@ matches one identity.
 
 ### Rollout
 
-A new policy is not enforced on arrival. `policyAuditMode` in
-`payload/platform/cilium/values.yaml` makes every agent evaluate each verdict
-and log it with `AUDIT` instead of dropping, and those verdicts reach Loki the
-way drops do. The mode is cluster-wide, so while it is on the older policies
-are not enforced either.
+A new policy is enforced on arrival: `policyAuditMode` in
+`payload/platform/cilium/values.yaml` is off. Switched on, it makes every
+agent evaluate each verdict and log it with `AUDIT` instead of dropping, and
+those verdicts reach Loki the way drops do. The mode is cluster-wide, so
+while it is on the older policies are not enforced either, which is why a
+batch of new policies goes through it together.
 
 1. Merge the values change; the agents roll on their own. `Enabled` on
    every node before anything else merges:
@@ -328,7 +324,7 @@ enforcement is reversible by removing that label.
 2. Reboot one worker with no policy selecting it and watch it return `Ready`,
    as in [Rebooting a node](../operations/nodes.md#rebooting-a-node).
 
-3. Merge `host-firewall-audit.yaml`, a DaemonSet that puts each host endpoint
+3. Merge `payload/platform/cilium/host-firewall-audit.yaml`, a DaemonSet that puts each host endpoint
    back in audit mode within seconds of an agent restart, because any restart
    would otherwise start enforcing that node: a Renovate bump, a value change,
    Kured. Every node must answer `Enabled` before the policy merges:
@@ -372,7 +368,7 @@ enforcement is reversible by removing that label.
     ```
 
 9. Repeat for the workers, then the control planes one at a time. Then delete
-   `host-firewall-audit.yaml` in a pull request.
+   `payload/platform/cilium/host-firewall-audit.yaml` in a pull request.
 
 ## Health check
 

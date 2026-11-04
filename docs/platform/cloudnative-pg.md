@@ -42,8 +42,8 @@ data survives a node loss even when the process does not. Where a workload
 cannot tolerate the restart, `instances: 3` is the change, as
 [Authentik](authentik.md#database) shows.
 
-The operator itself runs two replicas, spread per
-[Replica placement](index.md#replica-placement): the same pod serves the
+The operator itself runs two replicas (`replicaCount` in `application.yaml`'s
+`valuesObject`), spread per [Replica placement](index.md#replica-placement): the same pod serves the
 `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`,
 so a single replica rescheduling through a Kured drain refuses every apply,
 while leader election keeps one of the two reconciling. The chart ships no
@@ -63,7 +63,7 @@ restores to any second inside the retention window, not just to last night.
 | One bucket per database, claimed in its own namespace | The bucket's keys exist only there, so a compromised workload can read or delete its own backups and nobody else's |
 | `https://s3.infra.k8s.wlkr.ch`, not the plain RGW Service | Backups hold every row of the database; the Gateway's TLS is the same path Velero uses |
 | Base backup nightly, after Velero | The two never contend for the object store; WAL archiving covers the hours between |
-| Retention equal to Velero's TTL | One window to reason about: what Velero can no longer restore, the WAL archive cannot either |
+| `retentionPolicy` equal to `schedules.ttl` in `payload/platform/velero/application.yaml` | One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each `backup.yaml` restates the value |
 | Preview databases have none | They are rebuilt from the pull request and deleted with it |
 
 `ObjectStore` is a namespaced resource with no cluster-scoped counterpart, so
@@ -206,7 +206,7 @@ empty with a plugin, which upstream documents as deprecated under CNPG-I.
 objects through kube-state-metrics'
 [custom resource metrics](monitoring.md#scrape-targets):
 `CNPGBackupStale` when a server's last successful base backup is older than
-36 hours, `CNPGBackupFailed` when a Backup from the last 24 hours ended in
+the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in
 `failed`. Both are warnings on the daily mail.
 
 ## Pitfalls
@@ -239,9 +239,10 @@ objects through kube-state-metrics'
    kubectl -n <namespace> get objectstore <db> -o jsonpath='{.status.serverRecoveryWindow}{"\n"}'
    ```
 
-2. In the workloads repository, rename the `Cluster` to `<db>-restore` and
-   replace `bootstrap.initdb` with a recovery from the old store, keeping the
-   old name as `serverName`:
+2. In the workloads repository, add a second `Cluster` named `<db>-restore`
+   beside the original, which stays untouched: every Application prunes, so
+   a renamed `Cluster` is a deleted one. It bootstraps from the old store,
+   keeping the old name as `serverName`:
 
    ```yaml
      bootstrap:
@@ -261,5 +262,9 @@ objects through kube-state-metrics'
    Its own `plugins` entry keeps the same `barmanObjectName` with
    `serverName: <db>-restore`, so the new archive lands beside the old one.
 
-3. Merge, wait for `Cluster in healthy state`, then point the application at
-   `<db>-restore-app` and remove the old `Cluster` in a second PR.
+3. Merge and wait for `Cluster in healthy state`; both databases now run,
+   and the application still reads the original.
+
+4. In a second PR, point the application at `<db>-restore-app`, set the
+   `ScheduledBackup`'s `cluster.name` to `<db>-restore`, and delete the
+   original `Cluster`; the sync prunes it.

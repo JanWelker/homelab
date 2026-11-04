@@ -20,6 +20,7 @@ stay on GitHub.
 | Workflow label | `runs-on: homelab` |
 | Depends on | [OpenBao](openbao.md) for the GitHub App in `kv/arc-runners/github-app` |
 | If it is down | Jobs on `runs-on: homelab` queue on GitHub until a runner registers; nothing else notices |
+| Health check | `kubectl -n arc-systems get pods` &rarr; the controller and one listener per scale set Running |
 | Namespaces | `arc-systems` for the controller and the listeners, `arc-runners` for the runner pods, `arc-jobs` for the job pods the container hook starts |
 | Files | `payload/platform/arc-controller/`, `payload/platform/arc-runners/`, and the three namespaces' files under `payload/platform/security/` |
 
@@ -31,13 +32,13 @@ stay on GitHub.
 | `githubConfigUrl` on the repository, not the organisation | No other repository in the organisation can schedule code onto the cluster |
 | `githubConfigSecret: github-app` | A GitHub App rather than a PAT: no expiry and a token scoped to the installed repository — see [GitHub App](#github-app) |
 | `controllerServiceAccount` spelled out | The chart finds the controller with Helm `lookup`, which Argo CD does not run |
-| `minRunners: 0`, `maxRunners: 10` | No idle pods between pushes; ten lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory |
+| `minRunners` and `maxRunners` | No idle pods between pushes; the ceiling lets several pull requests run their parallel Linux jobs at once without queueing, while the requests stay a fraction of the workers' memory |
 | `containerMode: kubernetes-novolume` | A job with `services:` or `container:` gets its own pod, started by the container hook through the API server. No privileged Docker daemon and no PVC per job. Where that pod runs, and with which token: [Job pods](#job-pods) |
 | `ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER: "false"` | A job without `container:` runs in the runner pod itself, as on a hosted runner |
 | `arc-runners` and `arc-jobs` enforce `baseline` | The runner image uses `sudo`, and a service container such as PostgreSQL starts as root; neither passes `restricted` |
 | `arc-jobs` is exempt from the user-namespace kill | buildah builds the images as root without `CAP_SYS_ADMIN`, which `baseline` forbids, so it re-executes itself in a user namespace; [Tetragon](tetragon.md#enforcement) records those instead of killing them |
 | The runner image as a full reference with a digest | Renovate tracks it; the chart passes the same image to the hook for the job pod's init container |
-| `resources`: 1Gi requested, 4Gi limit | Unmeasured; a test suite with a database beside it fits, and the limit stops a runaway build before it starves the node |
+| `resources` | Unmeasured; the request fits a test suite with a database beside it, and the limit stops a runaway build before it starves the node |
 | A second scale set, `homelab-wait`, for `ci-ok` alone | The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as `maxRunners` fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request |
 
 ### Job pods
@@ -102,7 +103,7 @@ The controller's and listeners' egress, GitHub's API and the Actions service
 only, and Prometheus' scrape of their metrics port, are in
 `payload/platform/security/network-policies/arc-systems.yaml`.
 
-## GitHub App
+### GitHub App
 
 One app per organisation, installed on each repository that has a scale set.
 
@@ -150,9 +151,22 @@ not the hosted `ubuntu-latest`: `git`, `curl`, `jq`, `unzip` and `sudo`, and
 no language toolchains. A job installs what it needs, pinned, or uses a
 `setup-*` action.
 
-To add a repository, install the app on it and add a second chart source to
-`application.yaml` with its own `releaseName`, `githubConfigUrl` and
-`runnerScaleSetName`.
+### Adding a scale set
+
+1. Install the [GitHub App](#github-app) on the repository.
+2. In `payload/platform/arc-runners/application.yaml`, copy a chart source
+   with its own `helm.releaseName`, `githubConfigUrl` and
+   `runnerScaleSetName`; a set that runs job pods keeps `containerMode`,
+   `serviceAccountName` and `ACTIONS_RUNNER_KUBERNETES_NAMESPACE`.
+3. In `job-pods-rbac.yaml`, a ServiceAccount, Role and binding for the set's
+   hook, or `homelab-runner` again when the jobs share its trust level, see
+   [Job pods](#job-pods).
+4. In `payload/platform/security/network-policies/arc-runners.yaml`, the
+   `container-hook` policy selects `actions.github.com/scale-set-name`
+   `homelab` only; a set that runs a hook needs the same rule for its name.
+5. A repository that runs `ci-ok` needs a `-wait` twin of the set, like
+   `homelab-wait`, for the reason in [Configuration](#configuration).
+6. Workflows opt in with `runs-on: <runnerScaleSetName>`.
 
 ## Health check
 

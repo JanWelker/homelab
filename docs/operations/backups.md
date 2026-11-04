@@ -30,12 +30,15 @@ not against losing the cluster, because the backups go with it. Off-site
 replication is the missing piece: RGW supports bucket replication and Velero a
 second `BackupStorageLocation`, and neither is configured. Until then, disaster
 recovery is **Git, the OpenBao unseal keys, and a copy of the latest OpenBao
-and etcd snapshots kept off-cluster**; the nightly backups protect against
-mistakes.
+snapshot and of the two buckets kept off-cluster**
+([Copying a bucket off the cluster](#copying-a-bucket-off-the-cluster)); the
+nightly backups protect against mistakes.
 
-Velero's `PrometheusRule` (`VeleroBackupFailures` critical,
-`VeleroBackupPartialFailures` warning) is what notices a backup that silently
-stopped, and it only reaches whoever Alertmanager is configured to tell — see
+Velero's `PrometheusRule` reports a backup that failed
+(`VeleroBackupFailures`, `VeleroBackupPartialFailures`); only
+`VeleroBackupTooOld` notices one that silently stopped, since a backup hung
+`InProgress` never fails ([Velero](../platform/velero.md#configuration)). All
+of them only reach whoever Alertmanager is configured to tell — see
 [Monitoring](../platform/monitoring.md).
 
 ## Velero
@@ -116,6 +119,10 @@ kubectl -n backup logs job/etcd-defrag-manual
 
 ### Taking one by hand
 
+The snapshot lands in the static pod's `/var/lib/etcd`, which is the node's;
+`kubectl cp` cannot fetch it, because the etcd image is distroless and has no
+`tar`.
+
 ```bash
 kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
   --cacert /etc/kubernetes/pki/etcd/ca.crt \
@@ -123,10 +130,37 @@ kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
   --key /etc/kubernetes/pki/etcd/server.key \
   snapshot save /var/lib/etcd/snapshot.db
 
-kubectl cp kube-system/etcd-<node>:/var/lib/etcd/snapshot.db ./etcd-snapshot.db
+ssh <node> sudo cat /var/lib/etcd/snapshot.db > ./etcd-snapshot.db
+ssh <node> sudo rm /var/lib/etcd/snapshot.db
 ```
 
-Copy it off the cluster immediately.
+Keep the copy off the cluster, like the nightly ones below.
+
+### Copying a bucket off the cluster
+
+Rook writes each bucket's keys into a `Secret` named after its claim
+(`velero-bucket`, `etcd-backup-bucket` in `backup`) and the RGW answers on the
+infra Gateway; see [Requesting a bucket](../platform/rook-ceph.md#requesting-a-bucket).
+
+1. Export the bucket's own keys and the path-style config RGW needs, as in
+   [Re-initialising the repositories](../platform/velero.md#re-initialising-the-repositories).
+
+    ```bash
+    export AWS_ACCESS_KEY_ID=$(kubectl -n backup get secret <claim> -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(kubectl -n backup get secret <claim> -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+    export AWS_CONFIG_FILE=$(mktemp)
+    printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+    ```
+
+2. Mirror the bucket to a disk that is not in the cluster; `sync` is
+   incremental, so a repeat copies only what the last night added.
+
+    ```bash
+    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync s3://<bucket> ./<bucket>
+    ```
+
+The copy is as plain as the bucket: Velero's resource backups are JSON with
+Secrets in them, so store it with the unseal keys, not beside the Git clone.
 
 ## OpenBao
 
@@ -197,11 +231,21 @@ afterwards the pods seal and want the snapshot's keys, not the new cluster's.
       env BAO_TOKEN=<root-token> bao operator raft snapshot restore -force /tmp/snapshot.bao
     ```
 
-3. Unseal every replica with the snapshot's key shares and confirm.
+3. Unseal every replica with the snapshot's key shares and confirm. The script
+   reads `output/credentials/openbao-init.json`, which now holds the new
+   cluster's keys, so point it at the old file with `KEYFILE`.
 
     ```bash
-    make bao-unseal
+    KEYFILE=<old openbao-init.json> make bao-unseal
     kubectl -n openbao exec openbao-0 -- bao status   # Sealed: false
+    ```
+
+4. Put the old key and operator files in place of the new ones, which unseal
+   nothing any more; every later `make bao-*` reads them.
+
+    ```bash
+    mv <old openbao-init.json> output/credentials/openbao-init.json
+    mv <old openbao-operator.json> output/credentials/openbao-operator.json
     ```
 
 ### etcd restore
@@ -211,7 +255,9 @@ come back together. Flatcar ships no `etcdutl`, so run it from the etcd image
 the CronJob uses. Upstream:
 [Restoring an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster).
 
-1. Copy the snapshot to every control-plane node as `/var/lib/etcd-restore/snapshot.db`.
+1. Copy the snapshot, from the off-cluster copy of the `etcd-backup` bucket
+   ([Copying a bucket off the cluster](#copying-a-bucket-off-the-cluster)),
+   to every control-plane node as `/var/lib/etcd-restore/snapshot.db`.
 2. On every control-plane node, stop the API server and etcd by moving their
    static pod manifests out, and wait until neither container is listed.
 
@@ -264,14 +310,17 @@ the CronJob uses. Upstream:
 
 ### Rebuild from scratch
 
-1. Have the Git repository, the OpenBao unseal keys and operator login, and an
-   OpenBao snapshot; an etcd snapshot is optional and skips re-issuing
-   certificates.
-2. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.
-3. When every `ExternalSecret` is Degraded, either `make bao-init` and restore
-   the OpenBao snapshot as above, or `make bao-init`, re-enter the typed
-   secrets with `make bao-secrets`, and let the `PushSecret`s generate the
-   rest anew — which loses whatever was encrypted with the old keys,
-   Velero's volume backups among them.
-4. Once the platform is Synced and Healthy, restore workloads with a Velero
-   restore from the copied-off backup.
+1. Have the Git repository, the OpenBao unseal keys and operator login, an
+   OpenBao snapshot and the off-cluster copy of the `velero` bucket; an etcd
+   snapshot is optional and skips re-issuing certificates.
+2. Move the old `openbao-init.json` and `openbao-operator.json` out of
+   `output/credentials/`: `make bao-init` refuses while either exists, because
+   keys from another cluster unseal nothing.
+3. Provision the cluster per the [Quickstart](../quickstart.md) from step 1.
+4. When every `ExternalSecret` is Degraded, `make bao-init`, then either
+   restore the OpenBao snapshot as above, which puts the old files back, or
+   re-enter the typed secrets with `make bao-secrets` and let the
+   `PushSecret`s generate the rest anew — which loses whatever was encrypted
+   with the old keys, Velero's volume backups among them.
+5. Once the platform is Synced and Healthy, restore workloads with a Velero
+   restore from the copied-off `velero` bucket.

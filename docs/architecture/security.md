@@ -11,8 +11,9 @@ decision from an oversight.
 ## Assumed trust boundary
 
 The cluster assumes a **trusted L2 network segment**: anything with a port on
-it is treated as friendly. There is no VPN requirement, no mutual TLS between
-components, and no network segmentation inside the cluster.
+it is treated as friendly. There is no VPN requirement and no mutual TLS
+between components; inside the cluster, the default-deny network policies in
+[Authorization](#authorization) are the segmentation.
 
 The published hostnames are a partial exception. Certificates come from Let's
 Encrypt through a DNS-01 challenge against a public zone, so
@@ -36,8 +37,9 @@ of the cluster's own security exists.
 | The OS image is signature-checked | `flatcar-install` is given `-b`/`-V`, so the node downloads the image and its detached signature and checks both against Flatcar's key before writing anything |
 
 The mitigation is time: `make serve` is a foreground command, the bootstrap
-token has a 24 hour TTL and the certificate key expires after two hours, and
-`make config` re-arms both only for those windows. The
+token and the certificate key expire (the windows are in
+[Switching back to local boot](boot-process.md#switching-back-to-local-boot)),
+and `make config` re-arms both only for those windows. The
 encryption key has no clock, which is why the HTTP server listens only on
 `boot_server_ip`, serves files by name and lists nothing. TFTP listens on
 every interface, because macOS lets an unprivileged process bind port 69 only
@@ -154,7 +156,7 @@ go without it. Policy, retention and queries are in
 ## Authorization
 
 **AppProjects constrain the workloads, not the platform.**
-`payload/platform/argocd-projects/projects.yaml` defines three. `infra` allows
+`payload/platform/argocd-projects/projects.yaml` defines them. `infra` allows
 `sourceRepos: "*"` and every group and kind in every namespace: it is this
 repository deploying this repository, and a restriction there guards against
 nothing the PR review does not. `system` is confined to the `argocd` namespace.

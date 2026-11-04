@@ -23,22 +23,27 @@ termination. The improvement is the split in ownership: the cluster owns the
 ## Configuration
 
 Two Gateways in `kube-system`, each with a dedicated address from the Cilium
-L2 pool, defined in `gateways.yaml`:
+L2 pool, defined in `gateways.yaml`. `apps-gateway` serves user-facing
+workloads under the router's public address; `infra-gateway` serves the
+platform UIs, LAN only. A route names a listener by `sectionName`:
 
-| Gateway | Hostname pattern | Used for |
-| --- | --- | --- |
-| `apps-gateway` | `*.k8s.wlkr.ch` | User-facing workloads, published under the router's public address |
-| `infra-gateway` | `*.infra.k8s.wlkr.ch` | Platform services (Grafana, Hubble, etc.), LAN only |
+| Gateway | Listener | Hostnames | Certificate |
+| --- | --- | --- | --- |
+| `apps-gateway` | `https` | `*.k8s.wlkr.ch` | `apps-gateway-tls` |
+| `apps-gateway` | `https-wollbi` | `*.wollbi.ch`, the neighbourhood sites | `wollbi-gateway-tls` |
+| `apps-gateway` | `ssh` | `*.ssh.wlkr.ch`, passthrough; see [SSH listener](#ssh-listener) | None here |
+| `infra-gateway` | `https` | `*.infra.k8s.wlkr.ch` | `infra-gateway-tls` |
 
-`apps-gateway` has a second HTTPS listener for `*.wollbi.ch`, the
-neighbourhood sites. A listener pins one hostname pattern and a wildcard
-certificate covers one zone, so a second domain is a second listener and a
-second `Certificate` rather than a name added to the first.
+A listener pins one hostname pattern and a wildcard certificate covers one
+zone, so a new domain is three files, never a name added to an existing
+listener:
 
-`apps-gateway` also has a `TLS` listener, `ssh`, for `*.ssh.wlkr.ch`; see
-[SSH listener](#ssh-listener).
+1. A `Certificate` in `payload/platform/certificates/certificates.yaml`.
+2. An HTTPS listener in `gateways.yaml` referencing it.
+3. The zone in `domainFilters` in `payload/platform/external-dns/application.yaml`,
+   or its routes are silently ignored.
 
-Both HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
+The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
 its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still
@@ -53,8 +58,8 @@ address instead of the Gateway's LAN one; the router forwards ports 80 and
 
 `payload/platform/cilium/rbac-gateway-fix.yaml` grants the operator read
 access to Ingresses and IngressClasses: its Gateway API controller lists them
-too, and the chart grants that only with the Ingress controller enabled. Its
-header names the chart version last checked; retry removing it on a major.
+too, and the chart grants that only with the Ingress controller enabled.
+Retry removing it on a chart major.
 
 ### Backend protocol
 
@@ -101,7 +106,8 @@ spec:
           port: 80
 ```
 
-Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools.
+Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools,
+and the listener from the table above whose hostnames cover the name.
 
 ### SSH listener
 
@@ -138,7 +144,7 @@ kubectl get gateway infra-gateway -n kube-system \
 
 ## Pitfalls
 
-!!! danger "Always set `sectionName: https`"
+!!! danger "Always set `sectionName`"
     A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is `Accepted`.
 
 !!! warning "Nothing stops two apps claiming the same hostname"
