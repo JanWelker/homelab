@@ -77,6 +77,11 @@ backoff from 30s to 5m. That is the whole delivery contract:
   ApplicationSet reconcile copies the file back over it. That includes
   switching automated sync off: the only rollback is a revert commit — see
   [Rolling back a bad sync](../operations/troubleshooting.md#rolling-back-a-bad-sync).
+- **Two exceptions to `prune`.** `kube-vip` syncs with `prune: false`, because
+  its objects are the only thing holding the API VIP. `security` prunes, but
+  its Namespaces carry a per-resource `Prune=false`, so a removed policy goes
+  while the namespace and everything in it stays. Copy the `syncPolicy` from
+  any other sibling.
 
 ## Bootstrap convergence
 
