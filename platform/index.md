@@ -12,7 +12,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | arc-controller | `arc-systems` | The Actions Runner Controller — see [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) |
 | [arc-runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | `arc-runners`, `arc-jobs` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](<https://homelab.wlkr.ch/platform/argocd/index.md>) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
-| argocd-config | `argocd` | The `ExternalSecret`s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
+| argocd-config | `argocd` | The `ExternalSecret` for ArgoCD's OIDC client, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
 | argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#structure>) |
 | [authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) | `authentik` | Single sign-on for every platform UI |
 | backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |

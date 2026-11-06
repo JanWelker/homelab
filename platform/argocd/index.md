@@ -10,7 +10,7 @@ ArgoCD is the delivery layer: everything in `payload/` and in the workloads repo
 | Depends on | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) for the OIDC client secret, [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) for its route, [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) for every login |
 | If it is down | Nothing syncs. Running workloads are unaffected |
 | Health check | `kubectl -n argocd get applications` → every one `Synced` and `Healthy` |
-| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC and preview-token `ExternalSecret`s, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects), `payload/workloads/applicationset-previews.yaml` |
+| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
 
 ## Configuration
 
@@ -72,28 +72,6 @@ The agents reach Argo CD on 443 through the CLI host from [CLI access](<#cli-acc
 | The Gateway's Envoy to `argocd-server` | An egress rule to the `argocd-server` pod itself. Envoy checks the caller's egress policy again against the pod it picked and answers `403 Access denied` when no rule matches, audit mode or not. The server's own policy already admits the `ingress` entity |
 
 The `homelab` session's policy in the workloads repository carries both. The chart's own policy has only the name rule ([claude-agent\#3](<https://github.com/JanWelker/claude-agent/issues/3>)), so any other session with `argocd.enabled` gets a 403 on every call.
-
-### Pull request previews
-
-The `previews` ApplicationSet deploys every open pull request labelled `preview` on the two neighbourhood sites, from `<site>/preview/` in the workloads repository, at `<site>-pr-<n>.k8s.wlkr.ch`. Closing the pull request deletes the Application, and its finalizer deletes the namespace with the database in it. The manifests and the site's side are on the workloads repository's [Previews](<https://homelab-apps.wlkr.ch/previews/>) page.
-
-| Setting | Why |
-| --- | --- |
-| The `pullRequest` generator polls GitHub | The webhook cannot reach a private address, as for every other generator |
-| A fine-grained PAT at `kv/argocd/github-previews` | One site is private, and an anonymous client gets 60 requests an hour. The PAT needs *Pull requests: read* on both repositories and nothing else |
-| `argocd.argoproj.io/secret-type: scm-creds` on the Secret | The label Argo CD's tokenRef strict mode requires; set now so turning that on breaks nothing |
-| `labels: [preview]` | Opt-in per pull request: each preview is a database and a Next.js process, and Renovate keeps a handful of pull requests open at any time |
-| Egress to `api.github.com` from the ApplicationSet controller | The only Argo CD component that calls GitHub's API |
-| Bare `image` names in the list elements, held out of `docker:pinDigests` in `renovate.json` | The kustomize override appends the pull request's tag, and kustomize reads everything after an `@` as the digest, tag included: a pinned digest renders an image reference no kubelet accepts |
-
-1. Create the PAT on GitHub (*Settings → Developer settings → Fine-grained tokens*), limited to `advent.wollbi.ch` and `fest.wollbi.ch`.
-2. Store it:
-
-   ```bash
-   make bao-secrets
-   ```
-
-A generator that fails, a missing or expired token included, stops the whole set: `kubectl -n argocd get applicationset previews -o jsonpath='{.status.conditions}'` names the error.
 
 ### CLI access
 

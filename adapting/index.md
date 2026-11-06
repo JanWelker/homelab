@@ -19,7 +19,7 @@ git grep -lz 'github.com/JanWelker/homelab.git' -- payload/ | \
   xargs -0 sed -i '' 's|github.com/JanWelker/homelab.git|github.com/YOUR_USER/YOUR_REPO.git|g'
 ```
 
-The workloads repository is a second URL, in `payload/platform/argocd-projects/projects.yaml` (the `apps` project's `sourceRepos`), `payload/workloads/applicationset.yaml` and `payload/workloads/applicationset-previews.yaml`; the previews generator also names the GitHub `owner` whose pull requests it lists. Point all four at your fork of [homelab-apps](<https://github.com/JanWelker/homelab-apps>), or delete the previews ApplicationSet if you have no sites to preview.
+The workloads repository is a second URL, in `payload/platform/argocd-projects/projects.yaml` (the `apps` project's `sourceRepos`) and `payload/workloads/applicationset.yaml`. Point both at your fork of [homelab-apps](<https://github.com/JanWelker/homelab-apps>).
 
 > [!NOTE]
 >
@@ -36,7 +36,7 @@ Four hostname patterns carry traffic. Each is a listener in `payload/platform/ga
 | `*.k8s.<your-domain>` | user-facing workloads, via `apps-gateway` | rename |
 | `*.infra.k8s.<your-domain>` | platform UIs (ArgoCD, Grafana, Hubble, OpenBao, Rook), via `infra-gateway` | rename |
 | `*.ssh.<your-domain>` | the [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) for in-cluster agent sessions | rename, or delete the listener and the zone |
-| `*.wollbi.ch` | a second site family on `apps-gateway`, with its own listener, certificate and PR previews | delete or rename every file `git grep -l wollbi -- payload/` lists |
+| `*.wollbi.ch` | a second site family on `apps-gateway`, with its own listener and certificate | delete or rename every file `git grep -l wollbi -- payload/` lists |
 
 Replace the first three in one pass; `wollbi.ch` does not match the pattern and is handled by hand:
 
@@ -112,7 +112,7 @@ If you want your fork to publish its own copy of these docs, update `zensical.to
 
 Before `make config`:
 
-- \[ \] `repoURL` points at your fork in all of `payload/`, the workloads URLs and the previews `owner` at yours
+- \[ \] `repoURL` points at your fork in all of `payload/`, and the workloads URLs at yours
 - \[ \] Domain replaced throughout `payload/`, `wollbi.ch` renamed or removed
 - \[ \] LoadBalancer IPs are free addresses on your subnet, and the L2 policy or BGP peer announces them
 - \[ \] Wildcard DNS records created for both gateways

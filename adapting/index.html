@@ -2601,11 +2601,9 @@ repository below is left alone:</p>
 </span></code></pre></div>
 <p>The workloads repository is a second URL, in
 <code>payload/platform/argocd-projects/projects.yaml</code> (the <code>apps</code> project's
-<code>sourceRepos</code>), <code>payload/workloads/applicationset.yaml</code> and
-<code>payload/workloads/applicationset-previews.yaml</code>; the previews generator also
-names the GitHub <code>owner</code> whose pull requests it lists. Point all four at your
-fork of <a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a>, or delete
-the previews ApplicationSet if you have no sites to preview.</p>
+<code>sourceRepos</code>) and <code>payload/workloads/applicationset.yaml</code>. Point both at your
+fork of
+<a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><code>sed -i ''</code> is the BSD/macOS form. On Linux use <code>sed -i</code> with no argument.</p>
@@ -2644,7 +2642,7 @@ ones also have a wildcard <code>Certificate</code> in
 </tr>
 <tr>
 <td><code>*.wollbi.ch</code></td>
-<td>a second site family on <code>apps-gateway</code>, with its own listener, certificate and PR previews</td>
+<td>a second site family on <code>apps-gateway</code>, with its own listener and certificate</td>
 <td>delete or rename every file <code>git grep -l wollbi -- payload/</code> lists</td>
 </tr>
 </tbody>
@@ -2775,7 +2773,7 @@ have none. The <code>docs.yaml</code> workflow then publishes to your own GitHub
 <h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
 <p>Before <code>make config</code>:</p>
 <ul>
-<li>[ ] <code>repoURL</code> points at your fork in all of <code>payload/</code>, the workloads URLs and the previews <code>owner</code> at yours</li>
+<li>[ ] <code>repoURL</code> points at your fork in all of <code>payload/</code>, and the workloads URLs at yours</li>
 <li>[ ] Domain replaced throughout <code>payload/</code>, <code>wollbi.ch</code> renamed or removed</li>
 <li>[ ] LoadBalancer IPs are free addresses on your subnet, and the L2 policy or BGP peer announces them</li>
 <li>[ ] Wildcard DNS records created for both gateways</li>
