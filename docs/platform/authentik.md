@@ -266,8 +266,12 @@ are in [Quickstart step 12](../quickstart.md#setup).
    `global.envFrom`, and bump `homelab.wlkr.ch/secret-generation`.
 4. Add the provider and application blueprint: an OAuth2 provider with
    `grant_types`, or a proxy provider added to the outpost's `providers:` list.
-5. For a proxied application, point its `HTTPRoute` at `authentik-server` and
-   add its namespace to `referencegrant.yaml`.
+5. For a proxied application, point its `HTTPRoute` at `authentik-server`,
+   add its namespace to `referencegrant.yaml`, and add a `toEndpoints` rule
+   for its pods to the `authentik-server` policy in
+   `payload/platform/security/network-policies/authentik.yaml`: the outpost
+   dials the backend, and without the rule the login succeeds and the
+   request after it times out.
 6. Bind `infra-users` to an infra application in the blueprint, as an
    `authentik_policies.policybinding` with the application as `target`. An
    application with no binding is open to every Authentik account.
