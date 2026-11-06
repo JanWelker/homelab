@@ -294,8 +294,9 @@ DNS and TLS need nothing further — see [Gateway API](../platform/gateway-api.m
     `payload/platform/authentik/application.yaml`; the discovery URI is
     `auth.k8s.wlkr.ch`.
 - **It does not:** add a `proxyprovider` on the embedded outpost, point the
-    `HTTPRoute` at `authentik-server` in the `authentik` namespace, and add the
-    namespace to `payload/platform/authentik/referencegrant.yaml`.
+    `HTTPRoute` at `authentik-server` in the `authentik` namespace, add the
+    namespace to `payload/platform/authentik/referencegrant.yaml`, and allow
+    the outpost to reach the pods in the `authentik-server` egress policy.
 
 Either way it is two pull requests, one here, because a workload must not be
 able to put itself behind or take itself out from behind the cluster's
