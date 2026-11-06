@@ -3045,9 +3045,9 @@ and only then forwards it to the backend. It needs nothing from the
 application and protects exactly as far as nothing else can reach the backend.</p>
 <pre class="mermaid"><code>flowchart LR
     U([Browser]) --&gt; GW[infra-gateway / apps-gateway]
-    GW --&gt;|argo, monitoring| APP[ArgoCD / Grafana]
+    GW --&gt;|argo, monitoring, OIDC workloads| APP[ArgoCD / Grafana / OIDC workloads]
     APP -.-&gt;|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW --&gt;|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin| AK
+    GW --&gt;|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, extractor-admin| AK
     AK --&gt;|authenticated| BE[Hubble UI / Ceph dashboard / ...]</code></pre>
 <h3 id="one-hostname">One hostname<a class="headerlink" href="#one-hostname" title="Permanent link">&para;</a></h3>
 <p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
@@ -3300,6 +3300,10 @@ membership is set by hand under <strong>Directory &rarr; Groups</strong>:</p>
 <td><code>grafana-editors</code></td>
 <td>Grafana <code>Editor</code>, and <code>infra-users</code></td>
 </tr>
+<tr>
+<td><code>wollbi-editors</code></td>
+<td>A Payload editor on advent.wollbi.ch and fest.wollbi.ch, created on first sign-in; declared in the two sites' blueprints in the workloads repository</td>
+</tr>
 </tbody>
 </table>
 <p>Every infra application carries a policy binding to <code>infra-users</code>, so an
@@ -3309,8 +3313,8 @@ their parent, and Authentik counts a child group's members as members of
 the parent. Grafana only sees the groups a user belongs to directly, and
 with <code>role_attribute_strict</code> it refuses a login that matches none of its
 three. ArgoCD's <code>policy.default</code> is empty, so a user in neither ArgoCD group
-gets <strong>no</strong> access. The wollbi sites, Home Assistant and Umami have no binding:
-the first are for the editors, and the other two have logins of their own.</p>
+gets <strong>no</strong> access. The wollbi sites bind <code>wollbi-editors</code> instead. Home
+Assistant and Umami have no binding: they have logins of their own.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="client-secrets">Client secrets<a class="headerlink" href="#client-secrets" title="Permanent link">&para;</a></h3>
 <p>The OIDC client IDs and secrets are generated once into OpenBao and read by
