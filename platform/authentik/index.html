@@ -3347,8 +3347,12 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
    <code>global.envFrom</code>, and bump <code>homelab.wlkr.ch/secret-generation</code>.</li>
 <li>Add the provider and application blueprint: an OAuth2 provider with
    <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
-<li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code> and
-   add its namespace to <code>referencegrant.yaml</code>.</li>
+<li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code>,
+   add its namespace to <code>referencegrant.yaml</code>, and add a <code>toEndpoints</code> rule
+   for its pods to the <code>authentik-server</code> policy in
+   <code>payload/platform/security/network-policies/authentik.yaml</code>: the outpost
+   dials the backend, and without the rule the login succeeds and the
+   request after it times out.</li>
 <li>Bind <code>infra-users</code> to an infra application in the blueprint, as an
    <code>authentik_policies.policybinding</code> with the application as <code>target</code>. An
    application with no binding is open to every Authentik account.</li>

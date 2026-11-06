@@ -247,7 +247,7 @@ DNS and TLS need nothing further — see [Gateway API](<https://homelab.wlkr.ch/
 ### Putting a workload behind Authentik
 
 - **It speaks OIDC:** the `oauth2provider` blueprint lives in the workload's directory; its client credentials come from a `PushSecret` in the same directory writing `kv/<app>/config` — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/#generated-secrets>) — plus one projected-volume source in `payload/platform/authentik/application.yaml`; the discovery URI is `auth.k8s.wlkr.ch`.
-- **It does not:** add a `proxyprovider` on the embedded outpost, point the `HTTPRoute` at `authentik-server` in the `authentik` namespace, and add the namespace to `payload/platform/authentik/referencegrant.yaml`.
+- **It does not:** add a `proxyprovider` on the embedded outpost, point the `HTTPRoute` at `authentik-server` in the `authentik` namespace, add the namespace to `payload/platform/authentik/referencegrant.yaml`, and allow the outpost to reach the pods in the `authentik-server` egress policy.
 
 Either way it is two pull requests, one here, because a workload must not be able to put itself behind or take itself out from behind the cluster's authentication layer. Details in [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>).
 

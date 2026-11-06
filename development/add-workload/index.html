@@ -3009,8 +3009,9 @@ and the rollout are in
     <code>payload/platform/authentik/application.yaml</code>; the discovery URI is
     <code>auth.k8s.wlkr.ch</code>.</li>
 <li><strong>It does not:</strong> add a <code>proxyprovider</code> on the embedded outpost, point the
-    <code>HTTPRoute</code> at <code>authentik-server</code> in the <code>authentik</code> namespace, and add the
-    namespace to <code>payload/platform/authentik/referencegrant.yaml</code>.</li>
+    <code>HTTPRoute</code> at <code>authentik-server</code> in the <code>authentik</code> namespace, add the
+    namespace to <code>payload/platform/authentik/referencegrant.yaml</code>, and allow
+    the outpost to reach the pods in the <code>authentik-server</code> egress policy.</li>
 </ul>
 <p>Either way it is two pull requests, one here, because a workload must not be
 able to put itself behind or take itself out from behind the cluster's

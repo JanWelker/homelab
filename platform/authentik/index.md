@@ -151,7 +151,7 @@ The first administrator is created through `akadmin`, switched on for the occasi
 2. Mount the workload's blueprint: in `application.yaml`, a `configMap` source named `authentik-blueprint-<application>` with `optional: true` under `worker.volumes`, in the `projected.sources` of `blueprints-workloads`.
 3. Hand the worker the credentials: in the same file, a `secretRef` to `authentik-secrets-<workload>` with `optional: true` under `global.envFrom`, and bump `homelab.wlkr.ch/secret-generation`.
 4. Add the provider and application blueprint: an OAuth2 provider with `grant_types`, or a proxy provider added to the outpost's `providers:` list.
-5. For a proxied application, point its `HTTPRoute` at `authentik-server` and add its namespace to `referencegrant.yaml`.
+5. For a proxied application, point its `HTTPRoute` at `authentik-server`, add its namespace to `referencegrant.yaml`, and add a `toEndpoints` rule for its pods to the `authentik-server` policy in `payload/platform/security/network-policies/authentik.yaml`: the outpost dials the backend, and without the rule the login succeeds and the request after it times out.
 6. Bind `infra-users` to an infra application in the blueprint, as an `authentik_policies.policybinding` with the application as `target`. An application with no binding is open to every Authentik account.
 
 ### Adding a user
