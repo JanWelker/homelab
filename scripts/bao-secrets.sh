@@ -23,7 +23,6 @@
 #
 #   SBOM_UPLOAD_API_KEY                             Dependency-Track's key for the upload job
 #   CLAUDE_ARGOCD_TOKEN                             the claude account's Argo CD token
-#   PREVIEWS_GITHUB_TOKEN                           GitHub PAT the previews ApplicationSet lists PRs with
 #   SHOT_BRIDGE_APNS_KEY_ID / SHOT_BRIDGE_APNS_KEY_FILE  the shot bridge's APNs key: its ID, and the .p8 file's path
 #   ARC_APP_ID / ARC_INSTALLATION_ID / ARC_PRIVATE_KEY_FILE  the GitHub App the Actions runners register with, and its .pem file's path
 #
@@ -166,7 +165,6 @@ decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
-decide WRITE_PREVIEWS     argocd/github-previews
 decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
 decide WRITE_ARC          arc-runners/github-app
 echo
@@ -174,7 +172,7 @@ echo
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
-  && [ "$WRITE_PREVIEWS" = "0" ] && [ "$WRITE_SHOT_BRIDGE" = "0" ] \
+  && [ "$WRITE_SHOT_BRIDGE" = "0" ] \
   && [ "$WRITE_ARC" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
@@ -262,9 +260,6 @@ fi
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
   prompt_optional CLAUDE_ARGOCD_TOKEN   "Argo CD token of the claude account (Enter until you have generated one)"
 fi
-if [ "$WRITE_PREVIEWS" = "1" ]; then
-  prompt_optional PREVIEWS_GITHUB_TOKEN "GitHub PAT for the pull request previews (Enter until you have created one)"
-fi
 if [ "$WRITE_SHOT_BRIDGE" = "1" ]; then
   prompt_secret SHOT_BRIDGE_LM_USERNAME     "La Marzocco account the shot bridge logs in with (e-mail)"
   prompt_secret SHOT_BRIDGE_LM_PASSWORD     "  ...and its password"
@@ -330,11 +325,6 @@ fi
 
 # Written even when empty, so the ExternalSecret resolves. Until it holds a
 # token, the private site's generator fails, and with it the whole set.
-# See docs/platform/argocd.md#pull-request-previews
-if [ "$WRITE_PREVIEWS" = "1" ]; then
-  put argocd/github-previews \
-    "token=${PREVIEWS_GITHUB_TOKEN:-}"
-fi
 
 # The APNs half is written even when empty, for the reason above: the bridge
 # pod then fails with a clear missing-variable error instead of the whole sync

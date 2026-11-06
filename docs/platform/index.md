@@ -21,7 +21,7 @@ applications` shows — and the namespace it lands in.
 | arc-controller | `arc-systems` | The Actions Runner Controller — see [GitHub runners](github-runners.md) |
 | [arc-runners](github-runners.md) | `arc-runners`, `arc-jobs` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](argocd.md) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
-| argocd-config | `argocd` | The `ExternalSecret`s for ArgoCD's OIDC client and the previews' GitHub token, and its Grafana dashboard; see [ArgoCD](argocd.md) |
+| argocd-config | `argocd` | The `ExternalSecret` for ArgoCD's OIDC client, and its Grafana dashboard; see [ArgoCD](argocd.md) |
 | argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](../architecture/gitops.md#structure) |
 | [authentik](authentik.md) | `authentik` | Single sign-on for every platform UI |
 | backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups & Recovery](../operations/backups.md) |
