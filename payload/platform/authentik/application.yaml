@@ -26,6 +26,13 @@ spec:
               - secretRef:
                   name: authentik-secrets-dependency-track
                   optional: true
+              # From secrets-advent-wollbi.yaml and secrets-fest-wollbi.yaml, optional for the same reason.
+              - secretRef:
+                  name: authentik-secrets-advent-wollbi
+                  optional: true
+              - secretRef:
+                  name: authentik-secrets-fest-wollbi
+                  optional: true
             # CloudNativePG generates the database password; nothing copies it.
             env:
               - name: AUTHENTIK_POSTGRESQL__PASSWORD
@@ -106,7 +113,7 @@ spec:
 
             # Bump when authentik-secrets gains or loses a key; see docs/platform/authentik.md#pitfalls
             podAnnotations:
-              homelab.wlkr.ch/secret-generation: "4"
+              homelab.wlkr.ch/secret-generation: "5"
             metrics:
               enabled: true
               serviceMonitor:
@@ -128,6 +135,12 @@ spec:
                         optional: true
                     - configMap:
                         name: authentik-blueprint-opencloud
+                        optional: true
+                    - configMap:
+                        name: authentik-blueprint-advent-wollbi
+                        optional: true
+                    - configMap:
+                        name: authentik-blueprint-fest-wollbi
                         optional: true
             volumeMounts:
               - name: blueprints-workloads
