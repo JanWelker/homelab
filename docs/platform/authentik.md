@@ -42,9 +42,9 @@ application and protects exactly as far as nothing else can reach the backend.
 ```mermaid
 flowchart LR
     U([Browser]) --> GW[infra-gateway / apps-gateway]
-    GW -->|argo, monitoring| APP[ArgoCD / Grafana]
+    GW -->|argo, monitoring, OIDC workloads| APP[ArgoCD / Grafana / OIDC workloads]
     APP -.->|OIDC redirect to auth.k8s.wlkr.ch| AK[Authentik]
-    GW -->|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, fest/admin, advent/admin, extractor-admin| AK
+    GW -->|hubble, rook, prometheus, alertmanager, home, flowscape, analytics, extractor-admin| AK
     AK -->|authenticated| BE[Hubble UI / Ceph dashboard / ...]
 ```
 
@@ -215,6 +215,7 @@ membership is set by hand under **Directory &rarr; Groups**:
 | `argocd-viewers` | ArgoCD `role:readonly`, and `infra-users` |
 | `grafana-admins` | Grafana `Admin`, and `infra-users` |
 | `grafana-editors` | Grafana `Editor`, and `infra-users` |
+| `wollbi-editors` | A Payload editor on advent.wollbi.ch and fest.wollbi.ch, created on first sign-in; declared in the two sites' blueprints in the workloads repository |
 
 Every infra application carries a policy binding to `infra-users`, so an
 account outside it, such as a wollbi editor's, is refused by Authentik
@@ -223,8 +224,8 @@ their parent, and Authentik counts a child group's members as members of
 the parent. Grafana only sees the groups a user belongs to directly, and
 with `role_attribute_strict` it refuses a login that matches none of its
 three. ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group
-gets **no** access. The wollbi sites, Home Assistant and Umami have no binding:
-the first are for the editors, and the other two have logins of their own.
+gets **no** access. The wollbi sites bind `wollbi-editors` instead. Home
+Assistant and Umami have no binding: they have logins of their own.
 
 ## Usage
 

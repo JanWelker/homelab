@@ -631,51 +631,17 @@ data:
           meta_launch_url: https://analytics.k8s.wlkr.ch
           meta_description: Web analytics
 
-      # /admin only: the HTTPRoute sends nothing else here, because the site
-      # itself is an invitation to the neighbours.
+      # The wollbi sites sign editors in over OIDC now, from their own
+      # blueprints in the workloads repository; these remove the old proxy
+      # providers from a running Authentik.
       - model: authentik_providers_proxy.proxyprovider
-        state: present
-        id: fest-wollbi-provider
+        state: absent
         identifiers:
           name: fest-wollbi
-        attrs:
-          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
-          mode: proxy
-          external_host: https://fest.wollbi.ch
-          internal_host: http://fest-wollbi.fest-wollbi.svc.cluster.local:3000
-          internal_host_ssl_validation: false
-      - model: authentik_core.application
-        state: present
-        identifiers:
-          slug: fest-wollbi
-        attrs:
-          name: Wollbi-Fescht
-          provider: !KeyOf fest-wollbi-provider
-          meta_launch_url: https://fest.wollbi.ch
-          meta_description: The street's summer party, since 1987
-
       - model: authentik_providers_proxy.proxyprovider
-        state: present
-        id: advent-wollbi-provider
+        state: absent
         identifiers:
           name: advent-wollbi
-        attrs:
-          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
-          mode: proxy
-          external_host: https://advent.wollbi.ch
-          internal_host: http://advent-wollbi.advent-wollbi.svc.cluster.local:3000
-          internal_host_ssl_validation: false
-      - model: authentik_core.application
-        state: present
-        identifiers:
-          slug: advent-wollbi
-        attrs:
-          name: Wollbi Adventsfenster
-          provider: !KeyOf advent-wollbi-provider
-          meta_launch_url: https://advent.wollbi.ch
-          meta_description: The street's advent windows
 
       # Read-only shot diagnostics; the app has no login, so the outpost is the only guard.
       - model: authentik_providers_proxy.proxyprovider
@@ -726,6 +692,4 @@ data:
             - !KeyOf home-assistant-provider
             - !KeyOf flowscape-provider
             - !KeyOf umami-provider
-            - !KeyOf fest-wollbi-provider
-            - !KeyOf advent-wollbi-provider
             - !KeyOf extractor-admin-provider
