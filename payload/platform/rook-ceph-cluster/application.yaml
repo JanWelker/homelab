@@ -23,6 +23,9 @@ spec:
           # prunes them at 85% used, so the 5-day trend warned on every pull.
           # Same threshold as mon_data_avail_warn below.
           prometheusRuleOverrides:
+            # Upstream has no for:, so every OSD a Rook upgrade rolls fires it.
+            CephOSDDownHigh:
+              for: 10m
             CephNodeDiskspaceWarning:
               for: 30m
               expr: >-
