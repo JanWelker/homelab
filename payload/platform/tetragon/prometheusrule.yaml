@@ -37,12 +37,12 @@ spec:
               kubeconfig, etcd's data or a kubelet key, under whatever path
               it was mounted, and is not a control-plane binary on the host
               network, read shadow on the host other than through PAM's
-              unix_chkpwd, or wrote to passwd, shadow, group, sudoers,
-              ld.so.preload, a cron or sudoers drop-in or root's ssh
-              directory. The nightly etcd backup and defrag are left out, as
-              is buildah writing the account files of the image it builds in
-              a CI job pod in arc-jobs. The event, with the path and arguments, is in
-              Loki: {container="export-stdout"} | json |
+              unix_chkpwd or systemd's userdb worker, or wrote to passwd,
+              shadow, group, sudoers, ld.so.preload, a cron or sudoers
+              drop-in or root's ssh directory. The nightly etcd backup and
+              defrag are left out, as is buildah writing the account files
+              of the image it builds in a CI job pod in arc-jobs. The event,
+              with the path and arguments, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
         - alert: TetragonCredentialsEscalated
           expr: |
