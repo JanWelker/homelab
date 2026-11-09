@@ -21,7 +21,9 @@ spec:
                 tetragon_policy_events_total{policy="sensitive-file-access"} offset 10m
             ) > 0
             unless on (namespace, pod, binary)
-              tetragon_policy_events_total{policy="sensitive-file-access", namespace="backup", workload=~"etcd-(backup|defrag)-[0-9]+", binary="/usr/local/bin/etcdctl"}
+              last_over_time(tetragon_policy_events_total{policy="sensitive-file-access", namespace="backup", workload=~"etcd-(backup|defrag)(-[0-9]+)?", binary="/usr/local/bin/etcdctl"}[10m])
+            unless on (namespace, pod, binary)
+              last_over_time(tetragon_policy_events_total{policy="sensitive-file-access", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/proc/self/exe"}[10m])
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -37,8 +39,9 @@ spec:
               network, read shadow on the host other than through PAM's
               unix_chkpwd, or wrote to passwd, shadow, group, sudoers,
               ld.so.preload, a cron or sudoers drop-in or root's ssh
-              directory. The nightly etcd backup and the weekly defrag are
-              left out. The event, with the path and arguments, is in
+              directory. The nightly etcd backup and defrag are left out, as
+              is buildah writing the account files of the image it builds in
+              a CI job pod in arc-jobs. The event, with the path and arguments, is in
               Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="sensitive-file-access".
         - alert: TetragonCredentialsEscalated
@@ -51,9 +54,9 @@ spec:
                 tetragon_policy_events_total{policy="process-creds-changed", namespace!="rook-ceph"} offset 10m
             ) > 0
             unless on (namespace, pod)
-              tetragon_policy_events_total{policy="process-creds-changed", namespace="kube-system", workload="cilium"}
+              last_over_time(tetragon_policy_events_total{policy="process-creds-changed", namespace="kube-system", workload="cilium"}[10m])
             unless on (namespace, pod, binary)
-              tetragon_policy_events_total{policy="process-creds-changed", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/proc/self/exe"}
+              last_over_time(tetragon_policy_events_total{policy="process-creds-changed", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/proc/self/exe"}[10m])
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -80,6 +83,8 @@ spec:
               unless
                 tetragon_policy_events_total{policy="exec-from-writable-path"} offset 10m
             ) > 0
+            unless on (namespace, pod, binary)
+              last_over_time(tetragon_policy_events_total{policy="exec-from-writable-path", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/usr/local/go/bin/go"}[10m])
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -92,7 +97,9 @@ spec:
               emptyDirs that carry binaries here, and it is not one an init
               container or s6-overlay is known to put there. Nothing in an
               image lives on those paths, so the binary was written after
-              the container started. The event, with the path and the parent
+              the container started. go running the test binaries it builds
+              under /tmp in a CI job pod in arc-jobs is left out. The event,
+              with the path and the parent
               process, is in Loki: {container="export-stdout"} | json |
               process_kprobe_policy_name="exec-from-writable-path".
         - alert: TetragonUserNamespaceCreated
@@ -166,6 +173,8 @@ spec:
               unless
                 tetragon_policy_events_total{policy="library-from-writable-path"} offset 10m
             ) > 0
+            unless on (namespace, pod, binary)
+              last_over_time(tetragon_policy_events_total{policy="library-from-writable-path", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/usr/local/go/bin/go"}[10m])
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -175,7 +184,8 @@ spec:
             description: >-
               A file under /tmp, /var/tmp, /dev/shm, /run or a binary-carrying
               emptyDir was mapped with PROT_EXEC: a shared library that was not
-              in the image. Loki: {container="export-stdout"} | json |
+              in the image; go in a CI job pod in arc-jobs is left out. Loki:
+              {container="export-stdout"} | json |
               process_kprobe_policy_name="library-from-writable-path".
         - alert: TetragonDnsOutsideCluster
           expr: |
@@ -210,6 +220,8 @@ spec:
               unless
                 tetragon_policy_events_total{policy="mount-in-container", namespace!~"rook-ceph|cilium|kube-system"} offset 10m
             ) > 0
+            unless on (namespace, pod, binary)
+              last_over_time(tetragon_policy_events_total{policy="mount-in-container", namespace="arc-jobs", pod=~"homelab-runner-.+-workflow", binary="/proc/self/exe"}[10m])
           keep_firing_for: 15m
           labels:
             severity: warning
@@ -221,7 +233,9 @@ spec:
               Cilium and Tetragon mount by design and are left out; runc's
               setup mounts are dropped in the kernel. Anything else is the
               first step of an escape, or an entrypoint that should not have
-              the capability. The event carries source, target and type:
+              the capability. buildah mounting in its user namespace in a CI
+              job pod in arc-jobs is left out too. The event carries source,
+              target and type:
               {container="export-stdout"} | json |
               process_kprobe_policy_name="mount-in-container".
         - alert: TetragonPtraceInContainer
