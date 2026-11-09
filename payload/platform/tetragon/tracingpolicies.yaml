@@ -82,7 +82,9 @@ spec:
             - action: Post
               rateLimit: 1m
         # Host only: in a container a shadow read is PAM in the image. PAM's
-        # own helper reads it on every login and sudo; its writes still count.
+        # helper and systemd's userdb worker read it on every login and sudo;
+        # their writes still count. matchBinaries compares the resolved path,
+        # and Flatcar links /sbin and /usr/sbin to /usr/bin.
         - matchArgs:
             - index: 0
               operator: Equal
@@ -96,7 +98,10 @@ spec:
           matchBinaries:
             - operator: NotIn
               values:
+                - /usr/bin/unix_chkpwd
+                - /usr/sbin/unix_chkpwd
                 - /sbin/unix_chkpwd
+                - /usr/lib/systemd/systemd-userwork
           matchActions:
             - action: Post
               rateLimit: 1m
