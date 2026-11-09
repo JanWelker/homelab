@@ -250,6 +250,27 @@ kubectl -n openbao exec openbao-1 -- \
   bao operator raft join http://openbao-0.openbao-internal:8200
 ```
 
+### Rolling out a new revision
+
+A chart or config change leaves the StatefulSet with a new `updateRevision` that `OnDelete` does not apply, and `KubeStatefulSetUpdateNotRolledOut` fires until every pod has restarted. Standbys first, the active replica last, so leadership moves once:
+
+1. Find the active replica and confirm all three are unsealed.
+
+   ```bash
+   for p in openbao-0 openbao-1 openbao-2; do echo "$p: $(kubectl -n openbao exec $p -c openbao -- bao status | grep -E '^(Sealed|HA Mode)' | tr -s ' ' | paste -sd ' ' -)"; done
+   ```
+2. For each standby, one at a time: delete the pod, wait for it to come back, unseal it with `make bao-unseal`, and check it rejoined as a standby.
+
+   ```bash
+   kubectl -n openbao delete pod openbao-0 && kubectl -n openbao wait --for=condition=Ready pod/openbao-0 --timeout=5m
+   ```
+3. The active replica last, the same way; a standby takes over the moment it goes.
+4. Confirm the rollout.
+
+   ```bash
+   kubectl -n openbao get sts openbao -o jsonpath='{.status.currentRevision} {.status.updateRevision}{"\n"}'
+   ```
+
 ### Generating a root token
 
 For what the operator policy does not cover — a policy, an auth method, a snapshot restore, or the operator login itself broken. Needs the operator login and a threshold of unseal shares; each step runs in the pod.

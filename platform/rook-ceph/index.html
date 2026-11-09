@@ -2956,6 +2956,10 @@ workers than chunks.</p>
 <td>Ships Ceph's own alerting rules as a <code>PrometheusRule</code>. Its CRD comes from the <code>prometheus-operator-crds</code> Application; a sync before it lands fails and is retried — see <a href="../monitoring/#crds">Monitoring</a></td>
 </tr>
 <tr>
+<td><code>monitoring.prometheusRuleOverrides</code></td>
+<td><code>CephOSDDownHigh</code> gets a <code>for:</code> because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. <code>CephNodeDiskspaceWarning</code> compares the root filesystem with the kubelet's 85% image garbage-collection threshold instead of a 5-day trend, which warned on every image pull</td>
+</tr>
+<tr>
 <td><code>cephClusterSpec.cephConfig</code> <code>mgr/dashboard/*</code></td>
 <td>Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off <code>ceph dashboard set-*</code> Job</td>
 </tr>

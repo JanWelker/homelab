@@ -1345,7 +1345,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](<https://homelab.wlkr.ch/platform/velero/index.md>) | `backup` | Volume and resource backups to the Ceph object store |
 
-Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods get their memory requests through the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`, applied at `kubeadm init`, `join` and `upgrade`, so a running node picks them up at its next reinstall; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane and 2.5x their peak exceeds the node. CoreDNS is kubeadm's too: the same directory holds a patch spreading its replicas one per node, which kubeadm applies at `init` and `upgrade apply` only, and its PodDisruptionBudget sits in the `security` component because nothing else owns a CoreDNS manifest.
+Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods get their memory requests through the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`, applied at `kubeadm init`, `join` and `upgrade`, so a running node picks them up at its next reinstall; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane and 2.5x their peak exceeds the node. The API server's patch also sets `GOMEMLIMIT`: with Go's default `GOGC=100` its heap grows to twice the live set before a collection, about 4 GiB resident for 2 GiB live, which kept the 8 GB control-plane nodes above `NodeMemoryHighUtilization`'s 90%. The limit makes it collect earlier; it is soft, so a larger live set costs GC CPU, not an OOM kill. CoreDNS is kubeadm's too: the same directory holds a patch spreading its replicas one per node, which kubeadm applies at `init` and `upgrade apply` only, and its PodDisruptionBudget sits in the `security` component because nothing else owns a CoreDNS manifest.
 
 Components the cluster cannot run without — the CNI and API VIP, the admission webhooks, the secret and certificate chain, the CSR approver, the storage daemons and the node security agents — carry a `system-*` priority class, so under node pressure the kubelet evicts workloads first: `system-node-critical` for the DaemonSets a node needs, `system-cluster-critical` for the rest.
 
@@ -3352,6 +3352,27 @@ kubectl -n openbao exec openbao-1 -- \
   bao operator raft join http://openbao-0.openbao-internal:8200
 ```
 
+### Rolling out a new revision
+
+A chart or config change leaves the StatefulSet with a new `updateRevision` that `OnDelete` does not apply, and `KubeStatefulSetUpdateNotRolledOut` fires until every pod has restarted. Standbys first, the active replica last, so leadership moves once:
+
+1. Find the active replica and confirm all three are unsealed.
+
+   ```bash
+   for p in openbao-0 openbao-1 openbao-2; do echo "$p: $(kubectl -n openbao exec $p -c openbao -- bao status | grep -E '^(Sealed|HA Mode)' | tr -s ' ' | paste -sd ' ' -)"; done
+   ```
+2. For each standby, one at a time: delete the pod, wait for it to come back, unseal it with `make bao-unseal`, and check it rejoined as a standby.
+
+   ```bash
+   kubectl -n openbao delete pod openbao-0 && kubectl -n openbao wait --for=condition=Ready pod/openbao-0 --timeout=5m
+   ```
+3. The active replica last, the same way; a standby takes over the moment it goes.
+4. Confirm the rollout.
+
+   ```bash
+   kubectl -n openbao get sts openbao -o jsonpath='{.status.currentRevision} {.status.updateRevision}{"\n"}'
+   ```
+
 ### Generating a root token
 
 For what the operator policy does not cover — a policy, an auth method, a snapshot restore, or the operator login itself broken. Needs the operator login and a threshold of unseal shares; each step runs in the pod.
@@ -3441,6 +3462,7 @@ In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 | --- | --- |
 | `cephClusterSpec.monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
 | `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/#crds>) |
+| `monitoring.prometheusRuleOverrides` | `CephOSDDownHigh` gets a `for:` because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. `CephNodeDiskspaceWarning` compares the root filesystem with the kubelet's 85% image garbage-collection threshold instead of a 5-day trend, which warned on every image pull |
 | `cephClusterSpec.cephConfig` `mgr/dashboard/*` | Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off `ceph dashboard set-*` Job |
 | `mon_cluster_log_level: info` | The Ceph default is `debug`, and the mons copy the cluster log to stderr, so Rook's probes and the mgr's pgmap ticks became most of the mon log volume in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). Warnings and errors are unaffected |
 

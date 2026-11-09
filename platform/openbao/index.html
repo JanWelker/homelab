@@ -1533,6 +1533,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#rolling-out-a-new-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rolling out a new revision
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#generating-a-root-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2711,6 +2722,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#rolling-out-a-new-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rolling out a new revision
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#generating-a-root-token" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3365,6 +3387,33 @@ initialised. Point it at the leader once; it takes unseal keys afterwards:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-1<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>join<span class="w"> </span>http://openbao-0.openbao-internal:8200
 </span></code></pre></div>
+<h3 id="rolling-out-a-new-revision">Rolling out a new revision<a class="headerlink" href="#rolling-out-a-new-revision" title="Permanent link">&para;</a></h3>
+<p>A chart or config change leaves the StatefulSet with a new <code>updateRevision</code>
+that <code>OnDelete</code> does not apply, and <code>KubeStatefulSetUpdateNotRolledOut</code> fires
+until every pod has restarted. Standbys first, the active replica last, so
+leadership moves once:</p>
+<ol>
+<li>
+<p>Find the active replica and confirm all three are unsealed.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">for</span><span class="w"> </span>p<span class="w"> </span><span class="k">in</span><span class="w"> </span>openbao-0<span class="w"> </span>openbao-1<span class="w"> </span>openbao-2<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$p</span><span class="s2">: </span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="nv">$p</span><span class="w"> </span>-c<span class="w"> </span>openbao<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(Sealed|HA Mode)'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-s<span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>paste<span class="w"> </span>-sd<span class="w"> </span><span class="s1">' '</span><span class="w"> </span>-<span class="k">)</span><span class="s2">"</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>For each standby, one at a time: delete the pod, wait for it to come back,
+   unseal it with <code>make bao-unseal</code>, and check it rejoined as a standby.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>delete<span class="w"> </span>pod<span class="w"> </span>openbao-0<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>Ready<span class="w"> </span>pod/openbao-0<span class="w"> </span>--timeout<span class="o">=</span>5m
+</span></code></pre></div>
+</li>
+<li>
+<p>The active replica last, the same way; a standby takes over the moment it
+   goes.</p>
+</li>
+<li>
+<p>Confirm the rollout.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>get<span class="w"> </span>sts<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.currentRevision} {.status.updateRevision}{"\n"}'</span>
+</span></code></pre></div>
+</li>
+</ol>
 <h3 id="generating-a-root-token">Generating a root token<a class="headerlink" href="#generating-a-root-token" title="Permanent link">&para;</a></h3>
 <p>For what the operator policy does not cover — a policy, an auth method, a
 snapshot restore, or the operator login itself broken. Needs the operator
@@ -3372,30 +3421,30 @@ login and a threshold of unseal shares; each step runs in the pod.</p>
 <ol>
 <li>
 <p>Log in as the operator; it prompts for the password from <code>openbao-operator.json</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-method<span class="o">=</span>userpass<span class="w"> </span><span class="nv">username</span><span class="o">=</span>operator
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-method<span class="o">=</span>userpass<span class="w"> </span><span class="nv">username</span><span class="o">=</span>operator
 </span></code></pre></div>
 </li>
 <li>
 <p>Generate a one-time password and start the attempt with it; note both the OTP and the nonce.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-generate-otp
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-init<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-generate-otp
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-init<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
 </span></code></pre></div>
 </li>
 <li>
 <p>Enter one share per run until the threshold is met; the last prints <code>Encoded Token</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-nonce<span class="o">=</span>&lt;nonce&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-nonce<span class="o">=</span>&lt;nonce&gt;
 </span></code></pre></div>
 </li>
 <li>
 <p>Decode it into the root token.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-decode<span class="o">=</span>&lt;encoded-token&gt;<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>generate-root<span class="w"> </span>-decode<span class="o">=</span>&lt;encoded-token&gt;<span class="w"> </span>-otp<span class="o">=</span>&lt;otp&gt;
 </span></code></pre></div>
 </li>
 <li>
 <p>Do the one job with it, then revoke it and clear the pod's token cache.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-i<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-<span class="w">     </span><span class="c1"># paste the root token, then Ctrl-D</span>
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>token<span class="w"> </span>revoke<span class="w"> </span>-self
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'rm -f "$HOME/.bao-token"'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-i<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-<span class="w">     </span><span class="c1"># paste the root token, then Ctrl-D</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>token<span class="w"> </span>revoke<span class="w"> </span>-self
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'rm -f "$HOME/.bao-token"'</span>
 </span></code></pre></div>
 </li>
 </ol>
@@ -3410,7 +3459,7 @@ into a copy of <code>openbao-init.json</code>, move <code>openbao-operator.json<
 <p>Logged in as the operator through the <code>openbao-active</code> port-forward from
 <a href="#authenticating-locally">Authenticating locally</a>; its policy covers the
 snapshot, and a standby refuses it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>snapshot.bao
 </span></code></pre></div>
 <p>The snapshot holds all KV data and OpenBao's own configuration; restore with
 <code>bao operator raft snapshot restore</code>. Store it off-cluster — it is encrypted
