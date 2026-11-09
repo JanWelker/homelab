@@ -167,8 +167,8 @@ storage:
         inline: |
           {{ lookup('template', '../templates/admission.yaml.j2') | indent(10) }}
 
-    # Memory requests for the static pods, applied by kubeadm init, join and
-    # upgrade; see docs/platform/index.md#components
+    # Memory requests and the API server's GOMEMLIMIT, applied by kubeadm
+    # init, join and upgrade; see docs/platform/index.md#components
     - path: /etc/kubernetes/patches/kube-apiserver+strategic.yaml
       mode: 0600
       contents:
@@ -176,6 +176,9 @@ storage:
           spec:
             containers:
               - name: kube-apiserver
+                env:
+                  - name: GOMEMLIMIT
+                    value: 3GiB
                 resources:
                   requests:
                     memory: 4Gi
