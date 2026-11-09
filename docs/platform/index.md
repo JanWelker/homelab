@@ -59,6 +59,11 @@ patches in `ansible/templates/butane_node_config.yaml.j2`, applied at
 `kubeadm init`, `join` and `upgrade`, so a running node picks them up at its
 next reinstall; they carry no limits, because a limit on the API server or
 etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.
+The API server's patch also sets `GOMEMLIMIT`: with Go's default `GOGC=100`
+its heap grows to twice the live set before a collection, about 4 GiB
+resident for 2 GiB live, which kept the 8 GB control-plane nodes above
+`NodeMemoryHighUtilization`'s 90%. The limit makes it collect earlier; it is
+soft, so a larger live set costs GC CPU, not an OOM kill.
 CoreDNS is kubeadm's too: the same directory holds a patch spreading its
 replicas one per node, which kubeadm applies at `init` and `upgrade apply`
 only, and its PodDisruptionBudget sits in the `security` component because
