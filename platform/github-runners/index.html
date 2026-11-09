@@ -2798,7 +2798,7 @@ stay on GitHub.</p>
 </tr>
 <tr>
 <td><code>arc-jobs</code> is exempt from the user-namespace kill</td>
-<td>buildah builds the images as root without <code>CAP_SYS_ADMIN</code>, which <code>baseline</code> forbids, so it re-executes itself in a user namespace; <a href="../tetragon/#enforcement">Tetragon</a> records those instead of killing them</td>
+<td>buildah builds the images as root without <code>CAP_SYS_ADMIN</code>, which <code>baseline</code> forbids, so it re-executes itself in a user namespace; <a href="../tetragon/#enforcement">Tetragon</a> records those instead of killing them, and its <a href="../tetragon/#policies">alerts</a> leave out buildah's mounts and account-file writes and <code>go</code> running its test binaries in the job pods</td>
 </tr>
 <tr>
 <td>The runner image as a full reference with a digest</td>

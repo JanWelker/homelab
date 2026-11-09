@@ -2715,7 +2715,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>sensitive-file-access</code></td>
 <td><code>security_file_permission</code></td>
-<td>A read of a control-plane or etcd key, the encryption config, an admin kubeconfig, etcd's data or a kubelet key, matched by the end of the path so a hostPath mounted anywhere counts, unless the reader is a control-plane binary, the kubelet, <code>kubeadm</code> or <code>kube-vip</code> on the host network, or the path is under <code>/run/cilium/state/</code>, where Cilium's route reconciler keeps its own <code>.wal</code>; the alert leaves out <code>etcdctl</code> in the etcd backup and defrag Jobs, by namespace and Job name; a read of <code>/etc/shadow</code> on the host by anything but PAM's <code>/sbin/unix_chkpwd</code>, which every login and <code>sudo</code> runs (in a container any read is PAM in the image, so only writes count there); any write, host or container, to <code>/etc/passwd</code>, <code>/etc/shadow</code>, <code>/etc/group</code>, <code>/etc/sudoers</code>, <code>/etc/ld.so.preload</code>, or under <code>/etc/sudoers.d/</code>, <code>/etc/cron.d/</code> and <code>/root/.ssh/</code></td>
+<td>A read of a control-plane or etcd key, the encryption config, an admin kubeconfig, etcd's data or a kubelet key, matched by the end of the path so a hostPath mounted anywhere counts, unless the reader is a control-plane binary, the kubelet, <code>kubeadm</code> or <code>kube-vip</code> on the host network, or the path is under <code>/run/cilium/state/</code>, where Cilium's route reconciler keeps its own <code>.wal</code>; the alert leaves out <code>etcdctl</code> in the etcd backup and defrag Jobs, by namespace and the <code>workload</code> label, which Tetragon sets to the CronJob's name, and <code>/proc/self/exe</code> in the <code>arc-jobs</code> workflow pods, which is buildah writing the account files of the image it builds; a read of <code>/etc/shadow</code> on the host by anything but PAM's <code>/sbin/unix_chkpwd</code>, which every login and <code>sudo</code> runs (in a container any read is PAM in the image, so only writes count there); any write, host or container, to <code>/etc/passwd</code>, <code>/etc/shadow</code>, <code>/etc/group</code>, <code>/etc/sudoers</code>, <code>/etc/ld.so.preload</code>, or under <code>/etc/sudoers.d/</code>, <code>/etc/cron.d/</code> and <code>/root/.ssh/</code></td>
 <td>Yes: <code>TetragonSensitiveFileAccess</code></td>
 </tr>
 <tr>
@@ -2727,13 +2727,13 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>exec-from-writable-path</code></td>
 <td><code>security_bprm_check</code></td>
-<td>A container executing a file under <code>/tmp/</code>, <code>/var/tmp/</code>, <code>/dev/shm/</code>, <code>/run/</code>, <code>/var/run/</code>, <code>/shared/</code>, <code>/controller/</code> or <code>/plugins/</code>, except the two binaries an init container copies there and the scripts s6-overlay writes under <code>/run/s6*</code> and <code>/run/service/</code> at start</td>
+<td>A container executing a file under <code>/tmp/</code>, <code>/var/tmp/</code>, <code>/dev/shm/</code>, <code>/run/</code>, <code>/var/run/</code>, <code>/shared/</code>, <code>/controller/</code> or <code>/plugins/</code>, except the two binaries an init container copies there and the scripts s6-overlay writes under <code>/run/s6*</code> and <code>/run/service/</code> at start; the alert leaves out <code>go</code> in the <code>arc-jobs</code> workflow pods, which runs the test binaries it builds under <code>/tmp</code></td>
 <td>Yes: <code>TetragonExecFromWritablePath</code></td>
 </tr>
 <tr>
 <td><code>library-from-writable-path</code></td>
 <td><code>security_mmap_file</code></td>
-<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads, except the native libraries runtimes unpack under <code>/tmp</code> on every start: Alloy's Snowflake driver (<code>/tmp/gosnowflake-cgo*</code>) and zstd-jni in Dependency-Track (<code>/tmp/libzstd-jni-*</code>)</td>
+<td>The same paths mapped with <code>PROT_EXEC</code>, which is how a dropped shared library loads, except the native libraries runtimes unpack under <code>/tmp</code> on every start: Alloy's Snowflake driver (<code>/tmp/gosnowflake-cgo*</code>) and zstd-jni in Dependency-Track (<code>/tmp/libzstd-jni-*</code>); the alert leaves out <code>go</code> in the <code>arc-jobs</code> workflow pods</td>
 <td>Yes: <code>TetragonLibraryFromWritablePath</code></td>
 </tr>
 <tr>
@@ -2763,7 +2763,7 @@ what it is without a lookup here.</p>
 <tr>
 <td><code>mount-in-container</code></td>
 <td><code>security_sb_mount</code></td>
-<td>Any mount from a container except by <code>runc</code>, which mounts the rootfs, proc and sysfs on every start. Escapes start with a mount of the host's disk, cgroup or proc; the alert leaves out <code>rook-ceph</code>, <code>cilium</code> and <code>kube-system</code>, which mount by design</td>
+<td>Any mount from a container except by <code>runc</code>, which mounts the rootfs, proc and sysfs on every start. Escapes start with a mount of the host's disk, cgroup or proc; the alert leaves out <code>rook-ceph</code>, <code>cilium</code> and <code>kube-system</code>, which mount by design, and <code>/proc/self/exe</code> in the <code>arc-jobs</code> workflow pods, which is buildah mounting in its user namespace</td>
 <td>Yes: <code>TetragonMountInContainer</code></td>
 </tr>
 <tr>
@@ -2867,6 +2867,15 @@ agent drops a pod's series when the pod
 exits and a one-shot pod would otherwise flap. Copy that shape for a
 new alert, and test it with a pod that fires once, not with one that
 keeps firing.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">An exclusion has to outlive the pod</p>
+<p><code>increase(...[10m])</code> still sees a pod's events for ten minutes after the
+agent dropped its series, while a bare selector on the right of
+<code>unless</code> matches nothing once the series is stale, so a left-out
+one-shot pod fires when it exits. Write every exclusion as
+<code>unless on (...) last_over_time(...[10m])</code>, the same window as the
+<code>increase()</code>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">A policy that does not load is silent</p>
