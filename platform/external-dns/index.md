@@ -18,9 +18,9 @@ In `application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
-| Sources `gateway-httproute` and `gateway-grpcroute` | Every HTTP and gRPC hostname here is a route; the address comes from the route's parent `Gateway`, so nothing is written down twice. The `GRPCRoute` is Argo CD's, see [CLI access](<https://homelab.wlkr.ch/platform/argocd/#cli-access>) |
+| Sources `gateway-httproute` and `gateway-grpcroute` | Every HTTP and gRPC hostname here is a route; the address comes from the route's parent `Gateway`, so nothing is written down twice. The `GRPCRoute` is Argo CD's, see [CLI access](<https://homelab.wlkr.ch/platform/argocd/index.md#cli-access>) |
 | `target` annotation on `apps-gateway` | The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every `*.k8s.wlkr.ch` record gets it once. `infra-gateway` has none: those names stay LAN-only on purpose |
-| Source `gateway-tlsroute` | The agents' SSH hostnames are `TLSRoute`s, one per session. This version reads `TLSRoute` `v1`, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) |
+| Source `gateway-tlsroute` | The agents' SSH hostnames are `TLSRoute`s, one per session. This version reads `TLSRoute` `v1`, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) |
 | Domain filter | Nothing outside that subtree is touched |
 | TXT registry with an owner id | A companion `_externaldns.*` TXT record stamps every record it creates, and it only modifies or deletes records carrying that stamp. Hand-made records in the same zone are invisible to it |
 | Policy `sync` | Deleting an HTTPRoute removes its record. Safe only because of the registry; without it `sync` would happily delete your MX records |
@@ -29,11 +29,11 @@ In `application.yaml`'s `valuesObject`:
 | `ssh.wlkr.ch` in `domainFilters` | Same zone as `k8s.wlkr.ch`, a different subtree |
 | Credentials as a file (`AWS_SHARED_CREDENTIALS_FILE`), not environment variables | The environment puts a key that can repoint every hostname into `kubectl describe pod`, crash dumps and every child process. The `ExternalSecret` templates an INI `credentials` key, the only key mounted; the original keys stay in the Secret so nothing still reading them breaks |
 
-The credential is a separate IAM user and OpenBao path from cert-manager's — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#kv-layout>) for why. Its policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus `route53:ListHostedZones` and `route53:ListResourceRecordSets`.
+The credential is a separate IAM user and OpenBao path from cert-manager's — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kv-layout>) for why. Its policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus `route53:ListHostedZones` and `route53:ListResourceRecordSets`.
 
 ## Usage
 
-Nothing beyond the `HTTPRoute` you were already writing — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/#usage>). The credential is stored once, by `make bao-secrets` or by hand:
+Nothing beyond the `HTTPRoute` you were already writing — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md#usage>). The credential is stored once, by `make bao-secrets` or by hand:
 
 ```bash
 bao kv put kv/external-dns/route53 \

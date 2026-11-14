@@ -8,7 +8,7 @@ Every mechanism below is described by what it can get back, and by what it canno
 | --- | --- | --- |
 | Kubernetes objects | Nightly | [Velero](<#velero>) to the Ceph object store |
 | Ceph RBD volumes (PVCs) | Nightly | Velero CSI snapshot, moved into the object store |
-| PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](<https://homelab.wlkr.ch/platform/cloudnative-pg/#backups>), one bucket per database; restores to a point in time |
+| PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#backups>), one bucket per database; restores to a point in time |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](<#etcd>) to the object store |
 | OpenBao secrets | Manual | [Raft snapshot](<#openbao>) |
@@ -21,7 +21,7 @@ Every mechanism below is described by what it can get back, and by what it canno
 
 **Every automated backup lands in the same cluster's Ceph.** That protects against operator error (a deleted PVC, a bad `prune`, a corrupted database) and not against losing the cluster, because the backups go with it. Off-site replication is the missing piece: RGW supports bucket replication and Velero a second `BackupStorageLocation`, and neither is configured. Until then, disaster recovery is **Git, the OpenBao unseal keys, and a copy of the latest OpenBao snapshot and of the two buckets kept off-cluster** ([Copying a bucket off the cluster](<#copying-a-bucket-off-the-cluster>)); the nightly backups protect against mistakes.
 
-Velero's `PrometheusRule` reports a backup that failed (`VeleroBackupFailures`, `VeleroBackupPartialFailures`); only `VeleroBackupTooOld` notices one that silently stopped, since a backup hung `InProgress` never fails ([Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>)). All of them only reach whoever Alertmanager is configured to tell — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>).
+Velero's `PrometheusRule` reports a backup that failed (`VeleroBackupFailures`, `VeleroBackupPartialFailures`); only `VeleroBackupTooOld` notices one that silently stopped, since a backup hung `InProgress` never fails ([Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>)). All of them only reach whoever Alertmanager is configured to tell — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>).
 
 ## Velero
 
@@ -33,7 +33,7 @@ Velero's `PrometheusRule` reports a backup that failed (`VeleroBackupFailures`, 
 | Scope | All namespaces except `kube-system` (rebuilt from Git, and large) and `trivy-system` (rescanned), minus `events` (they expire anyway) and any PVC labelled `velero.io/exclude-from-backup`, which is only Prometheus's: the chart's `volumeClaimTemplate.metadata.labels` carries it |
 | Destination | S3 bucket `velero` in the [Ceph object store](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
-| Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](<https://homelab.wlkr.ch/platform/velero/#repository-password>) |
+| Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>) |
 
 The `velero` CLI defaults to the `velero` namespace; this install is in `backup`, so pass `-n backup` every time.
 
@@ -99,9 +99,9 @@ Keep the copy off the cluster, like the nightly ones below.
 
 ### Copying a bucket off the cluster
 
-Rook writes each bucket's keys into a `Secret` named after its claim (`velero-bucket`, `etcd-backup-bucket` in `backup`) and the RGW answers on the infra Gateway; see [Requesting a bucket](<https://homelab.wlkr.ch/platform/rook-ceph/#requesting-a-bucket>).
+Rook writes each bucket's keys into a `Secret` named after its claim (`velero-bucket`, `etcd-backup-bucket` in `backup`) and the RGW answers on the infra Gateway; see [Requesting a bucket](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#requesting-a-bucket>).
 
-1. Export the bucket's own keys and the path-style config RGW needs, as in [Re-initialising the repositories](<https://homelab.wlkr.ch/platform/velero/#re-initialising-the-repositories>).
+1. Export the bucket's own keys and the path-style config RGW needs, as in [Re-initialising the repositories](<https://homelab.wlkr.ch/platform/velero/index.md#re-initialising-the-repositories>).
 
    ```bash
    export AWS_ACCESS_KEY_ID=$(kubectl -n backup get secret <claim> -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
@@ -156,7 +156,7 @@ The commands are the upstream-documented ones for the versions pinned in `payloa
 
 ### OpenBao snapshot restore
 
-Needs an initialised, unsealed cluster and a root token from [Generating a root token](<https://homelab.wlkr.ch/platform/openbao/#generating-a-root-token>). Afterwards the snapshot's own operator login applies, not the new cluster's. `-force` is what lets a snapshot from a *different* cluster (a fresh `bao operator init`) load; afterwards the pods seal and want the snapshot's keys, not the new cluster's.
+Needs an initialised, unsealed cluster and a root token from [Generating a root token](<https://homelab.wlkr.ch/platform/openbao/index.md#generating-a-root-token>). Afterwards the snapshot's own operator login applies, not the new cluster's. `-force` is what lets a snapshot from a *different* cluster (a fresh `bao operator init`) load; afterwards the pods seal and want the snapshot's keys, not the new cluster's.
 
 1. Copy the snapshot in.
 

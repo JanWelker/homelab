@@ -9,7 +9,7 @@ The first pass over the [Dependency-Track](<https://homelab-apps.wlkr.ch/depende
 | Projects from ReplicaSets scaled to zero, ten of 76, with a quarter of the criticals | **Fixed** (homelab-apps\#77, \#983). The upload job skips them |
 | `isLatest` on a superseded version | **Fixed** (homelab-apps\#77). It goes to the highest version that runs |
 | No project for `busybox` and `hubble-export-stdout` | **By design.** Neither image has a package Trivy can name, and the operator writes no `SbomReport` for an empty SBOM |
-| No project for Home Assistant | **Accepted.** Its SBOM names over three thousand components and is larger than one API write may be, so the operator cannot store it; see [Pitfalls](<https://homelab.wlkr.ch/platform/trivy-operator/#pitfalls>). The `VulnerabilityReport` covers the image |
+| No project for Home Assistant | **Accepted.** Its SBOM names over three thousand components and is larger than one API write may be, so the operator cannot store it; see [Pitfalls](<https://homelab.wlkr.ch/platform/trivy-operator/index.md#pitfalls>). The `VulnerabilityReport` covers the image |
 | Most findings carry no severity | **By design.** They are Go vulnerability database entries, which have none; the same flaw is usually there a second time as a GitHub advisory that does |
 
 ## Images
@@ -19,7 +19,7 @@ Every critical on an image that runs. Dependency-Track rates by the advisory's o
 | Image | Finding | Disposition |
 | --- | --- | --- |
 | Argo CD (bundled `git-lfs`), dex, snapshot-controller, descheduler, cephcsi, csi-attacher | Seven `golang.org/x/crypto` advisories in its SSH server, client and agent | **Not reachable, waiting on release.** None of them speaks SSH. Trivy has all seven at severity `UNKNOWN`, so they never reached its dashboard |
-| dex, snapshot-controller | gRPC-Go authorization bypass, CVE-2026-33186 | **Not reachable, waiting on release.** dex as on 2026-09-20; snapshot-controller is a client, and its image trails the tag by one release, see [Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>) |
+| dex, snapshot-controller | gRPC-Go authorization bypass, CVE-2026-33186 | **Not reachable, waiting on release.** dex as on 2026-09-20; snapshot-controller is a client, and its image trails the tag by one release, see [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>) |
 | `library/nextcloud` | Eight in `curl`, five in `rsync`, one in `libxml2` | **Nothing to do.** No fix in Debian 13. The `rsync` ones need a daemon or a remote shell, and the image copies files locally. Trivy rates the `curl` ones below HIGH, where the namespace's ignore policy drops them |
 | `library/nextcloud` | `MAL-2022-3033`, `MAL-2022-3056`, "malicious package" | **Scanner artifact.** Nextcloud's own `files_pdfviewer` and `firstrunwizard` apps share a name with two npm packages. **Fixed** (homelab-apps\#78): the upload job suppresses them for every new tag |
 | `goauthentik/server`, `cloudnative-pg/postgresql` | `libxml2`, `anyio` | **Unchanged** since 2026-09-20 |

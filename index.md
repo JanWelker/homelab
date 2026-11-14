@@ -27,12 +27,12 @@ It is a real cluster doing real work, built the way a production cluster is buil
 
   ---
 
-  [Operations](<https://homelab.wlkr.ch/operations/index.md>) has the health check and the symptom-to-cause table. If it is a stalled install, the [PXE troubleshooting table](<https://homelab.wlkr.ch/quickstart/#troubleshooting-pxe-boot>).
+  [Operations](<https://homelab.wlkr.ch/operations/index.md>) has the health check and the symptom-to-cause table. If it is a stalled install, the [PXE troubleshooting table](<https://homelab.wlkr.ch/quickstart/index.md#troubleshooting-pxe-boot>).
 - **I am making a change**
 
   ---
 
-  [Development](<https://homelab.wlkr.ch/development/index.md>) for the checks a pull request must pass, [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>) for what a merge does to the cluster, and the [repository layout](<https://homelab.wlkr.ch/architecture/#repository-layout>) for where things live.
+  [Development](<https://homelab.wlkr.ch/development/index.md>) for the checks a pull request must pass, [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>) for what a merge does to the cluster, and the [repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>) for where things live.
 
 ## The stack in one table
 
@@ -40,7 +40,7 @@ Each choice had a simpler alternative that was rejected on purpose; the reasonin
 
 | Layer | Choice | Why it is not the obvious one |
 | --- | --- | --- |
-| OS | [Flatcar Container Linux](<https://homelab.wlkr.ch/concepts/#flatcar-container-linux>) | Read-only `/usr`. You cannot `apt install` your way out of a problem, which turns out to be the feature |
+| OS | [Flatcar Container Linux](<https://homelab.wlkr.ch/concepts/index.md#flatcar-container-linux>) | Read-only `/usr`. You cannot `apt install` your way out of a problem, which turns out to be the feature |
 | Cluster | Kubernetes via kubeadm | Stock upstream, so the upstream docs apply verbatim |
 | Network | [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | eBPF, no `kube-proxy`, no iptables archaeology. Also supplies Gateway API and the LoadBalancer addresses bare metal does not come with |
 | Storage | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) | Replicated block storage across the nodes, and the component most likely to teach you humility |

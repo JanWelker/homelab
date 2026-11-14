@@ -30,7 +30,7 @@ The API server records who did what, to which object, and whether it was allowed
 >
 > **Never raise the Secret rule above `Metadata`**
 >
-> At `Request` or `RequestResponse` the request body is recorded, and for a Secret the body *is* the credential. The audit log would become an unencrypted copy of every Secret in the cluster, in a flat file beside the etcd that was [encrypted at rest](<https://homelab.wlkr.ch/architecture/security/#encryption-at-rest>) to prevent exactly that.
+> At `Request` or `RequestResponse` the request body is recorded, and for a Secret the body *is* the credential. The audit log would become an unencrypted copy of every Secret in the cluster, in a flat file beside the etcd that was [encrypted at rest](<https://homelab.wlkr.ch/architecture/security/index.md#encryption-at-rest>) to prevent exactly that.
 
 ## Where the log lives
 
@@ -57,7 +57,7 @@ Audit events reach Loki as JSON with `job="kubernetes-audit"`, plus `verb` and `
 {job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
 ```
 
-The last query answers "what would break if I tightened `enforce` on this namespace" from evidence, for the whole retention window. Exec, Secret reads by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts from Loki's ruler, defined in `payload/platform/logging/loki-rules.yaml`; see [Logging](<https://homelab.wlkr.ch/platform/logging/#alerting>).
+The last query answers "what would break if I tightened `enforce` on this namespace" from evidence, for the whole retention window. Exec, Secret reads by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts from Loki's ruler, defined in `payload/platform/logging/loki-rules.yaml`; see [Logging](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
 
 ## Applying it to a running cluster
 

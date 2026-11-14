@@ -1,6 +1,6 @@
 # Monitoring
 
-Full observability stack based on [kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/#pod-security-admission>)). The chart's default rule set is good; its default routing swallows every alert, which is what most of this page is about.
+Full observability stack based on [kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)). The chart's default rule set is good; its default routing swallows every alert, which is what most of this page is about.
 
 ## At a glance
 
@@ -17,7 +17,7 @@ Full observability stack based on [kube-prometheus-stack](<https://github.com/pr
 
 ### CRDs
 
-The `monitoring.coreos.com` CRDs are a separate `prometheus-operator-crds` Application, from the prometheus-community chart of that name, and this chart runs with `crds.enabled: false`. Cilium, cert-manager, External Secrets, Rook and OpenBao all render ServiceMonitors or PrometheusRules, and a missing kind fails their sync until the CRDs exist — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-convergence>). The Application has no resources finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus and Alertmanager with them, in place.
+The `monitoring.coreos.com` CRDs are a separate `prometheus-operator-crds` Application, from the prometheus-community chart of that name, and this chart runs with `crds.enabled: false`. Cilium, cert-manager, External Secrets, Rook and OpenBao all render ServiceMonitors or PrometheusRules, and a missing kind fails their sync until the CRDs exist — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>). The Application has no resources finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus and Alertmanager with them, in place.
 
 > [!WARNING]
 >
@@ -35,7 +35,7 @@ Alertmanager routes to email. The chart's `config` is off (`alertmanagerSpec.use
 | `smtp_from` equals the login | mailbox.org refuses a sender the login does not own |
 | Grouping by `namespace`, with `group_interval` and `repeat_interval` in hours and a shorter pair for `critical`; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together |
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender |
-| `VeleroBackupInProgress` routed to `null` | It fires for every nightly backup as [Kured's gate](<https://homelab.wlkr.ch/platform/kured/#configuration>), not as a problem |
+| `VeleroBackupInProgress` routed to `null` | It fires for every nightly backup as [Kured's gate](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>), not as a problem |
 | `KubeJobFailed` disabled in the chart (`defaultRules.disabled`) and redefined in `job-rules.yaml`, bound to Jobs started in the last day | The chart's rule fires for as long as a failed Job object exists, so one old failure reads as an outage for weeks. Failed Jobs carry no failure time, so the bound counts from the start |
 | Inhibit rules repeated from the chart defaults | A supplied config replaces the whole document, so nothing is inherited |
 | Every templated value through `toJson` | A password containing `:`, `#` or a quote cannot break the rendered file |
@@ -53,13 +53,13 @@ For another provider, change `smtp_smarthost` in the template and the three valu
 
 Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*SelectorNilUsesHelmValues: false` settings: the chart treats an empty selector as unset and renders `release: kube-prometheus-stack` in its place, which limits Prometheus to its own targets.
 
-`PrometheusRule`s load only from the namespaces the `apps` project cannot deploy to, matched on the `kubernetes.io/metadata.name` label the API server sets. [Kured](<https://homelab.wlkr.ch/platform/kured/#configuration>) gates reboots on alert names, so a workload's rule named `CephHealthError` would otherwise stop OS updates cluster-wide. A rule in a new platform namespace loads only once that namespace is on the list in `ruleNamespaceSelector`.
+`PrometheusRule`s load only from the namespaces the `apps` project cannot deploy to, matched on the `kubernetes.io/metadata.name` label the API server sets. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>) gates reboots on alert names, so a workload's rule named `CephHealthError` would otherwise stop OS updates cluster-wide. A rule in a new platform namespace loads only once that namespace is on the list in `ruleNamespaceSelector`.
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
 | kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the ServiceAccount token still authenticates |
 | etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP on 2381, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
-| Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/#monitoring>) |  |
+| Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#monitoring>) |  |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
 | CRD status fields: CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above |
 | Pod labels: OpenBao's `openbao-sealed` | kube-state-metrics' `metricLabelsAllowlist` in the chart values | Exported as `label_<name>` on `kube_pod_labels`; only listed labels, since every one adds a series per pod |
@@ -72,14 +72,14 @@ Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*S
 
 | Setting | Why |
 | --- | --- |
-| `disable_login_form` and `oauth_auto_login` | Opening the URL bounces straight to Authentik and back; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/#groups-and-roles>) |
+| `disable_login_form` and `oauth_auto_login` | Opening the URL bounces straight to Authentik and back; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/index.md#groups-and-roles>) |
 | `analytics.*` off and `disable_gravatar` | Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches every user's avatar from Gravatar; the Grafana network policy names none of those and the policy audit showed the Gravatar call. Telemetry is off in every component here |
-| `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](<https://homelab.wlkr.ch/platform/authentik/#client-secrets>) |
+| `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#client-secrets>) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
-| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
-| `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with [Alloy's `rbac.rules`](<https://homelab.wlkr.ch/platform/logging/#alloy-pipeline>); the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
+| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
+| `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with [Alloy's `rbac.rules`](<https://homelab.wlkr.ch/platform/logging/index.md#alloy-pipeline>); the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
-| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/#components>), not a budget |
+| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/index.md#components>), not a budget |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing |
 
@@ -169,4 +169,4 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 >
 > **Prometheus is a single replica, Alertmanager is not**
 >
-> Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) drain keeps alerting up. A second Prometheus would double the memory limit and the volume in `application.yaml`, which the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/#components>) leaves no room for on a worker, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.
+> Alertmanager runs two replicas spread over the workers with a PDB that lets one go, so a [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) drain keeps alerting up. A second Prometheus would double the memory limit and the volume in `application.yaml`, which the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/index.md#components>) leaves no room for on a worker, so it stays single: its node's drain loses metrics for the restart, and Kured's alert gate fails closed until it is back.

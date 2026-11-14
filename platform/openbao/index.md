@@ -17,7 +17,7 @@ flowchart LR
 |  |  |
 | --- | --- |
 | Namespace | `openbao` |
-| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for its Raft volumes. A fresh bootstrap [pauses here](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-pauses-at-openbao>) until OpenBao is initialised and unsealed |
+| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for its Raft volumes. A fresh bootstrap [pauses here](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-pauses-at-openbao>) until OpenBao is initialised and unsealed |
 | Seal | Shamir, unsealed by hand; the share count and threshold are set in `scripts/bao-init.sh` |
 | If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside |
 | Health check | `bao status` on every pod → `Sealed: false`; see [Health check](<#health-check>) |
@@ -35,7 +35,7 @@ flowchart LR
 
 | Setting | Why |
 | --- | --- |
-| Pod security context restated in full | The chart's `securityContext.pod` and `.container` replace rather than merge, so a block that names only what differs loses the rest. The image's `USER` is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce `restricted` ([security policies](<https://homelab.wlkr.ch/platform/security-policies/#pod-security-admission>)) |
+| Pod security context restated in full | The chart's `securityContext.pod` and `.container` replace rather than merge, so a block that names only what differs loses the rest. The image's `USER` is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce `restricted` ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)) |
 | `image.repository` without a registry | The chart prepends `server.image.registry` (`quay.io`) itself |
 | `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200 |
 | `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it as they start. `service_registration "kubernetes"` only labels pods `active` and `standby` |
@@ -46,7 +46,7 @@ flowchart LR
 
 Two, declared as `audit` stanzas in the server config in `application.yaml` (this OpenBao refuses `bao audit enable` over the API): a `file` device on the audit PVC, and a second `file` device on `stdout`, which [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) ships to Loki with the rest of the container's output. Without one, who read which secret is recorded nowhere; with only one, a full PVC would make OpenBao refuse every request, because a request no enabled device can log is refused. Values are HMACed in both; paths and identities are not. The config is read at start-up, and the StatefulSet updates `OnDelete`, so a change lands when each pod next restarts — see [Unsealing after a restart](<#unsealing-after-a-restart>).
 
-`OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](<https://homelab.wlkr.ch/platform/logging/#alerting>) fires on a `kv/data/` read by anything but the External Secrets Operator's roles: the operator, a generated root token, or a token that should not exist. A standby audits a request before it resolves the token, so its `please forward to the active node` rejections carry no identity; the rule drops them, and every `ClusterSecretStore` targets the `openbao-active` Service so ESO never produces one.
+`OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>) fires on a `kv/data/` read by anything but the External Secrets Operator's roles: the operator, a generated root token, or a token that should not exist. A standby audits a request before it resolves the token, so its `please forward to the active node` rejections carry no identity; the rule drops them, and every `ClusterSecretStore` targets the `openbao-active` Service so ESO never produces one.
 
 ```text
 {namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
@@ -64,14 +64,14 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a workloa
 | `monitoring/grafana-admin` (generated) | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
-| `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](<https://homelab.wlkr.ch/platform/argocd/#agent-account>); empty until generated |
+| `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](<https://homelab.wlkr.ch/platform/argocd/index.md#agent-account>); empty until generated |
 | `shot-bridge/accounts` | `lm-username`, `lm-password`, `apns-key-id`, `apns-key-p8` | The Shot Timer bridge's La Marzocco login and APNs key — [Shot Timer bridge](<https://homelab-apps.wlkr.ch/shot-bridge/#secrets>); the APNs keys are empty until the key is created |
-| `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/#github-app>); empty until the app is created |
+| `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md#github-app>); empty until the app is created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
-| `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](<https://homelab.wlkr.ch/platform/velero/#repository-password>); changing it orphans every volume backup |
+| `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>); changing it orphans every volume backup |
 | `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/#secrets>); written even when empty, so the job fails on its own rather than stalling the sync |
 
-The two `route53` leaves are separate IAM users on purpose: cert-manager only ever writes `_acme-challenge` TXT records, though its [policy](<https://homelab.wlkr.ch/platform/cert-manager/#configuration>) still allows any record change, while external-dns creates and deletes A records by design, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
+The two `route53` leaves are separate IAM users on purpose: cert-manager only ever writes `_acme-challenge` TXT records, though its [policy](<https://homelab.wlkr.ch/platform/cert-manager/index.md#configuration>) still allows any record change, while external-dns creates and deletes A records by design, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
 
 ### Generated secrets
 
@@ -179,7 +179,7 @@ A typed value is rotated with `make bao-secrets`, which asks per existing path w
    ```bash
    kubectl -n openbao exec openbao-0 -- bao kv metadata delete -mount=kv <path>
    ```
-2. Push the new value into the `Secret` now rather than at the next `refreshInterval` — see [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/#usage>):
+2. Push the new value into the `Secret` now rather than at the next `refreshInterval` — see [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md#usage>):
 
    ```bash
    kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --overwrite

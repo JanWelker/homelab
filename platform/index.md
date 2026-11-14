@@ -13,7 +13,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | [arc-runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | `arc-runners`, `arc-jobs` | Self-hosted GitHub Actions runners, one scale set per repository |
 | [argocd](<https://homelab.wlkr.ch/platform/argocd/index.md>) | `argocd` | ArgoCD itself and the `platform` ApplicationSet |
 | argocd-config | `argocd` | The `ExternalSecret` for ArgoCD's OIDC client, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
-| argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#structure>) |
+| argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#structure>) |
 | [authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) | `authentik` | Single sign-on for every platform UI |
 | backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) | `cert-manager` | The cert-manager chart |
@@ -26,14 +26,14 @@ One row per directory under `payload/platform/`, with the Application name where
 | [gateway-api](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) | `kube-system` | The two Gateways and the HTTP-to-HTTPS redirect |
 | gateway-api-crds | `kube-system` | The Gateway API CRDs — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) |
 | kube-vip | `kube-system` | Holds the control-plane VIP; adopts the static pod Ignition bootstraps — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>) |
-| kubelet-csr-approver | `kubelet-csr-approver` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](<https://homelab.wlkr.ch/platform/metrics-server/#verifying-the-kubelet-instead-of-trusting-it>) |
+| kubelet-csr-approver | `kubelet-csr-approver` | Approves `kubelet-serving` CSRs against the inventory — see [Metrics Server](<https://homelab.wlkr.ch/platform/metrics-server/index.md#verifying-the-kubelet-instead-of-trusting-it>) |
 | [kured](<https://homelab.wlkr.ch/platform/kured/index.md>) | `kured` | Drains and reboots nodes to apply staged OS and Kubernetes updates |
 | [logging](<https://homelab.wlkr.ch/platform/logging/index.md>) | `logging` | Loki's bucket, rules, dashboards and Grafana datasource |
 | loki | `logging` | The Loki chart — see [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) |
 | [metrics-server](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) | `kube-system` | The `metrics.k8s.io` API behind `kubectl top` and every HPA |
 | monitoring, Application `kube-prometheus-stack` | `monitoring`, `node-exporter` | Prometheus, Grafana, Alertmanager, kube-state-metrics; node-exporter alone in `node-exporter` — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) |
 | [openbao](<https://homelab.wlkr.ch/platform/openbao/index.md>) | `openbao` | Cluster-wide secret store |
-| prometheus-operator-crds | `monitoring` | The Prometheus operator CRDs, separate so every chart that ships a `ServiceMonitor` can sync — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/#crds>) |
+| prometheus-operator-crds | `monitoring` | The Prometheus operator CRDs, separate so every chart that ships a `ServiceMonitor` can sync — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
 | [rook-ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) | `rook-ceph` | The CSI driver, dashboards and HTTPRoute |
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
@@ -103,7 +103,7 @@ Constraints carry `nodeTaintsPolicy: Honor`, so the skew is measured over the no
 
 ## Rollout order
 
-Nothing enforces an order: every Application syncs as soon as it exists and converges by retry and health, as [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-convergence>) explains. This is the order a fresh cluster settles in, and what each layer is waiting for while it is not yet Healthy.
+Nothing enforces an order: every Application syncs as soon as it exists and converges by retry and health, as [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) explains. This is the order a fresh cluster settles in, and what each layer is waiting for while it is not yet Healthy.
 
 | Layer | Applications | Waits for |
 | --- | --- | --- |
@@ -111,7 +111,7 @@ Nothing enforces an order: every Application syncs as soon as it exists and conv
 | Network | `cilium`, `kube-vip` | the Gateway API CRDs Cilium's operator reads at startup |
 | Controllers | `arc-controller`, `cert-manager`, `cloudnative-pg`, `external-secrets`, `kubelet-csr-approver`, `rook-ceph-operator`, `snapshot-controller` | a network; each brings its own CRDs |
 | Storage | `rook-ceph`, `rook-ceph-cluster` | the Rook operator and its CRDs |
-| Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-pauses-at-openbao>) |
+| Secrets | `openbao` | `rook-ceph-block` for its volumes, then an operator — see [Bootstrap pauses at OpenBao](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-pauses-at-openbao>) |
 | Certificates | `certificates`, `external-dns` | a working `ClusterSecretStore` and the Route53 credentials in OpenBao |
 | Ingress | `gateway-api` | the wildcard certificates the Gateways terminate TLS with |
 | Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
@@ -120,4 +120,4 @@ Nothing enforces an order: every Application syncs as soon as it exists and conv
 | Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](<https://homelab.wlkr.ch/development/add-workload/index.md>) |
 
-Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own Application is in [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-convergence>).
+Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own Application is in [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>).

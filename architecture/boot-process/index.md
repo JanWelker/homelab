@@ -22,7 +22,7 @@ sequenceDiagram
     Server-->>Node: 6. Flatcar kernel, initrd
 ```
 
-The DHCP server is external and must hand out the boot server's IP as `next-server` and a syslinux filename — see the [Quickstart prerequisites](<https://homelab.wlkr.ch/quickstart/#prerequisites>). Step 2 is where most first attempts die, silently: the firmware moves on to the next boot device.
+The DHCP server is external and must hand out the boot server's IP as `next-server` and a syslinux filename — see the [Quickstart prerequisites](<https://homelab.wlkr.ch/quickstart/index.md#prerequisites>). Step 2 is where most first attempts die, silently: the firmware moves on to the next boot device.
 
 ## 3\. Install &amp; Bootstrap
 
@@ -103,7 +103,7 @@ sequenceDiagram
 >
 > **`make untaint` is not part of this flow**
 >
-> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/#cluster-layout>) has dedicated workers, so the taint stays. See [Single-node clusters](<https://homelab.wlkr.ch/quickstart/#single-node-clusters>).
+> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/index.md#cluster-layout>) has dedicated workers, so the taint stays. See [Single-node clusters](<https://homelab.wlkr.ch/quickstart/index.md#single-node-clusters>).
 
 ## Every boot after the first
 
@@ -128,7 +128,7 @@ The node boots from its own disk; the boot server should be off.
 >
 > **Two boot paths, and the menu picks the safe one**
 >
-> `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
+> `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
 
 ## Boot server
 
@@ -141,7 +141,7 @@ The node boots from its own disk; the boot server should be off.
 
 Both roots are written by `make config` and `make download`; a missing file is fixed by `make artifacts`, not by the script.
 
-Leave it in the foreground. It opens by naming what it serves and which nodes are armed — a boxed warning listing every disk about to be wiped, with `make reinstall-cancel` and its `LIMIT=<node>` form — then logs one line per request against the node that made it: role, name, address and MAC once the menu it fetched has identified it, dashes before. The file a node *stops* at is the diagnosis; see [Troubleshooting PXE boot](<https://homelab.wlkr.ch/quickstart/#troubleshooting-pxe-boot>).
+Leave it in the foreground. It opens by naming what it serves and which nodes are armed — a boxed warning listing every disk about to be wiped, with `make reinstall-cancel` and its `LIMIT=<node>` form — then logs one line per request against the node that made it: role, name, address and MAC once the menu it fetched has identified it, dashes before. The file a node *stops* at is the diagnosis; see [Troubleshooting PXE boot](<https://homelab.wlkr.ch/quickstart/index.md#troubleshooting-pxe-boot>).
 
 ```console
 20:33:04  server                                                    http on 10.9.200.222:8000 from output/http
@@ -185,4 +185,4 @@ Arming survives the boot server, because the menu is a file on disk. `Ctrl-C` th
 >
 > **Stop it when you are done**
 >
-> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours (`ttl` in `ansible/templates/kubeadm.yaml.j2`) and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/#provisioning>).
+> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours (`ttl` in `ansible/templates/kubeadm.yaml.j2`) and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#provisioning>).

@@ -27,9 +27,9 @@ A `Cluster` is not a StatefulSet with a nicer name:
 
 Major-version upgrades are declarative too, but offline: ArgoCD reports Degraded while one runs and the workload is down for its duration. Read [the upstream guide](<https://cloudnative-pg.io/documentation/current/postgres_upgrades/>) before merging one.
 
-Databases claim `rook-ceph-block`, so Ceph's three copies already sit under every database and a single-instance `Cluster` is a defensible default: the data survives a node loss even when the process does not. Where a workload cannot tolerate the restart, `instances: 3` is the change, as [Authentik](<https://homelab.wlkr.ch/platform/authentik/#database>) shows.
+Databases claim `rook-ceph-block`, so Ceph's three copies already sit under every database and a single-instance `Cluster` is a defensible default: the data survives a node loss even when the process does not. Where a workload cannot tolerate the restart, `instances: 3` is the change, as [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#database>) shows.
 
-The operator itself runs two replicas (`replicaCount` in `application.yaml`'s `valuesObject`), spread per [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>): the same pod serves the `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`, so a single replica rescheduling through a Kured drain refuses every apply, while leader election keeps one of the two reconciling. The chart ships no PodDisruptionBudget.
+The operator itself runs two replicas (`replicaCount` in `application.yaml`'s `valuesObject`), spread per [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>): the same pod serves the `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`, so a single replica rescheduling through a Kured drain refuses every apply, while leader election keeps one of the two reconciling. The chart ships no PodDisruptionBudget.
 
 ### Backups
 
@@ -142,7 +142,7 @@ kubectl get clusters.postgresql.cnpg.io -A \
 kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecoveryWindow
 ```
 
-`ContinuousArchiving` `True` means the last WAL segment reached the bucket; `False` means WAL is piling up on the instance's volume, which fills it. The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. Both are warnings on the daily mail.
+`ContinuousArchiving` `True` means the last WAL segment reached the bucket; `False` means WAL is piling up on the instance's volume, which fills it. The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. Both are warnings on the daily mail.
 
 ## Pitfalls
 

@@ -29,13 +29,13 @@ A listener pins one hostname pattern and a wildcard certificate covers one zone,
 2. An HTTPS listener in `gateways.yaml` referencing it.
 3. The zone in `domainFilters` in `payload/platform/external-dns/application.yaml`, or its routes are silently ignored.
 
-The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new hostname needs no certificate of its own and nothing to renew. Each HTTPS listener pins its hostname pattern, so a route can only claim a name inside its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still admits an `infra` name; such a route gets no traffic, because the infra names resolve to the other Gateway and the apps certificate covers one label only. Port 80 is accepted from all namespaces only so the central rule in `http-redirect.yaml` can send it to HTTPS. `apps-gateway` carries the annotation that makes [external-dns](<https://homelab.wlkr.ch/platform/external-dns/#configuration>) publish the router's public address instead of the Gateway's LAN one; the router forwards ports 80 and 443 to that LAN address.
+The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new hostname needs no certificate of its own and nothing to renew. Each HTTPS listener pins its hostname pattern, so a route can only claim a name inside its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still admits an `infra` name; such a route gets no traffic, because the infra names resolve to the other Gateway and the apps certificate covers one label only. Port 80 is accepted from all namespaces only so the central rule in `http-redirect.yaml` can send it to HTTPS. `apps-gateway` carries the annotation that makes [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md#configuration>) publish the router's public address instead of the Gateway's LAN one; the router forwards ports 80 and 443 to that LAN address.
 
 `payload/platform/cilium/rbac-gateway-fix.yaml` grants the operator read access to Ingresses and IngressClasses: its Gateway API controller lists them too, and the chart grants that only with the Ingress controller enabled. Retry removing it on a chart major.
 
 ### Backend protocol
 
-Envoy speaks HTTP/1.1 to every backend unless the Service port says otherwise: Cilium's `gatewayAPI.enableAppProtocol` makes it honour `appProtocol: kubernetes.io/h2c` and open HTTP/2 cleartext instead. A `GRPCRoute` needs that, because the Gateway translates gRPC-web into native gRPC, which only an HTTP/2 backend answers; Argo CD's `http2` port is the one user, see [Argo CD → CLI access](<https://homelab.wlkr.ch/platform/argocd/#cli-access>).
+Envoy speaks HTTP/1.1 to every backend unless the Service port says otherwise: Cilium's `gatewayAPI.enableAppProtocol` makes it honour `appProtocol: kubernetes.io/h2c` and open HTTP/2 cleartext instead. A `GRPCRoute` needs that, because the Gateway translates gRPC-web into native gRPC, which only an HTTP/2 backend answers; Argo CD's `http2` port is the one user, see [Argo CD → CLI access](<https://homelab.wlkr.ch/platform/argocd/index.md#cli-access>).
 
 The CRDs arrive twice from one tag: `make install-cilium` applies the release bundle `standard-install.yaml` before ArgoCD exists, and the `gateway-api-crds` Application applies `config/crd/standard`, the directory that bundle is generated from. The Makefile reads the tag out of the Application, so the two cannot drift apart.
 
@@ -77,9 +77,9 @@ The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on port 
 | `allowedRoutes.kinds: TLSRoute` | The listener serves nothing else, and `HTTPRoute`s cannot attach to it by accident |
 | `TLSRoute` `v1` | Installed in the standard channel of the Gateway API CRDs; `v1alpha2` is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart `cilium-operator` |
 
-DNS needs no record by hand: [external-dns](<https://homelab.wlkr.ch/platform/external-dns/#configuration>) reads the `TLSRoute` hostnames and publishes the router's public address, as for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`, for example `openssl s_client -quiet -connect %h:443 -servername %h`.
+DNS needs no record by hand: [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md#configuration>) reads the `TLSRoute` hostnames and publishes the router's public address, as for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`, for example `openssl s_client -quiet -connect %h:443 -servername %h`.
 
-Envoy checks its egress against the backend like any Gateway traffic, so the agents' namespace must admit the `ingress` entity on the SSH port; see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#network-policies>).
+Envoy checks its egress against the backend like any Gateway traffic, so the agents' namespace must admit the `ingress` entity on the SSH port; see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>).
 
 ## Health check
 

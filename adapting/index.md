@@ -35,7 +35,7 @@ Four hostname patterns carry traffic. Each is a listener in `payload/platform/ga
 | --- | --- | --- |
 | `*.k8s.<your-domain>` | user-facing workloads, via `apps-gateway` | rename |
 | `*.infra.k8s.<your-domain>` | platform UIs (ArgoCD, Grafana, Hubble, OpenBao, Rook), via `infra-gateway` | rename |
-| `*.ssh.<your-domain>` | the [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) for in-cluster agent sessions | rename, or delete the listener and the zone |
+| `*.ssh.<your-domain>` | the [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) for in-cluster agent sessions | rename, or delete the listener and the zone |
 | `*.wollbi.ch` | a second site family on `apps-gateway`, with its own listener and certificate | delete or rename every file `git grep -l wollbi -- payload/` lists |
 
 Replace the first three in one pass; `wollbi.ch` does not match the pattern and is handled by hand:
@@ -78,19 +78,19 @@ If your DNS is hosted elsewhere, replace the `dns01.route53` solver with the mat
 
 ## 5\. Describe your hardware
 
-Edit `ansible/inventory.yaml`; every variable is listed under [Quickstart → step 2](<https://homelab.wlkr.ch/quickstart/#setup>). The ones a fork must choose rather than copy:
+Edit `ansible/inventory.yaml`; every variable is listed under [Quickstart → step 2](<https://homelab.wlkr.ch/quickstart/index.md#setup>). The ones a fork must choose rather than copy:
 
 | Setting | Notes |
 | --- | --- |
 | `control_plane_vip` | Free address on the nodes' subnet, outside DHCP and distinct from the LoadBalancer pools. Becomes the API endpoint in the cluster certificates. |
 | `control_plane_vip_interface` | The NIC kube-vip advertises on; check `ip link` on a provisioned node. |
-| `control_plane_endpoint_host` | Set a name on a fresh build, see [Endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/#endpoint-name>); a running cluster keeps the VIP. |
-| host entries | Replace the hosts with yours. Each needs `ansible_host` and `mac_address` (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from `ansible_host` — see [Quickstart → Other requirements](<https://homelab.wlkr.ch/quickstart/#other-requirements>). |
-| `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#configuration>). |
+| `control_plane_endpoint_host` | Set a name on a fresh build, see [Endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>); a running cluster keeps the VIP. |
+| host entries | Replace the hosts with yours. Each needs `ansible_host` and `mac_address` (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from `ansible_host` — see [Quickstart → Other requirements](<https://homelab.wlkr.ch/quickstart/index.md#other-requirements>). |
+| `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer for the Gateway addresses; `payload/platform/cilium/bgp.yaml` must name the same values, since the payload cannot read the inventory — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md#configuration>). |
 
 Then update `payload/platform/cilium/values.yaml`:
 
-- `k8sServiceHost` — a literal, reachable API server address, because Cilium replaces `kube-proxy` and cannot reach the API through a Service — see [Design Decisions → Cilium](<https://homelab.wlkr.ch/architecture/decisions/#cilium-as-cni-replacing-kube-proxy>).
+- `k8sServiceHost` — a literal, reachable API server address, because Cilium replaces `kube-proxy` and cannot reach the API through a Service — see [Design Decisions → Cilium](<https://homelab.wlkr.ch/architecture/decisions/index.md#cilium-as-cni-replacing-kube-proxy>).
 - `devices` — the interface prefix Cilium binds to; check `ip link` on a provisioned node.
 
 And `payload/platform/kube-vip/daemonset.yaml`, which takes over from the bootstrap static pod once ArgoCD syncs and cannot read the inventory:

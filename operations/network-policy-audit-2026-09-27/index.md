@@ -1,6 +1,6 @@
 # Network Policy Audit 2026-09-27
 
-One week of `AUDIT` verdicts from every namespace, read at the end of the [rollout](<https://homelab.wlkr.ch/platform/security-policies/#rollout>), kept so the flip to enforcement starts from the disposition rather than the raw count. 25k verdicts, 21k of them one missing pair of rules.
+One week of `AUDIT` verdicts from every namespace, read at the end of the [rollout](<https://homelab.wlkr.ch/platform/security-policies/index.md#rollout>), kept so the flip to enforcement starts from the disposition rather than the raw count. 25k verdicts, 21k of them one missing pair of rules.
 
 ## Rules added
 

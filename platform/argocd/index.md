@@ -23,7 +23,7 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | Memory limits, no CPU limits | A CPU limit throttles even on an idle node; memory is not compressible. Sizing is in [Platform](<https://homelab.wlkr.ch/platform/index.md>) |
 | `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
 | `configs.params` `server.insecure: true` | TLS terminates at the Gateway. The chart reads this parameter, not `extraArgs`, to point its route at the plaintext port |
-| `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/#usage>) |
+| `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md#usage>) |
 | `resource.customizations` for `HTTPRoute` | The API server defaults `group`, `kind`, `weight` and a catch-all `matches` onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs |
 | `dex.enabled: false` | `oidc.config` talks to [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own `/auth/callback` either way |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
@@ -64,7 +64,7 @@ The token expires after 90 days: that caps a leak at a quarter, and rotating is 
    argocd account delete-token --account claude <id>
    ```
 
-The agents reach Argo CD on 443 through the CLI host from [CLI access](<#cli-access>), which resolves to `infra-gateway`'s own address. The caller's policy has to admit both legs, as for any name the Gateway serves ([Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#network-policies>)):
+The agents reach Argo CD on 443 through the CLI host from [CLI access](<#cli-access>), which resolves to `infra-gateway`'s own address. The caller's policy has to admit both legs, as for any name the Gateway serves ([Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>)):
 
 | Leg | Admitted by |
 | --- | --- |
@@ -90,7 +90,7 @@ argocd login argo-grpc.infra.k8s.wlkr.ch --sso --grpc-web
 kubectl -n argocd get applications
 ```
 
-Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync` has exhausted its retries and waits for a hand sync — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/#sync-policy>).
+Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync` has exhausted its retries and waits for a hand sync — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>).
 
 ## Pitfalls
 
@@ -98,7 +98,7 @@ Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync` h
 >
 > **The local admin is disabled; Authentik is the login**
 >
-> With Authentik down there is no way into the UI. The break-glass path is a pull request that re-enables `admin.enabled`, since selfHeal reverts a `kubectl patch`; the steps are in [When Authentik is down](<https://homelab.wlkr.ch/platform/authentik/#when-authentik-is-down>).
+> With Authentik down there is no way into the UI. The break-glass path is a pull request that re-enables `admin.enabled`, since selfHeal reverts a `kubectl patch`; the steps are in [When Authentik is down](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>).
 
 ## Recovery
 

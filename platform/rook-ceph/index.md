@@ -30,7 +30,7 @@ Ignition declares it with `format: none` and `wipe_filesystem: true`, because `c
 
 ### Object storage
 
-A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
+A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
 
 ### Monitoring
 
@@ -39,12 +39,12 @@ In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 | Setting | Why |
 | --- | --- |
 | `cephClusterSpec.monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
-| `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/#crds>) |
+| `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
 | `monitoring.prometheusRuleOverrides` | `CephOSDDownHigh` gets a `for:` because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. `CephNodeDiskspaceWarning` compares the root filesystem with the kubelet's 85% image garbage-collection threshold instead of a 5-day trend, which warned on every image pull |
 | `cephClusterSpec.cephConfig` `mgr/dashboard/*` | Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off `ceph dashboard set-*` Job |
 | `mon_cluster_log_level: info` | The Ceph default is `debug`, and the mons copy the cluster log to stderr, so Rook's probes and the mgr's pgmap ticks became most of the mon log volume in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). Warnings and errors are unaffected |
 
-Rook's Grafana dashboards are vendored in `grafana-dashboards.yaml` — see [Monitoring → Dashboards](<https://homelab.wlkr.ch/platform/monitoring/#dashboards>).
+Rook's Grafana dashboards are vendored in `grafana-dashboards.yaml` — see [Monitoring → Dashboards](<https://homelab.wlkr.ch/platform/monitoring/index.md#dashboards>).
 
 ### CSI driver
 
@@ -179,7 +179,7 @@ A node whose `rook-osd` partition still carries a previous cluster's BlueStore s
    # skipping device "nvme0n1p10" because it contains a filesystem "ceph_bluestore"
    # skipping osd.3: "..." belonging to a different ceph cluster "..."
    ```
-2. Rebuild the node, steps 3 to 7 of [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/#rebuilding-or-repartitioning-a-node>): `make reinstall` only arms the PXE menu, and the [installer](<https://homelab.wlkr.ch/architecture/boot-process/index.md>) wipes the disk when the node network-boots.
+2. Rebuild the node, steps 3 to 7 of [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>): `make reinstall` only arms the PXE menu, and the [installer](<https://homelab.wlkr.ch/architecture/boot-process/index.md>) wipes the disk when the node network-boots.
 3. If the node cannot be rebuilt now, wipe the partition by hand over SSH. `wipefs` removes the signature Rook skips on; the `dd` removes the BlueStore label behind it. Address it by label, as Ignition does, rather than by the device name in the log:
 
    ```bash

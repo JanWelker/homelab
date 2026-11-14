@@ -39,7 +39,7 @@ The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-v
 >
 > **Tetragon holds `:2112` on the control planes**
 >
-> Tetragon serves its metrics on the same port, on the host network by its chart's default, so `adopt` waits for a port that is never released and gives up after its timeout on a reinstalled control plane, and the liveness probe is answered by Tetragon whether kube-vip is alive or not, as recorded in the [host firewall inventory](<https://homelab.wlkr.ch/operations/host-firewall-inventory-2026-10-30/#findings>). Not fixed yet; move one of the two ports before the next control-plane reinstall.
+> Tetragon serves its metrics on the same port, on the host network by its chart's default, so `adopt` waits for a port that is never released and gives up after its timeout on a reinstalled control plane, and the liveness probe is answered by Tetragon whether kube-vip is alive or not, as recorded in the [host firewall inventory](<https://homelab.wlkr.ch/operations/host-firewall-inventory-2026-10-30/index.md#findings>). Not fixed yet; move one of the two ports before the next control-plane reinstall.
 
 > [!CAUTION]
 >
@@ -147,4 +147,4 @@ kubectl -n kube-system get pods -l app.kubernetes.io/name=kube-vip -o wide
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'; echo
 ```
 
-Test failover once, deliberately: reboot the leader per [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/#rebooting-a-node>) and confirm `kubectl` keeps working after a few seconds.
+Test failover once, deliberately: reboot the leader per [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) and confirm `kubectl` keeps working after a few seconds.

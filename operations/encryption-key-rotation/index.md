@@ -1,6 +1,6 @@
 # Encryption Key Rotation
 
-The API servers reload `/etc/kubernetes/enc/encryption-config.yaml` whenever it changes (`encryption-provider-config-automatic-reload` in `ansible/templates/kubeadm.yaml.j2`), so a rotation is a file edit on each control plane and one rewrite of every Secret; what the key protects and how it is generated is in [Encryption at rest](<https://homelab.wlkr.ch/architecture/security/#encryption-at-rest>).
+The API servers reload `/etc/kubernetes/enc/encryption-config.yaml` whenever it changes (`encryption-provider-config-automatic-reload` in `ansible/templates/kubeadm.yaml.j2`), so a rotation is a file edit on each control plane and one rewrite of every Secret; what the key protects and how it is generated is in [Encryption at rest](<https://homelab.wlkr.ch/architecture/security/index.md#encryption-at-rest>).
 
 The first key in the list encrypts, every key in the list decrypts, and a Secret's ciphertext names the key it was written with. Two things follow: the new key goes in *above* the old one, and the cluster has to end up with the new key under the name the Butane template renders (`key1` in `ansible/templates/butane_node_config.yaml.j2`), because a control plane provisioned later gets exactly that file and can read nothing written under another name. That is why the Secrets are rewritten twice.
 
@@ -65,7 +65,7 @@ Reading or writing the file from a shell fires `TetragonSensitiveFileAccess`; th
    ```
 
    One match per control plane, none per worker or installer config.
-9. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key1:`.
+9. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/index.md#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key1:`.
 
    ```bash
    kubectl -n kube-system exec etcd-<node> -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get /registry/secrets/kube-system/ --prefix --limit 1 | head -c 120

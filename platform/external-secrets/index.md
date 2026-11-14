@@ -30,21 +30,21 @@ sequenceDiagram
     App->>K: mount / envFrom
 ```
 
-ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API, which the chart's controller ClusterRole allows in every namespace (`cluster-secret-store.yaml` binds its own `external-secrets-vault-token-creator` ClusterRole, scoped to that ServiceAccount name, beside it); OpenBao validates it against the TokenReview API and issues a token bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
+ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API, which the chart's controller ClusterRole allows in every namespace (`cluster-secret-store.yaml` binds its own `external-secrets-vault-token-creator` ClusterRole, scoped to that ServiceAccount name, beside it); OpenBao validates it against the TokenReview API and issues a token bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
 
 In `application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
-| No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-convergence>) |
+| No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
 | Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`), which only shows when the pod is recreated |
-| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every `ExternalSecret`, `PushSecret` and store apply fails and the Argo sync that carried it goes to retry — see [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>) |
+| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every `ExternalSecret`, `PushSecret` and store apply fails and the Argo sync that carried it goes to retry — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 
 ## Usage
 
 ### Adding a secret
 
-1. Store the value in OpenBao, following the [KV layout](<https://homelab.wlkr.ch/platform/openbao/#kv-layout>). A random value is not typed in at all: a `Password` generator and a `PushSecret` write it, see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/#generated-secrets>).
+1. Store the value in OpenBao, following the [KV layout](<https://homelab.wlkr.ch/platform/openbao/index.md#kv-layout>). A random value is not typed in at all: a `Password` generator and a `PushSecret` write it, see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>).
 
    ```bash
    bao kv put kv/<workload>/<purpose> key1="value1" key2="value2"
@@ -122,8 +122,8 @@ kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
 
 | Cause | Fix |
 | --- | --- |
-| OpenBao is sealed | [Unseal it](<https://homelab.wlkr.ch/platform/openbao/#unsealing-after-a-restart>) |
-| Kubernetes auth role missing | `make bao-policies` writes all three roles; it needs a [root token](<https://homelab.wlkr.ch/platform/openbao/#generating-a-root-token>) |
+| OpenBao is sealed | [Unseal it](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>) |
+| Kubernetes auth role missing | `make bao-policies` writes all three roles; it needs a [root token](<https://homelab.wlkr.ch/platform/openbao/index.md#generating-a-root-token>) |
 | Wrong `serviceAccountRef` | `external-secrets-vault`, in `external-secrets` for `openbao` and without a namespace for the other two |
 
 Then the individual object:

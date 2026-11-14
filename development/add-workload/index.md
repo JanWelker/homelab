@@ -1,6 +1,6 @@
 # Adding a Workload
 
-Workloads live in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homelab-apps>), not here. The `apps` ApplicationSet generates one ArgoCD Application per `*/application.yaml` in that repository, so adding an application is creating a directory there and pushing it. Why the split exists is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#workloads-live-in-a-second-repository>).
+Workloads live in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homelab-apps>), not here. The `apps` ApplicationSet generates one ArgoCD Application per `*/application.yaml` in that repository, so adding an application is creating a directory there and pushing it. Why the split exists is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#workloads-live-in-a-second-repository>).
 
 ## What the platform already does for you
 
@@ -10,7 +10,7 @@ Workloads live in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homel
 | HTTPS | Nothing | `apps-gateway` terminates TLS with a `*.k8s.wlkr.ch` wildcard |
 | Storage | A PVC with `storageClassName: rook-ceph-block` | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) replicates it three ways, one copy per host |
 | A database | A CloudNativePG `Cluster` | [The operator](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) generates credentials and runs failover |
-| A secret from outside the cluster | An `ExternalSecret` on the `openbao-apps` store, and an `external-secrets-vault` ServiceAccount — see [Adding a secret](<https://homelab.wlkr.ch/platform/external-secrets/#adding-a-secret>) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) holds it under `kv/<namespace>/`, the only prefix the namespace can reach; ESO renders a `Secret` |
+| A secret from outside the cluster | An `ExternalSecret` on the `openbao-apps` store, and an `external-secrets-vault` ServiceAccount — see [Adding a secret](<https://homelab.wlkr.ch/platform/external-secrets/index.md#adding-a-secret>) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) holds it under `kv/<namespace>/`, the only prefix the namespace can reach; ESO renders a `Secret` |
 | Metrics | A `ServiceMonitor` or `PodMonitor` | Prometheus scrapes it |
 | Logs | Nothing | Alloy ships every container's stdout to Loki |
 | Backups | Nothing, for a PVC | Velero snapshots it nightly |
@@ -22,8 +22,8 @@ Restated in the workloads repository's `CONVENTIONS.md`, which is the copy to ke
 1. **Exactly one `application.yaml` per directory**, a complete ArgoCD `Application`: the generator copies its labels, annotations, finalizers and `spec` through unchanged.
 2. **`project: apps`.** Anything else fails the whole ApplicationSet. The project, in `payload/platform/argocd-projects/projects.yaml`, lists the chart repositories workloads may pull from; a new chart repository extends that list first, in this repository, and the repo-server's egress policy in `payload/platform/security/network-policies/argocd.yaml`, or the Application reads `ComparisonError`.
 3. **The workload owns its namespace.** Ship a `namespace.yaml` at sync wave `-2` with the three Pod Security Admission labels, annotated `Prune=false`, because pruning a `Namespace` deletes every PVC inside it. A namespace created by `CreateNamespace=true` has no labels and enforces nothing.
-4. **PostgreSQL is a CloudNativePG `Cluster`**, never a chart's bundled database — see [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/#the-contract>).
-5. **Ship a `CiliumNetworkPolicy`** at sync wave `-2`, not a plain `NetworkPolicy`, which blocks health probes — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy>).
+4. **PostgreSQL is a CloudNativePG `Cluster`**, never a chart's bundled database — see [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
+5. **Ship a `CiliumNetworkPolicy`** at sync wave `-2`, not a plain `NetworkPolicy`, which blocks health probes — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#why-ciliumnetworkpolicy-and-not-networkpolicy>).
 6. **Official upstream sources only**: the vendor's chart or image, not a repackager's.
 7. **Pin every version** and let Renovate move it. No `latest`.
 
@@ -75,7 +75,7 @@ spec:
       - ServerSideApply=true
 ```
 
-For a Helm chart that also needs manifests of its own, use a `sources` list with the chart in one entry and this repository in another; `dependency-track/application.yaml` is the worked example. The `syncPolicy` is the one every platform Application carries, `retry` included; without it a workload that referenced a platform resource a minute too early stays failed — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/#sync-policy>).
+For a Helm chart that also needs manifests of its own, use a `sources` list with the chart in one entry and this repository in another; `dependency-track/application.yaml` is the worked example. The `syncPolicy` is the one every platform Application carries, `retry` included; without it a workload that referenced a platform resource a minute too early stays failed — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>).
 
 ## Step 3: Add the manifests
 
@@ -216,7 +216,7 @@ spec:
         - kube-apiserver
 ```
 
-Wave `-2` is load-bearing: at the default wave the policy is applied after the `Cluster` at `-1`, which cannot go Healthy until the `cnpg-system` rule exists, so the sync parks at `-1` forever. Drop the `ingress` rule if the Gateway does not reach this workload directly (a namespace fronted by Authentik's outpost takes its traffic from the `authentik` namespace). A Prometheus rule belongs here only with a ServiceMonitor, on that port, with `rules.http`; the shape and the rollout are in [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/#network-policies>).
+Wave `-2` is load-bearing: at the default wave the policy is applied after the `Cluster` at `-1`, which cannot go Healthy until the `cnpg-system` rule exists, so the sync parks at `-1` forever. Drop the `ingress` rule if the Gateway does not reach this workload directly (a namespace fronted by Authentik's outpost takes its traffic from the `authentik` namespace). A Prometheus rule belongs here only with a ServiceMonitor, on that port, with `rules.http`; the shape and the rollout are in [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>).
 
 ### Exposing it
 
@@ -246,7 +246,7 @@ DNS and TLS need nothing further — see [Gateway API](<https://homelab.wlkr.ch/
 
 ### Putting a workload behind Authentik
 
-- **It speaks OIDC:** the `oauth2provider` blueprint lives in the workload's directory; its client credentials come from a `PushSecret` in the same directory writing `kv/<app>/config` — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/#generated-secrets>) — plus one projected-volume source in `payload/platform/authentik/application.yaml`; the discovery URI is `auth.k8s.wlkr.ch`.
+- **It speaks OIDC:** the `oauth2provider` blueprint lives in the workload's directory; its client credentials come from a `PushSecret` in the same directory writing `kv/<app>/config` — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>) — plus one projected-volume source in `payload/platform/authentik/application.yaml`; the discovery URI is `auth.k8s.wlkr.ch`.
 - **It does not:** add a `proxyprovider` on the embedded outpost, point the `HTTPRoute` at `authentik-server` in the `authentik` namespace, add the namespace to `payload/platform/authentik/referencegrant.yaml`, and allow the outpost to reach the pods in the `authentik-server` egress policy.
 
 Either way it is two pull requests, one here, because a workload must not be able to put itself behind or take itself out from behind the cluster's authentication layer. Details in [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>).
@@ -272,11 +272,11 @@ The page goes in the workloads repository at `docs/my-app.md`, registered in its
 | Symptom | Cause and check |
 | --- | --- |
 | The Application was never generated | Only `*/application.yaml`, one level deep, is read, and a `spec.project` other than `apps` fails the whole set naming the file. Read the controller log (below) |
-| The Application exists but will not sync | It has exhausted its retries, on a fresh cluster usually against a platform resource that arrived later than the retry budget. `argocd app sync <app>` — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/#sync-policy>) |
+| The Application exists but will not sync | It has exhausted its retries, on a fresh cluster usually against a platform resource that arrived later than the retry budget. `argocd app sync <app>` — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>) |
 | `Synced`, health `Unknown`, workload running fine | A wave is waiting on a resource that will never go Healthy; with a database it is the missing `cnpg-system` rule (`kubectl get cluster` says `1/1`, status reads `Instance Status Extraction Error: HTTP communication issue`). Confirm with `kubectl -n argocd get application my-app -o jsonpath='{.status.operationState.message}'` and the Hubble check below |
 | Rule is in Git, still stuck | The policy's sync wave is wrong: the applied list has no `CiliumNetworkPolicy` while `Cluster` reads `Running`. Fix the wave, then `argocd app terminate-op my-app`; a stuck operation does not pick up a new revision |
-| Pods will not start; events mention a security policy | `enforce` in `namespace.yaml` is stricter than the image needs. Loosen `enforce`, keep `audit` and `warn`, so violations stay in the [audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) — see [Pod Security Admission](<https://homelab.wlkr.ch/platform/security-policies/#pod-security-admission>) |
-| Login redirects in a loop, or every link is `http://` | Requests arrive from Cilium's Envoy inside the [pod subnet](<https://homelab.wlkr.ch/architecture/#cluster-layout>) with TLS terminated at the Gateway. Set the application's trusted-proxy and "overwrite protocol" settings |
+| Pods will not start; events mention a security policy | `enforce` in `namespace.yaml` is stricter than the image needs. Loosen `enforce`, keep `audit` and `warn`, so violations stay in the [audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) — see [Pod Security Admission](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>) |
+| Login redirects in a loop, or every link is `http://` | Requests arrive from Cilium's Envoy inside the [pod subnet](<https://homelab.wlkr.ch/architecture/index.md#cluster-layout>) with TLS terminated at the Gateway. Set the application's trusted-proxy and "overwrite protocol" settings |
 
 ```bash
 # Why an Application was not generated

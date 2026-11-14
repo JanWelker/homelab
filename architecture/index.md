@@ -1,6 +1,6 @@
 # Architecture
 
-A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: a rack of machines, a network, and a deployment host that talks them into existence. The stack itself is summarised in [one table](<https://homelab.wlkr.ch/#the-stack-in-one-table>) on the home page, and the reasoning behind each choice in [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md>).
+A bare metal Kubernetes cluster on Flatcar Container Linux and kubeadm: a rack of machines, a network, and a deployment host that talks them into existence. The stack itself is summarised in [one table](<https://homelab.wlkr.ch/index.md#the-stack-in-one-table>) on the home page, and the reasoning behind each choice in [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md>).
 
 This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and GitOps are; [Core Concepts](<https://homelab.wlkr.ch/concepts/index.md>) covers all five.
 
@@ -50,7 +50,7 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 
 ## Repository layout
 
-`ansible/` describes the machines, `boot_server/` hands them their operating system, `payload/` is the platform the cluster runs on, and `output/` is generated — never edit anything in there, the next `make config` overwrites it. The applications the cluster exists to serve live in the separate [`homelab-apps`](<https://github.com/JanWelker/homelab-apps>) repository; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#workloads-live-in-a-second-repository>).
+`ansible/` describes the machines, `boot_server/` hands them their operating system, `payload/` is the platform the cluster runs on, and `output/` is generated — never edit anything in there, the next `make config` overwrites it. The applications the cluster exists to serve live in the separate [`homelab-apps`](<https://github.com/JanWelker/homelab-apps>) repository; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#workloads-live-in-a-second-repository>).
 
 ```text
 .

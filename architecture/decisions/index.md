@@ -8,7 +8,7 @@ Flatcar is an immutable, minimal, container-focused OS with A/B updates and decl
 
 Talos goes further — no SSH, no shell, an API-driven machine config — and would remove a whole class of drift. Flatcar keeps a conventional Linux underneath: `ssh`, `systemd`, `journalctl` and `kubeadm` work the way the upstream Kubernetes documentation assumes, which matters more for a cluster that is also a learning environment than the extra hardening does.
 
-The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## kubeadm, not k3s or a managed distribution
 
@@ -30,7 +30,7 @@ The cost is a smaller ecosystem and more moving parts: CRDs must be installed be
 
 ## Rook-Ceph, not Longhorn or local volumes
 
-Every worker contributes a raw partition (the control planes keep their disk for etcd, see [Disks](<https://homelab.wlkr.ch/platform/rook-ceph/#disks>)), and Ceph turns them into replicated block storage that survives a node failure. Local `hostPath` volumes would be simpler and faster, but a node reboot would take its workloads' data with it, and reboots are routine here because that is [how updates get applied](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster can later serve object and file storage.
+Every worker contributes a raw partition (the control planes keep their disk for etcd, see [Disks](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#disks>)), and Ceph turns them into replicated block storage that survives a node failure. Local `hostPath` volumes would be simpler and faster, but a node reboot would take its workloads' data with it, and reboots are routine here because that is [how updates get applied](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster can later serve object and file storage.
 
 The cost: Ceph is the heaviest component in the cluster, wants at least three nodes, and has its own failure modes and vocabulary. It also only provides `ReadWriteOnce` here, since CephFS is not deployed.
 
@@ -38,7 +38,7 @@ The cost: Ceph is the heaviest component in the cluster, wants at least three no
 
 Sealed-secrets and SOPS keep encrypted material in Git, so rotation is a commit and revocation is impossible after the fact — the ciphertext is in every clone, forever. OpenBao keeps secrets out of the repository and hands them to workloads as ordinary `Secret` objects through the External Secrets Operator.
 
-The cost is a manual unseal after every restart, taken deliberately over an auto-unseal dependency outside the house — see [Unsealing after a restart](<https://homelab.wlkr.ch/platform/openbao/#unsealing-after-a-restart>).
+The cost is a manual unseal after every restart, taken deliberately over an auto-unseal dependency outside the house — see [Unsealing after a restart](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>).
 
 ## ArgoCD with an ApplicationSet, not Flux
 

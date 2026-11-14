@@ -53,4 +53,4 @@ Everything the cluster runs is described in this repository under `payload/`, an
 Two terms recur throughout this site:
 
 - **ApplicationSet** — one ArgoCD object that generates an `Application` per matching file in the repository, so adding a component is adding a directory.
-- **Sync policy** — every `Application` syncs automatically, reverts drift and retries a failed sync, so nothing orders the platform: a fresh cluster converges as CRDs, storage and secrets appear. The order it settles in is in [Platform → Rollout order](<https://homelab.wlkr.ch/platform/#rollout-order>); the policy itself is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/#sync-policy>).
+- **Sync policy** — every `Application` syncs automatically, reverts drift and retries a failed sync, so nothing orders the platform: a fresh cluster converges as CRDs, storage and secrets appear. The order it settles in is in [Platform → Rollout order](<https://homelab.wlkr.ch/platform/index.md#rollout-order>); the policy itself is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>).

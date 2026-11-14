@@ -55,9 +55,9 @@ A proxied application's route lives with the application: Hubble's in `payload/p
 
 ### Database
 
-`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, one takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/#the-contract>).
+`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, one takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
 
-The replicas only survive a node loss while they sit on separate nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>).
+The replicas only survive a node loss while they sit on separate nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>).
 
 ### Chart values
 
@@ -67,9 +67,9 @@ The replicas only survive a node loss while they sit on separate nodes, which th
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
-| `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>). The worker is not replicated and needs none |
+| `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>). The worker is not replicated and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](<#pitfalls>) |
-| Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](<https://homelab.wlkr.ch/architecture/gitops/#workloads-live-in-a-second-repository>), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
+| Workload blueprints as a `projected` volume, `optional: true` | `blueprints.configMaps` renders a plain `configMap` volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the [workloads](<https://homelab.wlkr.ch/architecture/gitops/index.md#workloads-live-in-a-second-repository>), which a fresh cluster may not have yet, so a required mount would keep the worker from starting |
 
 ### Where a blueprint lives
 
@@ -78,7 +78,7 @@ Providers and applications are blueprints, so a rebuild reproduces them. `!Find`
 | What | Lives in | Why there |
 | --- | --- | --- |
 | Platform providers, applications, the outpost | `blueprints.yaml` | Mounted into the worker as a ConfigMap |
-| A workload's provider and application | The workload's directory in the workloads repository, as the ConfigMap `authentik-blueprint-<application>` targeted at `authentik` | The provider and the application it authenticates change in one commit; the [`authentik-foreign-objects`](<https://homelab.wlkr.ch/platform/security-policies/#admission-policies>) policy refuses any other object a workload sends here |
+| A workload's provider and application | The workload's directory in the workloads repository, as the ConfigMap `authentik-blueprint-<application>` targeted at `authentik` | The provider and the application it authenticates change in one commit; the [`authentik-foreign-objects`](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) policy refuses any other object a workload sends here |
 | Client credentials | Generated by a `PushSecret` beside their reader — `secrets.yaml` for the platform's, the workload's own `secrets.yaml` for a workload's — and read here by `secrets-<workload>.yaml` | A workload can mint a pair but not register it: the `ExternalSecret` and mount entry here keep SSO onboarding a deliberate two-repository act |
 | The mount entry and `secret-generation` | `application.yaml` | One projected-volume source per workload, with or without credentials; a new credential needs the worker restarted |
 | The outpost's `providers:` list | `blueprints.yaml` | It replaces one global object; two repositories writing it would overwrite each other |
@@ -114,7 +114,7 @@ kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
   'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'
 ```
 
-Then log in with `bootstrap-password` from OpenBao — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/#generated-secrets>) — enrol a second factor like any user, and switch the account off again with the same command and `is_active=False`: a blueprint is re-applied only when its file changes, so nothing switches it off for you.
+Then log in with `bootstrap-password` from OpenBao — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>) — enrol a second factor like any user, and switch the account off again with the same command and `is_active=False`: a blueprint is re-applied only when its file changes, so nothing switches it off for you.
 
 | Variable | Set | Why |
 | --- | --- | --- |
@@ -142,9 +142,9 @@ Every infra application carries a policy binding to `infra-users`, so an account
 
 ### Client secrets
 
-The OIDC client IDs and secrets are generated once into OpenBao and read by both sides — Authentik through `!Env`, ArgoCD and Grafana through their own `ExternalSecret` — so a rebuilt Authentik gets the same credentials and nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes `kv/authentik/config` once — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/#generated-secrets>) — with the secret key, the bootstrap password and the ArgoCD and Grafana client pairs; its `Password` generator's `secretKeys` is the list of keys. A workload's client credentials go in the workload's own path (Dependency-Track's in `kv/dependency-track/config`, each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key that signs every session and token, and External Secrets fails an `ExternalSecret` whole when one key is missing, so a shared one would leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
+The OIDC client IDs and secrets are generated once into OpenBao and read by both sides — Authentik through `!Env`, ArgoCD and Grafana through their own `ExternalSecret` — so a rebuilt Authentik gets the same credentials and nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes `kv/authentik/config` once — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>) — with the secret key, the bootstrap password and the ArgoCD and Grafana client pairs; its `Password` generator's `secretKeys` is the list of keys. A workload's client credentials go in the workload's own path (Dependency-Track's in `kv/dependency-track/config`, each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key that signs every session and token, and External Secrets fails an `ExternalSecret` whole when one key is missing, so a shared one would leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
-The first administrator is created through `akadmin`, switched on for the occasion as in [Bootstrap credentials](<#bootstrap-credentials>); the steps are in [Quickstart step 12](<https://homelab.wlkr.ch/quickstart/#setup>).
+The first administrator is created through `akadmin`, switched on for the occasion as in [Bootstrap credentials](<#bootstrap-credentials>); the steps are in [Quickstart step 12](<https://homelab.wlkr.ch/quickstart/index.md#setup>).
 
 ### Adding an application
 
@@ -223,7 +223,7 @@ When every login fails, in this order:
 
 Single sign-on is a single point of failure for logging in at all. The ArgoCD path needs a working `kubectl`, so keep a kubeconfig off-cluster.
 
-**ArgoCD** — re-enable the local admin account by merging a pull request that sets `admin.enabled` in `payload/argocd/values.yaml`; the `argocd` Application self-heals, so a `kubectl patch` on `argocd-cm` is reverted at the next reconcile. ArgoCD syncs the merge without a login. Then restart the server, which generates `argocd-initial-admin-secret`, and read the password as in [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>). Revert the pull request once Authentik is back.
+**ArgoCD** — re-enable the local admin account by merging a pull request that sets `admin.enabled` in `payload/argocd/values.yaml`; the `argocd` Application self-heals, so a `kubectl patch` on `argocd-cm` is reverted at the next reconcile. ArgoCD syncs the merge without a login. Then restart the server, which generates `argocd-initial-admin-secret`, and read the password as in [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>). Revert the pull request once Authentik is back.
 
 ```bash
 kubectl -n argocd rollout restart deploy/argocd-server
@@ -242,7 +242,7 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:909
 
 Disabling the local admin also removes its `apiKey` capability. If a token is needed, add an account scoped to what the token is for rather than re-enabling admin:
 
-The `claude` account is one, for the in-cluster agents; see [Agent account](<https://homelab.wlkr.ch/platform/argocd/#agent-account>). The shape:
+The `claude` account is one, for the in-cluster agents; see [Agent account](<https://homelab.wlkr.ch/platform/argocd/index.md#agent-account>). The shape:
 
 ```yaml
 configs:

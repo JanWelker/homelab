@@ -23,7 +23,7 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 | `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export; they are the bulk of the volume and the least interesting. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
-| Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](<https://homelab.wlkr.ch/platform/#components>); the dashboard's first row shows the current worst node against it |
+| Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](<https://homelab.wlkr.ch/platform/index.md#components>); the dashboard's first row shows the current worst node against it |
 
 ### Policies
 
@@ -49,7 +49,7 @@ The allow list in the first policy is the set of things that read key material i
 
 The third policy is the runtime half of an image check: nothing in an image lives on those paths, so a binary executing from one was written after the container started. An emptyDir can be mounted anywhere, so the policy names the mounts this cluster puts binaries into rather than every emptyDir; `kubectl get pods -A -o json` lists the rest. A `readOnlyRootFilesystem` pod makes the check complete, since then a new binary has nowhere else to land. The offline half, every binary Tetragon saw executed diffed against the image's file list, needs no policy: query Loki by image and binary and resolve each path in `crane export <image> - | tar t`.
 
-Four more detections from the same library need no policy, because the exec event already carries what they look for: `sudo`, a setuid or file-capability binary raising privileges, a fileless exec and a deleted binary. They are [Loki alerts](<https://homelab.wlkr.ch/platform/logging/#alerting>). Upstream's `sshd` policy is covered by `NodeSshLogin` from the node journal.
+Four more detections from the same library need no policy, because the exec event already carries what they look for: `sudo`, a setuid or file-capability binary raising privileges, a fileless exec and a deleted binary. They are [Loki alerts](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). Upstream's `sshd` policy is covered by `NodeSshLogin` from the node journal.
 
 ## Usage
 

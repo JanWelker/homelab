@@ -33,7 +33,7 @@ helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
 kubectl apply --dry-run=client -f payload/platform/<component>/
 ```
 
-`--strict` is what CI uses. A page not registered in `nav` in `zensical.toml` fails the build, deliberately. On a pull request, the `argo-diff-preview` workflow comments the rendered ArgoCD manifest diff between `main` and your branch; read it, since a three-line values change can render as two hundred lines of different objects. The full list of workflows is in [Maintenance](<https://homelab.wlkr.ch/development/maintenance/#ci-workflows>).
+`--strict` is what CI uses. A page not registered in `nav` in `zensical.toml` fails the build, deliberately. On a pull request, the `argo-diff-preview` workflow comments the rendered ArgoCD manifest diff between `main` and your branch; read it, since a three-line values change can render as two hundred lines of different objects. The full list of workflows is in [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#ci-workflows>).
 
 ## Make targets
 
@@ -42,28 +42,28 @@ Every target in the `Makefile`, and the page that explains it. The ones that tou
 | Target | Does | Page |
 | --- | --- | --- |
 | `setup` | Creates the virtualenv with every tool | [Setup](<#setup>) |
-| `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>), [Ansible](<https://homelab.wlkr.ch/architecture/ansible/#playbooks>) |
-| `artifacts` | `download` then `config` | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `serve` | Runs the DHCP-proxy, TFTP and HTTP boot server | [Boot server](<https://homelab.wlkr.ch/architecture/boot-process/#boot-server>) |
-| `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](<https://homelab.wlkr.ch/operations/nodes/#rebuilding-or-repartitioning-a-node>) |
-| `reinstall-cancel` | Disarms them again | [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/#switching-back-to-local-boot>) |
-| `kubeconfig` | Copies the admin kubeconfig to `output/kubeconfig` | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
+| `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>), [Ansible](<https://homelab.wlkr.ch/architecture/ansible/index.md#playbooks>) |
+| `artifacts` | `download` then `config` | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `serve` | Runs the DHCP-proxy, TFTP and HTTP boot server | [Boot server](<https://homelab.wlkr.ch/architecture/boot-process/index.md#boot-server>) |
+| `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>) |
+| `reinstall-cancel` | Disarms them again | [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
+| `kubeconfig` | Copies the admin kubeconfig to `output/kubeconfig` | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
 | `check-context` | Guard the cluster targets depend on: fails without a kubeconfig |  |
-| `bootstrap` | `install-cilium`, `install-argo`, `bootstrap-apps` in one go | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `install-cilium` | Gateway API CRDs and Cilium, at the pinned versions | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `install-argo` | The argo-cd chart, at the pinned version | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `bootstrap-apps` | The AppProjects and the `argocd` Application; ArgoCD owns everything after | [Quickstart](<https://homelab.wlkr.ch/quickstart/#setup>) |
-| `storage-check` | Walks the Rook chain and binds a test PVC | [Is storage ready?](<https://homelab.wlkr.ch/platform/rook-ceph/#is-storage-ready>) |
-| `bao-init` | Initialises, unseals and configures OpenBao once | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#bootstrap>) |
-| `bao-unseal` | Unseals every sealed replica from the key file (`KEYFILE=<file>` picks another) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#unsealing-after-a-restart>) |
-| `bao-policies` | Rewrites ESO's policies and Kubernetes auth roles | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#kubernetes-auth>) |
-| `bao-secrets` | Prompts for the typed secrets and writes them | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#bootstrap>) |
-| `bao-rotate-root` | Replaces a kept root token with the operator login | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#operator-credential>) |
+| `bootstrap` | `install-cilium`, `install-argo`, `bootstrap-apps` in one go | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `install-cilium` | Gateway API CRDs and Cilium, at the pinned versions | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `install-argo` | The argo-cd chart, at the pinned version | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `bootstrap-apps` | The AppProjects and the `argocd` Application; ArgoCD owns everything after | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
+| `storage-check` | Walks the Rook chain and binds a test PVC | [Is storage ready?](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#is-storage-ready>) |
+| `bao-init` | Initialises, unseals and configures OpenBao once | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#bootstrap>) |
+| `bao-unseal` | Unseals every sealed replica from the key file (`KEYFILE=<file>` picks another) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>) |
+| `bao-policies` | Rewrites ESO's policies and Kubernetes auth roles | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>) |
+| `bao-secrets` | Prompts for the typed secrets and writes them | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#bootstrap>) |
+| `bao-rotate-root` | Replaces a kept root token with the operator login | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#operator-credential>) |
 | `claude-session-pat` | Stores (`SESSION=<name>`) or removes (`DELETE=1`) one agent session's GitHub token | [Claude agents](<https://homelab-apps.wlkr.ch/claude-agents/>) |
-| `untaint`, `taint` | Removes and restores the control-plane taint | [Single-node clusters](<https://homelab.wlkr.ch/quickstart/#single-node-clusters>) |
+| `untaint`, `taint` | Removes and restores the control-plane taint | [Single-node clusters](<https://homelab.wlkr.ch/quickstart/index.md#single-node-clusters>) |
 | `fonts`, `fonts-check` | Downloads the pinned webfonts, or diffs them against what is committed | [Fonts](<#fonts>) |
-| `clean-artifacts`, `clean` | Deletes the generated files, or everything under `output/` after asking | [Repository layout](<https://homelab.wlkr.ch/architecture/#repository-layout>) |
+| `clean-artifacts`, `clean` | Deletes the generated files, or everything under `output/` after asking | [Repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>) |
 
 ## Branches and commits
 
@@ -81,11 +81,11 @@ The body explains *why*; the diff already says what.
 >
 > **Do not hand-edit version numbers**
 >
-> `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](<https://homelab.wlkr.ch/development/maintenance/#renovate>). A hand bump conflicts with, or is reverted by, the next Renovate PR. The bootstrap targets in the `Makefile` read the same `targetRevision` values rather than pinning their own — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/#version-pins>).
+> `targetRevision` in the manifests and the versions in `ansible/inventory.yaml` are owned by Renovate — see [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#renovate>). A hand bump conflicts with, or is reverted by, the next Renovate PR. The bootstrap targets in the `Makefile` read the same `targetRevision` values rather than pinning their own — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>).
 
 ## Review
 
-`.github/CODEOWNERS` assigns every path to the repository owner, which requests that review; it is not required, because an author cannot approve their own pull request. What `main` requires is the `ci-ok` check; which Renovate PRs merge on it alone is in [Automerge policy](<https://homelab.wlkr.ch/development/maintenance/#automerge-policy>).
+`.github/CODEOWNERS` assigns every path to the repository owner, which requests that review; it is not required, because an author cannot approve their own pull request. What `main` requires is the `ci-ok` check; which Renovate PRs merge on it alone is in [Automerge policy](<https://homelab.wlkr.ch/development/maintenance/index.md#automerge-policy>).
 
 `.agent/rules/general-rules.md` holds the standing rules for AI coding agents working here: GitOps only, docs in `docs/`, no hand-edited versions. Keep it in sync when those conventions change.
 

@@ -55,7 +55,7 @@ The rules in `prometheusrule.yaml`. Reports expire and are rebuilt every `scanne
 | --- | --- | --- |
 | `TrivyContainerNotScanned` | A running container has had no `VulnerabilityReport` for 2h | A rejected report is never written, so it looks identical to a clean one; only reconciling against what runs finds it |
 | `TrivyExposedSecretNew` | A secret finding, by rule and path, was in no report two days ago, whichever container carried it | An accepted finding never clears, so an absolute rule would fire forever; and the same finding in a new pod is not new |
-| `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have two days ago | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/#what-is-load-bearing>); what matters is a new one |
+| `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have two days ago | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#what-is-load-bearing>); what matters is a new one |
 | `TrivyConfigAuditCritical` | Any workload fails a critical config-audit check for 2h | Nothing does today, so the rule is absolute |
 | `TrivyComplianceRegression` | A framework has more failing controls than a day ago, for 12h | Compliance is recomputed every six hours; two runs above yesterday is drift, not a rebuild |
 

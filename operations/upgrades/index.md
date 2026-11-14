@@ -4,7 +4,7 @@ Three mechanisms update a node, and all three land their changes on disk and wai
 
 ## OS updates
 
-Flatcar downloads OS updates in the background into the passive half of its A/B partition pair. `locksmithd`, which would normally coordinate the reboot, is masked in `ansible/templates/butane_node_config.yaml.j2`, because a reboot must drain the node first. In its place `flatcar-reboot-sentinel.timer` polls `update_engine_client -status` and touches `/run/reboot-required` once an update is staged. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) consumes that marker: it drains, reboots and uncordons, one node at a time and only while Ceph and etcd are healthy. To move sooner, see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/#rebooting-a-node>).
+Flatcar downloads OS updates in the background into the passive half of its A/B partition pair. `locksmithd`, which would normally coordinate the reboot, is masked in `ansible/templates/butane_node_config.yaml.j2`, because a reboot must drain the node first. In its place `flatcar-reboot-sentinel.timer` polls `update_engine_client -status` and touches `/run/reboot-required` once an update is staged. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) consumes that marker: it drains, reboots and uncordons, one node at a time and only while Ceph and etcd are healthy. To move sooner, see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>).
 
 Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch that this actually happens, because Trivy scans containers and not the host: `NodeRebootPending` when a node has carried the marker for longer than its `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have run different Flatcar or kubelet versions for longer than theirs.
 
@@ -14,7 +14,7 @@ ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
 
 ## Kubernetes
 
-Kubernetes is a [systemd sysext](<https://homelab.wlkr.ch/concepts/#systemd-sysexts>). `systemd-sysupdate.timer` runs an update for it on every fire and touches the same `/run/reboot-required` when a new image is fetched. containerd is part of the OS image and updates with it.
+Kubernetes is a [systemd sysext](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>). `systemd-sysupdate.timer` runs an update for it on every fire and touches the same `/run/reboot-required` when a new image is fetched. containerd is part of the OS image and updates with it.
 
 ### Nodes are pinned to a minor series
 
@@ -39,14 +39,14 @@ The order is upstream's: the first control plane, the other control planes, then
    ```bash
    make download && make config
    ```
-3. Stage the new sysext on the first control plane only. The sysupdate config was written once at install time and nothing rewrites it. The boot server is not needed: the node reboots from its own disk — see [Every boot after the first](<https://homelab.wlkr.ch/architecture/boot-process/#every-boot-after-the-first>).
+3. Stage the new sysext on the first control plane only. The sysupdate config was written once at install time and nothing rewrites it. The boot server is not needed: the node reboots from its own disk — see [Every boot after the first](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>).
 
    ```bash
    scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.kubernetes.d/kubernetes.conf
    ssh core@<node> sudo systemctl start systemd-sysupdate
    ```
-4. Reboot it to pick up the sysext — see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/#rebooting-a-node>). Kured would do it once sysupdate sets the sentinel, but by hand the next step follows at once.
+4. Reboot it to pick up the sysext — see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>). Kured would do it once sysupdate sets the sentinel, but by hand the next step follows at once.
 5. On that node, run the kubeadm upgrade; the sysext swapped the binaries and nothing else. Always pass `--skip-phases addon/kube-proxy`, because a cluster built before `proxy.disabled` was set in `kubeadm.yaml.j2` still has `proxy: {}` in its stored `kubeadm-config`, and without the flag the upgrade redeploys `kube-proxy` beside Cilium; the flag is harmless on a cluster built since. Always pass `--patches /etc/kubernetes/patches` too: the static pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the manifests without them otherwise.
 
    ```bash
@@ -65,11 +65,11 @@ The order is upstream's: the first control plane, the other control planes, then
 
 > [!NOTE]
 >
-> Renovate keeps `kubernetes_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`; which bumps automerge is in [Automerge policy](<https://homelab.wlkr.ch/development/maintenance/#automerge-policy>).
+> Renovate keeps `kubernetes_version`, `flatcar_version` and `syslinux_version` current in `ansible/inventory.yaml`; which bumps automerge is in [Automerge policy](<https://homelab.wlkr.ch/development/maintenance/index.md#automerge-policy>).
 
 ## Platform components
 
-Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a `targetRevision` and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are installed by `make install-cilium` and `make install-argo` before ArgoCD exists, but from the same `targetRevision`, so a rebuild lands where the cluster already is — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/#version-pins>).
+Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a `targetRevision` and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are installed by `make install-cilium` and `make install-argo` before ArgoCD exists, but from the same `targetRevision`, so a rebuild lands where the cluster already is — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>).
 
 ## Control-plane certificates
 

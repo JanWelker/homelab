@@ -6,7 +6,7 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 
 |  |  |
 | --- | --- |
-| Namespace | `cert-manager`; the wildcards land in `kube-system` beside the Gateways, the agent sessions' certificates in their own namespaces; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/#ssh-listener>) |
+| Namespace | `cert-manager`; the wildcards land in `kube-system` beside the Gateways, the agent sessions' certificates in their own namespaces; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) |
 | Depends on | [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) for the Route53 credential, so transitively on [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) |
 | If it is down | Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later |
 | Health check | `kubectl get certificate -A` → all `READY=True` |
@@ -16,11 +16,11 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 
 | Setting | Why |
 | --- | --- |
-| Issuers and certificates in their own `certificates` Application | Kept with cert-manager, the controller would read Degraded until OpenBao held the Route53 credentials — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/#bootstrap-convergence>) |
+| Issuers and certificates in their own `certificates` Application | Kept with cert-manager, the controller would read Degraded until OpenBao held the Route53 credentials — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
 | Three sync waves inside `certificates`: `ExternalSecret`, then the ClusterIssuers, then the Certificates | In one wave ArgoCD orders custom resources alphabetically — `Certificate`, `ClusterIssuer`, `ExternalSecret`, exactly backwards — and an issuer applied before its Secret stays `Ready=False` with `InvalidSolver` until something resyncs it |
 | Sync `retry` on both Applications | Without one a failed apply ends the operation where it fell; one flake at the front of the chain, such as the ESO webhook being unreachable on a fresh CNI, leaves every issuer and certificate behind it unmade |
-| `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate `prometheus-operator-crds` Application — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/#crds>) |
-| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see [Replica placement](<https://homelab.wlkr.ch/platform/#replica-placement>) |
+| `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate `prometheus-operator-crds` Application — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
+| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week, a misconfigured solver retries until that is gone, and there is no appeals process |
 
 The IAM user needs at minimum:
@@ -43,7 +43,7 @@ bao kv put kv/cert-manager/route53 \
   secret-access-key="YOUR_AWS_SECRET_ACCESS_KEY"
 ```
 
-ESO creates the `route53-credentials` Secret within its `refreshInterval`, or [immediately on request](<https://homelab.wlkr.ch/platform/external-secrets/#adding-a-secret>).
+ESO creates the `route53-credentials` Secret within its `refreshInterval`, or [immediately on request](<https://homelab.wlkr.ch/platform/external-secrets/index.md#adding-a-secret>).
 
 ## Health check
 
@@ -63,4 +63,4 @@ A `Challenge` stuck in `pending` is a DNS problem: either the credentials cannot
 >
 > **A sealed OpenBao means no renewals**
 >
-> Until OpenBao is unsealed and the secret stored, cert-manager cannot issue or renew, and the failure surfaces as an expired certificate roughly two months later — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/#pitfalls>).
+> Until OpenBao is unsealed and the secret stored, cert-manager cannot issue or renew, and the failure surfaces as an expired certificate roughly two months later — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#pitfalls>).

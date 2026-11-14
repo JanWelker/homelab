@@ -8,7 +8,7 @@ Every image with a critical finding or a fixable high.
 
 | Image | Finding | Disposition |
 | --- | --- | --- |
-| CSI sidecars (`csi-provisioner`, `csi-resizer`, `csi-snapshotter`) | gRPC-Go authorization bypass, CVE-2026-33186 | **Fixed here.** Pinned to the versions ceph-csi-operator v1.0.5 defaults to; Rook still ships v1.0.4 — see [Rook-Ceph → CSI driver](<https://homelab.wlkr.ch/platform/rook-ceph/#csi-driver>). The ask to bump Rook is drafted for a person to post |
+| CSI sidecars (`csi-provisioner`, `csi-resizer`, `csi-snapshotter`) | gRPC-Go authorization bypass, CVE-2026-33186 | **Fixed here.** Pinned to the versions ceph-csi-operator v1.0.5 defaults to; Rook still ships v1.0.4 — see [Rook-Ceph → CSI driver](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#csi-driver>). The ask to bump Rook is drafted for a person to post |
 | `argoproj/argocd` v3.5.3 | Go stdlib and `x/net` in bundled `kustomize` (Go 1.24.0) and `git-lfs` 3.7.1; `grpc`, `oras-go` in argocd | **Waiting on release.** `master` has git-lfs 3.8.0, grpc 1.83.2, oras-go 2.6.2; only a new kustomize build fixes kustomize |
 | `dexidp/dex` v2.45.1 | OpenSSL in Alpine 3.23, `grpc`, `goxmldsig`, stdlib; a second set in bundled `gomplate` | **Waiting on release.** Fixed on `master`, nothing released since March 2026: [dexidp/dex\#4948](<https://github.com/dexidp/dex/issues/4948>), scan data added 2026-09-18 |
 | `rook/ceph` v1.20.7 | Go stdlib in bundled `s5cmd` 2.3.0 (Go 1.22.10) | **Not reachable, waiting on release.** Nothing in Rook invokes `s5cmd`; [peak/s5cmd\#873](<https://github.com/peak/s5cmd/issues/873>), [\#820](<https://github.com/peak/s5cmd/issues/820>) ask for a release |
@@ -44,14 +44,14 @@ kubeadm rewrites the first three at 644 on every `init`, `join` and `upgrade`, s
 
 ## Config audit: the pods
 
-The permanent exceptions are in [What is load-bearing](<https://homelab.wlkr.ch/operations/vulnerabilities/#what-is-load-bearing>). Changed on this pass:
+The permanent exceptions are in [What is load-bearing](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#what-is-load-bearing>). Changed on this pass:
 
 | Where | Disposition |
 | --- | --- |
 | Argo CD, External Secrets, Trivy Operator, metrics-server, kubelet-csr-approver, snapshot-controller, Alloy | **`KSV-0118` only, fixed** (\#791; homelab-apps\#27 for Trivy Operator). Containers already ran non-root; the pod-level context was empty. Kured's chart has no pod-level value; CoreDNS is kubeadm's |
 | Authentik | **Fixed** (\#792): non-root, no capabilities, no escalation, runtime seccomp. Read-only root not attempted: the image writes under `/media` and `/templates` |
 | Nextcloud, Home Assistant | **Seccomp only** (homelab-apps\#30) |
-| Velero | **Node agent and plugin init container confined** (\#794); the `velero` container is unchanged pending a real backup — see [Velero](<https://homelab.wlkr.ch/platform/velero/#configuration>) |
+| Velero | **Node agent and plugin init container confined** (\#794); the `velero` container is unchanged pending a real backup — see [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>) |
 | trivy-server, nextcloud-exporter | **Fixed** (homelab-apps\#32, \#31) |
 | `etcd-backup` CronJob | **Own manifest, hardened** |
 

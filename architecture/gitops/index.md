@@ -37,19 +37,19 @@ Each `application.yaml` is a complete Application, not a fragment: the generator
 
 Every Application, generated or not, carries the same `syncPolicy`: automated sync with `prune` and `selfHeal`, and a `retry` block of ten attempts with a backoff from 30s to 5m. That is the whole delivery contract:
 
-- **A commit is live within one polling interval.** ArgoCD runs on a private address, so no GitHub webhook can reach it; the intervals are in [Platform → ArgoCD](<https://homelab.wlkr.ch/platform/argocd/#configuration>).
+- **A commit is live within one polling interval.** ArgoCD runs on a private address, so no GitHub webhook can reach it; the intervals are in [Platform → ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md#configuration>).
 - **Drift is reverted.** A resource edited or deleted by hand is put back on the next reconcile, in the platform as much as in the workloads.
 - **A failed sync retries itself.** ArgoCD never re-attempts a failed sync of the same revision unless the Application has a `retry` block, which is why every `application.yaml` carries one. The ten attempts span about forty minutes; after that the Application stays OutOfSync until its revision changes or it is synced by hand:
 
   ```bash
   argocd app sync <application>
   ```
-- **Patching a generated Application's `spec` achieves nothing.** The next ApplicationSet reconcile copies the file back over it. That includes switching automated sync off: the only rollback is a revert commit — see [Rolling back a bad sync](<https://homelab.wlkr.ch/operations/troubleshooting/#rolling-back-a-bad-sync>).
+- **Patching a generated Application's `spec` achieves nothing.** The next ApplicationSet reconcile copies the file back over it. That includes switching automated sync off: the only rollback is a revert commit — see [Rolling back a bad sync](<https://homelab.wlkr.ch/operations/troubleshooting/index.md#rolling-back-a-bad-sync>).
 - **One exception to `prune`, and one annotation.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP; copy the `syncPolicy` from any other sibling. Elsewhere a resource whose deletion would take more than itself carries a per-resource `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace (everything in it), an AppProject (every Application in it is orphaned), a CloudNativePG `Cluster` and the bucket its backups land in. A removed policy or manifest still prunes; the container it lived in stays.
 
 ## Bootstrap convergence
 
-Nothing orders the Applications. On a fresh cluster the ApplicationSet generates all of them at once and they converge on their own: a sync that fails because a kind does not exist yet is retried once the chart that ships it has landed, and a resource that applies but cannot go Ready waits without failing anything. What each component waits for is in [Platform → Rollout order](<https://homelab.wlkr.ch/platform/#rollout-order>).
+Nothing orders the Applications. On a fresh cluster the ApplicationSet generates all of them at once and they converge on their own: a sync that fails because a kind does not exist yet is retried once the chart that ships it has landed, and a resource that applies but cannot go Ready waits without failing anything. What each component waits for is in [Platform → Rollout order](<https://homelab.wlkr.ch/platform/index.md#rollout-order>).
 
 | While it is missing | The dependent Application | Resolves when |
 | --- | --- | --- |

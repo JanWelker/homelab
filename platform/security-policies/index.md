@@ -11,13 +11,13 @@ Five cluster-wide controls: Pod Security Admission, default-deny network policy 
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |
 | Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Anything else removed from Git is pruned, so the Application does not sit OutOfSync on leftovers |
-| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](<https://homelab.wlkr.ch/platform/#components>) |
+| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](<https://homelab.wlkr.ch/platform/index.md#components>) |
 
 ## Configuration
 
 ### Pod Security Admission
 
-A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/#node-hardening>). It exempts `kube-system`, which Cilium needs before Argo CD can label anything, and the namespaces that need `privileged` but carry no labels. An exemption skips `audit` and `warn` as well, so the labelled namespaces below are not exempt. Each namespace in `pod-security.yaml` carries three labels:
+A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It exempts `kube-system`, which Cilium needs before Argo CD can label anything, and the namespaces that need `privileged` but carry no labels. An exemption skips `audit` and `warn` as well, so the labelled namespaces below are not exempt. Each namespace in `pod-security.yaml` carries three labels:
 
 | Label | Set to | Effect |
 | --- | --- | --- |
@@ -88,7 +88,7 @@ Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPol
 
 A pod that names no `serviceAccountName` lands on `default`, which nothing configures, and gets an API token it has no use for. A workload reaching the API through `default` is already a misconfiguration, so `default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it in every namespace with nothing to preserve, empty namespaces included. Left out: `kube-system`, where the control plane authenticates with client certificates and "very likely fine" is not the standard. `authentik-server` runs on `default` by chart default and is covered: Authentik's Kubernetes calls are worker tasks, which run under the `authentik` account.
 
-The same rule applies to a chart workload whose own ServiceAccount has no binding — Alertmanager, Cilium's Envoy and Argo CD's HAProxy switch the mount off in their values — unless the process needs the in-cluster config to start at all ([the External Secrets webhook](<https://homelab.wlkr.ch/platform/external-secrets/#configuration>)) or the chart offers no switch (Rook's `rook-ceph-default` and `rook-ceph-rgw`).
+The same rule applies to a chart workload whose own ServiceAccount has no binding — Alertmanager, Cilium's Envoy and Argo CD's HAProxy switch the mount off in their values — unless the process needs the in-cluster config to start at all ([the External Secrets webhook](<https://homelab.wlkr.ch/platform/external-secrets/index.md#configuration>)) or the chart offers no switch (Rook's `rook-ceph-default` and `rook-ceph-rgw`).
 
 ### Agent RBAC
 
@@ -99,7 +99,7 @@ The same rule applies to a chart workload whose own ServiceAccount has no bindin
 | `claude-agent-read` | Cluster-wide, to both ServiceAccounts | `get`, `list`, `watch` on named core, workload and CRD kinds, `pods/log` included | Secrets, RBAC, webhooks, CRDs, `pods/exec`, Trivy's exposed-secret reports |
 | `claude-agent-write` | Nowhere by the platform: the workloads repository adds a RoleBinding in each namespace a writer session may change | Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets | The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request) |
 
-- **Creating a pod reads every Secret in its namespace.** That is why the write role is bound per namespace, and the `apps` project cannot place a RoleBinding in the namespaces its [destinations](<https://homelab.wlkr.ch/platform/argocd/#projects>) exclude.
+- **Creating a pod reads every Secret in its namespace.** That is why the write role is bound per namespace, and the `apps` project cannot place a RoleBinding in the namespaces its [destinations](<https://homelab.wlkr.ch/platform/argocd/index.md#projects>) exclude.
 - **`claude-writer-pod-limits`** in `admission-policies.yaml` refuses any pod or pod template from the writer that uses the host's network, PID or IPC namespace, a `hostPath` volume, a privileged container, or a ServiceAccount other than `default` or the one the workload already runs as. A namespace without a Pod Security level allows all of those, and another ServiceAccount's token is that account's RBAC.
 - **`pods/log` is cluster-wide**, so the reader sees whatever any component logs, platform namespaces included. Triage needs it, and a cluster-wide grant cannot leave out namespaces.
 
@@ -171,7 +171,7 @@ A new policy is enforced on arrival: `policyAuditMode` in `payload/platform/cili
    ```text
    {job="hubble"} | json | flow_l7_http_method != "" | line_format "{{.flow_source_namespace}} -> {{.flow_destination_namespace}}:{{.flow_l4_TCP_destination_port}} {{.flow_l7_http_method}} {{.flow_l7_http_url}}"
    ```
-4. Tighten each `http: [{}]` to the methods and paths seen, set `policyAuditMode: false`, which rolls the agents again. The first week's reading is [Network Policy Audit 2026-09-27](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-09-27/index.md>), the reading before the flip [Network Policy Audit 2026-10-16](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-10-16/index.md>). From then on the verdict to watch is `DROPPED`, live or from Loki — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#health-check>) — and the [`HubblePolicyDrops`](<https://homelab.wlkr.ch/platform/logging/#alerting>) alert mails each refused connection.
+4. Tighten each `http: [{}]` to the methods and paths seen, set `policyAuditMode: false`, which rolls the agents again. The first week's reading is [Network Policy Audit 2026-09-27](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-09-27/index.md>), the reading before the flip [Network Policy Audit 2026-10-16](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-10-16/index.md>). From then on the verdict to watch is `DROPPED`, live or from Loki — see [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md#health-check>) — and the [`HubblePolicyDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>) alert mails each refused connection.
 
 If a single endpoint needs the same treatment later, audit mode can be set on it alone, until the agent restarts:
 
@@ -189,7 +189,7 @@ Audit is per host endpoint, a setting of the running agent: `policyAuditMode` wo
    ```bash
    kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status | grep 'Host firewall'
    ```
-2. Reboot one worker with no policy selecting it and watch it return `Ready`, as in [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/#rebooting-a-node>).
+2. Reboot one worker with no policy selecting it and watch it return `Ready`, as in [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>).
 3. Merge `payload/platform/cilium/host-firewall-audit.yaml`, a DaemonSet that puts each host endpoint back in audit mode within seconds of an agent restart, because any restart would otherwise start enforcing that node: a Renovate bump, a value change, Kured. Every node must answer `Enabled` before the policy merges:
 
    ```bash
@@ -235,7 +235,7 @@ kubectl get validatingadmissionpolicy
 >
 > **Audit mode stops at the proxy**
 >
-> `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity. The agents' `argocd` calls failed this way, `server: envoy` and `grpc-message: Access denied`, while their policy named the host but not the `argocd-server` pod; see [Agent account](<https://homelab.wlkr.ch/platform/argocd/#agent-account>).
+> `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity. The agents' `argocd` calls failed this way, `server: envoy` and `grpc-message: Access denied`, while their policy named the host but not the `argocd-server` pod; see [Agent account](<https://homelab.wlkr.ch/platform/argocd/index.md#agent-account>).
 
 > [!NOTE]
 >
@@ -284,5 +284,5 @@ Work down until the node answers. An agent that cannot reach the API server hear
    ```bash
    until kubectl label node --all host-firewall.wlkr.ch/selected-; do sleep 2; done
    ```
-5. Still nothing: at the node's console, add `flatcar.autologin` to the boot entry in the GRUB menu, since `core` has no password, then run the inner command of step 2. Failing that, [rebuild the node](<https://homelab.wlkr.ch/operations/nodes/#rebuilding-or-repartitioning-a-node>).
-6. Then [unseal OpenBao](<https://homelab.wlkr.ch/operations/nodes/#after-any-node-reboot-unseal-openbao>) and revert in Git: the policy first; the switch only if the firewall itself is the fault, since that revert rolls every agent again.
+5. Still nothing: at the node's console, add `flatcar.autologin` to the boot entry in the GRUB menu, since `core` has no password, then run the inner command of step 2. Failing that, [rebuild the node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>).
+6. Then [unseal OpenBao](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) and revert in Git: the policy first; the switch only if the firewall itself is the fault, since that revert rolls every agent again.

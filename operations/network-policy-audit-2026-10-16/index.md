@@ -1,6 +1,6 @@
 # Network Policy Audit 2026-10-16
 
-Two weeks of `AUDIT` verdicts, 195k records, read before `policyAuditMode` went off. The method is the [rollout](<https://homelab.wlkr.ch/platform/security-policies/#rollout>); the first reading is [Network Policy Audit 2026-09-27](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-09-27/index.md>). No namespace with pods is without a policy, and every pod endpoint on the nodes checked is selected in both directions.
+Two weeks of `AUDIT` verdicts, 195k records, read before `policyAuditMode` went off. The method is the [rollout](<https://homelab.wlkr.ch/platform/security-policies/index.md#rollout>); the first reading is [Network Policy Audit 2026-09-27](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-09-27/index.md>). No namespace with pods is without a policy, and every pod endpoint on the nodes checked is selected in both directions.
 
 ## Fixed
 
@@ -8,7 +8,7 @@ Two weeks of `AUDIT` verdicts, 195k records, read before `policyAuditMode` went 
 | --- | --- |
 | Velero and its data movers to `s3.infra.k8s.wlkr.ch`, 3.7k requests a day since 2026-10-04 | **Rule.** Not an audit verdict: the Gateway's Envoy checked Velero's egress against the RGW pod and answered `403` itself, which audit mode never sees. The backup location was Unavailable and every daily backup `FailedValidation`. Egress to the RGW pod on 8080 in `backup.yaml` |
 | Pods in their first seconds, under the `init` identity: Trivy scan jobs' lookups and their calls to the Trivy server, the kubelet's probes, lookups landing on a CoreDNS pod that had just started; 27k records | **Cluster-wide policy** `init`: the node, DNS out and DNS in. A scan job's call to the Trivy server in the same seconds retransmits until the identity arrives |
-| Every header of every proxied request in the export, `X-Vault-Token`, bearer tokens and cookies included | **Redacted** with `hubble.redact`; see [Cilium](<https://homelab.wlkr.ch/platform/cilium/#configuration>). Records written before the change keep them until Loki's retention drops them |
+| Every header of every proxied request in the export, `X-Vault-Token`, bearer tokens and cookies included | **Redacted** with `hubble.redact`; see [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md#configuration>). Records written before the change keep them until Loki's retention drops them |
 
 ## Nothing to do
 
