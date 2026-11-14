@@ -1,0 +1,98 @@
+# Kured
+
+[Kured](<https://kured.dev/>) applies the updates the nodes have staged. It watches every node for a sentinel file and, when it finds one, takes a cluster-wide lock, cordons and drains the node, reboots it and uncordons it when it is back. Flatcar's own `locksmithd` is masked because it reboots without draining, on a cluster where every node is a storage node.
+
+## At a glance
+
+|  |  |
+| --- | --- |
+| Namespace | `kured` |
+| Depends on | [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) for the alerts it gates on |
+| If it is down | Nothing visible: staged OS and sysext updates simply never get applied |
+| Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |
+| Files | `payload/platform/kured/application.yaml` |
+
+## Configuration
+
+An update stages on disk and signals it by touching `/run/reboot-required`, Kured's default sentinel. `/run` is tmpfs, so the marker clears itself on reboot.
+
+| Mechanism | Stages | Signals by |
+| --- | --- | --- |
+| Flatcar OS (update-engine) | New image on the passive A/B partition | `flatcar-reboot-sentinel.timer` |
+| Kubernetes sysext | New `.raw` under `/opt/extensions/kubernetes` | `systemd-sysupdate` drop-in |
+
+```
+flowchart TD
+    OS["update-engine<br/>OS image on the passive partition"] --> SEN
+    KUBE["systemd-sysupdate<br/>kubernetes sysext"] --> SEN
+
+    SEN["/run/reboot-required<br/>sentinel, on tmpfs"] --> TICK{"Kured checks<br/>every period"}
+
+    TICK -->|"no sentinel"| SLEEP["Nothing to do until<br/>an update stages one"]
+    TICK -->|"sentinel present"| ALERT{"Blocking alert firing?<br/>Ceph, etcd, node, API, Velero"}
+    ALERT -->|"yes"| HELD["Reboot deferred while<br/>the cluster is unhealthy"]
+    ALERT -->|"no"| LOCK{"Cluster lock free?"}
+    LOCK -->|"another node<br/>is rebooting"| TAINT["Taint PreferNoSchedule,<br/>wait for the lock"]
+    LOCK -->|"acquired"| DRAIN["Cordon and drain"]
+    DRAIN -->|"drain fails"| GIVEUP["No reboot: uncordon,<br/>release the lock, retry"]
+    DRAIN -->|"drained"| BOOT["systemctl reboot;<br/>new partition and<br/>sysexts take effect"]
+    BOOT --> UP["Node comes back,<br/>sentinel gone with tmpfs"]
+    UP --> DONE["Uncordon, drop the annotation,<br/>release the lock after a delay"]
+
+    style SEN stroke-width:3px
+```
+
+The values are in `payload/platform/kured/application.yaml`; the reasoning:
+
+| Setting | Why |
+| --- | --- |
+| No reboot window | Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock |
+| `concurrency` and `lockReleaseDelay` | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
+| `forceReboot: false` | A node that will not drain is a node worth looking at |
+| `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
+| `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
+| `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a window longer than Velero's default limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for that long at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
+| `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md>): a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>) |
+
+> [!NOTE]
+>
+> **The regex means the opposite of what it looks like**
+>
+> `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no `PrometheusRule` defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under [Health check](<#health-check>).
+
+## Usage
+
+To stop Kured rebooting anything without uninstalling it, take its cluster lock by hand; it holds until the annotation is removed. Clearing the sentinel does not work, because `flatcar-reboot-sentinel.timer` in `ansible/templates/butane_node_config.yaml.j2` re-touches it while an update is staged, and a DaemonSet cannot be scaled.
+
+```bash
+kubectl -n kured annotate ds kured weave.works/kured-node-lock='{"nodeID":"manual"}'
+kubectl -n kured annotate ds kured weave.works/kured-node-lock-    # release it
+```
+
+To force a node to reboot on the next pass:
+
+```bash
+ssh core@<node> sudo touch /run/reboot-required
+```
+
+`NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml` fires when the sentinel has been there for two days: Kured reboots one node at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is a blocked node, not a queued one.
+
+## Health check
+
+```bash
+# Which nodes want a reboot: kured_reboot_required is the sentinel's presence, per node
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090 &
+curl -s localhost:9090/api/v1/query --data-urlencode 'query=kured_reboot_required == 1' \
+  | jq -r '.data.result[].metric.node'
+
+# Which node is being rebooted right now
+kubectl get nodes -o json | jq -r '.items[] | select(.metadata.annotations["weave.works/kured-reboot-in-progress"]) | .metadata.name'
+
+# Whether a node has staged anything
+ssh core@<node> 'ls -l /run/reboot-required; update_engine_client -status'
+
+kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50
+
+# The alert names the gate may use: every entry in alertFilterRegexp must be here
+kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'
+```
