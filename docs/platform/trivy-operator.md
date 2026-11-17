@@ -123,7 +123,8 @@ per container next to the `VulnerabilityReport`. Nothing here reads them;
 workloads repository uploads every one of them nightly and keeps the
 history Trivy's 24h reports cannot. `sbom-readers.yaml` is the
 `ClusterRole` and binding that let its upload job list them, and the
-ReplicaSets, so it can skip the reports of superseded revisions: the `apps`
+ReplicaSets and Jobs, so it can skip the reports of superseded revisions and
+finished Jobs: the `apps`
 project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.
 
@@ -137,7 +138,10 @@ them decoded in its watch cache.
 The `report-prune` CronJob in `report-prune.yaml` deletes the two kinds for
 every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
 skips those reports anyway. The two `ScanOnlyCurrentRevisions` settings keep
-the operator from writing them again. Its log is one JSON line per kind with the count deleted.
+the operator from writing them again. It also deletes reports with no owner:
+garbage collection only removes a report with its owning workload, so one left
+without an owner, as a removed node's Rook `osd-prepare` Job left its own, stays
+forever. Its log is one JSON line per kind with the count deleted.
 
 ## Usage
 
