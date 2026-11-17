@@ -1,6 +1,7 @@
 ---
 # Deletes the SbomReports and ExposedSecretReports of ReplicaSets scaled to
-# zero, which carry no TTL and otherwise live as long as the revision. See
+# zero, which carry no TTL and otherwise live as long as the revision, and
+# those without an owner, which nothing ever collects. See
 # docs/platform/trivy-operator.md#report-pruning
 apiVersion: v1
 kind: ServiceAccount
@@ -44,7 +45,7 @@ metadata:
   namespace: trivy-system
 data:
   prune.py: |
-    """Delete the reports of superseded ReplicaSets, one JSON line per kind."""
+    """Delete the reports of superseded ReplicaSets and ownerless ones, one JSON line per kind."""
     import json
     import os
     import ssl
@@ -96,10 +97,15 @@ data:
         for item in pages(f"{GROUP}/{resource}", 20):
             labels = item["metadata"].get("labels", {})
             namespace = item["metadata"]["namespace"]
-            if labels.get("trivy-operator.resource.kind") == "ReplicaSet" and (
+            # The operator owns every report by its workload, so garbage
+            # collection removes it with the workload; one without an owner
+            # stays after its workload, and its node, are long gone.
+            orphan = not item["metadata"].get("ownerReferences")
+            superseded = labels.get("trivy-operator.resource.kind") == "ReplicaSet" and (
                 namespace,
                 labels.get("trivy-operator.resource.name"),
-            ) in idle:
+            ) in idle
+            if orphan or superseded:
                 stale.append((namespace, item["metadata"]["name"]))
         deleted = 0
         for namespace, name in stale:
