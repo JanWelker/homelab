@@ -2896,7 +2896,8 @@ per container next to the <code>VulnerabilityReport</code>. Nothing here reads t
 workloads repository uploads every one of them nightly and keeps the
 history Trivy's 24h reports cannot. <code>sbom-readers.yaml</code> is the
 <code>ClusterRole</code> and binding that let its upload job list them, and the
-ReplicaSets, so it can skip the reports of superseded revisions: the <code>apps</code>
+ReplicaSets and Jobs, so it can skip the reports of superseded revisions and
+finished Jobs: the <code>apps</code>
 project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.</p>
 <h3 id="report-pruning">Report pruning<a class="headerlink" href="#report-pruning" title="Permanent link">&para;</a></h3>
@@ -2908,7 +2909,10 @@ them decoded in its watch cache.
 The <code>report-prune</code> CronJob in <code>report-prune.yaml</code> deletes the two kinds for
 every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
 skips those reports anyway. The two <code>ScanOnlyCurrentRevisions</code> settings keep
-the operator from writing them again. Its log is one JSON line per kind with the count deleted.</p>
+the operator from writing them again. It also deletes reports with no owner:
+garbage collection only removes a report with its owning workload, so one left
+without an owner, as a removed node's Rook <code>osd-prepare</code> Job left its own, stays
+forever. Its log is one JSON line per kind with the count deleted.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is a summary; the objects have the detail.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># What has been scanned, worst first</span>
