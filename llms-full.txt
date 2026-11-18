@@ -3499,16 +3499,15 @@ A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-stor
 
 ### Off-cluster reader
 
-The [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) pulls the backup buckets with one S3 user, `offsite-reader`, rather than with each claim's own read-write keys.
+The [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) runs as one S3 user, `offsite-reader`: it reads every backup bucket and owns the `offsite` bucket the copy is gathered into, so TrueNAS sees that bucket in its list.
 
 | Setting | Why |
 | --- | --- |
-| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for every backup bucket; Rook writes it to the Secret `rook-ceph-object-user-object-store-offsite-reader` |
-| `opMask: [read]` | RGW refuses this user every write and delete, whatever a bucket policy grants, so the machine holding its keys can never alter a backup |
-| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only. Rook applies a changed `additionalConfig` to an existing claim |
-| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` unless it is listed. A claim's author can then grant anyone their bucket, which is acceptable because every claim comes from Git |
-
-Reading the keys is step 1 of [Setting up the TrueNAS pull](<https://homelab.wlkr.ch/operations/backups/index.md#setting-up-the-truenas-pull>).
+| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for the copy, in the Secret `rook-ceph-object-user-object-store-offsite-reader` and, through `bucketOwner`, in the `offsite-bucket` claim's Secret |
+| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only, so its keys cannot change a backup. Rook applies a changed `additionalConfig` to an existing claim |
+| `bucketOwner: offsite-reader` on `backup/offsite-bucket` | S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner, so only this one is the reader's |
+| Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys. Write and delete reach only `offsite`, which the next night's copy rewrites |
+| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) allows it on that one claim only |
 
 ### Monitoring
 
@@ -3796,7 +3795,7 @@ Kinds are listed, never wildcarded, so a new CRD is invisible to the agents unti
 
 ### Admission policies
 
-Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission, with the built-in `ValidatingAdmissionPolicy` rather than a policy engine. The image policies match Pods and every controller that produces them, so a bad Deployment is rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The other three close what RBAC and the `apps` project cannot express.
+Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission, with the built-in `ValidatingAdmissionPolicy` rather than a policy engine. The image policies match Pods and every controller that produces them, so a bad Deployment is rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
@@ -3805,6 +3804,7 @@ Trivy reports a bad image after it is running; `admission-policies.yaml` refuses
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](<#agent-rbac>) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
+| `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) |
 
 All but one carry `failurePolicy: Ignore`: an expression that errors lets the request through rather than stopping every pod in the cluster. A real violation is still refused. `claude-writer-pod-limits` fails closed, since it only ever matches one identity.
 
@@ -4518,7 +4518,7 @@ A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each night
 
 | Property | Why |
 | --- | --- |
-| Credentials | The [`offsite-reader`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) S3 user: read-only by `opMask`, granted each bucket by its claim's `bucketPolicy`, so the NAS can never change a backup |
+| Credentials | The [`offsite-reader`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) S3 user, granted list and get on each bucket by its claim's `bucketPolicy` and nothing more, so the NAS can never change a backup |
 | Buckets | Every claim that carries the reader's `bucketPolicy`: `velero`, `etcd-backup`, `openbao-backup` and one `cnpg-<namespace>` per database, in both repositories. A bucket without the policy is left out without an error |
 | Cloud Sync task per bucket, `PULL` and `SYNC` | The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout |
 | Periodic ZFS snapshots of the dataset | What `SYNC` deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it |

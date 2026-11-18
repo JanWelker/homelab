@@ -3279,7 +3279,7 @@ refuses or records it at admission, with the built-in
 <code>ValidatingAdmissionPolicy</code> rather than a policy engine. The image policies
 match Pods and every controller that produces them, so a bad Deployment is
 rejected at <code>kubectl apply</code> rather than failing quietly in its ReplicaSet. The
-other three close what RBAC and the <code>apps</code> project cannot express.</p>
+others close what RBAC and the <code>apps</code> project cannot express.</p>
 <table>
 <thead>
 <tr>
@@ -3313,6 +3313,11 @@ other three close what RBAC and the <code>apps</code> project cannot express.</p
 <td><code>authentik-foreign-objects</code></td>
 <td><code>Deny</code></td>
 <td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>, or be the ConfigMap <code>authentik-blueprint-&lt;application&gt;</code>. Argo CD cannot whitelist kinds per destination namespace, so this is what holds <code>apps</code> to its blueprint there; objects with no <code>argocd.argoproj.io/tracking-id</code> annotation, from controllers and <code>kubectl</code>, are not matched</td>
+</tr>
+<tr>
+<td><code>obc-bucket-owner</code></td>
+<td><code>Deny</code></td>
+<td>Only <code>backup/offsite-bucket</code> may set <code>bucketOwner</code> on an <code>ObjectBucketClaim</code>, and only to <code>offsite-reader</code>. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see <a href="../rook-ceph/#off-cluster-reader">Off-cluster reader</a></td>
 </tr>
 </tbody>
 </table>

@@ -129,7 +129,7 @@ A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each night
 
 | Property | Why |
 | --- | --- |
-| Credentials | The [`offsite-reader`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) S3 user: read-only by `opMask`, granted each bucket by its claim's `bucketPolicy`, so the NAS can never change a backup |
+| Credentials | The [`offsite-reader`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) S3 user, granted list and get on each bucket by its claim's `bucketPolicy` and nothing more, so the NAS can never change a backup |
 | Buckets | Every claim that carries the reader's `bucketPolicy`: `velero`, `etcd-backup`, `openbao-backup` and one `cnpg-<namespace>` per database, in both repositories. A bucket without the policy is left out without an error |
 | Cloud Sync task per bucket, `PULL` and `SYNC` | The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout |
 | Periodic ZFS snapshots of the dataset | What `SYNC` deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it |
