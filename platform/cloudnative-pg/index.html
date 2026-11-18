@@ -2889,6 +2889,15 @@ registry terms keep changing. The rule for the
    drain continues. Without them the drain deletes the primary, and the
    failover waits for its smart shutdown, up to <code>smartShutdownTimeout</code> while
    clients hold connections.</li>
+<li>Set <code>smartShutdownTimeout: 15</code>, and on a <code>Cluster</code> with replicas
+   <code>primaryUpdateMethod: switchover</code>. A smart shutdown refuses new connections
+   and waits for the open ones to close, and every application here holds a
+   pool, so the default's 180 seconds only lengthen every restart, every move
+   of a single instance and every failover; after 15 seconds the instance
+   manager shuts down fast, rolling back open transactions, and the clients
+   reconnect. The default update method restarts the primary in place on a
+   spec change, which with the default timeout kept Authentik's database
+   without a writer for three minutes; a switchover promotes a replica first.</li>
 <li>Back it up with the <a href="#backing-up-a-database">stanza below</a>. Velero's
    nightly PVC snapshot is crash-consistent and restores only to the night it
    was taken; the WAL archive restores to any second.</li>
