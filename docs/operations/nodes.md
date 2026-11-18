@@ -163,11 +163,10 @@ and `rook-osd` cannot shrink in place because Ceph has already written across
 the space.
 
 !!! danger "The backups are inside the thing being wiped"
-    Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see [Backups & Recovery](backups.md#what-is-not-covered). Copy anything you intend to restore from **off-cluster** first.
+    Every backup CronJob and Velero write to the Ceph object store this destroys — see [Backups & Recovery](backups.md#what-is-not-covered). Copy anything you intend to restore from **off-cluster** first.
 
-1. Copy what matters off the cluster: the `velero` and `etcd-backup` buckets
-   per [Copying a bucket off the cluster](backups.md#copying-a-bucket-off-the-cluster),
-   and anything in a PVC not reproducible from Git.
+1. Confirm the [off-cluster copy](backups.md#off-cluster-copy) ran after the
+   last nightly backup, and copy anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
 3. Regenerate both Ignition configs and serve them.
 
