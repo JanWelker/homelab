@@ -148,7 +148,7 @@ data:
         attrs:
           flow_user_settings: !KeyOf user-settings-flow
 
-  # Second factor required, lockout by reputation, akadmin off; see docs/platform/authentik.md#authentication-flow
+  # Second factor or passkey required, lockout by reputation, akadmin off; see docs/platform/authentik.md#authentication-flow
   06-authentication.yaml: |
     version: 1
     metadata:
@@ -223,11 +223,57 @@ data:
           configuration_stages:
             - !Find [authentik_stages_authenticator_totp.authenticatortotpstage, [name, default-authenticator-totp-setup]]
             - !Find [authentik_stages_authenticator_webauthn.authenticatorwebauthnstage, [name, default-authenticator-webauthn-setup]]
+      # A passkey on the sign-in form, from the browser's autofill. User
+      # verification makes it two factors: the device and its PIN or biometric.
+      - model: authentik_stages_authenticator_validate.authenticatorvalidatestage
+        state: present
+        id: authentication-passkey
+        identifiers:
+          name: homelab-authentication-passkey
+        attrs:
+          not_configured_action: deny
+          device_classes:
+            - webauthn
+          webauthn_user_verification: required
+      # The default identification stage's settings, plus the passkey; an own
+      # stage because the default blueprint rewrites its objects on upgrade.
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        id: authentication-identification
+        identifiers:
+          name: homelab-authentication-identification
+        attrs:
+          user_fields:
+            - email
+            - username
+          case_insensitive_matching: true
+          show_matched_user: true
+          pretend_user_exists: true
+          webauthn_stage: !KeyOf authentication-passkey
+      # False after a passkey login, which skips the stage it is bound to.
+      - model: authentik_policies_expression.expressionpolicy
+        state: present
+        id: authentication-not-passkey
+        identifiers:
+          name: homelab-authentication-not-passkey
+        attrs:
+          expression: |
+            flow_plan = request.context.get("flow_plan")
+            if not flow_plan:
+                return True
+            return flow_plan.context.get("auth_method") != "auth_webauthn_pwl"
+      # Replaced by the stage above; a blueprint does not prune by itself.
+      - model: authentik_flows.flowstagebinding
+        state: absent
+        identifiers:
+          target: !KeyOf authentication-flow
+          stage: !Find [authentik_stages_identification.identificationstage, [name, default-authentication-identification]]
+          order: 10
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
           target: !KeyOf authentication-flow
-          stage: !Find [authentik_stages_identification.identificationstage, [name, default-authentication-identification]]
+          stage: !KeyOf authentication-identification
           order: 10
       # Evaluated once the user is identified, so the username counts as well as the address.
       - model: authentik_flows.flowstagebinding
@@ -249,16 +295,40 @@ data:
           order: 0
       - model: authentik_flows.flowstagebinding
         state: present
+        id: authentication-password-binding
         identifiers:
           target: !KeyOf authentication-flow
           stage: !Find [authentik_stages_password.passwordstage, [name, default-authentication-password]]
           order: 20
+        attrs:
+          evaluate_on_plan: false
+          re_evaluate_policies: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-password-binding
+          policy: !KeyOf authentication-not-passkey
+        attrs:
+          order: 0
+          failure_result: true
       - model: authentik_flows.flowstagebinding
         state: present
+        id: authentication-mfa-binding
         identifiers:
           target: !KeyOf authentication-flow
           stage: !KeyOf authentication-mfa-validation
           order: 30
+        attrs:
+          evaluate_on_plan: false
+          re_evaluate_policies: true
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf authentication-mfa-binding
+          policy: !KeyOf authentication-not-passkey
+        attrs:
+          order: 0
+          failure_result: true
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
