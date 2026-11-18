@@ -91,8 +91,11 @@ spec:
                   failed=""
                   for b in $buckets; do
                     echo "== $b"
+                    # metadata-directive: a multipart copy would otherwise read
+                    # the source's tags, which the bucket policy does not grant
                     aws --endpoint-url "$S3" s3 sync "s3://$b" "s3://${BUCKET_NAME}/$b" \
-                      --delete --only-show-errors || failed="$failed $b"
+                      --delete --only-show-errors --copy-props metadata-directive \
+                      || failed="$failed $b"
                   done
                   [ -z "$failed" ] || { echo "failed:$failed"; exit 1; }
               env:
