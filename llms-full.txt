@@ -1589,7 +1589,7 @@ A proxied application's route lives with the application: Hubble's in `payload/p
 
 ### Database
 
-`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, one takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
+`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, the operator's PodDisruptionBudgets hold the drain until it has switched the primary over, a few seconds without a writer. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
 
 The replicas only survive a node loss while they sit on separate nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>).
 
@@ -2023,7 +2023,7 @@ The [Barman Cloud plugin](<https://cloudnative-pg.io/plugin-barman-cloud/>) runs
 1. Disable the subchart (`postgresql.enabled: false` or `internalDatabase.enabled: false`) and point the chart at the `Cluster`.
 2. Never copy the password. CloudNativePG writes `username`, `password`, `host`, `port`, `dbname` and a ready-made `uri` to `<cluster-name>-app`; charts take those through an `existingSecret` block, and applications without one read `uri` as an environment variable. Nothing goes into Git or OpenBao — nothing outside the cluster ever needs this secret.
 3. Put the `Cluster` in the workload's namespace, not `cnpg-system`, so the namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the namespace takes the database with it.
-4. Set `enablePDB: false`. The operator's `<cluster>-primary` PodDisruptionBudget refuses the primary's eviction outright, so a node drain hangs on it until [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) gives up and the node is never rebooted. Without the budget a single instance is down for the move to another node and a three-instance cluster fails over within a minute.
+4. Set `enablePDB: false` on a single-instance `Cluster` only. Its `<cluster>-primary` PodDisruptionBudget refuses the eviction outright, so a node drain hangs on it until [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) gives up and the node is never rebooted; without the budget the instance is down for the move to another node. A `Cluster` with replicas keeps the budgets: the operator sees the drain, switches the primary over to a replica in seconds, and the drain continues. Without them the drain deletes the primary, and the failover waits for its smart shutdown, up to `smartShutdownTimeout` while clients hold connections.
 5. Back it up with the [stanza below](<#backing-up-a-database>). Velero's nightly PVC snapshot is crash-consistent and restores only to the night it was taken; the WAL archive restores to any second.
 
 ### Backing up a database

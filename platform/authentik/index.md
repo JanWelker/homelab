@@ -55,7 +55,7 @@ A proxied application's route lives with the application: Hubble's in `payload/p
 
 ### Database
 
-`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, one takes over within a minute, once `enablePDB: false` lets the drain evict the primary. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
+`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on the cluster that has any. Every login on every platform UI goes through Authentik, so its database must survive a node drain: with one instance a reboot kills the database; with replicas, the operator's PodDisruptionBudgets hold the drain until it has switched the primary over, a few seconds without a writer. The chart's own Postgres subchart is off — both rules are in [the contract](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#the-contract>).
 
 The replicas only survive a node loss while they sit on separate nodes, which the operator's own `preferred` anti-affinity does not guarantee — hence the `topologySpreadConstraints` block, under the rule in [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>).
 
