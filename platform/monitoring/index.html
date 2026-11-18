@@ -2967,6 +2967,10 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the <a href="../#components">2.5x-peak rule</a>, not a budget</td>
 </tr>
 <tr>
+<td>Prometheus's memory request at its measured median working set</td>
+<td>A request below real use lets a drain move it onto an 8 GB worker without room, which swaps until the kubelet goes <code>NotReady</code>. At the median only a node with that much unrequested memory qualifies; 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable</td>
+</tr>
+<tr>
 <td>Prometheus <code>retention</code> and <code>retentionSize</code></td>
 <td>Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus</td>
 </tr>
