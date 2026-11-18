@@ -304,6 +304,7 @@ data:
                     |= `POLICY_DENIED`
                     | json direction="flow.traffic_direction", reply="flow.is_reply", source_namespace="flow.source.namespace", source_workload="flow.source.workloads[0].name", destination_namespace="flow.destination.namespace", dst_workload="flow.destination.workloads[0].name", dst_pod="flow.destination.pod_name", dst_name="flow.destination_names[0]", dst_ip="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port", icmp="flow.l4.ICMPv4.type", src_id="flow.source.identity", dst_id="flow.destination.identity", event="flow.event_type.type"
                     | event != "5" and reply != "true" and src_id != "5" and dst_id != "5" and icmp !~ "3|11"
+                    | direction != "INGRESS" or dst_id != "1"
                     | dst_id != "2" or dst_ip !~ `10[.](244|9[6-9]|10[0-9]|11[01])[.].*`
                     | label_format namespace=`{{ if eq .direction "EGRESS" }}{{ .source_namespace }}{{ else }}{{ .destination_namespace }}{{ end }}`, destination=`{{ or .dst_workload .dst_pod .dst_name .dst_ip }}`, port=`{{ .tcp }}{{ .udp }}`
                   [10m]
@@ -324,6 +325,31 @@ data:
                 policy file for {{ $labels.namespace }} is missing a rule or
                 something is probing; the flows are in Loki under
                 job="hubble", verdict="DROPPED".
+          # Ingress to a node's own address, which only the host firewall
+          # refuses. Grouped without the port so a scan, one SYN per port,
+          # crosses the threshold as surely as one connection's retransmits.
+          - alert: HostFirewallDrops
+            expr: |
+              sum by (node, source) (
+                count_over_time(
+                  {job="hubble", verdict="DROPPED"}
+                    |= `POLICY_DENIED`
+                    | json direction="flow.traffic_direction", reply="flow.is_reply", dst_id="flow.destination.identity", source="flow.IP.source", event="flow.event_type.type"
+                    | event != "5" and reply != "true" and direction="INGRESS" and dst_id="1"
+                  [10m]
+                )
+              ) > 3
+            labels:
+              severity: warning
+            annotations:
+              summary: >-
+                Host firewall on {{ $labels.node }} dropped {{ $value }} packets from {{ $labels.source }}
+              description: >-
+                {{ $labels.source }} sent {{ $value }} packets in ten minutes to
+                ports of {{ $labels.node }} that host-firewall.yaml does not
+                open to it. Either the policy is missing a rule or something
+                is probing; the ports are in Loki under job="hubble",
+                verdict="DROPPED", node="{{ $labels.node }}".
       - name: systemd-journal
         rules:
           - alert: NodeSshLogin
