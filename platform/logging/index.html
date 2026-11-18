@@ -2979,7 +2979,7 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>HubblePolicyDrops</code></td>
-<td>More than three <code>POLICY_DENIED</code> packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the <code>init</code> identity and addresses with no pod behind them are left out. The <code>namespace</code> label is the policy that refused, so the mail names the file to edit</td>
+<td>More than three <code>POLICY_DENIED</code> packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the <code>init</code> identity, pod and service addresses Cilium had no pod for at that moment (the world or a local CIDR identity, as during an agent restart or a pod start) and the wanted drops below are left out. The <code>namespace</code> label is the policy that refused, so the mail names the file to edit</td>
 <td>A connection's retransmits pass the threshold and a name rule's single early <code>SYN</code> does not; the metric counts per namespace pair only and misses the first burst of a new pair</td>
 </tr>
 <tr>
@@ -2999,6 +2999,29 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 </tbody>
 </table>
+<p><code>HubblePolicyDrops</code> leaves out a drop that is wanted but cannot be switched off, one filter stage each, so every other drop from the same workload still mails:</p>
+<table>
+<thead>
+<tr>
+<th>Source namespace</th>
+<th>Destination</th>
+<th>Why it cannot be switched off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>authentik</code></td>
+<td><code>*.gravatar.com</code></td>
+<td>Avatars are a database setting no blueprint reaches; see <a href="../authentik/#chart-values">Authentik</a></td>
+</tr>
+<tr>
+<td><code>dependency-track</code></td>
+<td><code>repo.packagist.org</code>, <code>packages.atlassian.com</code></td>
+<td>Built-in metadata repositories are database rows and the policy leaves these two out. Turning them off under <strong>Administration → Repositories</strong> ends the lookups too</td>
+</tr>
+</tbody>
+</table>
+<p>A drop belongs here only when no config switch exists; telemetry with a switch is turned off instead.</p>
 <p>To confirm the ruler loaded a rule:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>logging<span class="w"> </span>port-forward<span class="w"> </span>svc/loki<span class="w"> </span><span class="m">3100</span>:3100
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:3100/loki/api/v1/rules
