@@ -83,8 +83,8 @@ nightly. Chart values and why each is set are in
 | --- | --- |
 | Schedule | The `schedules` block in `payload/platform/velero/application.yaml`: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires |
 | Scope | All namespaces except `kube-system` (rebuilt from Git, and large) and `trivy-system` (rescanned), minus `events` (they expire anyway) and any PVC labelled `velero.io/exclude-from-backup`, which is only Prometheus's: the chart's `volumeClaimTemplate.metadata.labels` carries it |
-| Destination | S3 bucket `velero` in the [Ceph object store](../platform/rook-ceph.md) |
-| Volume data | CSI snapshot, streamed into the bucket by the data mover (Kopia), snapshot deleted; the durable copy is the one in the bucket |
+| Destination | `offsite/backup.velero/` in the [Ceph object store](../platform/rook-ceph.md), written as its own [backup writer](../platform/rook-ceph.md#backup-writers) |
+| Volume data | CSI snapshot, streamed into the object store by the data mover (Kopia), snapshot deleted; the durable copy is the one in the object store |
 | Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](../platform/velero.md#repository-password) |
 
 The `velero` CLI defaults to the `velero` namespace; this install is in
@@ -114,7 +114,7 @@ before Velero runs.
 | Schedule | `payload/platform/backup/etcd-backup.yaml`: nightly, before Velero |
 | Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node. It mounts the CA certificate and the healthcheck client pair, never the directory, which also holds the CA and server keys |
 | Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup (`etcdctl snapshot status` was removed in etcd 3.6) |
-| Destination | S3 bucket `etcd-backup`, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
+| Destination | `offsite/backup.etcd/`, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
 
 Two settings there are easy to undo by accident: the DNS policy for a
 host-network pod (the node's `resolv.conf` cannot resolve the RGW Service), and
@@ -177,7 +177,7 @@ snapshot nightly, between the etcd snapshot and Velero.
 | --- | --- |
 | Login | Kubernetes auth as the `openbao-snapshot` role, whose policy reads `sys/storage/raft/snapshot` and nothing else; `make bao-policies` writes it — see [Kubernetes auth](../platform/openbao.md#kubernetes-auth). The token is revoked when the snapshot is saved |
 | Verification | The archive must list its `SHA256SUMS`, so a truncated snapshot fails the job instead of replacing a good one |
-| Destination | S3 bucket `openbao-backup`; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
+| Destination | `offsite/backup.openbao/`; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
 | CLI version | The job's image is grouped with the server's tag in Renovate, so the CLI never lags the server |
 
 ```bash
@@ -381,7 +381,7 @@ come back together. Flatcar ships no `etcdutl`, so run it from the etcd image
 the CronJob uses. Upstream:
 [Restoring an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster).
 
-1. Copy the snapshot, from the off-cluster copy of the `etcd-backup` bucket
+1. Copy the snapshot, from `backup.etcd/` in the off-cluster copy
    ([Off-cluster copy](#off-cluster-copy)),
    to every control-plane node as `/var/lib/etcd-restore/snapshot.db`.
 2. On every control-plane node, stop the API server and etcd by moving their
@@ -437,8 +437,8 @@ the CronJob uses. Upstream:
 ### Rebuild from scratch
 
 1. Have the Git repository, the OpenBao unseal keys and operator login, and
-   the [off-cluster copy](#off-cluster-copy) of the `openbao-backup` and
-   `velero` buckets; an etcd snapshot from it is optional and skips
+   the [off-cluster copy](#off-cluster-copy) of `backup.openbao/` and
+   `backup.velero/`; an etcd snapshot from it is optional and skips
    re-issuing certificates.
 2. Move the old `openbao-init.json` and `openbao-operator.json` out of
    `output/credentials/`: `make bao-init` refuses while either exists, because

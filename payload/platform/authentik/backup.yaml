@@ -1,31 +1,17 @@
 ---
-# WAL and nightly base backups to this database's own bucket; the stanza and
-# every choice in it: docs/platform/cloudnative-pg.md#backups
-apiVersion: objectbucket.io/v1alpha1
-kind: ObjectBucketClaim
+# WAL and nightly base backups to this database's prefix of offsite; the
+# stanza and every choice in it: docs/platform/cloudnative-pg.md#backups
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
 metadata:
-  name: authentik-db-backup
+  name: authentik.db
   namespace: authentik
   annotations:
-    argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  bucketName: cnpg-authentik
-  storageClassName: ceph-bucket
-  additionalConfig:
-    # offsite-reader may list and read; docs/platform/rook-ceph.md#off-cluster-reader
-    bucketPolicy: |
-      {
-        "Version": "2012-10-17",
-        "Statement": [
-          {
-            "Effect": "Allow",
-            "Principal": {"AWS": ["arn:aws:iam:::user/offsite-reader"]},
-            "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject"],
-            "Resource": ["arn:aws:s3:::cnpg-authentik", "arn:aws:s3:::cnpg-authentik/*"]
-          }
-        ]
-      }
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: authentik database backups
 ---
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
@@ -38,11 +24,11 @@ metadata:
 spec:
   retentionPolicy: 14d
   configuration:
-    destinationPath: s3://cnpg-authentik/
+    destinationPath: s3://offsite/authentik.db/
     endpointURL: https://s3.infra.k8s.wlkr.ch
     s3Credentials:
-      accessKeyId: {name: authentik-db-backup, key: AWS_ACCESS_KEY_ID}
-      secretAccessKey: {name: authentik-db-backup, key: AWS_SECRET_ACCESS_KEY}
+      accessKeyId: {name: rook-ceph-object-user-object-store-authentik.db, key: AccessKey}
+      secretAccessKey: {name: rook-ceph-object-user-object-store-authentik.db, key: SecretKey}
     wal:
       compression: gzip
     data:
