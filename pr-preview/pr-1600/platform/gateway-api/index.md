@@ -1,0 +1,105 @@
+# Gateway API
+
+The [Kubernetes Gateway API](<https://gateway-api.sigs.k8s.io/>) replaces the Ingress resource, implemented by Cilium for both load balancing and TLS termination. The improvement is the split in ownership: the cluster owns the `Gateway` — addresses, certificates, ports — and each app owns its own `HTTPRoute`.
+
+## At a glance
+
+|  |  |
+| --- | --- |
+| Namespace | `kube-system`, where Cilium runs |
+| Depends on | [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) to implement it, [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) for the wildcard certificates |
+| If it is down | Nothing reaches any hostname. Running pods keep running |
+| Health check | `kubectl -n kube-system get gateway` → both `PROGRAMMED=True` with an address |
+| Files | `payload/platform/gateway-api/`, `payload/platform/gateway-api-crds/` |
+
+## Configuration
+
+Two Gateways in `kube-system`, each with a dedicated address from the Cilium L2 pool, defined in `gateways.yaml`. `apps-gateway` serves user-facing workloads under the router's public address; `infra-gateway` serves the platform UIs, LAN only. A route names a listener by `sectionName`:
+
+| Gateway | Listener | Hostnames | Certificate |
+| --- | --- | --- | --- |
+| `apps-gateway` | `https` | `*.k8s.wlkr.ch` | `apps-gateway-tls` |
+| `apps-gateway` | `https-wollbi` | `*.wollbi.ch`, the neighbourhood sites | `wollbi-gateway-tls` |
+| `apps-gateway` | `ssh` | `*.ssh.wlkr.ch`, passthrough; see [SSH listener](<#ssh-listener>) | None here |
+| `infra-gateway` | `https` | `*.infra.k8s.wlkr.ch` | `infra-gateway-tls` |
+
+A listener pins one hostname pattern and a wildcard certificate covers one zone, so a new domain is three files, never a name added to an existing listener:
+
+1. A `Certificate` in `payload/platform/certificates/certificates.yaml`.
+2. An HTTPS listener in `gateways.yaml` referencing it.
+3. The zone in `domainFilters` in `payload/platform/external-dns/application.yaml`, or its routes are silently ignored.
+
+The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new hostname needs no certificate of its own and nothing to renew. Each HTTPS listener pins its hostname pattern, so a route can only claim a name inside its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still admits an `infra` name; such a route gets no traffic, because the infra names resolve to the other Gateway and the apps certificate covers one label only. Port 80 is accepted from all namespaces only so the central rule in `http-redirect.yaml` can send it to HTTPS. `apps-gateway` carries the annotation that makes [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md#configuration>) publish the router's public address instead of the Gateway's LAN one; the router forwards ports 80 and 443 to that LAN address.
+
+`payload/platform/cilium/rbac-gateway-fix.yaml` grants the operator read access to Ingresses and IngressClasses: its Gateway API controller lists them too, and the chart grants that only with the Ingress controller enabled. Retry removing it on a chart major.
+
+### Backend protocol
+
+Envoy speaks HTTP/1.1 to every backend unless the Service port says otherwise: Cilium's `gatewayAPI.enableAppProtocol` makes it honour `appProtocol: kubernetes.io/h2c` and open HTTP/2 cleartext instead. A `GRPCRoute` needs that, because the Gateway translates gRPC-web into native gRPC, which only an HTTP/2 backend answers; Argo CD's `http2` port is the one user, see [Argo CD → CLI access](<https://homelab.wlkr.ch/platform/argocd/index.md#cli-access>).
+
+The CRDs arrive twice from one tag: `make install-cilium` applies the release bundle `standard-install.yaml` before ArgoCD exists, and the `gateway-api-crds` Application applies `config/crd/standard`, the directory that bundle is generated from. The Makefile reads the tag out of the Application, so the two cannot drift apart.
+
+## Usage
+
+Where the chart renders an `HTTPRoute` (Argo CD, OpenBao, Grafana), enable it in the values; a route only becomes a file of its own when it targets something the chart does not own, such as the Authentik outpost. Otherwise create an `HTTPRoute` in the app's namespace referencing the right Gateway; [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) creates the record and the wildcard covers the name:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: apps-gateway
+      namespace: kube-system
+      sectionName: https
+  hostnames:
+    - "my-app.k8s.wlkr.ch"
+  rules:
+    - backendRefs:
+        - name: my-app-svc
+          port: 80
+```
+
+Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools, and the listener from the table above whose hostnames cover the name.
+
+### SSH listener
+
+The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on port 443, the only port the router forwards to `apps-gateway`. Each agent's chart ships a `TLSRoute` for `<session>.ssh.wlkr.ch` pointing at its SSH Service.
+
+| Setting | Why |
+| --- | --- |
+| `mode: Passthrough` | Cilium rejects a `TLS` listener in `Terminate` mode: the listener goes `Accepted=False` with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate |
+| No `Certificate` here | A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from `letsencrypt-prod` in the agent's namespace |
+| `allowedRoutes.kinds: TLSRoute` | The listener serves nothing else, and `HTTPRoute`s cannot attach to it by accident |
+| `TLSRoute` `v1` | Installed in the standard channel of the Gateway API CRDs; `v1alpha2` is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart `cilium-operator` |
+
+DNS needs no record by hand: [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md#configuration>) reads the `TLSRoute` hostnames and publishes the router's public address, as for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`, for example `openssl s_client -quiet -connect %h:443 -servername %h`.
+
+Envoy checks its egress against the backend like any Gateway traffic, so the agents' namespace must admit the `ingress` entity on the SSH port; see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>).
+
+## Health check
+
+Check that each HTTP listener carries only the redirect — `http` should show exactly `1`:
+
+```bash
+kubectl get gateway infra-gateway -n kube-system \
+  -o jsonpath='{range .status.listeners[*]}{.name}={.attachedRoutes}{"\n"}{end}'
+```
+
+## Pitfalls
+
+> [!CAUTION]
+>
+> **Always set `sectionName`**
+>
+> A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is `Accepted`.
+
+> [!WARNING]
+>
+> **Nothing stops two apps claiming the same hostname**
+>
+> Both Gateways admit routes from every namespace, so a stray `HTTPRoute` can attach itself to either Gateway and claim a name inside its hostname pattern — see [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md>).
