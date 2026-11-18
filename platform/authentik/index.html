@@ -1520,6 +1520,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#branding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Branding
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2688,6 +2699,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#branding" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Branding
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bootstrap-credentials" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3231,6 +3253,37 @@ every upgrade.</p>
 </table>
 <p>To lift a lockout early, delete the score under <strong>Customization &rarr;
 Policies &rarr; Reputation scores</strong>.</p>
+<h3 id="branding">Branding<a class="headerlink" href="#branding" title="Permanent link">&para;</a></h3>
+<p>The sign-in pages show the homelab logo on isometric containers in its
+colours. <code>scripts/authentik-branding.py</code> renders both as SVG into
+<code>branding.yaml</code>, a ConfigMap the server mounts at <code>/web/dist/custom</code>, so
+Authentik serves them itself under <code>/static/dist/custom/</code> and the default
+brand in <code>06-authentication.yaml</code> points at those paths.</p>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A ConfigMap, not an upload under <strong>Brands</strong></td>
+<td>An upload lives in Authentik's media storage, outside Git and outside a rebuild</td>
+</tr>
+<tr>
+<td>SVG for both</td>
+<td>The background scales to any viewport; the logo is the PNG from <code>docs/assets/images/</code> in a 160 px wide SVG, which fixes its size on the card and keeps it sharp on high-density screens</td>
+</tr>
+<tr>
+<td>Navy shading at the top and bottom edges of the background</td>
+<td>The language picker and "Powered by authentik" are white and sit there; the picker is in a shadow DOM that brand CSS does not reliably reach</td>
+</tr>
+</tbody>
+</table>
+<p>To change either, edit the script, run <code>uv run python scripts/authentik-branding.py</code>
+and commit the regenerated <code>branding.yaml</code>. A mounted ConfigMap updates in the
+running pods within a minute or two, without a restart.</p>
 <h3 id="bootstrap-credentials">Bootstrap credentials<a class="headerlink" href="#bootstrap-credentials" title="Permanent link">&para;</a></h3>
 <p>Authentik's built-in bootstrap blueprint creates <code>akadmin</code> from
 <code>AUTHENTIK_BOOTSTRAP_PASSWORD</code> only while no <code>akadmin</code> exists, and reads
