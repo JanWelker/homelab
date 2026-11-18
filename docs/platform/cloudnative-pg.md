@@ -64,7 +64,7 @@ restores to any second inside the retention window, not just to last night.
 | `https://s3.infra.k8s.wlkr.ch`, not the plain RGW Service | Backups hold every row of the database; the Gateway's TLS is the same path Velero uses |
 | Base backup nightly, after Velero | The two never contend for the object store; WAL archiving covers the hours between |
 | `retentionPolicy` equal to `schedules.ttl` in `payload/platform/velero/application.yaml` | One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each `backup.yaml` restates the value |
-| Preview databases have none | They are rebuilt from the pull request and deleted with it |
+| No opting out by omission | The `cnpg-cluster-backed-up` and `cnpg-objectstore-offsite` [admission policies](security-policies.md#admission-policies) refuse a `Cluster` without the WAL archiver and a store outside `offsite`; a database rebuilt from elsewhere, like a preview, carries `homelab.wlkr.ch/backup-exempt` with the reason |
 
 `ObjectStore` is a namespaced resource with no cluster-scoped counterpart, so
 the per-database part is a short, identical stanza (below); everything else

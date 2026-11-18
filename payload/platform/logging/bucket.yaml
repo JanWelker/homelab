@@ -5,9 +5,9 @@ kind: ObjectBucketClaim
 metadata:
   name: loki-bucket
   namespace: logging
-  labels:
-    # Logs, not a backup: kept out of the off-cluster copy
-    homelab.wlkr.ch/offsite-copy: "false"
+  annotations:
+    # Required by the obc-backup-exempt admission policy
+    homelab.wlkr.ch/backup-exempt: "Logs, not a backup; they age out on their own"
 spec:
   bucketName: loki
   storageClassName: ceph-bucket

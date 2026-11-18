@@ -1,7 +1,6 @@
 ---
-# The user the off-cluster copy runs as: reads every backup bucket through its
-# claim's bucketPolicy and owns the offsite bucket TrueNAS pulls. See
-# docs/platform/rook-ceph.md#off-cluster-reader
+# Owns the offsite bucket every backup writes into, and TrueNAS pulls it with
+# this user's keys. See docs/platform/rook-ceph.md#off-cluster-reader
 apiVersion: ceph.rook.io/v1
 kind: CephObjectStoreUser
 metadata:
@@ -10,6 +9,5 @@ metadata:
 spec:
   store: object-store
   displayName: Off-cluster backup reader
-  # Rook creates an owned bucket and sets its policy with the owner's keys;
-  # what this user may do elsewhere is only what the bucket policies grant
+  # Rook creates an owned bucket and sets its policy with the owner's keys
   opMask: [read, write, delete]
