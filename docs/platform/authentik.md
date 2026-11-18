@@ -157,7 +157,7 @@ every upgrade, and because the **System &rarr; Settings** switch
 `auth.k8s.wlkr.ch` is reachable from the Internet, and the default
 authentication flow lets a user without a device in on a password alone.
 `06-authentication.yaml` gives the default brand its own flow out of the
-default identification, password and login stages, with two additions. It is
+default password and login stages, with three additions. It is
 an own flow for the same reason as the [user settings
 flow](#user-settings-flow): the default blueprint rewrites its own objects on
 every upgrade.
@@ -166,6 +166,7 @@ every upgrade.
 | --- | --- |
 | Authenticator validation with `not_configured_action: configure`; TOTP and WebAuthn as setup stages, static tokens accepted as a device class | A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under **Settings &rarr; MFA devices**, which is why they are not offered as the first device |
 | A deny stage after identification, selected by a reputation policy on the address and the username with threshold `-5` | Every failed login scores both `-1`, so after five an address or a username is refused for a day (`AUTHENTIK_REPUTATION__EXPIRY`); the password stage's own five-attempt cancel only ends the current attempt. The policy *passes* for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known |
+| A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login | The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under **Settings &rarr; MFA devices** before it appears |
 
 To lift a lockout early, delete the score under **Customization &rarr;
 Policies &rarr; Reputation scores**.
