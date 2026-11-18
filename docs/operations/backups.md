@@ -24,15 +24,13 @@ cannot.
 
 ## What is not covered
 
-**Every automated backup lands in the same cluster's Ceph.** That protects
-against operator error (a deleted PVC, a bad `prune`, a corrupted database) and
-not against losing the cluster, because the backups go with it. Off-site
-replication is the missing piece: RGW supports bucket replication and Velero a
-second `BackupStorageLocation`, and neither is configured. Until then, disaster
-recovery is **Git, the OpenBao unseal keys, and a copy of the latest OpenBao
-snapshot and of the two buckets kept off-cluster**
-([Copying a bucket off the cluster](#copying-a-bucket-off-the-cluster)); the
-nightly backups protect against mistakes.
+**Every automated backup lands in the same cluster's Ceph first.** That
+protects against operator error (a deleted PVC, a bad `prune`, a corrupted
+database) and not against losing the cluster, so a TrueNAS box pulls every
+backup bucket nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
+recovery is **Git, the OpenBao unseal keys, and that copy**. The NAS sits on
+the same LAN, so a fire or theft that takes the cluster can take the copy too;
+nothing leaves the house yet.
 
 Velero's `PrometheusRule` reports a backup that failed
 (`VeleroBackupFailures`, `VeleroBackupPartialFailures`); only
@@ -136,32 +134,6 @@ ssh <node> sudo rm /var/lib/etcd/snapshot.db
 
 Keep the copy off the cluster, like the nightly ones below.
 
-### Copying a bucket off the cluster
-
-Rook writes each bucket's keys into a `Secret` named after its claim
-(`velero-bucket`, `etcd-backup-bucket` in `backup`) and the RGW answers on the
-infra Gateway; see [Requesting a bucket](../platform/rook-ceph.md#requesting-a-bucket).
-
-1. Export the bucket's own keys and the path-style config RGW needs, as in
-   [Re-initialising the repositories](../platform/velero.md#re-initialising-the-repositories).
-
-    ```bash
-    export AWS_ACCESS_KEY_ID=$(kubectl -n backup get secret <claim> -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
-    export AWS_SECRET_ACCESS_KEY=$(kubectl -n backup get secret <claim> -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
-    export AWS_CONFIG_FILE=$(mktemp)
-    printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
-    ```
-
-2. Mirror the bucket to a disk that is not in the cluster; `sync` is
-   incremental, so a repeat copies only what the last night added.
-
-    ```bash
-    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync s3://<bucket> ./<bucket>
-    ```
-
-The copy is as plain as the bucket: Velero's resource backups are JSON with
-Secrets in them, so store it with the unseal keys, not beside the Git clone.
-
 ## OpenBao
 
 A CronJob in `payload/platform/backup/openbao-snapshot.yaml` saves a Raft
@@ -190,6 +162,97 @@ kubectl -n openbao cp openbao-0:/tmp/snapshot.bao ./openbao-snapshot.bao
 The snapshot holds all KV data plus policies, roles and mounts. It does **not**
 hold the unseal keys and is useless without them — see
 [OpenBao](../platform/openbao.md).
+
+## Off-cluster copy
+
+A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each
+night. It pulls rather than the cluster pushing, so nothing in the cluster
+holds a credential that could reach the copy.
+
+| Property | Why |
+| --- | --- |
+| Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user: read-only by `opMask`, granted each bucket by its claim's `bucketPolicy`, so the NAS can never change a backup |
+| Buckets | Every claim that carries the reader's `bucketPolicy`: `velero`, `etcd-backup`, `openbao-backup` and one `cnpg-<namespace>` per database, in both repositories. A bucket without the policy is left out without an error |
+| Cloud Sync task per bucket, `PULL` and `SYNC` | The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout |
+| Periodic ZFS snapshots of the dataset | What `SYNC` deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it |
+| Scheduled after the last nightly job | A Kopia repository or WAL archive copied while it is being written is inconsistent; the cluster's schedules are in the CronJobs, `payload/platform/velero/application.yaml` and each `ScheduledBackup` |
+| Encrypted dataset | Velero's resource backups are plain JSON with every Secret in them |
+
+### Setting up the TrueNAS pull
+
+1. Read the reader's keys; they are in
+   [Off-cluster reader](../platform/rook-ceph.md#off-cluster-reader).
+2. Under **Credentials → Backup Credentials → Cloud Credentials**, add an
+   `Amazon S3` credential with those keys, **Endpoint URL**
+   `https://s3.infra.k8s.wlkr.ch` and **Region** `eu-central-1`. The reader
+   owns no bucket, so the bucket list it shows is empty; that is expected.
+3. Create an encrypted dataset for the copy, with one child dataset per
+   bucket.
+4. List the buckets to pull.
+
+    ```bash
+    kubectl get obc -A -o custom-columns=NS:.metadata.namespace,BUCKET:.spec.bucketName
+    ```
+
+5. Under **Data Protection → Cloud Sync Tasks**, add one task per bucket:
+   direction `PULL`, transfer mode `SYNC`, the bucket name typed in, the
+   bucket's child dataset as the target, scheduled after the cluster's last
+   nightly job.
+6. Under **Data Protection → Periodic Snapshot Tasks**, snapshot the parent
+   dataset recursively after the Cloud Sync tasks, with a lifetime longer
+   than the cluster's retention.
+7. Run each task once by hand and confirm it ends `SUCCESS`.
+
+A new backup bucket needs its claim's `bucketPolicy`
+([Requesting a bucket](../platform/rook-ceph.md#requesting-a-bucket)) and a
+Cloud Sync task of its own.
+
+### Checking the reader
+
+From any machine on the LAN, with the reader's keys exported as
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`:
+
+```bash
+export AWS_CONFIG_FILE=$(mktemp)    # path-style addressing, without touching ~/.aws
+printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls s3://velero/   # lists
+echo test | aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 cp - s3://velero/test   # AccessDenied
+```
+
+### Copying a bucket off the cluster
+
+By hand, before a reinstall or for a copy kept elsewhere, the same keys and
+config as above:
+
+```bash
+aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync s3://<bucket> ./<bucket>
+```
+
+Store it like the NAS dataset: with the unseal keys, not beside the Git
+clone.
+
+### Restoring from the copy
+
+Velero and CloudNativePG read only from the cluster's own buckets, so a
+rebuilt cluster gets the copy pushed back first, with the write keys of the
+new claim, not the reader's. The etcd and OpenBao restores take the file
+straight from the copy.
+
+1. Once Rook has bound the claim again, export that claim's keys and the
+   path-style config.
+
+    ```bash
+    export AWS_ACCESS_KEY_ID=$(kubectl -n <namespace> get secret <claim> -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(kubectl -n <namespace> get secret <claim> -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+    export AWS_CONFIG_FILE=$(mktemp)
+    printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
+    ```
+
+2. Push the dataset's copy, mounted or copied from the NAS, into the bucket.
+
+    ```bash
+    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync ./<bucket> s3://<bucket>
+    ```
 
 ## Ceph volumes
 
@@ -274,7 +337,7 @@ the CronJob uses. Upstream:
 [Restoring an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster).
 
 1. Copy the snapshot, from the off-cluster copy of the `etcd-backup` bucket
-   ([Copying a bucket off the cluster](#copying-a-bucket-off-the-cluster)),
+   ([Off-cluster copy](#off-cluster-copy)),
    to every control-plane node as `/var/lib/etcd-restore/snapshot.db`.
 2. On every control-plane node, stop the API server and etcd by moving their
    static pod manifests out, and wait until neither container is listed.
@@ -328,9 +391,10 @@ the CronJob uses. Upstream:
 
 ### Rebuild from scratch
 
-1. Have the Git repository, the OpenBao unseal keys and operator login, an
-   OpenBao snapshot and the off-cluster copy of the `velero` bucket; an etcd
-   snapshot is optional and skips re-issuing certificates.
+1. Have the Git repository, the OpenBao unseal keys and operator login, and
+   the [off-cluster copy](#off-cluster-copy) of the `openbao-backup` and
+   `velero` buckets; an etcd snapshot from it is optional and skips
+   re-issuing certificates.
 2. Move the old `openbao-init.json` and `openbao-operator.json` out of
    `output/credentials/`: `make bao-init` refuses while either exists, because
    keys from another cluster unseal nothing.
@@ -340,5 +404,6 @@ the CronJob uses. Upstream:
    re-enter the typed secrets with `make bao-secrets` and let the
    `PushSecret`s generate the rest anew — which loses whatever was encrypted
    with the old keys, Velero's volume backups among them.
-5. Once the platform is Synced and Healthy, restore workloads with a Velero
-   restore from the copied-off `velero` bucket.
+5. Once the platform is Synced and Healthy, push the `velero` copy back
+   ([Restoring from the copy](#restoring-from-the-copy)) and restore
+   workloads with a Velero restore.

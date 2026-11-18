@@ -68,7 +68,7 @@ workers than chunks.
 
 ### Off-cluster reader
 
-The off-cluster copy in [Backups & Recovery](../operations/backups.md)
+The [off-cluster copy](../operations/backups.md#off-cluster-copy)
 pulls the backup buckets with one S3 user, `offsite-reader`, rather than with
 each claim's own read-write keys.
 
