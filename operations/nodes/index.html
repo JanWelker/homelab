@@ -2717,12 +2717,11 @@ and <code>rook-osd</code> cannot shrink in place because Ceph has already writte
 the space.</p>
 <div class="admonition danger">
 <p class="admonition-title">The backups are inside the thing being wiped</p>
-<p>Velero and the etcd snapshot CronJob both write to the Ceph object store this destroys — see <a href="../backups/#what-is-not-covered">Backups &amp; Recovery</a>. Copy anything you intend to restore from <strong>off-cluster</strong> first.</p>
+<p>Every backup CronJob and Velero write to the Ceph object store this destroys — see <a href="../backups/#what-is-not-covered">Backups &amp; Recovery</a>. Copy anything you intend to restore from <strong>off-cluster</strong> first.</p>
 </div>
 <ol>
-<li>Copy what matters off the cluster: the <code>velero</code> and <code>etcd-backup</code> buckets
-   per <a href="../backups/#copying-a-bucket-off-the-cluster">Copying a bucket off the cluster</a>,
-   and anything in a PVC not reproducible from Git.</li>
+<li>Confirm the <a href="../backups/#off-cluster-copy">off-cluster copy</a> ran after the
+   last nightly backup, and copy anything in a PVC not reproducible from Git.</li>
 <li>Edit whatever needs editing under <code>ansible/</code>.</li>
 <li>
 <p>Regenerate both Ignition configs and serve them.</p>

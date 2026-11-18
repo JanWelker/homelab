@@ -34,7 +34,7 @@ A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-stor
 
 ### Off-cluster reader
 
-The off-cluster copy in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) pulls the backup buckets with one S3 user, `offsite-reader`, rather than with each claim's own read-write keys.
+The [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) pulls the backup buckets with one S3 user, `offsite-reader`, rather than with each claim's own read-write keys.
 
 | Setting | Why |
 | --- | --- |

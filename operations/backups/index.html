@@ -1915,17 +1915,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#copying-a-bucket-off-the-cluster" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Copying a bucket off the cluster
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1939,6 +1928,67 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#off-cluster-copy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Off-cluster copy
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Off-cluster copy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-the-truenas-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting up the TrueNAS pull
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-the-reader" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Checking the reader
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copying-a-bucket-off-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Copying a bucket off the cluster
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restoring-from-the-copy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Restoring from the copy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2569,17 +2619,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#copying-a-bucket-off-the-cluster" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Copying a bucket off the cluster
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2593,6 +2632,67 @@
       </span>
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#off-cluster-copy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Off-cluster copy
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Off-cluster copy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#setting-up-the-truenas-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Setting up the TrueNAS pull
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-the-reader" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Checking the reader
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copying-a-bucket-off-the-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Copying a bucket off the cluster
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restoring-from-the-copy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Restoring from the copy
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2857,15 +2957,13 @@ cannot.</p>
 </tbody>
 </table>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
-<p><strong>Every automated backup lands in the same cluster's Ceph.</strong> That protects
-against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted database) and
-not against losing the cluster, because the backups go with it. Off-site
-replication is the missing piece: RGW supports bucket replication and Velero a
-second <code>BackupStorageLocation</code>, and neither is configured. Until then, disaster
-recovery is <strong>Git, the OpenBao unseal keys, and a copy of the latest OpenBao
-snapshot and of the two buckets kept off-cluster</strong>
-(<a href="#copying-a-bucket-off-the-cluster">Copying a bucket off the cluster</a>); the
-nightly backups protect against mistakes.</p>
+<p><strong>Every automated backup lands in the same cluster's Ceph first.</strong> That
+protects against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted
+database) and not against losing the cluster, so a TrueNAS box pulls every
+backup bucket nightly; see <a href="#off-cluster-copy">Off-cluster copy</a>. Disaster
+recovery is <strong>Git, the OpenBao unseal keys, and that copy</strong>. The NAS sits on
+the same LAN, so a fire or theft that takes the cluster can take the copy too;
+nothing leaves the house yet.</p>
 <p>Velero's <code>PrometheusRule</code> reports a backup that failed
 (<code>VeleroBackupFailures</code>, <code>VeleroBackupPartialFailures</code>); only
 <code>VeleroBackupTooOld</code> notices one that silently stopped, since a backup hung
@@ -3004,29 +3102,6 @@ size reclaimed.</p>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>rm<span class="w"> </span>/var/lib/etcd/snapshot.db
 </span></code></pre></div>
 <p>Keep the copy off the cluster, like the nightly ones below.</p>
-<h3 id="copying-a-bucket-off-the-cluster">Copying a bucket off the cluster<a class="headerlink" href="#copying-a-bucket-off-the-cluster" title="Permanent link">&para;</a></h3>
-<p>Rook writes each bucket's keys into a <code>Secret</code> named after its claim
-(<code>velero-bucket</code>, <code>etcd-backup-bucket</code> in <code>backup</code>) and the RGW answers on the
-infra Gateway; see <a href="../../platform/rook-ceph/#requesting-a-bucket">Requesting a bucket</a>.</p>
-<ol>
-<li>
-<p>Export the bucket's own keys and the path-style config RGW needs, as in
-   <a href="../../platform/velero/#re-initialising-the-repositories">Re-initialising the repositories</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>&lt;claim&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_ACCESS_KEY_ID}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>&lt;claim&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_SECRET_ACCESS_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>Mirror the bucket to a disk that is not in the cluster; <code>sync</code> is
-   incremental, so a repeat copies only what the last night added.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>sync<span class="w"> </span>s3://&lt;bucket&gt;<span class="w"> </span>./&lt;bucket&gt;
-</span></code></pre></div>
-</li>
-</ol>
-<p>The copy is as plain as the bucket: Velero's resource backups are JSON with
-Secrets in them, so store it with the unseal keys, not beside the Git clone.</p>
 <h2 id="openbao">OpenBao<a class="headerlink" href="#openbao" title="Permanent link">&para;</a></h2>
 <p>A CronJob in <code>payload/platform/backup/openbao-snapshot.yaml</code> saves a Raft
 snapshot nightly, between the etcd snapshot and Velero.</p>
@@ -3056,17 +3131,120 @@ snapshot nightly, between the etcd snapshot and Velero.</p>
 </tr>
 </tbody>
 </table>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>openbao-snapshot
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>--from<span class="o">=</span>cronjob/openbao-snapshot<span class="w"> </span>openbao-snapshot-manual
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/openbao-snapshot-manual<span class="w"> </span>-c<span class="w"> </span>snapshot
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>openbao-snapshot
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>--from<span class="o">=</span>cronjob/openbao-snapshot<span class="w"> </span>openbao-snapshot-manual
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/openbao-snapshot-manual<span class="w"> </span>-c<span class="w"> </span>snapshot
 </span></code></pre></div>
 <p>By hand, with a token that may read the snapshot:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>save<span class="w"> </span>/tmp/snapshot.bao
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>openbao-0:/tmp/snapshot.bao<span class="w"> </span>./openbao-snapshot.bao
 </span></code></pre></div>
 <p>The snapshot holds all KV data plus policies, roles and mounts. It does <strong>not</strong>
 hold the unseal keys and is useless without them — see
 <a href="../../platform/openbao/">OpenBao</a>.</p>
+<h2 id="off-cluster-copy">Off-cluster copy<a class="headerlink" href="#off-cluster-copy" title="Permanent link">&para;</a></h2>
+<p>A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each
+night. It pulls rather than the cluster pushing, so nothing in the cluster
+holds a credential that could reach the copy.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Credentials</td>
+<td>The <a href="../../platform/rook-ceph/#off-cluster-reader"><code>offsite-reader</code></a> S3 user: read-only by <code>opMask</code>, granted each bucket by its claim's <code>bucketPolicy</code>, so the NAS can never change a backup</td>
+</tr>
+<tr>
+<td>Buckets</td>
+<td>Every claim that carries the reader's <code>bucketPolicy</code>: <code>velero</code>, <code>etcd-backup</code>, <code>openbao-backup</code> and one <code>cnpg-&lt;namespace&gt;</code> per database, in both repositories. A bucket without the policy is left out without an error</td>
+</tr>
+<tr>
+<td>Cloud Sync task per bucket, <code>PULL</code> and <code>SYNC</code></td>
+<td>The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout</td>
+</tr>
+<tr>
+<td>Periodic ZFS snapshots of the dataset</td>
+<td>What <code>SYNC</code> deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it</td>
+</tr>
+<tr>
+<td>Scheduled after the last nightly job</td>
+<td>A Kopia repository or WAL archive copied while it is being written is inconsistent; the cluster's schedules are in the CronJobs, <code>payload/platform/velero/application.yaml</code> and each <code>ScheduledBackup</code></td>
+</tr>
+<tr>
+<td>Encrypted dataset</td>
+<td>Velero's resource backups are plain JSON with every Secret in them</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setting-up-the-truenas-pull">Setting up the TrueNAS pull<a class="headerlink" href="#setting-up-the-truenas-pull" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Read the reader's keys; they are in
+   <a href="../../platform/rook-ceph/#off-cluster-reader">Off-cluster reader</a>.</li>
+<li>Under <strong>Credentials → Backup Credentials → Cloud Credentials</strong>, add an
+   <code>Amazon S3</code> credential with those keys, <strong>Endpoint URL</strong>
+   <code>https://s3.infra.k8s.wlkr.ch</code> and <strong>Region</strong> <code>eu-central-1</code>. The reader
+   owns no bucket, so the bucket list it shows is empty; that is expected.</li>
+<li>Create an encrypted dataset for the copy, with one child dataset per
+   bucket.</li>
+<li>
+<p>List the buckets to pull.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>obc<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span>NS:.metadata.namespace,BUCKET:.spec.bucketName
+</span></code></pre></div>
+</li>
+<li>
+<p>Under <strong>Data Protection → Cloud Sync Tasks</strong>, add one task per bucket:
+   direction <code>PULL</code>, transfer mode <code>SYNC</code>, the bucket name typed in, the
+   bucket's child dataset as the target, scheduled after the cluster's last
+   nightly job.</p>
+</li>
+<li>Under <strong>Data Protection → Periodic Snapshot Tasks</strong>, snapshot the parent
+   dataset recursively after the Cloud Sync tasks, with a lifetime longer
+   than the cluster's retention.</li>
+<li>Run each task once by hand and confirm it ends <code>SUCCESS</code>.</li>
+</ol>
+<p>A new backup bucket needs its claim's <code>bucketPolicy</code>
+(<a href="../../platform/rook-ceph/#requesting-a-bucket">Requesting a bucket</a>) and a
+Cloud Sync task of its own.</p>
+<h3 id="checking-the-reader">Checking the reader<a class="headerlink" href="#checking-the-reader" title="Permanent link">&para;</a></h3>
+<p>From any machine on the LAN, with the reader's keys exported as
+<code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="w">    </span><span class="c1"># path-style addressing, without touching ~/.aws</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>ls<span class="w"> </span>s3://velero/<span class="w">   </span><span class="c1"># lists</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="nb">echo</span><span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>cp<span class="w"> </span>-<span class="w"> </span>s3://velero/test<span class="w">   </span><span class="c1"># AccessDenied</span>
+</span></code></pre></div>
+<h3 id="copying-a-bucket-off-the-cluster">Copying a bucket off the cluster<a class="headerlink" href="#copying-a-bucket-off-the-cluster" title="Permanent link">&para;</a></h3>
+<p>By hand, before a reinstall or for a copy kept elsewhere, the same keys and
+config as above:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>sync<span class="w"> </span>s3://&lt;bucket&gt;<span class="w"> </span>./&lt;bucket&gt;
+</span></code></pre></div>
+<p>Store it like the NAS dataset: with the unseal keys, not beside the Git
+clone.</p>
+<h3 id="restoring-from-the-copy">Restoring from the copy<a class="headerlink" href="#restoring-from-the-copy" title="Permanent link">&para;</a></h3>
+<p>Velero and CloudNativePG read only from the cluster's own buckets, so a
+rebuilt cluster gets the copy pushed back first, with the write keys of the
+new claim, not the reader's. The etcd and OpenBao restores take the file
+straight from the copy.</p>
+<ol>
+<li>
+<p>Once Rook has bound the claim again, export that claim's keys and the
+   path-style config.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>&lt;claim&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_ACCESS_KEY_ID}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>&lt;claim&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_SECRET_ACCESS_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
+</span></code></pre></div>
+</li>
+<li>
+<p>Push the dataset's copy, mounted or copied from the NAS, into the bucket.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>sync<span class="w"> </span>./&lt;bucket&gt;<span class="w"> </span>s3://&lt;bucket&gt;
+</span></code></pre></div>
+</li>
+</ol>
 <h2 id="ceph-volumes">Ceph volumes<a class="headerlink" href="#ceph-volumes" title="Permanent link">&para;</a></h2>
 <p>PVCs are covered by <a href="#velero">Velero</a>. Ceph's own replication is not a backup:
 it spreads each block across OSDs, which survives a disk or node failing and
@@ -3080,21 +3258,21 @@ nothing else. Almost every Application runs with <code>prune: true</code> (<code
 <ol>
 <li>
 <p>Find the backup.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>get
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>get
 </span></code></pre></div>
 </li>
 <li>
 <p>Restore from it, scoped to what was lost; without <code>--include-namespaces</code>
    everything in the backup is restored, and existing objects are skipped, not
    overwritten.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
 </li>
 <li>
 <p>Watch it finish and read the warnings.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
 </span></code></pre></div>
 </li>
 </ol>
@@ -3107,28 +3285,28 @@ afterwards the pods seal and want the snapshot's keys, not the new cluster's.</p
 <ol>
 <li>
 <p>Copy the snapshot in.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>./openbao-snapshot.bao<span class="w"> </span>openbao-0:/tmp/snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span>cp<span class="w"> </span>./openbao-snapshot.bao<span class="w"> </span>openbao-0:/tmp/snapshot.bao
 </span></code></pre></div>
 </li>
 <li>
 <p>Restore it.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>env<span class="w"> </span><span class="nv">BAO_TOKEN</span><span class="o">=</span>&lt;root-token&gt;<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>-force<span class="w"> </span>/tmp/snapshot.bao
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="w">  </span>env<span class="w"> </span><span class="nv">BAO_TOKEN</span><span class="o">=</span>&lt;root-token&gt;<span class="w"> </span>bao<span class="w"> </span>operator<span class="w"> </span>raft<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>-force<span class="w"> </span>/tmp/snapshot.bao
 </span></code></pre></div>
 </li>
 <li>
 <p>Unseal every replica with the snapshot's key shares and confirm. The script
    reads <code>output/credentials/openbao-init.json</code>, which now holds the new
    cluster's keys, so point it at the old file with <code>KEYFILE</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nv">KEYFILE</span><span class="o">=</span>&lt;old<span class="w"> </span>openbao-init.json&gt;<span class="w"> </span>make<span class="w"> </span>bao-unseal
-</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nv">KEYFILE</span><span class="o">=</span>&lt;old<span class="w"> </span>openbao-init.json&gt;<span class="w"> </span>make<span class="w"> </span>bao-unseal
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>status<span class="w">   </span><span class="c1"># Sealed: false</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Put the old key and operator files in place of the new ones, which unseal
    nothing any more; every later <code>make bao-*</code> reads them.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>mv<span class="w"> </span>&lt;old<span class="w"> </span>openbao-init.json&gt;<span class="w"> </span>output/credentials/openbao-init.json
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>mv<span class="w"> </span>&lt;old<span class="w"> </span>openbao-operator.json&gt;<span class="w"> </span>output/credentials/openbao-operator.json
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>mv<span class="w"> </span>&lt;old<span class="w"> </span>openbao-init.json&gt;<span class="w"> </span>output/credentials/openbao-init.json
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>mv<span class="w"> </span>&lt;old<span class="w"> </span>openbao-operator.json&gt;<span class="w"> </span>output/credentials/openbao-operator.json
 </span></code></pre></div>
 </li>
 </ol>
@@ -3139,21 +3317,21 @@ the CronJob uses. Upstream:
 <a href="https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#restoring-an-etcd-cluster">Restoring an etcd cluster</a>.</p>
 <ol>
 <li>Copy the snapshot, from the off-cluster copy of the <code>etcd-backup</code> bucket
-   (<a href="#copying-a-bucket-off-the-cluster">Copying a bucket off the cluster</a>),
+   (<a href="#off-cluster-copy">Off-cluster copy</a>),
    to every control-plane node as <code>/var/lib/etcd-restore/snapshot.db</code>.</li>
 <li>
 <p>On every control-plane node, stop the API server and etcd by moving their
    static pod manifests out, and wait until neither container is listed.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/root/manifests-stopped
-</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/manifests/<span class="o">{</span>etcd,kube-apiserver<span class="o">}</span>.yaml<span class="w"> </span>/root/manifests-stopped/
-</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span>--name<span class="w"> </span><span class="s1">'etcd|kube-apiserver'</span><span class="w">    </span><span class="c1"># empty</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/root/manifests-stopped
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/etc/kubernetes/manifests/<span class="o">{</span>etcd,kube-apiserver<span class="o">}</span>.yaml<span class="w"> </span>/root/manifests-stopped/
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>sudo<span class="w"> </span>crictl<span class="w"> </span>ps<span class="w"> </span>--name<span class="w"> </span><span class="s1">'etcd|kube-apiserver'</span><span class="w">    </span><span class="c1"># empty</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>On every control-plane node, pull the etcd image the CronJob uses (the tag
    is in <code>payload/platform/backup/etcd-backup.yaml</code>). Only the node that last
    ran the CronJob has it; <code>ctr run</code> does not pull.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>image<span class="w"> </span>pull<span class="w"> </span>registry.k8s.io/etcd:&lt;tag&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>image<span class="w"> </span>pull<span class="w"> </span>registry.k8s.io/etcd:&lt;tag&gt;
 </span></code></pre></div>
 </li>
 <li>
@@ -3163,35 +3341,36 @@ the CronJob uses. Upstream:
    <code>--initial-cluster-token</code> that is the same on every node and differs from
    the old cluster's, so a member that missed the restore cannot rejoin the new
    one.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">    </span>--initial-cluster-token<span class="w"> </span>&lt;new-token&gt;<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>sudo<span class="w"> </span>ctr<span class="w"> </span>-n<span class="w"> </span>k8s.io<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>--mount<span class="w"> </span><span class="nv">type</span><span class="o">=</span>bind,src<span class="o">=</span>/var/lib/etcd-restore,dst<span class="o">=</span>/restore,options<span class="o">=</span>rbind:rw<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span>registry.k8s.io/etcd:&lt;tag&gt;<span class="w"> </span>etcd-restore<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span>etcdutl<span class="w"> </span>snapshot<span class="w"> </span>restore<span class="w"> </span>/restore/snapshot.db<span class="w"> </span>--data-dir<span class="w"> </span>/restore/etcd<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">    </span>--name<span class="w"> </span>&lt;node&gt;<span class="w"> </span>--initial-cluster<span class="w"> </span>&lt;<span class="nv">name</span><span class="o">=</span>https://ip:2380,...&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">    </span>--initial-cluster-token<span class="w"> </span>&lt;new-token&gt;<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">    </span>--initial-advertise-peer-urls<span class="w"> </span>https://&lt;node-ip&gt;:2380
 </span></code></pre></div>
 </li>
 <li>
 <p>Swap the data directory in, keeping the old one and its ownership.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
-</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
-</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd<span class="w"> </span>/var/lib/etcd.bak
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/var/lib/etcd-restore/etcd<span class="w"> </span>/var/lib/etcd
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>--reference<span class="o">=</span>/var/lib/etcd.bak<span class="w"> </span>/var/lib/etcd
 </span></code></pre></div>
 </li>
 <li>
 <p>Put the manifests back on every node, then confirm.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>sudo<span class="w"> </span>mv<span class="w"> </span>/root/manifests-stopped/*.yaml<span class="w"> </span>/etc/kubernetes/manifests/
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">     </span><span class="c1"># ArgoCD reconverges from Git</span>
 </span></code></pre></div>
 </li>
 </ol>
 <h3 id="rebuild-from-scratch">Rebuild from scratch<a class="headerlink" href="#rebuild-from-scratch" title="Permanent link">&para;</a></h3>
 <ol>
-<li>Have the Git repository, the OpenBao unseal keys and operator login, an
-   OpenBao snapshot and the off-cluster copy of the <code>velero</code> bucket; an etcd
-   snapshot is optional and skips re-issuing certificates.</li>
+<li>Have the Git repository, the OpenBao unseal keys and operator login, and
+   the <a href="#off-cluster-copy">off-cluster copy</a> of the <code>openbao-backup</code> and
+   <code>velero</code> buckets; an etcd snapshot from it is optional and skips
+   re-issuing certificates.</li>
 <li>Move the old <code>openbao-init.json</code> and <code>openbao-operator.json</code> out of
    <code>output/credentials/</code>: <code>make bao-init</code> refuses while either exists, because
    keys from another cluster unseal nothing.</li>
@@ -3201,8 +3380,9 @@ the CronJob uses. Upstream:
    re-enter the typed secrets with <code>make bao-secrets</code> and let the
    <code>PushSecret</code>s generate the rest anew — which loses whatever was encrypted
    with the old keys, Velero's volume backups among them.</li>
-<li>Once the platform is Synced and Healthy, restore workloads with a Velero
-   restore from the copied-off <code>velero</code> bucket.</li>
+<li>Once the platform is Synced and Healthy, push the <code>velero</code> copy back
+   (<a href="#restoring-from-the-copy">Restoring from the copy</a>) and restore
+   workloads with a Velero restore.</li>
 </ol>
 
 
