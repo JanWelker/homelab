@@ -94,11 +94,15 @@ registry terms keep changing. The rule for the
 3. Put the `Cluster` in the workload's namespace, not `cnpg-system`, so the
    namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the
    namespace takes the database with it.
-4. Set `enablePDB: false`. The operator's `<cluster>-primary`
-   PodDisruptionBudget refuses the primary's eviction outright, so a node
-   drain hangs on it until [Kured](kured.md) gives up and the node is never
-   rebooted. Without the budget a single instance is down for the move to
-   another node and a three-instance cluster fails over within a minute.
+4. Set `enablePDB: false` on a single-instance `Cluster` only. Its
+   `<cluster>-primary` PodDisruptionBudget refuses the eviction outright, so a
+   node drain hangs on it until [Kured](kured.md) gives up and the node is
+   never rebooted; without the budget the instance is down for the move to
+   another node. A `Cluster` with replicas keeps the budgets: the operator
+   sees the drain, switches the primary over to a replica in seconds, and the
+   drain continues. Without them the drain deletes the primary, and the
+   failover waits for its smart shutdown, up to `smartShutdownTimeout` while
+   clients hold connections.
 5. Back it up with the [stanza below](#backing-up-a-database). Velero's
    nightly PVC snapshot is crash-consistent and restores only to the night it
    was taken; the WAL archive restores to any second.
