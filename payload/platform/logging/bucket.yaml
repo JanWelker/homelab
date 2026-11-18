@@ -5,6 +5,9 @@ kind: ObjectBucketClaim
 metadata:
   name: loki-bucket
   namespace: logging
+  labels:
+    # Logs, not a backup: kept out of the off-cluster copy
+    homelab.wlkr.ch/offsite-copy: "false"
 spec:
   bucketName: loki
   storageClassName: ceph-bucket

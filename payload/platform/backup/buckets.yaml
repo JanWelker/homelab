@@ -67,3 +67,19 @@ spec:
           }
         ]
       }
+---
+# Every backup bucket gathered into one the off-cluster reader owns, so
+# TrueNAS pulls it with a single Cloud Sync task; see
+# docs/operations/backups.md#off-cluster-copy
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: offsite-bucket
+  namespace: backup
+  labels:
+    homelab.wlkr.ch/offsite-copy: "false"
+spec:
+  bucketName: offsite
+  storageClassName: ceph-bucket
+  additionalConfig:
+    bucketOwner: offsite-reader
