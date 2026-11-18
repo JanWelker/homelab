@@ -2628,6 +2628,14 @@ marker clears itself on reboot.</p>
 <td>One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the <em>next</em> node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as <code>CephOSDDown</code>'s <code>for</code>, so an OSD that did not come back is a firing alert before the next drain</td>
 </tr>
 <tr>
+<td><code>period</code></td>
+<td>How often each node checks its sentinel and retries a blocked reboot. Every wait before a drain is a multiple of it, and the lock is handed on only at the next check after the hold, so it sets most of a rollout's length; a check is one file test and one Prometheus query per node</td>
+</tr>
+<tr>
+<td><code>drainTimeout</code></td>
+<td>Above the slowest successful drain, which <code>drainGracePeriod</code> caps at two minutes plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock</td>
+</tr>
+<tr>
 <td><code>forceReboot: false</code></td>
 <td>A node that will not drain is a node worth looking at</td>
 </tr>

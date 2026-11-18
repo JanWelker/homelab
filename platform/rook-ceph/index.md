@@ -125,6 +125,14 @@ spec:
   storageClassName: ceph-bucket
 ```
 
+### Dashboard login
+
+The dashboard sits behind Authentik for `infra-users`, then asks for its own login. The only user is `admin`, and its password is the `rook-ceph-dashboard-password` Secret, which the operator writes back to Ceph whenever it restarts: a password changed in the dashboard lasts until the next drain of the operator's node. For a password of your own, add a second user rather than changing `admin`.
+
+```bash
+kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
 ## Health check
 
 ### Is storage ready?
