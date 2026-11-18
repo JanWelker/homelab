@@ -22,6 +22,40 @@ cannot.
 | Trivy reports and vulnerability database | **No** | `trivy-system` is excluded; the operator rescans and the server downloads the database again |
 | Everything in `payload/` | Yes | It is in Git |
 
+## Backup chain
+
+Each night the backups land in the cluster's own buckets, one CronJob gathers
+them into `offsite`, and TrueNAS pulls that bucket and snapshots it. Each step
+runs after the one before has finished, so nothing is copied while it is
+being written.
+
+```mermaid
+flowchart LR
+    subgraph cluster["Cluster, Ceph object store"]
+        etcd["etcd-backup<br/>CronJob"] --> b_etcd[("etcd-backup")]
+        bao["openbao-snapshot<br/>CronJob"] --> b_bao[("openbao-backup")]
+        velero["Velero<br/>schedule"] --> b_velero[("velero")]
+        cnpg["CloudNativePG<br/>WAL + base backup"] --> b_cnpg[("cnpg-&lt;namespace&gt;")]
+        b_etcd & b_bao & b_velero & b_cnpg --> copy["offsite-copy<br/>CronJob"]
+        copy --> offsite[("offsite")]
+    end
+    subgraph nas["TrueNAS"]
+        pull["Cloud Sync<br/>PULL, SYNC"] --> dataset[("encrypted<br/>dataset")]
+        dataset --> snaps["periodic<br/>ZFS snapshots"]
+    end
+    offsite -->|"offsite-reader keys"| pull
+```
+
+| Step | Scheduled in | When |
+| --- | --- | --- |
+| etcd, OpenBao, Velero, databases | Their CronJobs, `payload/platform/velero/application.yaml` and each `ScheduledBackup`, in UTC | Through the night, never overlapping |
+| `offsite-copy` | `payload/platform/backup/offsite-copy.yaml`, in UTC | After the last of the above |
+| TrueNAS Cloud Sync task | The NAS | 07:00 local time, two hours after the copy starts in winter and one in summer |
+| TrueNAS periodic snapshot task | The NAS | 09:00 local time, after the pull |
+
+The TrueNAS times are not in Git, so this table is their only record: change
+them here when they change on the NAS.
+
 ## What is not covered
 
 **Every automated backup lands in the same cluster's Ceph first.** That
@@ -208,11 +242,12 @@ kubectl -n backup logs -f job/offsite-copy-manual
 3. Create an encrypted dataset for the copy.
 4. Under **Data Protection → Cloud Sync Tasks**, add one task: direction
    `PULL`, transfer mode `SYNC`, bucket `offsite`, the dataset as the target,
-   scheduled after the CronJob has finished; `kubectl -n backup get jobs`
-   shows how long it takes.
+   scheduled after the CronJob has finished: 07:00 local time, see
+   [Backup chain](#backup-chain). `kubectl -n backup get jobs` shows how long
+   the CronJob takes.
 5. Under **Data Protection → Periodic Snapshot Tasks**, snapshot the dataset
-   after the Cloud Sync task, with a lifetime longer than the cluster's
-   retention.
+   after the Cloud Sync task, at 09:00 local time, with a lifetime longer than
+   the cluster's retention.
 6. Run the Cloud Sync task once by hand and confirm it ends `SUCCESS`.
 
 ### Checking the reader
