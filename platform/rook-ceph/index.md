@@ -32,6 +32,24 @@ Ignition declares it with `format: none` and `wipe_filesystem: true`, because `c
 
 A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
 
+### Off-cluster reader
+
+The off-cluster copy in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) pulls the backup buckets with one S3 user, `offsite-reader`, rather than with each claim's own read-write keys.
+
+| Setting | Why |
+| --- | --- |
+| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for every backup bucket; Rook writes it to the Secret `rook-ceph-object-user-object-store-offsite-reader` |
+| `opMask: read` | RGW refuses this user every write and delete, whatever a bucket policy grants, so the machine holding its keys can never alter a backup |
+| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only. Rook applies a changed `additionalConfig` to an existing claim |
+| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` unless it is listed. A claim's author can then grant anyone their bucket, which is acceptable because every claim comes from Git |
+
+```bash
+kubectl -n rook-ceph get secret rook-ceph-object-user-object-store-offsite-reader \
+  -o jsonpath='{.data.AccessKey}' | base64 -d; echo
+kubectl -n rook-ceph get secret rook-ceph-object-user-object-store-offsite-reader \
+  -o jsonpath='{.data.SecretKey}' | base64 -d; echo
+```
+
 ### Monitoring
 
 In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
