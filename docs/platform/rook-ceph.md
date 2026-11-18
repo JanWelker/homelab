@@ -75,16 +75,12 @@ each claim's own read-write keys.
 | Setting | Why |
 | --- | --- |
 | `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for every backup bucket; Rook writes it to the Secret `rook-ceph-object-user-object-store-offsite-reader` |
-| `opMask: read` | RGW refuses this user every write and delete, whatever a bucket policy grants, so the machine holding its keys can never alter a backup |
+| `opMask: [read]` | RGW refuses this user every write and delete, whatever a bucket policy grants, so the machine holding its keys can never alter a backup |
 | `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only. Rook applies a changed `additionalConfig` to an existing claim |
 | `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` unless it is listed. A claim's author can then grant anyone their bucket, which is acceptable because every claim comes from Git |
 
-```bash
-kubectl -n rook-ceph get secret rook-ceph-object-user-object-store-offsite-reader \
-  -o jsonpath='{.data.AccessKey}' | base64 -d; echo
-kubectl -n rook-ceph get secret rook-ceph-object-user-object-store-offsite-reader \
-  -o jsonpath='{.data.SecretKey}' | base64 -d; echo
-```
+Reading the keys is step 1 of
+[Setting up the TrueNAS pull](../operations/backups.md#setting-up-the-truenas-pull).
 
 ### Monitoring
 

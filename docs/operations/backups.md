@@ -180,8 +180,16 @@ holds a credential that could reach the copy.
 
 ### Setting up the TrueNAS pull
 
-1. Read the reader's keys; they are in
-   [Off-cluster reader](../platform/rook-ceph.md#off-cluster-reader).
+1. Read the [reader's](../platform/rook-ceph.md#off-cluster-reader) keys
+   from the Secret Rook writes for it: `AccessKey` is the **Access Key ID**,
+   `SecretKey` the **Secret Access Key**.
+
+    ```bash
+    s=rook-ceph-object-user-object-store-offsite-reader
+    kubectl -n rook-ceph get secret $s -o jsonpath='{.data.AccessKey}' | base64 -d; echo
+    kubectl -n rook-ceph get secret $s -o jsonpath='{.data.SecretKey}' | base64 -d; echo
+    ```
+
 2. Under **Credentials → Backup Credentials → Cloud Credentials**, add an
    `Amazon S3` credential with those keys, **Endpoint URL**
    `https://s3.infra.k8s.wlkr.ch` and **Region** `eu-central-1`. The reader
