@@ -209,7 +209,7 @@ refuses or records it at admission, with the built-in
 `ValidatingAdmissionPolicy` rather than a policy engine. The image policies
 match Pods and every controller that produces them, so a bad Deployment is
 rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The
-other three close what RBAC and the `apps` project cannot express.
+others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
@@ -218,6 +218,7 @@ other three close what RBAC and the `apps` project cannot express.
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](#agent-rbac) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
+| `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](rook-ceph.md#off-cluster-reader) |
 
 All but one carry `failurePolicy: Ignore`: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation
