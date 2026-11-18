@@ -12,6 +12,10 @@ spec:
   instances: 3
   # The operator's PDBs stay on: a drain switches the primary over first.
   # See docs/platform/authentik.md#database
+  # A spec change switches over too, and no shutdown waits on Authentik's pool.
+  # See docs/platform/cloudnative-pg.md#the-contract
+  primaryUpdateMethod: switchover
+  smartShutdownTimeout: 15
 
   # The operator's own anti-affinity is a preference the scheduler outweighs on
   # unequal nodes; this keeps the spread. See docs/platform/authentik.md#database
