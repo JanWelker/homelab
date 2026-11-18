@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # Writes the OpenBao policies and Kubernetes auth roles the External Secrets
 # Operator logs in with, one role per ClusterSecretStore in
-# payload/platform/openbao/cluster-secret-store.yaml.
+# payload/platform/openbao/cluster-secret-store.yaml, and the one the nightly
+# snapshot CronJob in payload/platform/backup/openbao-snapshot.yaml uses.
 #
 #   make bao-policies
 #
 # `make bao-init` runs this on a fresh cluster. An initialised cluster is left
 # alone by bao-init, so a change here reaches the live one only through this
-# target. Every run overwrites all three policies and roles; nothing else is
+# target. Every run overwrites all four policies and roles; nothing else is
 # touched. See docs/platform/openbao.md#kubernetes-auth.
 #
 #   role / policy                   store                  reaches
 #   external-secrets                openbao                reads every path, writes three
 #   external-secrets-apps           openbao-apps           kv/<caller's namespace>/
 #   external-secrets-claude-agents  openbao-claude-agents  kv/claude-*
+#   openbao-snapshot                (backup CronJob)       the Raft snapshot
 set -euo pipefail
 
 ESO_NAMESPACE="${ESO_NAMESPACE:-external-secrets}"
@@ -107,3 +109,20 @@ bao write auth/kubernetes/role/external-secrets-claude-agents \
   policies=external-secrets-claude-agents \
   ttl=1h >/dev/null
 echo "    external-secrets-claude-agents  role bound to ${CLAUDE_NAMESPACE}/${ESO_SERVICEACCOUNT}"
+
+# The snapshot is the whole barrier-encrypted store; reading it reveals nothing
+# without the unseal keys, and this policy grants nothing else.
+bao_in policy write openbao-snapshot - <<'POLICY' >/dev/null
+path "sys/storage/raft/snapshot" {
+  capabilities = ["read"]
+}
+POLICY
+echo "    openbao-snapshot                policy written (read on sys/storage/raft/snapshot)"
+
+BACKUP_NAMESPACE="${BACKUP_NAMESPACE:-backup}"
+bao write auth/kubernetes/role/openbao-snapshot \
+  bound_service_account_names=openbao-snapshot \
+  bound_service_account_namespaces="$BACKUP_NAMESPACE" \
+  policies=openbao-snapshot \
+  ttl=10m >/dev/null
+echo "    openbao-snapshot                role bound to ${BACKUP_NAMESPACE}/openbao-snapshot"
