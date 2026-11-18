@@ -20,7 +20,8 @@ spec:
           rebootSentinel: /var/run/reboot-required
           rebootCommand: /bin/systemctl reboot
 
-          period: 30m
+          # period and drainTimeout from measured reboots; see docs/platform/kured.md
+          period: 5m
           # No startTime/endTime on purpose: reboots may happen at any hour.
           concurrency: 1
 
@@ -28,7 +29,7 @@ spec:
           # Holds only the next node; the uncordon is immediate. See docs/platform/kured.md
           lockReleaseDelay: 5m
 
-          drainTimeout: 15m
+          drainTimeout: 5m
           drainGracePeriod: 120
           forceReboot: false
 
