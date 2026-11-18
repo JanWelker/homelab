@@ -198,6 +198,11 @@ spec:
   storageClassName: ceph-bucket
 ```
 
+A bucket that holds a backup also carries the `bucketPolicy` that grants the
+[off-cluster reader](#off-cluster-reader); copy it from
+`payload/platform/backup/buckets.yaml` with the bucket name changed, or the
+off-cluster copy silently leaves the bucket out.
+
 ### Dashboard login
 
 The dashboard sits behind Authentik for `infra-users`, then asks for its own

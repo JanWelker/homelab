@@ -135,6 +135,20 @@ metadata:
 spec:
   bucketName: cnpg-<namespace>
   storageClassName: ceph-bucket
+  additionalConfig:
+    # offsite-reader may list and read; docs/platform/rook-ceph.md#off-cluster-reader
+    bucketPolicy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {"AWS": ["arn:aws:iam:::user/offsite-reader"]},
+            "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject"],
+            "Resource": ["arn:aws:s3:::cnpg-<namespace>", "arn:aws:s3:::cnpg-<namespace>/*"]
+          }
+        ]
+      }
 ---
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
