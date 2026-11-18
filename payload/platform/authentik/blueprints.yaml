@@ -235,6 +235,31 @@ data:
           device_classes:
             - webauthn
           webauthn_user_verification: required
+      # The same passkey behind a link on the sign-in form, as a modal prompt:
+      # Safari and Firefox do not autofill into the form's shadow DOM. No
+      # reputation stage: a signature cannot be guessed like a password.
+      - model: authentik_flows.flow
+        state: present
+        id: passkey-flow
+        identifiers:
+          slug: homelab-passkey
+        attrs:
+          name: Passkey
+          title: Sign in with a passkey
+          designation: authentication
+          authentication: none
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf passkey-flow
+          stage: !KeyOf authentication-passkey
+          order: 10
+      - model: authentik_flows.flowstagebinding
+        state: present
+        identifiers:
+          target: !KeyOf passkey-flow
+          stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
+          order: 100
       # The default identification stage's settings, plus the passkey; an own
       # stage because the default blueprint rewrites its objects on upgrade.
       - model: authentik_stages_identification.identificationstage
@@ -250,6 +275,7 @@ data:
           show_matched_user: true
           pretend_user_exists: true
           webauthn_stage: !KeyOf authentication-passkey
+          passwordless_flow: !KeyOf passkey-flow
       # False after a passkey login, which skips the stage it is bound to.
       - model: authentik_policies_expression.expressionpolicy
         state: present
@@ -262,13 +288,6 @@ data:
             if not flow_plan:
                 return True
             return flow_plan.context.get("auth_method") != "auth_webauthn_pwl"
-      # Replaced by the stage above; a blueprint does not prune by itself.
-      - model: authentik_flows.flowstagebinding
-        state: absent
-        identifiers:
-          target: !KeyOf authentication-flow
-          stage: !Find [authentik_stages_identification.identificationstage, [name, default-authentication-identification]]
-          order: 10
       - model: authentik_flows.flowstagebinding
         state: present
         identifiers:
