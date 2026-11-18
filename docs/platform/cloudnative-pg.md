@@ -211,7 +211,11 @@ objects through kube-state-metrics'
 [custom resource metrics](monitoring.md#scrape-targets):
 `CNPGBackupStale` when a server's last successful base backup is older than
 the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in
-`failed`. Both are warnings on the daily mail.
+`failed`. WAL archiving is read from the instances' own exporter, whose
+`pg_stat_archiver` and `archive_status` figures stay accurate under the plugin:
+`CNPGWALArchivingFailing` when the last attempt failed and none succeeded
+since, `CNPGWALArchiveBacklog` when segments queue without a failure, a stuck
+archiver. All four are warnings on the daily mail.
 
 ## Pitfalls
 

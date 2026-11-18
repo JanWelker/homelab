@@ -46,3 +46,38 @@ spec:
               sidecar's log of that night is in Loki, container
               plugin-barman-cloud. A failed night does not shorten the recovery
               window by itself; CNPGBackupStale says when it does.
+    # The instances' own exporter, unlike the backup rules above: pg_stat_archiver
+    # and the archive_status directory still describe WAL archiving under the
+    # plugin. See docs/platform/cloudnative-pg.md#health-check
+    - name: cloudnative-pg-wal-archiving
+      rules:
+        - alert: CNPGWALArchivingFailing
+          expr: |
+            cnpg_pg_stat_archiver_last_failed_time > cnpg_pg_stat_archiver_last_archived_time
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              WAL archiving of {{ $labels.namespace }}/{{ $labels.pod }} is failing
+            description: >-
+              The last archive attempt of {{ $labels.pod }} failed and none has
+              succeeded since. The recovery window stops at the last archived
+              segment, and the unarchived ones stay in pg_wal until the volume
+              fills. The reason is in Loki, container plugin-barman-cloud of
+              that pod.
+        - alert: CNPGWALArchiveBacklog
+          expr: |
+            cnpg_collector_pg_wal_archive_status{value="ready"} > 5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $value }} WAL segments of {{ $labels.namespace }}/{{ $labels.pod }} wait to be archived
+            description: >-
+              Segments are queueing in pg_wal/archive_status for {{ $labels.pod }}:
+              archiving is stuck or slower than writes, without necessarily
+              reporting a failure, which CNPGWALArchivingFailing would catch.
+              Two is the most seen in normal operation. Each segment is 16 MiB
+              of the instance's volume until it is archived.
