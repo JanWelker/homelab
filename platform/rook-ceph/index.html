@@ -3213,6 +3213,10 @@ with two replicas sharing one RWO PVC schedules one pod and leaves the other in
 </span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span><span class="nt">generateBucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
 </span></code></pre></div>
+<p>A bucket that holds a backup also carries the <code>bucketPolicy</code> that grants the
+<a href="#off-cluster-reader">off-cluster reader</a>; copy it from
+<code>payload/platform/backup/buckets.yaml</code> with the bucket name changed, or the
+off-cluster copy silently leaves the bucket out.</p>
 <h3 id="dashboard-login">Dashboard login<a class="headerlink" href="#dashboard-login" title="Permanent link">&para;</a></h3>
 <p>The dashboard sits behind Authentik for <code>infra-users</code>, then asks for its own
 login. The only user is <code>admin</code>, and its password is the
