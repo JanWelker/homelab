@@ -3203,7 +3203,7 @@ every upgrade, and because the <strong>System &rarr; Settings</strong> switch
 <p><code>auth.k8s.wlkr.ch</code> is reachable from the Internet, and the default
 authentication flow lets a user without a device in on a password alone.
 <code>06-authentication.yaml</code> gives the default brand its own flow out of the
-default identification, password and login stages, with two additions. It is
+default password and login stages, with three additions. It is
 an own flow for the same reason as the <a href="#user-settings-flow">user settings
 flow</a>: the default blueprint rewrites its own objects on
 every upgrade.</p>
@@ -3222,6 +3222,10 @@ every upgrade.</p>
 <tr>
 <td>A deny stage after identification, selected by a reputation policy on the address and the username with threshold <code>-5</code></td>
 <td>Every failed login scores both <code>-1</code>, so after five an address or a username is refused for a day (<code>AUTHENTIK_REPUTATION__EXPIRY</code>); the password stage's own five-attempt cancel only ends the current attempt. The policy <em>passes</em> for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known</td>
+</tr>
+<tr>
+<td>A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login</td>
+<td>The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under <strong>Settings &rarr; MFA devices</strong> before it appears</td>
 </tr>
 </tbody>
 </table>
