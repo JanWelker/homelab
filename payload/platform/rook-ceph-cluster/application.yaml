@@ -85,11 +85,14 @@ spec:
           dashboard:
             enabled: true
             ssl: false
+            # The operator owns PROMETHEUS_API_HOST and blanks it from this
+            # field when it restarts the dashboard; see docs/platform/rook-ceph.md#monitoring
+            prometheusEndpoint: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+            prometheusEndpointSSLVerify: false
 
           cephConfig:
             mgr:
               # yamllint disable rule:line-length
-              mgr/dashboard/PROMETHEUS_API_HOST: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
               mgr/dashboard/GRAFANA_API_URL: "http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
               mgr/dashboard/GRAFANA_API_SSL_VERIFY: "false"
               # yamllint enable rule:line-length
