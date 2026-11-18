@@ -68,19 +68,17 @@ workers than chunks.
 
 ### Off-cluster reader
 
-The [off-cluster copy](../operations/backups.md#off-cluster-copy)
-pulls the backup buckets with one S3 user, `offsite-reader`, rather than with
-each claim's own read-write keys.
+The [off-cluster copy](../operations/backups.md#off-cluster-copy) runs as one
+S3 user, `offsite-reader`: it reads every backup bucket and owns the `offsite`
+bucket the copy is gathered into, so TrueNAS sees that bucket in its list.
 
 | Setting | Why |
 | --- | --- |
-| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for every backup bucket; Rook writes it to the Secret `rook-ceph-object-user-object-store-offsite-reader` |
-| `opMask: [read]` | RGW refuses this user every write and delete, whatever a bucket policy grants, so the machine holding its keys can never alter a backup |
-| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only. Rook applies a changed `additionalConfig` to an existing claim |
-| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` unless it is listed. A claim's author can then grant anyone their bucket, which is acceptable because every claim comes from Git |
-
-Reading the keys is step 1 of
-[Setting up the TrueNAS pull](../operations/backups.md#setting-up-the-truenas-pull).
+| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for the copy, in the Secret `rook-ceph-object-user-object-store-offsite-reader` and, through `bucketOwner`, in the `offsite-bucket` claim's Secret |
+| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only, so its keys cannot change a backup. Rook applies a changed `additionalConfig` to an existing claim |
+| `bucketOwner: offsite-reader` on `backup/offsite-bucket` | S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner, so only this one is the reader's |
+| Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys. Write and delete reach only `offsite`, which the next night's copy rewrites |
+| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](security-policies.md#admission-policies) allows it on that one claim only |
 
 ### Monitoring
 

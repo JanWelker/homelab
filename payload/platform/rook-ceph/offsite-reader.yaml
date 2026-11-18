@@ -1,6 +1,6 @@
 ---
-# Read-only S3 user the off-cluster copy pulls the backup buckets with; each
-# bucket grants it in its claim's bucketPolicy. See
+# The user the off-cluster copy runs as: reads every backup bucket through its
+# claim's bucketPolicy and owns the offsite bucket TrueNAS pulls. See
 # docs/platform/rook-ceph.md#off-cluster-reader
 apiVersion: ceph.rook.io/v1
 kind: CephObjectStoreUser
@@ -10,5 +10,6 @@ metadata:
 spec:
   store: object-store
   displayName: Off-cluster backup reader
-  # RGW refuses every write for this user, whatever a policy grants
-  opMask: [read]
+  # Rook creates an owned bucket and sets its policy with the owner's keys;
+  # what this user may do elsewhere is only what the bucket policies grant
+  opMask: [read, write, delete]

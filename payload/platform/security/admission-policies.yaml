@@ -272,3 +272,37 @@ metadata:
 spec:
   policyName: authentik-foreign-objects
   validationActions: ["Deny"]
+---
+# bucketOwner hands a claim the keys of the user it names; only the offsite
+# copy's bucket may use it. See docs/platform/security-policies.md#admission-policies
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: obc-bucket-owner
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["objectbucket.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["objectbucketclaims"]
+  validations:
+    - expression: >-
+        !has(object.spec.additionalConfig) ||
+        !('bucketOwner' in object.spec.additionalConfig) ||
+        (object.metadata.namespace == 'backup' &&
+         object.metadata.name == 'offsite-bucket' &&
+         object.spec.additionalConfig['bucketOwner'] == 'offsite-reader')
+      message: >-
+        Only backup/offsite-bucket may set additionalConfig.bucketOwner, and
+        only to offsite-reader.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: obc-bucket-owner
+spec:
+  policyName: obc-bucket-owner
+  validationActions: ["Deny"]

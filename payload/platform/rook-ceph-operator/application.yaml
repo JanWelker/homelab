@@ -16,9 +16,10 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
-        # bucketPolicy lets the backup buckets grant the off-cluster reader;
-        # see docs/platform/rook-ceph.md#off-cluster-reader
-        obcAllowAdditionalConfigFields: "maxObjects,maxSize,bucketPolicy"
+        # bucketPolicy lets the backup buckets grant the off-cluster reader,
+        # bucketOwner gives it the offsite bucket, which the obc-bucket-owner
+        # admission policy holds to; see docs/platform/rook-ceph.md#off-cluster-reader
+        obcAllowAdditionalConfigFields: "maxObjects,maxSize,bucketPolicy,bucketOwner"
   destination:
     server: https://kubernetes.default.svc
     namespace: rook-ceph
