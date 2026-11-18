@@ -149,6 +149,7 @@ it on the native device and `cilium_host`. What each port is for is in
 `host-firewall.wlkr.ch/selected`. It denies the LAN everything but SSH, the API
 server, DHCP and ping, and admits the whole cluster to every port, since a
 narrower cluster rule could not name Prometheus and could lock out a node.
+A refused source mails [`HostFirewallDrops`](logging.md#alerting).
 
 ### Default ServiceAccount tokens
 
