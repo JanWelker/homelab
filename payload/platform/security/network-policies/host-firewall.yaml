@@ -1,5 +1,5 @@
 ---
-# The nodes' own addresses, on nodes carrying the label; see
+# The nodes' own addresses, on every node not exempted; see
 # docs/platform/security-policies.md#host-firewall
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
@@ -14,9 +14,12 @@ spec:
     roles. The node range admits etcd for a control plane joining before its
     agent has registered it. Ingress only: a node's own connections stay
     unfiltered.
+  # Every node, a new one from its first boot; the exempt label is the kill
+  # switch of docs/platform/security-policies.md#host-firewall-lockout
   nodeSelector:
-    matchLabels:
-      host-firewall.wlkr.ch/selected: "true"
+    matchExpressions:
+      - key: host-firewall.wlkr.ch/exempt
+        operator: DoesNotExist
   ingress:
     - fromEntities:
         - cluster
