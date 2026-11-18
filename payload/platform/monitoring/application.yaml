@@ -187,14 +187,15 @@ spec:
               retention: 10d
               # Floor under the volume: blocks are dropped before it fills.
               retentionSize: 21GiB
-              # 2.5x peak is ~6.7Gi; 6Gi keeps it under an 8 GiB node's
-              # allocatable memory, see docs/platform/index.md
+              # Request at the measured median, so only a node with that much
+              # free is chosen; limit capped below 2.5x peak by the largest
+              # node; see docs/platform/monitoring.md#grafana
               resources:
                 requests:
                   cpu: 200m
-                  memory: 2304Mi
+                  memory: 4608Mi
                 limits:
-                  memory: 6Gi
+                  memory: 8Gi
 
           alertmanager:
             # Nothing binds Alertmanager to RBAC; the token is only exposure.
