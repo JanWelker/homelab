@@ -2959,8 +2959,8 @@ cannot.</p>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
 <p><strong>Every automated backup lands in the same cluster's Ceph first.</strong> That
 protects against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted
-database) and not against losing the cluster, so a TrueNAS box pulls every
-backup bucket nightly; see <a href="#off-cluster-copy">Off-cluster copy</a>. Disaster
+database) and not against losing the cluster, so a TrueNAS box pulls a copy
+of every backup bucket nightly; see <a href="#off-cluster-copy">Off-cluster copy</a>. Disaster
 recovery is <strong>Git, the OpenBao unseal keys, and that copy</strong>. The NAS sits on
 the same LAN, so a fire or theft that takes the cluster can take the copy too;
 nothing leaves the house yet.</p>
@@ -3143,9 +3143,10 @@ snapshot nightly, between the etcd snapshot and Velero.</p>
 hold the unseal keys and is useless without them — see
 <a href="../../platform/openbao/">OpenBao</a>.</p>
 <h2 id="off-cluster-copy">Off-cluster copy<a class="headerlink" href="#off-cluster-copy" title="Permanent link">&para;</a></h2>
-<p>A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each
-night. It pulls rather than the cluster pushing, so nothing in the cluster
-holds a credential that could reach the copy.</p>
+<p>Every night a CronJob gathers every backup bucket into one bucket, <code>offsite</code>,
+and a TrueNAS box on the LAN pulls that bucket into a ZFS dataset. TrueNAS
+pulls rather than the cluster pushing, so nothing in the cluster holds a
+credential that could reach the NAS.</p>
 <table>
 <thead>
 <tr>
@@ -3155,24 +3156,32 @@ holds a credential that could reach the copy.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>offsite-copy</code> CronJob in <code>payload/platform/backup/offsite-copy.yaml</code></td>
+<td>Lists every <code>ObjectBucketClaim</code> in the cluster and copies each bucket into <code>offsite/&lt;bucket&gt;/</code>, inside the object store, so a new claim is in the next night's copy with nothing to configure. A claim is left out only by the label <code>homelab.wlkr.ch/offsite-copy: "false"</code>, which Loki's log bucket and <code>offsite</code> itself carry</td>
+</tr>
+<tr>
 <td>Credentials</td>
-<td>The <a href="../../platform/rook-ceph/#off-cluster-reader"><code>offsite-reader</code></a> S3 user, granted list and get on each bucket by its claim's <code>bucketPolicy</code> and nothing more, so the NAS can never change a backup</td>
+<td>The <a href="../../platform/rook-ceph/#off-cluster-reader"><code>offsite-reader</code></a> S3 user: list and get on each backup bucket through its claim's <code>bucketPolicy</code>, and owner of <code>offsite</code>. The job and TrueNAS use the same keys; neither can change a backup</td>
 </tr>
 <tr>
-<td>Buckets</td>
-<td>Every claim that carries the reader's <code>bucketPolicy</code>: <code>velero</code>, <code>etcd-backup</code>, <code>openbao-backup</code> and one <code>cnpg-&lt;namespace&gt;</code> per database, in both repositories. A bucket without the policy is left out without an error</td>
+<td>A claim without the reader's <code>bucketPolicy</code></td>
+<td>Fails its copy and the job, so <code>KubeJobFailed</code> fires instead of the bucket silently missing from the copy; the other buckets are still copied</td>
 </tr>
 <tr>
-<td>Cloud Sync task per bucket, <code>PULL</code> and <code>SYNC</code></td>
-<td>The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout</td>
+<td><code>BackupCronJobStale</code> in <code>payload/platform/backup/prometheusrule.yaml</code></td>
+<td>Fires when any CronJob in <code>backup</code> has not succeeded for a day and a half, which a run that never starts does not report as a failure</td>
+</tr>
+<tr>
+<td>One Cloud Sync task, <code>PULL</code> and <code>SYNC</code></td>
+<td>The dataset mirrors <code>offsite</code>, so the copy shrinks when a TTL or retention prunes a bucket, and a restore finds each bucket under its own name</td>
 </tr>
 <tr>
 <td>Periodic ZFS snapshots of the dataset</td>
 <td>What <code>SYNC</code> deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it</td>
 </tr>
 <tr>
-<td>Scheduled after the last nightly job</td>
-<td>A Kopia repository or WAL archive copied while it is being written is inconsistent; the cluster's schedules are in the CronJobs, <code>payload/platform/velero/application.yaml</code> and each <code>ScheduledBackup</code></td>
+<td>Scheduled after the copy</td>
+<td>A Kopia repository or WAL archive copied while it is being written is inconsistent, so the CronJob runs after the last nightly backup and TrueNAS after the CronJob</td>
 </tr>
 <tr>
 <td>Encrypted dataset</td>
@@ -3180,50 +3189,45 @@ holds a credential that could reach the copy.</p>
 </tr>
 </tbody>
 </table>
+<p>A deleted claim's copy stays in <code>offsite</code> until it is removed by hand. The
+<code>offsite</code> bucket is a second copy of the backups inside Ceph; its size is the
+sum of the backup buckets.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>cronjob<span class="w"> </span>offsite-copy
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>job<span class="w"> </span>--from<span class="o">=</span>cronjob/offsite-copy<span class="w"> </span>offsite-copy-manual
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>job/offsite-copy-manual
+</span></code></pre></div>
 <h3 id="setting-up-the-truenas-pull">Setting up the TrueNAS pull<a class="headerlink" href="#setting-up-the-truenas-pull" title="Permanent link">&para;</a></h3>
 <ol>
 <li>
-<p>Read the <a href="../../platform/rook-ceph/#off-cluster-reader">reader's</a> keys
-   from the Secret Rook writes for it: <code>AccessKey</code> is the <strong>Access Key ID</strong>,
-   <code>SecretKey</code> the <strong>Secret Access Key</strong>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nv">s</span><span class="o">=</span>rook-ceph-object-user-object-store-offsite-reader
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span><span class="nv">$s</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AccessKey}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span><span class="nv">$s</span><span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.SecretKey}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+<p>Read the reader's keys from the <code>offsite-bucket</code> claim's Secret:
+   <code>AWS_ACCESS_KEY_ID</code> is the <strong>Access Key ID</strong>, <code>AWS_SECRET_ACCESS_KEY</code> the
+   <strong>Secret Access Key</strong>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>offsite-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_ACCESS_KEY_ID}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>offsite-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_SECRET_ACCESS_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Under <strong>Credentials → Backup Credentials → Cloud Credentials</strong>, add an
    <code>Amazon S3</code> credential with those keys, <strong>Endpoint URL</strong>
-   <code>https://s3.infra.k8s.wlkr.ch</code> and <strong>Region</strong> <code>eu-central-1</code>. The reader
-   owns no bucket, so the bucket list it shows is empty; that is expected.</p>
+   <code>https://s3.infra.k8s.wlkr.ch</code> and <strong>Region</strong> <code>eu-central-1</code>.</p>
 </li>
-<li>Create an encrypted dataset for the copy, with one child dataset per
-   bucket.</li>
-<li>
-<p>List the buckets to pull.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>obc<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>custom-columns<span class="o">=</span>NS:.metadata.namespace,BUCKET:.spec.bucketName
-</span></code></pre></div>
-</li>
-<li>
-<p>Under <strong>Data Protection → Cloud Sync Tasks</strong>, add one task per bucket:
-   direction <code>PULL</code>, transfer mode <code>SYNC</code>, the bucket name typed in, the
-   bucket's child dataset as the target, scheduled after the cluster's last
-   nightly job.</p>
-</li>
-<li>Under <strong>Data Protection → Periodic Snapshot Tasks</strong>, snapshot the parent
-   dataset recursively after the Cloud Sync tasks, with a lifetime longer
-   than the cluster's retention.</li>
-<li>Run each task once by hand and confirm it ends <code>SUCCESS</code>.</li>
+<li>Create an encrypted dataset for the copy.</li>
+<li>Under <strong>Data Protection → Cloud Sync Tasks</strong>, add one task: direction
+   <code>PULL</code>, transfer mode <code>SYNC</code>, bucket <code>offsite</code>, the dataset as the target,
+   scheduled after the CronJob has finished; <code>kubectl -n backup get jobs</code>
+   shows how long it takes.</li>
+<li>Under <strong>Data Protection → Periodic Snapshot Tasks</strong>, snapshot the dataset
+   after the Cloud Sync task, with a lifetime longer than the cluster's
+   retention.</li>
+<li>Run the Cloud Sync task once by hand and confirm it ends <code>SUCCESS</code>.</li>
 </ol>
-<p>A new backup bucket needs its claim's <code>bucketPolicy</code>
-(<a href="../../platform/rook-ceph/#requesting-a-bucket">Requesting a bucket</a>) and a
-Cloud Sync task of its own.</p>
 <h3 id="checking-the-reader">Checking the reader<a class="headerlink" href="#checking-the-reader" title="Permanent link">&para;</a></h3>
 <p>From any machine on the LAN, with the reader's keys exported as
-<code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>:</p>
+<code>AWS_ACCESS_KEY_ID</code> and <code>AWS_SECRET_ACCESS_KEY</code>, <code>offsite</code> is listed and a
+backup bucket refuses a write:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="w">    </span><span class="c1"># path-style addressing, without touching ~/.aws</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>ls<span class="w"> </span>s3://velero/<span class="w">   </span><span class="c1"># lists</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>ls<span class="w">                </span><span class="c1"># offsite</span>
 </span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="nb">echo</span><span class="w"> </span><span class="nb">test</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>cp<span class="w"> </span>-<span class="w"> </span>s3://velero/test<span class="w">   </span><span class="c1"># AccessDenied</span>
 </span></code></pre></div>
 <h3 id="copying-a-bucket-off-the-cluster">Copying a bucket off the cluster<a class="headerlink" href="#copying-a-bucket-off-the-cluster" title="Permanent link">&para;</a></h3>
@@ -3235,8 +3239,9 @@ config as above:</p>
 clone.</p>
 <h3 id="restoring-from-the-copy">Restoring from the copy<a class="headerlink" href="#restoring-from-the-copy" title="Permanent link">&para;</a></h3>
 <p>Velero and CloudNativePG read only from the cluster's own buckets, so a
-rebuilt cluster gets the copy pushed back first, with the write keys of the
-new claim, not the reader's. The etcd and OpenBao restores take the file
+rebuilt cluster gets each bucket's copy, the <code>&lt;bucket&gt;/</code> directory in the
+dataset, pushed back first, with the write keys of the new claim, not the
+reader's. The etcd and OpenBao restores take the file
 straight from the copy.</p>
 <ol>
 <li>
