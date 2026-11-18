@@ -1,0 +1,132 @@
+---
+# Logs in to OpenBao with this token through the openbao-snapshot role, which
+# `make bao-policies` writes; see docs/operations/backups.md#openbao
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openbao-snapshot
+  namespace: backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: openbao-snapshot
+  namespace: backup
+spec:
+  # Between the etcd snapshot and Velero, so the three never contend
+  schedule: "30 1 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      # Kept a day for the logs, as long as KubeJobFailed looks at it
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: openbao-snapshot
+        spec:
+          serviceAccountName: openbao-snapshot
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumes:
+            - name: snapshot
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+          initContainers:
+            - name: snapshot
+              image: quay.io/openbao/openbao:2.7.2@sha256:5046911075e137e154ce49ab051502f4ec7cf367d484ae4a4dce665d9b90561f
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  BAO_TOKEN="$(bao write -field=token auth/kubernetes/login \
+                    role=openbao-snapshot \
+                    jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token)"
+                  export BAO_TOKEN
+                  bao operator raft snapshot save /snapshot/openbao.snap
+                  bao token revoke -self
+                  # A truncated archive fails the job instead of replacing a good one
+                  tar -tzf /snapshot/openbao.snap | grep -qx SHA256SUMS
+              env:
+                - name: BAO_ADDR
+                  value: http://openbao-active.openbao.svc.cluster.local:8200
+                - name: HOME
+                  value: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: snapshot
+                  mountPath: /snapshot
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+          containers:
+            - name: upload
+              image: public.ecr.aws/aws-cli/aws-cli:2.40.3@sha256:33a16c53ea442e918b58df67301ad76a8fb57082c39f7e78753b898c3f3e87c2
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  S3="http://${BUCKET_HOST}:${BUCKET_PORT}"
+                  # RGW needs path-style addressing; no env var exists for it
+                  mkdir -p "$HOME/.aws"
+                  printf '[default]\ns3 =\n    addressing_style = path\n' > "$HOME/.aws/config"
+
+                  TS="$(date -u +%Y%m%dT%H%M%SZ)"
+                  aws --endpoint-url "$S3" s3 cp \
+                    /snapshot/openbao.snap "s3://${BUCKET_NAME}/openbao-${TS}.snap"
+
+                  # Keep the 14 most recent; the timestamp sorts chronologically
+                  aws --endpoint-url "$S3" s3 ls "s3://${BUCKET_NAME}/" \
+                    | awk '{print $4}' | grep -E '^openbao-.*\.snap$' | sort \
+                    | head -n -14 \
+                    | while read -r key; do
+                        echo "pruning $key"
+                        aws --endpoint-url "$S3" s3 rm "s3://${BUCKET_NAME}/${key}"
+                      done
+              env:
+                - name: HOME
+                  value: /tmp
+              envFrom:
+                # Written by Rook for the openbao-backup-bucket claim
+                - secretRef:
+                    name: openbao-backup-bucket
+                - configMapRef:
+                    name: openbao-backup-bucket
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: snapshot
+                  mountPath: /snapshot
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi

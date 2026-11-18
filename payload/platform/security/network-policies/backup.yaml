@@ -45,8 +45,9 @@ spec:
     Gateway's Envoy checks the caller's egress a second time against the
     RGW pod it picked, and answers 403 itself without the second rule.
     The movers are created with Velero's own labels, so the rules are for
-    the namespace. The etcd CronJob is host-networked and outside any
-    policy.
+    the namespace. The OpenBao snapshot job reaches the active OpenBao pod,
+    whose own ingress policy limits it to login, snapshot and revoke. The
+    etcd CronJob is host-networked and outside any policy.
   endpointSelector: {}
   egress:
     - toEndpoints:
@@ -66,4 +67,12 @@ spec:
       toPorts:
         - ports:
             - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: openbao
+            k8s:app.kubernetes.io/name: openbao
+      toPorts:
+        - ports:
+            - port: "8200"
               protocol: TCP

@@ -172,6 +172,10 @@ namespace can reach follows from the store it is allowed to use:
 | Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
 | Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
 
+One more role, `openbao-snapshot`, belongs to no store: it is bound to the
+`openbao-snapshot` ServiceAccount in `backup` and reads the Raft snapshot and
+nothing else, for the nightly [snapshot CronJob](../operations/backups.md#openbao).
+
 The ServiceAccount the platform store uses lives in
 `cluster-secret-store.yaml` too, because the stores only validate against a
 running, unsealed OpenBao. `make bao-init` writes the policies and roles on a
