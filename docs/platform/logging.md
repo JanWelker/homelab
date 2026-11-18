@@ -108,10 +108,19 @@ the mixin Grafana maintains, not rules written here.
 | `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor, except runc's sealed self-copy on every `exec` | Same |
 | `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](tetragon.md#policies) |
 | `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The signature result is an argument of the kprobe event, not a metric label |
-| `HubblePolicyDrops` | More than three `POLICY_DENIED` packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the `init` identity and addresses with no pod behind them are left out. The `namespace` label is the policy that refused, so the mail names the file to edit | A connection's retransmits pass the threshold and a name rule's single early `SYN` does not; the metric counts per namespace pair only and misses the first burst of a new pair |
+| `HubblePolicyDrops` | More than three `POLICY_DENIED` packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the `init` identity, pod and service addresses Cilium had no pod for at that moment (the world or a local CIDR identity, as during an agent restart or a pod start) and the wanted drops below are left out. The `namespace` label is the policy that refused, so the mail names the file to edit | A connection's retransmits pass the threshold and a name rule's single early `SYN` does not; the metric counts per namespace pair only and misses the first burst of a new pair |
 | `HostFirewallDrops` | More than three `POLICY_DENIED` packets in ten minutes from one source to one node's own address, which only the [host firewall](security-policies.md#host-firewall) refuses; `HubblePolicyDrops` leaves these out | Grouped by node and source without the port, so a port scan of one `SYN` per port alerts as well as a refused connection's retransmits |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
 | `NodeSshAuthFailures` | More than five failed SSH attempts on a node in ten minutes | Password authentication is off; repeats are a scan or a retried key |
+
+`HubblePolicyDrops` leaves out a drop that is wanted but cannot be switched off, one filter stage each, so every other drop from the same workload still mails:
+
+| Source namespace | Destination | Why it cannot be switched off |
+| --- | --- | --- |
+| `authentik` | `*.gravatar.com` | Avatars are a database setting no blueprint reaches; see [Authentik](authentik.md#chart-values) |
+| `dependency-track` | `repo.packagist.org`, `packages.atlassian.com` | Built-in metadata repositories are database rows and the policy leaves these two out. Turning them off under **Administration → Repositories** ends the lookups too |
+
+A drop belongs here only when no config switch exists; telemetry with a switch is turned off instead.
 
 To confirm the ruler loaded a rule:
 
