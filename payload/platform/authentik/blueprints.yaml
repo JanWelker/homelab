@@ -360,6 +360,9 @@ data:
           default: true
         attrs:
           flow_authentication: !KeyOf authentication-flow
+          # From branding.yaml, mounted into the server; see docs/platform/authentik.md#branding
+          branding_logo: /static/dist/custom/logo.svg
+          branding_default_flow_background: /static/dist/custom/background.svg
       # Only while akadmin exists: the bootstrap blueprint creates it, this one switches it off.
       - model: authentik_core.user
         state: present

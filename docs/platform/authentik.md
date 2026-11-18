@@ -171,6 +171,24 @@ every upgrade.
 To lift a lockout early, delete the score under **Customization &rarr;
 Policies &rarr; Reputation scores**.
 
+### Branding
+
+The sign-in pages show the homelab logo on isometric containers in its
+colours. `scripts/authentik-branding.py` renders both as SVG into
+`branding.yaml`, a ConfigMap the server mounts at `/web/dist/custom`, so
+Authentik serves them itself under `/static/dist/custom/` and the default
+brand in `06-authentication.yaml` points at those paths.
+
+| Choice | Why |
+| --- | --- |
+| A ConfigMap, not an upload under **Brands** | An upload lives in Authentik's media storage, outside Git and outside a rebuild |
+| SVG for both | The background scales to any viewport; the logo is the PNG from `docs/assets/images/` in a 160 px wide SVG, which fixes its size on the card and keeps it sharp on high-density screens |
+| Navy shading at the top and bottom edges of the background | The language picker and "Powered by authentik" are white and sit there; the picker is in a shadow DOM that brand CSS does not reliably reach |
+
+To change either, edit the script, run `uv run python scripts/authentik-branding.py`
+and commit the regenerated `branding.yaml`. A mounted ConfigMap updates in the
+running pods within a minute or two, without a restart.
+
 ### Bootstrap credentials
 
 Authentik's built-in bootstrap blueprint creates `akadmin` from

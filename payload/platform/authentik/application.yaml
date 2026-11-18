@@ -101,6 +101,15 @@ spec:
                 memory: 512Mi
               limits:
                 memory: 1Gi
+            # Served as /static/dist/custom/; see docs/platform/authentik.md#branding
+            volumes:
+              - name: branding
+                configMap:
+                  name: authentik-branding
+            volumeMounts:
+              - name: branding
+                mountPath: /web/dist/custom
+                readOnly: true
 
           worker:
             replicas: 1
