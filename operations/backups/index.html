@@ -1860,6 +1860,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#backup-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backup chain
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-is-not-covered" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2564,6 +2575,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#backup-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backup chain
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-is-not-covered" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2956,6 +2978,58 @@ cannot.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="backup-chain">Backup chain<a class="headerlink" href="#backup-chain" title="Permanent link">&para;</a></h2>
+<p>Each night the backups land in the cluster's own buckets, one CronJob gathers
+them into <code>offsite</code>, and TrueNAS pulls that bucket and snapshots it. Each step
+runs after the one before has finished, so nothing is copied while it is
+being written.</p>
+<pre class="mermaid"><code>flowchart LR
+    subgraph cluster["Cluster, Ceph object store"]
+        etcd["etcd-backup&lt;br/&gt;CronJob"] --&gt; b_etcd[("etcd-backup")]
+        bao["openbao-snapshot&lt;br/&gt;CronJob"] --&gt; b_bao[("openbao-backup")]
+        velero["Velero&lt;br/&gt;schedule"] --&gt; b_velero[("velero")]
+        cnpg["CloudNativePG&lt;br/&gt;WAL + base backup"] --&gt; b_cnpg[("cnpg-&amp;lt;namespace&amp;gt;")]
+        b_etcd &amp; b_bao &amp; b_velero &amp; b_cnpg --&gt; copy["offsite-copy&lt;br/&gt;CronJob"]
+        copy --&gt; offsite[("offsite")]
+    end
+    subgraph nas["TrueNAS"]
+        pull["Cloud Sync&lt;br/&gt;PULL, SYNC"] --&gt; dataset[("encrypted&lt;br/&gt;dataset")]
+        dataset --&gt; snaps["periodic&lt;br/&gt;ZFS snapshots"]
+    end
+    offsite --&gt;|"offsite-reader keys"| pull</code></pre>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Scheduled in</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>etcd, OpenBao, Velero, databases</td>
+<td>Their CronJobs, <code>payload/platform/velero/application.yaml</code> and each <code>ScheduledBackup</code>, in UTC</td>
+<td>Through the night, never overlapping</td>
+</tr>
+<tr>
+<td><code>offsite-copy</code></td>
+<td><code>payload/platform/backup/offsite-copy.yaml</code>, in UTC</td>
+<td>After the last of the above</td>
+</tr>
+<tr>
+<td>TrueNAS Cloud Sync task</td>
+<td>The NAS</td>
+<td>07:00 local time, two hours after the copy starts in winter and one in summer</td>
+</tr>
+<tr>
+<td>TrueNAS periodic snapshot task</td>
+<td>The NAS</td>
+<td>09:00 local time, after the pull</td>
+</tr>
+</tbody>
+</table>
+<p>The TrueNAS times are not in Git, so this table is their only record: change
+them here when they change on the NAS.</p>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
 <p><strong>Every automated backup lands in the same cluster's Ceph first.</strong> That
 protects against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted
@@ -3214,11 +3288,12 @@ sum of the backup buckets.</p>
 <li>Create an encrypted dataset for the copy.</li>
 <li>Under <strong>Data Protection → Cloud Sync Tasks</strong>, add one task: direction
    <code>PULL</code>, transfer mode <code>SYNC</code>, bucket <code>offsite</code>, the dataset as the target,
-   scheduled after the CronJob has finished; <code>kubectl -n backup get jobs</code>
-   shows how long it takes.</li>
+   scheduled after the CronJob has finished: 07:00 local time, see
+   <a href="#backup-chain">Backup chain</a>. <code>kubectl -n backup get jobs</code> shows how long
+   the CronJob takes.</li>
 <li>Under <strong>Data Protection → Periodic Snapshot Tasks</strong>, snapshot the dataset
-   after the Cloud Sync task, with a lifetime longer than the cluster's
-   retention.</li>
+   after the Cloud Sync task, at 09:00 local time, with a lifetime longer than
+   the cluster's retention.</li>
 <li>Run the Cloud Sync task once by hand and confirm it ends <code>SUCCESS</code>.</li>
 </ol>
 <h3 id="checking-the-reader">Checking the reader<a class="headerlink" href="#checking-the-reader" title="Permanent link">&para;</a></h3>
