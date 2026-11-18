@@ -19,6 +19,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: backup
+  ignoreDifferences:
+    # Written by the offsite-policy CronJob; docs/platform/rook-ceph.md#backup-writers
+    - group: objectbucket.io
+      kind: ObjectBucketClaim
+      name: offsite-bucket
+      namespace: backup
+      jsonPointers:
+        - /spec/additionalConfig/bucketPolicy
   syncPolicy:
     automated:
       prune: true

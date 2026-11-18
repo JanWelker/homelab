@@ -1,0 +1,33 @@
+---
+# One S3 user per nightly job here, each writing only offsite/<user>/ through
+# the bucket policy offsite-policy maintains. See
+# docs/platform/rook-ceph.md#backup-writers
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: backup.velero
+  namespace: backup
+spec:
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: Velero
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: backup.etcd
+  namespace: backup
+spec:
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: etcd snapshots
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: backup.openbao
+  namespace: backup
+spec:
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: OpenBao snapshots
