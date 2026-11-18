@@ -295,7 +295,8 @@ data:
           # Answers, init pods and addresses with no pod behind them (the
           # inventory's pod_subnet and service_subnet) are not a missing rule.
           # Each drop also arrives as a policy verdict (event type 5); count
-          # the drop once.
+          # the drop once. Each drop wanted but not switchable off gets one
+          # "source != x or name != y" stage; see docs/platform/logging.md.
           - alert: HubblePolicyDrops
             expr: |
               sum by (namespace, direction, source_namespace, source_workload, destination_namespace, destination, port) (
@@ -306,6 +307,7 @@ data:
                     | event != "5" and reply != "true" and src_id != "5" and dst_id != "5" and icmp !~ "3|11"
                     | direction != "INGRESS" or dst_id != "1"
                     | dst_id != "2" or dst_ip !~ `10[.](244|9[6-9]|10[0-9]|11[01])[.].*`
+                    | source_namespace != "authentik" or dst_name !~ `.*[.]gravatar[.]com[.]?`
                     | label_format namespace=`{{ if eq .direction "EGRESS" }}{{ .source_namespace }}{{ else }}{{ .destination_namespace }}{{ end }}`, destination=`{{ or .dst_workload .dst_pod .dst_name .dst_ip }}`, port=`{{ .tcp }}{{ .udp }}`
                   [10m]
                 )
