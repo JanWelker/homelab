@@ -1,0 +1,14 @@
+---
+# Read-only S3 user the off-cluster copy pulls the backup buckets with; each
+# bucket grants it in its claim's bucketPolicy. See
+# docs/platform/rook-ceph.md#off-cluster-reader
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: offsite-reader
+  namespace: rook-ceph
+spec:
+  store: object-store
+  displayName: Off-cluster backup reader
+  # RGW refuses every write for this user, whatever a policy grants
+  opMask: read
