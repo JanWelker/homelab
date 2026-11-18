@@ -26,8 +26,8 @@ cannot.
 
 **Every automated backup lands in the same cluster's Ceph first.** That
 protects against operator error (a deleted PVC, a bad `prune`, a corrupted
-database) and not against losing the cluster, so a TrueNAS box pulls every
-backup bucket nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
+database) and not against losing the cluster, so a TrueNAS box pulls a copy
+of every backup bucket nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
 recovery is **Git, the OpenBao unseal keys, and that copy**. The NAS sits on
 the same LAN, so a fire or theft that takes the cluster can take the copy too;
 nothing leaves the house yet.
@@ -165,65 +165,66 @@ hold the unseal keys and is useless without them — see
 
 ## Off-cluster copy
 
-A TrueNAS box on the LAN pulls every backup bucket into a ZFS dataset each
-night. It pulls rather than the cluster pushing, so nothing in the cluster
-holds a credential that could reach the copy.
+Every night a CronJob gathers every backup bucket into one bucket, `offsite`,
+and a TrueNAS box on the LAN pulls that bucket into a ZFS dataset. TrueNAS
+pulls rather than the cluster pushing, so nothing in the cluster holds a
+credential that could reach the NAS.
 
 | Property | Why |
 | --- | --- |
-| Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user, granted list and get on each bucket by its claim's `bucketPolicy` and nothing more, so the NAS can never change a backup |
-| Buckets | Every claim that carries the reader's `bucketPolicy`: `velero`, `etcd-backup`, `openbao-backup` and one `cnpg-<namespace>` per database, in both repositories. A bucket without the policy is left out without an error |
-| Cloud Sync task per bucket, `PULL` and `SYNC` | The dataset mirrors the bucket, so the copy shrinks when a TTL or retention prunes it, and a restore finds the same layout |
+| `offsite-copy` CronJob in `payload/platform/backup/offsite-copy.yaml` | Lists every `ObjectBucketClaim` in the cluster and copies each bucket into `offsite/<bucket>/`, inside the object store, so a new claim is in the next night's copy with nothing to configure. A claim is left out only by the label `homelab.wlkr.ch/offsite-copy: "false"`, which Loki's log bucket and `offsite` itself carry |
+| Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user: list and get on each backup bucket through its claim's `bucketPolicy`, and owner of `offsite`. The job and TrueNAS use the same keys; neither can change a backup |
+| A claim without the reader's `bucketPolicy` | Fails its copy and the job, so `KubeJobFailed` fires instead of the bucket silently missing from the copy; the other buckets are still copied |
+| `BackupCronJobStale` in `payload/platform/backup/prometheusrule.yaml` | Fires when any CronJob in `backup` has not succeeded for a day and a half, which a run that never starts does not report as a failure |
+| One Cloud Sync task, `PULL` and `SYNC` | The dataset mirrors `offsite`, so the copy shrinks when a TTL or retention prunes a bucket, and a restore finds each bucket under its own name |
 | Periodic ZFS snapshots of the dataset | What `SYNC` deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it |
-| Scheduled after the last nightly job | A Kopia repository or WAL archive copied while it is being written is inconsistent; the cluster's schedules are in the CronJobs, `payload/platform/velero/application.yaml` and each `ScheduledBackup` |
+| Scheduled after the copy | A Kopia repository or WAL archive copied while it is being written is inconsistent, so the CronJob runs after the last nightly backup and TrueNAS after the CronJob |
 | Encrypted dataset | Velero's resource backups are plain JSON with every Secret in them |
+
+A deleted claim's copy stays in `offsite` until it is removed by hand. The
+`offsite` bucket is a second copy of the backups inside Ceph; its size is the
+sum of the backup buckets.
+
+```bash
+kubectl -n backup get cronjob offsite-copy
+kubectl -n backup create job --from=cronjob/offsite-copy offsite-copy-manual
+kubectl -n backup logs -f job/offsite-copy-manual
+```
 
 ### Setting up the TrueNAS pull
 
-1. Read the [reader's](../platform/rook-ceph.md#off-cluster-reader) keys
-   from the Secret Rook writes for it: `AccessKey` is the **Access Key ID**,
-   `SecretKey` the **Secret Access Key**.
+1. Read the reader's keys from the `offsite-bucket` claim's Secret:
+   `AWS_ACCESS_KEY_ID` is the **Access Key ID**, `AWS_SECRET_ACCESS_KEY` the
+   **Secret Access Key**.
 
     ```bash
-    s=rook-ceph-object-user-object-store-offsite-reader
-    kubectl -n rook-ceph get secret $s -o jsonpath='{.data.AccessKey}' | base64 -d; echo
-    kubectl -n rook-ceph get secret $s -o jsonpath='{.data.SecretKey}' | base64 -d; echo
+    kubectl -n backup get secret offsite-bucket -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d; echo
+    kubectl -n backup get secret offsite-bucket -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d; echo
     ```
 
 2. Under **Credentials → Backup Credentials → Cloud Credentials**, add an
    `Amazon S3` credential with those keys, **Endpoint URL**
-   `https://s3.infra.k8s.wlkr.ch` and **Region** `eu-central-1`. The reader
-   owns no bucket, so the bucket list it shows is empty; that is expected.
-3. Create an encrypted dataset for the copy, with one child dataset per
-   bucket.
-4. List the buckets to pull.
-
-    ```bash
-    kubectl get obc -A -o custom-columns=NS:.metadata.namespace,BUCKET:.spec.bucketName
-    ```
-
-5. Under **Data Protection → Cloud Sync Tasks**, add one task per bucket:
-   direction `PULL`, transfer mode `SYNC`, the bucket name typed in, the
-   bucket's child dataset as the target, scheduled after the cluster's last
-   nightly job.
-6. Under **Data Protection → Periodic Snapshot Tasks**, snapshot the parent
-   dataset recursively after the Cloud Sync tasks, with a lifetime longer
-   than the cluster's retention.
-7. Run each task once by hand and confirm it ends `SUCCESS`.
-
-A new backup bucket needs its claim's `bucketPolicy`
-([Requesting a bucket](../platform/rook-ceph.md#requesting-a-bucket)) and a
-Cloud Sync task of its own.
+   `https://s3.infra.k8s.wlkr.ch` and **Region** `eu-central-1`.
+3. Create an encrypted dataset for the copy.
+4. Under **Data Protection → Cloud Sync Tasks**, add one task: direction
+   `PULL`, transfer mode `SYNC`, bucket `offsite`, the dataset as the target,
+   scheduled after the CronJob has finished; `kubectl -n backup get jobs`
+   shows how long it takes.
+5. Under **Data Protection → Periodic Snapshot Tasks**, snapshot the dataset
+   after the Cloud Sync task, with a lifetime longer than the cluster's
+   retention.
+6. Run the Cloud Sync task once by hand and confirm it ends `SUCCESS`.
 
 ### Checking the reader
 
 From any machine on the LAN, with the reader's keys exported as
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`:
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, `offsite` is listed and a
+backup bucket refuses a write:
 
 ```bash
 export AWS_CONFIG_FILE=$(mktemp)    # path-style addressing, without touching ~/.aws
 printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
-aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls s3://velero/   # lists
+aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls                # offsite
 echo test | aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 cp - s3://velero/test   # AccessDenied
 ```
 
@@ -242,8 +243,9 @@ clone.
 ### Restoring from the copy
 
 Velero and CloudNativePG read only from the cluster's own buckets, so a
-rebuilt cluster gets the copy pushed back first, with the write keys of the
-new claim, not the reader's. The etcd and OpenBao restores take the file
+rebuilt cluster gets each bucket's copy, the `<bucket>/` directory in the
+dataset, pushed back first, with the write keys of the new claim, not the
+reader's. The etcd and OpenBao restores take the file
 straight from the copy.
 
 1. Once Rook has bound the claim again, export that claim's keys and the

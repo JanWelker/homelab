@@ -192,10 +192,12 @@ spec:
   storageClassName: ceph-bucket
 ```
 
-A bucket that holds a backup also carries the `bucketPolicy` that grants the
-[off-cluster reader](#off-cluster-reader); copy it from
+Every claim is in the nightly [off-cluster copy](../operations/backups.md#off-cluster-copy),
+which needs the `bucketPolicy` that grants the
+[off-cluster reader](#off-cluster-reader): copy it from
 `payload/platform/backup/buckets.yaml` with the bucket name changed, or the
-off-cluster copy silently leaves the bucket out.
+copy job fails. A bucket that holds nothing worth keeping, like Loki's,
+carries the label `homelab.wlkr.ch/offsite-copy: "false"` instead.
 
 ### Dashboard login
 

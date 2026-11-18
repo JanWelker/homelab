@@ -1,0 +1,26 @@
+---
+# A backup CronJob that stopped succeeding; a failed run is KubeJobFailed.
+# See docs/operations/backups.md
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backup-cronjobs
+  namespace: backup
+spec:
+  groups:
+    - name: backup-cronjobs
+      rules:
+        - alert: BackupCronJobStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace="backup"} > 36 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $labels.cronjob }} has not succeeded in 36 hours
+            description: >-
+              The nightly CronJob backup/{{ $labels.cronjob }} last succeeded
+              more than 36 hours ago, so what it backs up or copies off the
+              cluster is a day or more behind. kubectl -n backup get jobs shows
+              which runs failed; their logs say why.
