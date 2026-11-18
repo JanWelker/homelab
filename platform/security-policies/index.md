@@ -81,8 +81,9 @@ Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPol
 | No rule in a direction leaves that direction unenforced | A host policy with `ingress` only never blocks a node's own connections, and their replies pass through conntrack |
 | Host endpoint labels are filtered | `kubernetes.io/hostname` is not among them, so a node can only be chosen by a label such as `node-access` in the upstream example, or by the `control-plane` role label |
 | A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
+| A connection a node opened before its agent started has no conntrack entry | For about half a minute after a boot the firewall drops the replies to it, typically the kubelet's first connection to the control-plane address, which Cilium sees as `world`; the client reconnects and nothing else is lost |
 
-`network-policies/host-firewall.yaml` selects the nodes carrying `host-firewall.wlkr.ch/selected`. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
+`network-policies/host-firewall.yaml` selects every node without `host-firewall.wlkr.ch/exempt`, so a new node is filtered from its first boot and the label is the one switch that frees a node. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). The audit week and the rollout are in [Host Firewall Rollout 2026-11-18](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
 
 ### Default ServiceAccount tokens
 
@@ -180,45 +181,16 @@ kubectl -n kube-system exec ds/cilium -c cilium-agent -- \
   cilium-dbg endpoint config <endpoint-id> PolicyAuditMode=Enabled
 ```
 
-### Host firewall rollout
+### Changing the host firewall
 
-Audit is per host endpoint, a setting of the running agent: `policyAuditMode` would stop enforcing the pod policies, and upstream says the per-endpoint setting does not survive an agent restart, after which the node enforces. The audit week therefore runs through a node label, and every step before enforcement is reversible by removing that label.
+A rule that might lock out a node is tried in audit mode first. Audit is a setting of the running agent, not of the policy, and an agent restart drops it, so set it per node and expect to set it again after any restart:
 
-1. Merge the switch; the agents roll, one node at a time. Every agent reports the firewall on the native device:
+```bash
+kubectl -n kube-system exec <agent-on-node> -c cilium-agent -- \
+  sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'
+```
 
-   ```bash
-   kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg status | grep 'Host firewall'
-   ```
-2. Reboot one worker with no policy selecting it and watch it return `Ready`, as in [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>).
-3. Merge `payload/platform/cilium/host-firewall-audit.yaml`, a DaemonSet that puts each host endpoint back in audit mode within seconds of an agent restart, because any restart would otherwise start enforcing that node: a Renovate bump, a value change, Kured. Every node must answer `Enabled` before the policy merges:
-
-   ```bash
-   for p in $(kubectl -n kube-system get pods -l k8s-app=cilium -o name); do
-     kubectl -n kube-system exec "$p" -c cilium-agent -- \
-       sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") | grep PolicyAuditMode'
-   done
-   ```
-4. Merge the policy; it selects nothing. Select one worker, with its console within reach, and confirm `Disabled (Audit)` on its `reserved:host` line:
-
-   ```bash
-   kubectl label node <worker> host-firewall.wlkr.ch/selected=true
-   kubectl -n kube-system exec <agent-on-worker> -c cilium-agent -- cilium-dbg endpoint list
-   ```
-5. Reboot that worker. It must return `Ready`, and audit mode `Enabled` within a minute; if it does not, go to [Host firewall lockout](<#host-firewall-lockout>) and stop the rollout.
-6. Select the other workers, then one control plane and reboot it, then the other two. Only then start the audit week.
-7. Read a week of what enforcement would refuse. Pods and nodes are admitted, so anything here came from the LAN. Add a rule for what is legitimate:
-
-   ```text
-   {job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -> {{.dst}} {{.tcp}}{{.udp}}"
-   ```
-8. Enforce one worker: its label sends the DaemonSet away, and restarting its agent drops audit mode, rather than switching audit off at runtime. Check that `bpf policy get` lists separate identities and not one wildcard, and that SSH and the node's pods still work. Reboot it once more.
-
-   ```bash
-   kubectl label node <worker> host-firewall.wlkr.ch/enforce=true
-   kubectl -n kube-system delete pod -l k8s-app=cilium --field-selector spec.nodeName=<worker>
-   kubectl -n kube-system exec <agent-on-worker> -c cilium-agent -- cilium-dbg bpf policy get <host-endpoint-id>
-   ```
-9. Repeat for the workers, then the control planes one at a time. Then delete `payload/platform/cilium/host-firewall-audit.yaml` in a pull request.
+Read what enforcement would refuse with the LogQL in the [rollout log](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md#method>), then restart the agent to enforce again. `policyAuditMode` in the Cilium values is not the switch: it stops enforcing every pod policy too.
 
 ## Health check
 
@@ -253,7 +225,7 @@ kubectl get validatingadmissionpolicy
 >
 > **A reboot can isolate a node a host policy selects**
 >
-> [Upstream](<https://github.com/cilium/cilium/issues/48070>) reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here, and a power cut would hit every selected node at once. That is why the rollout selects one worker first and reboots it.
+> [Upstream](<https://github.com/cilium/cilium/issues/48070>) reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here: all ten nodes passed a reboot while enforcing. A power cut would hit every node at once, and the [lockout runbook](<#host-firewall-lockout>) is the way back.
 
 ## Recovery
 
@@ -261,10 +233,10 @@ kubectl get validatingadmissionpolicy
 
 Work down until the node answers. An agent that cannot reach the API server hears neither a policy change nor a label removal, so step 1 alone does not free a node that is already cut off.
 
-1. API server answering: take the node out of the policy. Argo CD does not own node labels, so nothing puts it back. Use `--all` instead of a name for every node.
+1. API server answering: take the node out of the policy. Argo CD does not own node labels, so nothing puts it back; remove the label once the cause is fixed. Use `--all` instead of a name for every node.
 
    ```bash
-   kubectl label node <node> host-firewall.wlkr.ch/selected-
+   kubectl label node <node> host-firewall.wlkr.ch/exempt=true
    ```
 2. SSH answering: put the node in audit mode, which needs no API server and lasts until the agent restarts.
 
@@ -279,10 +251,10 @@ Work down until the node answers. An agent that cannot reach the API server hear
    ```bash
    until ssh -o ConnectTimeout=2 <node> sudo systemctl mask --now kubelet; do sleep 1; done
    ```
-4. Every control plane cut off: the API server needs no CNI, so it comes up before the agent does. Power-cycle all three and take the label off in that window.
+4. Every control plane cut off: the API server needs no CNI, so it comes up before the agent does. Power-cycle all three and exempt every node in that window.
 
    ```bash
-   until kubectl label node --all host-firewall.wlkr.ch/selected-; do sleep 2; done
+   until kubectl label node --all host-firewall.wlkr.ch/exempt=true; do sleep 2; done
    ```
 5. Still nothing: at the node's console, add `flatcar.autologin` to the boot entry in the GRUB menu, since `core` has no password, then run the inner command of step 2. Failing that, [rebuild the node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>).
 6. Then [unseal OpenBao](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) and revert in Git: the policy first; the switch only if the firewall itself is the fault, since that revert rolls every agent again.
