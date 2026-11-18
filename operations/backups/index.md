@@ -11,7 +11,7 @@ Every mechanism below is described by what it can get back, and by what it canno
 | PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#backups>), one bucket per database; restores to a point in time |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](<#etcd>) to the object store |
-| OpenBao secrets | Manual | [Raft snapshot](<#openbao>) |
+| OpenBao secrets | Nightly | [Raft snapshot CronJob](<#openbao>) to the object store |
 | OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
 | Prometheus metrics | **No** | Its PVC carries `velero.io/exclude-from-backup`; metrics live for the `retention` in `payload/platform/monitoring/application.yaml`, then are gone |
 | Trivy reports and vulnerability database | **No** | `trivy-system` is excluded; the operator rescans and the server downloads the database again |
@@ -118,6 +118,23 @@ Rook writes each bucket's keys into a `Secret` named after its claim (`velero-bu
 The copy is as plain as the bucket: Velero's resource backups are JSON with Secrets in them, so store it with the unseal keys, not beside the Git clone.
 
 ## OpenBao
+
+A CronJob in `payload/platform/backup/openbao-snapshot.yaml` saves a Raft snapshot nightly, between the etcd snapshot and Velero.
+
+| Property | Value |
+| --- | --- |
+| Login | Kubernetes auth as the `openbao-snapshot` role, whose policy reads `sys/storage/raft/snapshot` and nothing else; `make bao-policies` writes it — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). The token is revoked when the snapshot is saved |
+| Verification | The archive must list its `SHA256SUMS`, so a truncated snapshot fails the job instead of replacing a good one |
+| Destination | S3 bucket `openbao-backup`; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
+| CLI version | The job's image is grouped with the server's tag in Renovate, so the CLI never lags the server |
+
+```bash
+kubectl -n backup get cronjob openbao-snapshot
+kubectl -n backup create job --from=cronjob/openbao-snapshot openbao-snapshot-manual
+kubectl -n backup logs job/openbao-snapshot-manual -c snapshot
+```
+
+By hand, with a token that may read the snapshot:
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao operator raft snapshot save /tmp/snapshot.bao

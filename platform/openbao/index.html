@@ -3291,6 +3291,9 @@ namespace can reach follows from the store it is allowed to use:</p>
 </tr>
 </tbody>
 </table>
+<p>One more role, <code>openbao-snapshot</code>, belongs to no store: it is bound to the
+<code>openbao-snapshot</code> ServiceAccount in <code>backup</code> and reads the Raft snapshot and
+nothing else, for the nightly <a href="../../operations/backups/#openbao">snapshot CronJob</a>.</p>
 <p>The ServiceAccount the platform store uses lives in
 <code>cluster-secret-store.yaml</code> too, because the stores only validate against a
 running, unsealed OpenBao. <code>make bao-init</code> writes the policies and roles on a

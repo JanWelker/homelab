@@ -3264,6 +3264,8 @@ ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao validates
 | Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
 | Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
 
+One more role, `openbao-snapshot`, belongs to no store: it is bound to the `openbao-snapshot` ServiceAccount in `backup` and reads the Raft snapshot and nothing else, for the nightly [snapshot CronJob](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>).
+
 The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` too, because the stores only validate against a running, unsealed OpenBao. `make bao-init` writes the policies and roles on a fresh cluster by running `scripts/bao-policies.sh`; after a change to that script, `make bao-policies` rewrites them on a live one. It needs a root token, because the operator login cannot write policies: run it before `make bao-rotate-root`, or with a [generated root token](<#generating-a-root-token>).
 
 ## Usage
@@ -4403,7 +4405,7 @@ Every mechanism below is described by what it can get back, and by what it canno
 | PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#backups>), one bucket per database; restores to a point in time |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](<#etcd>) to the object store |
-| OpenBao secrets | Manual | [Raft snapshot](<#openbao>) |
+| OpenBao secrets | Nightly | [Raft snapshot CronJob](<#openbao>) to the object store |
 | OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
 | Prometheus metrics | **No** | Its PVC carries `velero.io/exclude-from-backup`; metrics live for the `retention` in `payload/platform/monitoring/application.yaml`, then are gone |
 | Trivy reports and vulnerability database | **No** | `trivy-system` is excluded; the operator rescans and the server downloads the database again |
@@ -4510,6 +4512,23 @@ Rook writes each bucket's keys into a `Secret` named after its claim (`velero-bu
 The copy is as plain as the bucket: Velero's resource backups are JSON with Secrets in them, so store it with the unseal keys, not beside the Git clone.
 
 ## OpenBao
+
+A CronJob in `payload/platform/backup/openbao-snapshot.yaml` saves a Raft snapshot nightly, between the etcd snapshot and Velero.
+
+| Property | Value |
+| --- | --- |
+| Login | Kubernetes auth as the `openbao-snapshot` role, whose policy reads `sys/storage/raft/snapshot` and nothing else; `make bao-policies` writes it — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). The token is revoked when the snapshot is saved |
+| Verification | The archive must list its `SHA256SUMS`, so a truncated snapshot fails the job instead of replacing a good one |
+| Destination | S3 bucket `openbao-backup`; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
+| CLI version | The job's image is grouped with the server's tag in Renovate, so the CLI never lags the server |
+
+```bash
+kubectl -n backup get cronjob openbao-snapshot
+kubectl -n backup create job --from=cronjob/openbao-snapshot openbao-snapshot-manual
+kubectl -n backup logs job/openbao-snapshot-manual -c snapshot
+```
+
+By hand, with a token that may read the snapshot:
 
 ```bash
 kubectl -n openbao exec -it openbao-0 -- bao operator raft snapshot save /tmp/snapshot.bao
@@ -5910,7 +5929,7 @@ Configured in `renovate.json`, on top of the shared preset [JanWelker/renovate-c
 
 - **The preset's rules:** three days between a release and its PR, patch and minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a human, and security fixes skip both the wait and the schedule. The preset's README says why for each.
 - **One exception: a Kubernetes minor waits for a human.** A Flatcar minor lands the same way a Grafana chart patch does, but `kubernetes_version` is walked forward by hand in version-skew order, and a node provisioned from an automerged minor would run a kubelet ahead of the API server and fail its `kubeadm join` — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>).
-- **Pairs that must move together are grouped into one PR:** `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because Rook requires both charts on the same version; and `markdownlint-cli2` in the workflow with its pre-commit hook, because the two must lint alike; `gitleaks` likewise; the `external-snapshotter` tag with the `snapshot-controller` image it pins, because upstream's manifest at a tag names the previous release's image (the image is a `registry.k8s.io` one, so the pair waits for a human like every third-party image there); the two ARC charts, because the controller deletes a scale set whose chart version differs from its own; and every Python pin (`requires-python`, `.python-version`, the `python` images), because `uv sync` fails when they name different minors.
+- **Pairs that must move together are grouped into one PR:** `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because Rook requires both charts on the same version; and `markdownlint-cli2` in the workflow with its pre-commit hook, because the two must lint alike; `gitleaks` likewise; the `external-snapshotter` tag with the `snapshot-controller` image it pins, because upstream's manifest at a tag names the previous release's image (the image is a `registry.k8s.io` one, so the pair waits for a human like every third-party image there); the two ARC charts, because the controller deletes a scale set whose chart version differs from its own; the OpenBao server tag with the image the snapshot CronJob runs its CLI from, so the CLI never lags the server it snapshots; and every Python pin (`requires-python`, `.python-version`, the `python` images), because `uv sync` fails when they name different minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new release already satisfies; `rangeStrategy: bump` is what makes Renovate open a PR for the linters and the docs generator at all.
 - **Flatcar and Kubernetes bumps change what a newly provisioned node installs, not what a running node runs.** kubeadm cannot skip a minor, so a cluster that sits while two Kubernetes minors merge has to be walked forward one at a time — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 - **A font bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it and `ci-ok` waits for it — see [Fonts](<https://homelab.wlkr.ch/development/contributing/index.md#fonts>).

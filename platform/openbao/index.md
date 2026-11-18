@@ -121,6 +121,8 @@ ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao validates
 | Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
 | Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
 
+One more role, `openbao-snapshot`, belongs to no store: it is bound to the `openbao-snapshot` ServiceAccount in `backup` and reads the Raft snapshot and nothing else, for the nightly [snapshot CronJob](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>).
+
 The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` too, because the stores only validate against a running, unsealed OpenBao. `make bao-init` writes the policies and roles on a fresh cluster by running `scripts/bao-policies.sh`; after a change to that script, `make bao-policies` rewrites them on a live one. It needs a root token, because the operator login cannot write policies: run it before `make bao-rotate-root`, or with a [generated root token](<#generating-a-root-token>).
 
 ## Usage

@@ -2686,7 +2686,9 @@ are the sets below that must move together.</p>
     names the previous release's image (the image is a <code>registry.k8s.io</code> one,
     so the pair waits for a human like every third-party image there); the
     two ARC charts, because the controller deletes a scale set whose chart
-    version differs from its own; and every Python pin (<code>requires-python</code>,
+    version differs from its own; the OpenBao server tag with the image the
+    snapshot CronJob runs its CLI from, so the CLI never lags the server it
+    snapshots; and every Python pin (<code>requires-python</code>,
     <code>.python-version</code>, the <code>python</code> images), because <code>uv sync</code> fails when
     they name different minors.</li>
 <li><strong>Python ranges bump.</strong> <code>pyproject.toml</code> declares <code>&gt;=</code> ranges, which a new
