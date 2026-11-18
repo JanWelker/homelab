@@ -58,6 +58,8 @@ The values are in `payload/platform/kured/application.yaml`; the reasoning:
 | --- | --- |
 | No reboot window | Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock |
 | `concurrency` and `lockReleaseDelay` | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
+| `period` | How often each node checks its sentinel and retries a blocked reboot. Every wait before a drain is a multiple of it, and the lock is handed on only at the next check after the hold, so it sets most of a rollout's length; a check is one file test and one Prometheus query per node |
+| `drainTimeout` | Above the slowest successful drain, which `drainGracePeriod` caps at two minutes plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock |
 | `forceReboot: false` | A node that will not drain is a node worth looking at |
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
