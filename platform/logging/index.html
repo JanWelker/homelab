@@ -2952,6 +2952,11 @@ the mixin Grafana maintains, not rules written here.</p>
 <td>A connection's retransmits pass the threshold and a name rule's single early <code>SYN</code> does not; the metric counts per namespace pair only and misses the first burst of a new pair</td>
 </tr>
 <tr>
+<td><code>HostFirewallDrops</code></td>
+<td>More than three <code>POLICY_DENIED</code> packets in ten minutes from one source to one node's own address, which only the <a href="../security-policies/#host-firewall">host firewall</a> refuses; <code>HubblePolicyDrops</code> leaves these out</td>
+<td>Grouped by node and source without the port, so a port scan of one <code>SYN</code> per port alerts as well as a refused connection's retransmits</td>
+</tr>
+<tr>
 <td><code>NodeSshLogin</code></td>
 <td>An accepted SSH login on a node</td>
 <td>Nothing routine logs in after provisioning</td>

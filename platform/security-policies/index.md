@@ -82,7 +82,7 @@ Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPol
 | Host endpoint labels are filtered | `kubernetes.io/hostname` is not among them, so a node can only be chosen by a label such as `node-access` in the upstream example, or by the `control-plane` role label |
 | A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
 
-`network-policies/host-firewall.yaml` selects the nodes carrying `host-firewall.wlkr.ch/selected`. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node.
+`network-policies/host-firewall.yaml` selects the nodes carrying `host-firewall.wlkr.ch/selected`. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
 
 ### Default ServiceAccount tokens
 

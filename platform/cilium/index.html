@@ -2756,7 +2756,7 @@ Relay through a port-forward on its default port:</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">The host firewall drops all node IPv6, with or without a policy</p>
-<p>With <code>enable-ipv6: false</code> the datapath has no IPv6 branch, so on the native device and <code>cilium_host</code> every IPv6 packet is dropped as <code>DROP_UNKNOWN_L3</code> in both directions, before any policy or audit mode (<a href="https://github.com/cilium/cilium/issues/47307">upstream</a>). A node keeps its SLAAC address until the lifetime runs out, and a client that does not fall back to IPv4 stalls until then. The drops reach Loki as <code>DROPPED</code> flows with a reason other than <code>POLICY_DENIED</code>, so <code>HubblePolicyDrops</code> stays quiet.</p>
+<p>With <code>enable-ipv6: false</code> the datapath has no IPv6 branch, so on the native device and <code>cilium_host</code> every IPv6 packet is dropped as <code>DROP_UNKNOWN_L3</code> in both directions, before any policy or audit mode (<a href="https://github.com/cilium/cilium/issues/47307">upstream</a>). A node keeps its SLAAC address until the lifetime runs out, and a client that does not fall back to IPv4 stalls until then. The drops reach Loki as <code>DROPPED</code> flows with a reason other than <code>POLICY_DENIED</code>, so <code>HubblePolicyDrops</code> and <code>HostFirewallDrops</code> stay quiet.</p>
 </div>
 
 
