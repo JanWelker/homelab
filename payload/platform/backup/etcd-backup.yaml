@@ -120,29 +120,42 @@ spec:
                 - -c
                 - |
                   set -eu
-                  S3="http://${BUCKET_HOST}:${BUCKET_PORT}"
+                  S3="$S3_ENDPOINT"
+                  DEST="s3://offsite/backup.etcd"
                   # RGW needs path-style addressing; no env var exists for it
                   mkdir -p /root/.aws
                   printf '[default]\ns3 =\n    addressing_style = path\n' > /root/.aws/config
 
                   TS="$(date -u +%Y%m%dT%H%M%SZ)"
                   aws --endpoint-url "$S3" s3 cp \
-                    /snapshot/etcd.db "s3://${BUCKET_NAME}/etcd-${TS}.db"
+                    /snapshot/etcd.db "${DEST}/etcd-${TS}.db"
 
                   # Keep the 14 most recent; the timestamp sorts chronologically
-                  aws --endpoint-url "$S3" s3 ls "s3://${BUCKET_NAME}/" \
+                  aws --endpoint-url "$S3" s3 ls "${DEST}/" \
                     | awk '{print $4}' | grep -E '^etcd-.*\.db$' | sort \
                     | head -n -14 \
                     | while read -r key; do
                         echo "pruning $key"
-                        aws --endpoint-url "$S3" s3 rm "s3://${BUCKET_NAME}/${key}"
+                        aws --endpoint-url "$S3" s3 rm "${DEST}/${key}"
                       done
-              envFrom:
-                # Written by Rook for the etcd-backup-bucket claim
-                - secretRef:
-                    name: etcd-backup-bucket
-                - configMapRef:
-                    name: etcd-backup-bucket
+              # The backup.etcd user may write only its own prefix;
+              # docs/platform/rook-ceph.md#backup-writers
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.etcd
+                      key: AccessKey
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.etcd
+                      key: SecretKey
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.etcd
+                      key: Endpoint
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true

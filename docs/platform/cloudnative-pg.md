@@ -13,10 +13,10 @@ maintains the chart that buried it. CloudNativePG is one operator in
 | | |
 | --- | --- |
 | Namespace | `cnpg-system` for the operator; each database in its workload's namespace |
-| Depends on | [Rook-Ceph](rook-ceph.md) for the database volumes and the backup buckets; [cert-manager](cert-manager.md) for the backup plugin's gRPC certificates |
+| Depends on | [Rook-Ceph](rook-ceph.md) for the database volumes and the backup writers; [cert-manager](cert-manager.md) for the backup plugin's gRPC certificates |
 | If it is down | Running databases keep running; failover, upgrades and new clusters stop |
 | Health check | `kubectl get clusters.postgresql.cnpg.io -A` &rarr; `Cluster in healthy state` |
-| Backups | Continuous WAL and a nightly base backup per database, to a bucket of its own |
+| Backups | Continuous WAL and a nightly base backup per database, to its own prefix of `offsite` |
 | Files | `payload/platform/cloudnative-pg/` |
 
 ## Configuration
@@ -60,7 +60,7 @@ restores to any second inside the retention window, not just to last night.
 | Choice | Why |
 | --- | --- |
 | The plugin, not `spec.backup.barmanObjectStore` | The in-tree field is deprecated upstream and is removed in a later release |
-| One bucket per database, claimed in its own namespace | The bucket's keys exist only there, so a compromised workload can read or delete its own backups and nobody else's |
+| One [backup writer](rook-ceph.md#backup-writers) per database, in its own namespace | Its keys exist only there and reach only its prefix of `offsite`, so a compromised workload can read or delete its own backups and nobody else's |
 | `https://s3.infra.k8s.wlkr.ch`, not the plain RGW Service | Backups hold every row of the database; the Gateway's TLS is the same path Velero uses |
 | Base backup nightly, after Velero | The two never contend for the object store; WAL archiving covers the hours between |
 | `retentionPolicy` equal to `schedules.ttl` in `payload/platform/velero/application.yaml` | One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each `backup.yaml` restates the value |
@@ -119,36 +119,23 @@ registry terms keep changing. The rule for the
 ### Backing up a database
 
 Next to the `Cluster`, in the same namespace, with `<db>` the cluster's
-name. The bucket name is cluster-wide, hence the namespace in it; the sync
-wave puts the store ahead of the `Cluster` that names it.
+name. The S3 user writes `offsite/<namespace>.db/` and nothing else; a second
+database in the namespace gets a user with its own suffix. The sync wave puts
+the user and the store ahead of the `Cluster` that names them.
 
 ```yaml
 ---
-apiVersion: objectbucket.io/v1alpha1
-kind: ObjectBucketClaim
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
 metadata:
-  name: <db>-backup
+  name: <namespace>.db
   namespace: <namespace>
   annotations:
-    argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  bucketName: cnpg-<namespace>
-  storageClassName: ceph-bucket
-  additionalConfig:
-    # offsite-reader may list and read; docs/platform/rook-ceph.md#off-cluster-reader
-    bucketPolicy: |
-      {
-        "Version": "2012-10-17",
-        "Statement": [
-          {
-            "Effect": "Allow",
-            "Principal": {"AWS": ["arn:aws:iam:::user/offsite-reader"]},
-            "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject"],
-            "Resource": ["arn:aws:s3:::cnpg-<namespace>", "arn:aws:s3:::cnpg-<namespace>/*"]
-          }
-        ]
-      }
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: <namespace> database backups
 ---
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
@@ -161,11 +148,11 @@ metadata:
 spec:
   retentionPolicy: 14d
   configuration:
-    destinationPath: s3://cnpg-<namespace>/
+    destinationPath: s3://offsite/<namespace>.db/
     endpointURL: https://s3.infra.k8s.wlkr.ch
     s3Credentials:
-      accessKeyId: {name: <db>-backup, key: AWS_ACCESS_KEY_ID}
-      secretAccessKey: {name: <db>-backup, key: AWS_SECRET_ACCESS_KEY}
+      accessKeyId: {name: rook-ceph-object-user-object-store-<namespace>.db, key: AccessKey}
+      secretAccessKey: {name: rook-ceph-object-user-object-store-<namespace>.db, key: SecretKey}
     wal:
       compression: gzip
     data:
@@ -224,7 +211,7 @@ kubectl get clusters.postgresql.cnpg.io -A \
 kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecoveryWindow
 ```
 
-`ContinuousArchiving` `True` means the last WAL segment reached the bucket;
+`ContinuousArchiving` `True` means the last WAL segment reached the object store;
 `False` means WAL is piling up on the instance's volume, which fills it. The
 recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s
 own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay
@@ -256,7 +243,7 @@ archiver. All four are warnings on the daily mail.
   grew; patch that PVC to the new size by hand, as
   [upstream documents](https://cloudnative-pg.io/documentation/current/instance_manager/) under "Disk full failure".
 - **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from
-  the bucket; it never rewinds a running one. Give the new cluster its own
+  the archive; it never rewinds a running one. Give the new cluster its own
   `ObjectStore` destination, or its archive would mix with the one it was
   restored from.
 

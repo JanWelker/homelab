@@ -46,7 +46,7 @@ spec:
           limits:
             memory: 256Mi
 
-        # Keys come from the bucket claim's Secret via extraEnvVars below
+        # Keys come from the backup.velero user's Secret via extraEnvVars below
         credentials:
           useSecret: false
 
@@ -55,18 +55,20 @@ spec:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: velero-bucket
-                  key: AWS_ACCESS_KEY_ID
+                  name: rook-ceph-object-user-object-store-backup.velero
+                  key: AccessKey
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: velero-bucket
-                  key: AWS_SECRET_ACCESS_KEY
+                  name: rook-ceph-object-user-object-store-backup.velero
+                  key: SecretKey
 
+          # The user may write only its own prefix; docs/platform/rook-ceph.md#backup-writers
           backupStorageLocation:
             - name: default
               provider: aws
-              bucket: velero
+              bucket: offsite
+              prefix: backup.velero
               default: true
               config:
                 region: eu-central-1
