@@ -2982,8 +2982,12 @@ workers than chunks.</p>
 <td><code>CephOSDDownHigh</code> gets a <code>for:</code> because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. <code>CephNodeDiskspaceWarning</code> compares the root filesystem with the kubelet's 85% image garbage-collection threshold instead of a 5-day trend, which warned on every image pull</td>
 </tr>
 <tr>
-<td><code>cephClusterSpec.cephConfig</code> <code>mgr/dashboard/*</code></td>
-<td>Sets the dashboard's Prometheus and Grafana links through the mon config store, which the operator reapplies on every reconcile, rather than a one-off <code>ceph dashboard set-*</code> Job</td>
+<td><code>cephClusterSpec.dashboard.prometheusEndpoint</code></td>
+<td>The dashboard's Prometheus link. The operator owns <code>mgr/dashboard/PROMETHEUS_API_HOST</code> and writes it from this field whenever it restarts the dashboard module, so the same key under <code>cephConfig</code> is blanked at the next operator restart</td>
+</tr>
+<tr>
+<td><code>cephClusterSpec.cephConfig</code> <code>mgr/dashboard/GRAFANA_*</code></td>
+<td>The Grafana link, through the mon config store, which the operator reapplies on every reconcile, rather than a one-off <code>ceph dashboard set-*</code> Job; the operator has no field for it</td>
 </tr>
 <tr>
 <td><code>mon_cluster_log_level: info</code></td>
