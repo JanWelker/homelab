@@ -233,6 +233,15 @@ archiver. All four are warnings on the daily mail.
   sidecar has not archived; a broken bucket or policy shows as
   `ContinuousArchiving` `False` long before the PVC is full. Fix the cause,
   never delete `pg_wal`.
+- **A new database is refused until the next policy run.** Its
+  `<namespace>.db` user gets write access to `offsite` only when the
+  `offsite-policy` CronJob next runs
+  ([Backup writers](rook-ceph.md#backup-writers)); until then archiving fails
+  with `AccessDenied` and PostgreSQL retries, losing nothing.
+- **An idle database archives nothing.** A segment is shipped only once it
+  holds WAL, so an empty prefix is not proof the archiver works. Force one,
+  without touching a table:
+  `kubectl -n <namespace> exec <primary-pod> -c postgres -- psql -c "select pg_logical_emit_message(false,'probe','x')" -c "select pg_switch_wal()"`.
 - **A dead replica fills the primary.** Its replication slot holds WAL until
   the replica catches up, so every multi-instance `Cluster` caps it with
   `max_slot_wal_keep_size` at a quarter of the volume; past that the slot is
