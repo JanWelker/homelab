@@ -13,7 +13,7 @@ cannot.
 | --- | --- | --- |
 | Kubernetes objects | Nightly | [Velero](#velero) to the Ceph object store |
 | Ceph RBD volumes (PVCs) | Nightly | Velero CSI snapshot, moved into the object store |
-| PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](../platform/cloudnative-pg.md#backups), one bucket per database; restores to a point in time |
+| PostgreSQL databases | Continuous WAL, nightly base backup | [CloudNativePG's Barman Cloud plugin](../platform/cloudnative-pg.md#backups), each database to its own prefix; restores to a point in time |
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](#etcd) to the object store |
 | OpenBao secrets | Nightly | [Raft snapshot CronJob](#openbao) to the object store |
@@ -24,20 +24,18 @@ cannot.
 
 ## Backup chain
 
-Each night the backups land in the cluster's own buckets, one CronJob gathers
-them into `offsite`, and TrueNAS pulls that bucket and snapshots it. Each step
-runs after the one before has finished, so nothing is copied while it is
-being written.
+Each backup writes straight into its own prefix of one bucket, `offsite`, and
+TrueNAS pulls that bucket and snapshots it. Each step runs after the one
+before has finished, so nothing is pulled while it is being written.
 
 ```mermaid
 flowchart LR
     subgraph cluster["Cluster, Ceph object store"]
-        etcd["etcd-backup<br/>CronJob"] --> b_etcd[("etcd-backup")]
-        bao["openbao-snapshot<br/>CronJob"] --> b_bao[("openbao-backup")]
-        velero["Velero<br/>schedule"] --> b_velero[("velero")]
-        cnpg["CloudNativePG<br/>WAL + base backup"] --> b_cnpg[("cnpg-&lt;namespace&gt;")]
-        b_etcd & b_bao & b_velero & b_cnpg --> copy["offsite-copy<br/>CronJob"]
-        copy --> offsite[("offsite")]
+        offsite[("offsite")]
+        etcd["etcd-backup<br/>CronJob"] -->|"backup.etcd/"| offsite
+        bao["openbao-snapshot<br/>CronJob"] -->|"backup.openbao/"| offsite
+        velero["Velero<br/>schedule"] -->|"backup.velero/"| offsite
+        cnpg["CloudNativePG<br/>WAL + base backup"] -->|"&lt;namespace&gt;.db/"| offsite
     end
     subgraph nas["TrueNAS"]
         pull["Cloud Sync<br/>PULL, SYNC"] --> dataset[("encrypted<br/>dataset")]
@@ -49,8 +47,7 @@ flowchart LR
 | Step | Scheduled in | When |
 | --- | --- | --- |
 | etcd, OpenBao, Velero, databases | Their CronJobs, `payload/platform/velero/application.yaml` and each `ScheduledBackup`, in UTC | Through the night, never overlapping |
-| `offsite-copy` | `payload/platform/backup/offsite-copy.yaml`, in UTC | After the last of the above |
-| TrueNAS Cloud Sync task | The NAS | 07:00 local time, two hours after the copy starts in winter and one in summer |
+| TrueNAS Cloud Sync task | The NAS | 07:00 local time, after the last of the above |
 | TrueNAS periodic snapshot task | The NAS | 09:00 local time, after the pull |
 
 The TrueNAS times are not in Git, so this table is their only record: change
@@ -60,8 +57,8 @@ them here when they change on the NAS.
 
 **Every automated backup lands in the same cluster's Ceph first.** That
 protects against operator error (a deleted PVC, a bad `prune`, a corrupted
-database) and not against losing the cluster, so a TrueNAS box pulls a copy
-of every backup bucket nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
+database) and not against losing the cluster, so a TrueNAS box pulls the bucket
+every backup writes into nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
 recovery is **Git, the OpenBao unseal keys, and that copy**. The NAS sits on
 the same LAN, so a fire or theft that takes the cluster can take the copy too;
 nothing leaves the house yet.
@@ -199,30 +196,28 @@ hold the unseal keys and is useless without them — see
 
 ## Off-cluster copy
 
-Every night a CronJob gathers every backup bucket into one bucket, `offsite`,
-and a TrueNAS box on the LAN pulls that bucket into a ZFS dataset. TrueNAS
+Every backup writes into its own prefix of one bucket, `offsite`, and a
+TrueNAS box on the LAN pulls that bucket into a ZFS dataset nightly. TrueNAS
 pulls rather than the cluster pushing, so nothing in the cluster holds a
 credential that could reach the NAS.
 
 | Property | Why |
 | --- | --- |
-| `offsite-copy` CronJob in `payload/platform/backup/offsite-copy.yaml` | Lists every `ObjectBucketClaim` in the cluster and copies each bucket into `offsite/<bucket>/`, inside the object store, so a new claim is in the next night's copy with nothing to configure. A claim is left out only by the label `homelab.wlkr.ch/offsite-copy: "false"`, which Loki's log bucket and `offsite` itself carry |
-| Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user: list and get on each backup bucket through its claim's `bucketPolicy`, and owner of `offsite`. The job and TrueNAS use the same keys; neither can change a backup |
-| A claim without the reader's `bucketPolicy` | Fails its copy and the job, so `KubeJobFailed` fires instead of the bucket silently missing from the copy; the other buckets are still copied |
+| One S3 user per backup | Each writes only `offsite/<user>/`, so a compromised workload reaches its own backups and nobody else's. A new database's user is part of its `backup.yaml` and gets its grant with nothing else edited — see [Backup writers](../platform/rook-ceph.md#backup-writers) |
+| Nothing is left out by default | Admission refuses a CloudNativePG `Cluster` without the Barman Cloud WAL archiver, an `ObjectStore` writing anywhere but its namespace's prefix of `offsite`, and any new `ObjectBucketClaim`, unless the object carries `homelab.wlkr.ch/backup-exempt` with the reason; see [Admission policies](../platform/security-policies.md#admission-policies). Velero takes every namespace its schedule does not exclude, and `CNPGBackupStale` fires for a database whose base backup never comes |
+| Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user owns `offsite` and reads every object in it; TrueNAS uses its keys. As the owner it can also delete, so the only copy that outlives those keys is the NAS's snapshots |
 | `BackupCronJobStale` in `payload/platform/backup/prometheusrule.yaml` | Fires when any CronJob in `backup` has not succeeded for a day and a half, which a run that never starts does not report as a failure |
-| One Cloud Sync task, `PULL` and `SYNC` | The dataset mirrors `offsite`, so the copy shrinks when a TTL or retention prunes a bucket, and a restore finds each bucket under its own name |
+| One Cloud Sync task, `PULL` and `SYNC` | The dataset mirrors `offsite`, so the copy shrinks when a TTL or retention prunes a prefix, and a restore finds each writer under its own directory |
 | Periodic ZFS snapshots of the dataset | What `SYNC` deleted, and whatever a broken cluster wrote, is still in an older snapshot. Keep them longer than the cluster's retention, so a bad backup noticed late still has a good one behind it |
-| Scheduled after the copy | A Kopia repository or WAL archive copied while it is being written is inconsistent, so the CronJob runs after the last nightly backup and TrueNAS after the CronJob |
+| Scheduled after the nightly backups | A Kopia repository pulled while it is being written is inconsistent |
 | Encrypted dataset | Velero's resource backups are plain JSON with every Secret in them |
 
-A deleted claim's copy stays in `offsite` until it is removed by hand. The
-`offsite` bucket is a second copy of the backups inside Ceph; its size is the
-sum of the backup buckets.
+A removed writer's prefix stays in `offsite` until it is deleted by hand.
+Which users the bucket policy grants:
 
 ```bash
-kubectl -n backup get cronjob offsite-copy
-kubectl -n backup create job --from=cronjob/offsite-copy offsite-copy-manual
-kubectl -n backup logs -f job/offsite-copy-manual
+kubectl -n backup get objectbucketclaim offsite-bucket -o jsonpath='{.spec.additionalConfig.bucketPolicy}' | jq -r '.Statement[].Resource[]'
+kubectl -n backup get cronjob offsite-policy    # LAST SCHEDULE within minutes
 ```
 
 ### Setting up the TrueNAS pull
@@ -242,9 +237,8 @@ kubectl -n backup logs -f job/offsite-copy-manual
 3. Create an encrypted dataset for the copy.
 4. Under **Data Protection → Cloud Sync Tasks**, add one task: direction
    `PULL`, transfer mode `SYNC`, bucket `offsite`, the dataset as the target,
-   scheduled after the CronJob has finished: 07:00 local time, see
-   [Backup chain](#backup-chain). `kubectl -n backup get jobs` shows how long
-   the CronJob takes.
+   scheduled after the nightly backups: 07:00 local time, see
+   [Backup chain](#backup-chain).
 5. Under **Data Protection → Periodic Snapshot Tasks**, snapshot the dataset
    after the Cloud Sync task, at 09:00 local time, with a lifetime longer than
    the cluster's retention.
@@ -253,23 +247,23 @@ kubectl -n backup logs -f job/offsite-copy-manual
 ### Checking the reader
 
 From any machine on the LAN, with the reader's keys exported as
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, `offsite` is listed and a
-backup bucket refuses a write:
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, `offsite` is the only bucket
+listed and holds one prefix per writer:
 
 ```bash
 export AWS_CONFIG_FILE=$(mktemp)    # path-style addressing, without touching ~/.aws
 printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
 aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls                # offsite
-echo test | aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 cp - s3://velero/test   # AccessDenied
+aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls s3://offsite/   # backup.etcd/, backup.velero/, <namespace>.db/, ...
 ```
 
-### Copying a bucket off the cluster
+### Copying the backups off the cluster
 
 By hand, before a reinstall or for a copy kept elsewhere, the same keys and
 config as above:
 
 ```bash
-aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync s3://<bucket> ./<bucket>
+aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync s3://offsite ./offsite
 ```
 
 Store it like the NAS dataset: with the unseal keys, not beside the Git
@@ -277,26 +271,27 @@ clone.
 
 ### Restoring from the copy
 
-Velero and CloudNativePG read only from the cluster's own buckets, so a
-rebuilt cluster gets each bucket's copy, the `<bucket>/` directory in the
-dataset, pushed back first, with the write keys of the new claim, not the
-reader's. The etcd and OpenBao restores take the file
-straight from the copy.
+Velero and CloudNativePG read only from the cluster's own `offsite`, so a
+rebuilt cluster gets the dataset pushed back first, with the keys of the new
+`offsite-bucket` claim. Each writer reaches the objects under its prefix
+whoever wrote them, since the bucket policy grants the prefix. The etcd and
+OpenBao restores take the file straight from the copy.
 
-1. Once Rook has bound the claim again, export that claim's keys and the
+1. Once Rook has bound `offsite-bucket` again, export its keys and the
    path-style config.
 
     ```bash
-    export AWS_ACCESS_KEY_ID=$(kubectl -n <namespace> get secret <claim> -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
-    export AWS_SECRET_ACCESS_KEY=$(kubectl -n <namespace> get secret <claim> -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
+    export AWS_ACCESS_KEY_ID=$(kubectl -n backup get secret offsite-bucket -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(kubectl -n backup get secret offsite-bucket -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)
     export AWS_CONFIG_FILE=$(mktemp)
     printf '[default]\ns3 =\n    addressing_style = path\n' > "$AWS_CONFIG_FILE"
     ```
 
-2. Push the dataset's copy, mounted or copied from the NAS, into the bucket.
+2. Push the dataset's copy of a writer's prefix, mounted or copied from the
+   NAS, back into the bucket.
 
     ```bash
-    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync ./<bucket> s3://<bucket>
+    aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 sync ./<user> s3://offsite/<user>
     ```
 
 ## Ceph volumes
