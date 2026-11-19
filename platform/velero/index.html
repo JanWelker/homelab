@@ -2828,6 +2828,14 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>invalid repository password</code></p>
 <p>The password changed under existing repositories: OpenBao was rebuilt without its snapshot, <code>velero/repository</code> was deleted, or a backup ran on a fresh cluster before OpenBao was unsealed and initialised them with Velero's default. Volume data stops and backups end <code>PartiallyFailed</code>. Restore the old value into OpenBao if it exists anywhere; otherwise re-initialise as below.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title"><code>repository not initialized in the provided storage</code> after a bucket or prefix change</p>
+<p>Velero re-establishes only some <code>BackupRepository</code> objects when the backup location moves; the rest stay <code>Ready</code> against a prefix that holds no repository, and their volumes fail. Delete them all with <code>kubectl -n backup delete backuprepositories.velero.io --all</code>; the next backup re-creates each under the new prefix.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Every <code>BackupRepository</code> without a phase, <code>failed to wait BackupRepository</code></p>
+<p>The repository controller waits for each maintenance job to finish, one at a time. A job whose pod cannot start, typically <code>CreateContainerConfigError</code> after the credentials Secret was renamed, blocks every other repository behind it; <code>KubeContainerWaiting</code> fires on the job's pod. Delete the job, then <code>kubectl -n backup rollout restart deploy/velero</code>.</p>
+</div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="re-initialising-the-repositories">Re-initialising the repositories<a class="headerlink" href="#re-initialising-the-repositories" title="Permanent link">&para;</a></h3>
 <p>Discards every Velero backup, resource backups included: a <code>Backup</code>
