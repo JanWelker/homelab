@@ -87,32 +87,44 @@ spec:
                 - -c
                 - |
                   set -eu
-                  S3="http://${BUCKET_HOST}:${BUCKET_PORT}"
+                  S3="$S3_ENDPOINT"
+                  DEST="s3://offsite/backup.openbao"
                   # RGW needs path-style addressing; no env var exists for it
                   mkdir -p "$HOME/.aws"
                   printf '[default]\ns3 =\n    addressing_style = path\n' > "$HOME/.aws/config"
 
                   TS="$(date -u +%Y%m%dT%H%M%SZ)"
                   aws --endpoint-url "$S3" s3 cp \
-                    /snapshot/openbao.snap "s3://${BUCKET_NAME}/openbao-${TS}.snap"
+                    /snapshot/openbao.snap "${DEST}/openbao-${TS}.snap"
 
                   # Keep the 14 most recent; the timestamp sorts chronologically
-                  aws --endpoint-url "$S3" s3 ls "s3://${BUCKET_NAME}/" \
+                  aws --endpoint-url "$S3" s3 ls "${DEST}/" \
                     | awk '{print $4}' | grep -E '^openbao-.*\.snap$' | sort \
                     | head -n -14 \
                     | while read -r key; do
                         echo "pruning $key"
-                        aws --endpoint-url "$S3" s3 rm "s3://${BUCKET_NAME}/${key}"
+                        aws --endpoint-url "$S3" s3 rm "${DEST}/${key}"
                       done
+              # The backup.openbao user may write only its own prefix;
+              # docs/platform/rook-ceph.md#backup-writers
               env:
                 - name: HOME
                   value: /tmp
-              envFrom:
-                # Written by Rook for the openbao-backup-bucket claim
-                - secretRef:
-                    name: openbao-backup-bucket
-                - configMapRef:
-                    name: openbao-backup-bucket
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.openbao
+                      key: AccessKey
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.openbao
+                      key: SecretKey
+                - name: S3_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: rook-ceph-object-user-object-store-backup.openbao
+                      key: Endpoint
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true

@@ -220,6 +220,14 @@ others close what RBAC and the `apps` project cannot express.
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
 | `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](rook-ceph.md#off-cluster-reader) |
 | `object-store-user-scope` | `Deny` | Outside `rook-ceph`, a `CephObjectStoreUser` is named `<namespace>.<purpose>` and carries no admin `capabilities`. Its name is its S3 user ID, so a free choice would hand one namespace another's keys — see [Backup writers](rook-ceph.md#backup-writers) |
+| `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |
+| `cnpg-objectstore-offsite` | `Deny` | A Barman Cloud `ObjectStore` writes to `s3://offsite/<namespace>.<purpose>/`, the prefix TrueNAS pulls |
+| `obc-backup-exempt` | `Deny` | A new `ObjectBucketClaim` says why it needs no backup; nothing copies a bucket off the cluster |
+
+The last three [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
+each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason
+as its value, and none checks an object being deleted, so an operator's
+finalizer removal still goes through.
 
 All but one carry `failurePolicy: Ignore`: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation

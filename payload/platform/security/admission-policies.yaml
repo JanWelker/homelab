@@ -341,3 +341,115 @@ metadata:
 spec:
   policyName: object-store-user-scope
   validationActions: ["Deny"]
+---
+# The three below keep a backup from being forgotten: what is not backed up
+# says so, with a reason. See docs/operations/backups.md#off-cluster-copy
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: cnpg-cluster-backed-up
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["postgresql.cnpg.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["clusters"]
+  # The operator's finalizer removal must not be refused
+  matchConditions:
+    - name: not-deleting
+      expression: "!has(object.metadata.deletionTimestamp)"
+  variables:
+    - name: exempt
+      expression: >-
+        has(object.metadata.annotations) &&
+        'homelab.wlkr.ch/backup-exempt' in object.metadata.annotations &&
+        object.metadata.annotations['homelab.wlkr.ch/backup-exempt'] != ''
+  validations:
+    - expression: >-
+        variables.exempt ||
+        (has(object.spec.plugins) && object.spec.plugins.exists(p,
+          p.name == 'barman-cloud.cloudnative-pg.io' &&
+          has(p.isWALArchiver) && p.isWALArchiver))
+      message: >-
+        A CloudNativePG Cluster archives its WAL through the Barman Cloud
+        plugin, or carries homelab.wlkr.ch/backup-exempt with the reason.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: cnpg-cluster-backed-up
+spec:
+  policyName: cnpg-cluster-backed-up
+  validationActions: ["Deny"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: cnpg-objectstore-offsite
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["barmancloud.cnpg.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["objectstores"]
+  # The operator's finalizer removal must not be refused
+  matchConditions:
+    - name: not-deleting
+      expression: "!has(object.metadata.deletionTimestamp)"
+  validations:
+    - expression: >-
+        (has(object.metadata.annotations) &&
+         'homelab.wlkr.ch/backup-exempt' in object.metadata.annotations &&
+         object.metadata.annotations['homelab.wlkr.ch/backup-exempt'] != '') ||
+        object.spec.configuration.destinationPath.startsWith(
+          's3://offsite/' + object.metadata.namespace + '.')
+      message: >-
+        A Barman Cloud ObjectStore writes to s3://offsite/<namespace>.<purpose>/,
+        the prefix TrueNAS pulls, or carries homelab.wlkr.ch/backup-exempt with
+        the reason.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: cnpg-objectstore-offsite
+spec:
+  policyName: cnpg-objectstore-offsite
+  validationActions: ["Deny"]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: obc-backup-exempt
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["objectbucket.io"]
+        apiVersions: ["v1alpha1"]
+        # Rook updates every claim it binds, the leftover ones included
+        operations: ["CREATE"]
+        resources: ["objectbucketclaims"]
+  validations:
+    - expression: >-
+        has(object.metadata.annotations) &&
+        'homelab.wlkr.ch/backup-exempt' in object.metadata.annotations &&
+        object.metadata.annotations['homelab.wlkr.ch/backup-exempt'] != ''
+      message: >-
+        Nothing copies a bucket off the cluster: a claim carries
+        homelab.wlkr.ch/backup-exempt with the reason, and data worth keeping
+        goes into a backup writer's prefix of offsite instead.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: obc-backup-exempt
+spec:
+  policyName: obc-backup-exempt
+  validationActions: ["Deny"]
