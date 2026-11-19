@@ -34,14 +34,13 @@ A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-stor
 
 ### Off-cluster reader
 
-The [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) runs as one S3 user, `offsite-reader`: it reads every backup bucket and owns the `offsite` bucket the copy is gathered into, so TrueNAS sees that bucket in its list.
+TrueNAS pulls the [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) as one S3 user, `offsite-reader`, which owns the `offsite` bucket every backup writes into, so TrueNAS sees that bucket in its list.
 
 | Setting | Why |
 | --- | --- |
-| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for the copy, in the Secret `rook-ceph-object-user-object-store-offsite-reader` and, through `bucketOwner`, in the `offsite-bucket` claim's Secret |
-| `bucketPolicy` on each backup claim | A bucket belongs to its claim's own user; the policy grants `offsite-reader` list and get on that bucket only, so its keys cannot change a backup. Rook applies a changed `additionalConfig` to an existing claim |
-| `bucketOwner: offsite-reader` on `backup/offsite-bucket` | S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner, so only this one is the reader's |
-| Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys. Write and delete reach only `offsite`, which the next night's copy rewrites |
+| `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for the pull, in the Secret `rook-ceph-object-user-object-store-offsite-reader` and, through `bucketOwner`, in the `offsite-bucket` claim's Secret |
+| `bucketOwner: offsite-reader` on `backup/offsite-bucket` | S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner |
+| Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys |
 | `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) allows it on that one claim only |
 
 ### Backup writers
@@ -150,7 +149,7 @@ spec:
   storageClassName: ceph-bucket
 ```
 
-Every claim is in the nightly [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>), which needs the `bucketPolicy` that grants the [off-cluster reader](<#off-cluster-reader>): copy it from `payload/platform/backup/buckets.yaml` with the bucket name changed, or the copy job fails. A bucket that holds nothing worth keeping, like Loki's, carries the label `homelab.wlkr.ch/offsite-copy: "false"` instead.
+No claim is copied off the cluster, so the `obc-backup-exempt` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) refuses one without the annotation `homelab.wlkr.ch/backup-exempt` and its reason, as Loki's carries. A backup does not get a bucket: it is a [backup writer](<#backup-writers>) in `offsite`.
 
 ### Dashboard login
 

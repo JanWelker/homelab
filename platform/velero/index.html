@@ -2675,8 +2675,8 @@
 
 <h1 id="velero">Velero<a class="headerlink" href="#velero" title="Permanent link">&para;</a></h1>
 <p><a href="https://velero.io/">Velero</a> backs up Kubernetes objects and, through CSI
-snapshots and its data mover, the data in every PVC, nightly into a bucket in
-the Ceph object store. What it covers, what it does not, and the restore
+snapshots and its data mover, the data in every PVC, nightly into its prefix
+of the <code>offsite</code> bucket in the Ceph object store. What it covers, what it does not, and the restore
 runbooks are in <a href="../../operations/backups/">Backups &amp; Recovery</a>; this page is
 the chart tuning.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2694,7 +2694,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td>Depends on</td>
-<td><a href="../rook-ceph/">Rook-Ceph</a> for the bucket claims and RBD snapshots</td>
+<td><a href="../rook-ceph/">Rook-Ceph</a> for its S3 user and RBD snapshots</td>
 </tr>
 <tr>
 <td>If it is down</td>
@@ -2734,7 +2734,11 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>credentials.useSecret: false</code> with <code>extraEnvVars</code></td>
-<td>Keys come from the environment, fed by the <code>Secret</code> Rook writes for the <code>velero-bucket</code> claim; nothing is rendered into a file or Git</td>
+<td>Keys come from the environment, fed by the <code>Secret</code> Rook writes for the <code>backup.velero</code> <a href="../rook-ceph/#backup-writers">backup writer</a>; nothing is rendered into a file or Git</td>
+</tr>
+<tr>
+<td><code>bucket: offsite</code>, <code>prefix: backup.velero</code></td>
+<td>The writer's prefix, the only place its keys may write</td>
 </tr>
 <tr>
 <td><code>defaultSnapshotMoveData</code>, <code>deployNodeAgent</code>, <code>uploaderType: kopia</code></td>
@@ -2794,7 +2798,7 @@ default compiled into the binary, which protects nothing, so
 </tr>
 <tr>
 <td>Secrets stay in the resource backup</td>
-<td>The tarball under <code>backups/</code> is not encrypted, so every backed-up <code>Secret</code> sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. The <code>velero</code> bucket and its keys are therefore as sensitive as an unencrypted etcd</td>
+<td>The tarball under <code>backups/</code> is not encrypted, so every backed-up <code>Secret</code> sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. Velero's prefix, and every key that reads it, are therefore as sensitive as an unencrypted etcd</td>
 </tr>
 </tbody>
 </table>
@@ -2818,7 +2822,7 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>Access Denied</code> on <code>kopia.blobcfg</code></p>
-<p>Objects upload, volume data does not: the RGW log shows <code>PUT /velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
+<p>Objects upload, volume data does not: the RGW log shows <code>PUT /offsite/backup.velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>invalid repository password</code></p>
@@ -2826,9 +2830,9 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="re-initialising-the-repositories">Re-initialising the repositories<a class="headerlink" href="#re-initialising-the-repositories" title="Permanent link">&para;</a></h3>
-<p>Discards every backup in the bucket, resource backups included: a <code>Backup</code>
+<p>Discards every Velero backup, resource backups included: a <code>Backup</code>
 whose volume snapshots cannot be reached never finishes deleting, so the
-bucket is emptied as a whole and Velero drops the <code>Backup</code> objects it no
+prefix is emptied as a whole and Velero drops the <code>Backup</code> objects it no
 longer finds there.</p>
 <ol>
 <li>
@@ -2842,12 +2846,12 @@ longer finds there.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>Empty the bucket with its own keys, from a machine that reaches the infra Gateway.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>velero-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_ACCESS_KEY_ID}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>velero-bucket<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AWS_SECRET_ACCESS_KEY}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+<p>Empty Velero's prefix with its own keys, from a machine that reaches the infra Gateway.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>rook-ceph-object-user-object-store-backup.velero<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.AccessKey}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>rook-ceph-object-user-object-store-backup.velero<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.SecretKey}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="k">)</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_CONFIG_FILE</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="k">)</span><span class="w">    </span><span class="c1"># path-style addressing, without touching ~/.aws</span>
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nb">printf</span><span class="w"> </span><span class="s1">'[default]\ns3 =\n    addressing_style = path\n'</span><span class="w"> </span>&gt;<span class="w"> </span><span class="s2">"</span><span class="nv">$AWS_CONFIG_FILE</span><span class="s2">"</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>rm<span class="w"> </span>s3://velero<span class="w"> </span>--recursive
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>rm<span class="w"> </span>s3://offsite/backup.velero<span class="w"> </span>--recursive
 </span></code></pre></div>
 </li>
 <li>

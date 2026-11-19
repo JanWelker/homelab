@@ -3035,9 +3035,9 @@ The data pool is erasure coded (<code>dataChunks</code> and <code>codingChunks</
 overhead than three replicas, safe at <code>failureDomain: host</code> only with more
 workers than chunks.</p>
 <h3 id="off-cluster-reader">Off-cluster reader<a class="headerlink" href="#off-cluster-reader" title="Permanent link">&para;</a></h3>
-<p>The <a href="../../operations/backups/#off-cluster-copy">off-cluster copy</a> runs as one
-S3 user, <code>offsite-reader</code>: it reads every backup bucket and owns the <code>offsite</code>
-bucket the copy is gathered into, so TrueNAS sees that bucket in its list.</p>
+<p>TrueNAS pulls the <a href="../../operations/backups/#off-cluster-copy">off-cluster copy</a>
+as one S3 user, <code>offsite-reader</code>, which owns the <code>offsite</code> bucket every backup
+writes into, so TrueNAS sees that bucket in its list.</p>
 <table>
 <thead>
 <tr>
@@ -3048,19 +3048,15 @@ bucket the copy is gathered into, so TrueNAS sees that bucket in its list.</p>
 <tbody>
 <tr>
 <td><code>CephObjectStoreUser</code> in <code>rook-ceph/offsite-reader.yaml</code></td>
-<td>One key pair for the copy, in the Secret <code>rook-ceph-object-user-object-store-offsite-reader</code> and, through <code>bucketOwner</code>, in the <code>offsite-bucket</code> claim's Secret</td>
-</tr>
-<tr>
-<td><code>bucketPolicy</code> on each backup claim</td>
-<td>A bucket belongs to its claim's own user; the policy grants <code>offsite-reader</code> list and get on that bucket only, so its keys cannot change a backup. Rook applies a changed <code>additionalConfig</code> to an existing claim</td>
+<td>One key pair for the pull, in the Secret <code>rook-ceph-object-user-object-store-offsite-reader</code> and, through <code>bucketOwner</code>, in the <code>offsite-bucket</code> claim's Secret</td>
 </tr>
 <tr>
 <td><code>bucketOwner: offsite-reader</code> on <code>backup/offsite-bucket</code></td>
-<td>S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner, so only this one is the reader's</td>
+<td>S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner</td>
 </tr>
 <tr>
 <td>Full <code>opMask</code></td>
-<td>Rook creates an owned bucket and sets its policy with the owner's own keys. Write and delete reach only <code>offsite</code>, which the next night's copy rewrites</td>
+<td>Rook creates an owned bucket and sets its policy with the owner's own keys</td>
 </tr>
 <tr>
 <td><code>obcAllowAdditionalConfigFields</code> in <code>rook-ceph-operator/application.yaml</code></td>
@@ -3269,12 +3265,11 @@ with two replicas sharing one RWO PVC schedules one pod and leaves the other in
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">generateBucketName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">storageClassName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ceph-bucket</span>
 </span></code></pre></div>
-<p>Every claim is in the nightly <a href="../../operations/backups/#off-cluster-copy">off-cluster copy</a>,
-which needs the <code>bucketPolicy</code> that grants the
-<a href="#off-cluster-reader">off-cluster reader</a>: copy it from
-<code>payload/platform/backup/buckets.yaml</code> with the bucket name changed, or the
-copy job fails. A bucket that holds nothing worth keeping, like Loki's,
-carries the label <code>homelab.wlkr.ch/offsite-copy: "false"</code> instead.</p>
+<p>No claim is copied off the cluster, so the <code>obc-backup-exempt</code>
+<a href="../security-policies/#admission-policies">admission policy</a> refuses one
+without the annotation <code>homelab.wlkr.ch/backup-exempt</code> and its reason, as
+Loki's carries. A backup does not get a bucket: it is a
+<a href="#backup-writers">backup writer</a> in <code>offsite</code>.</p>
 <h3 id="dashboard-login">Dashboard login<a class="headerlink" href="#dashboard-login" title="Permanent link">&para;</a></h3>
 <p>The dashboard sits behind Authentik for <code>infra-users</code>, then asks for its own
 login. The only user is <code>admin</code>, and its password is the

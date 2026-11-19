@@ -7,10 +7,10 @@ Every chart that needs PostgreSQL ships its own, each upgraded by whoever mainta
 |  |  |
 | --- | --- |
 | Namespace | `cnpg-system` for the operator; each database in its workload's namespace |
-| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for the database volumes and the backup buckets; [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) for the backup plugin's gRPC certificates |
+| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for the database volumes and the backup writers; [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) for the backup plugin's gRPC certificates |
 | If it is down | Running databases keep running; failover, upgrades and new clusters stop |
 | Health check | `kubectl get clusters.postgresql.cnpg.io -A` → `Cluster in healthy state` |
-| Backups | Continuous WAL and a nightly base backup per database, to a bucket of its own |
+| Backups | Continuous WAL and a nightly base backup per database, to its own prefix of `offsite` |
 | Files | `payload/platform/cloudnative-pg/` |
 
 ## Configuration
@@ -38,11 +38,11 @@ The [Barman Cloud plugin](<https://cloudnative-pg.io/plugin-barman-cloud/>) runs
 | Choice | Why |
 | --- | --- |
 | The plugin, not `spec.backup.barmanObjectStore` | The in-tree field is deprecated upstream and is removed in a later release |
-| One bucket per database, claimed in its own namespace | The bucket's keys exist only there, so a compromised workload can read or delete its own backups and nobody else's |
+| One [backup writer](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#backup-writers>) per database, in its own namespace | Its keys exist only there and reach only its prefix of `offsite`, so a compromised workload can read or delete its own backups and nobody else's |
 | `https://s3.infra.k8s.wlkr.ch`, not the plain RGW Service | Backups hold every row of the database; the Gateway's TLS is the same path Velero uses |
 | Base backup nightly, after Velero | The two never contend for the object store; WAL archiving covers the hours between |
 | `retentionPolicy` equal to `schedules.ttl` in `payload/platform/velero/application.yaml` | One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each `backup.yaml` restates the value |
-| Preview databases have none | They are rebuilt from the pull request and deleted with it |
+| No opting out by omission | The `cnpg-cluster-backed-up` and `cnpg-objectstore-offsite` [admission policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) refuse a `Cluster` without the WAL archiver and a store outside `offsite`; a database rebuilt from elsewhere, like a preview, carries `homelab.wlkr.ch/backup-exempt` with the reason |
 
 `ObjectStore` is a namespaced resource with no cluster-scoped counterpart, so the per-database part is a short, identical stanza (below); everything else is shared: the plugin, and the `cnpg-backups` policy in `payload/platform/security/network-policies/cluster-wide.yaml` that lets any CloudNativePG pod reach the object store.
 
@@ -61,35 +61,21 @@ The [Barman Cloud plugin](<https://cloudnative-pg.io/plugin-barman-cloud/>) runs
 
 ### Backing up a database
 
-Next to the `Cluster`, in the same namespace, with `<db>` the cluster's name. The bucket name is cluster-wide, hence the namespace in it; the sync wave puts the store ahead of the `Cluster` that names it.
+Next to the `Cluster`, in the same namespace, with `<db>` the cluster's name. The S3 user writes `offsite/<namespace>.db/` and nothing else; a second database in the namespace gets a user with its own suffix. The sync wave puts the user and the store ahead of the `Cluster` that names them.
 
 ```yaml
 ---
-apiVersion: objectbucket.io/v1alpha1
-kind: ObjectBucketClaim
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
 metadata:
-  name: <db>-backup
+  name: <namespace>.db
   namespace: <namespace>
   annotations:
-    argocd.argoproj.io/sync-options: Prune=false
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  bucketName: cnpg-<namespace>
-  storageClassName: ceph-bucket
-  additionalConfig:
-    # offsite-reader may list and read; docs/platform/rook-ceph.md#off-cluster-reader
-    bucketPolicy: |
-      {
-        "Version": "2012-10-17",
-        "Statement": [
-          {
-            "Effect": "Allow",
-            "Principal": {"AWS": ["arn:aws:iam:::user/offsite-reader"]},
-            "Action": ["s3:ListBucket", "s3:GetBucketLocation", "s3:GetObject"],
-            "Resource": ["arn:aws:s3:::cnpg-<namespace>", "arn:aws:s3:::cnpg-<namespace>/*"]
-          }
-        ]
-      }
+  store: object-store
+  clusterNamespace: rook-ceph
+  displayName: <namespace> database backups
 ---
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
@@ -102,11 +88,11 @@ metadata:
 spec:
   retentionPolicy: 14d
   configuration:
-    destinationPath: s3://cnpg-<namespace>/
+    destinationPath: s3://offsite/<namespace>.db/
     endpointURL: https://s3.infra.k8s.wlkr.ch
     s3Credentials:
-      accessKeyId: {name: <db>-backup, key: AWS_ACCESS_KEY_ID}
-      secretAccessKey: {name: <db>-backup, key: AWS_SECRET_ACCESS_KEY}
+      accessKeyId: {name: rook-ceph-object-user-object-store-<namespace>.db, key: AccessKey}
+      secretAccessKey: {name: rook-ceph-object-user-object-store-<namespace>.db, key: SecretKey}
     wal:
       compression: gzip
     data:
@@ -157,14 +143,14 @@ kubectl get clusters.postgresql.cnpg.io -A \
 kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecoveryWindow
 ```
 
-`ContinuousArchiving` `True` means the last WAL segment reached the bucket; `False` means WAL is piling up on the instance's volume, which fills it. The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. WAL archiving is read from the instances' own exporter, whose `pg_stat_archiver` and `archive_status` figures stay accurate under the plugin: `CNPGWALArchivingFailing` when the last attempt failed and none succeeded since, `CNPGWALArchiveBacklog` when segments queue without a failure, a stuck archiver. All four are warnings on the daily mail.
+`ContinuousArchiving` `True` means the last WAL segment reached the object store; `False` means WAL is piling up on the instance's volume, which fills it. The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. WAL archiving is read from the instances' own exporter, whose `pg_stat_archiver` and `archive_status` figures stay accurate under the plugin: `CNPGWALArchivingFailing` when the last attempt failed and none succeeded since, `CNPGWALArchiveBacklog` when segments queue without a failure, a stuck archiver. All four are warnings on the daily mail.
 
 ## Pitfalls
 
 - **A stuck archive fills the volume.** PostgreSQL keeps every WAL segment the sidecar has not archived; a broken bucket or policy shows as `ContinuousArchiving` `False` long before the PVC is full. Fix the cause, never delete `pg_wal`.
 - **A dead replica fills the primary.** Its replication slot holds WAL until the replica catches up, so every multi-instance `Cluster` caps it with `max_slot_wal_keep_size` at a quarter of the volume; past that the slot is invalidated and the replica restores from the WAL archive or must be recreated with `kubectl cnpg destroy <cluster> <instance>`.
 - **A full volume is not resized by the operator.** An instance stopped with `no free disk space for WALs` keeps its PVC size although `storage.size` grew; patch that PVC to the new size by hand, as [upstream documents](<https://cloudnative-pg.io/documentation/current/instance_manager/>) under "Disk full failure".
-- **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from the bucket; it never rewinds a running one. Give the new cluster its own `ObjectStore` destination, or its archive would mix with the one it was restored from.
+- **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from the archive; it never rewinds a running one. Give the new cluster its own `ObjectStore` destination, or its archive would mix with the one it was restored from.
 
 ## Recovery
 
