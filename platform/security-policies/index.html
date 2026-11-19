@@ -3319,6 +3319,11 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <td><code>Deny</code></td>
 <td>Only <code>backup/offsite-bucket</code> may set <code>bucketOwner</code> on an <code>ObjectBucketClaim</code>, and only to <code>offsite-reader</code>. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see <a href="../rook-ceph/#off-cluster-reader">Off-cluster reader</a></td>
 </tr>
+<tr>
+<td><code>object-store-user-scope</code></td>
+<td><code>Deny</code></td>
+<td>Outside <code>rook-ceph</code>, a <code>CephObjectStoreUser</code> is named <code>&lt;namespace&gt;.&lt;purpose&gt;</code> and carries no admin <code>capabilities</code>. Its name is its S3 user ID, so a free choice would hand one namespace another's keys — see <a href="../rook-ceph/#backup-writers">Backup writers</a></td>
+</tr>
 </tbody>
 </table>
 <p>All but one carry <code>failurePolicy: Ignore</code>: an expression that errors lets the

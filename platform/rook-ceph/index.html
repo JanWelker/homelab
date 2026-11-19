@@ -1332,6 +1332,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#backup-writers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backup writers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2626,6 +2637,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#backup-writers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Backup writers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#monitoring" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -3043,6 +3065,41 @@ bucket the copy is gathered into, so TrueNAS sees that bucket in its list.</p>
 <tr>
 <td><code>obcAllowAdditionalConfigFields</code> in <code>rook-ceph-operator/application.yaml</code></td>
 <td>Rook ignores <code>bucketPolicy</code> and <code>bucketOwner</code> unless listed. <code>bucketOwner</code> hands a claim the keys of the user it names, so the <code>obc-bucket-owner</code> <a href="../security-policies/#admission-policies">admission policy</a> allows it on that one claim only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="backup-writers">Backup writers<a class="headerlink" href="#backup-writers" title="Permanent link">&para;</a></h3>
+<p>Each backup writes into the <code>offsite</code> bucket as its own S3 user, declared as a
+<code>CephObjectStoreUser</code> next to the job or database it belongs to, under the
+prefix <code>offsite/&lt;user&gt;/</code>. Adding a user is all it takes; nothing lists the
+writers by hand.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>allowUsersInNamespaces: ["*"]</code> on the store in <code>rook-ceph-cluster/application.yaml</code></td>
+<td>A user may live in any namespace, with <code>spec.clusterNamespace: rook-ceph</code>; Rook writes its keys to the Secret <code>rook-ceph-object-user-object-store-&lt;user&gt;</code> beside it (<code>AccessKey</code>, <code>SecretKey</code>, <code>Endpoint</code>)</td>
+</tr>
+<tr>
+<td>Named <code>&lt;namespace&gt;.&lt;purpose&gt;</code></td>
+<td>The S3 user ID is the CR's name, one ID space for the whole cluster, and Rook hands a CR the keys of an existing user with that ID. A namespace name cannot contain a dot, so the prefix before it names exactly one namespace; the <code>object-store-user-scope</code> <a href="../security-policies/#admission-policies">admission policy</a> enforces it outside <code>rook-ceph</code></td>
+</tr>
+<tr>
+<td><code>offsite-policy</code> CronJob in <code>backup/offsite-policy.yaml</code></td>
+<td>Every few minutes, writes the <code>offsite</code> claim's <code>bucketPolicy</code> from the users that exist: each may list the bucket and do anything under its own prefix. Ceph's bucket policies have no <code>${aws:username}</code> variable, so the policy is generated. Argo CD ignores the field, see <code>backup/application.yaml</code></td>
+</tr>
+<tr>
+<td>Listing is not per prefix</td>
+<td>The S3 clients check the bucket before they touch their prefix, so every writer can list the object names of the others; it can read or change none of them</td>
+</tr>
+<tr>
+<td><code>offsite-reader</code> may get every object</td>
+<td>An object belongs to the user that wrote it, not to the bucket's owner</td>
 </tr>
 </tbody>
 </table>
