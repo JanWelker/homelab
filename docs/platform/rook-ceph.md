@@ -80,6 +80,21 @@ bucket the copy is gathered into, so TrueNAS sees that bucket in its list.
 | Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys. Write and delete reach only `offsite`, which the next night's copy rewrites |
 | `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](security-policies.md#admission-policies) allows it on that one claim only |
 
+### Backup writers
+
+Each backup writes into the `offsite` bucket as its own S3 user, declared as a
+`CephObjectStoreUser` next to the job or database it belongs to, under the
+prefix `offsite/<user>/`. Adding a user is all it takes; nothing lists the
+writers by hand.
+
+| Setting | Why |
+| --- | --- |
+| `allowUsersInNamespaces: ["*"]` on the store in `rook-ceph-cluster/application.yaml` | A user may live in any namespace, with `spec.clusterNamespace: rook-ceph`; Rook writes its keys to the Secret `rook-ceph-object-user-object-store-<user>` beside it (`AccessKey`, `SecretKey`, `Endpoint`) |
+| Named `<namespace>.<purpose>` | The S3 user ID is the CR's name, one ID space for the whole cluster, and Rook hands a CR the keys of an existing user with that ID. A namespace name cannot contain a dot, so the prefix before it names exactly one namespace; the `object-store-user-scope` [admission policy](security-policies.md#admission-policies) enforces it outside `rook-ceph` |
+| `offsite-policy` CronJob in `backup/offsite-policy.yaml` | Every few minutes, writes the `offsite` claim's `bucketPolicy` from the users that exist: each may list the bucket and do anything under its own prefix. Ceph's bucket policies have no `${aws:username}` variable, so the policy is generated. Argo CD ignores the field, see `backup/application.yaml` |
+| Listing is not per prefix | The S3 clients check the bucket before they touch their prefix, so every writer can list the object names of the others; it can read or change none of them |
+| `offsite-reader` may get every object | An object belongs to the user that wrote it, not to the bucket's owner |
+
 ### Monitoring
 
 In `rook-ceph-cluster/application.yaml`'s `valuesObject`:

@@ -197,6 +197,9 @@ spec:
                 parameters:
                   bulk: "true"
               preservePoolsOnDelete: true
+              # Each backup writes into offsite as its own user, declared next
+              # to it; docs/platform/rook-ceph.md#backup-writers
+              allowUsersInNamespaces: ["*"]
               gateway:
                 port: 80
                 instances: 2

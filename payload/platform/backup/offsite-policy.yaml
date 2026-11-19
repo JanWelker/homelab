@@ -1,0 +1,154 @@
+---
+# Writes the offsite bucket's policy from the object store users that exist:
+# each <namespace>.<purpose> user may write offsite/<user>/ and nothing else.
+# See docs/platform/rook-ceph.md#backup-writers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: offsite-policy
+  namespace: backup
+---
+# Reads the users' names and status; never their Secrets
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: offsite-policy
+rules:
+  - apiGroups: ["ceph.rook.io"]
+    resources: ["cephobjectstoreusers"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: offsite-policy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: offsite-policy
+subjects:
+  - kind: ServiceAccount
+    name: offsite-policy
+    namespace: backup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: offsite-policy
+  namespace: backup
+rules:
+  - apiGroups: ["objectbucket.io"]
+    resources: ["objectbucketclaims"]
+    resourceNames: ["offsite-bucket"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: offsite-policy
+  namespace: backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: offsite-policy
+subjects:
+  - kind: ServiceAccount
+    name: offsite-policy
+    namespace: backup
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offsite-policy
+  namespace: backup
+spec:
+  # A new user waits at most this long for its grant
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: offsite-policy
+        spec:
+          serviceAccountName: offsite-policy
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reconcile
+              # For its bash, curl and jq; no S3 call is made
+              image: public.ecr.aws/aws-cli/aws-cli:2.40.3@sha256:33a16c53ea442e918b58df67301ad76a8fb57082c39f7e78753b898c3f3e87c2
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  SA=/var/run/secrets/kubernetes.io/serviceaccount
+                  API=https://kubernetes.default.svc
+                  CLAIM="$API/apis/objectbucket.io/v1alpha1/namespaces/backup/objectbucketclaims/offsite-bucket"
+                  api() {
+                    curl -fsS --cacert "$SA/ca.crt" \
+                      -H "Authorization: Bearer $(cat "$SA/token")" "$@"
+                  }
+
+                  # Every user RGW has created once (status.info outlives a
+                  # later failed reconcile) and that the admission policy's
+                  # naming rule ties to its namespace
+                  writers="$(api "$API/apis/ceph.rook.io/v1/cephobjectstoreusers" | jq -c '
+                    [.items[]
+                     | select(.spec.store == "object-store" and .status.info.secretName != null)
+                     | .metadata.namespace as $ns | .metadata.name
+                     | select(startswith($ns + "."))]
+                    | sort')"
+
+                  # Listing is unconditional: the S3 clients check that the
+                  # bucket exists before they touch their prefix
+                  policy="$(jq -cSn --argjson w "$writers" --arg b "$BUCKET_NAME" '
+                    def arn: "arn:aws:iam:::user/" + .;
+                    {Version: "2012-10-17", Statement: (
+                      [{Effect: "Allow", Principal: {AWS: ["offsite-reader" | arn]},
+                        Action: ["s3:GetObject"], Resource: ["arn:aws:s3:::\($b)/*"]}]
+                      + if ($w | length) == 0 then [] else
+                          [{Effect: "Allow", Principal: {AWS: ($w | map(arn))},
+                            Action: ["s3:ListBucket", "s3:GetBucketLocation", "s3:ListBucketMultipartUploads"],
+                            Resource: ["arn:aws:s3:::\($b)"]}]
+                          + ($w | map({Effect: "Allow", Principal: {AWS: [arn]},
+                                       Action: ["s3:*"], Resource: ["arn:aws:s3:::\($b)/\(.)/*"]}))
+                        end)}')"
+
+                  current="$(api "$CLAIM" | jq -cS '.spec.additionalConfig.bucketPolicy // "{}" | fromjson')"
+                  if [ "$current" = "$policy" ]; then
+                    echo "unchanged: $writers"
+                    exit 0
+                  fi
+                  jq -n --arg p "$policy" '{spec: {additionalConfig: {bucketPolicy: $p}}}' \
+                    | api -X PATCH -H 'Content-Type: application/merge-patch+json' \
+                        --data-binary @- "$CLAIM" >/dev/null
+                  echo "updated: $writers"
+              envFrom:
+                # BUCKET_NAME only; the keys are not mounted
+                - configMapRef:
+                    name: offsite-bucket
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
