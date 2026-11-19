@@ -85,6 +85,12 @@ kubectl -n backup get externalsecret velero-repo-credentials   # SecretSynced
 !!! warning "Every `BackupRepository` NotReady, `invalid repository password`"
     The password changed under existing repositories: OpenBao was rebuilt without its snapshot, `velero/repository` was deleted, or a backup ran on a fresh cluster before OpenBao was unsealed and initialised them with Velero's default. Volume data stops and backups end `PartiallyFailed`. Restore the old value into OpenBao if it exists anywhere; otherwise re-initialise as below.
 
+!!! warning "`repository not initialized in the provided storage` after a bucket or prefix change"
+    Velero re-establishes only some `BackupRepository` objects when the backup location moves; the rest stay `Ready` against a prefix that holds no repository, and their volumes fail. Delete them all with `kubectl -n backup delete backuprepositories.velero.io --all`; the next backup re-creates each under the new prefix.
+
+!!! warning "Every `BackupRepository` without a phase, `failed to wait BackupRepository`"
+    The repository controller waits for each maintenance job to finish, one at a time. A job whose pod cannot start, typically `CreateContainerConfigError` after the credentials Secret was renamed, blocks every other repository behind it; `KubeContainerWaiting` fires on the job's pod. Delete the job, then `kubectl -n backup rollout restart deploy/velero`.
+
 ## Recovery
 
 ### Re-initialising the repositories
