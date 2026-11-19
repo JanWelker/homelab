@@ -2850,8 +2850,8 @@ restores to any second inside the retention window, not just to last night.</p>
 <td>One window to reason about: what Velero can no longer restore, the WAL archive cannot either. Change the two together: each <code>backup.yaml</code> restates the value</td>
 </tr>
 <tr>
-<td>Preview databases have none</td>
-<td>They are rebuilt from the pull request and deleted with it</td>
+<td>No opting out by omission</td>
+<td>The <code>cnpg-cluster-backed-up</code> and <code>cnpg-objectstore-offsite</code> <a href="../security-policies/#admission-policies">admission policies</a> refuse a <code>Cluster</code> without the WAL archiver and a store outside <code>offsite</code>; a database rebuilt from elsewhere, like a preview, carries <code>homelab.wlkr.ch/backup-exempt</code> with the reason</td>
 </tr>
 </tbody>
 </table>
