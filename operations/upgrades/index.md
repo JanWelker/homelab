@@ -69,7 +69,7 @@ The order is upstream's: the first control plane, the other control planes, then
 
 ## Platform components
 
-Everything in `payload/` is upgraded by ArgoCD when Renovate bumps a `targetRevision` and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are installed by `make install-cilium` and `make install-argo` before ArgoCD exists, but from the same `targetRevision`, so a rebuild lands where the cluster already is — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>).
+ArgoCD upgrades everything in `payload/` but the `argocd` Application when a Renovate bump merges. That Application is applied by hand, so after an ArgoCD bump merges run `kubectl apply -f payload/argocd/application.yaml`. Cilium, the Gateway API CRDs and ArgoCD are installed from the same `targetRevision` before ArgoCD exists — see [Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>).
 
 ## Control-plane certificates
 

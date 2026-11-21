@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1787,6 +1789,8 @@
       
         
       
+        
+      
     
     
     
@@ -2069,6 +2073,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2680,7 +2711,7 @@ sees a shell spawned in a running container.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl get tracingpolicies -o wide</code>; <code>TetragonPolicyNotLoaded</code> and <code>TetragonEventsLost</code> otherwise</td>
+<td><code>tetra tracingpolicy list</code>; <code>TetragonPolicyNotLoaded</code> and <code>TetragonEventsLost</code> otherwise</td>
 </tr>
 <tr>
 <td>Dashboard</td>
@@ -2724,6 +2755,10 @@ and runs privileged on the host network by the chart's default.</p>
 <td><code>tetragon_policy_events_total</code> is what the alert reads; <code>tetragon_tracingpolicy_loaded</code> and the ring-buffer counters are its health</td>
 </tr>
 <tr>
+<td><code>ServerSideDiff=true</code> annotation</td>
+<td>The <code>TracingPolicy</code> CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs one dry-run apply per resource per reconcile: the Argo CD controller's <code>dryRun=All</code> patches in the audit log, not changes</td>
+</tr>
+<tr>
 <td>Memory limit</td>
 <td>2.5x the measured working set of the busiest agent with the policy library loaded, per the <a href="../#components">platform rule</a>; the dashboard's first row shows the current worst node against it</td>
 </tr>
@@ -2734,9 +2769,8 @@ and runs privileged on the host network by the chart's default.</p>
 adapted from the <a href="https://tetragon.io/docs/policy-library/observability/">upstream policy library</a>.
 All post at most one event per minute per selector, and most watch containers
 only, since the host has the node journal; <code>sensitive-file-access</code> and the
-signature hook of <code>kernel-module-load</code> record the host too. Every hook carries a
-<code>message</code> and one of upstream's <code>observability.*</code> tags, so an event says
-what it is without a lookup here.</p>
+taint hook of <code>kernel-module-load</code> record the host too. Every hook carries a
+<code>message</code> and an <code>observability.*</code> tag.</p>
 <table>
 <thead>
 <tr>
@@ -2785,8 +2819,8 @@ what it is without a lookup here.</p>
 </tr>
 <tr>
 <td><code>kernel-module-load</code></td>
-<td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>find_module_sections</code></td>
-<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> and <code>net-pf-10-proto-262</code> requests Go binaries and haproxy make when they probe MPTCP at start and the <code>net-pf-31</code> one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code> after a boot. The third hook records every load's signature check, host included: Flatcar signs its modules but does not enforce it (<code>CONFIG_MODULE_SIG</code> without <code>_FORCE</code>)</td>
+<td><code>security_kernel_module_request</code>, <code>security_kernel_read_file</code>, <code>add_taint</code></td>
+<td>A module requested by name or read from a container, minus the <code>net-pf-2-proto-262</code> and <code>net-pf-10-proto-262</code> requests Go binaries and haproxy make when they probe MPTCP at start and the <code>net-pf-31</code> one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out <code>rook-ceph</code>, whose CSI plugin loads <code>rbd</code>. The third hook fires on the unsigned-module taint, host included, because <code>module_sig_check</code> returns success for an unsigned module when Flatcar does not enforce signatures (<code>CONFIG_MODULE_SIG</code> without <code>_FORCE</code>)</td>
 <td>Yes: <code>TetragonKernelModuleLoaded</code>; <code>TetragonUnsignedKernelModule</code> from Loki</td>
 </tr>
 <tr>
@@ -2833,14 +2867,13 @@ confirming it in the export; a person running <code>cat</code> on a node is exac
 the policy is for. A binary path is only trusted together with the host
 network namespace: any image can ship <code>/usr/local/bin/etcd</code>, but only a
 privileged namespace can run it with <code>hostNetwork</code>. The exemption stays in the
-kernel rather than on pod labels, because the <code>podSelector</code> pitfall below would
-miss a pod that reads a key the moment it starts; exemptions by namespace and
-workload go in the alert instead.</p>
+kernel because the <code>podSelector</code> pitfall below would miss a pod that reads a
+key at start; namespace and workload exemptions go in the alert.</p>
 <p>The third policy is the runtime half of an image check: nothing in an image
 lives on those paths, so a binary executing from one was written after the
 container started. An emptyDir can be mounted anywhere, so the policy names
 the mounts this cluster puts binaries into rather than every emptyDir;
-<code>kubectl get pods -A -o json</code> lists the rest. A <code>readOnlyRootFilesystem</code>
+A <code>readOnlyRootFilesystem</code>
 pod makes the check complete, since then a new binary has nowhere else to
 land. The offline half, every binary Tetragon saw executed diffed against
 the image's file list, needs no policy: query Loki by image and binary and
@@ -2848,8 +2881,7 @@ resolve each path in <code>crane export &lt;image&gt; - | tar t</code>.</p>
 <p>Four more detections from the same library need no policy, because the exec
 event already carries what they look for: <code>sudo</code>, a setuid or file-capability
 binary raising privileges, a fileless exec and a deleted binary. They are
-<a href="../logging/#alerting">Loki alerts</a>. Upstream's <code>sshd</code> policy is covered by
-<code>NodeSshLogin</code> from the node journal.</p>
+<a href="../logging/#alerting">Loki alerts</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is the summary; the queries below are what its Loki panels run.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Everything a policy caught
@@ -2864,7 +2896,7 @@ binary raising privileges, a fileless exec and a deleted binary. They are
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>ds<span class="w"> </span>tetragon
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>tracingpolicies<span class="w"> </span>-o<span class="w"> </span>wide<span class="w">     </span><span class="c1"># STATE should be enabled</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>tracingpolicy<span class="w"> </span>list<span class="w">   </span><span class="c1"># STATE: enabled</span>
 </span></code></pre></div>
 <h3 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h3>
 <p>Every policy but one only records. <code>kill-unprivileged-user-namespace</code>
@@ -2875,7 +2907,7 @@ systemd's <code>PrivateUsers=</code> needs them. The one exception is <code>arc-
 where buildah needs one for every image build; its <code>podSelector</code> excludes
 that namespace, at the price of the first seconds of every container
 (see Pitfalls), and a monitor-only twin records the events there.
-The limits, both checked on the running nodes: <code>Override</code> and enforcers
+The limits, checked on the nodes: <code>Override</code> and enforcers
 need <code>CONFIG_FUNCTION_ERROR_INJECTION</code>, which Flatcar's kernel does not
 set, and BPF LSM hooks need <code>bpf</code> in the <code>lsm=</code> boot argument, which
 Flatcar does not pass. That leaves <code>Sigkill</code>, which upstream warns does
@@ -2914,7 +2946,7 @@ one-shot pod fires when it exits. Write every exclusion as
 </div>
 <div class="admonition warning">
 <p class="admonition-title">A policy that does not load is silent</p>
-<p>A <code>TracingPolicy</code> naming a kernel function this kernel does not export sits in state <code>error</code> and watches nothing. <code>TetragonPolicyNotLoaded</code> fires after its <code>for</code>; check <code>kubectl get tracingpolicies -o wide</code> after every Flatcar release that moves the kernel.</p>
+<p>A <code>TracingPolicy</code> naming a kernel function this kernel does not export sits in state <code>error</code> and watches nothing. <code>TetragonPolicyNotLoaded</code> fires after its <code>for</code>; check its <code>STATE</code> column after every Flatcar release that moves the kernel.</p>
 </div>
 
 

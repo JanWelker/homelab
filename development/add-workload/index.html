@@ -404,6 +404,8 @@
       
         
       
+        
+      
     
     
     
@@ -1646,6 +1648,8 @@
       
         
       
+        
+      
     
     
     
@@ -1928,6 +1932,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2777,7 +2808,7 @@ directory there and pushing it. Why the split exists is in
 </tr>
 <tr>
 <td>A secret from outside the cluster</td>
-<td>An <code>ExternalSecret</code> on the <code>openbao-apps</code> store, and an <code>external-secrets-vault</code> ServiceAccount — see <a href="../../platform/external-secrets/#adding-a-secret">Adding a secret</a></td>
+<td>An <code>ExternalSecret</code> on the <code>openbao-apps</code> store, an <code>external-secrets-vault</code> ServiceAccount, and a line on that store's list here — see <a href="../../platform/external-secrets/#adding-a-secret">Adding a secret</a></td>
 <td><a href="../../platform/openbao/">OpenBao</a> holds it under <code>kv/&lt;namespace&gt;/</code>, the only prefix the namespace can reach; ESO renders a <code>Secret</code></td>
 </tr>
 <tr>
@@ -2798,8 +2829,7 @@ directory there and pushing it. Why the split exists is in
 </tbody>
 </table>
 <h2 id="the-rules">The rules<a class="headerlink" href="#the-rules" title="Permanent link">&para;</a></h2>
-<p>Restated in the workloads repository's <code>CONVENTIONS.md</code>, which is the copy to
-keep current.</p>
+<p>Restated in the workloads repository's <code>CONVENTIONS.md</code>.</p>
 <ol>
 <li><strong>Exactly one <code>application.yaml</code> per directory</strong>, a complete ArgoCD
    <code>Application</code>: the generator copies its labels, annotations, finalizers and

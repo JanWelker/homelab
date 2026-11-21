@@ -36,7 +36,7 @@ Everything here assumes a cluster that is already up; for first provisioning see
 
   ---
 
-  How to read the Trivy findings and when to file upstream; the dated logs are [Triage 2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md>) and [Triage 2026-09-29](<https://homelab.wlkr.ch/operations/triage-2026-09-29/index.md>).
+  How to read the Trivy findings and when to file upstream; logs: [2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md>), [2026-09-29](<https://homelab.wlkr.ch/operations/triage-2026-09-29/index.md>), [2026-11-21](<https://homelab.wlkr.ch/operations/triage-2026-11-21/index.md>).
 
 ## Routine health check
 

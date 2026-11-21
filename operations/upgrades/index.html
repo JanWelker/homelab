@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1648,6 +1650,8 @@
       
         
       
+        
+      
     
     
     
@@ -2052,6 +2056,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2554,6 +2585,8 @@
       
         
       
+        
+      
     
     
     
@@ -2713,11 +2746,12 @@ workers a new kubelet before the API server has moved.</p>
 <p>Renovate keeps <code>kubernetes_version</code>, <code>flatcar_version</code> and <code>syslinux_version</code> current in <code>ansible/inventory.yaml</code>; which bumps automerge is in <a href="../../development/maintenance/#automerge-policy">Automerge policy</a>.</p>
 </div>
 <h2 id="platform-components">Platform components<a class="headerlink" href="#platform-components" title="Permanent link">&para;</a></h2>
-<p>Everything in <code>payload/</code> is upgraded by ArgoCD when Renovate bumps a
-<code>targetRevision</code> and the PR merges. Cilium, the Gateway API CRDs and ArgoCD are
-installed by <code>make install-cilium</code> and <code>make install-argo</code> before ArgoCD exists,
-but from the same <code>targetRevision</code>, so a rebuild lands where the cluster
-already is — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
+<p>ArgoCD upgrades everything in <code>payload/</code> but the <code>argocd</code> Application when a
+Renovate bump merges. That Application is
+applied by hand, so after an ArgoCD bump merges run
+<code>kubectl apply -f payload/argocd/application.yaml</code>. Cilium, the Gateway API
+CRDs and ArgoCD are installed from the same <code>targetRevision</code> before ArgoCD
+exists — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 <h2 id="control-plane-certificates">Control-plane certificates<a class="headerlink" href="#control-plane-certificates" title="Permanent link">&para;</a></h2>
 <p>kubeadm issues the control-plane certificates for one year and renews them only
 during <code>kubeadm upgrade</code>. Patch updates arrive as a sysext and never run

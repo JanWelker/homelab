@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1413,6 +1415,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#removing-a-deleted-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removing a deleted workload
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1798,6 +1811,8 @@
       
         
       
+        
+      
     
     
     
@@ -2080,6 +2095,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2531,6 +2573,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#removing-a-deleted-workload" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removing a deleted workload
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2675,10 +2728,9 @@
 
 <h1 id="velero">Velero<a class="headerlink" href="#velero" title="Permanent link">&para;</a></h1>
 <p><a href="https://velero.io/">Velero</a> backs up Kubernetes objects and, through CSI
-snapshots and its data mover, the data in every PVC, nightly into its prefix
-of the <code>offsite</code> bucket in the Ceph object store. What it covers, what it does not, and the restore
-runbooks are in <a href="../../operations/backups/">Backups &amp; Recovery</a>; this page is
-the chart tuning.</p>
+snapshots and its data mover, every PVC, nightly into its prefix of the
+<code>offsite</code> bucket. Coverage and restore runbooks are in
+<a href="../../operations/backups/">Backups &amp; Recovery</a>; this page is the chart tuning.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2722,11 +2774,11 @@ the chart tuning.</p>
 <tbody>
 <tr>
 <td><code>checksumAlgorithm: ""</code> on the <code>BackupStorageLocation</code></td>
-<td>The AWS plugin's SDK sends a trailing checksum that Ceph RGW rejects with <code>XAmzContentSHA256Mismatch</code>; every upload fails without it</td>
+<td>The AWS plugin's SDK sends a trailing checksum Ceph RGW rejects (<code>XAmzContentSHA256Mismatch</code>)</td>
 </tr>
 <tr>
 <td><code>s3Url: https://s3.infra.k8s.wlkr.ch</code>, not the RGW Service</td>
-<td>kopia's S3 client signs plain-HTTP uploads with the streaming SigV4 scheme, which Ceph RGW rejects as unsigned headers since <a href="https://docs.ceph.com/en/latest/security/CVE-2026-54330/">CVE-2026-54330</a>; over TLS it sends <code>UNSIGNED-PAYLOAD</code> and RGW accepts it. The infra Gateway terminates TLS with the Let's Encrypt wildcard, so no CA has to reach Velero or the movers</td>
+<td>kopia signs plain-HTTP uploads with streaming SigV4, which Ceph RGW rejects since <a href="https://docs.ceph.com/en/latest/security/CVE-2026-54330/">CVE-2026-54330</a>; over TLS it sends <code>UNSIGNED-PAYLOAD</code> and RGW accepts it. The infra Gateway's Let's Encrypt wildcard means no CA has to reach Velero or the movers</td>
 </tr>
 <tr>
 <td><code>velero-plugin-for-aws</code> init container</td>
@@ -2742,7 +2794,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>defaultSnapshotMoveData</code>, <code>deployNodeAgent</code>, <code>uploaderType: kopia</code></td>
-<td>A CSI snapshot is a Ceph object in the same cluster; the data mover (run by the node agent) streams it into the bucket and deletes the snapshot</td>
+<td>A CSI snapshot is a Ceph object in the same cluster; the data mover streams it into the bucket and deletes the snapshot</td>
 </tr>
 <tr>
 <td><code>volumeSnapshotLocation: []</code></td>
@@ -2754,11 +2806,15 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>snapshot-controller</code> Application</td>
-<td>Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the <code>VolumeSnapshotClass</code> applies, so it is its own Application. It applies the two kustomize directories <a href="https://github.com/kubernetes-csi/external-snapshotter">kubernetes-csi/external-snapshotter</a> publishes at each tag, the owning project's only packaging, namespaced into <code>backup</code> with the hardening as a patch and the image pinned to the tag, because the Deployment upstream publishes at a tag still names the previous release's image, so Renovate moves the two together — see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>; upstream ships no PDB for its two leader-elected replicas, so <code>pdb.yaml</code> adds one</td>
+<td>Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the <code>VolumeSnapshotClass</code> applies. It applies the two kustomize directories <a href="https://github.com/kubernetes-csi/external-snapshotter">kubernetes-csi/external-snapshotter</a> publishes at each tag, namespaced into <code>backup</code> with the hardening as a patch and the image pinned to the tag, because upstream's Deployment at a tag still names the previous image; Renovate moves the two together, see <a href="../../development/maintenance/#automerge-policy">Maintenance</a>. <code>pdb.yaml</code> adds the PDB upstream lacks</td>
+</tr>
+<tr>
+<td><code>rbac.clusterAdministrator</code> at the chart default</td>
+<td>A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a role or binding granting rights the caller lacks, so only cluster-admin restores everything</td>
 </tr>
 <tr>
 <td>No <code>runAsNonRoot</code> on the <code>velero</code> container</td>
-<td>Whether the plugin init container's copy into <code>/target</code> works non-root depends on the image's <code>USER</code>; confirm on a real backup first</td>
+<td>Unverified for the plugin init container's copy into <code>/target</code></td>
 </tr>
 <tr>
 <td>Node agent <code>containerSecurityContext</code></td>
@@ -2766,7 +2822,7 @@ the chart tuning.</p>
 </tr>
 <tr>
 <td><code>prometheusRule</code></td>
-<td>Four rules: <code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning) on a schedule's outcome, <code>VeleroBackupTooOld</code> (critical), the only one that catches a backup hanging <code>InProgress</code>, and <code>VeleroBackupInProgress</code> (info), which is <a href="../kured/#configuration">Kured</a>'s reboot gate rather than a problem to mail</td>
+<td>Four rules: <code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning) on a schedule's outcome, <code>VeleroBackupTooOld</code> (critical), which alone catches a backup hanging <code>InProgress</code>, and <code>VeleroBackupInProgress</code> (info), which is <a href="../kured/#configuration">Kured</a>'s reboot gate rather than a problem to mail</td>
 </tr>
 </tbody>
 </table>
@@ -2798,7 +2854,7 @@ default compiled into the binary, which protects nothing, so
 </tr>
 <tr>
 <td>Secrets stay in the resource backup</td>
-<td>The tarball under <code>backups/</code> is not encrypted, so every backed-up <code>Secret</code> sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. Velero's prefix, and every key that reads it, are therefore as sensitive as an unencrypted etcd</td>
+<td>The tarball under <code>backups/</code> is not encrypted, so every backed-up <code>Secret</code> sits in the bucket as JSON. Excluding them would break a namespace restore: CloudNativePG, the bucket claims, cert-manager and Argo CD generate Secrets that exist nowhere else. Velero's prefix and every key that reads it are as sensitive as an unencrypted etcd</td>
 </tr>
 </tbody>
 </table>
@@ -2822,7 +2878,7 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>Access Denied</code> on <code>kopia.blobcfg</code></p>
-<p>Objects upload, volume data does not: the RGW log shows <code>PUT /offsite/backup.velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
+<p>Objects upload, volume data does not: RGW logs <code>PUT /offsite/backup.velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>invalid repository password</code></p>
@@ -2834,14 +2890,12 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> without a phase, <code>failed to wait BackupRepository</code></p>
-<p>The repository controller waits for each maintenance job to finish, one at a time. A job whose pod cannot start, typically <code>CreateContainerConfigError</code> after the credentials Secret was renamed, blocks every other repository behind it; <code>KubeContainerWaiting</code> fires on the job's pod. Delete the job, then <code>kubectl -n backup rollout restart deploy/velero</code>.</p>
+<p>The repository controller waits for each maintenance job to finish, one at a time. A job whose pod cannot start, typically <code>CreateContainerConfigError</code> after the credentials Secret was renamed, blocks every other repository behind it; <code>KubeContainerWaiting</code> fires on the job's pod. Delete it, then restart <code>deploy/velero</code>.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="re-initialising-the-repositories">Re-initialising the repositories<a class="headerlink" href="#re-initialising-the-repositories" title="Permanent link">&para;</a></h3>
-<p>Discards every Velero backup, resource backups included: a <code>Backup</code>
-whose volume snapshots cannot be reached never finishes deleting, so the
-prefix is emptied as a whole and Velero drops the <code>Backup</code> objects it no
-longer finds there.</p>
+<p>Discards every Velero backup, resource backups included: a <code>Backup</code> with
+unreachable snapshots never finishes deleting, so the prefix is emptied whole.</p>
 <ol>
 <li>
 <p>Confirm the Secret carries the value from OpenBao, not Velero's default.</p>
@@ -2873,6 +2927,20 @@ longer finds there.</p>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io<span class="w">               </span><span class="c1"># Completed</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backuprepositories.velero.io<span class="w">    </span><span class="c1"># Ready</span>
 </span></code></pre></div>
+</li>
+</ol>
+<h3 id="removing-a-deleted-workload">Removing a deleted workload<a class="headerlink" href="#removing-a-deleted-workload" title="Permanent link">&para;</a></h3>
+<p>A removed namespace leaves its <code>BackupRepository</code> and its Kopia data in the
+bucket, which Velero never prunes.</p>
+<ol>
+<li>
+<p>Delete the repository object and its finished maintenance Jobs.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>delete<span class="w"> </span>backuprepositories.velero.io<span class="w"> </span>&lt;namespace&gt;-default-kopia
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>delete<span class="w"> </span><span class="nb">jobs</span><span class="w"> </span>-l<span class="w"> </span>velero.io/repo-name<span class="o">=</span>&lt;namespace&gt;-default-kopia
+</span></code></pre></div>
+</li>
+<li>
+<p>List, then remove, <code>offsite/backup.velero/kopia/&lt;namespace&gt;/</code> with the keys from step 3 of <a href="#re-initialising-the-repositories">Re-initialising the repositories</a>.</p>
 </li>
 </ol>
 

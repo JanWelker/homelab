@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1661,6 +1663,8 @@
       
         
       
+        
+      
     
     
     
@@ -1943,6 +1947,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2398,8 +2429,8 @@
 
 
 <h1 id="known-limitations">Known Limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h1>
-<p>Things this cluster does not do, collected so they are findable before they are
-discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p>
+<p>Things this cluster does not do. None is a bug; each is an accepted tradeoff
+or work not yet done.</p>
 <table>
 <thead>
 <tr>
@@ -2412,57 +2443,87 @@ discovered. None is a bug; each is an accepted tradeoff or work not yet done.</p
 <tbody>
 <tr>
 <td><strong>The API endpoint address is fixed at <code>kubeadm init</code></strong></td>
-<td><code>controlPlaneEndpoint</code> is the kube-vip VIP, and <code>kubeadm</code> bakes it into the API server certificates, every node's kubeconfig and the stored <code>ClusterConfiguration</code>; Cilium's <code>k8sServiceHost</code> names the same address. Moving the VIP to another address is therefore a certificate regeneration on every control-plane node and a kubeconfig rewrite on every node, not a config change that can be synced</td>
-<td>Choose the address once, outside any DHCP range and apart from the LoadBalancer pools. The in-place procedure exists for the day it has to move; the next build <a href="../../operations/control-plane-vip/#endpoint-name">uses a name</a></td>
+<td><code>controlPlaneEndpoint</code> is the kube-vip VIP, baked into the API server certificates, every node's kubeconfig and Cilium's <code>k8sServiceHost</code>; moving it regenerates certificates and rewrites kubeconfigs on every node</td>
+<td>Choose it once, outside any DHCP range and the LoadBalancer pools; the next build <a href="../../operations/control-plane-vip/#endpoint-name">uses a name</a></td>
 <td><a href="../../operations/control-plane-vip/#choosing-the-address">Choosing the address</a>, <a href="../../operations/control-plane-vip/#in-place">migrating in place</a></td>
 </tr>
 <tr>
 <td><strong>OpenBao needs an operator to unseal it</strong></td>
-<td>Shamir seal, no auto-unseal: every restart (node reboot, Kured cycle, chart bump) leaves each replica sealed until the <a href="../../platform/openbao/#at-a-glance">threshold of key shares</a> is supplied. Sealed, no <code>ExternalSecret</code> resolves and cert-manager cannot renew. The cluster looks healthy; the consequence surfaces when a certificate expires</td>
-<td>Check <code>bao status</code> after every reboot. Auto-unseal against a KMS or a second OpenBao would remove the step at the price of an external hard dependency; the key shares stay in the operator's hands on purpose</td>
+<td>Shamir seal, no auto-unseal: every restart seals each replica until the <a href="../../platform/openbao/#at-a-glance">threshold of key shares</a> is supplied. Sealed, no <code>ExternalSecret</code> resolves and cert-manager cannot renew; the cluster looks healthy until a certificate expires</td>
+<td>Check <code>bao status</code> after reboots; auto-unseal would add an external hard dependency</td>
 <td><a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>, <a href="../../operations/nodes/#after-any-node-reboot-unseal-openbao">after any node reboot</a></td>
 </tr>
 <tr>
 <td><strong>Alerting reaches one mailbox</strong></td>
-<td>One receiver, one mailbox, one SMTP provider, unmonitored. If mail is rejected or the password expires, alerts stop silently; <code>Watchdog</code> proves the pipeline only as far as Alertmanager</td>
-<td>A second receiver on a different transport. Meanwhile, run the routine health check</td>
+<td>One receiver, one mailbox, one SMTP provider. If mail is rejected or the password expires, alerts stop silently; <code>Watchdog</code> proves only as far as Alertmanager</td>
+<td>A second receiver on a different transport; meanwhile, the routine health check</td>
 <td><a href="../../platform/monitoring/#alerting">Alerting</a>, <a href="../../operations/#routine-health-check">routine health check</a></td>
 </tr>
 <tr>
-<td><strong>Backups do not leave the cluster</strong></td>
-<td>Velero and the etcd snapshot CronJob write to the Ceph object store the cluster runs on: protection against a deleted PVC or a bad <code>prune</code>, none against losing the cluster</td>
-<td>RGW bucket replication or a second Velero <code>BackupStorageLocation</code>; neither is configured. Until then disaster recovery is Git plus the OpenBao unseal keys</td>
-<td><a href="../../operations/backups/">Backups &amp; Recovery</a></td>
-</tr>
-<tr>
 <td><strong>Automatic updates stop at patch releases</strong></td>
-<td>Sysupdate is pinned to the Kubernetes major.minor in <code>ansible/inventory.yaml</code>; Kured drains and reboots one node at a time to apply what is staged, and refuses while Ceph or etcd is unhealthy. A minor Kubernetes upgrade is manual: change the inventory, push the sysupdate config to running nodes, run <code>kubeadm upgrade</code>. Kured blocks only on the alerts named in its config; anything outside that list does not stop a reboot</td>
+<td>Sysupdate is pinned to the Kubernetes major.minor in <code>ansible/inventory.yaml</code>; Kured reboots one node at a time and refuses while Ceph or etcd is unhealthy. A minor upgrade is manual. Kured blocks only on the alerts named in its config</td>
 <td>By design</td>
 <td><a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>, <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">upgrading a minor deliberately</a>, <a href="../../platform/kured/">Kured</a></td>
 </tr>
 <tr>
 <td><strong>The <code>infra</code> AppProject is permissive</strong></td>
-<td>The network policies are enforced, but the <code>infra</code> AppProject allows every kind in every namespace, so a platform <code>application.yaml</code> can deploy anything anywhere</td>
+<td>The <code>infra</code> AppProject allows every kind in every namespace, so a platform <code>application.yaml</code> can deploy anything anywhere</td>
 <td>Narrow the projects</td>
 <td><a href="../security/#authorization">Security Posture</a></td>
 </tr>
 <tr>
 <td><strong>Reprovisioning needs the boot server on the segment</strong></td>
-<td>Rebuilding a node means <code>make serve</code> on a machine on the nodes' L2 segment, the external DHCP pointing at it, <code>make reinstall LIMIT=&lt;node&gt;</code>, and a power cycle. There is no remote rebuild, and the deployment host is not part of the cluster</td>
-<td>Only <em>re</em>provisioning: Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server off</td>
+<td>Rebuilding a node needs <code>make serve</code> on a machine on the nodes' L2 segment, the external DHCP pointing at it and a power cycle; there is no remote rebuild</td>
+<td>Only <em>re</em>provisioning: a running node reboots and rejoins without the boot server</td>
 <td><a href="../boot-process/#every-boot-after-the-first">Boot &amp; Bootstrap Process</a></td>
 </tr>
 <tr>
 <td><strong>The object store survives one host down, no more</strong></td>
-<td>During every Kured reboot the RGW data pool, which holds the Velero backups and Loki chunks, has no redundancy left, while <code>rbd-pool</code> still has some</td>
-<td>Accepted, no migration: Ceph cannot change the erasure profile of an existing pool, so changing it means a new pool and moving every bucket</td>
+<td>During every Kured reboot the RGW data pool, which holds the backups and Loki chunks, has no redundancy left, while <code>rbd-pool</code> still has some</td>
+<td>Accepted: an existing pool's erasure profile cannot change, so it means a new pool and moving every bucket</td>
 <td><a href="../../platform/rook-ceph/#object-storage">Object storage</a></td>
 </tr>
 <tr>
+<td><strong>Cluster admin is a client certificate, not OIDC</strong></td>
+<td><code>output/kubeconfig</code> is <code>admin.conf</code>, a certificate only a CA rotation revokes; the API server has no OIDC</td>
+<td>OIDC against Authentik for daily use, <code>admin.conf</code> as break-glass</td>
+<td><a href="../security/#authorization">Authorization</a></td>
+</tr>
+<tr>
+<td><strong>OpenBao speaks plain HTTP inside the cluster</strong></td>
+<td>Secrets and tokens cross the pod network unencrypted; WireGuard covers node-to-node</td>
+<td>A cert-manager CA, <code>caProvider</code> on stores</td>
+<td><a href="../../platform/openbao/#at-a-glance">OpenBao</a></td>
+</tr>
+<tr>
+<td><strong>OSDs are unencrypted, the Rook toolbox is on, Loki has no tenants</strong></td>
+<td>A pulled disk is readable; the toolbox is a standing Ceph admin shell; any Grafana Viewer reads every log line, the audit log included</td>
+<td>Encrypted OSDs, toolbox only in incidents, Loki tenants</td>
+<td><a href="../../platform/rook-ceph/">Rook-Ceph</a>, <a href="../../platform/logging/">Logging</a></td>
+</tr>
+<tr>
+<td><strong>SELinux is permissive on every node</strong></td>
+<td>Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining</td>
+<td>Try enforcing on one worker; watch Cilium, Tetragon, Rook and the CSI plugins</td>
+<td><a href="../security/#node-hardening">Node hardening</a></td>
+</tr>
+<tr>
+<td><strong>The <code>infra</code> hostnames and the LAN address are in public DNS</strong></td>
+<td>The infra names resolve publicly to a LAN address, so anyone can list the internal services; they stay LAN-only</td>
+<td>Serve them from the router's resolver only</td>
+<td><a href="../../platform/external-dns/">external-dns</a></td>
+</tr>
+<tr>
 <td><strong>Single region, site and rack</strong></td>
-<td>No failure domain larger than a node. Ceph replicates across nodes on one power feed; a site-level event takes everything</td>
-<td>The honest limit of a homelab</td>
+<td>No failure domain larger than a node: Ceph replicates across nodes on one power feed, and TrueNAS pulls the backups over the same LAN (<a href="../../operations/backups/#off-cluster-copy">Off-cluster copy</a>): a site-level event takes everything</td>
+<td>Honest limit of a homelab: a copy off the site</td>
 <td>—</td>
+</tr>
+<tr>
+<td><strong>Backup copies hold plaintext Secrets and one all-powerful key</strong></td>
+<td>Velero's resource backups are plain JSON in the bucket, Secrets included, and the NAS's <code>offsite-reader</code> key owns the bucket with a full <code>opMask</code>, so a leak of either exposes every Secret or lets its holder delete the live backups</td>
+<td>Excluding Secrets would lose those nothing else regenerates (Argo CD, CloudNativePG, Rook, cert-manager); a read-only <code>opMask</code> would stop Rook setting the bucket policy with the owner's keys. The NAS's snapshots outlive a deletion</td>
+<td><a href="../../platform/velero/#repository-password">Repository password</a>, <a href="../../platform/rook-ceph/#off-cluster-reader">Off-cluster reader</a></td>
 </tr>
 </tbody>
 </table>

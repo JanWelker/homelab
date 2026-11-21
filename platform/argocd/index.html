@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1820,6 +1822,8 @@
       
         
       
+        
+      
     
     
     
@@ -2102,6 +2106,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2796,6 +2827,10 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td><code>oidc.config</code> talks to <a href="../authentik/">Authentik</a> directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own <code>/auth/callback</code> either way</td>
 </tr>
 <tr>
+<td><code>notifications.enabled: false</code></td>
+<td>Nothing is configured to notify, and the controller's ClusterRole reads every Secret in the cluster</td>
+</tr>
+<tr>
 <td><code>admin.enabled: "false"</code></td>
 <td>With SSO in front, a shared admin password would bypass it with no audit trail</td>
 </tr>
@@ -2840,13 +2875,12 @@ included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has <code>apiKey</code> only, so it cannot log
 in. One token serves every session with <code>argocd.enabled</code>, so its expiry is
 what bounds a leak from any of them.</p>
-<p>The token expires after 90 days: that caps a leak at a quarter, and rotating
-is a few commands with no restart. An expired token fails every agent
-<code>argocd</code> call until the next one is stored. To rotate:</p>
+<p>The token expires after 90 days, which caps a leak at a quarter; an expired
+one fails every agent <code>argocd</code> call until the next is stored. To rotate:</p>
 <ol>
 <li>
 <p>Generate the token, logged in through Authentik:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>--expires-in<span class="w"> </span>90d
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>--expires-in<span class="w"> </span>2160h
 </span></code></pre></div>
 </li>
 <li>
@@ -2854,16 +2888,14 @@ is a few commands with no restart. An expired token fails every agent
    (<code>token</code>).</p>
 </li>
 <li>
-<p>Pull it into the sessions now instead of at the next <code>refreshInterval</code>. The
-   chart mounts the token as a file that the <code>argocd</code> wrapper reads on every
-   call, so no pod restarts; only a shell opened earlier keeps the old token
-   in its environment:</p>
+<p>Pull it into the sessions now instead of at the next <code>refreshInterval</code>; the
+   wrapper reads the mounted file on every call, so no pod restarts:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>claude-agents<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>claude-&lt;session&gt;-argocd<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
 </li>
 <li>
-<p>Revoke the previous token. <code>argocd account get --account claude</code> lists
-   the token IDs with their expiry dates:</p>
+<p>Revoke the previous token; <code>argocd account get --account claude</code> lists the
+   IDs with their expiry (a token showing none predates this policy):</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>delete-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>&lt;id&gt;
 </span></code></pre></div>
 </li>

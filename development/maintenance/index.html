@@ -402,6 +402,8 @@
       
         
       
+        
+      
     
     
     
@@ -1644,6 +1646,8 @@
       
         
       
+        
+      
     
     
     
@@ -1926,6 +1930,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2630,7 +2661,7 @@ everything, and Renovate, which chases dependencies.</p>
 <tr>
 <td><code>argo-diff-preview.yaml</code></td>
 <td>pull requests under <code>payload/**</code></td>
-<td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped</td>
+<td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster, and <code>lint-markdown.yaml</code> and <code>renovate-validate.yaml</code> install their npm tool by version without a lockfile; accepted, since the token is read-only and the runner ephemeral</td>
 </tr>
 <tr>
 <td><code>image-scan.yaml</code></td>
@@ -2671,11 +2702,13 @@ are the sets below that must move together.</p>
     minor automerge once <code>ci-ok</code> is green, majors open at 19:00 and wait for a
     human, and security fixes skip both the wait and the schedule. The
     preset's README says why for each.</li>
-<li><strong>One exception: a Kubernetes minor waits for a human.</strong> A Flatcar minor
+<li><strong>Cluster-wide charts and workflow actions wait for a human.</strong> Argo CD
+    applies a merge within a minute and these charts hold cluster-wide
+    rights, so no update of them automerges; the list is in <code>renovate.json</code>.</li>
+<li><strong>A Kubernetes minor waits for a human.</strong> A Flatcar minor
     lands the same way a Grafana chart patch does, but <code>kubernetes_version</code> is
-    walked forward by hand in version-skew order, and a node provisioned from
-    an automerged minor would run a kubelet ahead of the API server and fail
-    its <code>kubeadm join</code> — see <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">Upgrades</a>.</li>
+    walked forward by hand in version-skew order; an automerged minor would
+    provision a kubelet ahead of the API server — see <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">Upgrades</a>.</li>
 <li><strong>Pairs that must move together are grouped into one PR:</strong>
     <code>prometheus-operator-crds</code> with <code>kube-prometheus-stack</code>, because the CRDs
     must not lag the operator; <code>rook-ceph</code> with <code>rook-ceph-cluster</code>, because
@@ -2722,8 +2755,7 @@ checked. Prove a manager works by reading what it extracts:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">LOG_LEVEL</span><span class="o">=</span>debug<span class="w"> </span>npx<span class="w"> </span>--yes<span class="w"> </span>renovate@latest<span class="w"> </span>--platform<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--dry-run<span class="o">=</span>lookup
 </span></code></pre></div>
 <p>It needs no credentials for a public repository and prints every dependency it
-found and why it skipped any. The rules, each of which is written into
-<code>renovate.json</code>:</p>
+found and why it skipped any. The rules, each in <code>renovate.json</code>:</p>
 <ul>
 <li><strong><code>pre-commit</code> must be enabled explicitly</strong> (<code>"pre-commit": {"enabled": true}</code>);
     Renovate ships that manager disabled, and a <code>packageRules</code> entry for it does
@@ -2736,16 +2768,14 @@ found and why it skipped any. The rules, each of which is written into
     <code>autoReplaceStringTemplate</code>.</strong> Without it the pin cannot be written, and one
     unwritable pin fails the whole shared pin branch (<code>Error updating branch:
     update failure</code> on the Dependency Dashboard, the only symptom, since
-    version bumps keep working). Capturing <code>currentDigest</code> only lets Renovate
-    update a digest that is already there.</li>
+    version bumps keep working).</li>
 <li><strong>A bare Helm <code>tag:</code> value goes in the <code>pinDigests: false</code> rule.</strong> A tag like
     <code>3.4.4-alpine</code> has no position for a digest; leave one out and the same
     banner comes back.</li>
 <li><strong>A two-part version needs a <code>versioningTemplate</code>.</strong> The default
     <code>semver-coerced</code> rejects <code>6.03</code>, so the dependency is extracted and then
-    dropped before lookup. <code>syslinux</code> and the Inter font pin carry a <code>regex:</code>
-    versioning for this reason; Inter's also keeps <code>v4.0-beta9h</code>-style
-    prereleases out.</li>
+    dropped before lookup; <code>syslinux</code> and the Inter font pin carry a <code>regex:</code>
+    versioning.</li>
 <li><strong>Match the registry's spelling, not the GitHub org's.</strong> The diff-preview
     image is <code>dagandersen/argocd-diff-preview</code> on Docker Hub; a regex on
     <code>dag-andersen</code> matches nothing and reports nothing.</li>
@@ -2760,13 +2790,10 @@ found and why it skipped any. The rules, each of which is written into
 <h2 id="language-statistics">Language statistics<a class="headerlink" href="#language-statistics" title="Permanent link">&para;</a></h2>
 <p>GitHub's language bar comes from
 <a href="https://github.com/github-linguist/linguist">Linguist</a>, which counts bytes of
-files it classifies as a <em>language</em>. YAML is classified as data and Markdown as
-prose, so both are excluded by default and the bar reported this repository as
-Shell and Jinja. <code>.gitattributes</code> marks YAML detectable, and marks the three
-vendored Grafana dashboards as vendored, because their upstream JSON blobs are
-more than half the repository's YAML bytes and would otherwise be most of the
-bar. A vendored dashboard added later needs its own line there; GitHub
-recalculates on the next push to <code>main</code>.</p>
+files it classifies as a <em>language</em>. YAML and Markdown are excluded by default,
+so <code>.gitattributes</code> marks YAML detectable and the three vendored Grafana
+dashboards as vendored: their JSON would otherwise be most of the bar. A
+vendored dashboard added later needs its own line there.</p>
 
 
 

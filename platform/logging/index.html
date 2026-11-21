@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1814,6 +1816,8 @@
       
         
       
+        
+      
     
     
     
@@ -2096,6 +2100,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2845,8 +2876,8 @@ in the line where <code>| json</code> can reach them. See
 <td>The chart's <code>storagePath</code> defaults to <code>/tmp/alloy</code>, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either</td>
 </tr>
 <tr>
-<td><code>rbac.rules</code> without <code>secrets</code></td>
-<td>The chart's ClusterRole reads every Secret for <code>remote.kubernetes.secret</code>, which nothing here uses; <a href="#alerting"><code>KubernetesAuditSecretReadByUser</code></a> would show such a read, but a grant with no purpose is better not made</td>
+<td><code>rbac.rules</code> without <code>secrets</code> and <code>configmaps</code></td>
+<td>The chart's ClusterRole reads every Secret and ConfigMap for <code>remote.kubernetes.*</code>, which nothing here uses; <a href="#alerting"><code>KubernetesAuditSecretReadByUser</code></a> shows Secret reads, but an unused grant is better not made</td>
 </tr>
 </tbody>
 </table>
@@ -2975,7 +3006,7 @@ the mixin Grafana maintains, not rules written here.</p>
 <tr>
 <td><code>TetragonUnsignedKernelModule</code></td>
 <td>A kernel module loaded without a valid signature, on a node or from a container</td>
-<td>The signature result is an argument of the kprobe event, not a metric label</td>
+<td>The <code>add_taint</code> kprobe event, not a metric label</td>
 </tr>
 <tr>
 <td><code>HubblePolicyDrops</code></td>

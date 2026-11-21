@@ -19,7 +19,7 @@ Distributed block storage using [Rook](<https://rook.io/>) as the Kubernetes ope
 
 Each worker has a raw partition labelled `rook-osd`, created by Ignition as the **last** partition with whatever the root leaves, which Rook adds as an OSD; data is replicated three ways across them. Control planes get none, and the CephCluster's OSD placement excludes them: on one shared NVMe, etcd's fsyncs and BlueStore's writes stalled each other until OSDs hit their heartbeat timeout and aborted. Its contents are wherever Ceph last wrote them, so inserting a partition ahead of it shifts its offset and takes the OSD data with it: changing the partition table is a [reinstall](<https://homelab.wlkr.ch/operations/nodes/index.md>), not an edit.
 
-Ignition declares it with `format: none` and `wipe_filesystem: true`, because `ceph-volume` reads the BlueStore *signature*, not the partition table, and a reinstalled node that kept the old bytes would present an OSD from a cluster that no longer exists. Ceph declines any device that already carries a filesystem — the first thing to check when an OSD refuses to appear, see [No OSDs after reprovisioning](<#no-osds-after-reprovisioning>).
+Ignition declares it with `format: none` and `wipe_filesystem: true`, because `ceph-volume` reads the BlueStore *signature*, not the partition table, and a reinstalled node would present an OSD from a cluster that no longer exists. Ceph declines any device that already carries a filesystem; see [No OSDs after reprovisioning](<#no-osds-after-reprovisioning>).
 
 ### Storage classes
 
@@ -30,7 +30,7 @@ Ignition declares it with `format: none` and `wipe_filesystem: true`, because `c
 
 ### Object storage
 
-A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds while they sit on separate nodes: `gateway.placement` carries the spread constraint, because the `placement.all` block belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node the exporter reports their counters under the same labels and Prometheus drops them, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
+A `CephObjectStore` provides an S3 endpoint at `http://rook-ceph-rgw-object-store.rook-ceph.svc`, so backups and log chunks live somewhere other than the block pool they protect. The infra Gateway publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#configuration>), whose S3 client only signs cleanly over TLS. More than one RGW instance (`gateway.instances`) keeps a node reboot from stalling a backup, which only holds on separate nodes: `gateway.placement` carries the spread constraint, because `placement.all` belongs to the `CephCluster` and never reaches this CR. It is a hard one: every gateway is daemon `a`, so on one node Prometheus drops their counters, and the descheduler never evicts a `system-cluster-critical` pod to fix that. The data pool is erasure coded (`dataChunks` and `codingChunks`): less overhead than three replicas, safe at `failureDomain: host` only with more workers than chunks.
 
 ### Off-cluster reader
 
@@ -151,6 +151,10 @@ spec:
 
 No claim is copied off the cluster, so the `obc-backup-exempt` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) refuses one without the annotation `homelab.wlkr.ch/backup-exempt` and its reason, as Loki's carries. A backup does not get a bucket: it is a [backup writer](<#backup-writers>) in `offsite`.
 
+### Quotas
+
+A full object store stops every writer, so the `object-store-quota` [policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) asks a new user outside `rook-ceph` for `spec.quotas.maxSize` and a new claim for `maxSize` in `additionalConfig`. It only warns until every object carries one.
+
 ### Dashboard login
 
 The dashboard sits behind Authentik for `infra-users`, then asks for its own login. The only user is `admin`, and its password is the `rook-ceph-dashboard-password` Secret, which the operator writes back to Ceph whenever it restarts: a password changed in the dashboard lasts until the next drain of the operator's node. For a password of your own, add a second user rather than changing `admin`.
@@ -167,7 +171,7 @@ kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath='{.data
 make storage-check
 ```
 
-Run it after the GitOps handover, before trusting anything that mounts a volume: a `CephCluster` reports `Ready` with no OSDs, and a `StorageClass` exists whether or not a CSI driver registered for it. The script walks the chain in the order it breaks and stops at the first missing link:
+Run it after the GitOps handover, before trusting anything that mounts a volume: a `CephCluster` reports `Ready` with no OSDs. The script walks the chain in the order it breaks and stops at the first missing link:
 
 | Check | What its absence means |
 | --- | --- |

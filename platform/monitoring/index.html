@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1853,6 +1855,8 @@
       
         
       
+        
+      
     
     
     
@@ -2135,6 +2139,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2784,14 +2815,12 @@
 
 
 <h1 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h1>
-<p>Full observability stack based on
-<a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>:
-Prometheus, Grafana, Alertmanager, node-exporter and
-kube-state-metrics. node-exporter runs in its own <code>node-exporter</code> namespace so
-that only it is admitted at the <code>privileged</code> level
+<p><a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack">kube-prometheus-stack</a>:
+Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics.
+node-exporter runs in its own <code>node-exporter</code> namespace so that only it is
+admitted at the <code>privileged</code> level
 (<a href="../security-policies/#pod-security-admission">security policies</a>). The
-chart's default rule set is good; its default routing swallows every alert,
-which is what most of this page is about.</p>
+chart's default rules are good; its default routing swallows every alert.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2831,13 +2860,11 @@ which is what most of this page is about.</p>
 <h3 id="crds">CRDs<a class="headerlink" href="#crds" title="Permanent link">&para;</a></h3>
 <p>The <code>monitoring.coreos.com</code> CRDs are a separate <code>prometheus-operator-crds</code>
 Application, from the prometheus-community chart of that name, and this chart
-runs with <code>crds.enabled: false</code>. Cilium, cert-manager, External Secrets, Rook
-and OpenBao all render ServiceMonitors or PrometheusRules, and a missing kind
-fails their sync until the CRDs exist — see
+runs with <code>crds.enabled: false</code>. Other components render ServiceMonitors or
+PrometheusRules, and a missing kind fails their sync until the CRDs exist — see
 <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a>. The
-Application has no resources
-finalizer, so deleting it leaves the CRDs, and every ServiceMonitor, Prometheus
-and Alertmanager with them, in place.</p>
+Application has no resources finalizer, so deleting it leaves the CRDs, and
+every ServiceMonitor, Prometheus and Alertmanager with them, in place.</p>
 <div class="admonition warning">
 <p class="admonition-title">Two versions that have to agree</p>
 <p><code>prometheus-operator-crds</code> must carry the same operator version as kube-prometheus-stack; an operator newer than its CRDs can depend on fields they do not define. Renovate bumps them separately: merge the CRD bump first, or both together — see <a href="../../development/maintenance/">Maintenance</a>.</p>
@@ -2866,11 +2893,11 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 </tr>
 <tr>
 <td>Grouping by <code>namespace</code>, with <code>group_interval</code> and <code>repeat_interval</code> in hours and a shorter pair for <code>critical</code>; resolved notifications sent</td>
-<td>mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down, the account was refused from then on, and the critical mails went unsent with the rest. A namespace's alerts usually share a cause, so one mail lists them together</td>
+<td>mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down and the account was refused. A namespace's alerts usually share a cause, so one mail lists them together</td>
 </tr>
 <tr>
 <td><code>Watchdog</code> routed to <code>null</code></td>
-<td>It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter the sender</td>
+<td>It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter it</td>
 </tr>
 <tr>
 <td><code>VeleroBackupInProgress</code> routed to <code>null</code></td>
@@ -2890,7 +2917,30 @@ login and recipient are e-mail addresses that do not belong in Git.</p>
 </tr>
 <tr>
 <td><code>externalUrl</code> on both <code>prometheusSpec</code> and <code>alertmanagerSpec</code> in <code>application.yaml</code></td>
-<td>The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside the cluster can open</td>
+<td>The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside can open</td>
+</tr>
+</tbody>
+</table>
+<p>Rules written here, beside the chart's:</p>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Fires when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CertificateNotReady</code>, <code>CertificateExpiringSoon</code></td>
+<td>A Certificate is not Ready for 30 minutes, or has under 14 days left (renewal starts at 30)</td>
+</tr>
+<tr>
+<td><code>ArgoCDApplicationUnhealthy</code>, <code>ArgoCDApplicationOutOfSync</code></td>
+<td>An Application is Degraded or Missing for 15 minutes, or OutOfSync for an hour, longer than the <a href="../../architecture/gitops/#sync-policy">retries</a> run</td>
+</tr>
+<tr>
+<td><code>ExternalSecretNotReady</code>, <code>PushSecretNotReady</code></td>
+<td>One is not Ready for 15 minutes; after an OpenBao restart every one fires until it is unsealed</td>
 </tr>
 </tbody>
 </table>
@@ -2904,7 +2954,10 @@ values in OpenBao.</p>
 <p>Every <code>ServiceMonitor</code> and <code>PodMonitor</code> in every namespace, through the five
 <code>*SelectorNilUsesHelmValues: false</code> settings: the chart treats an empty
 selector as unset and renders <code>release: kube-prometheus-stack</code> in its place,
-which limits Prometheus to its own targets.</p>
+which limits Prometheus to its own targets. <code>ScrapeConfig</code> and <code>Probe</code> load
+from <code>monitoring</code> only, as a workload could aim them anywhere Prometheus
+reaches. <code>enforcedNamespaceLabel</code> stays off: several monitors rely on
+<code>honorLabels</code>.</p>
 <p><code>PrometheusRule</code>s load only from the namespaces the <code>apps</code> project cannot
 deploy to, matched on the <code>kubernetes.io/metadata.name</code> label the API server
 sets. <a href="../kured/#configuration">Kured</a> gates reboots on alert names, so a
@@ -2923,7 +2976,7 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tr>
 <td>kube-scheduler, kube-controller-manager</td>
 <td>A per-node <code>bind-address</code> patch in <code>ansible/templates/butane_node_config.yaml.j2</code> (kubeadm binds them to <code>127.0.0.1</code>)</td>
-<td>HTTPS with a self-signed certificate, so the ServiceMonitors set <code>insecureSkipVerify</code>; the ServiceAccount token still authenticates</td>
+<td>HTTPS with a self-signed certificate, so the ServiceMonitors set <code>insecureSkipVerify</code>; the ServiceAccount token still authenticates; the control-plane monitors read the pod's projected token (<code>controlPlaneScrapeClass</code>), so no long-lived token Secret exists</td>
 </tr>
 <tr>
 <td>etcd</td>
@@ -2943,7 +2996,7 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tr>
 <td>CRD status fields: CloudNativePG's ObjectStores and Backups</td>
 <td>kube-state-metrics' <code>customResourceState</code> config in the chart values, one <code>rbac.extraRules</code> entry per kind</td>
-<td>A <code>StateSet</code> per enum field and a <code>Gauge</code> per timestamp, no more; the rule that reads a kind sits with its component, and the namespace it lives in has to be on the rule list above</td>
+<td>A <code>StateSet</code> per enum field and a <code>Gauge</code> per timestamp; the rule that reads a kind sits with its component, in a namespace on the rule list above</td>
 </tr>
 <tr>
 <td>Pod labels: OpenBao's <code>openbao-sealed</code></td>
@@ -2967,11 +3020,11 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tbody>
 <tr>
 <td><code>disable_login_form</code> and <code>oauth_auto_login</code></td>
-<td>Opening the URL bounces straight to Authentik and back; <code>role_attribute_path</code> with <code>role_attribute_strict</code> maps the three Grafana groups and refuses everyone else, see <a href="../authentik/#groups-and-roles">Groups and roles</a></td>
+<td>The URL bounces straight to Authentik; <code>role_attribute_path</code> with <code>role_attribute_strict</code> maps the three Grafana groups and refuses everyone else, see <a href="../authentik/#groups-and-roles">Groups and roles</a></td>
 </tr>
 <tr>
 <td><code>analytics.*</code> off and <code>disable_gravatar</code></td>
-<td>Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches every user's avatar from Gravatar; the Grafana network policy names none of those and the policy audit showed the Gravatar call. Telemetry is off in every component here</td>
+<td>Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches avatars from Gravatar; the network policy names none of those. Telemetry is off in every component here</td>
 </tr>
 <tr>
 <td><code>grafana-oidc.yaml</code></td>
@@ -2983,31 +3036,31 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 </tr>
 <tr>
 <td><code>grafana.admin.existingSecret</code>, from <code>grafana-admin.yaml</code></td>
-<td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and <code>checksum/secret</code> restarts Grafana on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
+<td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and Grafana restarts on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
 </tr>
 <tr>
 <td><code>grafana.rbac.create: false</code> with <code>grafana-sidecar-rbac.yaml</code>, and <code>sidecar.*.resource: configmap</code></td>
-<td>Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with <a href="../logging/#alloy-pipeline">Alloy's <code>rbac.rules</code></a>; the chart's binding is dropped rather than repointed because a <code>roleRef</code> is immutable</td>
+<td>Dashboards and datasources are ConfigMaps, so a ClusterRole bound by a RoleBinding in each <code>searchNamespace</code> namespace grants those alone, not the chart's cluster-wide ConfigMaps-and-Secrets pair; the chart's binding is dropped rather than repointed because a <code>roleRef</code> is immutable</td>
 </tr>
 <tr>
 <td><code>Recreate</code> strategy</td>
-<td>The dashboard PVC is RWO; under <code>RollingUpdate</code> the new pod waits for a volume the old pod releases only once the new one is Ready, parking on <code>FailedAttachVolume</code></td>
+<td>The dashboard PVC is RWO; under <code>RollingUpdate</code> the new pod waits for a volume the old pod releases only once the new one is Ready</td>
 </tr>
 <tr>
 <td>Prometheus and Grafana memory limits well above their requests</td>
-<td>Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the <a href="../#components">2.5x-peak rule</a>, not a budget</td>
+<td>Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the <a href="../#components">2.5x-peak rule</a>, not a budget</td>
 </tr>
 <tr>
 <td>Prometheus's memory request at its measured median working set</td>
-<td>A request below real use lets a drain move it onto an 8 GB worker without room, which swaps until the kubelet goes <code>NotReady</code>. At the median only a node with that much unrequested memory qualifies; 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable</td>
+<td>A request below real use lets a drain move it onto an 8 GB worker that swaps until the kubelet goes <code>NotReady</code>. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable</td>
 </tr>
 <tr>
 <td>Prometheus <code>retention</code> and <code>retentionSize</code></td>
-<td>Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus</td>
+<td>Whichever is hit first wins; the size cap drops the oldest blocks instead of filling the disk and crashlooping Prometheus</td>
 </tr>
 <tr>
 <td>Alertmanager <code>automountServiceAccountToken: false</code>, on the ServiceAccount and in <code>alertmanagerSpec</code></td>
-<td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing</td>
+<td>Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone does nothing</td>
 </tr>
 </tbody>
 </table>
@@ -3083,17 +3136,17 @@ describes, in a file named <code>grafana-dashboards.yaml</code> and a ConfigMap 
 <code>&lt;component&gt;-grafana-dashboards</code>; a Secret carrying the label is not read. The
 sidecar watches only the platform namespaces listed in
 <code>sidecar.dashboards.searchNamespace</code>, so a workload cannot replace a
-dashboard; a component in a new namespace adds it there, and the <code>apps</code>
-project must not be able to deploy to it. Prefer the chart's own dashboard
+dashboard; a component in a new namespace adds it there and a RoleBinding in
+<code>grafana-sidecar-rbac.yaml</code>, and the <code>apps</code> project must not be able to deploy
+to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.</p>
 <h3 id="growing-the-prometheus-volume">Growing the Prometheus volume<a class="headerlink" href="#growing-the-prometheus-volume" title="Permanent link">&para;</a></h3>
 <p>Kubernetes cannot expand a StatefulSet's <code>volumeClaimTemplate</code>, so raising the
 request in <code>payload/platform/monitoring/application.yaml</code> does not resize the
-claim that already exists. The operator handles its own half of that: it fails
-the StatefulSet update on the immutable field, logs <code>recreating StatefulSet
-because the update operation wasn't possible</code>, and rebuilds it orphaned so the
-pod survives. Only the claim is left behind.</p>
+claim that already exists. The operator handles its half: it rebuilds the StatefulSet orphaned so the
+pod survives, logging <code>recreating StatefulSet because the update operation
+wasn't possible</code>. Only the claim is left behind.</p>
 <ol>
 <li>
 <p>Merge the size bump and wait for the Application to sync.</p>
@@ -3110,17 +3163,16 @@ pod survives. Only the claim is left behind.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>The claim parks on <code>FileSystemResizePending</code> and the filesystem grows when
-    the volume is next mounted, so the pod is restarted and Prometheus replays
-    its WAL — a scrape gap of about a minute, not a seamless resize. Wait for
-    the claim to report the new capacity.</p>
+<p>The claim parks on <code>FileSystemResizePending</code> and the filesystem grows at
+    the next mount, so the pod restarts and replays its WAL: a scrape gap of
+    about a minute. Wait for the claim to report the new capacity.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>get<span class="w"> </span>pvc<span class="w"> </span>-w<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-o<span class="w"> </span>custom-columns<span class="o">=</span>NAME:.metadata.name,CAP:.status.capacity.storage
 </span></code></pre></div>
 </li>
 </ol>
-<p>If the operator has not rebuilt the StatefulSet within a sync interval, do it by
-hand; <code>--cascade=orphan</code> keeps the pod and the claim.</p>
+<p>If the operator has not rebuilt the StatefulSet within a sync interval, delete
+it with <code>--cascade=orphan</code>, which keeps the pod and the claim.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>delete<span class="w"> </span>statefulset<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-l<span class="w"> </span>operator.prometheus.io/name<span class="o">=</span>kube-prometheus-stack-prometheus<span class="w"> </span>--cascade<span class="o">=</span>orphan
 </span></code></pre></div>
@@ -3128,9 +3180,9 @@ hand; <code>--cascade=orphan</code> keeps the pod and the claim.</p>
 <h3 id="resetting-the-grafana-admin-password">Resetting the Grafana admin password<a class="headerlink" href="#resetting-the-grafana-admin-password" title="Permanent link">&para;</a></h3>
 <p>Grafana reads the password only when it creates its database, so changing
 <code>kv/monitoring/grafana-admin</code> later does not change what it checks. Reset it
-to the value in OpenBao rather than a new one: <code>grafana-admin.yaml</code> pushes
-the generated password with <code>updatePolicy: IfNotExists</code>, so OpenBao keeps the
-first value forever and a rebuilt Grafana starts from it.</p>
+to the value in OpenBao, not a new one: <code>grafana-admin.yaml</code> pushes the
+password with <code>updatePolicy: IfNotExists</code>, so OpenBao keeps the first value
+and a rebuilt Grafana starts from it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">PASSWORD</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>password<span class="w"> </span>monitoring/grafana-admin<span class="k">)</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/kube-prometheus-stack-grafana<span class="w"> </span>-c<span class="w"> </span>grafana<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
@@ -3143,9 +3195,8 @@ first value forever and a rebuilt Grafana starts from it.</p>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-alertmanager<span class="w"> </span><span class="m">9093</span>:9093
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># then open http://localhost:9093 and check Status -&gt; Config</span>
 </span></code></pre></div>
-<p><code>Watchdog</code> proves the pipeline as far as Alertmanager and not one step
-further; SMTP auth, spam heuristics and an expired password are unmonitored.
-Send yourself a test alert once and confirm it arrives.</p>
+<p><code>Watchdog</code> proves the pipeline only as far as Alertmanager; SMTP auth and an
+expired password are unmonitored. Send yourself a test alert once.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Prometheus is a single replica, Alertmanager is not</p>

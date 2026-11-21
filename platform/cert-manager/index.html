@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1230,6 +1232,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issuer-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuer scope
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pods-from-the-controllers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pods from the controllers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1753,6 +1783,8 @@
       
         
       
+        
+      
     
     
     
@@ -2035,6 +2067,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2411,6 +2470,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#issuer-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Issuer scope
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pods-from-the-controllers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Pods from the controllers
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2587,8 +2674,8 @@
 <p>TLS certificate automation via Let's Encrypt, using DNS-01 challenges through
 AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that
 Let's Encrypt cannot reach, and because it is the only way to get a wildcard:
-one certificate per zone, listed in <code>payload/platform/certificates/certificates.yaml</code>,
-covers every hostname the Gateways terminate.</p>
+one certificate per zone, in <code>payload/platform/certificates/certificates.yaml</code>,
+covers every Gateway hostname.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2600,7 +2687,7 @@ covers every hostname the Gateways terminate.</p>
 <tbody>
 <tr>
 <td>Namespace</td>
-<td><code>cert-manager</code>; the wildcards land in <code>kube-system</code> beside the Gateways, the agent sessions' certificates in their own namespaces; see <a href="../gateway-api/#ssh-listener">SSH listener</a></td>
+<td><code>cert-manager</code>; the wildcards land in <code>kube-system</code> beside the Gateways, the agent sessions' in their own namespace; see <a href="../gateway-api/#ssh-listener">SSH listener</a></td>
 </tr>
 <tr>
 <td>Depends on</td>
@@ -2608,7 +2695,7 @@ covers every hostname the Gateways terminate.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Nothing immediately. Certificates stop renewing, and the consequence surfaces up to sixty days later</td>
+<td>Nothing immediately. Certificates stop renewing; the consequence surfaces up to sixty days later</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2631,15 +2718,15 @@ covers every hostname the Gateways terminate.</p>
 <tbody>
 <tr>
 <td>Issuers and certificates in their own <code>certificates</code> Application</td>
-<td>Kept with cert-manager, the controller would read Degraded until OpenBao held the Route53 credentials — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
+<td>Kept with cert-manager, the controller reads Degraded until OpenBao holds the Route53 credentials — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
 </tr>
 <tr>
 <td>Three sync waves inside <code>certificates</code>: <code>ExternalSecret</code>, then the ClusterIssuers, then the Certificates</td>
-<td>In one wave ArgoCD orders custom resources alphabetically — <code>Certificate</code>, <code>ClusterIssuer</code>, <code>ExternalSecret</code>, exactly backwards — and an issuer applied before its Secret stays <code>Ready=False</code> with <code>InvalidSolver</code> until something resyncs it</td>
+<td>One wave orders custom resources alphabetically, exactly backwards, and an issuer applied before its Secret stays <code>Ready=False</code> with <code>InvalidSolver</code></td>
 </tr>
 <tr>
 <td>Sync <code>retry</code> on both Applications</td>
-<td>Without one a failed apply ends the operation where it fell; one flake at the front of the chain, such as the ESO webhook being unreachable on a fresh CNI, leaves every issuer and certificate behind it unmade</td>
+<td>Without one a failed apply, such as the ESO webhook being unreachable on a fresh CNI, ends the operation and leaves everything behind it unmade</td>
 </tr>
 <tr>
 <td><code>ServiceMonitor</code> rendered unconditionally</td>
@@ -2647,20 +2734,18 @@ covers every hostname the Gateways terminate.</p>
 </tr>
 <tr>
 <td>Two webhook replicas, a PodDisruptionBudget and a hostname spread</td>
-<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see <a href="../#replica-placement">Replica placement</a></td>
+<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so a lone replica rescheduling through a drain refuses every apply — see <a href="../#replica-placement">Replica placement</a></td>
 </tr>
 <tr>
 <td><code>letsencrypt-staging</code> and <code>letsencrypt-prod</code></td>
-<td>Use staging first: production allows five duplicate certificates per week, a misconfigured solver retries until that is gone, and there is no appeals process</td>
+<td>Use staging first: production allows five duplicate certificates per week and a misconfigured solver retries until they are gone</td>
 </tr>
 </tbody>
 </table>
-<p>The IAM user's policy is cert-manager's
+<p>The IAM policy is the
 <a href="https://cert-manager.io/docs/configuration/acme/dns01/route53/#set-up-an-iam-policy">Route53 policy</a>
-narrowed to <code>_acme-challenge</code> TXT records in this account's zones, so a stolen
-key cannot repoint a hostname. <code>ListHostedZonesByName</code> stays because the
-issuers in <code>cluster-issuers.yaml</code> do not set <code>hostedZoneID</code>. The policy lives
-in AWS, so a change here is applied there by hand:</p>
+cert-manager documents, narrowed to <code>_acme-challenge</code> TXT records so a stolen key cannot repoint a hostname. <code>ListHostedZonesByName</code> stays because the
+issuers do not set <code>hostedZoneID</code>. It lives in AWS, so a change is applied there by hand:</p>
 <div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
@@ -2696,9 +2781,16 @@ in AWS, so a change here is applied there by hand:</p>
 </span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="p">}</span>
 </span></code></pre></div>
 <p>List one <code>hostedzone/&lt;zone-id&gt;</code> ARN per zone a Certificate names.</p>
+<h3 id="issuer-scope">Issuer scope<a class="headerlink" href="#issuer-scope" title="Permanent link">&para;</a></h3>
+<p><code>certificate-issuer-scope</code> lets only <code>kube-system</code>, and <code>claude-agents</code> for
+<code>*.ssh.wlkr.ch</code>, use a ClusterIssuer, which signs any name in the zones; see
+<a href="../security-policies/#admission-policies">policies</a>.</p>
+<h3 id="pods-from-the-controllers">Pods from the controllers<a class="headerlink" href="#pods-from-the-controllers" title="Permanent link">&para;</a></h3>
+<p><code>controller-pod-limits</code> refuses pods from the cert-manager controller, which
+solves DNS-01 only, and host access for CloudNativePG's. Confining those to
+namespaces holding a <code>Cluster</code> is not expressible in a policy.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>Store the credentials once OpenBao and ESO are up; <code>make bao-secrets</code> prompts
-for them, or by hand:</p>
+<p>Once OpenBao and ESO are up, <code>make bao-secrets</code> prompts for the credentials, or by hand:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>bao<span class="w"> </span>kv<span class="w"> </span>put<span class="w"> </span>kv/cert-manager/route53<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>access-key-id<span class="o">=</span><span class="s2">"YOUR_AWS_ACCESS_KEY_ID"</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>secret-access-key<span class="o">=</span><span class="s2">"YOUR_AWS_SECRET_ACCESS_KEY"</span>
@@ -2712,13 +2804,13 @@ the <code>Certificate</code>:</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificaterequest,order,challenge<span class="w"> </span>-A
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>cert-manager<span class="w"> </span>logs<span class="w"> </span>deploy/cert-manager<span class="w"> </span>--tail<span class="o">=</span><span class="m">100</span>
 </span></code></pre></div>
-<p>A <code>Challenge</code> stuck in <code>pending</code> is a DNS problem: either the credentials
-cannot write to the zone, or the TXT record is there and the resolver has not
-caught up. <code>dig +short TXT _acme-challenge.&lt;host&gt;</code> settles which.</p>
+<p>A <code>Challenge</code> stuck in <code>pending</code> is a DNS problem: the credentials cannot
+write to the zone, or the resolver has not caught up. <code>dig +short TXT
+_acme-challenge.&lt;host&gt;</code> settles which.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">A sealed OpenBao means no renewals</p>
-<p>Until OpenBao is unsealed and the secret stored, cert-manager cannot issue or renew, and the failure surfaces as an expired certificate roughly two months later — see <a href="../openbao/#pitfalls">OpenBao</a>.</p>
+<p>Until OpenBao is unsealed and the secret stored, nothing issues or renews, and the failure surfaces as an expired certificate two months later — see <a href="../openbao/#pitfalls">OpenBao</a>.</p>
 </div>
 
 

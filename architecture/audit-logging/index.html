@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1753,6 +1755,8 @@
       
         
       
+        
+      
     
     
     
@@ -2035,6 +2039,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2723,8 +2754,8 @@ kubeadm rendered at init time, and nothing rewrites it on its own.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>Replace the install-time kubeadm config on the node with the regenerated
-   one, then re-render the API server static pod from it:</p>
+<p>Place the regenerated kubeadm config on the node and re-render the API
+   server static pod from it:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scp<span class="w"> </span>output/tmp/kubeadm/kubeadm-config-&lt;node&gt;.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/kubeadm-config.yaml
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/kubeadm-config.yaml<span class="w"> </span>/opt/kubeadm-config.yaml
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>control-plane<span class="w"> </span>apiserver<span class="w"> </span><span class="se">\</span>

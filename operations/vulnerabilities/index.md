@@ -1,6 +1,6 @@
 # Vulnerability Triage
 
-Trivy Operator writes one `VulnerabilityReport` per container, a few thousand findings on a cluster this size. Almost none warrant action, and the work is in proving that quickly. The operator's configuration and failure modes are in [Trivy Operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>). This page is the method; the dispositions are in [Triage 2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md>) and, for the Dependency-Track portfolio, [Triage 2026-09-29](<https://homelab.wlkr.ch/operations/triage-2026-09-29/index.md>).
+Trivy Operator writes one `VulnerabilityReport` per container, a few thousand findings on a cluster this size. Almost none warrant action, and the work is in proving that quickly. The operator's configuration and failure modes are in [Trivy Operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>). This page is the method; the dispositions are in [2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md>), the Dependency-Track portfolio [2026-09-29](<https://homelab.wlkr.ch/operations/triage-2026-09-29/index.md>), platform images [2026-11-21](<https://homelab.wlkr.ch/operations/triage-2026-11-21/index.md>).
 
 ## Pulling a report
 

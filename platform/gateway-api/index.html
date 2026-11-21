@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1235,6 +1237,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#route-hostnames" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Route hostnames
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ssh-listener" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1787,6 +1800,8 @@
       
         
       
+        
+      
     
     
     
@@ -2069,6 +2084,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2477,6 +2519,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#route-hostnames" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Route hostnames
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ssh-listener" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2741,12 +2794,8 @@ listener:</p>
 <p>The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
-its Gateway's tree. A wildcard is a suffix match, so <code>*.k8s.wlkr.ch</code> still
-admits an <code>infra</code> name; such a route gets no traffic, because the infra
-names resolve to the other Gateway and the apps certificate covers one label
-only. Port 80 is
-accepted from all namespaces only so the central rule in <code>http-redirect.yaml</code>
-can send it to HTTPS. <code>apps-gateway</code> carries the annotation that makes
+its Gateway's tree. Port 80 and <code>infra-gateway</code> admit named namespaces only; port 80 exists for
+the rule in <code>http-redirect.yaml</code>. <code>apps-gateway</code> carries the annotation that makes
 <a href="../external-dns/#configuration">external-dns</a> publish the router's public
 address instead of the Gateway's LAN one; the router forwards ports 80 and
 443 to that LAN address.</p>
@@ -2794,6 +2843,35 @@ name:</p>
 </span></code></pre></div>
 <p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for platform tools,
 and the listener from the table above whose hostnames cover the name.</p>
+<h3 id="route-hostnames">Route hostnames<a class="headerlink" href="#route-hostnames" title="Permanent link">&para;</a></h3>
+<p><code>apps-gateway</code> admits every namespace; the <code>route-hostnames-reserved</code>
+<a href="../security-policies/#admission-policies">policy</a> reserves names:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Only from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>*.infra.k8s.wlkr.ch</code>, wildcards</td>
+<td>The namespaces <code>infra-gateway</code> admits; a new platform UI extends both lists</td>
+</tr>
+<tr>
+<td><code>*.ssh.wlkr.ch</code></td>
+<td><code>claude-agents</code></td>
+</tr>
+<tr>
+<td><code>auth.k8s.wlkr.ch</code>, <code>advent.wollbi.ch</code>, <code>fest.wollbi.ch</code></td>
+<td><code>authentik</code>, <code>advent-wollbi</code>, <code>fest-wollbi</code>; a new owned name extends the policy's <code>owners</code> map</td>
+</tr>
+<tr>
+<td>No hostname</td>
+<td><code>kube-system</code></td>
+</tr>
+</tbody>
+</table>
 <h3 id="ssh-listener">SSH listener<a class="headerlink" href="#ssh-listener" title="Permanent link">&para;</a></h3>
 <p>The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
 port 443, the only port the router forwards to <code>apps-gateway</code>. Each agent's
@@ -2841,11 +2919,11 @@ exactly <code>1</code>:</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">
 <p class="admonition-title">Always set <code>sectionName</code></p>
-<p>A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is <code>Accepted</code>.</p>
+<p>Port 80 admits only <code>kube-system</code>, so a route that names no listener fails to attach there; on <code>apps-gateway</code> it still attaches to every HTTPS listener it matches.</p>
 </div>
 <div class="admonition warning">
-<p class="admonition-title">Nothing stops two apps claiming the same hostname</p>
-<p>Both Gateways admit routes from every namespace, so a stray <code>HTTPRoute</code> can attach itself to either Gateway and claim a name inside its hostname pattern — see <a href="../../architecture/security/">Security Posture</a>.</p>
+<p class="admonition-title">Two apps can claim the same hostname</p>
+<p><code>apps-gateway</code> admits routes from every namespace, so a stray <code>HTTPRoute</code> can claim any name the policy above does not reserve — see <a href="../../architecture/security/">Security Posture</a>.</p>
 </div>
 
 

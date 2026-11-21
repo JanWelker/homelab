@@ -1,6 +1,6 @@
 # Security Policies
 
-Five cluster-wide controls: Pod Security Admission, default-deny network policy in both directions, a host firewall on the nodes, no API token on the `default` ServiceAccount, and admission policies on image references, namespace labels and the `authentik` namespace. Each is easy to turn on and hard to turn on safely, so the pattern is the same for all of them: measure first, enforce second, one namespace at a time.
+Five cluster-wide controls: Pod Security Admission, default-deny network policy in both directions, a host firewall on the nodes, no API token on the `default` ServiceAccount, and admission policies on image references, namespace labels and the `authentik` namespace. The pattern is the same for all: measure first, enforce second, one namespace at a time.
 
 ## At a glance
 
@@ -17,7 +17,7 @@ Five cluster-wide controls: Pod Security Admission, default-deny network policy 
 
 ### Pod Security Admission
 
-A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It exempts `kube-system`, which Cilium needs before Argo CD can label anything, and the namespaces that need `privileged` but carry no labels. An exemption skips `audit` and `warn` as well, so the labelled namespaces below are not exempt. Each namespace in `pod-security.yaml` carries three labels:
+A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It exempts only `kube-system`, which Cilium needs before Argo CD can label anything; an exemption skips `audit` and `warn` as well, so every other namespace below is judged by its labels. Each namespace in `pod-security.yaml` carries three labels:
 
 | Label | Set to | Effect |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ A namespace without labels gets the cluster default from `ansible/templates/admi
 | `audit` | Stricter | Records violations in the [API server audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) |
 | `warn` | Stricter | Warns whoever applies the manifest |
 
-Enforcement is set to what already works, so nothing running breaks, while `warn` and `audit` show what a stricter level would catch; tightening later is an informed change.
+Enforcement is set to what already works; `warn` and `audit` show what a stricter level would catch.
 
 The level per namespace is in `pod-security.yaml`; the rule behind it:
 
@@ -47,9 +47,9 @@ Two kinds of traffic have no pod identity a standard `NetworkPolicy` can name: G
 
 #### Cluster-wide rules
 
-A rule that is word-for-word the same in every namespace file is lifted into `cluster-wide.yaml`, selecting every endpoint that has a namespace and with `enableDefaultDeny` off in both directions. The selector is not `{}` because that also takes the Gateway's `reserved:ingress` endpoint and the health endpoint, which then carry a policy they have no use for. Default deny is off because a cluster-wide egress rule would otherwise put every pod in a namespace without policies into egress default-deny. DNS is the only rule lifted; the intra-namespace and node-probe rules would qualify but change what a namespace file says, so they stay.
+A rule that is word-for-word the same in every namespace file is lifted into `cluster-wide.yaml`, selecting every endpoint that has a namespace and with `enableDefaultDeny` off in both directions. The selector is not `{}` because that also takes the Gateway's `reserved:ingress` endpoint and the health endpoint. Default deny is off because a cluster-wide egress rule would otherwise put every pod in a namespace without policies into egress default-deny. DNS is the only rule lifted; the intra-namespace and node-probe rules stay in the namespace files.
 
-The second policy there, `init`, is for the seconds before the agent has resolved a new pod's labels. The pod then carries the reserved `init` identity, which no namespace policy selects, and the audit log shows its traffic denied all the same; a scan Job's first lookups and a starting pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing else.
+The second policy there, `init`, is for the seconds before the agent has resolved a new pod's labels. The pod then carries the reserved `init` identity, which no namespace policy selects. It admits the node, DNS out and DNS in, nothing else.
 
 The third, `cnpg-backups`, selects every CloudNativePG pod by its `cnpg.io/cluster` label and admits only the object store, by the same two rules Velero's namespace has. Every database's backup sidecar needs exactly that, wherever the database runs, so one policy replaces a rule in each workload's file.
 
@@ -83,11 +83,11 @@ Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPol
 | A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
 | A connection a node opened before its agent started has no conntrack entry | For about half a minute after a boot the firewall drops the replies to it, typically the kubelet's first connection to the control-plane address, which Cilium sees as `world`; the client reconnects and nothing else is lost |
 
-`network-policies/host-firewall.yaml` selects every node without `host-firewall.wlkr.ch/exempt`, so a new node is filtered from its first boot and the label is the one switch that frees a node. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). The audit week and the rollout are in [Host Firewall Rollout 2026-11-18](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
+`network-policies/host-firewall.yaml` selects every node without `host-firewall.wlkr.ch/exempt`, so a new node is filtered from its first boot and the label is the one switch that frees a node. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). The rollout is in [Host Firewall Rollout 2026-11-18](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
 
 ### Default ServiceAccount tokens
 
-A pod that names no `serviceAccountName` lands on `default`, which nothing configures, and gets an API token it has no use for. A workload reaching the API through `default` is already a misconfiguration, so `default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it in every namespace with nothing to preserve, empty namespaces included. Left out: `kube-system`, where the control plane authenticates with client certificates and "very likely fine" is not the standard. `authentik-server` runs on `default` by chart default and is covered: Authentik's Kubernetes calls are worker tasks, which run under the `authentik` account.
+A pod that names no `serviceAccountName` lands on `default` and gets an API token it has no use for, so `default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it in every namespace with nothing to preserve, empty namespaces included. Left out: `kube-system`, where the control plane authenticates with client certificates. `authentik-server` runs on `default` by chart default and is covered: Authentik's Kubernetes calls are worker tasks, which run under the `authentik` account.
 
 The same rule applies to a chart workload whose own ServiceAccount has no binding — Alertmanager, Cilium's Envoy and Argo CD's HAProxy switch the mount off in their values — unless the process needs the in-cluster config to start at all ([the External Secrets webhook](<https://homelab.wlkr.ch/platform/external-secrets/index.md#configuration>)) or the chart offers no switch (Rook's `rook-ceph-default` and `rook-ceph-rgw`).
 
@@ -108,35 +108,35 @@ Kinds are listed, never wildcarded, so a new CRD is invisible to the agents unti
 
 ### Admission policies
 
-Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission, with the built-in `ValidatingAdmissionPolicy` rather than a policy engine. The image policies match Pods and every controller that produces them, so a bad Deployment is rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The others close what RBAC and the `apps` project cannot express.
+Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission, with the built-in `ValidatingAdmissionPolicy` rather than a policy engine. The image policies match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
 | `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
-| `image-registry-allowed` | `Audit` and `Warn` | The registries the cluster pulls from today; a reference with no registry counts as `docker.io`. Recorded to the [audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) and shown to whoever applies, not enforced, until the record is clean |
+| `image-registry-allowed` | `Deny` | The registries the cluster pulls from; a reference with no registry counts as `docker.io` |
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](<#agent-rbac>) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
+| `namespace-name-guard` | `Deny` | A platform namespace, `kube-*`, `velero` or `claude-<session>` may be applied only by a platform Application: `apps` creates Namespaces, so a workload could otherwise relabel a platform one or take a name [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>) reaches by prefix. `claude-agents` is exempt |
 | `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) |
 | `object-store-user-scope` | `Deny` | Outside `rook-ceph`, a `CephObjectStoreUser` is named `<namespace>.<purpose>` and carries no admin `capabilities`. Its name is its S3 user ID, so a free choice would hand one namespace another's keys — see [Backup writers](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#backup-writers>) |
 | `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |
 | `cnpg-objectstore-offsite` | `Deny` | A Barman Cloud `ObjectStore` writes to `s3://offsite/<namespace>.<purpose>/`, the prefix TrueNAS pulls |
 | `obc-backup-exempt` | `Deny` | A new `ObjectBucketClaim` says why it needs no backup; nothing copies a bucket off the cluster |
+| `object-store-quota` | `Audit` and `Warn` | A new object store user or `ObjectBucketClaim` sets a size limit, see [Quotas](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#quotas>) |
+| `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](<https://homelab.wlkr.ch/platform/cert-manager/index.md#issuer-scope>) |
+| `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](<https://homelab.wlkr.ch/platform/cert-manager/index.md#pods-from-the-controllers>) |
+| `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](<https://homelab.wlkr.ch/platform/gateway-api/index.md#route-hostnames>) |
 
-The last three [keep a backup from being forgotten](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>): each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason as its value, and none checks an object being deleted, so an operator's finalizer removal still goes through.
+`cnpg-cluster-backed-up`, `cnpg-objectstore-offsite` and `obc-backup-exempt` [keep a backup from being forgotten](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>): each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason as its value, and none checks an object being deleted, so an operator's finalizer removal still goes through.
 
-All but one carry `failurePolicy: Ignore`: an expression that errors lets the request through rather than stopping every pod in the cluster. A real violation is still refused. `claude-writer-pod-limits` fails closed, since it only ever matches one identity.
+All but two carry `failurePolicy: Ignore`: an expression that errors lets the request through rather than stopping every pod in the cluster. A real violation is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail closed, since they only ever match named identities.
 
 ## Usage
 
-### Promoting the registry allowlist
+### Adding a registry
 
-1. Confirm nothing running would be refused, over the full Loki retention:
-
-   ```text
-   {job="kubernetes-audit"} |= "validation.policy.admission.k8s.io/validation_failure" |= "image-registry-allowed"
-   ```
-2. Change `validationActions` on the binding in `admission-policies.yaml` to `["Deny"]`.
+A pod from a registry outside the list is refused. If the registry is intended, add it to the regular expression in `image-registry-allowed`.
 
 ### Tightening a namespace
 

@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1925,6 +1927,8 @@
       
         
       
+        
+      
     
     
     
@@ -2207,6 +2211,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -3016,15 +3047,15 @@ unrelated things breaking at once.</p>
 <tbody>
 <tr>
 <td>Pod security context restated in full</td>
-<td>The chart's <code>securityContext.pod</code> and <code>.container</code> replace rather than merge, so a block that names only what differs loses the rest. The image's <code>USER</code> is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce <code>restricted</code> (<a href="../security-policies/#pod-security-admission">security policies</a>)</td>
+<td>The chart's <code>securityContext.pod</code> and <code>.container</code> replace rather than merge, so a block that names only what differs loses the rest. The image's <code>USER</code> is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root. The full block lets the namespace enforce <code>restricted</code> (<a href="../security-policies/#pod-security-admission">security policies</a>)</td>
 </tr>
 <tr>
 <td><code>unauthenticated_metrics_access</code></td>
-<td><code>/v1/sys/metrics</code> otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200</td>
+<td><code>/v1/sys/metrics</code> otherwise wants a token the ServiceMonitor lacks. The metrics carry no paths or secrets</td>
 </tr>
 <tr>
 <td><code>retry_join</code> stanzas</td>
-<td><code>bao operator init</code> initialises one Raft cluster on one pod; these make the other replicas join it as they start. <code>service_registration "kubernetes"</code> only labels pods <code>active</code> and <code>standby</code></td>
+<td><code>bao operator init</code> initialises one Raft cluster on one pod; these make the other replicas join it. <code>service_registration "kubernetes"</code> only labels pods <code>active</code> and <code>standby</code></td>
 </tr>
 <tr>
 <td><code>serverTelemetry.grafanaDashboard</code></td>
@@ -3032,7 +3063,7 @@ unrelated things breaking at once.</p>
 </tr>
 <tr>
 <td><code>server.gateway.httpRoute</code></td>
-<td>The chart renders the UI's <code>HTTPRoute</code>, to the <code>active</code> Service so the browser never lands on a standby; the chart's warning about terminating TLS before the server concerns certificate authentication, which nothing here uses</td>
+<td>The chart renders the UI's <code>HTTPRoute</code>, to the <code>active</code> Service so the browser never lands on a standby; the chart's warning about terminating TLS concerns certificate authentication, which nothing here uses</td>
 </tr>
 </tbody>
 </table>
@@ -3044,8 +3075,7 @@ ships to Loki with the rest of the container's output. Without one, who read
 which secret is recorded nowhere; with only one, a full PVC would make OpenBao
 refuse every request, because a request no enabled device can log is refused.
 Values are HMACed in both; paths and identities are not. The config is read at
-start-up, and the StatefulSet updates <code>OnDelete</code>, so a change lands when each
-pod next restarts — see <a href="#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
+start-up and the StatefulSet updates <code>OnDelete</code>, so a change lands at each pod's next restart — see <a href="#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
 <p><code>OpenBaoSecretReadOutsideEso</code> in <a href="../logging/#alerting"><code>loki-rules.yaml</code></a>
 fires on a <code>kv/data/</code> read by anything but the External Secrets Operator's
 roles: the operator, a generated root token, or a token that should not exist. A
@@ -3192,7 +3222,8 @@ wrote. Reading a generated value, such as the <code>akadmin</code> password:</p>
 creating a userpass login for the scripts and revoking the root token; the
 password lands in <code>output/credentials/openbao-operator.json</code> (mode <code>0600</code>).
 The policy and login are written by <code>bao_create_operator</code> in
-<code>scripts/lib/bao.sh</code>.</p>
+<code>scripts/lib/bao.sh</code>, which also strips <code>root_token</code> from the key file. No
+target writes a <code>.bak</code>; one beside it is a stale hand copy, so delete it.</p>
 <table>
 <thead>
 <tr>
@@ -3244,11 +3275,11 @@ namespace can reach follows from the store it is allowed to use:</p>
 <td><code>openbao</code></td>
 <td>The platform namespaces</td>
 <td><code>external-secrets-vault</code> in <code>external-secrets</code></td>
-<td>Reads every path, because Authentik reads each workload's <code>kv/&lt;app&gt;/config</code>; writes only <code>authentik/</code>, <code>monitoring/</code> and <code>velero/</code>, where its <code>PushSecret</code>s are</td>
+<td>The platform's own prefixes and every <code>kv/&lt;app&gt;/oidc</code> and <code>kv/&lt;app&gt;/config</code>, where Authentik reads each workload's OIDC pair; writes only <code>authentik/</code>, <code>monitoring/</code> and <code>velero/</code>, where its <code>PushSecret</code>s are</td>
 </tr>
 <tr>
 <td><code>openbao-apps</code></td>
-<td>Every other namespace</td>
+<td>The workload namespaces the store lists</td>
 <td><code>external-secrets-vault</code> in the <code>ExternalSecret</code>'s own namespace</td>
 <td><code>kv/&lt;namespace&gt;/</code></td>
 </tr>
@@ -3270,11 +3301,11 @@ namespace can reach follows from the store it is allowed to use:</p>
 <tbody>
 <tr>
 <td><code>openbao-apps</code> names no ServiceAccount namespace</td>
-<td>ESO then requests the token in the namespace of the <code>ExternalSecret</code> or <code>PushSecret</code>, and the <code>external-secrets-apps</code> policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload, and a new one needs no change here</td>
+<td>ESO then requests the token in the namespace of the <code>ExternalSecret</code> or <code>PushSecret</code>, and the <code>external-secrets-apps</code> policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload</td>
 </tr>
 <tr>
-<td><code>openbao</code> lists the platform namespaces by name, <code>openbao-apps</code> excludes the same list</td>
-<td>Their prefixes hold the platform's credentials; a label would not do, because a workload may ship its own <code>Namespace</code> with any label. A platform component that reads a secret from a new namespace adds it to both</td>
+<td>Both stores list their namespaces by name, and <code>bao-policies.sh</code> binds the <code>external-secrets-apps</code> role to the <code>openbao-apps</code> list</td>
+<td>A label would not do: a workload may ship its own <code>Namespace</code> with any label. A role bound to every namespace would let any new <code>external-secrets-vault</code> ServiceAccount log in. A platform namespace that reads a secret adds itself to <code>openbao</code>, a workload to <code>openbao-apps</code> (<a href="../external-secrets/#adding-a-secret">steps</a>)</td>
 </tr>
 <tr>
 <td>Each workload ships an <code>external-secrets-vault</code> ServiceAccount</td>
@@ -3293,7 +3324,7 @@ nothing else, for the nightly <a href="../../operations/backups/#openbao">snapsh
 <code>cluster-secret-store.yaml</code> too, because the stores only validate against a
 running, unsealed OpenBao. <code>make bao-init</code> writes the policies and roles on a
 fresh cluster by running <code>scripts/bao-policies.sh</code>; after a change to that
-script, <code>make bao-policies</code> rewrites them on a live one. It needs a root
+script or to the <code>openbao-apps</code> list, <code>make bao-policies</code> rewrites them on a live one. It needs a root
 token, because the operator login cannot write policies: run it before
 <code>make bao-rotate-root</code>, or with a
 <a href="#generating-a-root-token">generated root token</a>.</p>
@@ -3308,7 +3339,7 @@ token, because the operator login cannot write policies: run it before
 </span></code></pre></div>
 <div class="admonition danger">
 <p class="admonition-title">Move the unseal keys before you do anything else</p>
-<p><code>make bao-init</code> writes the unseal keys to <code>output/credentials/openbao-init.json</code> and the <a href="#operator-credential">operator login</a> to <code>openbao-operator.json</code> beside it (mode <code>0600</code>, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the <a href="../../architecture/security/">etcd encryption key</a>. The root token in the first file is revoked before the command ends. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing the keys means the data is unrecoverable: no support line, no recovery flow.</p>
+<p><code>make bao-init</code> writes the unseal keys to <code>output/credentials/openbao-init.json</code> and the <a href="#operator-credential">operator login</a> to <code>openbao-operator.json</code> beside it (mode <code>0600</code>, gitignored) — a plaintext copy of the keys to every secret the cluster holds, next to the <a href="../../architecture/security/">etcd encryption key</a>. Copy both into a password manager that does not need this cluster to be running, then delete the key file. Losing the keys means the data is unrecoverable: no support line, no recovery flow.</p>
 </div>
 </li>
 <li>

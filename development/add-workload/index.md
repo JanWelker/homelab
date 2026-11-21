@@ -10,14 +10,14 @@ Workloads live in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homel
 | HTTPS | Nothing | `apps-gateway` terminates TLS with a `*.k8s.wlkr.ch` wildcard |
 | Storage | A PVC with `storageClassName: rook-ceph-block` | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) replicates it three ways, one copy per host |
 | A database | A CloudNativePG `Cluster` | [The operator](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) generates credentials and runs failover |
-| A secret from outside the cluster | An `ExternalSecret` on the `openbao-apps` store, and an `external-secrets-vault` ServiceAccount — see [Adding a secret](<https://homelab.wlkr.ch/platform/external-secrets/index.md#adding-a-secret>) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) holds it under `kv/<namespace>/`, the only prefix the namespace can reach; ESO renders a `Secret` |
+| A secret from outside the cluster | An `ExternalSecret` on the `openbao-apps` store, an `external-secrets-vault` ServiceAccount, and a line on that store's list here — see [Adding a secret](<https://homelab.wlkr.ch/platform/external-secrets/index.md#adding-a-secret>) | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) holds it under `kv/<namespace>/`, the only prefix the namespace can reach; ESO renders a `Secret` |
 | Metrics | A `ServiceMonitor` or `PodMonitor` | Prometheus scrapes it |
 | Logs | Nothing | Alloy ships every container's stdout to Loki |
 | Backups | Nothing, for a PVC | Velero snapshots it nightly |
 
 ## The rules
 
-Restated in the workloads repository's `CONVENTIONS.md`, which is the copy to keep current.
+Restated in the workloads repository's `CONVENTIONS.md`.
 
 1. **Exactly one `application.yaml` per directory**, a complete ArgoCD `Application`: the generator copies its labels, annotations, finalizers and `spec` through unchanged.
 2. **`project: apps`.** Anything else fails the whole ApplicationSet. The project, in `payload/platform/argocd-projects/projects.yaml`, lists the chart repositories workloads may pull from; a new chart repository extends that list first, in this repository, and the repo-server's egress policy in `payload/platform/security/network-policies/argocd.yaml`, or the Application reads `ComparisonError`.

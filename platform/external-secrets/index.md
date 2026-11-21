@@ -30,15 +30,15 @@ sequenceDiagram
     App->>K: mount / envFrom
 ```
 
-ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API. The chart's controller ClusterRole allows that for any ServiceAccount in every namespace; `cluster-secret-store.yaml` keeps its own `external-secrets-vault-token-creator` ClusterRole beside it, scoped to that one name, because the chart's grant is broader than the stores need and a release may narrow it. OpenBao validates the ServiceAccount token against the TokenReview API and issues its own, bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
+ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API. The chart's controller ClusterRole allows that for any ServiceAccount in every namespace; `cluster-secret-store.yaml` keeps its own `external-secrets-vault-token-creator` ClusterRole beside it, scoped to that one name, because the chart's grant is broader than the stores need. OpenBao validates the token against the TokenReview API and issues its own, bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). No long-lived credential exists anywhere.
 
 In `application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
 | No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
-| Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`), which only shows when the pod is recreated |
-| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every `ExternalSecret`, `PushSecret` and store apply fails and the Argo sync that carried it goes to retry — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
+| Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`) |
+| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a drain every `ExternalSecret`, `PushSecret` and store apply fails — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 
 ## Usage
 
@@ -49,7 +49,7 @@ In `application.yaml`'s `valuesObject`:
    ```bash
    bao kv put kv/<workload>/<purpose> key1="value1" key2="value2"
    ```
-2. Declare an `ExternalSecret` alongside the workload's other manifests; the parent Application picks it up. A workload names `openbao-apps` and ships the ServiceAccount that store logs in as; a platform component names `openbao` instead and needs no ServiceAccount:
+2. Declare an `ExternalSecret` alongside the workload's other manifests; the parent Application picks it up. A workload names `openbao-apps` and ships the ServiceAccount that store logs in as, and its namespace goes on the `openbao-apps` list in `cluster-secret-store.yaml` here, then `make bao-policies`; a platform component names `openbao`, lists its namespace there and needs no ServiceAccount:
 
    ```yaml
    ---
@@ -137,7 +137,7 @@ kubectl describe externalsecret -n <namespace> <name>
 | The KV path does not exist (`bao kv get kv/<path>` returns 404) | Store the secret first |
 | `property:` matches no key in the KV entry | `bao kv get kv/<path>` lists them |
 | `permission denied` from `openbao-apps` | The path is outside `kv/<namespace>/`, or the namespace has no `external-secrets-vault` ServiceAccount |
-| `using cluster store ... is not allowed from namespace` | The store's `conditions` exclude the namespace: a workload on `openbao`, or a platform namespace on `openbao-apps` |
+| `using cluster store ... is not allowed from namespace` | The store's `conditions` do not list the namespace: a workload on `openbao`, a platform namespace on `openbao-apps`, or a new workload not yet added |
 
 ## Pitfalls
 

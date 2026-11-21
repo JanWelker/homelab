@@ -15,7 +15,7 @@ Provisioning is the least protected phase, by design: it has to work before any 
 | Property | Detail |
 | --- | --- |
 | Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
-| Those configs embed join credentials | The bootstrap `token`, and on control-plane nodes the `certificateKey`, together enough to join a new control-plane node. Only the init host has them in its kubeadm config; the others get a `0600` environment file that `bootstrap-k8s.service` names by variable and deletes after a successful join, so `systemctl cat` and `systemctl show` reveal nothing |
+| Those configs embed join credentials | The bootstrap `token`, and on control-plane nodes the `certificateKey`, together enough to join a new control-plane node. Only the init host has them in its kubeadm config; the others get a `0600` environment file that `bootstrap-k8s.service` names by variable. The service deletes both files once the node has joined, so neither `systemctl show` nor the disk keeps them |
 | The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. It has no TTL: anyone who fetched a control-plane config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
 | Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off. The transfer config that names their source is inlined from a template in Git, not fetched |
@@ -32,20 +32,24 @@ The mitigation is time: `make serve` is a foreground command, the bootstrap toke
 
 | Setting | Why |
 | --- | --- |
-| `proxy.disabled: true` | Cilium replaces `kube-proxy`. The field lands in the `kubeadm-config` ConfigMap that `kubeadm upgrade apply` reads; a `skipPhases` on init alone leaves `proxy: {}` stored, and every upgrade puts `kube-proxy` back beside Cilium |
-| `--kubelet-certificate-authority` | The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. It can, because `serverTLSBootstrap` makes the kubelet request its certificate from the cluster CA and [kubelet-csr-approver](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) approves the CSR; metrics-server verifies the same certificates |
+| `proxy.disabled: true` | Cilium replaces `kube-proxy`. `kubeadm upgrade apply` reads the field from the `kubeadm-config` ConfigMap; a `skipPhases` on init leaves `proxy: {}` stored, and every upgrade restores `kube-proxy` |
+| `--kubelet-certificate-authority` | The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. `serverTLSBootstrap` has the kubelet request its certificate from the cluster CA, and [kubelet-csr-approver](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) approves it |
 | `--admission-control-config-file` | A [Pod Security default](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>) for namespaces without labels, so a namespace nobody labelled is `baseline`, not `privileged` |
-| `--profiling=false` on the API server, controller-manager and scheduler | `/debug/pprof` exposes internals to any token with the right RBAC and helps nothing here; CIS asks for it off |
+| `--authentication-config` | Anonymous requests reach only `/livez`, `/readyz`, `/healthz` (the kubelet's probes, `make reinstall`) and `kube-public/cluster-info`, which `kubeadm join` reads before it holds a credential. The file replaces `--anonymous-auth`, which must stay unset; `/version` and the rest answer 401 |
+| `--profiling=false` on the API server, controller-manager and scheduler | `/debug/pprof` exposes internals and helps nothing here; CIS asks for it off |
 | Metrics listeners on the node address | etcd's plain-HTTP metrics and the controller-manager and scheduler bind the node's own address, where Prometheus scrapes them, instead of every interface. The address differs per node, so it comes from per-node JSON patches in `/etc/kubernetes/patches` rather than the cluster-wide `ClusterConfiguration`; the patches also move the probes, and etcd keeps `127.0.0.1` for its own |
-| `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any address on every node, with no ownership check. Nothing here uses it: LoadBalancer addresses come from Cilium's pools. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
-| `--tls-cipher-suites` and `--tls-min-version`, `tlsCipherSuites` and `tlsMinVersion` | Go's defaults still include CBC and 3DES suites; the list keeps AEAD suites on ECDHE, which every client here speaks (kubectl, the controllers and the kubelets are all Go). TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1. The kubelet's own listener on port 10250 gets the same list and floor, since the API server, metrics-server and Prometheus are its only clients |
-| `shutdownGracePeriod` and `shutdownGracePeriodCriticalPods` | The kubelet holds a systemd inhibitor lock, so a `systemctl reboot` without the [documented drain](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>), or an ACPI power-off, waits while pods get their SIGTERM window instead of killing them mid-write; the second value is the tail of the first that only critical pods may use. CloudNativePG primaries and Ceph OSDs are the ones that notice |
-| `protectKernelDefaults: true` | The kubelet no longer rewrites `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` at start and refuses to start unless they are already right. `/etc/sysctl.d/k8s.conf` in the node config sets them, and the two travel together: without the drop-in a fresh node comes up at the kernel defaults, the kubelet exits and the node never joins, which shows at the next `make reinstall`, not on merge |
-| `kernel.panic` with `kernel.panic_on_oops` | An oops reboots the node after a few seconds instead of leaving it wedged, so Ceph and etcd start recovering without a hand power-cycle |
-| `podPidsLimit` | Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. Well above anything running here, well below `kernel.pid_max` |
-| `systemReserved`, `kubeReserved` and `evictionHard` memory | The reservations cap `kubepods.slice` below the node's RAM, so a pod that grows, the API server included, is OOM-killed inside its own cgroup instead of starving systemd-networkd, sshd and the kubelet. The eviction threshold makes the kubelet evict before the kernel has to act. A running node needs the same values in the `kubelet-config` ConfigMap, or `kubeadm upgrade node` reverts them |
-| `/etc/tmpfiles.d/kubernetes-cis.conf` | kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies the modes at boot and a kubelet `ExecStartPre` re-applies them before every start, when kubeadm has just rewritten them. See [Triage 2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md#infra-the-nodes>) |
-| `systemd-sysupdate-reboot.timer` masked | Flatcar ships a vendor symlink that runs it despite a disabled preset. It would reboot on its own schedule, behind [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) and without a drain, and it fails every run anyway: it acts on the default sysupdate component, which holds only `noop.conf` |
+| `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it: Cilium's pools supply LoadBalancer addresses. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
+| `--tls-cipher-suites` and `--tls-min-version`, `tlsCipherSuites` and `tlsMinVersion` | Go's defaults still include CBC and 3DES suites; the list keeps ECDHE AEAD suites, which every Go client here speaks. TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1. The kubelet's listener on 10250 gets the same |
+| `shutdownGracePeriod` and `shutdownGracePeriodCriticalPods` | A `systemctl reboot` without the [documented drain](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>), or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write; critical pods may use the tail of it. CloudNativePG primaries and Ceph OSDs notice |
+| `protectKernelDefaults: true` | The kubelet refuses to start unless `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` are already right. `/etc/sysctl.d/k8s.conf` sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next `make reinstall`, not on merge |
+| `kernel.panic` with `kernel.panic_on_oops` | An oops reboots the node within seconds instead of wedging it, so Ceph and etcd recover without a power-cycle |
+| `seccompDefault: true` | A pod without a seccomp profile runs `RuntimeDefault`, not unconfined; a privileged pod stays unconfined; a running node needs it in the `kubelet-config` ConfigMap too |
+| `kernel.dmesg_restrict` and `kernel.kexec_load_disabled` | A container escape cannot read the kernel log or load another kernel. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) reboots with `systemctl reboot`, not kexec |
+| `/etc/ssh/sshd_config.d/10-hardening.conf` | `AllowUsers core`, no keyboard-interactive, no `ssh-rsa`. Flatcar's drop-in appends `ssh-rsa` and sshd keeps a keyword's first value, so this file sorts ahead of it. `core`'s key comes from `~/.ssh/id_ed25519.pub`; any other was added by hand |
+| `podPidsLimit` | Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. |
+| `systemReserved`, `kubeReserved` and `evictionHard` memory | The reservations cap `kubepods.slice` below the node's RAM, so a growing pod is OOM-killed in its own cgroup instead of starving systemd-networkd, sshd and the kubelet. A running node needs the same values in the `kubelet-config` ConfigMap, or `kubeadm upgrade node` reverts them |
+| `/etc/tmpfiles.d/kubernetes-cis.conf` | kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies them at boot and a kubelet `ExecStartPre` before every start. See [Triage 2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md#infra-the-nodes>) |
+| `systemd-sysupdate-reboot.timer` masked | Flatcar's vendor symlink runs it despite a disabled preset. It would reboot behind [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) without a drain, and it fails anyway: the default sysupdate component holds only `noop.conf` |
 | `noop.conf` in `/etc/sysupdate.d/` | The unsuffixed directory is the default component that `systemd-sysupdate.service` acts on; the no-op transfer keeps that run from failing while the real transfer sits in the `kubernetes.d` component |
 
 ## Secrets
@@ -56,7 +60,7 @@ Secrets live in [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) a
 - No root token is kept: `make bao-init` revokes it once it has created the [operator login](<https://homelab.wlkr.ch/platform/openbao/index.md#operator-credential>), and one is generated from the shares when needed. The operator login reads and writes every KV path, so `output/credentials/` is as sensitive as before, but it cannot change policies or auth methods.
 - A workload's namespace reaches only `kv/<namespace>/` in OpenBao; the platform's store refuses every other namespace — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>).
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in a namespace can read what ESO materialised there. Encryption at rest protects the bytes in etcd, not the API.
-- Velero's resource backups hold every `Secret` as plain JSON in the `velero` bucket, so its keys and RGW bypass encryption at rest; only the volume data is encrypted — see [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>).
+- Velero's resource backups hold every `Secret` as plain JSON under the `offsite` bucket's `backup.velero/` prefix, so its keys and RGW bypass encryption at rest; only the volume data is encrypted — see [Velero](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>).
 
 ### Encryption at rest
 
@@ -93,13 +97,13 @@ The API server records who did what, to which object, and whether it was allowed
 
 **Pod Security Admission is on, but mostly auditing.** Every platform namespace carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a stricter one, so violations are visible without breaking what runs: measure first, enforce second.
 
-**Image references are checked at admission.** An untagged or `latest` image is refused; a registry outside the allowlist is recorded and warned about but admitted. Signatures are not verified: few of the upstreams sign, so a verifier would exempt nearly everything. See [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
+**Image references are checked at admission.** An untagged or `latest` image is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a verifier would exempt nearly everything. See [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
 
-**Both Gateways admit routes from every namespace** (`allowedRoutes.namespaces.from: All`). Any namespace can attach an `HTTPRoute` to either Gateway and claim a hostname inside its listener's pattern — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md#configuration>).
+**`apps-gateway` admits routes from every namespace** (`allowedRoutes.namespaces.from: All`), so a policy reserves the platform names — see [Route hostnames](<https://homelab.wlkr.ch/platform/gateway-api/index.md#route-hostnames>).
 
 ## Exposed interfaces
 
-Every platform UI on the infra gateway, and Flowscape and the Extractor admin UI on the apps gateway, is behind [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>), and only accounts in `infra-users` get past it. The wollbi editors also have Authentik accounts, so being logged in is not enough. The last two rows are not behind Authentik:
+Every platform UI on the infra gateway is behind [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>), and only accounts in `infra-users` get past it. The applications on the apps gateway, some of them public and without Authentik, are listed with their authentication on the [applications repository's pages](<https://homelab-apps.wlkr.ch/>). The last two rows are not behind Authentik:
 
 | Service | Authentication | Group required |
 | --- | --- | --- |
@@ -109,7 +113,6 @@ Every platform UI on the infra gateway, and Flowscape and the Extractor admin UI
 | Rook dashboard | Authentik proxy outpost | `infra-users` |
 | Prometheus | Authentik proxy outpost | `infra-users` |
 | Alertmanager | Authentik proxy outpost | `infra-users` |
-| Flowscape, Extractor admin UI | Authentik proxy outpost | `infra-users` |
 | OpenBao UI | Token or configured auth method — not behind Authentik | — |
 | Agent SSH, `*.ssh.wlkr.ch` | The `ssh` TLS-passthrough listener on `apps-gateway`, which external-dns publishes on the public address. Nothing in front authenticates it: `sshd` in each agent pod admits the user `agent` with public keys only — see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) and the workloads repository's [Claude agents](<https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md>) page | — |
 
@@ -122,9 +125,8 @@ Authentik is therefore a dependency of reaching any of them; the break-glass pat
 Roughly in order of value against effort:
 
 1. Narrow `sourceRepos` on the AppProjects to this repository and the Helm repositories actually in use.
-2. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and promote the registry allowlist to `Deny`.
-3. Add a second Alertmanager receiver on a different transport, so a failure of the mail path is not itself unmonitored.
-4. Move etcd encryption to a KMS provider, removing the static `encryption_key` in `output/credentials/`.
-5. Get the backups out of the cluster: Velero and the etcd snapshots write to the Ceph object store they are backing up.
+2. Add a second Alertmanager receiver on a different transport, so a failure of the mail path is not itself unmonitored.
+3. Move etcd encryption to a KMS provider, removing the static `encryption_key` in `output/credentials/`.
+4. Get a backup copy off the site: TrueNAS pulls the `offsite` bucket to the LAN, which survives losing the cluster but not the site.
 
 See [Known Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>) for the operational counterparts.

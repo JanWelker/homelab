@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1770,6 +1772,8 @@
       
         
       
+        
+      
     
     
     
@@ -2052,6 +2056,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2672,14 +2703,13 @@ is.</p>
 through the TokenRequest API. The chart's controller ClusterRole allows that
 for any ServiceAccount in every namespace; <code>cluster-secret-store.yaml</code> keeps its
 own <code>external-secrets-vault-token-creator</code> ClusterRole beside it, scoped to that
-one name, because the chart's grant is broader than the stores need and a
-release may narrow it. OpenBao validates the ServiceAccount token against the
-TokenReview API and issues its own, bound to that store's policy. Platform namespaces use the
-<code>openbao</code> store and the ServiceAccount in <code>external-secrets</code>; a workload uses
-<code>openbao-apps</code> and its own, which confines it to <code>kv/&lt;namespace&gt;/</code> — see
+one name, because the chart's grant is broader than the stores need. OpenBao
+validates the token against the TokenReview API and issues its own, bound to
+that store's policy. Platform namespaces use the <code>openbao</code> store and the
+ServiceAccount in <code>external-secrets</code>; a workload uses <code>openbao-apps</code> and its
+own, which confines it to <code>kv/&lt;namespace&gt;/</code> — see
 <a href="../openbao/#kubernetes-auth">Kubernetes auth</a>. No long-lived credential exists
-anywhere. The stores use ESO's <code>vault</code> provider unchanged against the
-in-cluster Service.</p>
+anywhere.</p>
 <p>In <code>application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
@@ -2695,11 +2725,11 @@ in-cluster Service.</p>
 </tr>
 <tr>
 <td>Webhook ServiceAccount token stays mounted</td>
-<td>The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (<code>unable to load in-cluster config</code>), which only shows when the pod is recreated</td>
+<td>The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (<code>unable to load in-cluster config</code>)</td>
 </tr>
 <tr>
 <td>Two webhook replicas, a PodDisruptionBudget and a hostname spread</td>
-<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a single replica reschedules through a Kured drain every <code>ExternalSecret</code>, <code>PushSecret</code> and store apply fails and the Argo sync that carried it goes to retry — see <a href="../#replica-placement">Replica placement</a></td>
+<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a single replica reschedules through a drain every <code>ExternalSecret</code>, <code>PushSecret</code> and store apply fails — see <a href="../#replica-placement">Replica placement</a></td>
 </tr>
 </tbody>
 </table>
@@ -2716,8 +2746,10 @@ in-cluster Service.</p>
 <li>
 <p>Declare an <code>ExternalSecret</code> alongside the workload's other manifests; the
    parent Application picks it up. A workload names <code>openbao-apps</code> and ships
-   the ServiceAccount that store logs in as; a platform component names
-   <code>openbao</code> instead and needs no ServiceAccount:</p>
+   the ServiceAccount that store logs in as, and its namespace goes on the
+   <code>openbao-apps</code> list in <code>cluster-secret-store.yaml</code> here, then
+   <code>make bao-policies</code>; a platform component names <code>openbao</code>, lists its
+   namespace there and needs no ServiceAccount:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nn">---</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ServiceAccount</span>
@@ -2827,7 +2859,7 @@ so their auth failures show on the <code>ExternalSecret</code> instead:</p>
 </tr>
 <tr>
 <td><code>using cluster store ... is not allowed from namespace</code></td>
-<td>The store's <code>conditions</code> exclude the namespace: a workload on <code>openbao</code>, or a platform namespace on <code>openbao-apps</code></td>
+<td>The store's <code>conditions</code> do not list the namespace: a workload on <code>openbao</code>, a platform namespace on <code>openbao-apps</code>, or a new workload not yet added</td>
 </tr>
 </tbody>
 </table>

@@ -406,6 +406,8 @@
       
         
       
+        
+      
     
     
     
@@ -1415,6 +1417,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quotas
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dashboard-login" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1931,6 +1944,8 @@
       
         
       
+        
+      
     
     
     
@@ -2213,6 +2228,33 @@
     
   
   Triage 2026-09-29
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/triage-2026-11-21/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Triage 2026-11-21
 
     
   </span>
@@ -2720,6 +2762,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quotas
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dashboard-login" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2992,9 +3045,8 @@ the OSD data with it: changing the partition table is a
 <a href="../../operations/nodes/">reinstall</a>, not an edit.</p>
 <p>Ignition declares it with <code>format: none</code> and <code>wipe_filesystem: true</code>, because
 <code>ceph-volume</code> reads the BlueStore <em>signature</em>, not the partition table, and a
-reinstalled node that kept the old bytes would present an OSD from a cluster
-that no longer exists. Ceph declines any device that already carries a
-filesystem — the first thing to check when an OSD refuses to appear, see
+reinstalled node would present an OSD from a cluster that no longer exists.
+Ceph declines any device that already carries a filesystem; see
 <a href="#no-osds-after-reprovisioning">No OSDs after reprovisioning</a>.</p>
 <h3 id="storage-classes">Storage classes<a class="headerlink" href="#storage-classes" title="Permanent link">&para;</a></h3>
 <table>
@@ -3025,12 +3077,11 @@ live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as <code>https://s3.infra.k8s.wlkr.ch</code> for
 <a href="../velero/#configuration">Velero</a>, whose S3 client only signs cleanly over
 TLS. More than one RGW instance (<code>gateway.instances</code>) keeps
-a node reboot from stalling a backup, which only holds while they sit on
-separate nodes: <code>gateway.placement</code> carries the spread constraint, because the
-<code>placement.all</code> block belongs to the <code>CephCluster</code> and never reaches this CR.
-It is a hard one: every gateway is daemon <code>a</code>, so on one node the exporter
-reports their counters under the same labels and Prometheus drops them, and
-the descheduler never evicts a <code>system-cluster-critical</code> pod to fix that.
+a node reboot from stalling a backup, which only holds on separate nodes:
+<code>gateway.placement</code> carries the spread constraint, because <code>placement.all</code>
+belongs to the <code>CephCluster</code> and never reaches this CR. It is a hard one:
+every gateway is daemon <code>a</code>, so on one node Prometheus drops their counters,
+and the descheduler never evicts a <code>system-cluster-critical</code> pod to fix that.
 The data pool is erasure coded (<code>dataChunks</code> and <code>codingChunks</code>): less
 overhead than three replicas, safe at <code>failureDomain: host</code> only with more
 workers than chunks.</p>
@@ -3270,6 +3321,11 @@ with two replicas sharing one RWO PVC schedules one pod and leaves the other in
 without the annotation <code>homelab.wlkr.ch/backup-exempt</code> and its reason, as
 Loki's carries. A backup does not get a bucket: it is a
 <a href="#backup-writers">backup writer</a> in <code>offsite</code>.</p>
+<h3 id="quotas">Quotas<a class="headerlink" href="#quotas" title="Permanent link">&para;</a></h3>
+<p>A full object store stops every writer, so the <code>object-store-quota</code>
+<a href="../security-policies/#admission-policies">policy</a> asks a new user outside
+<code>rook-ceph</code> for <code>spec.quotas.maxSize</code> and a new claim for <code>maxSize</code> in
+<code>additionalConfig</code>. It only warns until every object carries one.</p>
 <h3 id="dashboard-login">Dashboard login<a class="headerlink" href="#dashboard-login" title="Permanent link">&para;</a></h3>
 <p>The dashboard sits behind Authentik for <code>infra-users</code>, then asks for its own
 login. The only user is <code>admin</code>, and its password is the
@@ -3284,8 +3340,7 @@ user rather than changing <code>admin</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>Run it after the GitOps handover, before trusting anything that mounts a
-volume: a <code>CephCluster</code> reports <code>Ready</code> with no OSDs, and a <code>StorageClass</code>
-exists whether or not a CSI driver registered for it. The script walks the
+volume: a <code>CephCluster</code> reports <code>Ready</code> with no OSDs. The script walks the
 chain in the order it breaks and stops at the first missing link:</p>
 <table>
 <thead>

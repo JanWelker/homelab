@@ -47,7 +47,7 @@ The first three are on the root filesystem, so one `varlog: true` mount covers t
 | `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
 | `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
-| `rbac.rules` without `secrets` | The chart's ClusterRole reads every Secret for `remote.kubernetes.secret`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](<#alerting>) would show such a read, but a grant with no purpose is better not made |
+| `rbac.rules` without `secrets` and `configmaps` | The chart's ClusterRole reads every Secret and ConfigMap for `remote.kubernetes.*`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](<#alerting>) shows Secret reads, but an unused grant is better not made |
 
 ### Storage
 
@@ -81,7 +81,7 @@ Alerts over logs live in `logging/loki-rules.yaml`, a ConfigMap labelled `loki_r
 | `TetragonPrivilegedExec` | A setuid, setgid or file-capability binary raised privileges on exec, with the same `ceph-osd` exception | The `binary_properties` field exists only in the exec event |
 | `TetragonFilelessExec` | A binary executed from memory, via `memfd_create` or an anonymous descriptor, except runc's sealed self-copy on every `exec` | Same |
 | `TetragonDeletedBinaryExec` | A binary executed after its last link was removed | Same; see [Tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md#policies>) |
-| `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The signature result is an argument of the kprobe event, not a metric label |
+| `TetragonUnsignedKernelModule` | A kernel module loaded without a valid signature, on a node or from a container | The `add_taint` kprobe event, not a metric label |
 | `HubblePolicyDrops` | More than three `POLICY_DENIED` packets in ten minutes for one source workload, destination and port, each counted once although Hubble also reports it as a policy verdict; replies, ICMP errors (a pod's port-unreachable answer to a DNS reply that came too late), pods still in the `init` identity, pod and service addresses Cilium had no pod for at that moment (the world or a local CIDR identity, as during an agent restart or a pod start) and the wanted drops below are left out. The `namespace` label is the policy that refused, so the mail names the file to edit | A connection's retransmits pass the threshold and a name rule's single early `SYN` does not; the metric counts per namespace pair only and misses the first burst of a new pair |
 | `HostFirewallDrops` | More than three `POLICY_DENIED` packets in ten minutes from one source to one node's own address, which only the [host firewall](<https://homelab.wlkr.ch/platform/security-policies/index.md#host-firewall>) refuses; `HubblePolicyDrops` leaves these out | Grouped by node and source without the port, so a port scan of one `SYN` per port alerts as well as a refused connection's retransmits |
 | `NodeSshLogin` | An accepted SSH login on a node | Nothing routine logs in after provisioning |
