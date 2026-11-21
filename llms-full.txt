@@ -4074,7 +4074,7 @@ Flatcar's `/var/lib/selinux` is a symlink into the read-only `/usr`, where `seli
 
 ### Templates
 
-`selinuxd-templates.yaml` is the image's template set with three changes: `svirt_sandbox_domain` is gone and `sandbox_net_domain` is `container_net_domain`, because Flatcar's policy has neither Fedora attribute, and the `proc_type` rule names `proc_t`, because Flatcar's `neverallow` rules forbid the attribute. To test a change, run the `el9` image's `semodule -n -i` against a copy of a node's `/var/lib/selinux` and `/etc/selinux`: `-n` builds without loading.
+`selinuxd-templates.yaml` replaces the image's template set, which does not load on Flatcar: it names two Fedora attributes Flatcar lacks and a `proc_type` rule Flatcar's `neverallow` rules forbid. `base_container.cil` is generated from a node's own `container` module by the skill's `gen_base_template.py`, because Flatcar grants most of `container_t`'s rights to the type itself: a profile's type starts with all of them and adds its own. `flatcar_runtime.cil` lets the container runtime, which runs as `kernel_t` here, start an `spc_t` container that sets `no_new_privs`. The daemon reads the files once, so a change takes a new ConfigMap name. To test one, run the `el9` image's `semodule -n -i` against a copy of a node's `/var/lib/selinux` and `/etc/selinux`: `-n` builds without loading.
 
 ## Usage
 

@@ -2798,13 +2798,17 @@ starts, and copies again when the Flatcar version changes, dropping the policy
 when its pod starts. Until it has, a pod whose type comes from a profile
 cannot start on that node.</p>
 <h3 id="templates">Templates<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h3>
-<p><code>selinuxd-templates.yaml</code> is the image's template set with three changes:
-<code>svirt_sandbox_domain</code> is gone and <code>sandbox_net_domain</code> is
-<code>container_net_domain</code>, because Flatcar's policy has neither Fedora attribute,
-and the <code>proc_type</code> rule names <code>proc_t</code>, because Flatcar's <code>neverallow</code> rules
-forbid the attribute. To test a change, run the <code>el9</code> image's
-<code>semodule -n -i</code> against a copy of a node's <code>/var/lib/selinux</code> and
-<code>/etc/selinux</code>: <code>-n</code> builds without loading.</p>
+<p><code>selinuxd-templates.yaml</code> replaces the image's template set, which does not
+load on Flatcar: it names two Fedora attributes Flatcar lacks and a <code>proc_type</code>
+rule Flatcar's <code>neverallow</code> rules forbid. <code>base_container.cil</code> is generated
+from a node's own <code>container</code> module by the skill's <code>gen_base_template.py</code>,
+because Flatcar grants most of <code>container_t</code>'s rights to the type itself: a
+profile's type starts with all of them and adds its own.
+<code>flatcar_runtime.cil</code> lets the container runtime, which runs as <code>kernel_t</code>
+here, start an <code>spc_t</code> container that sets <code>no_new_privs</code>. The daemon reads
+the files once, so a change takes a new ConfigMap name. To test one, run the
+<code>el9</code> image's <code>semodule -n -i</code> against a copy of a node's <code>/var/lib/selinux</code>
+and <code>/etc/selinux</code>: <code>-n</code> builds without loading.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>A profile is one entry in <code>profiles.yaml</code>, written from the denials Loki holds
 by the <code>selinux-denials</code> skill, which also says when <code>spc_t</code> or a host-path
