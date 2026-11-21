@@ -21,14 +21,15 @@ AppArmor and the log enricher are off.
 | Depends on | [cert-manager](cert-manager.md): the operator creates a self-signed Issuer and the webhook certificate itself |
 | If it is down | No profile is installed or changed; modules already loaded stay loaded |
 | Health check | `kubectl -n security-profiles-operator get spod,pods` |
-| Files | `payload/platform/security-profiles-operator/application.yaml`, `payload/platform/security/network-policies/security-profiles-operator.yaml` |
+| Files | `payload/platform/security-profiles-operator/`, `payload/platform/security/network-policies/security-profiles-operator.yaml` |
 
 ## Configuration
 
 | Setting | Why |
 | --- | --- |
 | `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed 512Mi request at node-critical priority, preempting pods on a full node; the policy halves it at pod creation |
-| `customTemplatesConfigMap` left unset | The bundled templates do not match Flatcar's base policy and a `.cil` set for it does not exist yet; a ConfigMap that is named but absent keeps the daemon pod from starting |
+| `customTemplatesConfigMap` | The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits `container` would load; see [Templates](#templates) |
+| `selinuxdImage.default` | The chart's `el9` image. Flatcar matches none of the operator's OS patterns and gets the default, whose RHEL 8 tooling fails on Flatcar's base policy; of the four images only `el9` builds it. The digest is a copy of the chart's |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
 | `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
 | `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
@@ -37,8 +38,17 @@ AppArmor and the log enricher are off.
 
 The images are the chart's: the operator from `registry.k8s.io` and `selinuxd`
 from `quay.io`, pinned by digest inside the chart, so Renovate sees only the
-chart version. The operator picks the `selinuxd` image by the node's OS; Flatcar
-has no entry and gets the default.
+chart version.
+
+### Templates
+
+`selinuxd-templates.yaml` is the image's template set with three changes:
+`svirt_sandbox_domain` is gone and `sandbox_net_domain` is
+`container_net_domain`, because Flatcar's policy has neither Fedora attribute,
+and the `proc_type` rule names `proc_t`, because Flatcar's `neverallow` rules
+forbid the attribute. To test a change, run the `el9` image's
+`semodule -n -i` against a copy of a node's `/var/lib/selinux` and
+`/etc/selinux`: `-n` builds without loading.
 
 ## Usage
 
@@ -65,8 +75,9 @@ Known gaps:
   to `/usr/lib/selinux/policy`, so `selinuxd` cannot install a module until the
   node template provides a writable copy and re-copies it after each OS update.
   Until then no `SelinuxProfile` reaches `Installed`.
-- **No templates for Flatcar's policy.** `customTemplatesConfigMap` is the
-  documented answer, and the `.cil` files are still to be written.
+- **Two policy files.** `selinuxd` writes `policy.33`, the kernel's version,
+  beside the shipped `policy.35`; a `semodule -B` with the host's tools
+  rewrites only the latter, and the node then boots the stale one.
 - **Upstream does not test it.** Its Flatcar end-to-end job runs with
   `E2E_TEST_SELINUX=false`.
 - **A fresh node has no profiles** until its `spod` pod runs; whatever a node

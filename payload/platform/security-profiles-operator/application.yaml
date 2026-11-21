@@ -10,37 +10,52 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: infra
-  source:
+  sources:
     # OCI, without the scheme; see docs/platform/argocd.md#projects
-    repoURL: registry.k8s.io/security-profiles-operator/charts
-    chart: security-profiles-operator
-    targetRevision: 1.1.2
-    helm:
-      valuesObject:
-        # Why each non-default value: docs/platform/security-profiles-operator.md#configuration
-        replicaCount: 2
+    - repoURL: registry.k8s.io/security-profiles-operator/charts
+      chart: security-profiles-operator
+      targetRevision: 1.1.2
+      helm:
+        valuesObject:
+          # Why each non-default value: docs/platform/security-profiles-operator.md#configuration
+          replicaCount: 2
 
-        # selinuxd's fixed memory request is halved by the selinuxd-memory-request
-        # policy; see docs/platform/security-profiles-operator.md#configuration
-        selinux:
-          enable: true
+          # selinuxd's fixed memory request is halved by the selinuxd-memory-request
+          # policy; see docs/platform/security-profiles-operator.md#configuration
+          selinux:
+            enable: true
+            customTemplatesConfigMap: selinuxd-templates-flatcar
 
-        # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
-        resources:
-          requests:
-            cpu: 250m
-            memory: 50Mi
-          limits:
-            memory: 512Mi
-        daemon:
+          # Flatcar matches none of the operator's OS patterns and gets the
+          # default image, whose RHEL 8 tooling cannot read Flatcar's policy;
+          # this is the chart's el9 image. See
+          # docs/platform/security-profiles-operator.md#configuration
+          selinuxdImage:
+            default:
+              repository: security-profiles-operator/selinuxd-el9
+              digest: sha256:cddbd306c48ee8d19b8fb07b2acda1ee99cb3f1d9c3988f828d24b4f2de5ad3c
+
+          # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
           resources:
             requests:
-              cpu: 100m
-              memory: 64Mi
-              ephemeral-storage: 50Mi
+              cpu: 250m
+              memory: 50Mi
             limits:
-              memory: 128Mi
-              ephemeral-storage: 200Mi
+              memory: 512Mi
+          daemon:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 64Mi
+                ephemeral-storage: 50Mi
+              limits:
+                memory: 128Mi
+                ephemeral-storage: 200Mi
+    - repoURL: https://github.com/JanWelker/homelab.git
+      targetRevision: HEAD
+      path: payload/platform/security-profiles-operator
+      directory:
+        exclude: "application.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: security-profiles-operator
