@@ -193,9 +193,10 @@ spec:
         - matchName: github.com
         - matchName: ghcr.io
         # security-profiles-operator: the chart is on registry.k8s.io, whose
-        # blobs redirect to its CDN host.
+        # blobs redirect to its CDN host or a regional Artifact Registry one.
         - matchName: registry.k8s.io
         - matchName: cdn.registry.k8s.io
+        - matchPattern: "*-docker.pkg.dev"
         - matchName: prometheus-community.github.io
         - matchName: cloudnative-pg.github.io
         - matchName: vmware-tanzu.github.io
