@@ -112,3 +112,45 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  description: >-
+    Default deny in both directions for every pod outside kube-system, so a
+    namespace without its own default-ingress and default-egress is closed
+    until it allows what it needs. The rules are the ones every namespace
+    already carries: the node for probes and DNS through the proxy; nothing
+    else is admitted. Namespaces that ship their own policies are
+    unaffected, since their pods are in default deny already. kube-system is
+    left out because its workloads are selected one by one in its own file.
+    The Exists expression keeps the reserved endpoints out, see dns above.
+  endpointSelector:
+    matchExpressions:
+      - key: io.kubernetes.pod.namespace
+        operator: Exists
+      - key: io.kubernetes.pod.namespace
+        operator: NotIn
+        values:
+          - kube-system
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
