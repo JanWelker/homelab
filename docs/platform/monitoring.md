@@ -76,7 +76,10 @@ values in OpenBao.
 Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five
 `*SelectorNilUsesHelmValues: false` settings: the chart treats an empty
 selector as unset and renders `release: kube-prometheus-stack` in its place,
-which limits Prometheus to its own targets.
+which limits Prometheus to its own targets. `ScrapeConfig` and `Probe` load
+from `monitoring` only, as a workload could aim them anywhere Prometheus
+reaches. `enforcedNamespaceLabel` stays off: several monitors rely on
+`honorLabels`.
 
 `PrometheusRule`s load only from the namespaces the `apps` project cannot
 deploy to, matched on the `kubernetes.io/metadata.name` label the API server
@@ -87,7 +90,7 @@ namespace is on the list in `ruleNamespaceSelector`.
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
-| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the ServiceAccount token still authenticates |
+| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the ServiceAccount token still authenticates; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
 | etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP on 2381, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](rook-ceph.md#monitoring) | |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
@@ -101,17 +104,17 @@ namespace is on the list in `ruleNamespaceSelector`.
 
 | Setting | Why |
 | --- | --- |
-| `disable_login_form` and `oauth_auto_login` | Opening the URL bounces straight to Authentik and back; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](authentik.md#groups-and-roles) |
+| `disable_login_form` and `oauth_auto_login` | The URL bounces straight to Authentik; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](authentik.md#groups-and-roles) |
 | `analytics.*` off and `disable_gravatar` | Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches every user's avatar from Gravatar; the Grafana network policy names none of those and the policy audit showed the Gravatar call. Telemetry is off in every component here |
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](authentik.md#client-secrets) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
 | `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and `checksum/secret` restarts Grafana on every sync. The admin account is the [break-glass path](authentik.md#when-authentik-is-down); never set `grafana.adminPassword` in Git |
-| `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so an own ClusterRole and binding grant those alone instead of the chart's ConfigMaps-and-Secrets pair, for the reason given with [Alloy's `rbac.rules`](logging.md#alloy-pipeline); the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
+| `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so a ClusterRole bound by a RoleBinding in each `searchNamespace` namespace grants those alone, not the chart's cluster-wide ConfigMaps-and-Secrets pair; the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready, parking on `FailedAttachVolume` |
-| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load, and OOMKilling the thing that reports cluster health is the failure worth avoiding; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](index.md#components), not a budget |
-| Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto an 8 GB worker without room, which swaps until the kubelet goes `NotReady`. At the median only a node with that much unrequested memory qualifies; 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
-| Prometheus `retention` and `retentionSize` | Whichever is hit first wins. The size cap is the floor under the volume: a series count that grows faster than planned drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
-| Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone changes nothing |
+| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](index.md#components), not a budget |
+| Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto an 8 GB worker without room, which swaps until the kubelet goes `NotReady`. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
+| Prometheus `retention` and `retentionSize` | Whichever is hit first wins; the size cap drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
+| Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone does nothing |
 
 ### Dashboards
 
@@ -141,8 +144,9 @@ describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named
 `<component>-grafana-dashboards`; a Secret carrying the label is not read. The
 sidecar watches only the platform namespaces listed in
 `sidecar.dashboards.searchNamespace`, so a workload cannot replace a
-dashboard; a component in a new namespace adds it there, and the `apps`
-project must not be able to deploy to it. Prefer the chart's own dashboard
+dashboard; a component in a new namespace adds it there and a RoleBinding in
+`grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy
+to it. Prefer the chart's own dashboard
 where it has one. A dashboard built in the UI survives restarts on the PVC but
 lives nowhere else: not in Git, not on a rebuilt cluster.
 

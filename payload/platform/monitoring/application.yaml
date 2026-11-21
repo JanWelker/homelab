@@ -144,6 +144,12 @@ spec:
                           value: "strict-origin-when-cross-origin"
 
           prometheus:
+            serviceAccount:
+              # The control-plane monitors read the pod's projected token
+              # instead; see docs/platform/monitoring.md#scrape-targets
+              createTokenSecret: false
+            controlPlaneScrapeClass:
+              enabled: true
             prometheusSpec:
               # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting
               externalUrl: https://prometheus.infra.k8s.wlkr.ch
@@ -153,6 +159,13 @@ spec:
               podMonitorSelectorNilUsesHelmValues: false
               probeSelectorNilUsesHelmValues: false
               scrapeConfigSelectorNilUsesHelmValues: false
+              # Workloads need neither kind; see docs/platform/monitoring.md#scrape-targets
+              probeNamespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: monitoring
+              scrapeConfigNamespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: monitoring
               # Rules from the namespaces the apps project cannot write to;
               # Kured gates on alert names. See docs/platform/monitoring.md#scrape-targets
               ruleNamespaceSelector:
