@@ -55,6 +55,7 @@
       loop:
         - name: kubernetes
           version: "{{ kubernetes_version }}"
+          sha256: "{{ kubernetes_sha256 }}"
 
     - name: Download Syslinux
       ansible.builtin.include_tasks: tasks/download_syslinux.yaml

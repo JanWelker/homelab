@@ -53,6 +53,16 @@
       "groupName": "rook-ceph"
     },
     {
+      "description": "The gateway-api-crds targetRevision and the sha256 beside it are written by the custom manager together, so the argocd manager must not bump the revision alone.",
+      "matchManagers": [
+        "argocd"
+      ],
+      "matchDepNames": [
+        "https://github.com/kubernetes-sigs/gateway-api.git"
+      ],
+      "enabled": false
+    },
+    {
       "description": "The snapshot-controller image is pinned beside the kustomize tag because upstream's Deployment at a tag names the previous release's image: one PR for both, so they cannot drift.",
       "matchDepNames": [
         "https://github.com/kubernetes-csi/external-snapshotter.git",
@@ -83,13 +93,6 @@
         "gitleaks/gitleaks"
       ],
       "groupName": "gitleaks"
-    },
-    {
-      "description": "Strip kubernetes- prefix from sysext-bakery release tags",
-      "matchDepNames": [
-        "kubernetes"
-      ],
-      "extractVersion": "^kubernetes-(?<version>.+)$"
     },
     {
       "description": "A Kubernetes minor is a manual kubeadm upgrade in version-skew order, and a node provisioned from an automerged minor would run a kubelet ahead of the API server and fail its kubeadm join. Patches still automerge: sysupdate picks those up on the running nodes by itself -- see docs/operations/upgrades.md",
@@ -235,11 +238,28 @@
         "/^ansible/inventory\\.yaml$/"
       ],
       "matchStrings": [
-        "kubernetes_version:\\s*['\"]?(?<currentValue>v?[0-9.]+)['\"]?"
+        "kubernetes_version:\\s*['\"]?(?<version>v[0-9.]+)['\"]?\\n\\s*kubernetes_sha256:\\s*['\"]?(?<currentDigest>[a-f0-9]{64})['\"]?"
       ],
       "depNameTemplate": "kubernetes",
-      "datasourceTemplate": "github-releases",
-      "packageNameTemplate": "flatcar/sysext-bakery"
+      "datasourceTemplate": "github-release-attachments",
+      "packageNameTemplate": "flatcar/sysext-bakery",
+      "description": "The sysext's release tag is kubernetes-<version> and its digest is looked up by tag, so the manager keeps the prefix in currentValue and writes it back without. The sha256 below the version is the image's, bumped in the same PR.",
+      "currentValueTemplate": "kubernetes-{{{version}}}",
+      "versioningTemplate": "regex:^kubernetes-v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$",
+      "autoReplaceStringTemplate": "kubernetes_version: \"{{{replace 'kubernetes-' '' newValue}}}\"\n    kubernetes_sha256: \"{{{newDigest}}}\""
+    },
+    {
+      "description": "The Gateway API release is pinned once, as the gateway-api-crds targetRevision; the sha256 of its standard-install.yaml sits on the next line, which `make install-cilium` verifies before applying the file.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^payload/platform/gateway-api-crds/application\\.yaml$/"
+      ],
+      "matchStrings": [
+        "targetRevision:\\s*(?<currentValue>v[0-9.]+)\\n\\s*# standard-install\\.yaml sha256:(?<currentDigest>[a-f0-9]{64})"
+      ],
+      "depNameTemplate": "gateway-api",
+      "datasourceTemplate": "github-release-attachments",
+      "packageNameTemplate": "kubernetes-sigs/gateway-api"
     },
     {
       "customType": "regex",
