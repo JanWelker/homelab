@@ -27,7 +27,7 @@ AppArmor and the log enricher are off.
 
 | Setting | Why |
 | --- | --- |
-| `selinux.enable` | SELinux support is off outside OpenShift; the chart renders it onto the `spod` object |
+| `selinux.enable: false` | On, each `spod` pod gains a `selinuxd` container with a fixed 512Mi request at node-critical priority, preempting pods on a full node. Off until the [policy store](#pitfalls) is writable |
 | `customTemplatesConfigMap` left unset | The bundled templates do not match Flatcar's base policy and a `.cil` set for it does not exist yet; a ConfigMap that is named but absent keeps the daemon pod from starting |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
 | `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
@@ -59,15 +59,15 @@ needs no module at all, is the `selinux-denials` skill.
 
 ## Pitfalls
 
-Nothing here was run on the cluster. Known gaps:
+Known gaps:
 
 - **The policy store is read-only.** On Flatcar `/var/lib/selinux` is a symlink
   to `/usr/lib/selinux/policy`, so `selinuxd` cannot install a module until the
   node template provides a writable copy and re-copies it after each OS update.
-  That is separate work; until then no `SelinuxProfile` reaches `Installed`.
+  Until then no `SelinuxProfile` reaches `Installed`.
 - **No templates for Flatcar's policy.** `customTemplatesConfigMap` is the
   documented answer, and the `.cil` files are still to be written.
 - **Upstream does not test it.** Its Flatcar end-to-end job runs with
   `E2E_TEST_SELINUX=false`.
 - **A fresh node has no profiles** until its `spod` pod runs; whatever a node
-  needs to boot belongs in the node template, not in a profile.
+  needs to boot belongs in the node template.
