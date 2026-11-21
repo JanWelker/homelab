@@ -2815,7 +2815,7 @@ by the <code>selinux-denials</code> skill, which also says when <code>spc_t</cod
 label needs no profile.</p>
 <ol>
 <li>Merge the profile and wait for <code>kubectl get selinuxprofile &lt;name&gt;</code> to show <code>Installed</code>.</li>
-<li>Then set <code>seLinuxOptions.type: &lt;name&gt;.process</code> on the container, in a second merge: a pod whose type a node does not know cannot start.</li>
+<li>Then set <code>seLinuxOptions.type: &lt;name&gt;.process</code> on the pod, in a second merge: a pod whose type a node does not know cannot start, and a container with its own type gets its own level and loses the pod's volumes.</li>
 </ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <table>
