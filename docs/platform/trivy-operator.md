@@ -45,7 +45,7 @@ The values in `application.yaml` that are not defaults:
 | `skipFiles` | Debian's placeholder key in every CloudNativePG image, which serves TLS from certificates of its own, would otherwise sit in every Postgres report. Trivy's Rego input for a secret has no path, so an ignore policy could only drop the `private-key` rule and every real key with it; this skips one exact path |
 | `additionalVulnerabilityReportFields` without `Description` and `Links` | A report is one API write, capped at 2 MiB; `Links` alone is over half the payload. An oversized report is rejected with nothing but an operator log line |
 | `operator.scanJobTimeout` and `trivy.timeout`, kept equal | The first is the Job's `activeDeadlineSeconds` and kills the pod whatever Trivy is doing; the second is Trivy's own flag and only fires if it is the shorter. Raising one alone does nothing |
-| `accessGlobalSecretsAndServiceAccount: false` | The default grants the operator read on every Secret in the cluster so scan jobs can borrow a workload's `imagePullSecrets`, and every image here is public. A private image would fail its scan and raise `TrivyContainerNotScanned`. The flag also drops `nodes/proxy`, without which node-collector silently skips the kubelet-configuration CIS checks, so `node-collector-rbac.yaml` grants that back |
+| `accessGlobalSecretsAndServiceAccount: false` | The default grants the operator read on every Secret in the cluster so scan jobs can borrow a workload's `imagePullSecrets`, and every image here is public. A private image would fail its scan and raise `TrivyContainerNotScanned`. The flag also drops `nodes/proxy`, which node-collector needs for the kubelet CIS checks, so `node-collector-rbac.yaml` grants it back. The Job runs as the operator's ServiceAccount, the chart has no other, so it cannot be narrower |
 | `clusterSbomCacheEnabled: false` | With the cache, every workload after the first to use an image gets an `SbomReport` from the cached SBOM and no `VulnerabilityReport`. Upstream: [trivy-operator#1668](https://github.com/aquasecurity/trivy-operator/issues/1668) |
 | `configFile` with `scan.skip-version-check` and `scan.disable-telemetry` | The operator mounts it into every scan job as `trivy.yaml`. Trivy's version check and its usage telemetry share one request to `check.trivy.dev`, so switching off one still sends it; the server never makes the call, only the scan jobs |
 | `metricsVulnIdEnabled: false` | One series per CVE per container is a six-figure cardinality, and every label is already in the report |
@@ -53,7 +53,7 @@ The values in `application.yaml` that are not defaults:
 | Control-plane tolerations on `nodeCollector` and `scanJobTolerations` | Without them the CIS infra assessment covers only the workers and reports a clean control plane it never looked at |
 | `enforce: privileged`, `audit`/`warn: restricted` on the namespace, in `payload/platform/security/pod-security.yaml` | node-collector hostPath-mounts `/var/lib/etcd`, `/var/lib/kubelet`, `/etc/kubernetes` and `/etc/cni/net.d`, which `baseline` forbids. Scan jobs themselves drop all capabilities and run read-only |
 | `resources` on the operator | Its cache holds every report in the cluster, and the `SbomReport`s are most of that. At the limit it is OOM-killed mid-write, which shows as reports that never appear rather than as an error |
-| `logDevMode: false` | Its `V(1)` lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding. Turn it on to debug, then off |
+| `logDevMode: false` | Its `V(1)` lines are the only way to see decisions the operator makes silently, but it switches logging to console encoding |
 
 ### Alerting
 
@@ -141,7 +141,7 @@ skips those reports anyway. The two `ScanOnlyCurrentRevisions` settings keep
 the operator from writing them again. It also deletes reports with no owner:
 garbage collection only removes a report with its owning workload, so one left
 without an owner, as a removed node's Rook `osd-prepare` Job left its own, stays
-forever. Its log is one JSON line per kind with the count deleted.
+forever.
 
 ## Usage
 

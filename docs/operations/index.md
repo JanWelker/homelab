@@ -54,9 +54,9 @@ see the [Quickstart](../quickstart.md).
 
     ---
 
-    How to read the Trivy findings and when to file upstream; the dated logs
-    are [Triage 2026-09-20](triage-2026-09-20.md) and
-    [Triage 2026-09-29](triage-2026-09-29.md).
+    How to read the Trivy findings and when to file upstream; logs:
+    [2026-09-20](triage-2026-09-20.md), [2026-09-29](triage-2026-09-29.md),
+    [2026-11-21](triage-2026-11-21.md).
 
 </div>
 
