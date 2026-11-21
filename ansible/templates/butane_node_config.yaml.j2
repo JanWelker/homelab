@@ -193,6 +193,11 @@ storage:
       contents:
         inline: |
           spec:
+            # A static pod starts before any SELinux module can be installed
+            # and reads host files; see docs/architecture/security.md#node-hardening
+            securityContext:
+              seLinuxOptions:
+                type: spc_t
             containers:
               - name: kube-apiserver
                 env:
@@ -207,6 +212,9 @@ storage:
       contents:
         inline: |
           spec:
+            securityContext:
+              seLinuxOptions:
+                type: spc_t
             containers:
               - name: etcd
                 resources:
