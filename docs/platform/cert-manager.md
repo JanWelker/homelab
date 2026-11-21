@@ -31,15 +31,50 @@ covers every hostname the Gateways terminate.
 | Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see [Replica placement](index.md#replica-placement) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week, a misconfigured solver retries until that is gone, and there is no appeals process |
 
-The IAM user needs at minimum:
+The IAM user's policy is cert-manager's
+[Route53 policy](https://cert-manager.io/docs/configuration/acme/dns01/route53/#set-up-an-iam-policy)
+narrowed to `_acme-challenge` TXT records in this account's zones, so a stolen
+key cannot repoint a hostname. `ListHostedZonesByName` stays because the
+issuers in `cluster-issuers.yaml` do not set `hostedZoneID`. The policy lives
+in AWS, so a change here is applied there by hand:
 
 ```json
 {
-  "Effect": "Allow",
-  "Action": ["route53:GetChange", "route53:ChangeResourceRecordSets", "route53:ListHostedZonesByName"],
-  "Resource": "*"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "route53:GetChange",
+      "Resource": "arn:aws:route53:::change/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ChangeResourceRecordSets",
+      "Resource": ["arn:aws:route53:::hostedzone/<zone-id>"],
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "route53:ChangeResourceRecordSetsRecordTypes": ["TXT"]
+        },
+        "ForAllValues:StringLike": {
+          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["_acme-challenge.*"]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ListResourceRecordSets",
+      "Resource": ["arn:aws:route53:::hostedzone/<zone-id>"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ListHostedZonesByName",
+      "Resource": "*"
+    }
+  ]
 }
 ```
+
+List one `hostedzone/<zone-id>` ARN per zone a Certificate names.
 
 ## Usage
 

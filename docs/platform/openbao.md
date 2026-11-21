@@ -100,10 +100,9 @@ a `bao kv put` replaces the whole path.
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](velero.md#repository-password); changing it orphans every volume backup |
 | `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](https://homelab-apps.wlkr.ch/dependency-track/#secrets); written even when empty, so the job fails on its own rather than stalling the sync |
 
-The two `route53` leaves are separate IAM users on purpose: cert-manager
-only ever writes `_acme-challenge` TXT records, though its
-[policy](cert-manager.md#configuration) still allows any record change, while
-external-dns creates and deletes A records by design, so stolen it can
+The two `route53` leaves are separate IAM users on purpose: cert-manager's
+[policy](cert-manager.md#configuration) allows only `_acme-challenge` TXT
+records, while external-dns creates and deletes A records by design, so stolen it can
 repoint hostnames. One shared key collapses both into "someone owns your
 domain".
 
