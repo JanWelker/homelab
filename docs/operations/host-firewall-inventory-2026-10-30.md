@@ -51,5 +51,5 @@ else, Cilium's `world`.
 | --- | --- |
 | Services bound to `*` answer on each node's global IPv6 address: `curl` on port 9100 from the workstation returned `200` | The firewall cannot filter IPv6 with `enable-ipv6: false`; it [drops it all](../platform/cilium.md#pitfalls). No IPv6 connection other than loopback was established on any node; each node's second resolver is IPv6, used only after the first fails |
 | Prometheus's scrapes arrive from its node's address, not the pod's | Masquerading, see [Host firewall](../platform/security-policies.md#host-firewall). Prometheus-only is held by the pod egress policies: besides the API server rules, only Prometheus, Hubble Relay and metrics-server name a node as a destination, each with its ports |
-| Tetragon holds 2112 on the control planes, the port kube-vip also wants | kube-vip logs `bind: address already in use`, and its liveness probe is answered by Tetragon |
+| Tetragon holds 2112 on the control planes, the port kube-vip also wants | kube-vip logs `bind: address already in use`, and its liveness probe is answered by Tetragon. Fixed since: Tetragon serves its metrics on [its own port](../platform/tetragon.md#configuration) |
 | 6789 is Tetragon, not a Ceph monitor | Nothing on a node needs a Ceph rule |
