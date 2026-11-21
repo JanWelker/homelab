@@ -267,13 +267,9 @@ spec:
       expression: >-
         object.metadata.annotations['argocd.argoproj.io/tracking-id'].split(':')[0]
   validations:
-    - expression: >-
-        variables.application in ['authentik', 'security'] ||
-        (request.kind.group == '' && request.kind.kind == 'ConfigMap' &&
-         object.metadata.name == 'authentik-blueprint-' + variables.application)
+    - expression: variables.application in ['authentik', 'security']
       messageExpression: >-
-        'Application ' + variables.application + ' may only create the ConfigMap authentik-blueprint-' +
-        variables.application + ' in authentik.'
+        'Application ' + variables.application + ' may not create objects in authentik.'
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1
