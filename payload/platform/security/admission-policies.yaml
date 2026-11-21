@@ -284,6 +284,70 @@ spec:
   policyName: authentik-foreign-objects
   validationActions: ["Deny"]
 ---
+# Platform and KV-prefix namespace names belong to the platform Applications;
+# see docs/platform/security-policies.md#admission-policies
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: namespace-name-guard
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["namespaces"]
+  # Only what an Argo CD Application applied; controllers and kubectl carry no tracking id.
+  matchConditions:
+    - name: tracked-by-argocd
+      expression: >-
+        has(object.metadata.annotations) &&
+        'argocd.argoproj.io/tracking-id' in object.metadata.annotations
+  variables:
+    # <application>:<group>/<kind>:<namespace>/<name>
+    - name: application
+      expression: >-
+        object.metadata.annotations['argocd.argoproj.io/tracking-id'].split(':')[0]
+    # The Applications of the infra and system projects.
+    - name: platform
+      expression: >-
+        ['alloy', 'argocd', 'argocd-config', 'argocd-projects', 'arc-controller',
+         'arc-runners', 'authentik', 'backup', 'cert-manager', 'certificates',
+         'cilium', 'cloudnative-pg', 'descheduler', 'external-dns',
+         'external-secrets', 'gateway-api', 'gateway-api-crds', 'kube-prometheus-stack',
+         'kube-vip', 'kubelet-csr-approver', 'kured', 'logging', 'loki',
+         'metrics-server', 'openbao', 'prometheus-operator-crds', 'rook-ceph',
+         'rook-ceph-cluster', 'rook-ceph-operator', 'security',
+         'snapshot-controller', 'tetragon', 'trivy-operator', 'velero', 'workloads']
+    # The platform's namespaces, and the top-level KV prefixes no workload may
+    # be named after: the agent sessions' `claude-<session>` and `velero`.
+    # claude-agents is the apps-owned namespace the sessions run in.
+    - name: reserved
+      expression: >-
+        object.metadata.name in ['arc-jobs', 'arc-runners', 'arc-systems', 'argocd', 'authentik', 'backup',
+         'cert-manager', 'cilium-secrets', 'cnpg-system', 'default', 'descheduler',
+         'external-dns', 'external-secrets', 'gateway-system', 'kured', 'logging',
+         'monitoring', 'node-exporter', 'openbao', 'rook-ceph', 'trivy-system',
+         'velero'] ||
+        object.metadata.name.startsWith('kube-') ||
+        (object.metadata.name.startsWith('claude-') && object.metadata.name != 'claude-agents')
+  validations:
+    - expression: >-
+        !variables.reserved || variables.application in variables.platform
+      messageExpression: >-
+        'Namespace ' + object.metadata.name + ' is a platform or OpenBao prefix name; Application ' +
+        variables.application + ' may not apply it.'
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: namespace-name-guard
+spec:
+  policyName: namespace-name-guard
+  validationActions: ["Deny"]
+---
 # bucketOwner hands a claim the keys of the user it names; only the offsite
 # copy's bucket may use it. See docs/platform/security-policies.md#admission-policies
 apiVersion: admissionregistration.k8s.io/v1
