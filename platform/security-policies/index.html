@@ -3119,27 +3119,29 @@ namespace file is the record of what its namespace may do <em>beyond</em> those.
 <p>Two kinds of traffic have no pod identity a standard <code>NetworkPolicy</code> can name:
 Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet
 health probes, which come from the node. A plain default-deny therefore kills
-ingress <em>and</em> probes, and the pods restart forever in a way that looks like an
-application fault. Cilium's <code>fromEntities</code> names them: <code>ingress</code> for
+ingress <em>and</em> probes, and the pods restart forever. Cilium's <code>fromEntities</code> names them: <code>ingress</code> for
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h4 id="cluster-wide-rules">Cluster-wide rules<a class="headerlink" href="#cluster-wide-rules" title="Permanent link">&para;</a></h4>
 <p>A rule that is word-for-word the same in every namespace file is lifted
 into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace and
 with <code>enableDefaultDeny</code> off in both directions. The selector is not <code>{}</code>
 because that also takes the Gateway's <code>reserved:ingress</code> endpoint and the
-health endpoint. Default deny is off because a cluster-wide egress rule
-would otherwise put every pod in a namespace without policies into egress
-default-deny. DNS is the only rule lifted; the intra-namespace and
-node-probe rules stay in the namespace files.</p>
+health endpoint. Default
+deny is off there, since a cluster-wide egress rule would otherwise close every
+pod of a namespace without policies. DNS is the only rule lifted; the
+intra-namespace and node-probe rules stay in the namespace files.</p>
 <p>The second policy there, <code>init</code>, is for the seconds before the agent has
-resolved a new pod's labels. The pod then carries the reserved <code>init</code>
-identity, which no namespace policy selects. It admits the node, DNS out and
-DNS in, nothing else.</p>
+resolved a new pod's labels: the pod carries the reserved <code>init</code> identity,
+which no namespace policy selects. It admits the node, DNS out and DNS in, nothing
+else.</p>
 <p>The third, <code>cnpg-backups</code>, selects every CloudNativePG pod by its
 <code>cnpg.io/cluster</code> label and admits only the object store, by the same two
 rules Velero's namespace has. Every database's backup sidecar needs exactly
-that, wherever the database runs, so one policy replaces a rule in each
-workload's file.</p>
+that, wherever the database runs, so one policy replaces a rule per workload.</p>
+<p>The fourth, <code>default-deny</code>, closes every pod outside <code>kube-system</code> in both
+directions except the node and DNS, so a namespace that
+ships no <code>default-*</code> policies is closed until it allows what it needs;
+namespaces with them are unchanged.</p>
 <h4 id="what-every-policy-contains">What every policy contains<a class="headerlink" href="#what-every-policy-contains" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -3179,7 +3181,7 @@ workload's file.</p>
 </tr>
 <tr>
 <td>HTTP rules on plaintext ports, ingress side only</td>
-<td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths a week of Hubble records showed; a browser UI behind the Authentik outpost stays at <code>http: [{}]</code>, its paths being the application's own. The path is matched with its query string: a rule anchored with <code>$</code> names the query as well, as OpenBao's <code>/v1/sys/metrics\?format=prometheus$</code> does</td>
+<td>A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths Hubble recorded; a browser UI behind the Authentik outpost stays at <code>http: [{}]</code>. The path is matched with its query string: a rule anchored with <code>$</code> names the query as well, as OpenBao's <code>/v1/sys/metrics\?format=prometheus$</code> does</td>
 </tr>
 </tbody>
 </table>
@@ -3235,8 +3237,11 @@ it on the native device and <code>cilium_host</code>. What each port is for is i
 and the label is the one switch that frees a node. It denies the LAN
 everything but SSH, the API server, DHCP and ping, and admits the whole
 cluster to every port, since a narrower cluster rule could not name Prometheus
-and could lock out a node. A refused source mails
-<a href="../logging/#alerting"><code>HostFirewallDrops</code></a>. The rollout is in <a href="../../operations/host-firewall-rollout-2026-11-18/">Host Firewall Rollout 2026-11-18</a>.</p>
+and could lock out a node. The LAN reaches etcd only from the control-plane
+addresses of the inventory, so a control plane at a new address needs its
+<code>/32</code> here before it joins. A refused source mails
+<a href="../logging/#alerting"><code>HostFirewallDrops</code></a>. The rollout is in
+<a href="../../operations/host-firewall-rollout-2026-11-18/">Host Firewall Rollout 2026-11-18</a>.</p>
 <h3 id="default-serviceaccount-tokens">Default ServiceAccount tokens<a class="headerlink" href="#default-serviceaccount-tokens" title="Permanent link">&para;</a></h3>
 <p>A pod that names no <code>serviceAccountName</code> lands on <code>default</code> and gets an API
 token it has no use for, so <code>default-serviceaccounts.yaml</code> sets <code>automountServiceAccountToken: false</code> on it

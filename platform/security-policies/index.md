@@ -43,15 +43,17 @@ One file per namespace in `network-policies/`, holding that namespace's `CiliumN
 
 #### Why CiliumNetworkPolicy and not NetworkPolicy
 
-Two kinds of traffic have no pod identity a standard `NetworkPolicy` can name: Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet health probes, which come from the node. A plain default-deny therefore kills ingress *and* probes, and the pods restart forever in a way that looks like an application fault. Cilium's `fromEntities` names them: `ingress` for Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
+Two kinds of traffic have no pod identity a standard `NetworkPolicy` can name: Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet health probes, which come from the node. A plain default-deny therefore kills ingress *and* probes, and the pods restart forever. Cilium's `fromEntities` names them: `ingress` for Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 
 #### Cluster-wide rules
 
-A rule that is word-for-word the same in every namespace file is lifted into `cluster-wide.yaml`, selecting every endpoint that has a namespace and with `enableDefaultDeny` off in both directions. The selector is not `{}` because that also takes the Gateway's `reserved:ingress` endpoint and the health endpoint. Default deny is off because a cluster-wide egress rule would otherwise put every pod in a namespace without policies into egress default-deny. DNS is the only rule lifted; the intra-namespace and node-probe rules stay in the namespace files.
+A rule that is word-for-word the same in every namespace file is lifted into `cluster-wide.yaml`, selecting every endpoint that has a namespace and with `enableDefaultDeny` off in both directions. The selector is not `{}` because that also takes the Gateway's `reserved:ingress` endpoint and the health endpoint. Default deny is off there, since a cluster-wide egress rule would otherwise close every pod of a namespace without policies. DNS is the only rule lifted; the intra-namespace and node-probe rules stay in the namespace files.
 
-The second policy there, `init`, is for the seconds before the agent has resolved a new pod's labels. The pod then carries the reserved `init` identity, which no namespace policy selects. It admits the node, DNS out and DNS in, nothing else.
+The second policy there, `init`, is for the seconds before the agent has resolved a new pod's labels: the pod carries the reserved `init` identity, which no namespace policy selects. It admits the node, DNS out and DNS in, nothing else.
 
-The third, `cnpg-backups`, selects every CloudNativePG pod by its `cnpg.io/cluster` label and admits only the object store, by the same two rules Velero's namespace has. Every database's backup sidecar needs exactly that, wherever the database runs, so one policy replaces a rule in each workload's file.
+The third, `cnpg-backups`, selects every CloudNativePG pod by its `cnpg.io/cluster` label and admits only the object store, by the same two rules Velero's namespace has. Every database's backup sidecar needs exactly that, wherever the database runs, so one policy replaces a rule per workload.
+
+The fourth, `default-deny`, closes every pod outside `kube-system` in both directions except the node and DNS, so a namespace that ships no `default-*` policies is closed until it allows what it needs; namespaces with them are unchanged.
 
 #### What every policy contains
 
@@ -64,7 +66,7 @@ The third, `cnpg-backups`, selects every CloudNativePG pod by its `cnpg.io/clust
 | Egress within the namespace, and to `kube-apiserver` where there is a Kubernetes client | The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address. DNS is not repeated: the cluster-wide rule above sends every lookup through the proxy, which is what makes `toFQDNs` work and every lookup visible in Hubble |
 | Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
 | Egress to the backend pod as well, when the name is one the Gateway serves | The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers `403 Access denied` itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules |
-| HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths a week of Hubble records showed; a browser UI behind the Authentik outpost stays at `http: [{}]`, its paths being the application's own. The path is matched with its query string: a rule anchored with `$` names the query as well, as OpenBao's `/v1/sys/metrics\?format=prometheus$` does |
+| HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths Hubble recorded; a browser UI behind the Authentik outpost stays at `http: [{}]`. The path is matched with its query string: a rule anchored with `$` names the query as well, as OpenBao's `/v1/sys/metrics\?format=prometheus$` does |
 
 Host-networked pods (Cilium, kube-vip, the control plane, node-exporter, Tetragon, the CSI node plugins) have no endpoint of their own and cannot be selected; to everything else they are `host` or `remote-node`. `kube-system` therefore covers only its pod-networked workloads, each selected by label.
 
@@ -83,7 +85,7 @@ Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPol
 | A pod reaching another node's IP is masqueraded to its own node | The target sees `remote-node`, so the firewall can tell the LAN from the cluster but not Prometheus from any other pod; the source pod's egress policy decides that |
 | A connection a node opened before its agent started has no conntrack entry | For about half a minute after a boot the firewall drops the replies to it, typically the kubelet's first connection to the control-plane address, which Cilium sees as `world`; the client reconnects and nothing else is lost |
 
-`network-policies/host-firewall.yaml` selects every node without `host-firewall.wlkr.ch/exempt`, so a new node is filtered from its first boot and the label is the one switch that frees a node. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). The rollout is in [Host Firewall Rollout 2026-11-18](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
+`network-policies/host-firewall.yaml` selects every node without `host-firewall.wlkr.ch/exempt`, so a new node is filtered from its first boot and the label is the one switch that frees a node. It denies the LAN everything but SSH, the API server, DHCP and ping, and admits the whole cluster to every port, since a narrower cluster rule could not name Prometheus and could lock out a node. The LAN reaches etcd only from the control-plane addresses of the inventory, so a control plane at a new address needs its `/32` here before it joins. A refused source mails [`HostFirewallDrops`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>). The rollout is in [Host Firewall Rollout 2026-11-18](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
 
 ### Default ServiceAccount tokens
 
