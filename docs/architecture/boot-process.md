@@ -46,12 +46,10 @@ into it. Two templates, because two machines share a disk and nothing else:
 | `butane_installer_config.yaml.j2` | `ignition-<host>-install.json` | the PXE environment | `true` |
 | `butane_node_config.yaml.j2` | `ignition-<host>.json` | the installed system, first boot | `false` |
 
-The PXE menu points at the first. The installer fetches the second as a plain
-file and hands it to `flatcar-install -i`, which embeds it in the OEM partition
-of the system it writes.
+The PXE menu points at the first. The installer fetches the second over HTTP, verifies it against the sha512 rendered into the first, and hands it to `flatcar-install -i`, which embeds it in the OEM partition of the system it writes. The boot server gives it only to the node's `ansible_host`, its DHCP reservation.
 
 !!! tip "Keep the installer minimal"
-    Anything in `butane_installer_config.yaml.j2` is downloaded into RAM on every install of every node and discarded ninety seconds later. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
+    Anything in `butane_installer_config.yaml.j2` is downloaded into RAM on every install and discarded ninety seconds later. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
 
 ```mermaid
 sequenceDiagram
@@ -90,27 +88,27 @@ Step 10 is the point of no return, and the wipe has three parts:
 | `wipe_filesystem: true` on `rook-osd` | `butane_node_config.yaml.j2` | Erases the old BlueStore signature, which `ceph-volume` reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster |
 
 The installed system's config must not wipe: Ignition refuses to touch the disk
-it booted from (`refusing to wipe active disk`) and the first boot fails before
+it booted from (`refusing to wipe active disk`), failing the first boot before
 anything is written. `storage.filesystems` follows the same split — `rook-osd`
 does not exist in the installer, and Ignition would block waiting for it.
 
-Check `install_disk` before you check anything else.
+Check `install_disk` first.
 
 ### Boot order
 
 The install leaves the firmware's boot order alone (`flatcar-install -u`, which
-would put the disk at the front of `BootOrder`, is not passed). The nodes
-network-boot first and reach their disk through `LOCALBOOT`, so the generated
-menu decides every boot; a disk promoted ahead of PXE would make
-`make reinstall` rewrite a menu the firmware no longer reads. A node therefore
-needs network boot first with a working `LOCALBOOT`, or the disk ahead of PXE
-in the firmware — with neither it installs and then has nothing to boot.
+would put the disk first in `BootOrder`, is not passed). The nodes network-boot
+first and reach their disk through `LOCALBOOT`, so the generated menu decides
+every boot; a disk promoted ahead of PXE would make `make reinstall` rewrite a
+menu the firmware no longer reads. A node needs network boot first with a
+working `LOCALBOOT`, or the disk ahead of PXE — with neither it installs and
+then has nothing to boot.
 
 ## 4. Post-Installation Bootstrap
 
 Once kubeadm has initialised the control plane, `make bootstrap` installs only
-what ArgoCD needs to run, and ArgoCD itself. Once the `argocd` Application
-is applied, the repository is in charge.
+what ArgoCD needs to run, and ArgoCD itself; once the `argocd` Application is
+applied, the repository is in charge.
 
 ```mermaid
 sequenceDiagram
@@ -128,7 +126,7 @@ sequenceDiagram
 ```
 
 !!! note "`make untaint` is not part of this flow"
-    It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](index.md#cluster-layout) has dedicated workers, so the taint stays. See [Single-node clusters](../quickstart.md#single-node-clusters).
+    It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](index.md#cluster-layout) has dedicated workers; see [Single-node clusters](../quickstart.md#single-node-clusters).
 
 ## Every boot after the first
 
@@ -145,10 +143,10 @@ The node boots from its own disk; the boot server should be off.
 `ConditionPathExists=!/etc/kubernetes/kubelet.conf` is no longer satisfied.
 
 !!! note "Why `grow-root.service` exists"
-    Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: it is pulled in by an `x-systemd.growfs` mount option that a root mounted from `root=LABEL=ROOT` does not carry. Without the unit the node keeps the image's ~1.6 GB filesystem inside a partition many times that size. It runs the same binary and is a no-op once the filesystem fills the partition.
+    Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: an `x-systemd.growfs` mount option pulls it in, and a root mounted from `root=LABEL=ROOT` does not carry it. Without the unit the node keeps the image's ~1.6 GB filesystem inside a far larger partition. It runs the same binary and is a no-op once the filesystem fills the partition.
 
 !!! note "Two boot paths, and the menu picks the safe one"
-    `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
+    `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](../operations/nodes.md#rebuilding-or-repartitioning-a-node). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
 
 ## Boot server
 
@@ -159,13 +157,14 @@ defaults to the working directory): macOS denies Local Network access to a
 process that started as root and dropped it, so every TFTP reply would fail
 with *No route to host*. HTTP binds `boot_server_ip` from
 `ansible/inventory.yaml` — the address `make config` baked into every generated
-URL — and nothing else, because it serves the Ignition secrets. TFTP listens on
+URL — and nothing else, because it serves the Ignition secrets; stalled
+clients time out. TFTP listens on
 every interface, the only way an ordinary user may bind port 69 on macOS; on
 Linux, lower `net.ipv4.ip_unprivileged_port_start` to 69. If no interface
 holds `boot_server_ip` it says so and names the variable; if port 8000 is taken
 it exits. A failed send ends that node's transfer, not the server. `--bind`,
 `--http-port` and `--tftp-port` override the address and ports, which is how
-the tests and a dry run on a laptop avoid the privileged port.
+tests and laptop dry runs avoid the privileged port.
 
 | Server | Root | Serves |
 | --- | --- | --- |
@@ -208,8 +207,8 @@ diagnosis; see
 ```
 
 A node is identified by MAC from the `01-<mac>` menu it fetches, and after the
-install by name from the `ignition-<host>.json` it asks for. A request from an
-address that has done neither is logged against the bare IP.
+install by name from the `ignition-<host>.json` it asks for. Any other address
+is logged bare, and a request for another node's config is refused.
 
 ## Switching back to local boot
 

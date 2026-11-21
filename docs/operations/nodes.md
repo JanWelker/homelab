@@ -197,9 +197,8 @@ the space.
 
 6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`,
    and reboots into the installed system, which then runs `kubeadm`. The node
-   comes back with a new SSH host key; `make reinstall` already forgot the
-   old one, or `StrictHostKeyChecking=accept-new` would refuse the first
-   `make kubeconfig`.
+   keeps the SSH host key `make config` generated, so `output/known_hosts`
+   still matches.
 7. Leave the boot server up until the node is `Ready` (the sysext images are
    fetched from it on that first boot), then stop it.
 8. Wait for Ceph before the next node, as in
