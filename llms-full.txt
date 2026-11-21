@@ -1350,6 +1350,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | security | `kube-system` | Pod Security Admission levels, the network policies and image admission policies — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
+| [security-profiles-operator](<https://homelab.wlkr.ch/platform/security-profiles-operator/index.md>) | `security-profiles-operator` | Manages SELinux policy modules as `SelinuxProfile` objects; installed, but cannot load one on Flatcar yet |
 | snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md>) | `kube-system` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
@@ -1429,7 +1430,7 @@ Nothing enforces an order: every Application syncs as soon as it exists and conv
 | Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
-| Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
+| Policy | `descheduler`, `kured`, `security`, `security-profiles-operator`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](<https://homelab.wlkr.ch/development/add-workload/index.md>) |
 
 Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own Application is in [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>).
@@ -3800,7 +3801,7 @@ The level per namespace is in `pod-security.yaml`; the rule behind it:
 
 | Enforce | Which namespaces | Why not stricter |
 | --- | --- | --- |
-| `privileged` | Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured | Host networking, the host PID namespace, raw block devices or a hostPath under the kubelet, etcd or log directories, all of which `baseline` forbids. node-exporter has a namespace of its own (`namespaceOverride`) so the rest of the monitoring stack need not follow it |
+| `privileged` | Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured, `selinuxd` | Host networking, the host PID namespace, raw block devices, privileged containers or a hostPath under the kubelet, etcd, log or SELinux directories, all of which `baseline` forbids. node-exporter has its own namespace so the monitoring stack need not follow it |
 | `baseline` | Those with a container that starts as root or escalates: Grafana's `init-chown-data`, the runners and their job pods, and the operators not yet checked against `restricted` | Reduced when the chart offers a non-root path, one namespace at a time |
 | `restricted` | Everything else, and the namespaces that run no pods | — |
 
@@ -4037,6 +4038,59 @@ Work down until the node answers. An agent that cannot reach the API server hear
    ```
 5. Still nothing: at the node's console, add `flatcar.autologin` to the boot entry in the GRUB menu, since `core` has no password, then run the inner command of step 2. Failing that, [rebuild the node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>).
 6. Then [unseal OpenBao](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) and revert in Git: the policy first; the switch only if the firewall itself is the fault, since that revert rolls every agent again.
+
+# Security Profiles Operator
+
+The [Security Profiles Operator](<https://github.com/kubernetes-sigs/security-profiles-operator>) (SPO) turns a `SelinuxProfile` object into a policy module on every node: a `spod` DaemonSet runs `selinuxd` beside the host's policy store, and a pod then uses `<profile>.process` as its `seLinuxOptions.type`. It is here to carry the workload-specific modules that moving the nodes from permissive to enforcing needs; the denials those modules answer are in [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). Seccomp, AppArmor and the log enricher are off.
+
+## At a glance
+
+|  |  |
+| --- | --- |
+| Namespace | `security-profiles-operator` |
+| Depends on | [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>): the operator creates a self-signed Issuer and the webhook certificate itself |
+| If it is down | No profile is installed or changed; modules already loaded stay loaded |
+| Health check | `kubectl -n security-profiles-operator get spod,pods` |
+| Files | `payload/platform/security-profiles-operator/application.yaml`, `payload/platform/security/network-policies/security-profiles-operator.yaml` |
+
+## Configuration
+
+| Setting | Why |
+| --- | --- |
+| `selinux.enable` | SELinux support is off outside OpenShift; the chart renders it onto the `spod` object |
+| `customTemplatesConfigMap` left unset | The bundled templates do not match Flatcar's base policy and a `.cil` set for it does not exist yet; a ConfigMap that is named but absent keeps the daemon pod from starting |
+| Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
+| `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
+| `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](<https://homelab.wlkr.ch/platform/index.md#components>) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
+| `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>) |
+| Network policy | The operator, daemon and webhook only talk to the API server; metrics are off, so there is no scrape rule |
+
+The images are the chart's: the operator from `registry.k8s.io` and `selinuxd` from `quay.io`, pinned by digest inside the chart, so Renovate sees only the chart version. The operator picks the `selinuxd` image by the node's OS; Flatcar has no entry and gets the default.
+
+## Usage
+
+1. Apply a `SelinuxProfile` in any namespace.
+2. Read its status: `kubectl get selinuxprofile <name> -o yaml`. `Installed` means every node's `selinuxd` loaded it.
+3. Set `seLinuxOptions.type` on the pod to the profile's usage string, shown in the status.
+
+Which denials a profile must cover, and when `spc_t` or a host-path label needs no module at all, is the `selinux-denials` skill.
+
+## Health check
+
+| Check | Healthy |
+| --- | --- |
+| `kubectl -n security-profiles-operator get spod spod` | `STATE` is `RUNNING` |
+| `kubectl -n security-profiles-operator get ds spod` | one pod per node, including the control planes |
+| `kubectl get selinuxprofile -A` | every profile `Installed` |
+
+## Pitfalls
+
+Nothing here was run on the cluster. Known gaps:
+
+- **The policy store is read-only.** On Flatcar `/var/lib/selinux` is a symlink to `/usr/lib/selinux/policy`, so `selinuxd` cannot install a module until the node template provides a writable copy and re-copies it after each OS update. That is separate work; until then no `SelinuxProfile` reaches `Installed`.
+- **No templates for Flatcar's policy.** `customTemplatesConfigMap` is the documented answer, and the `.cil` files are still to be written.
+- **Upstream does not test it.** Its Flatcar end-to-end job runs with `E2E_TEST_SELINUX=false`.
+- **A fresh node has no profiles** until its `spod` pod runs; whatever a node needs to boot belongs in the node template, not in a profile.
 
 # Tetragon
 

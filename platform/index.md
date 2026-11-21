@@ -38,6 +38,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | security | `kube-system` | Pod Security Admission levels, the network policies and image admission policies — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
+| [security-profiles-operator](<https://homelab.wlkr.ch/platform/security-profiles-operator/index.md>) | `security-profiles-operator` | Manages SELinux policy modules as `SelinuxProfile` objects; installed, but cannot load one on Flatcar yet |
 | snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md>) | `kube-system` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
@@ -117,7 +118,7 @@ Nothing enforces an order: every Application syncs as soon as it exists and conv
 | Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
-| Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
+| Policy | `descheduler`, `kured`, `security`, `security-profiles-operator`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](<https://homelab.wlkr.ch/development/add-workload/index.md>) |
 
 Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own Application is in [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>).

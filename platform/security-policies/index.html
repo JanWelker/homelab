@@ -22,7 +22,7 @@
         <link rel="prev" href="../descheduler/">
       
       
-        <link rel="next" href="../trivy-operator/">
+        <link rel="next" href="../security-profiles-operator/">
       
       
         
@@ -310,6 +310,8 @@
       
         
           
+        
+      
         
       
         
@@ -970,6 +972,8 @@
       
         
           
+        
+      
         
       
         
@@ -1838,6 +1842,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-profiles-operator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Security Profiles Operator
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2943,6 +2974,8 @@
       
         
       
+        
+      
     
     
     
@@ -3080,8 +3113,8 @@ Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 <tbody>
 <tr>
 <td><code>privileged</code></td>
-<td>Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured</td>
-<td>Host networking, the host PID namespace, raw block devices or a hostPath under the kubelet, etcd or log directories, all of which <code>baseline</code> forbids. node-exporter has a namespace of its own (<code>namespaceOverride</code>) so the rest of the monitoring stack need not follow it</td>
+<td>Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured, <code>selinuxd</code></td>
+<td>Host networking, the host PID namespace, raw block devices, privileged containers or a hostPath under the kubelet, etcd, log or SELinux directories, all of which <code>baseline</code> forbids. node-exporter has its own namespace so the monitoring stack need not follow it</td>
 </tr>
 <tr>
 <td><code>baseline</code></td>
@@ -3615,13 +3648,13 @@ free a node that is already cut off.</p>
         
         
           
-          <a href="../trivy-operator/" class="md-footer__link md-footer__link--next" aria-label="Next: Trivy Operator">
+          <a href="../security-profiles-operator/" class="md-footer__link md-footer__link--next" aria-label="Next: Security Profiles Operator">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Trivy Operator
+                Security Profiles Operator
               </div>
             </div>
             <div class="md-footer__button md-icon">
