@@ -17,7 +17,7 @@ sees a shell spawned in a running container.
 | Namespace | `kube-system` |
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](logging.md) for the events, [Monitoring](monitoring.md) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
-| Health check | `kubectl get tracingpolicies -o wide`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
+| Health check | `tetra tracingpolicy list`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
 | Dashboard | [Tetragon](https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
 | Files | `payload/platform/tetragon/`: the chart, the policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
@@ -110,7 +110,7 @@ kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra getevents -o compac
 
 ```bash
 kubectl -n kube-system get ds tetragon
-kubectl get tracingpolicies -o wide     # STATE should be enabled
+kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra tracingpolicy list   # STATE: enabled
 ```
 
 ### Enforcement
@@ -160,4 +160,4 @@ policy has to say so.
     `increase()`.
 
 !!! warning "A policy that does not load is silent"
-    A `TracingPolicy` naming a kernel function this kernel does not export sits in state `error` and watches nothing. `TetragonPolicyNotLoaded` fires after its `for`; check `kubectl get tracingpolicies -o wide` after every Flatcar release that moves the kernel.
+    A `TracingPolicy` naming a kernel function this kernel does not export sits in state `error` and watches nothing. `TetragonPolicyNotLoaded` fires after its `for`; check its `STATE` column after every Flatcar release that moves the kernel.
