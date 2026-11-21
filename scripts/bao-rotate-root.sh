@@ -46,13 +46,14 @@ bao_verify_operator || {
 echo "    operator login        verified (kv/ create and delete)"
 
 bao_revoke_root
-echo "    root token            revoked"
+strip_root_token
+echo "    root token            revoked and removed from ${KEYFILE}"
 
 cat <<EOF
 
 Done. make bao-secrets and make claude-session-pat log in as the operator now.
 
 >>> ${OPERATOR_FILE} reads and writes every kv/ path. Copy it to the
->>> password manager next to the unseal keys. The root_token in ${KEYFILE}
->>> is dead and can be deleted from your copies.
+>>> password manager next to the unseal keys. ${KEYFILE} no longer holds
+>>> the root token; delete it from any copy made earlier.
 EOF

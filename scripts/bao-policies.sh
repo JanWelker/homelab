@@ -12,7 +12,7 @@
 # touched. See docs/platform/openbao.md#kubernetes-auth.
 #
 #   role / policy                   store                  reaches
-#   external-secrets                openbao                reads every path, writes three
+#   external-secrets                openbao                the platform's paths, writes three
 #   external-secrets-apps           openbao-apps           kv/<caller's namespace>/
 #   external-secrets-claude-agents  openbao-claude-agents  kv/claude-*
 #   openbao-snapshot                (backup CronJob)       the Raft snapshot
@@ -35,15 +35,40 @@ accessor="$(bao auth list -format=json \
   | uv run python -c 'import json,sys; print(json.load(sys.stdin)["kubernetes/"]["accessor"])')"
 namespace="{{identity.entity.aliases.${accessor}.metadata.service_account_namespace}}"
 
-# Reads everything: Authentik reads each workload's OIDC pair from its
-# kv/<app>/config. Writes only where a platform PushSecret writes generated
-# values; ESO itself refuses to touch a path it did not create, and no delete
-# is granted, so nothing it pushes can remove a secret.
+# The paths the platform namespaces read, and no others: the agent sessions'
+# tokens stay out of reach. Authentik also reads each workload's OIDC pair, at
+# kv/<app>/oidc or kv/<app>/config. Writes only where a platform PushSecret
+# writes generated values; ESO itself refuses to touch a path it did not
+# create, and no delete is granted, so nothing it pushes can remove a secret.
 bao_in policy write external-secrets - <<'POLICY' >/dev/null
-path "kv/data/*" {
+path "kv/data/arc-runners/*" {
   capabilities = ["read"]
 }
-path "kv/metadata/*" {
+path "kv/metadata/arc-runners/*" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/cert-manager/*" {
+  capabilities = ["read"]
+}
+path "kv/metadata/cert-manager/*" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/external-dns/*" {
+  capabilities = ["read"]
+}
+path "kv/metadata/external-dns/*" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/+/oidc" {
+  capabilities = ["read"]
+}
+path "kv/metadata/+/oidc" {
+  capabilities = ["read", "list"]
+}
+path "kv/data/+/config" {
+  capabilities = ["read"]
+}
+path "kv/metadata/+/config" {
   capabilities = ["read", "list"]
 }
 path "kv/data/authentik/*" {
@@ -65,7 +90,7 @@ path "kv/metadata/velero/*" {
   capabilities = ["create", "read", "update", "list"]
 }
 POLICY
-echo "    external-secrets                policy written (read on kv/, write on authentik/, monitoring/ and velero/)"
+echo "    external-secrets                policy written (write on authentik/, monitoring/ and velero/, read on the other platform paths)"
 
 bao write auth/kubernetes/role/external-secrets \
   bound_service_account_names="$ESO_SERVICEACCOUNT" \
@@ -86,14 +111,26 @@ path "kv/metadata/${namespace}/*" {
 POLICY
 echo "    external-secrets-apps           policy written (kv/<namespace>/ of the caller)"
 
-# Every namespace, so a new workload needs no change here; the openbao-apps
-# store's conditions keep the platform namespaces out.
+# The namespaces the openbao-apps store admits, read from the manifest so the
+# list is written once; a new workload is one line there, then this target.
+apps_namespaces="$(uv run python -c '
+import sys, yaml
+with open(sys.argv[1]) as handle:
+    for doc in yaml.safe_load_all(handle):
+        if doc and doc.get("kind") == "ClusterSecretStore" and doc["metadata"]["name"] == "openbao-apps":
+            print(",".join(n for c in doc["spec"]["conditions"] for n in c.get("namespaces", [])))
+' "$(dirname "${BASH_SOURCE[0]}")/../payload/platform/openbao/cluster-secret-store.yaml")"
+[ -n "$apps_namespaces" ] || {
+  echo "ERROR: no namespaces list on the openbao-apps store in cluster-secret-store.yaml." >&2
+  exit 1
+}
+
 bao write auth/kubernetes/role/external-secrets-apps \
   bound_service_account_names="$ESO_SERVICEACCOUNT" \
-  bound_service_account_namespaces='*' \
+  bound_service_account_namespaces="$apps_namespaces" \
   policies=external-secrets-apps \
   ttl=1h >/dev/null
-echo "    external-secrets-apps           role bound to */${ESO_SERVICEACCOUNT}"
+echo "    external-secrets-apps           role bound to ${apps_namespaces}/${ESO_SERVICEACCOUNT}"
 
 # Read only: nothing in the sessions' namespace pushes.
 bao_in policy write external-secrets-claude-agents - <<'POLICY' >/dev/null

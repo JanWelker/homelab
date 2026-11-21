@@ -124,7 +124,8 @@ bao_verify_operator || {
   exit 1
 }
 bao_revoke_root
-echo "    root token            revoked; ${OPERATOR_FILE} is the login from now on"
+strip_root_token
+echo "    root token            revoked and removed from ${KEYFILE}; ${OPERATOR_FILE} is the login from now on"
 
 cat <<EOF
 
@@ -133,7 +134,7 @@ Done. OpenBao is initialised, unsealed and ready to be populated:
   make bao-secrets
 
 >>> ${KEYFILE} now holds the 5 unseal keys, in plaintext, on this machine
->>> (its root token is revoked). They protect every other secret the cluster has, and
+>>> (its root token is revoked and removed). They protect every other secret the cluster has, and
 >>> nothing else can recover them. Copy them into a password manager now, and
 >>> keep them somewhere that does not require this cluster to be running in
 >>> order to read.
