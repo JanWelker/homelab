@@ -86,14 +86,18 @@ For a workload that should stay confined but needs more than `container_t`.
 
 ## 4. Load a module on Flatcar
 
-Flatcar ships the policy read-only under `/usr/lib/selinux`; `semodule -l`
-lists nothing until the store is writable. Its documentation
-(<https://www.flatcar.org/docs/latest/security/encryption/selinux/>) copies
-`/usr/lib/selinux/mcs` and `/usr/lib/selinux/policy` into `/etc/selinux` and
-`/var/lib/selinux` first; follow that page, on one worker, before
-`semodule -i <name>_local.pp`. This has not been done on this cluster: treat
-the first time as a trial, and put the result into the node template, since a
-reinstall starts from the shipped policy again.
+Flatcar's policy store is on the read-only `/usr`: `/var/lib/selinux` is a
+symlink to `/usr/lib/selinux/policy`, and `semodule -l` fails with a
+read-only lock error. Its documentation
+(<https://www.flatcar.org/docs/latest/security/encryption/selinux/>) replaces
+the symlink with a copy and copies `/usr/lib/selinux/mcs` into `/etc/selinux`;
+follow that page, on one worker, before `semodule -i <name>_local.pp`.
+
+A copy does not follow an OS update: the node keeps the old base policy until
+something copies it again and reinstalls the modules. So the store, its
+re-sync at boot and the modules a node needs belong in
+`butane_node_config.yaml.j2` together. None of this has been done on this
+cluster: treat the first time as a trial.
 
 ## 5. Manage it through Kubernetes
 
@@ -101,14 +105,19 @@ reinstall starts from the shipped policy again.
 | --- | --- | --- |
 | `securityContext.seLinuxOptions` (`type`, `level`) | Which existing type and MCS pair a pod runs as | Native, declarative in chart values; covers every row of step 2 except the labels |
 | `seLinuxChangePolicy` and the `SELinuxMount` gates | How a volume is relabelled for the pod, by mount option or recursively | Native; only matters once enforcing |
-| [Security Profiles Operator](https://github.com/kubernetes-sigs/security-profiles-operator), `SelinuxProfile` | Policy modules as cluster objects: the `spod` DaemonSet's `selinuxd` installs them on every node, a pod uses `<profile>.process` as its type, and it can record a profile from the audit log | The chosen way to manage modules (#1696), not installed yet |
+| [Security Profiles Operator](https://github.com/kubernetes-sigs/security-profiles-operator), `SelinuxProfile` | Policy modules as cluster objects: the `spod` DaemonSet's `selinuxd` installs them on every node, a pod uses `<profile>.process` as its type, and it can record a profile from the audit log | Considered for managing modules (#1696); not installed, and it does not fit Flatcar as shipped, see below |
 
-Use the first row wherever an existing type fits; a module, and so the
-operator, is for what is left. Before the operator becomes an Application,
-answer these on one worker:
+Use the first row wherever an existing type fits. For the modules that are
+left, the writable store has to come from the node template whichever tool
+loads them, so loading them there too (`semodule -i` in a boot unit) is the
+smaller design; the operator earns an Application only with many
+workload-specific modules. Before it does, answer these on one worker:
 
-- `selinuxd` runs `semodule` against the host's policy store, so it needs
-  the writable store of step 4. Whether it works on Flatcar is untested.
+- `selinuxd` installs into the host's policy store, so it needs the
+  writable store of step 4 first. Upstream does not test this: the
+  operator's Flatcar end-to-end job runs with `E2E_TEST_SELINUX=false`.
+- Its recorder needs `auditd` writing `/var/log/audit/audit.log`, which the
+  nodes do not have. Not needed: step 1 reads the same denials from Loki.
 - SELinux support is off outside OpenShift: `spec.selinux.enable: true` on
   the `spod` object.
 - Flatcar's base policy does not match the operator's bundled templates; its
