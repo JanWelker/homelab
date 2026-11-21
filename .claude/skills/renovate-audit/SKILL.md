@@ -1,6 +1,6 @@
 ---
 name: renovate-audit
-description: Check that every version pinned in this repository is tracked by Renovate, and fix the configuration when one is not. Use when the user says "why is this not updated by renovate", "check the renovate config for any other untracked pins", "before I merge check if this is tracked by renovate.json", "renovate still errors in both repos", "set up renovate to track the font releases", "ensure renovate catches all versions specified", or adds a new component, image or download. Covers walking the pins, the dry run that proves a manager sees them, the official-source rule for Flatcar components, and the pin-branch failure modes.
+description: Check that every version pinned in this repository is tracked by Renovate, and fix the configuration when one is not. Use when the user says "why is this not updated by renovate", "check the renovate config for any other untracked pins", "before I merge check if this is tracked by renovate.json", "renovate still errors in both repos", "set up renovate to track the font releases", "ensure renovate catches all versions specified", "i pinned some artifacts to later versions than the helm chart ships, check if the chart update fixes them and remove the pins", or adds a new component, image or download. Covers walking the pins, the dry run that proves a manager sees them, the official-source rule for Flatcar components, and the pin-branch failure modes.
 ---
 
 # renovate-audit
@@ -64,6 +64,17 @@ unwritable pin took every digest update with it. Updates parked behind
 
 Both repositories share the policy: `homelab-apps` has its own
 `renovate.json` and dashboard, so check both when the user says "both".
+
+## 4a. Overrides of a chart's own image
+
+A tag set in `valuesObject` to run something newer than the chart bundles
+(a CVE fix, a bug) is a debt: it must go once the chart catches up. For each
+one, render the chart at the pinned version and at the version a pending
+Renovate PR or the dashboard offers (`helm template ... | grep image:`). If
+the chart's own tag is equal or newer, drop the override in the PR that
+bumps the chart; if not, leave it and say which chart release would carry
+it (a comment on the chart-bump PR records it). Undocumented upstream
+versions (OpenBao 2.7.0 on 2026-09-28) stay pinned until upstream names them.
 
 ## 5. Ship
 
