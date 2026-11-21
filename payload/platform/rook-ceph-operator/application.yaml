@@ -16,6 +16,10 @@ spec:
       valuesObject:
         monitoring:
           enabled: true
+        # Rook's switch for SELinux hosts: the daemons keep their state on a
+        # hostPath and use each other's admin sockets across pods; see
+        # docs/platform/rook-ceph.md#configuration
+        hostpathRequiresPrivileged: true
         # bucketPolicy lets the backup buckets grant the off-cluster reader,
         # bucketOwner gives it the offsite bucket, which the obc-bucket-owner
         # admission policy holds to; see docs/platform/rook-ceph.md#off-cluster-reader
