@@ -19,6 +19,9 @@ storage:
       mode: 0600
       contents:
         source: http://{{ boot_server_ip }}:8000/ignition-{{ inventory_hostname }}.json
+        # Served to this node's address only, but still over plain HTTP.
+        verification:
+          hash: sha512-{{ node_ignition_sha512 }}
 
 systemd:
   units:
