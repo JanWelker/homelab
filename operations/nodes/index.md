@@ -127,7 +127,7 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
    ```
 
    Every control plane joins the running cluster; only [`bootstrap_cluster`](<https://homelab.wlkr.ch/architecture/ansible/index.md#inventory>) renders `kubeadm init`, and arming refuses while it is set and the VIP answers.
-6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`, and reboots into the installed system, which then runs `kubeadm`. The node comes back with a new SSH host key; `make reinstall` already forgot the old one, or `StrictHostKeyChecking=accept-new` would refuse the first `make kubeconfig`.
+6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`, and reboots into the installed system, which then runs `kubeadm`. The node keeps the SSH host key `make config` generated, so `output/known_hosts` still matches.
 7. Leave the boot server up until the node is `Ready` (the sysext images are fetched from it on that first boot), then stop it.
 8. Wait for Ceph before the next node, as in [Rebooting a node](<#rebooting-a-node>): the OSD is new and backfills from the other two copies, and [`make storage-check`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#is-storage-ready>) proves it took the disk.
 9. [Unseal OpenBao](<#after-any-node-reboot-unseal-openbao>) if a replica moved.

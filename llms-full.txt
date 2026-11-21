@@ -652,7 +652,7 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 
 # Ansible Configuration
 
-Ansible never configures a node here: it generates files on the deployment host, and Ignition applies them once, on the first boot after a node is installed.
+Ansible never configures a node here: it generates files on the deployment host, and Ignition applies them once, on a node's first boot.
 
 It renders two Ignition configs per host from two templates — one the PXE environment [runs to install](<https://homelab.wlkr.ch/architecture/boot-process/index.md#3-install-bootstrap>), one `flatcar-install` embeds into the system it writes. Changing anything under `ansible/` therefore takes a rebuild of the affected node, not a reboot. The directory layout is in [Repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>).
 
@@ -674,14 +674,14 @@ It renders two Ignition configs per host from two templates — one the PXE envi
 
 | Playbook | Does |
 | --- | --- |
-| `config.yaml` | Generates the bootstrap token, certificate key and etcd encryption key into `output/credentials/` (mode `0700`); renders the Ignition configs via Butane into `output/http` (mode `0600`), the sysupdate config for running nodes beside them, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable copy of the kubeadm config into `output/tmp/` (the copy that runs is inlined into Ignition) |
+| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption key and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512), the sysupdate config for running nodes beside them, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable kubeadm config copy into `output/tmp/` |
 | `download.yaml` | Fetches the Flatcar kernel, initrd, OS image and its detached signature, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext image; and the syslinux bootloader files, checked the same way against `sha256sums.asc`. The signing keys are fetched and trusted through the primary fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) is not the one the cluster publishes. It touches only `output/tftp/pxelinux.cfg/`, so the next `make config` regenerates the safe default. See [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |
 
-`config.yaml` is safe to re-run: the `password` lookup reads an existing credential file back instead of generating a new value, so the encryption key every control-plane node shares stays the one etcd's Secrets were encrypted with.
+`config.yaml` is safe to re-run: the `password` lookup reads an existing credential file back, so the encryption key every control-plane node shares stays the one etcd's Secrets were encrypted with.
 
-`config.yaml` renews the join credentials on the first control-plane host that answers with a running cluster, so the node being [replaced](<https://homelab.wlkr.ch/operations/nodes/index.md#replacing-a-failed-node>) may be any of them; it fails when none answers while `output/kubeconfig` exists, since a node booted then could not join, and skips the renewal silently only before the first bootstrap.
+`config.yaml` renews the join credentials on the first control-plane host that answers with a running cluster, so the node being [replaced](<https://homelab.wlkr.ch/operations/nodes/index.md#replacing-a-failed-node>) may be any of them; it fails when none answers while `output/kubeconfig` exists, since a node booted then could not join, and skips the renewal only before the first bootstrap.
 
 `kubeconfig.yaml` targets `control_plane[0]` — the first control-plane host in the inventory, with no fallback. If that node is down, copy `/etc/kubernetes/admin.conf` off any other control-plane node by hand. Keep a copy of the result off the cluster: it is the credential you want when the web UIs are unreachable, and `output/` is exactly as durable as the laptop it is on.
 
@@ -829,13 +829,13 @@ PXE boots the **installer**, and only on a node armed with `make reinstall`; the
 | `butane_installer_config.yaml.j2` | `ignition-<host>-install.json` | the PXE environment | `true` |
 | `butane_node_config.yaml.j2` | `ignition-<host>.json` | the installed system, first boot | `false` |
 
-The PXE menu points at the first. The installer fetches the second as a plain file and hands it to `flatcar-install -i`, which embeds it in the OEM partition of the system it writes.
+The PXE menu points at the first. The installer fetches the second over HTTP, verifies it against the sha512 rendered into the first, and hands it to `flatcar-install -i`, which embeds it in the OEM partition of the system it writes. The boot server gives it only to the node's `ansible_host`, its DHCP reservation.
 
 > [!TIP]
 >
 > **Keep the installer minimal**
 >
-> Anything in `butane_installer_config.yaml.j2` is downloaded into RAM on every install of every node and discarded ninety seconds later. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
+> Anything in `butane_installer_config.yaml.j2` is downloaded into RAM on every install and discarded ninety seconds later. If it configures the node rather than the installation, it belongs in `butane_node_config.yaml.j2`.
 
 ```
 sequenceDiagram
@@ -868,17 +868,17 @@ Step 10 is the point of no return, and the wipe has three parts:
 | `blkdiscard` | installer | Returns the device to unwritten. Best-effort: SATA without TRIM declines |
 | `wipe_filesystem: true` on `rook-osd` | `butane_node_config.yaml.j2` | Erases the old BlueStore signature, which `ceph-volume` reads instead of the partition table; a repartition alone can resurrect an OSD from a previous cluster |
 
-The installed system's config must not wipe: Ignition refuses to touch the disk it booted from (`refusing to wipe active disk`) and the first boot fails before anything is written. `storage.filesystems` follows the same split — `rook-osd` does not exist in the installer, and Ignition would block waiting for it.
+The installed system's config must not wipe: Ignition refuses to touch the disk it booted from (`refusing to wipe active disk`), failing the first boot before anything is written. `storage.filesystems` follows the same split — `rook-osd` does not exist in the installer, and Ignition would block waiting for it.
 
-Check `install_disk` before you check anything else.
+Check `install_disk` first.
 
 ### Boot order
 
-The install leaves the firmware's boot order alone (`flatcar-install -u`, which would put the disk at the front of `BootOrder`, is not passed). The nodes network-boot first and reach their disk through `LOCALBOOT`, so the generated menu decides every boot; a disk promoted ahead of PXE would make `make reinstall` rewrite a menu the firmware no longer reads. A node therefore needs network boot first with a working `LOCALBOOT`, or the disk ahead of PXE in the firmware — with neither it installs and then has nothing to boot.
+The install leaves the firmware's boot order alone (`flatcar-install -u`, which would put the disk first in `BootOrder`, is not passed). The nodes network-boot first and reach their disk through `LOCALBOOT`, so the generated menu decides every boot; a disk promoted ahead of PXE would make `make reinstall` rewrite a menu the firmware no longer reads. A node needs network boot first with a working `LOCALBOOT`, or the disk ahead of PXE — with neither it installs and then has nothing to boot.
 
 ## 4\. Post-Installation Bootstrap
 
-Once kubeadm has initialised the control plane, `make bootstrap` installs only what ArgoCD needs to run, and ArgoCD itself. Once the `argocd` Application is applied, the repository is in charge.
+Once kubeadm has initialised the control plane, `make bootstrap` installs only what ArgoCD needs to run, and ArgoCD itself; once the `argocd` Application is applied, the repository is in charge.
 
 ```
 sequenceDiagram
@@ -899,7 +899,7 @@ sequenceDiagram
 >
 > **`make untaint` is not part of this flow**
 >
-> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/index.md#cluster-layout>) has dedicated workers, so the taint stays. See [Single-node clusters](<https://homelab.wlkr.ch/quickstart/index.md#single-node-clusters>).
+> It removes the control-plane `NoSchedule` taint and applies only to a single-node cluster, where it goes *before* `make install-argo` — ArgoCD has no tolerations. The [documented layout](<https://homelab.wlkr.ch/architecture/index.md#cluster-layout>) has dedicated workers; see [Single-node clusters](<https://homelab.wlkr.ch/quickstart/index.md#single-node-clusters>).
 
 ## Every boot after the first
 
@@ -918,17 +918,17 @@ The node boots from its own disk; the boot server should be off.
 >
 > **Why `grow-root.service` exists**
 >
-> Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: it is pulled in by an `x-systemd.growfs` mount option that a root mounted from `root=LABEL=ROOT` does not carry. Without the unit the node keeps the image's \~1.6 GB filesystem inside a partition many times that size. It runs the same binary and is a no-op once the filesystem fills the partition.
+> Taking partition 9 over in Ignition stops Flatcar's stock `systemd-growfs-root.service`: an `x-systemd.growfs` mount option pulls it in, and a root mounted from `root=LABEL=ROOT` does not carry it. Without the unit the node keeps the image's \~1.6 GB filesystem inside a far larger partition. It runs the same binary and is a no-op once the filesystem fills the partition.
 
 > [!NOTE]
 >
 > **Two boot paths, and the menu picks the safe one**
 >
-> `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots for any reason lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
+> `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
 
 ## Boot server
 
-`boot_server/serve.py` is a TFTP server and an HTTP server, installed by `uv sync` as the `boot-server` command. `make serve` runs it as you, never root, from the repository root (the document roots hang off `--root`, which defaults to the working directory): macOS denies Local Network access to a process that started as root and dropped it, so every TFTP reply would fail with *No route to host*. HTTP binds `boot_server_ip` from `ansible/inventory.yaml` — the address `make config` baked into every generated URL — and nothing else, because it serves the Ignition secrets. TFTP listens on every interface, the only way an ordinary user may bind port 69 on macOS; on Linux, lower `net.ipv4.ip_unprivileged_port_start` to 69. If no interface holds `boot_server_ip` it says so and names the variable; if port 8000 is taken it exits. A failed send ends that node's transfer, not the server. `--bind`, `--http-port` and `--tftp-port` override the address and ports, which is how the tests and a dry run on a laptop avoid the privileged port.
+`boot_server/serve.py` is a TFTP server and an HTTP server, installed by `uv sync` as the `boot-server` command. `make serve` runs it as you, never root, from the repository root (the document roots hang off `--root`, which defaults to the working directory): macOS denies Local Network access to a process that started as root and dropped it, so every TFTP reply would fail with *No route to host*. HTTP binds `boot_server_ip` from `ansible/inventory.yaml` — the address `make config` baked into every generated URL — and nothing else, because it serves the Ignition secrets; stalled clients time out. TFTP listens on every interface, the only way an ordinary user may bind port 69 on macOS; on Linux, lower `net.ipv4.ip_unprivileged_port_start` to 69. If no interface holds `boot_server_ip` it says so and names the variable; if port 8000 is taken it exits. A failed send ends that node's transfer, not the server. `--bind`, `--http-port` and `--tftp-port` override the address and ports, which is how tests and laptop dry runs avoid the privileged port.
 
 | Server | Root | Serves |
 | --- | --- | --- |
@@ -963,7 +963,7 @@ Leave it in the foreground. It opens by naming what it serves and which nodes ar
 20:38:40  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kubernetes sysext (61.4 MB)
 ```
 
-A node is identified by MAC from the `01-<mac>` menu it fetches, and after the install by name from the `ignition-<host>.json` it asks for. A request from an address that has done neither is logged against the bare IP.
+A node is identified by MAC from the `01-<mac>` menu it fetches, and after the install by name from the `ignition-<host>.json` it asks for. Any other address is logged bare, and a request for another node's config is refused.
 
 ## Switching back to local boot
 
@@ -1174,31 +1174,31 @@ Things this cluster does not do. None is a bug; each is an accepted tradeoff or 
 
 # Security Posture
 
-This is a homelab on a private network, and several deliberate shortcuts follow from that. They are listed so that someone reading the manifests can tell a decision from an oversight.
+This is a homelab on a private network, and several deliberate shortcuts follow from that. They are listed so a reader can tell a decision from an oversight.
 
 ## Assumed trust boundary
 
 The cluster assumes a **trusted L2 network segment**: anything with a port on it is treated as friendly. There is no VPN requirement and no mutual TLS between components; inside the cluster, the default-deny network policies in [Authorization](<#authorization>) are the segmentation.
 
-The published hostnames are a partial exception. Certificates come from Let's Encrypt through a DNS-01 challenge against a public zone, so `argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable and appear in Certificate Transparency logs, even though they point at RFC1918 addresses. Plan names accordingly.
+The published hostnames are a partial exception. Certificates come from Let's Encrypt through a DNS-01 challenge against a public zone, so `argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable and appear in Certificate Transparency logs, though they point at RFC1918 addresses.
 
 ## Provisioning
 
-Provisioning is the least protected phase, by design: it has to work before any of the cluster's own security exists.
+Provisioning is the least protected phase: it runs before any of the cluster's own security exists.
 
 | Property | Detail |
 | --- | --- |
-| Ignition configs are served unauthenticated over HTTP | Anything on the segment can fetch `http://<boot-server>:8000/ignition-<host>.json` while the boot server is running |
+| Ignition configs travel over plain HTTP | The boot server gives `ignition-<host>.json` only to that host's `ansible_host`, and the installer config pins its sha512. A LAN host that forges the address or sits in between still reads it |
 | Those configs embed join credentials | The bootstrap `token`, and on control-plane nodes the `certificateKey`, together enough to join a new control-plane node. Only the init host has them in its kubeadm config; the others get a `0600` environment file that `bootstrap-k8s.service` names by variable. The service deletes both files once the node has joined, so neither `systemctl show` nor the disk keeps them |
-| The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. It has no TTL: anyone who fetched a control-plane config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster |
+| The control-plane configs embed the etcd encryption key | `/etc/kubernetes/enc/encryption-config.yaml` is inlined with the key that encrypts every Secret at rest. It has no TTL: whoever fetched a control-plane config can read Secrets out of any etcd backup for the life of the cluster |
 | Nodes join with `--discovery-token-unsafe-skip-ca-verification` | A joining node does not verify the API server's CA |
-| Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off. The transfer config that names their source is inlined from a template in Git, not fetched |
-| The PXE kernel, initrd and bootloader are signature-checked | `make download` takes their sums only from a clearsigned file that `gpgv` verifies against a pinned primary key fingerprint: Flatcar's image signing key for `.DIGESTS.asc`, the kernel.org checksum autosigner for syslinux's `sha256sums.asc` |
+| Sysext updates set `Verify=false` | On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off; the transfer config naming their source is inlined from Git, not fetched |
+| The PXE kernel, initrd and bootloader are signature-checked | `make download` takes their sums only from a clearsigned file that `gpgv` verifies against a pinned key fingerprint: Flatcar's image signing key for `.DIGESTS.asc`, kernel.org's autosigner for syslinux's `sha256sums.asc` |
 | The OS image is signature-checked | `flatcar-install` is given `-b`/`-V`, so the node downloads the image and its detached signature and checks both against Flatcar's key before writing anything |
 
-The mitigation is time: `make serve` is a foreground command, the bootstrap token and the certificate key expire (the windows are in [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>)), and `make config` re-arms both only for those windows. The encryption key has no clock, which is why the HTTP server listens only on `boot_server_ip`, serves files by name and lists nothing. TFTP listens on every interface, because macOS lets an unprivileged process bind port 69 only there, and refuses every write request, so nobody can plant a boot menu. **Stop the boot server when provisioning is finished.** Flatcar is installed to disk, so nothing needs it after a build — see [Every boot after the first](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>).
+The mitigation is time: `make serve` is a foreground command, the bootstrap token and the certificate key expire (the windows are in [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>)), and `make config` re-arms both only for those windows, over SSH through a script's stdin, so no process list shows them. The encryption key has no clock, which is why HTTP listens only on `boot_server_ip`, serves files by name and lists nothing. TFTP listens on every interface, since macOS lets an unprivileged process bind port 69 only there, and refuses every write request, so nobody can plant a boot menu. **Stop the boot server when provisioning is finished.** Flatcar is installed to disk and nothing needs it after a build — see [Every boot after the first](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>).
 
-`output/credentials/` holds the generated bootstrap token and certificate key in plaintext. The directory is `0700`, the Ignition configs in `output/http` are `0600`, and `output/` is gitignored. The values are reused across `make config` runs, because a node whose join window passed retries with the values on its disk once `make config` has re-armed them ([Adding a node](<https://homelab.wlkr.ch/operations/nodes/index.md#adding-a-node>)). Delete them to force new ones. The installer keeps its copy of the node config `0600` in RAM; `flatcar-install` carries that mode to the OEM partition.
+`output/credentials/` holds the generated bootstrap token and certificate key in plaintext. The directory is `0700`, the Ignition configs in `output/http` are `0600`, and `output/` is gitignored. The values are reused across `make config` runs, because a node whose join window passed retries with the values on its disk once `make config` has re-armed them ([Adding a node](<https://homelab.wlkr.ch/operations/nodes/index.md#adding-a-node>)). Delete them to force new ones. Each node's SSH host key is generated there too, installed by Ignition and listed in `output/known_hosts`, which the playbooks' SSH options trust alone (`StrictHostKeyChecking=yes`); a rebuilt node keeps its key and nothing is trusted on first contact. The private halves are as sensitive as the token. The installer keeps its copy of the node config `0600` in RAM; `flatcar-install` carries that mode to the OEM partition.
 
 ## Node hardening
 
@@ -1209,17 +1209,17 @@ The mitigation is time: `make serve` is a foreground command, the bootstrap toke
 | `proxy.disabled: true` | Cilium replaces `kube-proxy`. `kubeadm upgrade apply` reads the field from the `kubeadm-config` ConfigMap; a `skipPhases` on init leaves `proxy: {}` stored, and every upgrade restores `kube-proxy` |
 | `--kubelet-certificate-authority` | The API server verifies the kubelet's serving certificate for exec, logs, attach and port-forward, the calls that carry command output. `serverTLSBootstrap` has the kubelet request its certificate from the cluster CA, and [kubelet-csr-approver](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) approves it |
 | `--admission-control-config-file` | A [Pod Security default](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>) for namespaces without labels, so a namespace nobody labelled is `baseline`, not `privileged` |
-| `--authentication-config` | Anonymous requests reach only `/livez`, `/readyz`, `/healthz` (the kubelet's probes, `make reinstall`) and `kube-public/cluster-info`, which `kubeadm join` reads before it holds a credential. The file replaces `--anonymous-auth`, which must stay unset; `/version` and the rest answer 401 |
+| `--authentication-config` | Anonymous requests reach only `/livez`, `/readyz`, `/healthz` (the kubelet's probes, `make reinstall`) and `kube-public/cluster-info`, which `kubeadm join` reads before it holds a credential. The file replaces `--anonymous-auth`, which must stay unset |
 | `--profiling=false` on the API server, controller-manager and scheduler | `/debug/pprof` exposes internals and helps nothing here; CIS asks for it off |
 | Metrics listeners on the node address | etcd's plain-HTTP metrics and the controller-manager and scheduler bind the node's own address, where Prometheus scrapes them, instead of every interface. The address differs per node, so it comes from per-node JSON patches in `/etc/kubernetes/patches` rather than the cluster-wide `ClusterConfiguration`; the patches also move the probes, and etcd keeps `127.0.0.1` for its own |
-| `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it: Cilium's pools supply LoadBalancer addresses. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
+| `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
 | `--tls-cipher-suites` and `--tls-min-version`, `tlsCipherSuites` and `tlsMinVersion` | Go's defaults still include CBC and 3DES suites; the list keeps ECDHE AEAD suites, which every Go client here speaks. TLS 1.3 ignores the list; the floor stops a downgrade to 1.0 or 1.1. The kubelet's listener on 10250 gets the same |
 | `shutdownGracePeriod` and `shutdownGracePeriodCriticalPods` | A `systemctl reboot` without the [documented drain](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>), or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write; critical pods may use the tail of it. CloudNativePG primaries and Ceph OSDs notice |
-| `protectKernelDefaults: true` | The kubelet refuses to start unless `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` are already right. `/etc/sysctl.d/k8s.conf` sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next `make reinstall`, not on merge |
+| `protectKernelDefaults: true` | The kubelet refuses to start unless `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` are already right. `/etc/sysctl.d/k8s.conf` sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next `make reinstall` |
 | `kernel.panic` with `kernel.panic_on_oops` | An oops reboots the node within seconds instead of wedging it, so Ceph and etcd recover without a power-cycle |
 | `seccompDefault: true` | A pod without a seccomp profile runs `RuntimeDefault`, not unconfined; a privileged pod stays unconfined; a running node needs it in the `kubelet-config` ConfigMap too |
-| `kernel.dmesg_restrict` and `kernel.kexec_load_disabled` | A container escape cannot read the kernel log or load another kernel. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) reboots with `systemctl reboot`, not kexec |
-| `/etc/ssh/sshd_config.d/10-hardening.conf` | `AllowUsers core`, no keyboard-interactive, no `ssh-rsa`. Flatcar's drop-in appends `ssh-rsa` and sshd keeps a keyword's first value, so this file sorts ahead of it. `core`'s key comes from `~/.ssh/id_ed25519.pub`; any other was added by hand |
+| `kernel.dmesg_restrict` and `kernel.kexec_load_disabled` | An escaped container cannot read the kernel log or load another kernel; [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) reboots with `systemctl reboot`, not kexec |
+| `/etc/ssh/sshd_config.d/10-hardening.conf` | `AllowUsers core`, no keyboard-interactive, no `ssh-rsa`. Flatcar's drop-in appends `ssh-rsa` and sshd keeps a keyword's first value, so this file sorts ahead of it. `core`'s key is `~/.ssh/id_ed25519.pub` |
 | `podPidsLimit` | Bounds the PIDs one pod can hold, so a process that stops reaping its children cannot exhaust the node's PID space and take the kubelet with it. |
 | `systemReserved`, `kubeReserved` and `evictionHard` memory | The reservations cap `kubepods.slice` below the node's RAM, so a growing pod is OOM-killed in its own cgroup instead of starving systemd-networkd, sshd and the kubelet. A running node needs the same values in the `kubelet-config` ConfigMap, or `kubeadm upgrade node` reverts them |
 | `/etc/tmpfiles.d/kubernetes-cis.conf` | kubeadm writes its files 0644 and Cilium creates the CNI directory 0755; CIS wants 0600 and 0700. systemd-tmpfiles applies them at boot and a kubelet `ExecStartPre` before every start. See [Triage 2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md#infra-the-nodes>) |
@@ -1238,7 +1238,7 @@ Secrets live in [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) a
 
 ### Encryption at rest
 
-The API server encrypts `secrets` with `secretbox` before they reach etcd (`ansible/templates/kubeadm.yaml.j2`; the key file in `ansible/templates/butane_node_config.yaml.j2`). Without it an etcd backup, a stolen disk, or read access to `/var/lib/etcd` yields every credential the cluster holds.
+The API server encrypts `secrets` with `secretbox` before they reach etcd (`ansible/templates/kubeadm.yaml.j2`; the key file in `ansible/templates/butane_node_config.yaml.j2`). Without it an etcd backup or stolen disk yields every credential the cluster holds.
 
 | Property | Detail |
 | --- | --- |
@@ -1253,7 +1253,7 @@ With `identity` last, new writes are encrypted and Secrets written before it was
 kubectl get secrets -A -o json | kubectl replace -f -
 ```
 
-The key lives in `output/credentials/` beside the kubeadm token and certificate key — that directory is what decrypts etcd. The API servers reload the config file on change (`encryption-provider-config-automatic-reload`), so rotating it is a file edit and a rewrite of every Secret, by hand — see [Encryption Key Rotation](<https://homelab.wlkr.ch/operations/encryption-key-rotation/index.md>). A KMS provider would remove the key file at the cost of a dependency the cluster must reach before it can serve Secrets.
+The key lives in `output/credentials/` beside the kubeadm token and certificate key — that directory is what decrypts etcd. The API servers reload the file on change (`encryption-provider-config-automatic-reload`), so rotating it is a file edit and a rewrite of every Secret, by hand — see [Encryption Key Rotation](<https://homelab.wlkr.ch/operations/encryption-key-rotation/index.md>). A KMS provider would remove the key file, at the cost of a dependency the cluster must reach before it can serve Secrets.
 
 ## Runtime
 
@@ -1261,15 +1261,15 @@ The key lives in `output/credentials/` beside the kubeadm token and certificate 
 
 ## Audit logging
 
-The API server records who did what, to which object, and whether it was allowed; the `audit` half of the Pod Security Admission labels has nowhere to go without it. Policy, retention and queries are in [Audit Logging](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>).
+The API server records who did what, to which object, and whether it was allowed; the `audit` labels of Pod Security Admission need it. Policy, retention and queries are in [Audit Logging](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>).
 
 ## Authorization
 
-**AppProjects constrain the workloads, not the platform.** `payload/platform/argocd-projects/projects.yaml` defines them. `infra` allows `sourceRepos: "*"` and every group and kind in every namespace: it is this repository deploying this repository, and a restriction there guards against nothing the PR review does not. `system` is confined to the `argocd` namespace. `apps` has the boundary to draw, because its Applications come from a second repository with a lighter review: it accepts only the workloads repository and the chart repositories the workloads use, may not write into any platform namespace (`authentik` included, by an admission policy), and at cluster scope may create nothing but namespaces, never at the `privileged` Pod Security level — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
+**AppProjects constrain the workloads, not the platform.** `payload/platform/argocd-projects/projects.yaml` defines them. `infra` allows `sourceRepos: "*"` and every group and kind in every namespace: it is this repository deploying this repository, so a restriction guards against nothing PR review does not. `system` is confined to the `argocd` namespace. `apps` has the boundary to draw, because its Applications come from a second repository with a lighter review: it accepts only the workloads repository and the chart repositories the workloads use, may not write into any platform namespace (`authentik` included, by an admission policy), and at cluster scope may create nothing but namespaces, never at the `privileged` Pod Security level — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
 
 **Every platform namespace is default-deny in both directions**, one `CiliumNetworkPolicy` file per namespace plus the cluster-wide rules, and Cilium enforces them: `policyAuditMode` is off, so a flow no rule allows is dropped — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>) and [Rollout](<https://homelab.wlkr.ch/platform/security-policies/index.md#rollout>).
 
-**Pod Security Admission is on, but mostly auditing.** Every platform namespace carries `enforce` at the level it demonstrably needs and `warn`/`audit` at a stricter one, so violations are visible without breaking what runs: measure first, enforce second.
+**Pod Security Admission is on, but mostly auditing.** Every platform namespace carries `enforce` at the level it needs and `warn`/`audit` at a stricter one, so violations are visible without breaking what runs.
 
 **Image references are checked at admission.** An untagged or `latest` image is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a verifier would exempt nearly everything. See [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
 
@@ -1292,7 +1292,7 @@ Every platform UI on the infra gateway is behind [Authentik](<https://homelab.wl
 
 The groups and how they nest are in [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/index.md#groups-and-roles>).
 
-Authentik is therefore a dependency of reaching any of them; the break-glass paths are in [When Authentik is down](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>). OpenBao is left out deliberately: it holds Authentik's own database password, so putting it behind Authentik would be a loop.
+Authentik is a dependency of reaching any of them; the break-glass paths are in [When Authentik is down](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>). OpenBao stays out: it holds Authentik's own database password, a loop.
 
 ## What would tighten this up
 
@@ -1606,9 +1606,10 @@ The replicas only survive a node loss while they sit on separate nodes, which th
 | Setting | Why |
 | --- | --- |
 | `authentik.disable_update_check`, `authentik.disable_startup_analytics` and `authentik.avatars` | Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. `avatars` only seeds a fresh database: since 2024.2 the setting lives in **System → Settings**, and an existing install keeps calling Gravatar until it is set to `initials` there. Blueprints cannot set it: system settings are an internally managed model, and upstream declined a config-level override in [goauthentik/authentik\#26470](<https://github.com/goauthentik/authentik/issues/26470>) |
-| `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
+| `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
+| `server.serviceAccountName` and `automountServiceAccountToken` | The server calls no Kubernetes API; the chart applies the switch only with a name set. The worker keeps its token for outposts |
 | `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>). The worker is not replicated and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](<#pitfalls>) |
 | `worker.volumes` `blueprints-workloads` | Authentik keys a blueprint instance by file path and name; `blueprints.configMaps` would mount the file under a second path and register it twice. The mount path stays `workloads` for that reason |
@@ -1684,20 +1685,20 @@ Authorisation is group membership. The blueprints create these groups; membershi
 
 | Group | Grants |
 | --- | --- |
-| `infra-users` | Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Flowscape and the Extractor admin UI. Grafana `Viewer` for a direct member |
+| `infra-users` | Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Home Assistant, Flowscape, Umami and the Extractor admin UI. Grafana `Viewer` for a direct member |
 | `argocd-admins` | ArgoCD `role:admin`, and `infra-users` |
 | `argocd-viewers` | ArgoCD `role:readonly`, and `infra-users` |
 | `grafana-admins` | Grafana `Admin`, and `infra-users` |
 | `grafana-editors` | Grafana `Editor`, and `infra-users` |
 | `wollbi-editors` | A Payload editor on advent.wollbi.ch and fest.wollbi.ch, created on first sign-in; declared in the two sites' blueprints |
 
-Every infra application carries a policy binding to `infra-users`, so an account outside it, such as a wollbi editor's, is refused by Authentik before the application sees it. The four role groups have `infra-users` as their parent, and Authentik counts a child group's members as members of the parent. Grafana only sees the groups a user belongs to directly, and with `role_attribute_strict` it refuses a login that matches none of its three. ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group gets **no** access. The wollbi sites bind `wollbi-editors` instead. Home Assistant and Umami have no binding: they have logins of their own.
+Every infra application carries a policy binding to `infra-users`, so an account outside it, such as a wollbi editor's, is refused by Authentik before the application sees it. The four role groups have `infra-users` as their parent, and Authentik counts a child group's members as members of the parent. Grafana only sees the groups a user belongs to directly, and with `role_attribute_strict` it refuses a login that matches none of its three. ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group gets **no** access. The wollbi sites bind `wollbi-editors` instead.
 
 ## Usage
 
 ### Client secrets
 
-The OIDC client IDs and secrets are generated once into OpenBao and read by both sides — Authentik through `!Env`, ArgoCD and Grafana through their own `ExternalSecret` — so a rebuilt Authentik gets the same credentials and nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes `kv/authentik/config` once — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>) — with the secret key, the bootstrap password and the ArgoCD and Grafana client pairs; its `Password` generator's `secretKeys` is the list of keys. A workload's client credentials go in the workload's own path (Dependency-Track's in `kv/dependency-track/config`, each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key that signs every session and token, and External Secrets fails an `ExternalSecret` whole when one key is missing, so a shared one would leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
+The OIDC client IDs and secrets are generated once into OpenBao and read by both sides — Authentik through `!Env`, ArgoCD and Grafana through their own `ExternalSecret` — so a rebuilt Authentik gets the same credentials and nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes `kv/authentik/config` once — see [Generated secrets](<https://homelab.wlkr.ch/platform/openbao/index.md#generated-secrets>) — with the secret key, the bootstrap password and the ArgoCD and Grafana client pairs; its `Password` generator's `secretKeys` is the list of keys. A workload's client credentials go in the workload's own path, read by its own `secrets-<workload>.yaml` mounted `optional`: rewriting `kv/authentik/config` would rotate the secret key that signs every session and token, and External Secrets fails an `ExternalSecret` whole when one key is missing, so a shared one would leave a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
 
 The first administrator is created through `akadmin`, switched on for the occasion as in [Bootstrap credentials](<#bootstrap-credentials>); the steps are in [Quickstart step 12](<https://homelab.wlkr.ch/quickstart/index.md#setup>).
 
@@ -1769,7 +1770,7 @@ When every login fails, in this order:
 >
 > **Home Assistant and Umami are the exceptions**
 >
-> Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice, which is defence in depth rather than single sign-on. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so `/script.js` and `/api/send` pass the same way; the rest of the dashboard and API stays behind the login.
+> Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so `/script.js` and `/api/send` pass the same way; the rest of the dashboard and API stays behind the login.
 
 ## Recovery
 
@@ -5323,7 +5324,7 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
    ```
 
    Every control plane joins the running cluster; only [`bootstrap_cluster`](<https://homelab.wlkr.ch/architecture/ansible/index.md#inventory>) renders `kubeadm init`, and arming refuses while it is set and the VIP answers.
-6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`, and reboots into the installed system, which then runs `kubeadm`. The node comes back with a new SSH host key; `make reinstall` already forgot the old one, or `StrictHostKeyChecking=accept-new` would refuse the first `make kubeconfig`.
+6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`, and reboots into the installed system, which then runs `kubeadm`. The node keeps the SSH host key `make config` generated, so `output/known_hosts` still matches.
 7. Leave the boot server up until the node is `Ready` (the sysext images are fetched from it on that first boot), then stop it.
 8. Wait for Ceph before the next node, as in [Rebooting a node](<#rebooting-a-node>): the OSD is new and backfills from the other two copies, and [`make storage-check`](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#is-storage-ready>) proves it took the disk.
 9. [Unseal OpenBao](<#after-any-node-reboot-unseal-openbao>) if a replica moved.

@@ -3191,7 +3191,7 @@ placement</a>.</p>
 </tr>
 <tr>
 <td><code>authentik.web.base_url</code></td>
-<td>Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click</td>
+<td>Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured".</td>
 </tr>
 <tr>
 <td><code>metrics.enabled</code> and <code>metrics.serviceMonitor.enabled</code></td>
@@ -3200,6 +3200,10 @@ placement</a>.</p>
 <tr>
 <td><code>postgresql.enabled: false</code>, <code>authentik.postgresql.host: authentik-db-rw</code> and the <code>global.env</code> entry</td>
 <td>The database is the <code>Cluster</code> above. The password is the one CloudNativePG generated into <code>authentik-db-app</code>, read as <code>AUTHENTIK_POSTGRESQL__PASSWORD</code> from that Secret; it is never copied into OpenBao or Git</td>
+</tr>
+<tr>
+<td><code>server.serviceAccountName</code> and <code>automountServiceAccountToken</code></td>
+<td>The server calls no Kubernetes API; the chart applies the switch only with a name set. The worker keeps its token for outposts</td>
 </tr>
 <tr>
 <td><code>server.topologySpreadConstraints</code></td>
@@ -3402,7 +3406,7 @@ membership is set by hand under <strong>Directory &rarr; Groups</strong>:</p>
 <tbody>
 <tr>
 <td><code>infra-users</code></td>
-<td>Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Flowscape and the Extractor admin UI. Grafana <code>Viewer</code> for a direct member</td>
+<td>Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Home Assistant, Flowscape, Umami and the Extractor admin UI. Grafana <code>Viewer</code> for a direct member</td>
 </tr>
 <tr>
 <td><code>argocd-admins</code></td>
@@ -3433,8 +3437,7 @@ their parent, and Authentik counts a child group's members as members of
 the parent. Grafana only sees the groups a user belongs to directly, and
 with <code>role_attribute_strict</code> it refuses a login that matches none of its
 three. ArgoCD's <code>policy.default</code> is empty, so a user in neither ArgoCD group
-gets <strong>no</strong> access. The wollbi sites bind <code>wollbi-editors</code> instead. Home
-Assistant and Umami have no binding: they have logins of their own.</p>
+gets <strong>no</strong> access. The wollbi sites bind <code>wollbi-editors</code> instead.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="client-secrets">Client secrets<a class="headerlink" href="#client-secrets" title="Permanent link">&para;</a></h3>
 <p>The OIDC client IDs and secrets are generated once into OpenBao and read by
@@ -3445,9 +3448,7 @@ nothing is copied out of a UI. The <code>PushSecret</code> in <code>secrets.yaml
 <a href="../openbao/#generated-secrets">Generated secrets</a> — with the secret key, the
 bootstrap password and the ArgoCD and Grafana client pairs; its
 <code>Password</code> generator's <code>secretKeys</code> is the list of keys. A
-workload's client credentials go in the workload's own path (Dependency-Track's in
-<code>kv/dependency-track/config</code>,
-each read by its own <code>secrets-&lt;workload&gt;.yaml</code>, mounted <code>optional</code>): rewriting <code>kv/authentik/config</code> would rotate the secret key
+workload's client credentials go in the workload's own path, read by its own <code>secrets-&lt;workload&gt;.yaml</code> mounted <code>optional</code>: rewriting <code>kv/authentik/config</code> would rotate the secret key
 that signs every session and token, and External Secrets fails an
 <code>ExternalSecret</code> whole when one key is missing, so a shared one would leave
 a cluster without the workload with no <code>AUTHENTIK_SECRET_KEY</code> either.</p>
@@ -3529,7 +3530,7 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Home Assistant and Umami are the exceptions</p>
-<p>Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits <em>in front of</em> it: browser users authenticate twice, which is defence in depth rather than single sign-on. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so <code>skip_path_regex</code> lets <code>/api/</code>, <code>/auth/token</code> and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so <code>/script.js</code> and <code>/api/send</code> pass the same way; the rest of the dashboard and API stays behind the login.</p>
+<p>Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits <em>in front of</em> it: browser users authenticate twice. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so <code>skip_path_regex</code> lets <code>/api/</code>, <code>/auth/token</code> and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so <code>/script.js</code> and <code>/api/send</code> pass the same way; the rest of the dashboard and API stays behind the login.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="when-authentik-is-down">When Authentik is down<a class="headerlink" href="#when-authentik-is-down" title="Permanent link">&para;</a></h3>

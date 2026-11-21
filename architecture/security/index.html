@@ -2712,8 +2712,7 @@
 
 <h1 id="security-posture">Security Posture<a class="headerlink" href="#security-posture" title="Permanent link">&para;</a></h1>
 <p>This is a homelab on a private network, and several deliberate shortcuts follow
-from that. They are listed so that someone reading the manifests can tell a
-decision from an oversight.</p>
+from that. They are listed so a reader can tell a decision from an oversight.</p>
 <h2 id="assumed-trust-boundary">Assumed trust boundary<a class="headerlink" href="#assumed-trust-boundary" title="Permanent link">&para;</a></h2>
 <p>The cluster assumes a <strong>trusted L2 network segment</strong>: anything with a port on
 it is treated as friendly. There is no VPN requirement and no mutual TLS
@@ -2722,11 +2721,10 @@ between components; inside the cluster, the default-deny network policies in
 <p>The published hostnames are a partial exception. Certificates come from Let's
 Encrypt through a DNS-01 challenge against a public zone, so
 <code>argo.infra.k8s.wlkr.ch</code> and its siblings are publicly resolvable and appear in
-Certificate Transparency logs, even though they point at RFC1918 addresses. Plan
-names accordingly.</p>
+Certificate Transparency logs, though they point at RFC1918 addresses.</p>
 <h2 id="provisioning">Provisioning<a class="headerlink" href="#provisioning" title="Permanent link">&para;</a></h2>
-<p>Provisioning is the least protected phase, by design: it has to work before any
-of the cluster's own security exists.</p>
+<p>Provisioning is the least protected phase: it runs before any of the cluster's
+own security exists.</p>
 <table>
 <thead>
 <tr>
@@ -2736,8 +2734,8 @@ of the cluster's own security exists.</p>
 </thead>
 <tbody>
 <tr>
-<td>Ignition configs are served unauthenticated over HTTP</td>
-<td>Anything on the segment can fetch <code>http://&lt;boot-server&gt;:8000/ignition-&lt;host&gt;.json</code> while the boot server is running</td>
+<td>Ignition configs travel over plain HTTP</td>
+<td>The boot server gives <code>ignition-&lt;host&gt;.json</code> only to that host's <code>ansible_host</code>, and the installer config pins its sha512. A LAN host that forges the address or sits in between still reads it</td>
 </tr>
 <tr>
 <td>Those configs embed join credentials</td>
@@ -2745,7 +2743,7 @@ of the cluster's own security exists.</p>
 </tr>
 <tr>
 <td>The control-plane configs embed the etcd encryption key</td>
-<td><code>/etc/kubernetes/enc/encryption-config.yaml</code> is inlined with the key that encrypts every Secret at rest. It has no TTL: anyone who fetched a control-plane config while the boot server was up can read Secrets out of any etcd backup, for the life of the cluster</td>
+<td><code>/etc/kubernetes/enc/encryption-config.yaml</code> is inlined with the key that encrypts every Secret at rest. It has no TTL: whoever fetched a control-plane config can read Secrets out of any etcd backup for the life of the cluster</td>
 </tr>
 <tr>
 <td>Nodes join with <code>--discovery-token-unsafe-skip-ca-verification</code></td>
@@ -2753,11 +2751,11 @@ of the cluster's own security exists.</p>
 </tr>
 <tr>
 <td>Sysext updates set <code>Verify=false</code></td>
-<td>On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off. The transfer config that names their source is inlined from a template in Git, not fetched</td>
+<td>On first boot Ignition checks each image against the sha256 the boot server was given, so a substituted image fails. Later sysupdate downloads travel over HTTPS with signature verification off; the transfer config naming their source is inlined from Git, not fetched</td>
 </tr>
 <tr>
 <td>The PXE kernel, initrd and bootloader are signature-checked</td>
-<td><code>make download</code> takes their sums only from a clearsigned file that <code>gpgv</code> verifies against a pinned primary key fingerprint: Flatcar's image signing key for <code>.DIGESTS.asc</code>, the kernel.org checksum autosigner for syslinux's <code>sha256sums.asc</code></td>
+<td><code>make download</code> takes their sums only from a clearsigned file that <code>gpgv</code> verifies against a pinned key fingerprint: Flatcar's image signing key for <code>.DIGESTS.asc</code>, kernel.org's autosigner for syslinux's <code>sha256sums.asc</code></td>
 </tr>
 <tr>
 <td>The OS image is signature-checked</td>
@@ -2768,23 +2766,21 @@ of the cluster's own security exists.</p>
 <p>The mitigation is time: <code>make serve</code> is a foreground command, the bootstrap
 token and the certificate key expire (the windows are in
 <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a>),
-and <code>make config</code> re-arms both only for those windows. The
-encryption key has no clock, which is why the HTTP server listens only on
-<code>boot_server_ip</code>, serves files by name and lists nothing. TFTP listens on
-every interface, because macOS lets an unprivileged process bind port 69 only
-there, and refuses every write request, so nobody can plant a boot menu.
-<strong>Stop the boot
-server when provisioning is finished.</strong> Flatcar is installed to disk, so
-nothing needs it after a build — see
-<a href="../boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
+and <code>make config</code> re-arms both only for those windows, over SSH through a
+script's stdin, so no process list shows them. The encryption key has no
+clock, which is why HTTP listens only on <code>boot_server_ip</code>, serves files by
+name and lists nothing. TFTP listens on every interface, since macOS lets an
+unprivileged process bind port 69 only there, and refuses every write request,
+so nobody can plant a boot menu. <strong>Stop the boot server when provisioning is
+finished.</strong> Flatcar is installed to disk and nothing needs it after a build —
+see <a href="../boot-process/#every-boot-after-the-first">Every boot after the first</a>.</p>
 <p><code>output/credentials/</code> holds the generated bootstrap token and certificate key
 in plaintext. The directory is <code>0700</code>, the Ignition configs in <code>output/http</code>
 are <code>0600</code>, and <code>output/</code> is gitignored. The values are reused across
 <code>make config</code> runs, because a node whose join window passed retries with the
 values on its disk once <code>make config</code> has re-armed them
 (<a href="../../operations/nodes/#adding-a-node">Adding a node</a>). Delete them to force
-new ones. The installer keeps its copy of the node config <code>0600</code> in RAM;
-<code>flatcar-install</code> carries that mode to the OEM partition.</p>
+new ones. Each node's SSH host key is generated there too, installed by Ignition and listed in <code>output/known_hosts</code>, which the playbooks' SSH options trust alone (<code>StrictHostKeyChecking=yes</code>); a rebuilt node keeps its key and nothing is trusted on first contact. The private halves are as sensitive as the token. The installer keeps its copy of the node config <code>0600</code> in RAM; <code>flatcar-install</code> carries that mode to the OEM partition.</p>
 <h2 id="node-hardening">Node hardening<a class="headerlink" href="#node-hardening" title="Permanent link">&para;</a></h2>
 <p><code>ansible/templates/kubeadm.yaml.j2</code> and <code>ansible/templates/butane_node_config.yaml.j2</code>
 carry the settings below. They land at provisioning time and change only on
@@ -2811,7 +2807,7 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>--authentication-config</code></td>
-<td>Anonymous requests reach only <code>/livez</code>, <code>/readyz</code>, <code>/healthz</code> (the kubelet's probes, <code>make reinstall</code>) and <code>kube-public/cluster-info</code>, which <code>kubeadm join</code> reads before it holds a credential. The file replaces <code>--anonymous-auth</code>, which must stay unset; <code>/version</code> and the rest answer 401</td>
+<td>Anonymous requests reach only <code>/livez</code>, <code>/readyz</code>, <code>/healthz</code> (the kubelet's probes, <code>make reinstall</code>) and <code>kube-public/cluster-info</code>, which <code>kubeadm join</code> reads before it holds a credential. The file replaces <code>--anonymous-auth</code>, which must stay unset</td>
 </tr>
 <tr>
 <td><code>--profiling=false</code> on the API server, controller-manager and scheduler</td>
@@ -2823,7 +2819,7 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>DenyServiceExternalIPs</code></td>
-<td><code>spec.externalIPs</code> lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it: Cilium's pools supply LoadBalancer addresses. <code>NodeRestriction</code> is repeated because the flag replaces kubeadm's default list</td>
+<td><code>spec.externalIPs</code> lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it. <code>NodeRestriction</code> is repeated because the flag replaces kubeadm's default list</td>
 </tr>
 <tr>
 <td><code>--tls-cipher-suites</code> and <code>--tls-min-version</code>, <code>tlsCipherSuites</code> and <code>tlsMinVersion</code></td>
@@ -2835,7 +2831,7 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>protectKernelDefaults: true</code></td>
-<td>The kubelet refuses to start unless <code>vm.overcommit_memory</code>, <code>vm.panic_on_oom</code>, <code>kernel.panic</code> and <code>kernel.panic_on_oops</code> are already right. <code>/etc/sysctl.d/k8s.conf</code> sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next <code>make reinstall</code>, not on merge</td>
+<td>The kubelet refuses to start unless <code>vm.overcommit_memory</code>, <code>vm.panic_on_oom</code>, <code>kernel.panic</code> and <code>kernel.panic_on_oops</code> are already right. <code>/etc/sysctl.d/k8s.conf</code> sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next <code>make reinstall</code></td>
 </tr>
 <tr>
 <td><code>kernel.panic</code> with <code>kernel.panic_on_oops</code></td>
@@ -2847,11 +2843,11 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>kernel.dmesg_restrict</code> and <code>kernel.kexec_load_disabled</code></td>
-<td>A container escape cannot read the kernel log or load another kernel. <a href="../../platform/kured/">Kured</a> reboots with <code>systemctl reboot</code>, not kexec</td>
+<td>An escaped container cannot read the kernel log or load another kernel; <a href="../../platform/kured/">Kured</a> reboots with <code>systemctl reboot</code>, not kexec</td>
 </tr>
 <tr>
 <td><code>/etc/ssh/sshd_config.d/10-hardening.conf</code></td>
-<td><code>AllowUsers core</code>, no keyboard-interactive, no <code>ssh-rsa</code>. Flatcar's drop-in appends <code>ssh-rsa</code> and sshd keeps a keyword's first value, so this file sorts ahead of it. <code>core</code>'s key comes from <code>~/.ssh/id_ed25519.pub</code>; any other was added by hand</td>
+<td><code>AllowUsers core</code>, no keyboard-interactive, no <code>ssh-rsa</code>. Flatcar's drop-in appends <code>ssh-rsa</code> and sshd keeps a keyword's first value, so this file sorts ahead of it. <code>core</code>'s key is <code>~/.ssh/id_ed25519.pub</code></td>
 </tr>
 <tr>
 <td><code>podPidsLimit</code></td>
@@ -2903,9 +2899,8 @@ sensitive is committed to Git.</p>
 <h3 id="encryption-at-rest">Encryption at rest<a class="headerlink" href="#encryption-at-rest" title="Permanent link">&para;</a></h3>
 <p>The API server encrypts <code>secrets</code> with <code>secretbox</code> before they reach etcd
 (<code>ansible/templates/kubeadm.yaml.j2</code>; the key file in
-<code>ansible/templates/butane_node_config.yaml.j2</code>). Without it an etcd backup, a
-stolen disk, or read access to <code>/var/lib/etcd</code> yields every credential the
-cluster holds.</p>
+<code>ansible/templates/butane_node_config.yaml.j2</code>). Without it an etcd backup or
+stolen disk yields every credential the cluster holds.</p>
 <table>
 <thead>
 <tr>
@@ -2939,11 +2934,11 @@ exists, once the API servers have restarted:</p>
 </span></code></pre></div>
 <p>The key lives in <code>output/credentials/</code> beside the kubeadm token and
 certificate key — that directory is what decrypts etcd. The API servers reload
-the config file on change (<code>encryption-provider-config-automatic-reload</code>), so
+the file on change (<code>encryption-provider-config-automatic-reload</code>), so
 rotating it is a file edit and a rewrite of every Secret, by hand — see
 <a href="../../operations/encryption-key-rotation/">Encryption Key Rotation</a>. A KMS
-provider would remove the key file at the cost of a dependency the cluster must
-reach before it can serve Secrets.</p>
+provider would remove the key file, at the cost of a dependency the cluster
+must reach before it can serve Secrets.</p>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
 <p><a href="../../platform/tetragon/">Tetragon</a> records every exec in every pod and
 alerts when anything but the control plane reads the cluster's key material.
@@ -2951,15 +2946,14 @@ It is detection, not prevention: nothing is killed, and a policy that fails to
 load on a new kernel watches nothing until its alert fires.</p>
 <h2 id="audit-logging">Audit logging<a class="headerlink" href="#audit-logging" title="Permanent link">&para;</a></h2>
 <p>The API server records who did what, to which object, and whether it was
-allowed; the <code>audit</code> half of the Pod Security Admission labels has nowhere to
-go without it. Policy, retention and queries are in
-<a href="../audit-logging/">Audit Logging</a>.</p>
+allowed; the <code>audit</code> labels of Pod Security Admission need it. Policy,
+retention and queries are in <a href="../audit-logging/">Audit Logging</a>.</p>
 <h2 id="authorization">Authorization<a class="headerlink" href="#authorization" title="Permanent link">&para;</a></h2>
 <p><strong>AppProjects constrain the workloads, not the platform.</strong>
 <code>payload/platform/argocd-projects/projects.yaml</code> defines them. <code>infra</code> allows
 <code>sourceRepos: "*"</code> and every group and kind in every namespace: it is this
-repository deploying this repository, and a restriction there guards against
-nothing the PR review does not. <code>system</code> is confined to the <code>argocd</code> namespace.
+repository deploying this repository, so a restriction guards against nothing
+PR review does not. <code>system</code> is confined to the <code>argocd</code> namespace.
 <code>apps</code> has the boundary to draw, because its Applications come from a second
 repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
@@ -2973,9 +2967,8 @@ dropped — see
 <a href="../../platform/security-policies/#network-policies">Security Policies</a> and
 <a href="../../platform/security-policies/#rollout">Rollout</a>.</p>
 <p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
-carries <code>enforce</code> at the level it demonstrably needs and <code>warn</code>/<code>audit</code> at a
-stricter one, so violations are visible without breaking what runs: measure
-first, enforce second.</p>
+carries <code>enforce</code> at the level it needs and <code>warn</code>/<code>audit</code> at a stricter one,
+so violations are visible without breaking what runs.</p>
 <p><strong>Image references are checked at admission.</strong> An untagged or <code>latest</code> image
 is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a
 verifier would exempt nearly everything. See
@@ -3043,10 +3036,9 @@ rows are not behind Authentik:</p>
 </table>
 <p>The groups and how they nest are in
 <a href="../../platform/authentik/#groups-and-roles">Groups and roles</a>.</p>
-<p>Authentik is therefore a dependency of reaching any of them; the break-glass
-paths are in <a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a>.
-OpenBao is left out deliberately: it holds Authentik's own database password,
-so putting it behind Authentik would be a loop.</p>
+<p>Authentik is a dependency of reaching any of them; the break-glass paths are in
+<a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a>.
+OpenBao stays out: it holds Authentik's own database password, a loop.</p>
 <h2 id="what-would-tighten-this-up">What would tighten this up<a class="headerlink" href="#what-would-tighten-this-up" title="Permanent link">&para;</a></h2>
 <p>Roughly in order of value against effort:</p>
 <ol>

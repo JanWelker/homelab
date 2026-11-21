@@ -2524,8 +2524,7 @@
 
 <h1 id="ansible-configuration">Ansible Configuration<a class="headerlink" href="#ansible-configuration" title="Permanent link">&para;</a></h1>
 <p>Ansible never configures a node here: it generates files on the deployment
-host, and Ignition applies them once, on the first boot after a node is
-installed.</p>
+host, and Ignition applies them once, on a node's first boot.</p>
 <p>It renders two Ignition configs per host from two templates — one the PXE
 environment <a href="../boot-process/#3-install-bootstrap">runs to install</a>, one
 <code>flatcar-install</code> embeds into the system it writes. Changing anything under
@@ -2561,7 +2560,7 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 <tbody>
 <tr>
 <td><code>config.yaml</code></td>
-<td>Generates the bootstrap token, certificate key and etcd encryption key into <code>output/credentials/</code> (mode <code>0700</code>); renders the Ignition configs via Butane into <code>output/http</code> (mode <code>0600</code>), the sysupdate config for running nodes beside them, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, the router's FRR config into <code>output/router/frr-bgp.conf</code>, and a readable copy of the kubeadm config into <code>output/tmp/</code> (the copy that runs is inlined into Ignition)</td>
+<td>Generates the bootstrap token, certificate key, etcd encryption key and each node's SSH host key into <code>output/credentials/</code> (mode <code>0700</code>), and <code>output/known_hosts</code> from the host keys; renders the Ignition configs via Butane into <code>output/http</code> (mode <code>0600</code>, the node config first: the installer config pins its sha512), the sysupdate config for running nodes beside them, the per-MAC PXE menus into <code>output/tftp/pxelinux.cfg/</code>, the router's FRR config into <code>output/router/frr-bgp.conf</code>, and a readable kubeadm config copy into <code>output/tmp/</code></td>
 </tr>
 <tr>
 <td><code>download.yaml</code></td>
@@ -2578,15 +2577,14 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 </tbody>
 </table>
 <p><code>config.yaml</code> is safe to re-run: the <code>password</code> lookup reads an existing
-credential file back instead of generating a new value, so the encryption key
-every control-plane node shares stays the one etcd's Secrets were encrypted
-with.</p>
+credential file back, so the encryption key every control-plane node shares
+stays the one etcd's Secrets were encrypted with.</p>
 <p><code>config.yaml</code> renews the join credentials on the first control-plane host
 that answers with a running cluster, so the node being
 <a href="../../operations/nodes/#replacing-a-failed-node">replaced</a> may be any of them;
 it fails when none answers while <code>output/kubeconfig</code> exists, since a node
-booted then could not join, and skips the renewal silently only before the
-first bootstrap.</p>
+booted then could not join, and skips the renewal only before the first
+bootstrap.</p>
 <p><code>kubeconfig.yaml</code> targets <code>control_plane[0]</code> — the first control-plane host in
 the inventory, with no fallback. If that node is down, copy
 <code>/etc/kubernetes/admin.conf</code> off any other control-plane node by hand. Keep a
