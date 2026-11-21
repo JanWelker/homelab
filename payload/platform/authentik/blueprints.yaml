@@ -658,6 +658,7 @@ data:
             ^/auth/external/callback$
       - model: authentik_core.application
         state: present
+        id: home-assistant-application
         identifiers:
           slug: home-assistant
         attrs:
@@ -665,6 +666,13 @@ data:
           provider: !KeyOf home-assistant-provider
           meta_launch_url: https://home.k8s.wlkr.ch
           meta_description: Home automation
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf home-assistant-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
       - model: authentik_providers_proxy.proxyprovider
         state: present
@@ -715,6 +723,7 @@ data:
             ^/api/send$
       - model: authentik_core.application
         state: present
+        id: umami-application
         identifiers:
           slug: umami
         attrs:
@@ -722,10 +731,17 @@ data:
           provider: !KeyOf umami-provider
           meta_launch_url: https://analytics.k8s.wlkr.ch
           meta_description: Web analytics
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          target: !KeyOf umami-application
+          group: !KeyOf infra-users
+        attrs:
+          order: 0
 
-      # The wollbi sites sign editors in over OIDC now, from their own
-      # blueprints in the workloads repository; these remove the old proxy
-      # providers from a running Authentik.
+      # The wollbi sites sign editors in over OIDC now, from
+      # blueprints-workloads.yaml; these remove the old proxy providers from a
+      # running Authentik.
       - model: authentik_providers_proxy.proxyprovider
         state: absent
         identifiers:
