@@ -1,0 +1,30 @@
+---
+# One SelinuxProfile per workload that needs more than container_t and less
+# than spc_t. How a rule gets here: docs/platform/security-profiles-operator.md#usage
+#
+# Alloy reads the journal, the pod logs, the API server's audit log and the
+# Hubble export file, and writes none of them.
+apiVersion: security-profiles-operator.x-k8s.io/v1
+kind: SelinuxProfile
+metadata:
+  name: alloy
+spec:
+  inherit:
+    - kind: System
+      name: container
+  allow:
+    systemd_journal_t:
+      dir: [getattr, open, read, search, watch]
+      file: [getattr, map, open, read]
+    var_log_t:
+      dir: [getattr, open, read, search]
+      file: [getattr, open, read]
+    # /run/cilium/hubble/events.log, labelled by whichever agent created it
+    var_run_t:
+      file: [getattr, open, read]
+    container_runtime_t:
+      file: [getattr, open, read]
+    # /var/log/kubernetes/audit, which carries no label
+    unlabeled_t:
+      dir: [getattr, search]
+      file: [getattr, open, read]

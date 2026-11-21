@@ -61,12 +61,10 @@ def selector(args):
 def grouped(args):
     """{(stype, ttype, tclass): {"perms": set, "comms": set, "nodes": set, "count": int}}"""
     query = (
-        f'sum by (node, comm, stype, ttype, tclass, perms) '
+        f'sum by (comm, stype, ttype, tclass, perms) '
         f'(count_over_time({selector(args)} | {PARSE} [{args.since}]))'
     )
-    rules = collections.defaultdict(
-        lambda: {'perms': set(), 'comms': set(), 'nodes': set(), 'count': 0}
-    )
+    rules = collections.defaultdict(lambda: {'perms': set(), 'comms': set(), 'count': 0})
     for series in loki('query', {'query': query}):
         m = series['metric']
         if not all(k in m for k in ('stype', 'ttype', 'tclass', 'perms')):
@@ -74,7 +72,6 @@ def grouped(args):
         rule = rules[(m['stype'], m['ttype'], m['tclass'])]
         rule['perms'].update(m['perms'].split())
         rule['comms'].add(m.get('comm', '?'))
-        rule['nodes'].add(m.get('node', '?'))
         rule['count'] += int(float(series['value'][1]))
     return rules
 
@@ -90,7 +87,7 @@ def cmd_rules(args):
         stype, ttype, tclass = key
         print(f'allow {stype} {ttype}:{tclass} {{ {" ".join(sorted(rule["perms"]))} }};')
         comms = ', '.join(sorted(rule['comms']))
-        print(f'    # {rule["count"]}x  comm: {comms}  nodes: {len(rule["nodes"])}')
+        print(f'    # {rule["count"]}x  comm: {comms}')
 
 
 def cmd_paths(args):

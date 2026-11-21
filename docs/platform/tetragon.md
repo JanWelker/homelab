@@ -29,12 +29,13 @@ and runs privileged on the host network by the chart's default.
 | Setting | Why |
 | --- | --- |
 | Export to stdout | The chart runs a sidecar that tails Tetragon's JSON file to stdout, so [Alloy](logging.md) collects it as any container log: `{namespace="kube-system", container="export-stdout"}` |
-| `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export; they are the bulk of the volume and the least interesting. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
-| `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
-| Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](../operations/control-plane-vip.md#the-handover). The Prometheus egress rule in `payload/platform/security/network-policies/monitoring.yaml` names it too |
+| `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export, being most of the volume. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
+| `seLinuxOptions.type: spc_t` | SELinux refuses `container_t` the agent's BPF loads, tracefs mount and other processes' `/proc` |
+| `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid or file-capability escalation is visible without a policy |
+| Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](../operations/control-plane-vip.md#the-handover). The Prometheus egress rule in `monitoring.yaml` names it too |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
-| `ServerSideDiff=true` annotation | The `TracingPolicy` CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs one dry-run apply per resource per reconcile: the Argo CD controller's `dryRun=All` patches in the audit log, not changes |
-| Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
+| `ServerSideDiff=true` annotation | The `TracingPolicy` CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs a dry-run apply per resource per reconcile: the `dryRun=All` patches in the audit log |
+| Memory limit | 2.5x the measured working set of the busiest agent, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
 
 ### Policies
 

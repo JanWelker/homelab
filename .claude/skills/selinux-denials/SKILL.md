@@ -28,11 +28,13 @@ Read the output with these in mind:
 - **Counts are log lines, not accesses.** Permissive mode logs a denial once
   per AVC cache entry. Compare the set of rules, never the numbers.
 - **A quiet workload has not been cleared.** Startup-only accesses appear when
-  the pod restarts. To make running processes log again, flush the cache on
-  that node: `ssh <node> sudo load_policy`. Then restart the pod.
+  the pod restarts. To make running processes log again, reload the policy
+  through that node's operator daemon, never with the host's tools:
+  `kubectl -n security-profiles-operator exec <spod pod> -c selinuxd -- semodule -R`.
+  The host's `load_policy` and `semodule -B` pick the shipped `policy.35` and
+  drop the operator's modules until its pod restarts.
 - **`dontaudit` hides denials.** The base policy silences some; they still
-  deny under enforcing. `semodule -DB` rebuilds without them, which on Flatcar
-  needs the writable policy store from step 4.
+  deny under enforcing.
 - **No lines at all** means the audit filter is closed again: check
   `ssh <node> sudo auditctl -l` shows the two `msgtype` rules from
   `butane_node_config.yaml.j2` and nothing naming 1400 to 1499. The kernel's
@@ -53,91 +55,82 @@ fits; a policy module is the last resort.
 | A static control-plane pod (`etcd`, `kube-apiserver` on `/etc/kubernetes/pki`, the audit log) | Label the directories as above; `/var/lib/etcd` already is `container_file_t` | The same template. A kubeadm patch can add `seLinuxOptions` instead, see `/etc/kubernetes/patches` |
 | Two pods sharing one volume or hostPath with different MCS pairs | The same `seLinuxOptions.level` on both, or `spc_t` for the reader | Chart values. Flatcar documents shared volumes as incompatible with enforcing otherwise |
 | Something a boolean covers | `setsebool -P <name> on`; list them with `getsebool -a \| grep container` | The node template, as a oneshot unit |
-| None of the above | A policy module for a type of its own, step 3 | |
+| A workload that reads or writes a few host paths and nothing kernel-side (Alloy: the journal and log files) | A `SelinuxProfile`, step 3 | `payload/platform/security-profiles-operator/profiles.yaml` |
 
 Never load `allow container_t ...` rules from the grouped output: they would
 apply to every container on the node. That output names what is denied, it is
 not a policy.
 
-## 3. Write a module
+## 3. Write a `SelinuxProfile`
 
-For a workload that should stay confined but needs more than `container_t`.
+The operator's documented ways are recording a profile from a running pod or
+writing one by hand. Recording needs `auditd` writing
+`/var/log/audit/audit.log`, which the nodes do not have, so here a profile is
+written by hand from the denials in Loki.
 
-1. Draft it from the denials:
-
-    ```bash
-    uv run python selinux_denials.py te --since 7d --comm <comm> --module <name>_local > <name>_local.te
-    ```
-
-2. Edit it: give the workload its own type instead of `container_t`, drop
-   every rule it does not need (a denial is not proof of need; many are
-   probes the program survives), and replace broad targets such as
-   `unlabeled_t` with a label change from step 2.
-3. Build on a node, which has `checkmodule` and `semodule_package` but no
-   `audit2allow` or `secilc`:
+1. Draft the rules for one command:
 
     ```bash
-    checkmodule -M -m -o <name>_local.mod <name>_local.te
-    semodule_package -o <name>_local.pp -m <name>_local.mod
+    uv run python selinux_denials.py rules --since 7d --comm <comm>
+    uv run python selinux_denials.py paths --since 24h --comm <comm>
     ```
 
-4. Deliver it: as a `SelinuxProfile` through the operator, step 5, or by
-   hand, step 4. Then point the pod at the type with `seLinuxOptions.type`.
+2. Write the profile in `profiles.yaml`: `inherit` the `container` system
+   profile, then under `allow` one map per target type, with classes and
+   permissions. `@self` is the process's own type. Keep only what the
+   workload needs (a denial is not proof of need; many are probes the program
+   survives) and add `getattr` and `open` where a read was denied, since
+   permissive mode logs each permission once.
+3. The operator refuses a profile that allows the types `kernel_t`, `kmem_t`,
+   `security_t` or `shadow_t`, the classes `capability`, `capability2`,
+   `security` or `system`, or the permissions `mounton`, `relabelfrom`,
+   `relabelto`, `transition`, `dyntransition`, `load_policy`, `mac_admin`,
+   `setbool`, `setenforce` or `setsecparam`. A workload that needs one of
+   those is a host agent: `spc_t`, step 2.
+4. Merge the profile first and wait for it:
 
-## 4. Load a module on Flatcar
+    ```bash
+    kubectl get selinuxprofile <name>        # Installed, on every node
+    ```
 
-Flatcar's policy store is on the read-only `/usr`: `/var/lib/selinux` is a
-symlink to `/usr/lib/selinux/policy`, and `semodule -l` fails with a
-read-only lock error. Its documentation
-(<https://www.flatcar.org/docs/latest/security/encryption/selinux/>) replaces
-the symlink with a copy and copies `/usr/lib/selinux/mcs` into `/etc/selinux`;
-follow that page, on one worker, before `semodule -i <name>_local.pp`.
+   Only then set `seLinuxOptions.type: <name>.process` on the container, in a
+   second merge. A pod whose type is not in the node's policy cannot start.
+5. A custom type is admitted only where Pod Security is `privileged`
+   (`pod-security.yaml`). `baseline` and `restricted` namespaces stay on
+   `container_t`; a `ProfileBinding` can attach a profile by image without
+   editing the pod, but the namespace rule holds for it too.
 
-A copy does not follow an OS update: the node keeps the old base policy until
-something copies it again and reinstalls the modules. So the store, its
-re-sync at boot and the modules a node needs belong in
-`butane_node_config.yaml.j2` together. None of this has been done on this
-cluster: treat the first time as a trial.
+## 4. Where the policy lives on a node
 
-## 5. Manage it through Kubernetes
+`docs/platform/security-profiles-operator.md` has the detail. What matters
+when working on denials:
 
-| Mechanism | What it manages | State here |
-| --- | --- | --- |
-| `securityContext.seLinuxOptions` (`type`, `level`) | Which existing type and MCS pair a pod runs as | Native, declarative in chart values; covers every row of step 2 except the labels |
-| `seLinuxChangePolicy` and the `SELinuxMount` gates | How a volume is relabelled for the pod, by mount option or recursively | Native; only matters once enforcing |
-| [Security Profiles Operator](https://github.com/kubernetes-sigs/security-profiles-operator), `SelinuxProfile` | Policy modules as cluster objects: the `spod` DaemonSet's `selinuxd` installs them on every node, a pod uses `<profile>.process` as its type, and it can record a profile from the audit log | Considered for managing modules (#1696); not installed, and it does not fit Flatcar as shipped, see below |
+- The operator's `selinuxd` installs modules into `/var/lib/selinux`, a
+  writable copy `selinux-policy-store.service` makes at boot.
+- `selinuxd` compiles `policy.33`; Flatcar ships `policy.35`. The host's own
+  SELinux tools read and write only the latter. Do not run `semodule` or
+  `load_policy` on a node by hand.
+- To try a template or raw CIL without touching a node, run the `el9`
+  `selinuxd` image's `semodule -n -i` against a copy of the two directories.
+- Whatever a node needs to boot (the static control-plane pods, the container
+  runtime's own transitions) cannot wait for the operator's pod and belongs in
+  `butane_node_config.yaml.j2`.
 
-Use the first row wherever an existing type fits. For the modules that are
-left, the writable store has to come from the node template whichever tool
-loads them, so loading them there too (`semodule -i` in a boot unit) is the
-smaller design; the operator earns an Application only with many
-workload-specific modules. Before it does, answer these on one worker:
+## 5. Mechanisms
 
-- `selinuxd` installs into the host's policy store, so it needs the
-  writable store of step 4 first. Upstream does not test this: the
-  operator's Flatcar end-to-end job runs with `E2E_TEST_SELINUX=false`.
-- Its recorder needs `auditd` writing `/var/log/audit/audit.log`, which the
-  nodes do not have. Not needed: step 1 reads the same denials from Loki.
-- SELinux support is off outside OpenShift: `spec.selinux.enable: true` on
-  the `spod` object.
-- Flatcar's base policy does not match the operator's bundled templates; its
-  configuration page names Flatcar and `selinux.customTemplatesConfigMap`,
-  a ConfigMap of `.cil` files, as the answer.
-- A custom type is admitted only in a namespace whose Pod Security level is
-  `privileged`.
-- A node reinstalled from Ignition has no modules until the `spod` pod runs
-  there, so anything a node needs to boot (the static control-plane pods)
-  belongs in the node template, not in a `SelinuxProfile`.
-
-A `SelinuxProfile` is the module of step 3 in YAML: `inherit` the `container`
-system profile, then one map per target type and class under `allow`, with
-`@self` for the process's own type.
+| Mechanism | What it manages |
+| --- | --- |
+| `securityContext.seLinuxOptions.type: spc_t` | A host agent runs unconfined, like a privileged container |
+| `securityContext.seLinuxOptions.level` | Two pods share one MCS pair, and so a volume |
+| A label on a host path (`chcon -t container_file_t`) | A confined pod may use that directory |
+| `SelinuxProfile` in `profiles.yaml` | A type of its own for one workload |
+| `seLinuxChangePolicy` and the `SELinuxMount` gates | How a volume is relabelled for a pod; only matters once enforcing |
 
 ## 6. Trial before enforcing
 
-1. Merge the change, let it reach one worker, flush the cache there
-   (`sudo load_policy`), restart the workload, and confirm its `comm` is gone
-   from `rules --since 15m --node <node>`.
+1. Merge the change, restart the workload on one worker, and confirm its
+   `comm` is gone from `rules --since 15m --node <node>`. A new type starts
+   with only what `container` grants, so expect a second round of denials.
 2. Then `sudo setenforce 1` on that worker. It is runtime only and a reboot
    returns it to permissive. Restart the pods that touch the host and watch
    `kubectl get pods -A --field-selector spec.nodeName=<node>`; under
