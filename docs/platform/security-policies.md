@@ -147,18 +147,15 @@ and the label is the one switch that frees a node. It denies the LAN
 everything but SSH, the API server, DHCP and ping, and admits the whole
 cluster to every port, since a narrower cluster rule could not name Prometheus
 and could lock out a node. A refused source mails
-[`HostFirewallDrops`](logging.md#alerting). The audit week and the rollout
-are in [Host Firewall Rollout 2026-11-18](../operations/host-firewall-rollout-2026-11-18.md).
+[`HostFirewallDrops`](logging.md#alerting). The rollout is in [Host Firewall Rollout 2026-11-18](../operations/host-firewall-rollout-2026-11-18.md).
 
 ### Default ServiceAccount tokens
 
-A pod that names no `serviceAccountName` lands on `default`, which nothing
-configures, and gets an API token it has no use for. A workload reaching the
-API through `default` is already a misconfiguration, so
-`default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it
+A pod that names no `serviceAccountName` lands on `default` and gets an API
+token it has no use for, so `default-serviceaccounts.yaml` sets `automountServiceAccountToken: false` on it
 in every namespace with nothing to preserve, empty namespaces included. Left
 out: `kube-system`, where the control plane authenticates with client
-certificates and "very likely fine" is not the standard. `authentik-server`
+certificates. `authentik-server`
 runs on `default` by chart default and is covered: Authentik's Kubernetes
 calls are worker tasks, which run under the `authentik` account.
 
@@ -202,14 +199,14 @@ until someone adds it. Argo CD reverts a hand edit within minutes either way.
 Trivy reports a bad image after it is running; `admission-policies.yaml`
 refuses or records it at admission, with the built-in
 `ValidatingAdmissionPolicy` rather than a policy engine. The image policies
-match Pods and every controller that produces them, so a bad Deployment is
+match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is
 rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The
 others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
 | `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
-| `image-registry-allowed` | `Audit` and `Warn` | The registries the cluster pulls from today; a reference with no registry counts as `docker.io`. Recorded to the [audit log](../architecture/audit-logging.md) and shown to whoever applies, not enforced, until the record is clean |
+| `image-registry-allowed` | `Deny` | The registries the cluster pulls from; a reference with no registry counts as `docker.io` |
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](#agent-rbac) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`, or be the ConfigMap `authentik-blueprint-<application>`. Argo CD cannot whitelist kinds per destination namespace, so this is what holds `apps` to its blueprint there; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
@@ -218,32 +215,27 @@ others close what RBAC and the `apps` project cannot express.
 | `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |
 | `cnpg-objectstore-offsite` | `Deny` | A Barman Cloud `ObjectStore` writes to `s3://offsite/<namespace>.<purpose>/`, the prefix TrueNAS pulls |
 | `obc-backup-exempt` | `Deny` | A new `ObjectBucketClaim` says why it needs no backup; nothing copies a bucket off the cluster |
+| `object-store-quota` | `Audit` and `Warn` | A new object store user or `ObjectBucketClaim` sets a size limit, see [Quotas](rook-ceph.md#quotas) |
 | `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](cert-manager.md#issuer-scope) |
 | `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](cert-manager.md#pods-from-the-controllers) |
 | `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](gateway-api.md#route-hostnames) |
 
-The last three [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
+`cnpg-cluster-backed-up`, `cnpg-objectstore-offsite` and `obc-backup-exempt` [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
 each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason
 as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.
 
 All but two carry `failurePolicy: Ignore`: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation
-is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail closed, since they only ever
-match named identities.
+is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail
+closed, since they only ever match named identities.
 
 ## Usage
 
-### Promoting the registry allowlist
+### Adding a registry
 
-1. Confirm nothing running would be refused, over the full Loki retention:
-
-    ```logql
-    {job="kubernetes-audit"} |= "validation.policy.admission.k8s.io/validation_failure" |= "image-registry-allowed"
-    ```
-
-2. Change `validationActions` on the binding in `admission-policies.yaml` to
-   `["Deny"]`.
+A pod from a registry outside the list is refused. If the registry is
+intended, add it to the regular expression in `image-registry-allowed`.
 
 ### Tightening a namespace
 

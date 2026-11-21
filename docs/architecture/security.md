@@ -185,8 +185,7 @@ stricter one, so violations are visible without breaking what runs: measure
 first, enforce second.
 
 **Image references are checked at admission.** An untagged or `latest` image
-is refused; a registry outside the allowlist is recorded and warned about but
-admitted. Signatures are not verified: few of the upstreams sign, so a
+is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a
 verifier would exempt nearly everything. See
 [Security Policies](../platform/security-policies.md#admission-policies).
 
@@ -228,12 +227,11 @@ Roughly in order of value against effort:
 
 1. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-2. Promote the registry allowlist to `Deny`.
-3. Add a second Alertmanager receiver on a different transport, so a failure of
+2. Add a second Alertmanager receiver on a different transport, so a failure of
    the mail path is not itself unmonitored.
-4. Move etcd encryption to a KMS provider, removing the static
+3. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` in `output/credentials/`.
-5. Get a backup copy off the site: TrueNAS pulls the `offsite` bucket to the
+4. Get a backup copy off the site: TrueNAS pulls the `offsite` bucket to the
    LAN, which survives losing the cluster but not the site.
 
 See [Known Limitations](limitations.md) for the operational counterparts.

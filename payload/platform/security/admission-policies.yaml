@@ -22,6 +22,11 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["jobs", "cronjobs"]
+      # kubectl debug adds a container to a running pod
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["pods/ephemeralcontainers"]
   variables:
     - name: podSpec
       expression: >-
@@ -31,7 +36,8 @@ spec:
     - name: images
       expression: >-
         variables.podSpec.containers.map(c, c.image) +
-        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : [])
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : []) +
+        (has(variables.podSpec.ephemeralContainers) ? variables.podSpec.ephemeralContainers.map(c, c.image) : [])
   validations:
     - expression: >-
         variables.images.all(i,
@@ -69,6 +75,11 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["jobs", "cronjobs"]
+      # kubectl debug adds a container to a running pod
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["pods/ephemeralcontainers"]
   variables:
     - name: podSpec
       expression: >-
@@ -78,7 +89,8 @@ spec:
     - name: images
       expression: >-
         variables.podSpec.containers.map(c, c.image) +
-        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : [])
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers.map(c, c.image) : []) +
+        (has(variables.podSpec.ephemeralContainers) ? variables.podSpec.ephemeralContainers.map(c, c.image) : [])
   validations:
     # A first component without a dot or a port is not a registry: the
     # runtime reads such a reference from docker.io. ECR Public answers to
@@ -97,8 +109,7 @@ metadata:
   name: image-registry-allowed
 spec:
   policyName: image-registry-allowed
-  # Measured, not enforced: the audit log records what a Deny would refuse.
-  validationActions: ["Audit", "Warn"]
+  validationActions: ["Deny"]
 ---
 # What a pod written by the claude-writer agent may not ask for, in any
 # namespace; see docs/platform/security-policies.md#agent-rbac
@@ -602,3 +613,45 @@ metadata:
 spec:
   policyName: controller-pod-limits
   validationActions: ["Deny"]
+---
+# A full object store stops every writer; see docs/platform/rook-ceph.md#quotas
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: object-store-quota
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["ceph.rook.io"]
+        apiVersions: ["v1"]
+        # Rook updates every user it reconciles, the existing ones included
+        operations: ["CREATE"]
+        resources: ["cephobjectstoreusers"]
+      - apiGroups: ["objectbucket.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE"]
+        resources: ["objectbucketclaims"]
+  validations:
+    - expression: >-
+        object.kind != 'CephObjectStoreUser' ||
+        object.metadata.namespace == 'rook-ceph' ||
+        (has(object.spec.quotas) && has(object.spec.quotas.maxSize))
+      message: >-
+        An object store user outside rook-ceph sets spec.quotas.maxSize.
+      reason: Invalid
+    - expression: >-
+        object.kind != 'ObjectBucketClaim' ||
+        (has(object.spec.additionalConfig) && 'maxSize' in object.spec.additionalConfig)
+      message: >-
+        An ObjectBucketClaim sets maxSize in additionalConfig.
+      reason: Invalid
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: object-store-quota
+spec:
+  policyName: object-store-quota
+  # Measured, not enforced: no object in the cluster carries a quota yet.
+  validationActions: ["Audit", "Warn"]

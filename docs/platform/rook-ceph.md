@@ -36,9 +36,8 @@ the OSD data with it: changing the partition table is a
 
 Ignition declares it with `format: none` and `wipe_filesystem: true`, because
 `ceph-volume` reads the BlueStore *signature*, not the partition table, and a
-reinstalled node that kept the old bytes would present an OSD from a cluster
-that no longer exists. Ceph declines any device that already carries a
-filesystem — the first thing to check when an OSD refuses to appear, see
+reinstalled node would present an OSD from a cluster that no longer exists.
+Ceph declines any device that already carries a filesystem; see
 [No OSDs after reprovisioning](#no-osds-after-reprovisioning).
 
 ### Storage classes
@@ -56,12 +55,11 @@ live somewhere other than the block pool they protect. The infra Gateway
 publishes the same endpoint as `https://s3.infra.k8s.wlkr.ch` for
 [Velero](velero.md#configuration), whose S3 client only signs cleanly over
 TLS. More than one RGW instance (`gateway.instances`) keeps
-a node reboot from stalling a backup, which only holds while they sit on
-separate nodes: `gateway.placement` carries the spread constraint, because the
-`placement.all` block belongs to the `CephCluster` and never reaches this CR.
-It is a hard one: every gateway is daemon `a`, so on one node the exporter
-reports their counters under the same labels and Prometheus drops them, and
-the descheduler never evicts a `system-cluster-critical` pod to fix that.
+a node reboot from stalling a backup, which only holds on separate nodes:
+`gateway.placement` carries the spread constraint, because `placement.all`
+belongs to the `CephCluster` and never reaches this CR. It is a hard one:
+every gateway is daemon `a`, so on one node Prometheus drops their counters,
+and the descheduler never evicts a `system-cluster-critical` pod to fix that.
 The data pool is erasure coded (`dataChunks` and `codingChunks`): less
 overhead than three replicas, safe at `failureDomain: host` only with more
 workers than chunks.
@@ -212,6 +210,13 @@ without the annotation `homelab.wlkr.ch/backup-exempt` and its reason, as
 Loki's carries. A backup does not get a bucket: it is a
 [backup writer](#backup-writers) in `offsite`.
 
+### Quotas
+
+A full object store stops every writer, so the `object-store-quota`
+[policy](security-policies.md#admission-policies) asks a new user outside
+`rook-ceph` for `spec.quotas.maxSize` and a new claim for `maxSize` in
+`additionalConfig`. It only warns until every object carries one.
+
 ### Dashboard login
 
 The dashboard sits behind Authentik for `infra-users`, then asks for its own
@@ -234,8 +239,7 @@ make storage-check
 ```
 
 Run it after the GitOps handover, before trusting anything that mounts a
-volume: a `CephCluster` reports `Ready` with no OSDs, and a `StorageClass`
-exists whether or not a CSI driver registered for it. The script walks the
+volume: a `CephCluster` reports `Ready` with no OSDs. The script walks the
 chain in the order it breaks and stops at the first missing link:
 
 | Check | What its absence means |
