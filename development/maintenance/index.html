@@ -2661,7 +2661,7 @@ everything, and Renovate, which chases dependencies.</p>
 <tr>
 <td><code>argo-diff-preview.yaml</code></td>
 <td>pull requests under <code>payload/**</code></td>
-<td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster, and <code>lint-markdown.yaml</code> and <code>renovate-validate.yaml</code> install their npm tool by version without a lockfile; accepted, since the token is read-only and the runner ephemeral</td>
+<td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral. <code>lint-markdown.yaml</code> and <code>renovate-validate.yaml</code> run their npm tool from <code>.github/tools/package-lock.json</code></td>
 </tr>
 <tr>
 <td><code>image-scan.yaml</code></td>
@@ -2741,12 +2741,11 @@ are the sets below that must move together.</p>
 <h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
 <p>Python (<code>pyproject.toml</code>, <code>uv.lock</code>), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (<code>payload/**/values.yaml</code>) and
-pre-commit hooks, plus custom regex managers for the versions in
+pre-commit hooks, the CI npm tools (<code>.github/tools</code>), plus custom regex managers for the versions in
 <code>ansible/inventory.yaml</code>, the font pins in <code>scripts/update-fonts.sh</code>, any
 <code># renovate:</code> annotation and every CloudNativePG <code>imageName</code> under <code>payload/</code>,
 and the tool versions the workflows under <code>.github/workflows/</code> install by
-name rather than by action (the diff-preview image, <code>markdownlint-cli2</code>,
-<code>renovate</code> and Trivy). The <code>Makefile</code> is deliberately not
+name rather than by action (the diff-preview image and Trivy). The <code>Makefile</code> is deliberately not
 tracked: the bootstrap targets read <code>targetRevision</code> out of the owning
 <code>application.yaml</code> — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 <h3 id="manager-rules">Manager rules<a class="headerlink" href="#manager-rules" title="Permanent link">&para;</a></h3>
