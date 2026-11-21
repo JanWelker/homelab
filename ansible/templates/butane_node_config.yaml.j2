@@ -47,6 +47,8 @@ storage:
       mode: 0700
     - path: /etc/kubernetes/admission
       mode: 0700
+    - path: /etc/kubernetes/authentication
+      mode: 0700
 {% endif %}
   files:
     - path: /etc/hostname
@@ -159,6 +161,23 @@ storage:
             - level: None
               verbs: ["get", "list", "watch"]
             - level: Metadata
+
+    # Anonymous requests: the health endpoints, plus the ConfigMap that
+    # kubeadm join reads before it has credentials; see
+    # docs/architecture/security.md#node-hardening
+    - path: /etc/kubernetes/authentication/authentication.yaml
+      mode: 0600
+      contents:
+        inline: |
+          apiVersion: apiserver.config.k8s.io/v1
+          kind: AuthenticationConfiguration
+          anonymous:
+            enabled: true
+            conditions:
+              - path: /livez
+              - path: /readyz
+              - path: /healthz
+              - path: /api/v1/namespaces/kube-public/configmaps/cluster-info
 
     # Cluster-wide Pod Security default; see docs/platform/security-policies.md#pod-security-admission
     - path: /etc/kubernetes/admission/admission.yaml
@@ -323,6 +342,16 @@ storage:
                 hostPath:
                   path: /etc/kubernetes/admin.conf
 {% endif %}
+    # Flatcar's own drop-in appends ssh-rsa; the first value wins, so this one
+    # sorts ahead of it. See docs/architecture/security.md#node-hardening
+    - path: /etc/ssh/sshd_config.d/10-hardening.conf
+      mode: 0644
+      contents:
+        inline: |
+          AllowUsers core
+          KbdInteractiveAuthentication no
+          HostKeyAlgorithms -ssh-rsa
+          PubkeyAcceptedAlgorithms -ssh-rsa
     - path: /etc/modules-load.d/k8s.conf
       mode: 0644
       contents:
@@ -343,6 +372,10 @@ storage:
           vm.panic_on_oom = 0
           kernel.panic = 10
           kernel.panic_on_oops = 1
+
+          # Hardening; see docs/architecture/security.md#node-hardening
+          kernel.dmesg_restrict = 1
+          kernel.kexec_load_disabled = 1
 
     # Inline rather than fetched: this file decides where every later sysext
     # comes from; see docs/operations/upgrades.md#nodes-are-pinned-to-a-minor-series
@@ -452,15 +485,17 @@ systemd:
         ExecStartPre=/usr/bin/sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
         ExecStart=/usr/bin/kubeadm init --config /opt/kubeadm-config.yaml --upload-certs --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
         ExecStartPost=/usr/bin/sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+        # Holds the join token and certificate key; nothing reads it after init.
+        ExecStartPost=/usr/bin/rm -f /opt/kubeadm-config.yaml
         {% else %}
         EnvironmentFile=/opt/bootstrap-k8s.env
         ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token ${KUBEADM_TOKEN} --discovery-token-unsafe-skip-ca-verification --control-plane --certificate-key ${KUBEADM_CERTIFICATE_KEY} --patches /etc/kubernetes/patches --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests
-        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env
+        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env /opt/kubeadm-config.yaml
         {% endif %}
         {% else %}
         EnvironmentFile=/opt/bootstrap-k8s.env
         ExecStart=/usr/bin/kubeadm join {{ control_plane_endpoint }} --token ${KUBEADM_TOKEN} --discovery-token-unsafe-skip-ca-verification
-        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env
+        ExecStartPost=/usr/bin/rm -f /opt/bootstrap-k8s.env /opt/kubeadm-config.yaml
         {% endif %}
 
         [Install]

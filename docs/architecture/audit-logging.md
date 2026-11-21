@@ -107,8 +107,8 @@ kubeadm rendered at init time, and nothing rewrites it on its own.
     ssh core@<node> sudo install -m 0600 /tmp/policy.yaml /etc/kubernetes/audit/policy.yaml
     ```
 
-4. Replace the install-time kubeadm config on the node with the regenerated
-   one, then re-render the API server static pod from it:
+4. Place the regenerated kubeadm config on the node and re-render the API
+   server static pod from it:
 
     ```bash
     scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
