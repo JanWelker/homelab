@@ -63,9 +63,10 @@
 # and ArgoCD stops the sync on it -- which would leave Dependency-Track waiting
 # for a key only a running Dependency-Track can issue.
 #
-# kv/claude-agents/argocd is the same kind of path: a token only Argo CD can
+# kv/claude-homelab/argocd is the same kind of path: a token only Argo CD can
 # issue (`argocd account generate-token --account claude`), written empty until
-# it exists so that the agents' ExternalSecret resolves. See
+# it exists so that the session's ExternalSecret resolves. It sits under the
+# session's own prefix, the only one its namespace can read. See
 # docs/platform/argocd.md#agent-account. The per-session GitHub PATs are not
 # here: `make claude-session-pat` stores one for any session.
 #
@@ -164,7 +165,7 @@ decide WRITE_EXTERNAL_DNS external-dns/route53
 decide WRITE_MONITORING   monitoring/smtp
 decide WRITE_KNEADTIME    kneadtime/config "$KNEADTIME_DANGER"
 decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
-decide WRITE_CLAUDE_ARGOCD claude-agents/argocd
+decide WRITE_CLAUDE_ARGOCD claude-homelab/argocd
 decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
 decide WRITE_ARC          arc-runners/github-app
 echo
@@ -319,7 +320,7 @@ fi
 
 # Written even when empty, for the reason above.
 if [ "$WRITE_CLAUDE_ARGOCD" = "1" ]; then
-  put claude-agents/argocd \
+  put claude-homelab/argocd \
     "token=${CLAUDE_ARGOCD_TOKEN:-}"
 fi
 

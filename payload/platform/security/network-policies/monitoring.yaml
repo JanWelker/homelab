@@ -69,6 +69,9 @@ spec:
               - {}
     - fromEndpoints:
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: claude-homelab
+            k8s:io.cilium.k8s.policy.serviceaccount: claude-reader
+        - matchLabels:
             k8s:io.kubernetes.pod.namespace: claude-agents
             k8s:io.cilium.k8s.policy.serviceaccount: claude-reader
       toPorts:

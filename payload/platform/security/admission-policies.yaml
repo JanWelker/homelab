@@ -138,7 +138,8 @@ spec:
   matchConditions:
     - name: claude-writer
       expression: >-
-        request.userInfo.username == 'system:serviceaccount:claude-agents:claude-writer'
+        request.userInfo.username.startsWith('system:serviceaccount:claude-') &&
+        request.userInfo.username.endsWith(':claude-writer')
   variables:
     - name: podSpec
       expression: >-
@@ -318,7 +319,7 @@ spec:
          'snapshot-controller', 'tetragon', 'trivy-operator', 'velero', 'workloads']
     # The platform's namespaces, and the top-level KV prefixes no workload may
     # be named after: the agent sessions' `claude-<session>` and `velero`.
-    # claude-agents is the apps-owned namespace the sessions run in.
+    # claude-agents is the apps-owned namespace the sessions still run in.
     - name: reserved
       expression: >-
         object.metadata.name in ['arc-jobs', 'arc-runners', 'arc-systems', 'argocd', 'authentik', 'backup',
@@ -561,8 +562,10 @@ spec:
       reason: Forbidden
     - expression: >-
         object.metadata.namespace == 'claude-agents' ||
-        variables.hosts.all(h, !h.endsWith('.ssh.wlkr.ch'))
-      message: Only claude-agents may claim a *.ssh.wlkr.ch name.
+        variables.hosts.all(h, !h.endsWith('.ssh.wlkr.ch') ||
+          (object.metadata.namespace.startsWith('claude-') &&
+           h == object.metadata.namespace.substring(7) + '.ssh.wlkr.ch'))
+      message: Only claude-<session> may claim <session>.ssh.wlkr.ch.
       reason: Forbidden
     - expression: >-
         variables.hosts.all(h, !(h in variables.owners) ||
@@ -611,10 +614,12 @@ spec:
     - expression: >-
         object.metadata.namespace == 'kube-system' ||
         (object.metadata.namespace == 'claude-agents' &&
-         variables.names.all(n, n.endsWith('.ssh.wlkr.ch') && !n.startsWith('*')))
+         variables.names.all(n, n.endsWith('.ssh.wlkr.ch') && !n.startsWith('*'))) ||
+        (object.metadata.namespace.startsWith('claude-') &&
+         variables.names.all(n, n == object.metadata.namespace.substring(7) + '.ssh.wlkr.ch'))
       message: >-
-        A ClusterIssuer certificate comes from kube-system, or from claude-agents
-        for a <session>.ssh.wlkr.ch name.
+        A ClusterIssuer certificate comes from kube-system, or from claude-<session>
+        for <session>.ssh.wlkr.ch.
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1

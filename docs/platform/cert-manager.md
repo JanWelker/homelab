@@ -76,8 +76,8 @@ List one `hostedzone/<zone-id>` ARN per zone a Certificate names.
 
 ### Issuer scope
 
-`certificate-issuer-scope` lets only `kube-system`, and `claude-agents` for
-`*.ssh.wlkr.ch`, use a ClusterIssuer, which signs any name in the zones; see
+`certificate-issuer-scope` lets only `kube-system`, and `claude-<session>` for
+`<session>.ssh.wlkr.ch`, use a ClusterIssuer, which signs any name in the zones; see
 [policies](security-policies.md#admission-policies).
 
 ### Pods from the controllers

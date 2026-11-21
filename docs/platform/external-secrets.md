@@ -143,8 +143,8 @@ kubectl annotate externalsecret -n <namespace> <name> \
 ## Health check
 
 Start with the store; if it is not Ready, nothing downstream is either.
-`openbao-apps` and `openbao-claude-agents` report `Valid` without logging in,
-so their auth failures show on the `ExternalSecret` instead:
+`openbao-apps` reports `Valid` without logging in,
+so its auth failures show on the `ExternalSecret` instead:
 
 ```bash
 kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
