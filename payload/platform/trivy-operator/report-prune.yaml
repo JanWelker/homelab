@@ -1,7 +1,6 @@
 ---
-# Deletes the SbomReports and ExposedSecretReports of ReplicaSets scaled to
-# zero, which carry no TTL and otherwise live as long as the revision, and
-# those without an owner, which nothing ever collects. See
+# Deletes the reports nothing reads any more: those of ReplicaSets scaled to
+# zero, of Jobs, without an owner, and the cluster SBOM cache's leftovers. See
 # docs/platform/trivy-operator.md#report-pruning
 apiVersion: v1
 kind: ServiceAccount
@@ -19,6 +18,8 @@ rules:
     resources:
       - sbomreports
       - exposedsecretreports
+      - vulnerabilityreports
+      - clustersbomreports
     verbs: ["list", "delete"]
   - apiGroups: ["apps"]
     resources:
@@ -91,17 +92,25 @@ data:
         if not item["spec"].get("replicas")
     }
 
-    for resource in ("sbomreports", "exposedsecretreports"):
+    for resource in ("sbomreports", "exposedsecretreports", "vulnerabilityreports"):
         # Collected first: deleting while paging invalidates the continue token.
         stale = []
         for item in pages(f"{GROUP}/{resource}", 20):
             labels = item["metadata"].get("labels", {})
             namespace = item["metadata"]["namespace"]
+            kind = labels.get("trivy-operator.resource.kind")
+            # Jobs are not scanned (targetWorkloads), so every report of one
+            # is a leftover; a VulnerabilityReport is only ever stale that way.
+            if kind == "Job":
+                stale.append((namespace, item["metadata"]["name"]))
+                continue
+            if resource == "vulnerabilityreports":
+                continue
             # The operator owns every report by its workload, so garbage
             # collection removes it with the workload; one without an owner
             # stays after its workload, and its node, are long gone.
             orphan = not item["metadata"].get("ownerReferences")
-            superseded = labels.get("trivy-operator.resource.kind") == "ReplicaSet" and (
+            superseded = kind == "ReplicaSet" and (
                 namespace,
                 labels.get("trivy-operator.resource.name"),
             ) in idle
@@ -116,6 +125,17 @@ data:
                 if error.code != 404:
                     raise
         print(json.dumps({"resource": resource, "deleted": deleted}), flush=True)
+
+    # Written by clusterSbomCacheEnabled, which is off; ownerless and cluster-scoped.
+    deleted = 0
+    for name in [item["metadata"]["name"] for item in pages(f"{GROUP}/clustersbomreports", 20)]:
+        try:
+            call(f"{GROUP}/clustersbomreports/{name}", "DELETE")
+            deleted += 1
+        except urllib.error.HTTPError as error:
+            if error.code != 404:
+                raise
+    print(json.dumps({"resource": "clustersbomreports", "deleted": deleted}), flush=True)
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -123,8 +143,8 @@ metadata:
   name: report-prune
   namespace: trivy-system
 spec:
-  # Before Dependency-Track's 05:00 upload and the 06:30 findings history.
-  schedule: "30 4 * * *"
+  # Hourly: a rollout leaves its superseded revision's reports at once.
+  schedule: "30 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3

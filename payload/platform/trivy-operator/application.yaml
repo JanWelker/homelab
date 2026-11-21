@@ -21,6 +21,8 @@ spec:
           # Why each non-default value: docs/platform/trivy-operator.md#configuration
           targetNamespaces: ""
           excludeNamespaces: ""
+          # The chart's list without job; see docs/platform/trivy-operator.md#report-pruning
+          targetWorkloads: "pod,replicaset,replicationcontroller,statefulset,daemonset,cronjob"
 
           operator:
             replicas: 1
