@@ -192,6 +192,11 @@ spec:
     - toFQDNs:
         - matchName: github.com
         - matchName: ghcr.io
+        # security-profiles-operator: the chart is on registry.k8s.io, whose
+        # blobs redirect to Artifact Registry and the regional S3 mirrors.
+        - matchName: registry.k8s.io
+        - matchPattern: "**.pkg.dev"
+        - matchPattern: "prod-registry-k8s-io-*.s3.dualstack.*.amazonaws.com"
         - matchName: prometheus-community.github.io
         - matchName: cloudnative-pg.github.io
         - matchName: vmware-tanzu.github.io

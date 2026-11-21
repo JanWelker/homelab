@@ -217,7 +217,7 @@ spec:
     - name: allowed
       expression: >-
         ['kube-system', 'rook-ceph', 'node-exporter', 'trivy-system',
-         'backup', 'logging', 'kured']
+         'backup', 'logging', 'kured', 'security-profiles-operator']
   validations:
     - expression: >-
         !has(object.metadata.labels) ||
@@ -316,7 +316,7 @@ spec:
          'kube-vip', 'kubelet-csr-approver', 'kured', 'logging', 'loki',
          'metrics-server', 'openbao', 'prometheus-operator-crds', 'rook-ceph',
          'rook-ceph-cluster', 'rook-ceph-operator', 'security',
-         'snapshot-controller', 'tetragon', 'trivy-operator', 'velero', 'workloads']
+         'security-profiles-operator', 'snapshot-controller', 'tetragon', 'trivy-operator', 'velero', 'workloads']
     # The platform's namespaces, and the top-level KV prefixes no workload may
     # be named after: the agent sessions' `claude-<session>` and `velero`.
     - name: reserved
@@ -324,8 +324,8 @@ spec:
         object.metadata.name in ['arc-jobs', 'arc-runners', 'arc-systems', 'argocd', 'authentik', 'backup',
          'cert-manager', 'cilium-secrets', 'cnpg-system', 'default', 'descheduler',
          'external-dns', 'external-secrets', 'gateway-system', 'kured', 'logging',
-         'monitoring', 'node-exporter', 'openbao', 'rook-ceph', 'trivy-system',
-         'velero'] ||
+         'monitoring', 'node-exporter', 'openbao', 'rook-ceph',
+         'security-profiles-operator', 'trivy-system', 'velero'] ||
         object.metadata.name.startsWith('kube-') ||
         object.metadata.name.startsWith('claude-')
   validations:

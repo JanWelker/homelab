@@ -133,6 +133,22 @@
       ]
     },
     {
+      "description": "The same rule for a cluster-wide chart served as an OCI artifact, whose datasource is docker and whose depName is the full path.",
+      "matchManagers": [
+        "argocd"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "registry.k8s.io/security-profiles-operator/charts/security-profiles-operator"
+      ],
+      "automerge": false,
+      "reviewers": [
+        "JanWelker"
+      ]
+    },
+    {
       "description": "A workflow action runs with the repository's token on every pull request, so its updates wait for a human like the cluster-wide charts do.",
       "matchManagers": [
         "github-actions"

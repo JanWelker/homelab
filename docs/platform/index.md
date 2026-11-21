@@ -47,6 +47,7 @@ applications` shows — and the namespace it lands in.
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](rook-ceph.md) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](rook-ceph.md) |
 | security | `kube-system` | Pod Security Admission levels, the network policies and image admission policies — see [Security Policies](security-policies.md) |
+| [security-profiles-operator](security-profiles-operator.md) | `security-profiles-operator` | Manages SELinux policy modules as `SelinuxProfile` objects; installed, but cannot load one on Flatcar yet |
 | snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups & Recovery](../operations/backups.md) |
 | [tetragon](tetragon.md) | `kube-system` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [trivy-operator](trivy-operator.md) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
@@ -173,7 +174,7 @@ while it is not yet Healthy.
 | Services | `arc-runners`, `argocd-config`, `authentik`, `backup`, `kube-prometheus-stack`, `logging`, `metrics-server` | secrets, storage, the Gateways, and approved kubelet certificates |
 | Backends | `loki`, `velero` | the buckets `logging` and `backup` claim |
 | Agents | `alloy`, `tetragon` | Loki, so the collector has somewhere to ship |
-| Policy | `descheduler`, `kured`, `security`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
+| Policy | `descheduler`, `kured`, `security`, `security-profiles-operator`, `trivy-operator` | namespaces to label, a Prometheus to scrape and metrics-server for node usage; kured reboots only on a staged update, never on a fresh install |
 | Workloads | `workloads` | nothing on its own; the workloads it generates wait for the platform resources they reference — see the [workloads repository](../development/add-workload.md) |
 
 Why the `ClusterSecretStore` sits with OpenBao and the issuers are their own

@@ -1,0 +1,37 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-ingress
+  namespace: security-profiles-operator
+spec:
+  description: >-
+    Default-deny ingress for the Security Profiles Operator. The API server
+    calls the operator's webhook from the node, and the kubelet probes the
+    operator, the daemon and the webhook from it. Metrics are off, so
+    nothing else connects.
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - {}
+    - fromEntities:
+        - host
+        - remote-node
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-egress
+  namespace: security-profiles-operator
+spec:
+  description: >-
+    Default-deny egress for the Security Profiles Operator. The operator,
+    the daemon and the webhook are all Kubernetes clients and reach nothing
+    else: the images are pulled by the node, and the webhook certificates
+    come from a self-signed cert-manager Issuer in this namespace.
+  endpointSelector: {}
+  egress:
+    - toEndpoints:
+        - {}
+    - toEntities:
+        - kube-apiserver
