@@ -10,10 +10,12 @@ permissions:
       - "main"
     paths:
       - "renovate.json"
+      - ".github/tools/**"
       - ".github/workflows/renovate-validate.yaml"
   pull_request:
     paths:
       - "renovate.json"
+      - ".github/tools/**"
       - ".github/workflows/renovate-validate.yaml"
   workflow_dispatch:
 
@@ -22,5 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install renovate
+        run: npm ci --ignore-scripts --prefix .github/tools
       - name: Validate Renovate Config
-        run: npx --package renovate@44.252.2 renovate-config-validator
+        run: .github/tools/node_modules/.bin/renovate-config-validator
