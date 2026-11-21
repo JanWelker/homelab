@@ -1,11 +1,11 @@
 ---
+# Applied once by make bootstrap-apps, then adopted by the platform
+# ApplicationSet; no finalizer, see docs/architecture/gitops.md#sync-policy
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: argocd
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/manifest-generate-paths: .
 spec:

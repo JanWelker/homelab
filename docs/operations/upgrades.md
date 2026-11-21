@@ -130,12 +130,9 @@ workers a new kubelet before the API server has moved.
 
 ## Platform components
 
-ArgoCD upgrades everything in `payload/` but the `argocd` Application when a
-Renovate bump merges. That Application is
-applied by hand, so after an ArgoCD bump merges run
-`kubectl apply -f payload/argocd/application.yaml`. Cilium, the Gateway API
-CRDs and ArgoCD are installed from the same `targetRevision` before ArgoCD
-exists — see [Version pins](../architecture/gitops.md#version-pins).
+Everything in `payload/`, ArgoCD included, is upgraded by ArgoCD when a
+Renovate bump merges. Cilium, the Gateway API CRDs and ArgoCD are installed
+from the same `targetRevision` before ArgoCD exists — see [Version pins](../architecture/gitops.md#version-pins).
 
 ## Control-plane certificates
 
