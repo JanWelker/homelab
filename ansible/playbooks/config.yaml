@@ -6,7 +6,8 @@
   vars:
     output_dir: "{{ playbook_dir }}/../../output"
     pxe_menu: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
-    # One template per environment, one Ignition config per template.
+    # One template per environment, one Ignition config per template. The node
+    # config goes first: the installer config pins its sha512.
     ignition_configs:
       - template: butane_node_config
         suffix: ""
@@ -132,36 +133,33 @@
         state: directory
         mode: "0700"
 
-    - name: Generate Butane Configs
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/{{ item.template }}.yaml.j2" # noqa: no-relative-paths
-        dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ item.suffix }}.yaml"
-        mode: "0600"
-      loop: "{{ ignition_configs }}"
-      loop_control:
-        label: "{{ inventory_hostname }}{{ item.suffix }}"
-      no_log: true
-
-    - name: Transpile Butane to Ignition
+    # Reused across runs and reinstalls, so the known_hosts below stays valid;
+    # see docs/architecture/security.md#provisioning. Delete the file to rotate.
+    - name: Generate the node's SSH host key
       ansible.builtin.command:
         cmd: >-
-          butane --pretty --strict
-          {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ item.suffix }}.yaml
-          -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ item.suffix }}.json
-      loop: "{{ ignition_configs }}"
-      loop_control:
-        label: "{{ inventory_hostname }}{{ item.suffix }}"
-      changed_when: true
+          ssh-keygen -q -t ed25519 -N "" -C {{ inventory_hostname }}
+          -f {{ output_dir }}/credentials/ssh_host_{{ inventory_hostname }}_ed25519
+        creates: "{{ output_dir }}/credentials/ssh_host_{{ inventory_hostname }}_ed25519"
+      delegate_to: localhost
 
-    # butane writes 0644 and keeps the mode of a file it overwrites. The boot
-    # server runs as the same user, so nobody else needs to read them.
-    - name: Restrict the Ignition configs to their owner
-      ansible.builtin.file:
-        path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ item.suffix }}.json"
-        mode: "0600"
+    - name: Write the known_hosts file the inventory's SSH options name
+      ansible.builtin.copy:
+        content: |
+          {% for host in groups['k8s_nodes'] %}
+          {{ hostvars[host].ansible_host }} {{ lookup('file', output_dir ~ '/credentials/ssh_host_' ~ host ~ '_ed25519.pub').split()[:2] | join(' ') }}
+          {% endfor %}
+        dest: "{{ output_dir }}/known_hosts"
+        mode: "0644"
+      run_once: true # noqa: run-once
+      delegate_to: localhost
+
+    - name: Render the Ignition configs, the node config first
+      ansible.builtin.include_tasks: tasks/render_ignition.yaml
       loop: "{{ ignition_configs }}"
       loop_control:
-        label: "{{ inventory_hostname }}{{ item.suffix }}"
+        loop_var: config
+        label: "{{ inventory_hostname }}{{ config.suffix }}"
 
     # The same file the Ignition configs inline, for pushing to running nodes;
     # see docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
@@ -235,20 +233,33 @@
         quiet: true
       run_once: true # noqa: run-once
 
-    - name: Re-create the bootstrap token for 24 hours
-      ansible.builtin.raw: >-
-        kubeadm token delete {{ kubeadm_token.split('.')[0] }} >/dev/null 2>&1;
-        kubeadm token create {{ kubeadm_token }} --ttl 24h --description "renewed by make config"
-      delegate_to: "{{ renew_host or inventory_hostname }}"
+    # The values travel through the script's heredocs, not argv, which any
+    # process on the node can list; the local render holds them until deleted.
+    - name: Render the credential renewal script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/renew_join_credentials.sh.j2" # noqa: no-relative-paths
+        dest: "{{ playbook_dir }}/../../output/tmp/kubeadm/renew-join-credentials.sh"
+        mode: "0600"
       run_once: true # noqa: run-once
+      delegate_to: localhost
+      become: false
       when: renew_host | length > 0
-      changed_when: true
       no_log: true
 
-    - name: Upload the control-plane certificates for 2 hours
-      ansible.builtin.raw: kubeadm init phase upload-certs --upload-certs --certificate-key {{ certificate_key }}
-      delegate_to: "{{ renew_host or inventory_hostname }}"
-      run_once: true # noqa: run-once
-      when: renew_host | length > 0
-      changed_when: true
-      no_log: true
+    - name: Renew the join credentials
+      block:
+        - name: Re-create the bootstrap token for 24 hours and upload the control-plane certificates for 2
+          ansible.builtin.script: "{{ playbook_dir }}/../../output/tmp/kubeadm/renew-join-credentials.sh"
+          delegate_to: "{{ renew_host or inventory_hostname }}"
+          run_once: true # noqa: run-once
+          when: renew_host | length > 0
+          changed_when: true
+          no_log: true
+      always:
+        - name: Remove the rendered renewal script
+          ansible.builtin.file:
+            path: "{{ playbook_dir }}/../../output/tmp/kubeadm/renew-join-credentials.sh"
+            state: absent
+          run_once: true # noqa: run-once
+          delegate_to: localhost
+          become: false
