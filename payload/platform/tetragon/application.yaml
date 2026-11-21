@@ -33,6 +33,8 @@ spec:
               {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["kube-system"],"labels":["tier=control-plane","app.kubernetes.io/part-of=cilium","k8s-app=kube-dns","app.kubernetes.io/name in (tetragon,tetragon-operator,kube-vip,metrics-server)"]}
 
             prometheus:
+              # Off kube-vip's :2112; see docs/platform/tetragon.md#configuration
+              port: 2114
               serviceMonitor:
                 enabled: true
 
