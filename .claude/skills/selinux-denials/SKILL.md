@@ -39,6 +39,11 @@ Read the output with these in mind:
   `ssh <node> sudo auditctl -l` shows the two `msgtype` rules from
   `butane_node_config.yaml.j2` and nothing naming 1400 to 1499. The kernel's
   exclude filter drops whatever a rule matches, whatever its action.
+- **Compare the categories.** When the rule is allowed and the denial stays,
+  `scontext` and `tcontext` end in different pairs (`c12,c34`): the file was
+  written by another pod. A reader of other pods' files, as a log collector
+  is, takes `level: s0:c0.c1023`; two containers of one pod share a level
+  once the type is set on the pod.
 - `comm` is the thread name, not the pod: `log`, `ms_dispatch` and
   `admin_socket` are Ceph daemons. Map a `comm` to its pod with the MCS pair
   in `scontext` (`c123,c456`) and `ps -eZ` on the node.
@@ -93,8 +98,11 @@ written by hand from the denials in Loki.
     kubectl get selinuxprofile <name>        # Installed, on every node
     ```
 
-   Only then set `seLinuxOptions.type: <name>.process` on the container, in a
-   second merge. A pod whose type is not in the node's policy cannot start.
+   Only then set `seLinuxOptions.type: <name>.process`, in a second merge. A
+   pod whose type is not in the node's policy cannot start. Set it on the
+   pod, not on one container: a container with its own `seLinuxOptions` gets
+   its own category pair and can no longer read the pod's volumes, its
+   ServiceAccount token included.
 5. A custom type is admitted only where Pod Security is `privileged`
    (`pod-security.yaml`). `baseline` and `restricted` namespaces stay on
    `container_t`; a `ProfileBinding` can attach a profile by image without

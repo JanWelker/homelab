@@ -21,6 +21,13 @@ spec:
           podSecurityContext:
             seccompProfile:
               type: RuntimeDefault
+            # The alloy SelinuxProfile, for the whole pod so its containers
+            # and volumes share one level, and every category because the
+            # files it reads carry their writers'. See
+            # docs/platform/security-profiles-operator.md#usage
+            seLinuxOptions:
+              type: alloy.process
+              level: s0:c0.c1023
 
         # The chart's rules without `secrets` and `configmaps`; see docs/platform/logging.md#alloy-pipeline
         rbac:
@@ -95,10 +102,6 @@ spec:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
-            # The alloy SelinuxProfile: read on the journal and the log files;
-            # see docs/platform/security-profiles-operator.md#usage
-            seLinuxOptions:
-              type: alloy.process
 
           resources:
             requests:
