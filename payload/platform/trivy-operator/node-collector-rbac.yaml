@@ -1,7 +1,8 @@
 ---
 # The one grant accessGlobalSecretsAndServiceAccount: false takes away that the
-# operator still needs: node-collector runs as its ServiceAccount and reads
-# each kubelet's configuration through the API server for the CIS checks.
+# operator still needs: node-collector runs as the operator's ServiceAccount
+# (no separate one in the chart) and reads each kubelet's configuration through
+# the API server for the CIS checks.
 # See docs/platform/trivy-operator.md#configuration
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
