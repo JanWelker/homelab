@@ -76,8 +76,7 @@ namespace file is the record of what its namespace may do *beyond* those.
 Two kinds of traffic have no pod identity a standard `NetworkPolicy` can name:
 Gateway traffic, which reaches a backend from the per-node Envoy, and kubelet
 health probes, which come from the node. A plain default-deny therefore kills
-ingress *and* probes, and the pods restart forever in a way that looks like an
-application fault. Cilium's `fromEntities` names them: `ingress` for
+ingress *and* probes, and the pods restart forever. Cilium's `fromEntities` names them: `ingress` for
 Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 
 #### Cluster-wide rules
@@ -86,21 +85,25 @@ A rule that is word-for-word the same in every namespace file is lifted
 into `cluster-wide.yaml`, selecting every endpoint that has a namespace and
 with `enableDefaultDeny` off in both directions. The selector is not `{}`
 because that also takes the Gateway's `reserved:ingress` endpoint and the
-health endpoint. Default deny is off because a cluster-wide egress rule
-would otherwise put every pod in a namespace without policies into egress
-default-deny. DNS is the only rule lifted; the intra-namespace and
-node-probe rules stay in the namespace files.
+health endpoint. Default
+deny is off there, since a cluster-wide egress rule would otherwise close every
+pod of a namespace without policies. DNS is the only rule lifted; the
+intra-namespace and node-probe rules stay in the namespace files.
 
 The second policy there, `init`, is for the seconds before the agent has
-resolved a new pod's labels. The pod then carries the reserved `init`
-identity, which no namespace policy selects. It admits the node, DNS out and
-DNS in, nothing else.
+resolved a new pod's labels: the pod carries the reserved `init` identity,
+which no namespace policy selects. It admits the node, DNS out and DNS in, nothing
+else.
 
 The third, `cnpg-backups`, selects every CloudNativePG pod by its
 `cnpg.io/cluster` label and admits only the object store, by the same two
 rules Velero's namespace has. Every database's backup sidecar needs exactly
-that, wherever the database runs, so one policy replaces a rule in each
-workload's file.
+that, wherever the database runs, so one policy replaces a rule per workload.
+
+The fourth, `default-deny`, closes every pod outside `kube-system` in both
+directions except the node and DNS, so a namespace that
+ships no `default-*` policies is closed until it allows what it needs;
+namespaces with them are unchanged.
 
 #### What every policy contains
 
