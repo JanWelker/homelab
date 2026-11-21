@@ -216,7 +216,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
 ---
-# No pods run in the next three; cilium-secrets is labelled in the Cilium values, whose chart owns it.
+# No pods run in the next four; cilium-secrets is labelled in the Cilium values, whose chart owns it.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -243,6 +243,17 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kube-node-lease
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway-system
   labels:
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
