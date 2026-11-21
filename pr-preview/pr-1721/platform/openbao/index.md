@@ -122,7 +122,7 @@ ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao validates
 
 One more role, `openbao-snapshot`, belongs to no store: it is bound to the `openbao-snapshot` ServiceAccount in `backup` and reads the Raft snapshot and nothing else, for the nightly [snapshot CronJob](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>).
 
-The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` too, because the stores only validate against a running, unsealed OpenBao. `make bao-init` writes the policies and roles on a fresh cluster by running `scripts/bao-policies.sh`; after a change to that script or to the `openbao-apps` list, `make bao-policies` rewrites them on a live one. It needs a root token, because the operator login cannot write policies: run it before `make bao-rotate-root`, or with a [generated root token](<#generating-a-root-token>).
+The ServiceAccount the platform store uses lives in `cluster-secret-store.yaml` too, because the stores only validate against a running, unsealed OpenBao. `make bao-init` writes the policies and roles on a fresh cluster by running `scripts/bao-policies.sh`; after a change to that script or to the `openbao-apps` list, `make bao-policies` rewrites them on a live one. The operator login cannot write policies, so it asks for a [generated root token](<#generating-a-root-token>) and revokes it afterwards.
 
 ## Usage
 
