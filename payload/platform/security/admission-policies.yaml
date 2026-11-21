@@ -716,3 +716,46 @@ spec:
   policyName: object-store-quota
   # Measured, not enforced: no object in the cluster carries a quota yet.
   validationActions: ["Audit", "Warn"]
+---
+# The operator hardcodes selinuxd's memory request; see
+# docs/platform/security-profiles-operator.md#configuration
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: selinuxd-memory-request
+spec:
+  # Fail: a daemon pod that keeps the full request preempts others on a
+  # control plane, which is worse than a daemon pod that does not start.
+  failurePolicy: Fail
+  reinvocationPolicy: Never
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: has-selinuxd
+      expression: object.spec.containers.exists(c, c.name == 'selinuxd')
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [JSONPatch{
+            op: "replace",
+            path: "/spec/containers/"
+              + string(object.spec.containers.map(c, c.name).indexOf("selinuxd"))
+              + "/resources/requests/memory",
+            value: "256Mi"
+          }]
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: selinuxd-memory-request
+spec:
+  policyName: selinuxd-memory-request
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: security-profiles-operator
