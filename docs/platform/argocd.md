@@ -33,6 +33,7 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](gateway-api.md#usage) |
 | `resource.customizations` for `HTTPRoute` | The API server defaults `group`, `kind`, `weight` and a catch-all `matches` onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs |
 | `dex.enabled: false` | `oidc.config` talks to [Authentik](authentik.md) directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own `/auth/callback` either way |
+| `notifications.enabled: false` | Nothing is configured to notify, and the controller's ClusterRole reads every Secret in the cluster |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
 | `resource.customizations.health.argoproj.io_Application` | Restores health assessment for `Application` resources, dropped in ArgoCD 1.8, so `argocd` reports the health of the ApplicationSet rather than a permanent Healthy |
 | `policy.default: ""` | An authenticated user with no matching Authentik group gets no access, not read-only-everything |
@@ -72,30 +73,27 @@ and every Application syncs itself. It has `apiKey` only, so it cannot log
 in. One token serves every session with `argocd.enabled`, so its expiry is
 what bounds a leak from any of them.
 
-The token expires after 90 days: that caps a leak at a quarter, and rotating
-is a few commands with no restart. An expired token fails every agent
-`argocd` call until the next one is stored. To rotate:
+The token expires after 90 days, which caps a leak at a quarter; an expired
+one fails every agent `argocd` call until the next is stored. To rotate:
 
 1. Generate the token, logged in through Authentik:
 
     ```bash
-    argocd account generate-token --account claude --expires-in 90d
+    argocd account generate-token --account claude --expires-in 2160h
     ```
 
 2. Store it with `make bao-secrets`, at `kv/claude-agents/argocd`
    (`token`).
 
-3. Pull it into the sessions now instead of at the next `refreshInterval`. The
-   chart mounts the token as a file that the `argocd` wrapper reads on every
-   call, so no pod restarts; only a shell opened earlier keeps the old token
-   in its environment:
+3. Pull it into the sessions now instead of at the next `refreshInterval`; the
+   wrapper reads the mounted file on every call, so no pod restarts:
 
     ```bash
     kubectl -n claude-agents annotate externalsecret claude-<session>-argocd force-sync=$(date +%s) --overwrite
     ```
 
-4. Revoke the previous token. `argocd account get --account claude` lists
-   the token IDs with their expiry dates:
+4. Revoke the previous token; `argocd account get --account claude` lists the
+   IDs with their expiry (a token showing none predates this policy):
 
     ```bash
     argocd account delete-token --account claude <id>
