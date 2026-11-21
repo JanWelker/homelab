@@ -18,6 +18,8 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          # It never calls the Kubernetes API
+          automountServiceAccountToken: false
           # etcd listens on 127.0.0.1 of the control-plane node
           hostNetwork: true
           # Otherwise the node's resolv.conf cannot resolve the RGW Service
