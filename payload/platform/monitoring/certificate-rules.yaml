@@ -1,0 +1,36 @@
+---
+# cert-manager's own metrics; `namespace` is the scrape target's, the
+# Certificate's is `exported_namespace`. See docs/platform/monitoring.md#alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: certificates
+  namespace: monitoring
+spec:
+  groups:
+    - name: certificates
+      rules:
+        - alert: CertificateNotReady
+          expr: certmanager_certificate_ready_status{condition!="True"} == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: A Certificate has not been Ready for 30 minutes
+            description: >-
+              Certificate {{ $labels.exported_namespace }}/{{ $labels.name }}
+              is not Ready. Issuance or renewal is failing: read its
+              CertificateRequest and Order.
+        # Renewal starts 30 days out, so two weeks left means it has failed
+        # for a fortnight.
+        - alert: CertificateExpiringSoon
+          expr: certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: A Certificate expires within 14 days
+            description: >-
+              Certificate {{ $labels.exported_namespace }}/{{ $labels.name }}
+              expires in {{ $value | humanizeDuration }} and has not been
+              renewed.

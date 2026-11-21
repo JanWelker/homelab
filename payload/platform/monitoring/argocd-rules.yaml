@@ -1,0 +1,34 @@
+---
+# argocd_app_info comes from the application controller; the retry window is
+# in docs/architecture/gitops.md#sync-policy. See docs/platform/monitoring.md#alerting
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-applications
+  namespace: monitoring
+spec:
+  groups:
+    - name: argocd-applications
+      rules:
+        - alert: ArgoCDApplicationUnhealthy
+          expr: argocd_app_info{health_status=~"Degraded|Missing"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: An Argo CD Application has been Degraded or Missing for 15 minutes
+            description: >-
+              Application {{ $labels.name }} reports {{ $labels.health_status }}.
+        # Outlasts the retries (about 40 minutes), so a sync that is merely
+        # retrying does not alert; one that gave up does.
+        - alert: ArgoCDApplicationOutOfSync
+          expr: argocd_app_info{sync_status!="Synced"} == 1
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: An Argo CD Application has been OutOfSync for an hour
+            description: >-
+              Application {{ $labels.name }} is {{ $labels.sync_status }}.
+              Automated sync has given up or cannot start, so what is merged
+              is not what runs: sync it by hand.
