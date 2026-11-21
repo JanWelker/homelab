@@ -35,8 +35,9 @@ the same two at <https://homelab.wlkr.ch/llms.txt> and
 
 ## Writing docs
 
-`docs/` is reference material, not an essay collection. It was condensed from
-57k to 37k words once; keep it there.
+`docs/` is reference material, not an essay collection. It grows with a new
+component and with nothing else: an edit to an existing page leaves it the
+same length or shorter (`wc -w docs/*.md docs/*/*.md`, dated logs excluded).
 
 - **Say each fact once, site-wide.** The sync policy, bootstrap convergence
   and version pins live in `docs/architecture/gitops.md`; the rollout order and the
