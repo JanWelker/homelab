@@ -113,7 +113,7 @@ workload's file.
 | Egress within the namespace, and to `kube-apiserver` where there is a Kubernetes client | The `kube-apiserver` entity is the endpoints behind `kubernetes.default`; no pod uses the kube-vip address. DNS is not repeated: the cluster-wide rule above sends every lookup through the proxy, which is what makes `toFQDNs` work and every lookup visible in Hubble |
 | Egress to external names as `toFQDNs` | A name reads as the dependency it is; an address does not. The Gateway's own addresses count as external: a pod calling `auth.k8s.wlkr.ch` is classified `world`, not `ingress` |
 | Egress to the backend pod as well, when the name is one the Gateway serves | The Gateway's Envoy checks the caller's egress policy a second time, against the backend pod it picked and that pod's port, and answers `403 Access denied` itself when no rule matches; audit mode never sees it. The OIDC clients of Authentik carry both rules |
-| HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths a week of Hubble records showed; a browser UI behind the Authentik outpost stays at `http: [{}]`, its paths being the application's own. The path is matched with its query string: a rule anchored with `$` names the query as well, as OpenBao's `/v1/sys/metrics\?format=prometheus$` does |
+| HTTP rules on plaintext ports, ingress side only | A request crossing a namespace boundary is proxied once, by the receiving node. TLS and gRPC ports stay at L4; the proxy cannot read them. A machine caller gets the methods and paths Hubble recorded; a browser UI behind the Authentik outpost stays at `http: [{}]`. The path is matched with its query string: a rule anchored with `$` names the query as well, as OpenBao's `/v1/sys/metrics\?format=prometheus$` does |
 
 Host-networked pods (Cilium, kube-vip, the control plane, node-exporter,
 Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
@@ -146,8 +146,11 @@ it on the native device and `cilium_host`. What each port is for is in
 and the label is the one switch that frees a node. It denies the LAN
 everything but SSH, the API server, DHCP and ping, and admits the whole
 cluster to every port, since a narrower cluster rule could not name Prometheus
-and could lock out a node. A refused source mails
-[`HostFirewallDrops`](logging.md#alerting). The rollout is in [Host Firewall Rollout 2026-11-18](../operations/host-firewall-rollout-2026-11-18.md).
+and could lock out a node. The LAN reaches etcd only from the control-plane
+addresses of the inventory, so a control plane at a new address needs its
+`/32` here before it joins. A refused source mails
+[`HostFirewallDrops`](logging.md#alerting). The rollout is in
+[Host Firewall Rollout 2026-11-18](../operations/host-firewall-rollout-2026-11-18.md).
 
 ### Default ServiceAccount tokens
 

@@ -11,8 +11,8 @@ spec:
     reaches everything, because a pod on another node arrives as its node, so
     which pod may scrape what is its egress policy's business. Ports not
     listening on a worker are harmless there, so the one policy serves both
-    roles. The node range admits etcd for a control plane joining before its
-    agent has registered it. Ingress only: a node's own connections stay
+    roles. The three control-plane addresses of the inventory admit etcd
+    for a rebuilt control plane joining before its agent has registered it. Ingress only: a node's own connections stay
     unfiltered.
   # Every node, a new one from its first boot; the exempt label is the kill
   # switch of docs/platform/security-policies.md#host-firewall-lockout
@@ -40,7 +40,9 @@ spec:
             - type: 8
               family: IPv4
     - fromCIDR:
-        - 10.9.2.0/24
+        - 10.9.2.1/32
+        - 10.9.2.2/32
+        - 10.9.2.3/32
       toPorts:
         - ports:
             - port: "2379"
