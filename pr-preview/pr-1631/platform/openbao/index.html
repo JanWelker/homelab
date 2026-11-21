@@ -3023,10 +3023,6 @@ unrelated things breaking at once.</p>
 <td>The chart's <code>securityContext.pod</code> and <code>.container</code> replace rather than merge, so a block that names only what differs loses the rest. The image's <code>USER</code> is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root — on pod recreation, typically after a reboot. The full block is what lets the namespace enforce <code>restricted</code> (<a href="../security-policies/#pod-security-admission">security policies</a>)</td>
 </tr>
 <tr>
-<td><code>image.repository</code> without a registry</td>
-<td>The chart prepends <code>server.image.registry</code> (<code>quay.io</code>) itself</td>
-</tr>
-<tr>
 <td><code>unauthenticated_metrics_access</code></td>
 <td><code>/v1/sys/metrics</code> otherwise wants a token the ServiceMonitor does not have. The metrics carry counts and timings, not paths or secrets, and only the namespace policy's callers and the Gateway reach port 8200</td>
 </tr>
