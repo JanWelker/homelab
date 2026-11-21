@@ -8,8 +8,9 @@ spec:
   description: >-
     Default-deny ingress for the Security Profiles Operator. The API server
     calls the operator's webhook from the node, and the kubelet probes the
-    operator, the daemon and the webhook from it. Metrics are off, so
-    nothing else connects.
+    operator, the daemon and the webhook from it. Prometheus scrapes the
+    daemon, whose ServiceMonitor the operator creates itself; the port is
+    TLS, so there is no path rule.
   endpointSelector: {}
   ingress:
     - fromEndpoints:
@@ -17,6 +18,14 @@ spec:
     - fromEntities:
         - host
         - remote-node
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9443"
+              protocol: TCP
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

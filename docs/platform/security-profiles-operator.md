@@ -34,7 +34,7 @@ AppArmor and the log enricher are off.
 | `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
 | `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
 | `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](security-policies.md#pod-security-admission) |
-| Network policy | The operator, daemon and webhook only talk to the API server; metrics are off, so there is no scrape rule |
+| Network policy | The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates |
 
 The images are the chart's: the operator from `registry.k8s.io` and `selinuxd`
 from `quay.io`, pinned by digest inside the chart, so Renovate sees only the
