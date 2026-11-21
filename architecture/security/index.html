@@ -2827,11 +2827,11 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>shutdownGracePeriod</code> and <code>shutdownGracePeriodCriticalPods</code></td>
-<td>A <code>systemctl reboot</code> without the <a href="../../operations/nodes/#rebooting-a-node">documented drain</a>, or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write; critical pods may use the tail of it. CloudNativePG primaries and Ceph OSDs notice</td>
+<td>A <code>systemctl reboot</code> without the <a href="../../operations/nodes/#rebooting-a-node">documented drain</a>, or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write</td>
 </tr>
 <tr>
 <td><code>protectKernelDefaults: true</code></td>
-<td>The kubelet refuses to start unless <code>vm.overcommit_memory</code>, <code>vm.panic_on_oom</code>, <code>kernel.panic</code> and <code>kernel.panic_on_oops</code> are already right. <code>/etc/sysctl.d/k8s.conf</code> sets them and the two travel together: without the drop-in a fresh node's kubelet exits and the node never joins, which shows at the next <code>make reinstall</code></td>
+<td>The kubelet refuses to start unless <code>vm.overcommit_memory</code>, <code>vm.panic_on_oom</code>, <code>kernel.panic</code> and <code>kernel.panic_on_oops</code> are already right. <code>/etc/sysctl.d/k8s.conf</code> sets them; without the drop-in a fresh node never joins</td>
 </tr>
 <tr>
 <td><code>kernel.panic</code> with <code>kernel.panic_on_oops</code></td>
@@ -2844,6 +2844,10 @@ carry the settings below. They land at provisioning time and change only on
 <tr>
 <td><code>kernel.dmesg_restrict</code> and <code>kernel.kexec_load_disabled</code></td>
 <td>An escaped container cannot read the kernel log or load another kernel; <a href="../../platform/kured/">Kured</a> reboots with <code>systemctl reboot</code>, not kexec</td>
+</tr>
+<tr>
+<td><code>/etc/audit/rules.d/</code></td>
+<td>SELinux denials reach the journal and <a href="../../platform/logging/">Loki</a>. Flatcar's own rules exclude them: the exclude filter drops whatever a rule matches, even a <code>never</code> rule</td>
 </tr>
 <tr>
 <td><code>/etc/ssh/sshd_config.d/10-hardening.conf</code></td>
