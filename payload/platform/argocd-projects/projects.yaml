@@ -17,8 +17,7 @@ spec:
     - ghcr.io/janwelker/charts
     - ghcr.io/somuch-cloud/charts
   # Every platform namespace is denied here; see docs/development/add-platform-component.md
-  # authentik stays open for the workloads' blueprint ConfigMaps, and the
-  # authentik-foreign-objects admission policy refuses anything else there.
+  # authentik is not denied here; the authentik-foreign-objects admission policy refuses this project there.
   destinations:
     - namespace: "*"
       server: https://kubernetes.default.svc

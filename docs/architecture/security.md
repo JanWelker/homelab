@@ -167,8 +167,7 @@ nothing the PR review does not. `system` is confined to the `argocd` namespace.
 `apps` has the boundary to draw, because its Applications come from a second
 repository with a lighter review: it accepts only the workloads repository and
 the chart repositories the workloads use, may not write into any platform
-namespace (`authentik` excepted, where an admission policy narrows it to the
-workload's own blueprint ConfigMap), and at cluster scope may create nothing
+namespace (`authentik` included, by an admission policy), and at cluster scope may create nothing
 but namespaces, never at the `privileged` Pod Security level — see
 [Security Policies](../platform/security-policies.md#admission-policies).
 
