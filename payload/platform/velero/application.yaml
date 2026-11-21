@@ -51,6 +51,12 @@ spec:
           useSecret: false
 
         configuration:
+          # One finished job per repository keeps its log; each one kept is
+          # another set of Trivy reports. See docs/platform/trivy-operator.md#report-pruning
+          repositoryMaintenanceJob:
+            repositoryConfigData:
+              global:
+                keepLatestMaintenanceJobs: 1
           extraEnvVars:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
