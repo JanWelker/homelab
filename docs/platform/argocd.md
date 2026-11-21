@@ -70,8 +70,8 @@ The `claude` account is the in-cluster Claude Code agents' API identity. It
 may read everything `role:readonly` reads, `argocd app get --refresh`
 included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has `apiKey` only, so it cannot log
-in. One token serves every session with `argocd.enabled`, so its expiry is
-what bounds a leak from any of them.
+in. A session with `argocd.enabled` reads its own copy at
+`kv/claude-<session>/argocd`; only `homelab` has one.
 
 The token expires after 90 days, which caps a leak at a quarter; an expired
 one fails every agent `argocd` call until the next is stored. To rotate:
@@ -82,14 +82,14 @@ one fails every agent `argocd` call until the next is stored. To rotate:
     argocd account generate-token --account claude --expires-in 2160h
     ```
 
-2. Store it with `make bao-secrets`, at `kv/claude-agents/argocd`
+2. Store it with `make bao-secrets`, at `kv/claude-homelab/argocd`
    (`token`).
 
 3. Pull it into the sessions now instead of at the next `refreshInterval`; the
    wrapper reads the mounted file on every call, so no pod restarts:
 
     ```bash
-    kubectl -n claude-agents annotate externalsecret claude-<session>-argocd force-sync=$(date +%s) --overwrite
+    kubectl -n claude-homelab annotate externalsecret claude-homelab-argocd force-sync=$(date +%s) --overwrite
     ```
 
 4. Revoke the previous token; `argocd account get --account claude` lists the

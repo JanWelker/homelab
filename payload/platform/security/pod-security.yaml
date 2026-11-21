@@ -272,3 +272,38 @@ metadata:
     pod-security.kubernetes.io/warn: restricted
   annotations:
     argocd.argoproj.io/sync-options: Prune=false
+---
+# The agent sessions' namespaces, one per session and named claude-<session>;
+# see docs/platform/security-policies.md#agent-rbac
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-homelab
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-sitzplan
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-virgil
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false

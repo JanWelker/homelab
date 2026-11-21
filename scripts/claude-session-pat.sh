@@ -4,8 +4,10 @@
 #   make claude-session-pat SESSION=homelab
 #   make claude-session-pat SESSION=homelab DELETE=1
 #
-# The session's ExternalSecret reads kv/claude-<session>/github (`token`), so a
-# session comes and goes without a change to the platform. The PAT is read with
+# The session's ExternalSecret reads kv/claude-<session>/github (`token`) as the
+# claude-<session> namespace, which only the platform can create and list on the
+# openbao-apps store: docs/platform/openbao.md#kubernetes-auth. Run this before
+# the session's first sync. The PAT is read with
 # hidden input, or from CLAUDE_GITHUB_TOKEN when that is set. Empty input writes
 # an empty token, which is what lets the ExternalSecret resolve before a PAT
 # exists. See docs/platform/openbao.md#kv-layout.
@@ -76,4 +78,4 @@ fi
 put "$path" "token=${token}"
 
 echo "External Secrets refreshes hourly; to pick it up now:"
-echo "  kubectl -n claude-agents annotate externalsecret claude-${session}-github force-sync=\$(date +%s) --overwrite"
+echo "  kubectl -n claude-${session} annotate externalsecret claude-${session}-github force-sync=\$(date +%s) --overwrite"

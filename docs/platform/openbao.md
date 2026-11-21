@@ -7,8 +7,7 @@ description: "OpenBao as the cluster secret store: bootstrapping, unsealing, the
 [OpenBao](https://openbao.org/) is the cluster's secret store, an open-source
 fork of HashiCorp Vault. It holds every secret the cluster consumes, surfaced
 as native `Secret` objects by the [External Secrets Operator](external-secrets.md).
-Sealed, nothing that needs a credential works, and the failure looks like six
-unrelated things breaking at once.
+Sealed, nothing that needs a credential works.
 
 ```mermaid
 flowchart LR
@@ -27,7 +26,7 @@ flowchart LR
 | Namespace | `openbao` |
 | Depends on | [Rook-Ceph](rook-ceph.md) for its Raft volumes. A fresh bootstrap [pauses here](../architecture/gitops.md#bootstrap-pauses-at-openbao) until OpenBao is initialised and unsealed |
 | Seal | Shamir, unsealed by hand; the share count and threshold are set in `scripts/bao-init.sh` |
-| If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside |
+| If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start |
 | Health check | `bao status` on every pod &rarr; `Sealed: false`; see [Health check](#health-check) |
 | UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |
 | Files | `payload/platform/openbao/` |
@@ -44,7 +43,7 @@ flowchart LR
 | Setting | Why |
 | --- | --- |
 | Pod security context restated in full | The chart's `securityContext.pod` and `.container` replace rather than merge, so a block that names only what differs loses the rest. The image's `USER` is a name, so without the numeric IDs the kubelet refuses the container as unprovably non-root. The full block lets the namespace enforce `restricted` ([security policies](security-policies.md#pod-security-admission)) |
-| `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor lacks. The metrics carry no paths or secrets |
+| `unauthenticated_metrics_access` | `/v1/sys/metrics` otherwise wants a token the ServiceMonitor lacks. |
 | `retry_join` stanzas | `bao operator init` initialises one Raft cluster on one pod; these make the other replicas join it. `service_registration "kubernetes"` only labels pods `active` and `standby` |
 | `serverTelemetry.grafanaDashboard` | Renders OpenBao's upstream dashboard (grafana.com 23725) |
 | `server.gateway.httpRoute` | The chart renders the UI's `HTTPRoute`, to the `active` Service so the browser never lands on a standby; the chart's warning about terminating TLS concerns certificate authentication, which nothing here uses |
@@ -92,18 +91,16 @@ a `bao kv put` replaces the whole path.
 | `monitoring/grafana-admin` (generated) | `password` | Grafana |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
-| `claude-agents/argocd` | `token` | The agents' Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
+| `claude-homelab/argocd` | `token` | The homelab session's Argo CD API token — [Agent account](argocd.md#agent-account); empty until generated |
 | `shot-bridge/accounts` | `lm-username`, `lm-password`, `apns-key-id`, `apns-key-p8` | The Shot Timer bridge's La Marzocco login and APNs key — [Shot Timer bridge](https://homelab-apps.wlkr.ch/shot-bridge/#secrets); the APNs keys are empty until the key is created |
 | `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](github-runners.md#github-app); empty until the app is created |
-| `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`, so a session needs no platform change. Empty until typed in |
+| `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`; write it before the session's first sync. Empty until typed in |
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](velero.md#repository-password); changing it orphans every volume backup |
 | `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](https://homelab-apps.wlkr.ch/dependency-track/#secrets); written even when empty, so the job fails on its own rather than stalling the sync |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's
 [policy](cert-manager.md#configuration) allows only `_acme-challenge` TXT
-records, while external-dns creates and deletes A records by design, so stolen it can
-repoint hostnames. One shared key collapses both into "someone owns your
-domain".
+records, while a stolen external-dns key can repoint hostnames.
 
 ### Generated secrets
 
@@ -153,20 +150,20 @@ target writes a `.bak`; one beside it is a stale hand copy, so delete it.
 ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
 validates against the TokenReview API (`rbac.yaml` binds
 `system:auth-delegator` to the `openbao` ServiceAccount) and answers with a
-token bound to one policy. Three `ClusterSecretStore`s in
-`cluster-secret-store.yaml` each log in with their own role, so what a
+token bound to one policy. Two `ClusterSecretStore`s in
+`cluster-secret-store.yaml` log in with their own roles, so what a
 namespace can reach follows from the store it is allowed to use:
 
 | Store | Who may use it | Logs in as | Reaches |
 | --- | --- | --- | --- |
 | `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | The platform's own prefixes and every `kv/<app>/oidc` and `kv/<app>/config`, where Authentik reads each workload's OIDC pair; writes only `authentik/`, `monitoring/` and `velero/`, where its `PushSecret`s are |
-| `openbao-apps` | The workload namespaces the store lists | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/` |
-| `openbao-claude-agents` | `claude-agents` | The same, in `claude-agents` | `kv/claude-*`, where `make claude-session-pat` writes each session's token |
+| `openbao-apps` | The workload and agent-session namespaces the store lists | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/`, with create, read and update |
 
 | Setting | Why |
 | --- | --- |
 | `openbao-apps` names no ServiceAccount namespace | ESO then requests the token in the namespace of the `ExternalSecret` or `PushSecret`, and the `external-secrets-apps` policy templates that namespace, as OpenBao read it from the token, into its paths. One role serves every workload |
 | Both stores list their namespaces by name, and `bao-policies.sh` binds the `external-secrets-apps` role to the `openbao-apps` list | A label would not do: a workload may ship its own `Namespace` with any label. A role bound to every namespace would let any new `external-secrets-vault` ServiceAccount log in. A platform namespace that reads a secret adds itself to `openbao`, a workload to `openbao-apps` ([steps](external-secrets.md#adding-a-secret)) |
+| An agent session is a `claude-<session>` namespace, declared in `pod-security.yaml` and listed on `openbao-apps` | Its token at `kv/claude-<session>/github` sits in the one prefix its namespace reaches. `namespace-name-guard` keeps `apps` from creating it, so a session is a platform change, then `make bao-policies`, then the workloads repository |
 | Each workload ships an `external-secrets-vault` ServiceAccount | The role is bound to that name; `automountServiceAccountToken: false`, because only ESO needs a token for it |
 | Referent stores report `Valid` without logging in | ESO cannot know the namespace until an `ExternalSecret` names the store, so a missing role or ServiceAccount shows on the `ExternalSecret`, not the store |
 
