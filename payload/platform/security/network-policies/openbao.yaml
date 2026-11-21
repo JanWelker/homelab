@@ -53,7 +53,10 @@ spec:
               protocol: TCP
           rules:
             http:
-              - {}
+              - method: GET
+                path: /v1/sys/health(\?.*)?$
+              - method: GET
+                path: /v1/sys/seal-status$
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: backup
