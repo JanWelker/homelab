@@ -62,12 +62,12 @@ forbid the attribute. To test a change, run the `el9` image's
 
 ## Usage
 
-1. Apply a `SelinuxProfile` in any namespace.
-2. Read its status: `kubectl get selinuxprofile <name> -o yaml`. `Installed` means every node's `selinuxd` loaded it.
-3. Set `seLinuxOptions.type` on the pod to the profile's usage string, shown in the status.
+A profile is one entry in `profiles.yaml`, written from the denials Loki holds
+by the `selinux-denials` skill, which also says when `spc_t` or a host-path
+label needs no profile.
 
-Which denials a profile must cover, and when `spc_t` or a host-path label
-needs no module at all, is the `selinux-denials` skill.
+1. Merge the profile and wait for `kubectl get selinuxprofile <name>` to show `Installed`.
+2. Then set `seLinuxOptions.type: <name>.process` on the container, in a second merge: a pod whose type a node does not know cannot start.
 
 ## Health check
 
