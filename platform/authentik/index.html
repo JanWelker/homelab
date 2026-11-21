@@ -3210,8 +3210,8 @@ placement</a>.</p>
 <td>Bumped whenever <code>authentik-secrets</code> or a workload's <code>authentik-secrets-&lt;workload&gt;</code> gains a key, so ArgoCD restarts the worker in the same sync — see <a href="#pitfalls">Pitfalls</a></td>
 </tr>
 <tr>
-<td>Workload blueprints as a <code>projected</code> volume, <code>optional: true</code></td>
-<td><code>blueprints.configMaps</code> renders a plain <code>configMap</code> volume, and the kubelet refuses a pod whose ConfigMap is missing. Workload blueprints arrive with the <a href="../../architecture/gitops/#workloads-live-in-a-second-repository">workloads</a>, which a fresh cluster may not have yet, so a required mount would keep the worker from starting</td>
+<td><code>worker.volumes</code> <code>blueprints-workloads</code></td>
+<td>Authentik keys a blueprint instance by file path and name; <code>blueprints.configMaps</code> would mount the file under a second path and register it twice. The mount path stays <code>workloads</code> for that reason</td>
 </tr>
 </tbody>
 </table>
@@ -3238,8 +3238,8 @@ against a provider must tolerate it not existing yet.</p>
 </tr>
 <tr>
 <td>A workload's provider and application</td>
-<td>The workload's directory in the workloads repository, as the ConfigMap <code>authentik-blueprint-&lt;application&gt;</code> targeted at <code>authentik</code></td>
-<td>The provider and the application it authenticates change in one commit; the <a href="../security-policies/#admission-policies"><code>authentik-foreign-objects</code></a> policy refuses any other object a workload sends here</td>
+<td><code>blueprints-workloads.yaml</code>, one key per workload</td>
+<td>A blueprint has full access to Authentik, so it is reviewed as platform code; the <a href="../security-policies/#admission-policies"><code>authentik-foreign-objects</code></a> policy refuses every Application but <code>authentik</code> and <code>security</code> here</td>
 </tr>
 <tr>
 <td>Client credentials</td>
@@ -3247,9 +3247,9 @@ against a provider must tolerate it not existing yet.</p>
 <td>A workload can mint a pair but not register it: the <code>ExternalSecret</code> and mount entry here keep SSO onboarding a deliberate two-repository act</td>
 </tr>
 <tr>
-<td>The mount entry and <code>secret-generation</code></td>
+<td><code>secret-generation</code></td>
 <td><code>application.yaml</code></td>
-<td>One projected-volume source per workload, with or without credentials; a new credential needs the worker restarted</td>
+<td>A new credential needs the worker restarted</td>
 </tr>
 <tr>
 <td>The outpost's <code>providers:</code> list</td>
@@ -3422,7 +3422,7 @@ membership is set by hand under <strong>Directory &rarr; Groups</strong>:</p>
 </tr>
 <tr>
 <td><code>wollbi-editors</code></td>
-<td>A Payload editor on advent.wollbi.ch and fest.wollbi.ch, created on first sign-in; declared in the two sites' blueprints in the workloads repository</td>
+<td>A Payload editor on advent.wollbi.ch and fest.wollbi.ch, created on first sign-in; declared in the two sites' blueprints</td>
 </tr>
 </tbody>
 </table>
@@ -3462,15 +3462,12 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
    A public client (PKCE, as OpenCloud's web and native clients) has no
    credentials: its client IDs are fixed by the client and sit in the
    blueprint in clear, so this step and step 3 do not apply.</li>
-<li>Mount the workload's blueprint: in <code>application.yaml</code>, a <code>configMap</code>
-   source named <code>authentik-blueprint-&lt;application&gt;</code> with <code>optional: true</code>
-   under <code>worker.volumes</code>, in the <code>projected.sources</code> of
-   <code>blueprints-workloads</code>.</li>
+<li>Add the provider and application as a key of <code>blueprints-workloads.yaml</code>:
+   an OAuth2 provider with <code>grant_types</code>, or a proxy provider added to the
+   outpost's <code>providers:</code> list in <code>blueprints.yaml</code>.</li>
 <li>Hand the worker the credentials: in the same file, a <code>secretRef</code> to
    <code>authentik-secrets-&lt;workload&gt;</code> with <code>optional: true</code> under
    <code>global.envFrom</code>, and bump <code>homelab.wlkr.ch/secret-generation</code>.</li>
-<li>Add the provider and application blueprint: an OAuth2 provider with
-   <code>grant_types</code>, or a proxy provider added to the outpost's <code>providers:</code> list.</li>
 <li>For a proxied application, point its <code>HTTPRoute</code> at <code>authentik-server</code>,
    add its namespace to <code>referencegrant.yaml</code>, and add a <code>toEndpoints</code> rule
    for its pods to the <code>authentik-server</code> policy in
@@ -3519,8 +3516,8 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 <p><code>envFrom</code> injects <code>authentik-secrets</code> <strong>once, when the pod starts</strong>. A blueprint reading a newly added credential through <code>!Env</code> on a running worker gets an empty string and creates a provider that answers 404 on its discovery endpoint. Bumping <code>secret-generation</code> restarts the worker in the sync that adds the credential; <code>kubectl rollout restart</code> fixes a running cluster but leaves nothing for the next one.</p>
 </div>
 <div class="admonition danger">
-<p class="admonition-title">A workload blueprint is code with admin rights</p>
-<p>The worker applies a blueprint with full access to Authentik's models, so a blueprint ConfigMap from the workloads repository can create a superuser or add someone to <code>argocd-admins</code>. The admission policy limits which ConfigMap a workload may write, not what it says: review a blueprint change in the workloads repository like a change here.</p>
+<p class="admonition-title">A blueprint is code with admin rights</p>
+<p>The worker applies a blueprint with full access to Authentik's models, so one can create a superuser or add someone to <code>argocd-admins</code>. That is why every blueprint lives here and the workloads repository cannot write into <code>authentik</code>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">OAuth2 providers must name their grant types</p>

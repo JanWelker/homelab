@@ -3335,7 +3335,7 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <tr>
 <td><code>authentik-foreign-objects</code></td>
 <td><code>Deny</code></td>
-<td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>, or be the ConfigMap <code>authentik-blueprint-&lt;application&gt;</code>. Argo CD cannot whitelist kinds per destination namespace, so this is what holds <code>apps</code> to its blueprint there; objects with no <code>argocd.argoproj.io/tracking-id</code> annotation, from controllers and <code>kubectl</code>, are not matched</td>
+<td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>. Blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds, so this is what keeps <code>apps</code> out; objects with no <code>argocd.argoproj.io/tracking-id</code> annotation, from controllers and <code>kubectl</code>, are not matched</td>
 </tr>
 <tr>
 <td><code>namespace-name-guard</code></td>
