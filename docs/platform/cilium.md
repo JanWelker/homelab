@@ -4,11 +4,10 @@ description: "Cilium as the CNI, providing Gateway API, WireGuard encryption, L2
 
 # Cilium
 
-Cilium is the CNI, and on this cluster considerably more: it replaces
-`kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer
-addresses on a network with no cloud load balancer, encrypts node-to-node
-traffic, and shows what is talking to what. That consolidation is the argument
-for it on bare metal, and the reason a broken Cilium is never a small problem.
+Cilium is the CNI, and more: it replaces `kube-proxy`, terminates ingress
+through Gateway API, hands out LoadBalancer addresses on a network with no
+cloud load balancer, encrypts node-to-node traffic, and shows what is talking
+to what. A broken Cilium is never a small problem.
 
 ## At a glance
 
@@ -29,21 +28,21 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | `k8sServiceHost` as a literal IP | With `kube-proxy` gone Cilium cannot reach the API server through a Service, so it names the [control-plane VIP](../operations/control-plane-vip.md) — see [Pitfalls](#pitfalls) |
 | Gateway API | Replaces an Ingress controller — see [Gateway API](gateway-api.md) |
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
-| `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file |
+| `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router sends traffic from other VLANs, VPN clients and port forwards to all three nodes and drops a dead one after the hold time, where L2 moves one lease. L2 stays because LAN hosts ARP for the addresses and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file with the [password](#bgp-session-password) added |
 | `encryption.type: wireguard` | Transparent node-to-node encryption |
-| Hubble, behind the [Authentik](authentik.md) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost and a ReferenceGrant in `payload/platform/authentik/` permits the cross-namespace reference |
-| Hubble metrics labelled by namespace | The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. |
-| `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](logging.md) tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second. |
+| Hubble, behind the [Authentik](authentik.md) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost through a ReferenceGrant in `payload/platform/authentik/` |
+| Hubble metrics labelled by namespace | The chart's Hubble dashboards show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for the Gateway's proxied traffic. |
+| `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](logging.md) tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are thousands a second and not exported. |
 | `hubble.redact` | Every header except `User-Agent` and `Content-Type`, and the password of a basic-auth URL, is replaced before a flow leaves the agent, for the export file and Relay alike. L7 rules proxy requests that carry credentials: `X-Vault-Token`, bearer tokens, signed S3 requests, cookies. The method, path and query survive |
-| `hostFirewall.enabled: true` | Filters traffic to the node's own addresses, which is every host-networked port, with `CiliumClusterwideNetworkPolicy` objects that select nodes. Nothing is denied on IPv4 until a policy selects the node; IPv6 differs, see [Pitfalls](#pitfalls). Rollout and policy in [Host firewall](security-policies.md#host-firewall) |
+| `hostFirewall.enabled: true` | Filters traffic to the node's own addresses, which is every host-networked port, through `CiliumClusterwideNetworkPolicy` objects that select nodes. Nothing is denied on IPv4 until a policy selects the node; IPv6 differs, see [Pitfalls](#pitfalls). Rollout and policy in [Host firewall](security-policies.md#host-firewall) |
 | `policyAuditMode: false` | Policies are enforced. On, verdicts are logged and not enforced for a rollout's observation week — see [Security Policies](security-policies.md#rollout). Cluster-wide, and blind to L7 rules |
-| `rollOutCiliumPods` and the four `rollOutPods` | The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to `cilium-config` rolls the CNI on every node: running pods keep their networking, policy updates pause per node while its agent is down, and the [`k8sServiceHost` pitfall](#pitfalls) bites at merge, not later |
+| `rollOutCiliumPods` and the four `rollOutPods` | The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, not at the next unrelated restart. The price is that every change to `cilium-config` rolls the CNI on every node: running pods keep their networking, policy updates pause per node while its agent is down, and the [`k8sServiceHost` pitfall](#pitfalls) bites at merge, not later |
 | `updateStrategy.rollingUpdate.maxUnavailable: 1` | The chart default restarts the agent on two nodes at once, which can be two of the three control planes that hold the L2 leases and BGP sessions; one at a time keeps every Gateway address announced |
 | `operator.replicas` above one | The operator owns Gateway API reconciliation, LoadBalancer IP allocation and the `cilium-secrets` sync: with one replica, a drain or crash of its node stalls all three until the reschedule. The chart's hostname anti-affinity keeps the replicas apart, so the standby is already running — see the [operator pitfall](#pitfalls) |
-| The operator's cluster-wide Secret read | The chart grants `get`, `list` and `watch` on all Secrets whenever Gateway API or `bgpControlPlane` is on, and has no value to narrow it, because the operator copies the certificate Secrets a Gateway names, in any namespace, into `cilium-secrets`. The alert [allowlists](logging.md#alerting) it |
+| The operator's cluster-wide Secret read | The chart grants `get`, `list` and `watch` on all Secrets whenever Gateway API or `bgpControlPlane` is on, with no value to narrow it: the operator copies the certificate Secrets a Gateway names, in any namespace, into `cilium-secrets`. The [log alert](logging.md#alerting) allowlists it |
 | `lb-pools.yaml` on `cilium.io/v2` | The storage version for `CiliumLoadBalancerIPPool`; `v2alpha1` is served as deprecated and warns on every sync. `CiliumL2AnnouncementPolicy` has no `v2` yet and stays |
-| `cilium-agent` memory limit | It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, not a day, before the [platform rule](index.md) applied |
-| `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: the bootstrap install, a render before `prometheus-operator-crds` has synced, and the diff preview's throwaway cluster |
+| `cilium-agent` memory limit | It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, see the [platform rule](index.md) |
+| `trustCRDsExist: true` | The chart otherwise refuses to render while `monitoring.coreos.com/v1` is missing: at bootstrap, before `prometheus-operator-crds` has synced, and in the diff preview |
 
 ## Usage
 
@@ -61,6 +60,22 @@ first because the operator checks for them once, at startup. The
 one difference is the three `serviceMonitor.enabled` flags, which `make` turns
 off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
 the monitors back on adoption, rolling the agent and operator once.
+
+### BGP session password
+
+The session is TCP MD5 authenticated with a typed password, since the router
+needs the same one. Setting or rotating it breaks BGP, and both Gateways with
+it, until both ends match; L2 still announces them to the flat LAN.
+
+1. `make bao-secrets`, answering for `kv/cilium/bgp`.
+2. On the router, in the live FRR and `output/router/frr-bgp.conf`, then
+   `clear bgp *`:
+
+    ```text
+    neighbor cilium password <password>
+    ```
+
+3. Check the session as in the [Health check](#health-check).
 
 ## Health check
 
@@ -95,13 +110,13 @@ The same verdicts, for the whole Loki retention window, in Grafana:
 ## Pitfalls
 
 !!! danger "`k8sServiceHost` pointed at an address that does not answer takes the cluster down"
-    Every Cilium pod loses the API server at once, and cluster networking goes with it — including whatever you were using to fix the problem. The change ordering is in [Control Plane VIP](../operations/control-plane-vip.md).
+    Every Cilium pod loses the API server at once, and cluster networking goes with it. The change ordering is in [Control Plane VIP](../operations/control-plane-vip.md).
 
 !!! warning "An operator that starts without the API server leaves the Gateways without certificates"
-    cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and `cilium-secrets` empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. `CiliumGatewayCertificatesMissing` fires; `kubectl -n kube-system rollout restart deploy/cilium-operator` recovers it.
+    cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and `cilium-secrets` empties. Envoy then resets the TLS handshake on every node without a cached copy, so clients fail depending on the node the router hashes them to. `CiliumGatewayCertificatesMissing` fires; `kubectl -n kube-system rollout restart deploy/cilium-operator` recovers it.
 
 !!! danger "A chart default that disappears stays in `cilium-config`"
-    The bootstrap install's `helm` field manager still co-owns every `cilium-config` key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When a chart release dropped the `envoy.xdsMode` default, the agents kept `envoy-xds-mode: ads` while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in `values.yaml` rather than relying on the default.
+    The bootstrap install's `helm` field manager still co-owns every `cilium-config` key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. Dropping the `envoy.xdsMode` default left the agents on `ads` while Envoy's bootstrap switched to split xDS, so no Gateway or L7 policy forwarded. Pin such a value in `values.yaml` rather than relying on the default.
 
 !!! warning "The host firewall drops all node IPv6, with or without a policy"
-    With `enable-ipv6: false` the datapath has no IPv6 branch, so on the native device and `cilium_host` every IPv6 packet is dropped as `DROP_UNKNOWN_L3` in both directions, before any policy or audit mode ([upstream](https://github.com/cilium/cilium/issues/47307)). A node keeps its SLAAC address until the lifetime runs out, and a client that does not fall back to IPv4 stalls until then. The drops reach Loki as `DROPPED` flows with a reason other than `POLICY_DENIED`, so `HubblePolicyDrops` and `HostFirewallDrops` stay quiet.
+    With `enable-ipv6: false` the datapath has no IPv6 branch, so on the native device and `cilium_host` every IPv6 packet is dropped as `DROP_UNKNOWN_L3` in both directions, before any policy or audit mode ([upstream](https://github.com/cilium/cilium/issues/47307)). A client that does not fall back to IPv4 stalls until the node's SLAAC address expires. The drops reach Loki as `DROPPED` flows with a reason other than `POLICY_DENIED`, so `HubblePolicyDrops` and `HostFirewallDrops` stay quiet.

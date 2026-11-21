@@ -47,6 +47,12 @@ path "kv/data/arc-runners/*" {
 path "kv/metadata/arc-runners/*" {
   capabilities = ["read", "list"]
 }
+path "kv/data/cilium/*" {
+  capabilities = ["read"]
+}
+path "kv/metadata/cilium/*" {
+  capabilities = ["read", "list"]
+}
 path "kv/data/cert-manager/*" {
   capabilities = ["read"]
 }
