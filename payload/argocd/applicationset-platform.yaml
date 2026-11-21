@@ -1,6 +1,6 @@
 ---
 # One Application per payload/platform/*/application.yaml, plus the workloads
-# handover; see docs/architecture/gitops.md
+# handover and argocd; see docs/architecture/gitops.md
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -19,6 +19,8 @@ spec:
         requeueAfterSeconds: 60
         files:
           - path: payload/platform/*/application.yaml
+          # ArgoCD itself: applied by hand at bootstrap, adopted from here.
+          - path: payload/argocd/application.yaml
           # Not platform, and not in payload/platform/: the handover to the
           # workloads repository, kept apart so its blast radius is one app.
           - path: payload/workloads/application.yaml
