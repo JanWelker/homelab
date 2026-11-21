@@ -186,6 +186,18 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: security-profiles-operator
+  labels:
+    # The spod daemon's selinuxd runs privileged and mounts the host's SELinux directories.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: descheduler
   labels:
     pod-security.kubernetes.io/enforce: restricted

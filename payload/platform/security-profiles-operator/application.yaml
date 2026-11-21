@@ -1,0 +1,60 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: security-profiles-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infra
+  source:
+    # OCI, without the scheme; see docs/platform/argocd.md#projects
+    repoURL: registry.k8s.io/security-profiles-operator/charts
+    chart: security-profiles-operator
+    targetRevision: 1.1.2
+    helm:
+      valuesObject:
+        # Why each non-default value: docs/platform/security-profiles-operator.md#configuration
+        replicaCount: 2
+
+        # Renders spec.selinux.enable on the spod object; seccomp, AppArmor
+        # and the recorders stay at the chart's defaults, off.
+        selinux:
+          enable: true
+
+        # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
+        resources:
+          requests:
+            cpu: 250m
+            memory: 50Mi
+          limits:
+            memory: 512Mi
+        daemon:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+              ephemeral-storage: 50Mi
+            limits:
+              memory: 128Mi
+              ephemeral-storage: 200Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: security-profiles-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

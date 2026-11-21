@@ -43,7 +43,7 @@ The level per namespace is in `pod-security.yaml`; the rule behind it:
 
 | Enforce | Which namespaces | Why not stricter |
 | --- | --- | --- |
-| `privileged` | Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured | Host networking, the host PID namespace, raw block devices or a hostPath under the kubelet, etcd or log directories, all of which `baseline` forbids. node-exporter has a namespace of its own (`namespaceOverride`) so the rest of the monitoring stack need not follow it |
+| `privileged` | Those with a component on the host: the CNI and control plane, Ceph's OSDs, node-exporter, Trivy's node-collector, the etcd jobs and Velero's node-agent, Alloy, Kured, `selinuxd` | Host networking, the host PID namespace, raw block devices, privileged containers or a hostPath under the kubelet, etcd, log or SELinux directories, all of which `baseline` forbids. node-exporter has its own namespace so the monitoring stack need not follow it |
 | `baseline` | Those with a container that starts as root or escalates: Grafana's `init-chown-data`, the runners and their job pods, and the operators not yet checked against `restricted` | Reduced when the chart offers a non-root path, one namespace at a time |
 | `restricted` | Everything else, and the namespaces that run no pods | — |
 
