@@ -2671,7 +2671,7 @@
 
 
 <h1 id="cilium">Cilium<a class="headerlink" href="#cilium" title="Permanent link">&para;</a></h1>
-<p>Cilium is the CNI, and more: it replaces <code>kube-proxy</code>, terminates ingress
+<p>Cilium is the CNI: it replaces <code>kube-proxy</code>, terminates ingress
 through Gateway API, hands out LoadBalancer addresses on a network with no
 cloud load balancer, encrypts node-to-node traffic, and shows what is talking
 to what. A broken Cilium is never a small problem.</p>
@@ -2741,7 +2741,7 @@ to what. A broken Cilium is never a small problem.</p>
 </tr>
 <tr>
 <td><code>encryption.type: wireguard</code></td>
-<td>Transparent node-to-node encryption</td>
+<td>Pod-to-pod only; <code>nodeEncryption</code> is deprecated</td>
 </tr>
 <tr>
 <td>Hubble, behind the <a href="../authentik/">Authentik</a> proxy outpost</td>

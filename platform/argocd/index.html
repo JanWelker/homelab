@@ -2875,12 +2875,12 @@ included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has <code>apiKey</code> only, so it cannot log
 in. A session with <code>argocd.enabled</code> reads its own copy at
 <code>kv/claude-&lt;session&gt;/argocd</code>; only <code>homelab</code> has one.</p>
-<p>The token expires after 90 days, which caps a leak at a quarter; an expired
-one fails every agent <code>argocd</code> call until the next is stored. To rotate:</p>
+<p>The token has no expiry, so nothing breaks unattended and a leak lasts
+until rotation. To rotate:</p>
 <ol>
 <li>
 <p>Generate the token, logged in through Authentik:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>--expires-in<span class="w"> </span>2160h
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>generate-token<span class="w"> </span>--account<span class="w"> </span>claude
 </span></code></pre></div>
 </li>
 <li>

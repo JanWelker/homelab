@@ -1,6 +1,6 @@
 # Cilium
 
-Cilium is the CNI, and more: it replaces `kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer addresses on a network with no cloud load balancer, encrypts node-to-node traffic, and shows what is talking to what. A broken Cilium is never a small problem.
+Cilium is the CNI: it replaces `kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer addresses on a network with no cloud load balancer, encrypts node-to-node traffic, and shows what is talking to what. A broken Cilium is never a small problem.
 
 ## At a glance
 
@@ -22,7 +22,7 @@ Cilium is the CNI, and more: it replaces `kube-proxy`, terminates ingress throug
 | Gateway API | Replaces an Ingress controller — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) |
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
 | `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router sends traffic from other VLANs, VPN clients and port forwards to all three nodes and drops a dead one after the hold time, where L2 moves one lease. L2 stays because LAN hosts ARP for the addresses and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file with the [password](<#bgp-session-password>) added |
-| `encryption.type: wireguard` | Transparent node-to-node encryption |
+| `encryption.type: wireguard` | Pod-to-pod only; `nodeEncryption` is deprecated |
 | Hubble, behind the [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost through a ReferenceGrant in `payload/platform/authentik/` |
 | Hubble metrics labelled by namespace | The chart's Hubble dashboards show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for the Gateway's proxied traffic. |
 | `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are thousands a second and not exported. |

@@ -2486,31 +2486,31 @@ or work not yet done.</p>
 <tr>
 <td><strong>Cluster admin is a client certificate, not OIDC</strong></td>
 <td><code>output/kubeconfig</code> is <code>admin.conf</code>, a certificate only a CA rotation revokes; the API server has no OIDC</td>
-<td>OIDC against Authentik for daily use, <code>admin.conf</code> as break-glass</td>
+<td>Accepted: one operator, LAN-only API</td>
 <td><a href="../security/#authorization">Authorization</a></td>
 </tr>
 <tr>
 <td><strong>OpenBao speaks plain HTTP inside the cluster</strong></td>
 <td>Secrets and tokens cross the pod network unencrypted; WireGuard covers node-to-node</td>
-<td>A cert-manager CA, <code>caProvider</code> on stores</td>
+<td>Accepted: a certificate would sit in the unseal path</td>
 <td><a href="../../platform/openbao/#at-a-glance">OpenBao</a></td>
 </tr>
 <tr>
 <td><strong>OSDs are unencrypted, the Rook toolbox is on, Loki has no tenants</strong></td>
 <td>A pulled disk is readable; the toolbox is a standing Ceph admin shell; any Grafana Viewer reads every log line, the audit log included</td>
-<td>Encrypted OSDs, toolbox only in incidents, Loki tenants</td>
+<td>Accepted: disks stay on site, runbooks need the toolbox, one Grafana user</td>
 <td><a href="../../platform/rook-ceph/">Rook-Ceph</a>, <a href="../../platform/logging/">Logging</a></td>
 </tr>
 <tr>
 <td><strong>SELinux is permissive on every node</strong></td>
 <td>Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining</td>
-<td>Try enforcing on one worker; watch Cilium, Tetragon, Rook and the CSI plugins</td>
+<td>Enforcing denies Tetragon's and the Ceph exporter's hostPath writes; both need <code>spc_t</code></td>
 <td><a href="../security/#node-hardening">Node hardening</a></td>
 </tr>
 <tr>
 <td><strong>The <code>infra</code> hostnames and the LAN address are in public DNS</strong></td>
-<td>The infra names resolve publicly to a LAN address, so anyone can list the internal services; they stay LAN-only</td>
-<td>Serve them from the router's resolver only</td>
+<td>The infra names resolve publicly to a LAN address, so anyone can list them; they stay LAN-only</td>
+<td>Accepted: no split DNS to run</td>
 <td><a href="../../platform/external-dns/">external-dns</a></td>
 </tr>
 <tr>

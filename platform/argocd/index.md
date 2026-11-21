@@ -46,12 +46,12 @@ The `apps` project lists the repositories its Applications may pull from in `pay
 
 The `claude` account is the in-cluster Claude Code agents' API identity. It may read everything `role:readonly` reads, `argocd app get --refresh` included, and nothing else: the sessions investigate and open pull requests, and every Application syncs itself. It has `apiKey` only, so it cannot log in. A session with `argocd.enabled` reads its own copy at `kv/claude-<session>/argocd`; only `homelab` has one.
 
-The token expires after 90 days, which caps a leak at a quarter; an expired one fails every agent `argocd` call until the next is stored. To rotate:
+The token has no expiry, so nothing breaks unattended and a leak lasts until rotation. To rotate:
 
 1. Generate the token, logged in through Authentik:
 
    ```bash
-   argocd account generate-token --account claude --expires-in 2160h
+   argocd account generate-token --account claude
    ```
 2. Store it with `make bao-secrets`, at `kv/claude-homelab/argocd` (`token`).
 3. Pull it into the sessions now instead of at the next `refreshInterval`; the wrapper reads the mounted file on every call, so no pod restarts:

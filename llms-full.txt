@@ -1166,11 +1166,11 @@ Things this cluster does not do. None is a bug; each is an accepted tradeoff or 
 | **The `infra` AppProject is permissive** | The `infra` AppProject allows every kind in every namespace, so a platform `application.yaml` can deploy anything anywhere | Narrow the projects | [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#authorization>) |
 | **Reprovisioning needs the boot server on the segment** | Rebuilding a node needs `make serve` on a machine on the nodes' L2 segment, the external DHCP pointing at it and a power cycle; there is no remote rebuild | Only *re*provisioning: a running node reboots and rejoins without the boot server | [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>) |
 | **The object store survives one host down, no more** | During every Kured reboot the RGW data pool, which holds the backups and Loki chunks, has no redundancy left, while `rbd-pool` still has some | Accepted: an existing pool's erasure profile cannot change, so it means a new pool and moving every bucket | [Object storage](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#object-storage>) |
-| **Cluster admin is a client certificate, not OIDC** | `output/kubeconfig` is `admin.conf`, a certificate only a CA rotation revokes; the API server has no OIDC | OIDC against Authentik for daily use, `admin.conf` as break-glass | [Authorization](<https://homelab.wlkr.ch/architecture/security/index.md#authorization>) |
-| **OpenBao speaks plain HTTP inside the cluster** | Secrets and tokens cross the pod network unencrypted; WireGuard covers node-to-node | A cert-manager CA, `caProvider` on stores | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) |
-| **OSDs are unencrypted, the Rook toolbox is on, Loki has no tenants** | A pulled disk is readable; the toolbox is a standing Ceph admin shell; any Grafana Viewer reads every log line, the audit log included | Encrypted OSDs, toolbox only in incidents, Loki tenants | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>), [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) |
-| **SELinux is permissive on every node** | Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining | Try enforcing on one worker; watch Cilium, Tetragon, Rook and the CSI plugins | [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>) |
-| **The `infra` hostnames and the LAN address are in public DNS** | The infra names resolve publicly to a LAN address, so anyone can list the internal services; they stay LAN-only | Serve them from the router's resolver only | [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) |
+| **Cluster admin is a client certificate, not OIDC** | `output/kubeconfig` is `admin.conf`, a certificate only a CA rotation revokes; the API server has no OIDC | Accepted: one operator, LAN-only API | [Authorization](<https://homelab.wlkr.ch/architecture/security/index.md#authorization>) |
+| **OpenBao speaks plain HTTP inside the cluster** | Secrets and tokens cross the pod network unencrypted; WireGuard covers node-to-node | Accepted: a certificate would sit in the unseal path | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) |
+| **OSDs are unencrypted, the Rook toolbox is on, Loki has no tenants** | A pulled disk is readable; the toolbox is a standing Ceph admin shell; any Grafana Viewer reads every log line, the audit log included | Accepted: disks stay on site, runbooks need the toolbox, one Grafana user | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>), [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) |
+| **SELinux is permissive on every node** | Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining | Enforcing denies Tetragon's and the Ceph exporter's hostPath writes; both need `spc_t` | [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>) |
+| **The `infra` hostnames and the LAN address are in public DNS** | The infra names resolve publicly to a LAN address, so anyone can list them; they stay LAN-only | Accepted: no split DNS to run | [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) |
 | **Single region, site and rack** | No failure domain larger than a node: Ceph replicates across nodes on one power feed, and TrueNAS pulls the backups over the same LAN ([Off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>)): a site-level event takes everything | Honest limit of a homelab: a copy off the site | — |
 | **Backup copies hold plaintext Secrets and one all-powerful key** | Velero's resource backups are plain JSON in the bucket, Secrets included, and the NAS's `offsite-reader` key owns the bucket with a full `opMask`, so a leak of either exposes every Secret or lets its holder delete the live backups | Excluding Secrets would lose those nothing else regenerates (Argo CD, CloudNativePG, Rook, cert-manager); a read-only `opMask` would stop Rook setting the bucket policy with the owner's keys. The NAS's snapshots outlive a deletion | [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>), [Off-cluster reader](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) |
 
@@ -1481,12 +1481,12 @@ The `apps` project lists the repositories its Applications may pull from in `pay
 
 The `claude` account is the in-cluster Claude Code agents' API identity. It may read everything `role:readonly` reads, `argocd app get --refresh` included, and nothing else: the sessions investigate and open pull requests, and every Application syncs itself. It has `apiKey` only, so it cannot log in. A session with `argocd.enabled` reads its own copy at `kv/claude-<session>/argocd`; only `homelab` has one.
 
-The token expires after 90 days, which caps a leak at a quarter; an expired one fails every agent `argocd` call until the next is stored. To rotate:
+The token has no expiry, so nothing breaks unattended and a leak lasts until rotation. To rotate:
 
 1. Generate the token, logged in through Authentik:
 
    ```bash
-   argocd account generate-token --account claude --expires-in 2160h
+   argocd account generate-token --account claude
    ```
 2. Store it with `make bao-secrets`, at `kv/claude-homelab/argocd` (`token`).
 3. Pull it into the sessions now instead of at the next `refreshInterval`; the wrapper reads the mounted file on every call, so no pod restarts:
@@ -1918,7 +1918,7 @@ A `Challenge` stuck in `pending` is a DNS problem: the credentials cannot write 
 
 # Cilium
 
-Cilium is the CNI, and more: it replaces `kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer addresses on a network with no cloud load balancer, encrypts node-to-node traffic, and shows what is talking to what. A broken Cilium is never a small problem.
+Cilium is the CNI: it replaces `kube-proxy`, terminates ingress through Gateway API, hands out LoadBalancer addresses on a network with no cloud load balancer, encrypts node-to-node traffic, and shows what is talking to what. A broken Cilium is never a small problem.
 
 ## At a glance
 
@@ -1940,7 +1940,7 @@ Cilium is the CNI, and more: it replaces `kube-proxy`, terminates ingress throug
 | Gateway API | Replaces an Ingress controller — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) |
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
 | `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router sends traffic from other VLANs, VPN clients and port forwards to all three nodes and drops a dead one after the hold time, where L2 moves one lease. L2 stays because LAN hosts ARP for the addresses and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file with the [password](<#bgp-session-password>) added |
-| `encryption.type: wireguard` | Transparent node-to-node encryption |
+| `encryption.type: wireguard` | Pod-to-pod only; `nodeEncryption` is deprecated |
 | Hubble, behind the [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost through a ReferenceGrant in `payload/platform/authentik/` |
 | Hubble metrics labelled by namespace | The chart's Hubble dashboards show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for the Gateway's proxied traffic. |
 | `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are thousands a second and not exported. |
