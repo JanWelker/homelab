@@ -141,6 +141,10 @@ spec:
               # The backup.etcd user may write only its own prefix;
               # docs/platform/rook-ceph.md#backup-writers
               env:
+                # Not on EC2: without this aws-cli asks 169.254.169.254 for a
+                # region, and the policy drops the attempt
+                - name: AWS_EC2_METADATA_DISABLED
+                  value: "true"
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
