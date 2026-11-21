@@ -55,7 +55,7 @@ are the sets below that must move together.
     names the previous release's image (the image is a `registry.k8s.io` one,
     so the pair waits for a human like every third-party image there); the
     two ARC charts, because the controller deletes a scale set whose chart
-    version differs from its own; the OpenBao server tag with the image the
+    version differs from its own; the OpenBao chart with the image the
     snapshot CronJob runs its CLI from, so the CLI never lags the server it
     snapshots; and every Python pin (`requires-python`,
     `.python-version`, the `python` images), because `uv sync` fails when
