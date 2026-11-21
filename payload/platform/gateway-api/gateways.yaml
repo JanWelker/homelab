@@ -109,7 +109,7 @@ spec:
           from: Selector
           selector:
             matchExpressions:
-              # Platform namespaces only; route-hostnames-reserved lists the same
+              # The namespaces with a LAN-only UI; route-hostnames-reserved lists the same
               - key: kubernetes.io/metadata.name
                 operator: In
-                values: [argocd, kube-system, monitoring, openbao, opencloud, rook-ceph]
+                values: [argocd, dependency-track, kube-system, monitoring, openbao, opencloud, rook-ceph]
