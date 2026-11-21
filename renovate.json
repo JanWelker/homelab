@@ -105,6 +105,41 @@
       ]
     },
     {
+      "description": "These charts run with cluster-wide rights and Argo CD applies a merge to main within a minute, so a poisoned release must not reach the cluster unseen: a human merges every update, whatever its size. The chart names are those of the argocd manager's helm datasource, one per application.yaml -- see docs/development/maintenance.md",
+      "matchManagers": [
+        "argocd"
+      ],
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchDepNames": [
+        "argo-cd",
+        "cert-manager",
+        "cilium",
+        "external-secrets",
+        "kube-prometheus-stack",
+        "openbao",
+        "prometheus-operator-crds",
+        "rook-ceph",
+        "rook-ceph-cluster",
+        "tetragon"
+      ],
+      "automerge": false,
+      "reviewers": [
+        "JanWelker"
+      ]
+    },
+    {
+      "description": "A workflow action runs with the repository's token on every pull request, so its updates wait for a human like the cluster-wide charts do.",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "automerge": false,
+      "reviewers": [
+        "JanWelker"
+      ]
+    },
+    {
       "description": "These datasources publish no release timestamps, so the preset's minimumReleaseAge would hold their updates forever. They skip the release age instead, as the preset does for timestamp-less registries.",
       "matchDatasources": [
         "custom.flatcar-stable",

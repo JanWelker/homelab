@@ -19,7 +19,7 @@ All in `.github/workflows/`.
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
 | `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
-| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped |
+| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster, and `lint-markdown.yaml` and `renovate-validate.yaml` install their npm tool by version without a lockfile; accepted, since the token is read-only and the runner ephemeral |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
@@ -40,11 +40,13 @@ are the sets below that must move together.
     minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a
     human, and security fixes skip both the wait and the schedule. The
     preset's README says why for each.
-- **One exception: a Kubernetes minor waits for a human.** A Flatcar minor
+- **Cluster-wide charts and workflow actions wait for a human.** Argo CD
+    applies a merge within a minute and these charts hold cluster-wide
+    rights, so no update of them automerges; the list is in `renovate.json`.
+- **A Kubernetes minor waits for a human.** A Flatcar minor
     lands the same way a Grafana chart patch does, but `kubernetes_version` is
-    walked forward by hand in version-skew order, and a node provisioned from
-    an automerged minor would run a kubelet ahead of the API server and fail
-    its `kubeadm join` — see [Upgrades](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
+    walked forward by hand in version-skew order; an automerged minor would
+    provision a kubelet ahead of the API server — see [Upgrades](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
 - **Pairs that must move together are grouped into one PR:**
     `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
     must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because
@@ -97,8 +99,7 @@ LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup
 ```
 
 It needs no credentials for a public repository and prints every dependency it
-found and why it skipped any. The rules, each of which is written into
-`renovate.json`:
+found and why it skipped any. The rules, each in `renovate.json`:
 
 - **`pre-commit` must be enabled explicitly** (`"pre-commit": {"enabled": true}`);
     Renovate ships that manager disabled, and a `packageRules` entry for it does
@@ -111,16 +112,14 @@ found and why it skipped any. The rules, each of which is written into
     `autoReplaceStringTemplate`.** Without it the pin cannot be written, and one
     unwritable pin fails the whole shared pin branch (`Error updating branch:
     update failure` on the Dependency Dashboard, the only symptom, since
-    version bumps keep working). Capturing `currentDigest` only lets Renovate
-    update a digest that is already there.
+    version bumps keep working).
 - **A bare Helm `tag:` value goes in the `pinDigests: false` rule.** A tag like
     `3.4.4-alpine` has no position for a digest; leave one out and the same
     banner comes back.
 - **A two-part version needs a `versioningTemplate`.** The default
     `semver-coerced` rejects `6.03`, so the dependency is extracted and then
-    dropped before lookup. `syslinux` and the Inter font pin carry a `regex:`
-    versioning for this reason; Inter's also keeps `v4.0-beta9h`-style
-    prereleases out.
+    dropped before lookup; `syslinux` and the Inter font pin carry a `regex:`
+    versioning.
 - **Match the registry's spelling, not the GitHub org's.** The diff-preview
     image is `dagandersen/argocd-diff-preview` on Docker Hub; a regex on
     `dag-andersen` matches nothing and reports nothing.
@@ -136,10 +135,7 @@ found and why it skipped any. The rules, each of which is written into
 
 GitHub's language bar comes from
 [Linguist](https://github.com/github-linguist/linguist), which counts bytes of
-files it classifies as a *language*. YAML is classified as data and Markdown as
-prose, so both are excluded by default and the bar reported this repository as
-Shell and Jinja. `.gitattributes` marks YAML detectable, and marks the three
-vendored Grafana dashboards as vendored, because their upstream JSON blobs are
-more than half the repository's YAML bytes and would otherwise be most of the
-bar. A vendored dashboard added later needs its own line there; GitHub
-recalculates on the next push to `main`.
+files it classifies as a *language*. YAML and Markdown are excluded by default,
+so `.gitattributes` marks YAML detectable and the three vendored Grafana
+dashboards as vendored: their JSON would otherwise be most of the bar. A
+vendored dashboard added later needs its own line there.
