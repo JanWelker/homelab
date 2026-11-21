@@ -3323,10 +3323,9 @@ nothing else, for the nightly <a href="../../operations/backups/#openbao">snapsh
 <code>cluster-secret-store.yaml</code> too, because the stores only validate against a
 running, unsealed OpenBao. <code>make bao-init</code> writes the policies and roles on a
 fresh cluster by running <code>scripts/bao-policies.sh</code>; after a change to that
-script or to the <code>openbao-apps</code> list, <code>make bao-policies</code> rewrites them on a live one. It needs a root
-token, because the operator login cannot write policies: run it before
-<code>make bao-rotate-root</code>, or with a
-<a href="#generating-a-root-token">generated root token</a>.</p>
+script or to the <code>openbao-apps</code> list, <code>make bao-policies</code> rewrites them on a live one. The operator
+login cannot write policies, so it asks for a
+<a href="#generating-a-root-token">generated root token</a> and revokes it afterwards.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="bootstrap">Bootstrap<a class="headerlink" href="#bootstrap" title="Permanent link">&para;</a></h3>
 <ol>
