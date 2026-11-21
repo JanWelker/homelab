@@ -352,6 +352,33 @@ storage:
           KbdInteractiveAuthentication no
           HostKeyAlgorithms -ssh-rsa
           PubkeyAcceptedAlgorithms -ssh-rsa
+    # Run by selinux-policy-store.service before the kubelet
+    - path: /opt/bin/selinux-policy-store
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # A writable SELinux policy store, so selinuxd can install modules; see
+          # docs/platform/security-profiles-operator.md#policy-store
+          set -euo pipefail
+          store=/var/lib/selinux
+          shipped=/usr/lib/selinux/policy
+          compiled=/etc/selinux/mcs/policy
+          . /etc/os-release
+          if [ ! -L "$store" ] && [ "$(cat "$store/.flatcar-version" 2>/dev/null)" = "$VERSION" ]; then
+            exit 0
+          fi
+          # First boot, or a Flatcar update shipped a new base policy: copy it, and drop
+          # what selinuxd compiled from the old one. selinuxd installs its modules again
+          # when its pod starts.
+          rm -rf "$store.new"
+          cp -a "$shipped" "$store.new"
+          echo "$VERSION" > "$store.new/.flatcar-version"
+          if [ -L "$store" ]; then rm "$store"; else rm -rf "$store"; fi
+          mv "$store.new" "$store"
+          for policy in "$compiled"/policy.*; do
+            [ -e "/usr/share/flatcar$policy" ] || rm -f "$policy"
+          done
     # SELinux denials reach the journal; Flatcar's own two files exclude them.
     # See docs/architecture/security.md#node-hardening
     - path: /etc/audit/rules.d/80-selinux.rules
@@ -449,6 +476,21 @@ systemd:
         # No-op once the filesystem already fills the partition.
         ExecStart=/usr/lib/systemd/systemd-growfs /
         TimeoutSec=infinity
+
+        [Install]
+        WantedBy=multi-user.target
+    - name: selinux-policy-store.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Writable SELinux policy store for selinuxd
+        RequiresMountsFor=/var/lib
+        Before=kubelet.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=true
+        ExecStart=/opt/bin/selinux-policy-store
 
         [Install]
         WantedBy=multi-user.target
