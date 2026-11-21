@@ -12,9 +12,9 @@ OPERATOR_FILE="${OPERATOR_FILE:-output/credentials/openbao-operator.json}"
 OPERATOR_USER="${OPERATOR_USER:-operator}"
 OPERATOR_POLICY="${OPERATOR_POLICY:-operator}"
 
-# Which token the pod has cached: operator, root or empty. Only the operator's
-# is revoked on exit; revoking the root token by accident would lock out a
-# cluster that has no operator credential yet.
+# Which token the pod has cached: operator, generated-root, root or empty. The
+# first two are revoked on exit; revoking the init root token by accident
+# would lock out a cluster that has no operator credential yet.
 BAO_SESSION=""
 
 bao() { kubectl -n "$NAMESPACE" exec "$POD" -- bao "$@"; }
@@ -42,7 +42,7 @@ bao_require_unsealed() {
 # behind by a dropped connection expires on its own; the EXIT trap revokes it
 # sooner.
 bao_cleanup() {
-  if [ "$BAO_SESSION" = "operator" ]; then
+  if [ "$BAO_SESSION" = "operator" ] || [ "$BAO_SESSION" = "generated-root" ]; then
     bao token revoke -self >/dev/null 2>&1 || true
   fi
   # shellcheck disable=SC2016 # $HOME is the pod's
@@ -84,6 +84,29 @@ bao_login() {
     exit 1
   fi
   trap bao_cleanup EXIT
+}
+
+# For what the operator may not do: policies and auth roles. On a cluster
+# whose init root token is still in the key file that token serves; on any
+# other it asks for a generated one, which is revoked when the caller exits.
+# See docs/platform/openbao.md#generating-a-root-token
+bao_login_root_or_generated() {
+  local token
+  bao_require_unsealed
+  trap bao_cleanup EXIT
+
+  if [ -f "$KEYFILE" ] && bao_login_root; then
+    return 0
+  fi
+  echo "The operator login cannot write policies. Paste a generated root token" >&2
+  echo "(docs/platform/openbao.md#generating-a-root-token, steps 1 to 4):" >&2
+  read -rs token
+  [ -n "$token" ] || { echo "ERROR: no token given." >&2; exit 1; }
+  printf '%s' "$token" | bao_in login - >/dev/null 2>&1 || {
+    echo "ERROR: OpenBao refused that token." >&2
+    exit 1
+  }
+  BAO_SESSION=generated-root
 }
 
 # Idempotent: enables userpass, writes the policy, and (re)writes the user with

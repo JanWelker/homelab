@@ -25,7 +25,7 @@ CLAUDE_NAMESPACE="${CLAUDE_NAMESPACE:-claude-agents}"
 # shellcheck source=lib/bao.sh source-path=SCRIPTDIR
 . "$(dirname "${BASH_SOURCE[0]}")/lib/bao.sh"
 
-bao_login
+bao_login_root_or_generated
 
 echo "### Policies and roles"
 
