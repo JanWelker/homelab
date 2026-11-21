@@ -52,7 +52,7 @@ spec:
           # instead of one shell script, in order: status, defrag, status.
           initContainers:
             - name: status-before
-              image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
+              image: registry.k8s.io/etcd:3.7.4-0@sha256:47d217be8ec4ca943954b5f4bf8029ee9bc0ffb05fbe2a44d579a1f640e03ed4
               command: [etcdctl, endpoint, status, --cluster, -w, table]
               resources:
                 requests:
@@ -89,7 +89,7 @@ spec:
             # --cluster walks the member list, so every member is
             # defragmented one after another from this one pod
             - name: defrag
-              image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
+              image: registry.k8s.io/etcd:3.7.4-0@sha256:47d217be8ec4ca943954b5f4bf8029ee9bc0ffb05fbe2a44d579a1f640e03ed4
               command: [etcdctl, defrag, --cluster, --command-timeout=60s]
               resources:
                 requests:
@@ -125,7 +125,7 @@ spec:
                   readOnly: true
           containers:
             - name: status-after
-              image: registry.k8s.io/etcd:3.7.3-0@sha256:0d27b9478551f431f82d1e0ddb6c87ad07ebae8b904c637f3a99213349523910
+              image: registry.k8s.io/etcd:3.7.4-0@sha256:47d217be8ec4ca943954b5f4bf8029ee9bc0ffb05fbe2a44d579a1f640e03ed4
               command: [etcdctl, endpoint, status, --cluster, -w, table]
               env:
                 - name: ETCDCTL_API
