@@ -86,18 +86,15 @@ A rule that is word-for-word the same in every namespace file is lifted
 into `cluster-wide.yaml`, selecting every endpoint that has a namespace and
 with `enableDefaultDeny` off in both directions. The selector is not `{}`
 because that also takes the Gateway's `reserved:ingress` endpoint and the
-health endpoint, which then carry a policy they have no use for. Default
-deny is off because a cluster-wide egress rule would otherwise put every
-pod in a namespace without policies into egress default-deny. DNS is the
-only rule lifted; the intra-namespace and node-probe rules would qualify
-but change what a namespace file says, so they stay.
+health endpoint. Default deny is off because a cluster-wide egress rule
+would otherwise put every pod in a namespace without policies into egress
+default-deny. DNS is the only rule lifted; the intra-namespace and
+node-probe rules stay in the namespace files.
 
 The second policy there, `init`, is for the seconds before the agent has
 resolved a new pod's labels. The pod then carries the reserved `init`
-identity, which no namespace policy selects, and the audit log shows its
-traffic denied all the same; a scan Job's first lookups and a starting
-pod's probes were the bulk of the audit log. It admits the node, DNS out and DNS in, nothing
-else.
+identity, which no namespace policy selects. It admits the node, DNS out and
+DNS in, nothing else.
 
 The third, `cnpg-backups`, selects every CloudNativePG pod by its
 `cnpg.io/cluster` label and admits only the object store, by the same two
@@ -221,6 +218,8 @@ others close what RBAC and the `apps` project cannot express.
 | `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |
 | `cnpg-objectstore-offsite` | `Deny` | A Barman Cloud `ObjectStore` writes to `s3://offsite/<namespace>.<purpose>/`, the prefix TrueNAS pulls |
 | `obc-backup-exempt` | `Deny` | A new `ObjectBucketClaim` says why it needs no backup; nothing copies a bucket off the cluster |
+| `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](cert-manager.md#issuer-scope) |
+| `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](cert-manager.md#pods-from-the-controllers) |
 | `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](gateway-api.md#route-hostnames) |
 
 The last three [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
@@ -228,10 +227,10 @@ each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason
 as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.
 
-All but one carry `failurePolicy: Ignore`: an expression that errors lets the
+All but two carry `failurePolicy: Ignore`: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation
-is still refused. `claude-writer-pod-limits` fails closed, since it only ever
-matches one identity.
+is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail closed, since they only ever
+match named identities.
 
 ## Usage
 
