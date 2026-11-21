@@ -1,0 +1,216 @@
+---
+# selinuxd's templates, replacing the ones bundled in its image: those name
+# attributes Flatcar's policy lacks. The three differences and how to test a
+# change: docs/platform/security-profiles-operator.md#templates
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: selinuxd-templates-flatcar
+  namespace: security-profiles-operator
+data:
+  base_container.cil: |
+    (block container
+    (type process)
+    (type socket)
+    (roletype system_r process)
+    (typeattributeset domain (process ))
+    (typeattributeset container_domain (process ))
+    (typeattributeset mcs_constrained_type (process ))
+    (typeattributeset file_type (socket ))
+    (allow process socket (sock_file (create open getattr setattr read write rename link unlink ioctl lock append)))
+    (allow process proc_t (file (getattr open read)))
+    (allow process cpu_online_t (file (getattr open read)))
+    (allow container_runtime_t process (key (create link read search setattr view write)))
+    )
+  config_container.cil: |
+    (block config_container
+        (optional config_container_optional
+            (allow process configfile (dir (ioctl read getattr lock search open)))
+            (allow process configfile (file (ioctl read getattr lock open)))
+            (allow process configfile (lnk_file (read getattr)))
+        )
+    )
+
+    (block config_rw_container
+        (blockinherit config_container)
+        (optional config_rw_container_optional
+            (allow process configfile (dir (ioctl read write getattr lock append open)))
+            (allow process configfile (file (ioctl read write getattr lock append open)))
+            (allow process configfile (lnk_file (ioctl read write getattr lock append open)))
+        )
+    )
+
+    (block config_manage_container
+        (optional config_manage_container_optional
+            (allow process configfile (dir (ioctl read write create getattr setattr lock unlink link rename add_name remove_name reparent search rmdir open)))
+            (allow process configfile (file (ioctl read write create getattr setattr lock append unlink link rename open)))
+            (allow process configfile (lnk_file (ioctl read write create getattr setattr lock append unlink link rename open)))
+        )
+    )
+  home_container.cil: |
+    (block home_container
+        (optional home_container_optional
+            (allow process process (capability (dac_override )))
+
+            (allow process user_home_dir_t (dir (getattr search open read lock ioctl)))
+            (allow process home_root_t (dir (getattr search open read lock ioctl)))
+            (allow process user_home_t (dir (getattr search open read lock ioctl)))
+
+            (allow process user_home_dir_t (file (getattr ioctl lock open read)))
+            (allow process user_home_t (file (getattr ioctl lock open read)))
+        )
+    )
+
+
+    (block home_rw_container
+        (blockinherit home_container)
+        (optional home_rw_container_optional
+            (allow process user_home_dir_t (dir (open getattr setattr read write link search add_name remove_name reparent lock ioctl)))
+            (allow process home_root_t (dir (open getattr setattr read write link search add_name remove_name reparent lock ioctl)))
+            (allow process user_home_t (dir (open getattr setattr read write link search add_name remove_name reparent lock ioctl)))
+
+            (allow process user_home_t (file (open getattr read write append ioctl lock)))
+            (allow process user_home_dir_t (file (open getattr read write append ioctl lock)))
+        )
+    )
+
+    (block home_manage_container
+        (blockinherit home_rw_container)
+        (optional home_manage_container_optional
+            (allow process user_home_dir_t (dir (create unlink rename rmdir )))
+            (allow process home_root_t (dir (create unlink rename rmdir )))
+            (allow process user_home_t (dir (create unlink rename rmdir )))
+
+            (allow process user_home_t (file (create rename link unlink )))
+            (allow process user_home_dir_t (file (create rename link unlink )))
+        )
+    )
+  log_container.cil: |
+    (block log_container
+        (optional log_container_optional
+            (allow process var_t (dir (getattr search open)))
+            (allow process logfile (dir (ioctl read getattr lock search open)))
+            (allow process logfile (file (ioctl read getattr lock open map)))
+            (allow process auditd_log_t (dir (ioctl read getattr lock search open)))
+            (allow process auditd_log_t (file (ioctl read getattr lock open)))
+        )
+    )
+
+
+    (block log_rw_container
+        (blockinherit log_container)
+
+        (optional log_rw_container_optional
+            (allow process logfile (dir (ioctl read write create getattr setattr lock add_name search open)))
+            (allow process logfile (file (ioctl read write create getattr setattr lock append open)))
+            (allow process logfile (lnk_file (ioctl read write getattr lock append open)))
+            (allow process var_t (dir (getattr search open)))
+            (allow process auditd_log_t (dir (ioctl read getattr lock search open)))
+            (allow process auditd_log_t (file (ioctl read getattr lock open)))
+        )
+    )
+
+    (block log_manage_container
+        (blockinherit log_rw_container)
+
+        (optional log_manage_container_optional
+            (allow process logfile (dir (ioctl read write create getattr setattr lock unlink link rename add_name remove_name reparent search rmdir open)))
+            (allow process logfile (file (ioctl read write create getattr setattr lock append unlink link rename open)))
+            (allow process logfile (lnk_file (ioctl read write create getattr setattr lock append unlink link rename)))
+            (allow process auditd_log_t (dir (ioctl read write getattr lock search open)))
+            (allow process auditd_log_t (file (ioctl read write getattr lock open)))
+        )
+    )
+  net_container.cil: |
+    (block net_container
+        (optional net_container_optional
+            (typeattributeset container_net_domain (process))
+        )
+    )
+
+    (block restricted_net_container
+        (optional restricted_net_container_optional
+            (allow process process (tcp_socket (ioctl read getattr lock write setattr append bind connect getopt setopt shutdown create listen accept)))
+            (allow process process (udp_socket (ioctl read getattr lock write setattr append bind connect getopt setopt shutdown create)))
+            (allow process process (sctp_socket (ioctl read getattr lock write setattr append bind connect getopt setopt shutdown create)))
+
+            (allow process proc_t (lnk_file (read)))
+
+            (allow process node_t (node (tcp_recv tcp_send recvfrom sendto)))
+            (allow process node_t (node (udp_recv recvfrom)))
+            (allow process node_t (node (udp_send sendto)))
+
+            (allow process node_t (udp_socket (node_bind)))
+            (allow process node_t (tcp_socket (node_bind)))
+
+            (allow process http_port_t (tcp_socket (name_connect)))
+            (allow process http_port_t (tcp_socket (recv_msg send_msg)))
+        )
+    )
+  tmp_container.cil: |
+    (block tmp_container
+        (optional tmp_container_optional
+            (allow process tmpfile (dir (getattr search open)))
+            (allow process tmpfile (file (ioctl read getattr lock open)))
+        )
+    )
+
+    (block tmp_rw_container
+        (blockinherit tmp_container)
+
+        (optional tmp_rw_container_optional
+            (allow process tmpfile (file (ioctl read write getattr lock append open)))
+            (allow process tmpfile (dir (ioctl read write getattr lock append open)))
+        )
+    )
+  tty_container.cil: |
+    (block tty_container
+        (optional tty_container_optional
+            (allow process device_t (dir (getattr search open)))
+            (allow process device_t (dir (ioctl read getattr lock search open)))
+            (allow process device_t (lnk_file (read getattr)))
+
+            (allow process devtty_t (chr_file (ioctl read write getattr lock append open)))
+        )
+    )
+  virt_container.cil: |
+    (block virt_container
+        (optional virt_container_optional
+            (allow process var_t (dir (getattr search open)))
+            (allow process var_t (lnk_file (read getattr)))
+
+            (allow process var_run_t (dir (getattr search open)))
+            (allow process var_run_t (lnk_file (read getattr)))
+
+            (allow process virt_var_run_t (dir (getattr search open)))
+            (allow process virt_var_run_t (sock_file (write getattr append open)))
+
+            (allow process virtd_t (unix_stream_socket (connectto)))
+        )
+    )
+  x_container.cil: |
+    (block x_container
+        (optional x_container_optional
+            (allow xserver_t process (shm (getattr read write associate unix_read unix_write lock)))
+
+            (allow process xserver_t (unix_stream_socket (connectto)))
+
+            (allow process device_t (dir (getattr search open)))
+
+            (allow process dri_device_t (chr_file (ioctl read write getattr lock append open map)))
+
+            (allow process xserver_misc_device_t (chr_file (ioctl read write getattr lock append open map)))
+
+            (allow process urandom_device_t (chr_file (open read)))
+
+            (allow process tmpfs_t (dir (getattr search open)))
+
+            (allow process tmp_t (dir (getattr search open)))
+            (allow process tmp_t (lnk_file (read getattr)))
+
+            (allow process xserver_tmp_t (dir (getattr search open)))
+            (allow process xserver_tmp_t (sock_file (write getattr append open)))
+
+            (allow process xserver_exec_t (file (ioctl read getattr lock map execute execute_no_trans open)))
+        )
+    )
