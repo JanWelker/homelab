@@ -68,9 +68,18 @@ apiServer:
       value: "100"
     - name: admission-control-config-file
       value: /etc/kubernetes/admission/admission.yaml
+    # Anonymous requests reach the health endpoints and kubeadm's discovery
+    # only; see docs/architecture/security.md#node-hardening
+    - name: authentication-config
+      value: /etc/kubernetes/authentication/authentication.yaml
     - name: profiling
       value: "false"
   extraVolumes:
+    - name: authentication-config
+      hostPath: /etc/kubernetes/authentication
+      mountPath: /etc/kubernetes/authentication
+      readOnly: true
+      pathType: Directory
     - name: admission-config
       hostPath: /etc/kubernetes/admission
       mountPath: /etc/kubernetes/admission
@@ -122,6 +131,9 @@ serverTLSBootstrap: true
 # Needs the sysctls in butane_node_config.yaml.j2, or the kubelet refuses to
 # start; see docs/architecture/security.md#node-hardening
 protectKernelDefaults: true
+# Pods without a seccomp profile get RuntimeDefault, not Unconfined; see
+# docs/architecture/security.md#node-hardening
+seccompDefault: true
 podPidsLimit: 4096
 # The API server's suites and floor, for the kubelet's own listener on 10250.
 tlsCipherSuites:
