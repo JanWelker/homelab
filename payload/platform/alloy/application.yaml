@@ -95,6 +95,10 @@ spec:
                 - ALL
             seccompProfile:
               type: RuntimeDefault
+            # The alloy SelinuxProfile: read on the journal and the log files;
+            # see docs/platform/security-profiles-operator.md#usage
+            seLinuxOptions:
+              type: alloy.process
 
           resources:
             requests:
