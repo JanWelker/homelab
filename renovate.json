@@ -280,30 +280,6 @@
       "autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
     },
     {
-      "description": "markdownlint-cli2 installed by the Lint Markdown workflow. Grouped with the pre-commit hook, which the pre-commit manager tracks separately.",
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^\\.github/workflows/lint-markdown\\.yaml$/"
-      ],
-      "matchStrings": [
-        "npm install -g markdownlint-cli2@(?<currentValue>[0-9.]+)"
-      ],
-      "depNameTemplate": "markdownlint-cli2",
-      "datasourceTemplate": "npm"
-    },
-    {
-      "description": "renovate-config-validator is only as good as the Renovate it ships with; the validate workflow pins that version.",
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/^\\.github/workflows/renovate-validate\\.yaml$/"
-      ],
-      "matchStrings": [
-        "renovate@(?<currentValue>[0-9.]+)"
-      ],
-      "depNameTemplate": "renovate",
-      "datasourceTemplate": "npm"
-    },
-    {
       "description": "Trivy version installed by setup-trivy. The github-actions manager tracks the action's SHA, not its `version:` input.",
       "customType": "regex",
       "managerFilePatterns": [

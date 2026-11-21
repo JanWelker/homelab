@@ -19,7 +19,7 @@ All in `.github/workflows/`.
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
 | `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
-| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster, and `lint-markdown.yaml` and `renovate-validate.yaml` install their npm tool by version without a lockfile; accepted, since the token is read-only and the runner ephemeral |
+| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral. `lint-markdown.yaml` and `renovate-validate.yaml` run their npm tool from `.github/tools/package-lock.json` |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
@@ -80,12 +80,11 @@ are the sets below that must move together.
 
 Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and
-pre-commit hooks, plus custom regex managers for the versions in
+pre-commit hooks, the CI npm tools (`.github/tools`), plus custom regex managers for the versions in
 `ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, any
 `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
 and the tool versions the workflows under `.github/workflows/` install by
-name rather than by action (the diff-preview image, `markdownlint-cli2`,
-`renovate` and Trivy). The `Makefile` is deliberately not
+name rather than by action (the diff-preview image and Trivy). The `Makefile` is deliberately not
 tracked: the bootstrap targets read `targetRevision` out of the owning
 `application.yaml` — see [Version pins](../architecture/gitops.md#version-pins).
 
