@@ -114,6 +114,7 @@ data:
                     | json
                     | user_username="system:anonymous"
                     | responseStatus_code < 400
+                    | requestURI!="/api/v1/namespaces/kube-public/configmaps/cluster-info"
                   [10m]
                 )
               ) > 0
@@ -123,9 +124,10 @@ data:
               summary: >-
                 Anonymous request succeeded against {{ $labels.requestURI }}
               description: >-
-                The health endpoints are the only anonymous paths, and the
-                audit policy drops them. Anything else anonymous that succeeded
-                should not have.
+                The only anonymous paths are the health endpoints, which the
+                audit policy drops, and kubeadm's cluster-info ConfigMap, which
+                this rule skips. Anything else anonymous that succeeded should
+                not have.
           - alert: KubernetesAuditEsoTokenMinted
             expr: |
               sum by (user_username, objectRef_namespace) (
