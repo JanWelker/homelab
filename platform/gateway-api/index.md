@@ -73,7 +73,7 @@ Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools, an
 | Name | Only from |
 | --- | --- |
 | `*.infra.k8s.wlkr.ch`, wildcards | The namespaces `infra-gateway` admits; a new platform UI extends both lists |
-| `*.ssh.wlkr.ch` | `claude-agents` |
+| `<session>.ssh.wlkr.ch` | `claude-<session>` |
 | `auth.k8s.wlkr.ch`, `advent.wollbi.ch`, `fest.wollbi.ch` | `authentik`, `advent-wollbi`, `fest-wollbi`; a new owned name extends the policy's `owners` map |
 | No hostname | `kube-system` |
 

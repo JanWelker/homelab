@@ -17,15 +17,13 @@ Five cluster-wide controls: Pod Security Admission, default-deny network policy 
 
 ### Pod Security Admission
 
-A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It exempts only `kube-system`, which Cilium needs before Argo CD can label anything; an exemption skips `audit` and `warn` as well, so every other namespace below is judged by its labels. Each namespace in `pod-security.yaml` carries three labels:
+A namespace without labels gets the cluster default from `ansible/templates/admission.yaml.j2`: `enforce` at `baseline`, `audit` and `warn` at `restricted`. It reaches a control-plane node only at provisioning; see [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It exempts only `kube-system`, which Cilium needs before Argo CD can label anything; an exemption skips `audit` and `warn` as well. Each namespace in `pod-security.yaml` carries three labels:
 
 | Label | Set to | Effect |
 | --- | --- | --- |
 | `enforce` | The level the namespace demonstrably needs | Rejects pods that violate it |
 | `audit` | Stricter | Records violations in the [API server audit log](<https://homelab.wlkr.ch/architecture/audit-logging/index.md>) |
 | `warn` | Stricter | Warns whoever applies the manifest |
-
-Enforcement is set to what already works; `warn` and `audit` show what a stricter level would catch.
 
 The level per namespace is in `pod-security.yaml`; the rule behind it:
 
@@ -95,7 +93,7 @@ The same rule applies to a chart workload whose own ServiceAccount has no bindin
 
 ### Agent RBAC
 
-`claude-agent-rbac.yaml` gives the in-cluster Claude Code agents two ClusterRoles for the `claude-reader` and `claude-writer` ServiceAccounts of the `claude-agents` namespace. Cluster-scoped RBAC cannot come from the `apps` project, and what an agent may touch is a platform decision.
+`claude-agent-rbac.yaml` gives the in-cluster Claude Code agents two ClusterRoles for the `claude-reader` and `claude-writer` ServiceAccounts of the `claude-homelab` namespace, the one session with cluster access. Cluster-scoped RBAC cannot come from the `apps` project.
 
 | Role | Bound | Grants | Leaves out |
 | --- | --- | --- | --- |
@@ -103,10 +101,11 @@ The same rule applies to a chart workload whose own ServiceAccount has no bindin
 | `claude-agent-write` | Nowhere by the platform: the workloads repository adds a RoleBinding in each namespace a writer session may change | Create, update, patch and delete on pods, workloads, Services, ConfigMaps, jobs, autoscalers and disruption budgets | The above, plus PersistentVolumeClaims (deleting one deletes data), NetworkPolicies and routes (they change who may reach what, which is a pull request) |
 
 - **Creating a pod reads every Secret in its namespace.** That is why the write role is bound per namespace, and the `apps` project cannot place a RoleBinding in the namespaces its [destinations](<https://homelab.wlkr.ch/platform/argocd/index.md#projects>) exclude.
-- **`claude-writer-pod-limits`** in `admission-policies.yaml` refuses any pod or pod template from the writer that uses the host's network, PID or IPC namespace, a `hostPath` volume, a privileged container, or a ServiceAccount other than `default` or the one the workload already runs as. A namespace without a Pod Security level allows all of those, and another ServiceAccount's token is that account's RBAC.
+- **Each session is a `claude-<session>` namespace** declared in `pod-security.yaml`; `namespace-name-guard` keeps the `apps` project from creating one, so a new session is a platform pull request first. It reaches only its own [OpenBao prefix](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>), host name and certificate.
+- **`claude-writer-pod-limits`** in `admission-policies.yaml` refuses any pod or pod template from a `claude-writer` ServiceAccount that uses the host's network, PID or IPC namespace, a `hostPath` volume, a privileged container, or a ServiceAccount other than `default` or the one the workload already runs as. A namespace without a Pod Security level allows all of those, and another ServiceAccount's token is that account's RBAC.
 - **`pods/log` is cluster-wide**, so the reader sees whatever any component logs, platform namespaces included. Triage needs it, and a cluster-wide grant cannot leave out namespaces.
 
-Kinds are listed, never wildcarded, so a new CRD is invisible to the agents until someone adds it. Argo CD reverts a hand edit within minutes either way.
+Kinds are listed, never wildcarded, so a new CRD is invisible to the agents until someone adds it.
 
 ### Admission policies
 
@@ -119,7 +118,7 @@ Trivy reports a bad image after it is running; `admission-policies.yaml` refuses
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](<#agent-rbac>) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
 | `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`. Blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds, so this is what keeps `apps` out; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
-| `namespace-name-guard` | `Deny` | A platform namespace, `kube-*`, `velero` or `claude-<session>` may be applied only by a platform Application: `apps` creates Namespaces, so a workload could otherwise relabel a platform one or take a name [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>) reaches by prefix. `claude-agents` is exempt |
+| `namespace-name-guard` | `Deny` | A platform namespace, `kube-*`, `velero` or `claude-<session>` may be applied only by a platform Application: `apps` creates Namespaces, so a workload could otherwise relabel a platform one or take a name [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>) reaches by prefix |
 | `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) |
 | `object-store-user-scope` | `Deny` | Outside `rook-ceph`, a `CephObjectStoreUser` is named `<namespace>.<purpose>` and carries no admin `capabilities`. Its name is its S3 user ID, so a free choice would hand one namespace another's keys — see [Backup writers](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#backup-writers>) |
 | `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |

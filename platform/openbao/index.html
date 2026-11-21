@@ -2962,8 +2962,7 @@
 <p><a href="https://openbao.org/">OpenBao</a> is the cluster's secret store, an open-source
 fork of HashiCorp Vault. It holds every secret the cluster consumes, surfaced
 as native <code>Secret</code> objects by the <a href="../external-secrets/">External Secrets Operator</a>.
-Sealed, nothing that needs a credential works, and the failure looks like six
-unrelated things breaking at once.</p>
+Sealed, nothing that needs a credential works.</p>
 <pre class="mermaid"><code>flowchart LR
     Operator([Operator]) --&gt;|bao CLI| Bao[(OpenBao&lt;br/&gt;KV v2)]
     ESO[External Secrets&lt;br/&gt;Operator] --&gt;|read, write once| Bao
@@ -2994,7 +2993,7 @@ unrelated things breaking at once.</p>
 </tr>
 <tr>
 <td>If it is down — or merely sealed</td>
-<td>No <code>ExternalSecret</code> resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start. It looks healthy from the outside</td>
+<td>No <code>ExternalSecret</code> resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start</td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -3051,7 +3050,7 @@ unrelated things breaking at once.</p>
 </tr>
 <tr>
 <td><code>unauthenticated_metrics_access</code></td>
-<td><code>/v1/sys/metrics</code> otherwise wants a token the ServiceMonitor lacks. The metrics carry no paths or secrets</td>
+<td><code>/v1/sys/metrics</code> otherwise wants a token the ServiceMonitor lacks.</td>
 </tr>
 <tr>
 <td><code>retry_join</code> stanzas</td>
@@ -3135,9 +3134,9 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td>The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one</td>
 </tr>
 <tr>
-<td><code>claude-agents/argocd</code></td>
+<td><code>claude-homelab/argocd</code></td>
 <td><code>token</code></td>
-<td>The agents' Argo CD API token — <a href="../argocd/#agent-account">Agent account</a>; empty until generated</td>
+<td>The homelab session's Argo CD API token — <a href="../argocd/#agent-account">Agent account</a>; empty until generated</td>
 </tr>
 <tr>
 <td><code>shot-bridge/accounts</code></td>
@@ -3152,7 +3151,7 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <tr>
 <td><code>claude-&lt;session&gt;/github</code></td>
 <td><code>token</code></td>
-<td>One agent session's GitHub PAT, for any session name: <code>make claude-session-pat SESSION=&lt;session&gt;</code> stores it, adding <code>DELETE=1</code> removes the path. Not part of <code>make bao-secrets</code>, so a session needs no platform change. Empty until typed in</td>
+<td>One agent session's GitHub PAT, for any session name: <code>make claude-session-pat SESSION=&lt;session&gt;</code> stores it, adding <code>DELETE=1</code> removes the path. Not part of <code>make bao-secrets</code>; write it before the session's first sync. Empty until typed in</td>
 </tr>
 <tr>
 <td><code>velero/repository</code> (generated)</td>
@@ -3168,9 +3167,7 @@ a <code>bao kv put</code> replaces the whole path.</p>
 </table>
 <p>The two <code>route53</code> leaves are separate IAM users on purpose: cert-manager's
 <a href="../cert-manager/#configuration">policy</a> allows only <code>_acme-challenge</code> TXT
-records, while external-dns creates and deletes A records by design, so stolen it can
-repoint hostnames. One shared key collapses both into "someone owns your
-domain".</p>
+records, while a stolen external-dns key can repoint hostnames.</p>
 <h3 id="generated-secrets">Generated secrets<a class="headerlink" href="#generated-secrets" title="Permanent link">&para;</a></h3>
 <p>Every random value — session keys, break-glass admin passwords, OIDC client
 pairs — comes from an ESO <code>Password</code> generator, written into OpenBao by a
@@ -3258,8 +3255,8 @@ target writes a <code>.bak</code>; one beside it is a stale hand copy, so delete
 <p>ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao
 validates against the TokenReview API (<code>rbac.yaml</code> binds
 <code>system:auth-delegator</code> to the <code>openbao</code> ServiceAccount) and answers with a
-token bound to one policy. Three <code>ClusterSecretStore</code>s in
-<code>cluster-secret-store.yaml</code> each log in with their own role, so what a
+token bound to one policy. Two <code>ClusterSecretStore</code>s in
+<code>cluster-secret-store.yaml</code> log in with their own roles, so what a
 namespace can reach follows from the store it is allowed to use:</p>
 <table>
 <thead>
@@ -3279,15 +3276,9 @@ namespace can reach follows from the store it is allowed to use:</p>
 </tr>
 <tr>
 <td><code>openbao-apps</code></td>
-<td>The workload namespaces the store lists</td>
+<td>The workload and agent-session namespaces the store lists</td>
 <td><code>external-secrets-vault</code> in the <code>ExternalSecret</code>'s own namespace</td>
-<td><code>kv/&lt;namespace&gt;/</code></td>
-</tr>
-<tr>
-<td><code>openbao-claude-agents</code></td>
-<td><code>claude-agents</code></td>
-<td>The same, in <code>claude-agents</code></td>
-<td><code>kv/claude-*</code>, where <code>make claude-session-pat</code> writes each session's token</td>
+<td><code>kv/&lt;namespace&gt;/</code>, with create, read and update</td>
 </tr>
 </tbody>
 </table>
@@ -3306,6 +3297,10 @@ namespace can reach follows from the store it is allowed to use:</p>
 <tr>
 <td>Both stores list their namespaces by name, and <code>bao-policies.sh</code> binds the <code>external-secrets-apps</code> role to the <code>openbao-apps</code> list</td>
 <td>A label would not do: a workload may ship its own <code>Namespace</code> with any label. A role bound to every namespace would let any new <code>external-secrets-vault</code> ServiceAccount log in. A platform namespace that reads a secret adds itself to <code>openbao</code>, a workload to <code>openbao-apps</code> (<a href="../external-secrets/#adding-a-secret">steps</a>)</td>
+</tr>
+<tr>
+<td>An agent session is a <code>claude-&lt;session&gt;</code> namespace, declared in <code>pod-security.yaml</code> and listed on <code>openbao-apps</code></td>
+<td>Its token at <code>kv/claude-&lt;session&gt;/github</code> sits in the one prefix its namespace reaches. <code>namespace-name-guard</code> keeps <code>apps</code> from creating it, so a session is a platform change, then <code>make bao-policies</code>, then the workloads repository</td>
 </tr>
 <tr>
 <td>Each workload ships an <code>external-secrets-vault</code> ServiceAccount</td>

@@ -2782,8 +2782,8 @@ issuers do not set <code>hostedZoneID</code>. It lives in AWS, so a change is ap
 </span></code></pre></div>
 <p>List one <code>hostedzone/&lt;zone-id&gt;</code> ARN per zone a Certificate names.</p>
 <h3 id="issuer-scope">Issuer scope<a class="headerlink" href="#issuer-scope" title="Permanent link">&para;</a></h3>
-<p><code>certificate-issuer-scope</code> lets only <code>kube-system</code>, and <code>claude-agents</code> for
-<code>*.ssh.wlkr.ch</code>, use a ClusterIssuer, which signs any name in the zones; see
+<p><code>certificate-issuer-scope</code> lets only <code>kube-system</code>, and <code>claude-&lt;session&gt;</code> for
+<code>&lt;session&gt;.ssh.wlkr.ch</code>, use a ClusterIssuer, which signs any name in the zones; see
 <a href="../security-policies/#admission-policies">policies</a>.</p>
 <h3 id="pods-from-the-controllers">Pods from the controllers<a class="headerlink" href="#pods-from-the-controllers" title="Permanent link">&para;</a></h3>
 <p><code>controller-pod-limits</code> refuses pods from the cert-manager controller, which

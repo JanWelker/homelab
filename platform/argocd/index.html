@@ -2873,8 +2873,8 @@ project lands there and must be able to do nothing.</p>
 may read everything <code>role:readonly</code> reads, <code>argocd app get --refresh</code>
 included, and nothing else: the sessions investigate and open pull requests,
 and every Application syncs itself. It has <code>apiKey</code> only, so it cannot log
-in. One token serves every session with <code>argocd.enabled</code>, so its expiry is
-what bounds a leak from any of them.</p>
+in. A session with <code>argocd.enabled</code> reads its own copy at
+<code>kv/claude-&lt;session&gt;/argocd</code>; only <code>homelab</code> has one.</p>
 <p>The token expires after 90 days, which caps a leak at a quarter; an expired
 one fails every agent <code>argocd</code> call until the next is stored. To rotate:</p>
 <ol>
@@ -2884,13 +2884,13 @@ one fails every agent <code>argocd</code> call until the next is stored. To rota
 </span></code></pre></div>
 </li>
 <li>
-<p>Store it with <code>make bao-secrets</code>, at <code>kv/claude-agents/argocd</code>
+<p>Store it with <code>make bao-secrets</code>, at <code>kv/claude-homelab/argocd</code>
    (<code>token</code>).</p>
 </li>
 <li>
 <p>Pull it into the sessions now instead of at the next <code>refreshInterval</code>; the
    wrapper reads the mounted file on every call, so no pod restarts:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>claude-agents<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>claude-&lt;session&gt;-argocd<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>claude-homelab<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>claude-homelab-argocd<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
 </li>
 <li>

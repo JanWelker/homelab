@@ -3040,8 +3040,7 @@ enforce second, one namespace at a time.</p>
 <code>warn</code> at <code>restricted</code>. It reaches a control-plane node only at provisioning;
 see <a href="../../architecture/security/#node-hardening">Node hardening</a>. It exempts
 only <code>kube-system</code>, which Cilium needs before Argo CD can label anything; an
-exemption skips <code>audit</code> and <code>warn</code> as well, so every other namespace below is
-judged by its labels.
+exemption skips <code>audit</code> and <code>warn</code> as well.
 Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 <table>
 <thead>
@@ -3069,8 +3068,6 @@ Each namespace in <code>pod-security.yaml</code> carries three labels:</p>
 </tr>
 </tbody>
 </table>
-<p>Enforcement is set to what already works; <code>warn</code> and <code>audit</code> show what a
-stricter level would catch.</p>
 <p>The level per namespace is in <code>pod-security.yaml</code>; the rule behind it:</p>
 <table>
 <thead>
@@ -3258,8 +3255,8 @@ the chart offers no switch (Rook's <code>rook-ceph-default</code> and <code>rook
 <h3 id="agent-rbac">Agent RBAC<a class="headerlink" href="#agent-rbac" title="Permanent link">&para;</a></h3>
 <p><code>claude-agent-rbac.yaml</code> gives the in-cluster Claude Code agents two
 ClusterRoles for the <code>claude-reader</code> and <code>claude-writer</code> ServiceAccounts of the
-<code>claude-agents</code> namespace. Cluster-scoped RBAC cannot come from the <code>apps</code>
-project, and what an agent may touch is a platform decision.</p>
+<code>claude-homelab</code> namespace, the one session with cluster access. Cluster-scoped
+RBAC cannot come from the <code>apps</code> project.</p>
 <table>
 <thead>
 <tr>
@@ -3289,8 +3286,13 @@ project, and what an agent may touch is a platform decision.</p>
   write role is bound per namespace, and the <code>apps</code> project cannot place a
   RoleBinding in the namespaces its <a href="../argocd/#projects">destinations</a>
   exclude.</li>
+<li><strong>Each session is a <code>claude-&lt;session&gt;</code> namespace</strong> declared in
+  <code>pod-security.yaml</code>; <code>namespace-name-guard</code> keeps the <code>apps</code> project from
+  creating one, so a new session is a platform pull request first. It reaches
+  only its own <a href="../openbao/#kubernetes-auth">OpenBao prefix</a>, host name and
+  certificate.</li>
 <li><strong><code>claude-writer-pod-limits</code></strong> in <code>admission-policies.yaml</code> refuses any pod
-  or pod template from the writer that uses the host's network, PID or IPC
+  or pod template from a <code>claude-writer</code> ServiceAccount that uses the host's network, PID or IPC
   namespace, a <code>hostPath</code> volume, a privileged container, or a ServiceAccount
   other than <code>default</code> or the one the workload already runs as. A namespace
   without a Pod Security level allows all of those, and another
@@ -3300,7 +3302,7 @@ project, and what an agent may touch is a platform decision.</p>
   cannot leave out namespaces.</li>
 </ul>
 <p>Kinds are listed, never wildcarded, so a new CRD is invisible to the agents
-until someone adds it. Argo CD reverts a hand edit within minutes either way.</p>
+until someone adds it.</p>
 <h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
 <p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
 refuses or records it at admission, with the built-in
@@ -3345,7 +3347,7 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <tr>
 <td><code>namespace-name-guard</code></td>
 <td><code>Deny</code></td>
-<td>A platform namespace, <code>kube-*</code>, <code>velero</code> or <code>claude-&lt;session&gt;</code> may be applied only by a platform Application: <code>apps</code> creates Namespaces, so a workload could otherwise relabel a platform one or take a name <a href="../openbao/#kubernetes-auth">OpenBao</a> reaches by prefix. <code>claude-agents</code> is exempt</td>
+<td>A platform namespace, <code>kube-*</code>, <code>velero</code> or <code>claude-&lt;session&gt;</code> may be applied only by a platform Application: <code>apps</code> creates Namespaces, so a workload could otherwise relabel a platform one or take a name <a href="../openbao/#kubernetes-auth">OpenBao</a> reaches by prefix</td>
 </tr>
 <tr>
 <td><code>obc-bucket-owner</code></td>
