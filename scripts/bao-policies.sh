@@ -8,19 +8,17 @@
 #
 # `make bao-init` runs this on a fresh cluster. An initialised cluster is left
 # alone by bao-init, so a change here reaches the live one only through this
-# target. Every run overwrites all four policies and roles; nothing else is
+# target. Every run overwrites all three policies and roles; nothing else is
 # touched. See docs/platform/openbao.md#kubernetes-auth.
 #
 #   role / policy                   store                  reaches
 #   external-secrets                openbao                the platform's paths, writes three
 #   external-secrets-apps           openbao-apps           kv/<caller's namespace>/
-#   external-secrets-claude-agents  openbao-claude-agents  kv/claude-*
 #   openbao-snapshot                (backup CronJob)       the Raft snapshot
 set -euo pipefail
 
 ESO_NAMESPACE="${ESO_NAMESPACE:-external-secrets}"
 ESO_SERVICEACCOUNT="${ESO_SERVICEACCOUNT:-external-secrets-vault}"
-CLAUDE_NAMESPACE="${CLAUDE_NAMESPACE:-claude-agents}"
 
 # shellcheck source=lib/bao.sh source-path=SCRIPTDIR
 . "$(dirname "${BASH_SOURCE[0]}")/lib/bao.sh"
@@ -138,20 +136,10 @@ bao write auth/kubernetes/role/external-secrets-apps \
   ttl=1h >/dev/null
 echo "    external-secrets-apps           role bound to ${apps_namespaces}/${ESO_SERVICEACCOUNT}"
 
-# Read only: nothing in the sessions' namespace pushes.
-bao_in policy write external-secrets-claude-agents - <<'POLICY' >/dev/null
-path "kv/data/claude-*" {
-  capabilities = ["read"]
-}
-POLICY
-echo "    external-secrets-claude-agents  policy written (read on kv/claude-*)"
-
-bao write auth/kubernetes/role/external-secrets-claude-agents \
-  bound_service_account_names="$ESO_SERVICEACCOUNT" \
-  bound_service_account_namespaces="$CLAUDE_NAMESPACE" \
-  policies=external-secrets-claude-agents \
-  ttl=1h >/dev/null
-echo "    external-secrets-claude-agents  role bound to ${CLAUDE_NAMESPACE}/${ESO_SERVICEACCOUNT}"
+# The shared claude-agents role and policy are gone; deleting them is idempotent.
+bao_in policy delete external-secrets-claude-agents >/dev/null 2>&1 || true
+bao delete auth/kubernetes/role/external-secrets-claude-agents >/dev/null 2>&1 || true
+echo "    external-secrets-claude-agents  policy and role removed"
 
 # The snapshot is the whole barrier-encrypted store; reading it reveals nothing
 # without the unseal keys, and this policy grants nothing else.
