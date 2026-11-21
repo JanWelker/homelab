@@ -25,8 +25,8 @@ SELECTOR = '{job="systemd-journal"%s} |= "avc:" |= "denied"'
 # One denial line: perms, command, source type, target type, object class.
 PARSE = (
     'regexp `denied\\s+\\{ (?P<perms>[^}]+) \\}.*comm="(?P<comm>[^"]+)"'
-    '.*scontext=[^:]+:[^:]+:(?P<stype>[a-z0-9_]+)'
-    '.*tcontext=[^:]+:[^:]+:(?P<ttype>[a-z0-9_]+)'
+    '.*scontext=[^:]+:[^:]+:(?P<stype>[a-z0-9_.-]+)'
+    '.*tcontext=[^:]+:[^:]+:(?P<ttype>[a-z0-9_.-]+)'
     '.*tclass=(?P<tclass>[a-z0-9_]+)`'
 )
 PATH_RE = re.compile(r'(?:path|name)="([^"]+)"')
@@ -96,7 +96,7 @@ def cmd_paths(args):
     for stream in lines:
         for _, line in stream['values']:
             m = PATH_RE.search(line)
-            ttype = re.search(r'tcontext=[^:]+:[^:]+:([a-z0-9_]+)', line)
+            ttype = re.search(r'tcontext=[^:]+:[^:]+:([a-z0-9_.-]+)', line)
             if not m or not ttype:
                 continue
             path = m.group(1)
