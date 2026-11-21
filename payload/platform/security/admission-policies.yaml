@@ -319,7 +319,6 @@ spec:
          'snapshot-controller', 'tetragon', 'trivy-operator', 'velero', 'workloads']
     # The platform's namespaces, and the top-level KV prefixes no workload may
     # be named after: the agent sessions' `claude-<session>` and `velero`.
-    # claude-agents is the apps-owned namespace the sessions still run in.
     - name: reserved
       expression: >-
         object.metadata.name in ['arc-jobs', 'arc-runners', 'arc-systems', 'argocd', 'authentik', 'backup',
@@ -328,7 +327,7 @@ spec:
          'monitoring', 'node-exporter', 'openbao', 'rook-ceph', 'trivy-system',
          'velero'] ||
         object.metadata.name.startsWith('kube-') ||
-        (object.metadata.name.startsWith('claude-') && object.metadata.name != 'claude-agents')
+        object.metadata.name.startsWith('claude-')
   validations:
     - expression: >-
         !variables.reserved || variables.application in variables.platform
@@ -561,7 +560,6 @@ spec:
         wildcard hostname.
       reason: Forbidden
     - expression: >-
-        object.metadata.namespace == 'claude-agents' ||
         variables.hosts.all(h, !h.endsWith('.ssh.wlkr.ch') ||
           (object.metadata.namespace.startsWith('claude-') &&
            h == object.metadata.namespace.substring(7) + '.ssh.wlkr.ch'))
@@ -613,8 +611,6 @@ spec:
   validations:
     - expression: >-
         object.metadata.namespace == 'kube-system' ||
-        (object.metadata.namespace == 'claude-agents' &&
-         variables.names.all(n, n.endsWith('.ssh.wlkr.ch') && !n.startsWith('*'))) ||
         (object.metadata.namespace.startsWith('claude-') &&
          variables.names.all(n, n == object.metadata.namespace.substring(7) + '.ssh.wlkr.ch'))
       message: >-
