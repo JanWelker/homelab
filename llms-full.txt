@@ -4057,7 +4057,7 @@ The [Security Profiles Operator](<https://github.com/kubernetes-sigs/security-pr
 
 | Setting | Why |
 | --- | --- |
-| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed 512Mi request at node-critical priority, which preempts pods on a full node; the mutating policy halves it at pod creation |
+| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed 512Mi request at node-critical priority, preempting pods on a full node; the policy halves it at pod creation |
 | `customTemplatesConfigMap` left unset | The bundled templates do not match Flatcar's base policy and a `.cil` set for it does not exist yet; a ConfigMap that is named but absent keeps the daemon pod from starting |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
 | `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
