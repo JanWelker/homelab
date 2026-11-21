@@ -178,13 +178,10 @@ applicationSet:
 dex:
   enabled: false
 
+# Nothing is configured to notify, and its ClusterRole reads every Secret; see
+# docs/platform/argocd.md#configuration
 notifications:
-  resources:
-    requests:
-      cpu: 10m
-      memory: 64Mi
-    limits:
-      memory: 128Mi
+  enabled: false
 
 configs:
   params:
