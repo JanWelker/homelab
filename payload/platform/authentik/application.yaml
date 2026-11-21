@@ -68,6 +68,10 @@ spec:
 
           server:
             replicas: 2
+            # The chart honours the switch only with a name; the server calls no Kubernetes API,
+            # unlike the worker, whose outpost integration needs its token. See docs/platform/authentik.md#chart-values
+            serviceAccountName: default
+            automountServiceAccountToken: false
             # One replica per eviction; see docs/platform/index.md#replica-placement
             pdb:
               enabled: true
