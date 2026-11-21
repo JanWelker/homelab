@@ -103,9 +103,10 @@ placement](index.md#replica-placement).
 | Setting | Why |
 | --- | --- |
 | `authentik.disable_update_check`, `authentik.disable_startup_analytics` and `authentik.avatars` | Telemetry is switched off in config, not permitted by network policy — the same rule as Grafana, Loki and Alloy. `avatars` only seeds a fresh database: since 2024.2 the setting lives in **System → Settings**, and an existing install keeps calling Gravatar until it is set to `initials` there. Blueprints cannot set it: system settings are an internally managed model, and upstream declined a config-level override in [goauthentik/authentik#26470](https://github.com/goauthentik/authentik/issues/26470) |
-| `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". The chart value backfills the tenant, so a rebuilt cluster needs no click |
+| `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
+| `server.serviceAccountName` and `automountServiceAccountToken` | The server calls no Kubernetes API; the chart applies the switch only with a name set. The worker keeps its token for outposts |
 | `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](index.md#replica-placement). The worker is not replicated and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
 | `worker.volumes` `blueprints-workloads` | Authentik keys a blueprint instance by file path and name; `blueprints.configMaps` would mount the file under a second path and register it twice. The mount path stays `workloads` for that reason |
@@ -230,7 +231,7 @@ membership is set by hand under **Directory &rarr; Groups**:
 
 | Group | Grants |
 | --- | --- |
-| `infra-users` | Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Flowscape and the Extractor admin UI. Grafana `Viewer` for a direct member |
+| `infra-users` | Past the Authentik login of every infra application: ArgoCD, Grafana, Hubble, the Ceph dashboard, Prometheus, Alertmanager, Home Assistant, Flowscape, Umami and the Extractor admin UI. Grafana `Viewer` for a direct member |
 | `argocd-admins` | ArgoCD `role:admin`, and `infra-users` |
 | `argocd-viewers` | ArgoCD `role:readonly`, and `infra-users` |
 | `grafana-admins` | Grafana `Admin`, and `infra-users` |
@@ -244,8 +245,7 @@ their parent, and Authentik counts a child group's members as members of
 the parent. Grafana only sees the groups a user belongs to directly, and
 with `role_attribute_strict` it refuses a login that matches none of its
 three. ArgoCD's `policy.default` is empty, so a user in neither ArgoCD group
-gets **no** access. The wollbi sites bind `wollbi-editors` instead. Home
-Assistant and Umami have no binding: they have logins of their own.
+gets **no** access. The wollbi sites bind `wollbi-editors` instead.
 
 ## Usage
 
@@ -259,9 +259,7 @@ nothing is copied out of a UI. The `PushSecret` in `secrets.yaml` writes
 [Generated secrets](openbao.md#generated-secrets) — with the secret key, the
 bootstrap password and the ArgoCD and Grafana client pairs; its
 `Password` generator's `secretKeys` is the list of keys. A
-workload's client credentials go in the workload's own path (Dependency-Track's in
-`kv/dependency-track/config`,
-each read by its own `secrets-<workload>.yaml`, mounted `optional`): rewriting `kv/authentik/config` would rotate the secret key
+workload's client credentials go in the workload's own path, read by its own `secrets-<workload>.yaml` mounted `optional`: rewriting `kv/authentik/config` would rotate the secret key
 that signs every session and token, and External Secrets fails an
 `ExternalSecret` whole when one key is missing, so a shared one would leave
 a cluster without the workload with no `AUTHENTIK_SECRET_KEY` either.
@@ -345,7 +343,7 @@ When every login fails, in this order:
     `authentik_outposts.outpost` sets `providers` wholesale. Every proxied application must be listed there; adding one and forgetting the list silently unassigns the others, which fail open.
 
 !!! note "Home Assistant and Umami are the exceptions"
-    Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice, which is defence in depth rather than single sign-on. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so `/script.js` and `/api/send` pass the same way; the rest of the dashboard and API stays behind the login.
+    Each has a login of its own and upstream ships no OIDC provider to replace it, so the outpost sits *in front of* it: browser users authenticate twice. Home Assistant's companion apps and webhooks hold a long-lived token and cannot complete an interactive login, so `skip_path_regex` lets `/api/`, `/auth/token` and the external-auth callback through; Home Assistant's own accounts are the only thing guarding those paths, and revoking an Authentik account does not revoke a Home Assistant token. Umami's tracker script and collect endpoint are loaded by every visitor of every site that embeds it, so `/script.js` and `/api/send` pass the same way; the rest of the dashboard and API stays behind the login.
 
 ## Recovery
 
