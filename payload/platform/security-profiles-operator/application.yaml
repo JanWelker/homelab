@@ -20,10 +20,10 @@ spec:
         # Why each non-default value: docs/platform/security-profiles-operator.md#configuration
         replicaCount: 2
 
-        # Off until the nodes have a writable policy store: selinuxd reserves
-        # memory it cannot use; see docs/platform/security-profiles-operator.md#pitfalls
+        # selinuxd's fixed memory request is halved by the selinuxd-memory-request
+        # policy; see docs/platform/security-profiles-operator.md#configuration
         selinux:
-          enable: false
+          enable: true
 
         # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
         resources:
