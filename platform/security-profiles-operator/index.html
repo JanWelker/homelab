@@ -1645,6 +1645,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#policy-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Policy store
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#templates" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2494,6 +2505,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#policy-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Policy store
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#templates" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2767,6 +2789,14 @@ AppArmor and the log enricher are off.</p>
 <p>The images are the chart's: the operator from <code>registry.k8s.io</code> and <code>selinuxd</code>
 from <code>quay.io</code>, pinned by digest inside the chart, so Renovate sees only the
 chart version.</p>
+<h3 id="policy-store">Policy store<a class="headerlink" href="#policy-store" title="Permanent link">&para;</a></h3>
+<p>Flatcar's <code>/var/lib/selinux</code> is a symlink into the read-only <code>/usr</code>, where
+<code>selinuxd</code> cannot install anything. <code>selinux-policy-store.service</code> in
+<code>butane_node_config.yaml.j2</code> replaces it with a copy before the kubelet
+starts, and copies again when the Flatcar version changes, dropping the policy
+<code>selinuxd</code> compiled from the old base; the daemon installs its modules again
+when its pod starts. Until it has, a pod whose type comes from a profile
+cannot start on that node.</p>
 <h3 id="templates">Templates<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h3>
 <p><code>selinuxd-templates.yaml</code> is the image's template set with three changes:
 <code>svirt_sandbox_domain</code> is gone and <code>sandbox_net_domain</code> is
@@ -2809,10 +2839,6 @@ needs no module at all, is the <code>selinux-denials</code> skill.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <p>Known gaps:</p>
 <ul>
-<li><strong>The policy store is read-only.</strong> On Flatcar <code>/var/lib/selinux</code> is a symlink
-  to <code>/usr/lib/selinux/policy</code>, so <code>selinuxd</code> cannot install a module until the
-  node template provides a writable copy and re-copies it after each OS update.
-  Until then no <code>SelinuxProfile</code> reaches <code>Installed</code>.</li>
 <li><strong>Two policy files.</strong> <code>selinuxd</code> writes <code>policy.33</code>, the kernel's version,
   beside the shipped <code>policy.35</code>; a <code>semodule -B</code> with the host's tools
   rewrites only the latter, and the node then boots the stale one.</li>
