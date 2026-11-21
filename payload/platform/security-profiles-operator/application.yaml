@@ -20,10 +20,10 @@ spec:
         # Why each non-default value: docs/platform/security-profiles-operator.md#configuration
         replicaCount: 2
 
-        # Renders spec.selinux.enable on the spod object; seccomp, AppArmor
-        # and the recorders stay at the chart's defaults, off.
+        # Off until the nodes have a writable policy store: selinuxd reserves
+        # memory it cannot use; see docs/platform/security-profiles-operator.md#pitfalls
         selinux:
-          enable: true
+          enable: false
 
         # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
         resources:
