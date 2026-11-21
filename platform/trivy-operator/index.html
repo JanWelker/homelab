@@ -2997,17 +2997,17 @@ project may not create cluster-scoped RBAC, and which workload reads the
 operator's findings is decided here.</p>
 <h3 id="report-pruning">Report pruning<a class="headerlink" href="#report-pruning" title="Permanent link">&para;</a></h3>
 <p><code>SbomReport</code>s and <code>ExposedSecretReport</code>s carry no TTL, unlike the
-<code>VulnerabilityReport</code>s: they are owned by the scanned ReplicaSet and live as
-long as it does, and Deployments keep ten superseded revisions scaled to zero.
-Those SBOMs were over half the reports' bytes in etcd, and each API server holds
-them decoded in its watch cache.
-The <code>report-prune</code> CronJob in <code>report-prune.yaml</code> deletes the two kinds for
-every ReplicaSet scaled to zero, daily before the Dependency-Track upload, which
-skips those reports anyway. The two <code>ScanOnlyCurrentRevisions</code> settings keep
-the operator from writing them again. It also deletes reports with no owner:
-garbage collection only removes a report with its owning workload, so one left
-without an owner, as a removed node's Rook <code>osd-prepare</code> Job left its own, stays
-forever.</p>
+<code>VulnerabilityReport</code>s: they live as long as the scanned ReplicaSet, and
+Deployments keep ten superseded revisions scaled to zero.
+The reports are most of etcd's bytes, and each API server holds them
+decoded in its watch cache. The <code>report-prune</code> CronJob in <code>report-prune.yaml</code>
+deletes the two kinds hourly for every ReplicaSet scaled to zero; the
+Dependency-Track upload skips those anyway, and the two
+<code>ScanOnlyCurrentRevisions</code> settings keep the operator from writing them again.
+It also deletes ownerless reports, which garbage collection never reaches,
+the leftovers of the disabled cluster SBOM cache, and every report of a Job:
+<code>targetWorkloads</code> leaves <code>job</code> out, because the operator rescans a finished
+Job daily and the workload sharing its image is scanned. CronJobs stay.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>The dashboard is a summary; the objects have the detail.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># What has been scanned, worst first</span>
