@@ -110,7 +110,7 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
 >
 > **The backups are inside the thing being wiped**
 >
-> Every backup CronJob and Velero write to the Ceph object store this destroys — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#what-is-not-covered>). Copy anything you intend to restore from **off-cluster** first.
+> Every backup CronJob and Velero write to the Ceph object store this destroys — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#what-is-not-covered>). Copy anything you intend to restore from **off-cluster** first.
 
 1. Confirm the [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) ran after the last nightly backup, and copy anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.

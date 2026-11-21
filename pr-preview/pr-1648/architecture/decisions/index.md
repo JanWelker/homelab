@@ -8,7 +8,7 @@ Flatcar is an immutable, minimal, container-focused OS with A/B updates and decl
 
 Talos goes further — no SSH, no shell, an API-driven machine config — and would remove a whole class of drift. Flatcar keeps a conventional Linux underneath: `ssh`, `systemd`, `journalctl` and `kubeadm` work the way the upstream Kubernetes documentation assumes, which matters more for a cluster that is also a learning environment than the extra hardening does.
 
-The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## kubeadm, not k3s or a managed distribution
 

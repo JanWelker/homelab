@@ -81,7 +81,7 @@ A cluster provisioned before the VIP has its first control-plane node's address 
 
 ### Rebuild (simplest)
 
-Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>); the VIP is in place from `kubeadm init` onwards. Restore state per [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>); the VIP is in place from `kubeadm init` onwards. Restore state per [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
 
 ### In place
 

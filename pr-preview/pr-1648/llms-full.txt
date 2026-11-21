@@ -69,7 +69,7 @@ Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 | Concept | What it is | What it costs you |
 | --- | --- | --- |
 | [Flatcar Container Linux](<#flatcar-container-linux>) | An immutable OS with a read-only `/usr` and A/B partition updates | No `apt install`. Anything unusual has to arrive another way |
-| [Ignition & Butane](<#ignition-and-butane>) | First-boot provisioning from a JSON config | It runs *once*. Changing a template means rebuilding the node |
+| [Ignition &amp; Butane](<#ignition-and-butane>) | First-boot provisioning from a JSON config | It runs *once*. Changing a template means rebuilding the node |
 | [Systemd sysexts](<#systemd-sysexts>) | Read-only images that extend `/usr` at boot | Upgrading Kubernetes means swapping an image and rebooting |
 | [PXE boot](<#pxe-boot>) | Booting a machine off the network instead of its disk | Needs a DHCP server you control and a host on the same segment |
 | [GitOps](<#gitops>) | Git is the desired state; a controller reconciles to it | If it is not committed, it does not exist |
@@ -78,7 +78,7 @@ Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 
 [Flatcar](<https://www.flatcar.org/>) is an immutable, minimal Linux distribution designed for running containers. The root filesystem is read-only — you cannot install packages or modify system files at runtime — which forces all configuration to happen declaratively, at first boot, through Ignition. A read-only `/usr` makes undocumented drift between "identical" nodes impossible rather than merely discouraged.
 
-Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. **Nothing here reboots itself**: this project masks `locksmithd`, the daemon that would normally coordinate that, and hands the job to [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), which drains the node first. See [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. **Nothing here reboots itself**: this project masks `locksmithd`, the daemon that would normally coordinate that, and hands the job to [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), which drains the node first. See [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## Ignition and Butane
 
@@ -96,7 +96,7 @@ Updates are downloaded in the background onto the passive half of an A/B partiti
 
 Because `/usr` is read-only, software the base image does not ship — only `kubernetes`, in this cluster — arrives as a **system extension**: a read-only squashfs image overlaid onto `/usr` at boot, managed by `systemd-sysupdate`. Nodes fetch it from the HTTP boot server on their first boot from disk. containerd is part of the base image and is deliberately not replaced: a sysext-bakery build would run a containerd Flatcar has not tested.
 
-Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swapping an image and rebooting. See [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swapping an image and rebooting. See [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## PXE boot
 
@@ -106,7 +106,7 @@ Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swappi
 2. TFTP serves the syslinux bootloader and a per-MAC boot menu.
 3. Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition config URL as a kernel parameter.
 
-TFTP runs over UDP with no error correction worth the name, which is why everything larger than the bootloader moves to HTTP as fast as possible. The full sequence is in [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
+TFTP runs over UDP with no error correction worth the name, which is why everything larger than the bootloader moves to HTTP as fast as possible. The full sequence is in [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
 
 ## GitOps
 
@@ -212,7 +212,7 @@ The deployment host (the machine running Ansible and the boot server) must be on
    make config
    ```
 
-   Writes Ignition configs to `output/http` and PXE menus to `output/tftp`. Each host gets `ignition-<host>-install.json`, which the PXE environment runs to wipe the disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds into the installed system — see [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
+   Writes Ignition configs to `output/http` and PXE menus to `output/tftp`. Each host gets `ignition-<host>-install.json`, which the PXE environment runs to wipe the disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds into the installed system — see [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
 
    Re-run this after **any** change to `inventory.yaml`; the values are baked into the generated files. `make artifacts` runs steps 4 and 5 together. Check that one PXE menu was generated per node:
 
@@ -428,7 +428,7 @@ Step 7 fails as a black screen with a blinking cursor and no error message. Read
 
 A machine with two NICs PXE boots from whichever it likes, and the MAC on the case is often not that one. A node that boots the menu and stalls right after is almost always a wrong `boot_server_ip`, not a broken image.
 
-The boot server serves `output/tftp` over TFTP and `output/http` over HTTP — see [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>). If a file is missing from those directories, re-run `make artifacts`.
+The boot server serves `output/tftp` over TFTP and `output/http` over HTTP — see [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>). If a file is missing from those directories, re-run `make artifacts`.
 
 # Adapting This for Your Cluster
 
@@ -566,7 +566,7 @@ This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and G
 
 ## What is in this section
 
-- **[Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>)**
+- **[Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>)**
 
   ---
 
@@ -794,7 +794,7 @@ Changing the templates changes what a **newly provisioned** node gets. A running
    kubectl -n kube-system edit configmap kubeadm-config
    ```
 
-# Boot & Bootstrap Process
+# Boot &amp; Bootstrap Process
 
 One node from the power button to `kubectl get nodes`. When an install stalls, the question is *which arrow did not happen?*
 
@@ -820,7 +820,7 @@ sequenceDiagram
 
 The DHCP server is external and must hand out the boot server's IP as `next-server` and a syslinux filename — see the [Quickstart prerequisites](<https://homelab.wlkr.ch/quickstart/index.md#prerequisites>). Step 2 is where most first attempts die, silently: the firmware moves on to the next boot device.
 
-## 3\. Install & Bootstrap
+## 3\. Install &amp; Bootstrap
 
 PXE boots the **installer**, and only on a node armed with `make reinstall`; the generated menu otherwise says `DEFAULT localboot`. The installer is a RAM environment whose only job is to write Flatcar to `install_disk` and reboot into it. Two templates, because two machines share a disk and nothing else:
 
@@ -993,7 +993,7 @@ Flatcar is an immutable, minimal, container-focused OS with A/B updates and decl
 
 Talos goes further — no SSH, no shell, an API-driven machine config — and would remove a whole class of drift. Flatcar keeps a conventional Linux underneath: `ssh`, `systemd`, `journalctl` and `kubeadm` work the way the upstream Kubernetes documentation assumes, which matters more for a cluster that is also a learning environment than the extra hardening does.
 
-The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+The cost is that Flatcar's read-only `/usr` forces everything unusual into [sysexts](<https://homelab.wlkr.ch/concepts/index.md#systemd-sysexts>), Kubernetes included, which is the source of the update behaviour in [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## kubeadm, not k3s or a managed distribution
 
@@ -1160,10 +1160,10 @@ Things this cluster does not do, collected so they are findable before they are 
 | **The API endpoint address is fixed at `kubeadm init`** | `controlPlaneEndpoint` is the kube-vip VIP, and `kubeadm` bakes it into the API server certificates, every node's kubeconfig and the stored `ClusterConfiguration`; Cilium's `k8sServiceHost` names the same address. Moving the VIP to another address is therefore a certificate regeneration on every control-plane node and a kubeconfig rewrite on every node, not a config change that can be synced | Choose the address once, outside any DHCP range and apart from the LoadBalancer pools. The in-place procedure exists for the day it has to move; the next build [uses a name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) | [Choosing the address](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#choosing-the-address>), [migrating in place](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#in-place>) |
 | **OpenBao needs an operator to unseal it** | Shamir seal, no auto-unseal: every restart (node reboot, Kured cycle, chart bump) leaves each replica sealed until the [threshold of key shares](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) is supplied. Sealed, no `ExternalSecret` resolves and cert-manager cannot renew. The cluster looks healthy; the consequence surfaces when a certificate expires | Check `bao status` after every reboot. Auto-unseal against a KMS or a second OpenBao would remove the step at the price of an external hard dependency; the key shares stay in the operator's hands on purpose | [Unsealing after a restart](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>), [after any node reboot](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) |
 | **Alerting reaches one mailbox** | One receiver, one mailbox, one SMTP provider, unmonitored. If mail is rejected or the password expires, alerts stop silently; `Watchdog` proves the pipeline only as far as Alertmanager | A second receiver on a different transport. Meanwhile, run the routine health check | [Alerting](<https://homelab.wlkr.ch/platform/monitoring/index.md#alerting>), [routine health check](<https://homelab.wlkr.ch/operations/index.md#routine-health-check>) |
-| **Backups do not leave the cluster** | Velero and the etcd snapshot CronJob write to the Ceph object store the cluster runs on: protection against a deleted PVC or a bad `prune`, none against losing the cluster | RGW bucket replication or a second Velero `BackupStorageLocation`; neither is configured. Until then disaster recovery is Git plus the OpenBao unseal keys | [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
+| **Backups do not leave the cluster** | Velero and the etcd snapshot CronJob write to the Ceph object store the cluster runs on: protection against a deleted PVC or a bad `prune`, none against losing the cluster | RGW bucket replication or a second Velero `BackupStorageLocation`; neither is configured. Until then disaster recovery is Git plus the OpenBao unseal keys | [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | **Automatic updates stop at patch releases** | Sysupdate is pinned to the Kubernetes major.minor in `ansible/inventory.yaml`; Kured drains and reboots one node at a time to apply what is staged, and refuses while Ceph or etcd is unhealthy. A minor Kubernetes upgrade is manual: change the inventory, push the sysupdate config to running nodes, run `kubeadm upgrade`. Kured blocks only on the alerts named in its config; anything outside that list does not stop a reboot | By design | [Nodes are pinned to a minor series](<https://homelab.wlkr.ch/operations/upgrades/index.md#nodes-are-pinned-to-a-minor-series>), [upgrading a minor deliberately](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>), [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) |
 | **The `infra` AppProject is permissive** | The network policies are enforced, but the `infra` AppProject allows every kind in every namespace, so a platform `application.yaml` can deploy anything anywhere | Narrow the projects | [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#authorization>) |
-| **Reprovisioning needs the boot server on the segment** | Rebuilding a node means `make serve` on a machine on the nodes' L2 segment, the external DHCP pointing at it, `make reinstall LIMIT=<node>`, and a power cycle. There is no remote rebuild, and the deployment host is not part of the cluster | Only *re*provisioning: Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server off | [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>) |
+| **Reprovisioning needs the boot server on the segment** | Rebuilding a node means `make serve` on a machine on the nodes' L2 segment, the external DHCP pointing at it, `make reinstall LIMIT=<node>`, and a power cycle. There is no remote rebuild, and the deployment host is not part of the cluster | Only *re*provisioning: Flatcar is installed to disk, so a running node reboots, updates and rejoins with the boot server off | [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>) |
 | **The object store survives one host down, no more** | During every Kured reboot the RGW data pool, which holds the Velero backups and Loki chunks, has no redundancy left, while `rbd-pool` still has some | Accepted, no migration: Ceph cannot change the erasure profile of an existing pool, so changing it means a new pool and moving every bucket | [Object storage](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#object-storage>) |
 | **Single region, site and rack** | No failure domain larger than a node. Ceph replicates across nodes on one power feed; a site-level event takes everything | The honest limit of a homelab | — |
 
@@ -1317,7 +1317,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | argocd-config | `argocd` | The `ExternalSecret` for ArgoCD's OIDC client, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
 | argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#structure>) |
 | [authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) | `authentik` | Single sign-on for every platform UI |
-| backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
+| backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) | `cert-manager` | The cert-manager chart |
 | certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
 | [cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
@@ -1340,7 +1340,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | security | `kube-system` | Pod Security Admission levels, the network policies and image admission policies — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
-| snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
+| snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md>) | `kube-system` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](<https://homelab.wlkr.ch/platform/velero/index.md>) | `backup` | Volume and resource backups to the Ceph object store |
@@ -3478,7 +3478,7 @@ Logged in as the operator through the `openbao-active` port-forward from [Authen
 bao operator raft snapshot save snapshot.bao
 ```
 
-The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
 
 # Rook-Ceph
 
@@ -4250,7 +4250,7 @@ A completed scan job counts against `concurrentScanJobsLimit` until `scanJobTTL`
 
 # Velero
 
-[Velero](<https://velero.io/>) backs up Kubernetes objects and, through CSI snapshots and its data mover, the data in every PVC, nightly into its prefix of the `offsite` bucket in the Ceph object store. What it covers, what it does not, and the restore runbooks are in [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>); this page is the chart tuning.
+[Velero](<https://velero.io/>) backs up Kubernetes objects and, through CSI snapshots and its data mover, the data in every PVC, nightly into its prefix of the `offsite` bucket in the Ceph object store. What it covers, what it does not, and the restore runbooks are in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>); this page is the chart tuning.
 
 ## At a glance
 
@@ -4396,12 +4396,12 @@ Everything here assumes a cluster that is already up; for first provisioning see
   ---
 
   Rebooting, adding, replacing and rebuilding a node, including the two gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.
-- **[Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>)**
+- **[Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>)**
 
   ---
 
   The three mechanisms that update a node, and how to move a minor version deliberately.
-- **[Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>)**
+- **[Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>)**
 
   ---
 
@@ -4435,7 +4435,7 @@ Everything here assumes a cluster that is already up; for first provisioning see
 
 The Rook toolbox pod is enabled, so `ceph status`, `ceph osd tree` and `ceph health detail` need nothing installed. Ceph metrics are scraped and Ceph's own alerting rules are loaded, so a degraded pool reaches Prometheus without anyone running `ceph status`; run it anyway, because it is the fastest way to see *why* — see [Rook-Ceph → Monitoring](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#monitoring>).
 
-# Backups & Recovery
+# Backups &amp; Recovery
 
 Every mechanism below is described by what it can get back, and by what it cannot.
 
@@ -4853,7 +4853,7 @@ A cluster provisioned before the VIP has its first control-plane node's address 
 
 ### Rebuild (simplest)
 
-Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>); the VIP is in place from `kubeadm init` onwards. Restore state per [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>); the VIP is in place from `kubeadm init` onwards. Restore state per [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
 
 ### In place
 
@@ -5254,7 +5254,7 @@ The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by 
 >
 > **The backups are inside the thing being wiped**
 >
-> Every backup CronJob and Velero write to the Ceph object store this destroys — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#what-is-not-covered>). Copy anything you intend to restore from **off-cluster** first.
+> Every backup CronJob and Velero write to the Ceph object store this destroys — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#what-is-not-covered>). Copy anything you intend to restore from **off-cluster** first.
 
 1. Confirm the [off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>) ran after the last nightly backup, and copy anything in a PVC not reproducible from Git.
 2. Edit whatever needs editing under `ansible/`.
@@ -5404,7 +5404,7 @@ The only fix is a revert commit. Every Application runs with automated sync, so 
 >
 > Do not fix a broken workload with `kubectl edit`. `selfHeal` on every Application ([Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>)) puts the manifest back on the next reconcile, so the fix lasts minutes and leaves no trace of what it was. Change the manifest instead.
 
-# Updates & Upgrades
+# Updates &amp; Upgrades
 
 Three mechanisms update a node, and all three land their changes on disk and wait for a reboot. A node can be four patch releases behind while reporting that everything is up to date.
 

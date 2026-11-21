@@ -317,4 +317,4 @@ Logged in as the operator through the `openbao-active` port-forward from [Authen
 bao operator raft snapshot save snapshot.bao
 ```
 
-The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).

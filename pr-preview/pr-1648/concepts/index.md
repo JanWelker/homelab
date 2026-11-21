@@ -7,7 +7,7 @@ Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 | Concept | What it is | What it costs you |
 | --- | --- | --- |
 | [Flatcar Container Linux](<#flatcar-container-linux>) | An immutable OS with a read-only `/usr` and A/B partition updates | No `apt install`. Anything unusual has to arrive another way |
-| [Ignition & Butane](<#ignition-and-butane>) | First-boot provisioning from a JSON config | It runs *once*. Changing a template means rebuilding the node |
+| [Ignition &amp; Butane](<#ignition-and-butane>) | First-boot provisioning from a JSON config | It runs *once*. Changing a template means rebuilding the node |
 | [Systemd sysexts](<#systemd-sysexts>) | Read-only images that extend `/usr` at boot | Upgrading Kubernetes means swapping an image and rebooting |
 | [PXE boot](<#pxe-boot>) | Booting a machine off the network instead of its disk | Needs a DHCP server you control and a host on the same segment |
 | [GitOps](<#gitops>) | Git is the desired state; a controller reconciles to it | If it is not committed, it does not exist |
@@ -16,7 +16,7 @@ Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 
 [Flatcar](<https://www.flatcar.org/>) is an immutable, minimal Linux distribution designed for running containers. The root filesystem is read-only — you cannot install packages or modify system files at runtime — which forces all configuration to happen declaratively, at first boot, through Ignition. A read-only `/usr` makes undocumented drift between "identical" nodes impossible rather than merely discouraged.
 
-Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. **Nothing here reboots itself**: this project masks `locksmithd`, the daemon that would normally coordinate that, and hands the job to [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), which drains the node first. See [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. **Nothing here reboots itself**: this project masks `locksmithd`, the daemon that would normally coordinate that, and hands the job to [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), which drains the node first. See [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## Ignition and Butane
 
@@ -34,7 +34,7 @@ Updates are downloaded in the background onto the passive half of an A/B partiti
 
 Because `/usr` is read-only, software the base image does not ship — only `kubernetes`, in this cluster — arrives as a **system extension**: a read-only squashfs image overlaid onto `/usr` at boot, managed by `systemd-sysupdate`. Nodes fetch it from the HTTP boot server on their first boot from disk. containerd is part of the base image and is deliberately not replaced: a sysext-bakery build would run a containerd Flatcar has not tested.
 
-Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swapping an image and rebooting. See [Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swapping an image and rebooting. See [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## PXE boot
 
@@ -44,7 +44,7 @@ Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swappi
 2. TFTP serves the syslinux bootloader and a per-MAC boot menu.
 3. Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition config URL as a kernel parameter.
 
-TFTP runs over UDP with no error correction worth the name, which is why everything larger than the bootloader moves to HTTP as fast as possible. The full sequence is in [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
+TFTP runs over UDP with no error correction worth the name, which is why everything larger than the bootloader moves to HTTP as fast as possible. The full sequence is in [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
 
 ## GitOps
 

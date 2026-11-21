@@ -1,4 +1,4 @@
-# Boot & Bootstrap Process
+# Boot &amp; Bootstrap Process
 
 One node from the power button to `kubectl get nodes`. When an install stalls, the question is *which arrow did not happen?*
 
@@ -24,7 +24,7 @@ sequenceDiagram
 
 The DHCP server is external and must hand out the boot server's IP as `next-server` and a syslinux filename — see the [Quickstart prerequisites](<https://homelab.wlkr.ch/quickstart/index.md#prerequisites>). Step 2 is where most first attempts die, silently: the firmware moves on to the next boot device.
 
-## 3\. Install & Bootstrap
+## 3\. Install &amp; Bootstrap
 
 PXE boots the **installer**, and only on a node armed with `make reinstall`; the generated menu otherwise says `DEFAULT localboot`. The installer is a RAM environment whose only job is to write Flatcar to `install_disk` and reboot into it. Two templates, because two machines share a disk and nothing else:
 

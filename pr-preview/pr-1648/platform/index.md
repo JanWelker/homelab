@@ -15,7 +15,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | argocd-config | `argocd` | The `ExternalSecret` for ArgoCD's OIDC client, and its Grafana dashboard; see [ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>) |
 | argocd-projects | `argocd` | The AppProjects; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#structure>) |
 | [authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) | `authentik` | Single sign-on for every platform UI |
-| backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
+| backup | `backup` | Velero's buckets, the `VolumeSnapshotClass` and an etcd snapshot CronJob — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) | `cert-manager` | The cert-manager chart |
 | certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
 | [cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
@@ -38,7 +38,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | rook-ceph-cluster | `rook-ceph` | The `CephCluster`, pools and storage classes — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | rook-ceph-operator | `rook-ceph` | The Rook operator chart — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) |
 | security | `kube-system` | Pod Security Admission levels, the network policies and image admission policies — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
-| snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
+| snapshot-controller | `backup` | The CSI snapshot controller Velero's volume snapshots need — see [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>) |
 | [tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md>) | `kube-system` | Runtime detection: execs, credential changes and sensitive file reads from the kernel |
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](<https://homelab.wlkr.ch/platform/velero/index.md>) | `backup` | Volume and resource backups to the Ceph object store |

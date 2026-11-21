@@ -12,12 +12,12 @@ Everything here assumes a cluster that is already up; for first provisioning see
   ---
 
   Rebooting, adding, replacing and rebuilding a node, including the two gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.
-- **[Updates & Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>)**
+- **[Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>)**
 
   ---
 
   The three mechanisms that update a node, and how to move a minor version deliberately.
-- **[Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>)**
+- **[Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>)**
 
   ---
 

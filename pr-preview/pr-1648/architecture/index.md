@@ -6,7 +6,7 @@ This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and G
 
 ## What is in this section
 
-- **[Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>)**
+- **[Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>)**
 
   ---
 

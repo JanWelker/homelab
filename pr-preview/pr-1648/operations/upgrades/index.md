@@ -1,4 +1,4 @@
-# Updates & Upgrades
+# Updates &amp; Upgrades
 
 Three mechanisms update a node, and all three land their changes on disk and wait for a reboot. A node can be four patch releases behind while reporting that everything is up to date.
 

@@ -1,6 +1,6 @@
 # Velero
 
-[Velero](<https://velero.io/>) backs up Kubernetes objects and, through CSI snapshots and its data mover, the data in every PVC, nightly into its prefix of the `offsite` bucket in the Ceph object store. What it covers, what it does not, and the restore runbooks are in [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>); this page is the chart tuning.
+[Velero](<https://velero.io/>) backs up Kubernetes objects and, through CSI snapshots and its data mover, the data in every PVC, nightly into its prefix of the `offsite` bucket in the Ceph object store. What it covers, what it does not, and the restore runbooks are in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>); this page is the chart tuning.
 
 ## At a glance
 

@@ -1,4 +1,4 @@
-# Backups & Recovery
+# Backups &amp; Recovery
 
 Every mechanism below is described by what it can get back, and by what it cannot.
 
