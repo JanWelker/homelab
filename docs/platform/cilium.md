@@ -26,11 +26,12 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 | Setting | Why |
 | --- | --- |
 | `kubeProxyReplacement: true` | Service routing in eBPF. `proxy.disabled` in `ansible/templates/kubeadm.yaml.j2` keeps `kube-proxy` out at init and on every `kubeadm upgrade apply` |
-| `k8sServiceHost` as a literal IP | With `kube-proxy` gone Cilium cannot reach the API server through a Service, so it names the [control-plane VIP](../operations/control-plane-vip.md) — see [Pitfalls](#pitfalls) |
+| `k8sServiceHost` as a literal IP | Without `kube-proxy` Cilium cannot reach the API server through a Service, so it names the [control-plane VIP](../operations/control-plane-vip.md) — see [Pitfalls](#pitfalls) |
 | Gateway API | Replaces an Ingress controller — see [Gateway API](gateway-api.md) |
 | `lb-pools.yaml` | One address each for the apps and infra Gateways, announced over L2 ARP so the LAN can find them |
 | `bgp.yaml` | The same two addresses as `/32` routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The ASNs and timers are in `bgp.yaml`. The router side is FRR on the UDM Pro: `make config` renders it from the inventory's `router_*` variables into `output/router/frr-bgp.conf`, so a firmware reset is recovered by pasting that file |
-| `encryption.type: wireguard` | Transparent node-to-node encryption |
+| `encryption.type: wireguard` | Pod-to-pod traffic between nodes |
+| `encryption.nodeEncryption: true` | Host-network traffic between workers is encrypted too. Cilium opts the control planes out, so traffic to and from them stays clear. It cannot be tried on one node: the rollout is the agents' rolling restart, after which `cilium-dbg status` on a worker reports `NodeEncryption: Enabled`. Reverting the value rolls back |
 | Hubble, behind the [Authentik](authentik.md) proxy outpost | Hubble has no authentication of its own; the HTTPRoute points at the outpost and a ReferenceGrant in `payload/platform/authentik/` permits the cross-namespace reference |
 | Hubble metrics labelled by namespace | The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway. |
 | `hubble.export.static` | Every flow with a `DROPPED`, `ERROR` or `AUDIT` verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that [Alloy](logging.md) tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record of what a policy refused after the fact, and of the requests the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second on a cluster this size, where the proxied requests are a few. |
@@ -48,18 +49,16 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.
 
 ### Installation
 
-Cilium is installed twice, in a sense. `make install-cilium` installs it by
-Helm, because no pod runs without a CNI and ArgoCD is a pod; ArgoCD then
-adopts the release. The version comes from `targetRevision` in
+`make install-cilium` installs it by Helm, because no pod runs without a CNI
+and ArgoCD is a pod; ArgoCD then adopts the release. The version comes from `targetRevision` in
 `application.yaml` — see [Version pins](../architecture/gitops.md).
 
-The bootstrap install uses the same `values.yaml`, and has to: the pods roll
-whenever `cilium-config` changes, so a slimmer bootstrap config would restart
-every agent the moment ArgoCD adopts the release. The Gateway API CRDs go in
-first because the operator checks for them once, at startup. The
-one difference is the three `serviceMonitor.enabled` flags, which `make` turns
-off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
-the monitors back on adoption, rolling the agent and operator once.
+The bootstrap install uses the same `values.yaml`, and has to: a slimmer config
+would restart every agent when ArgoCD adopts the release. The Gateway API CRDs
+go in first because the operator checks for them once, at startup. The one
+difference is the three `serviceMonitor.enabled` flags, which `make` turns off
+because the Prometheus operator CRDs arrive through ArgoCD; adoption turns them
+on, rolling the agent and operator once.
 
 ## Health check
 
@@ -68,17 +67,16 @@ kubectl -n kube-system exec ds/cilium -- cilium status --brief
 ```
 
 The BGP session on each control-plane node, `established` with two routes
-advertised. `bgp.yaml` selects the control planes only, so ask that node's
-agent rather than whichever pod `ds/cilium` resolves to:
+advertised. Ask that node's agent, not whichever pod `ds/cilium` resolves to:
 
 ```bash
 kubectl -n kube-system exec "$(kubectl -n kube-system get pod -l k8s-app=cilium \
   --field-selector spec.nodeName=<control-plane> -o name)" -- cilium bgp peers
 ```
 
-Hubble answers *what did I just break?* during a network policy rollout — see
-[Security Policies](security-policies.md#usage). The `hubble` CLI talks to
-Relay through a port-forward on its default port:
+Hubble answers *what did I just break?* during a policy rollout, see
+[Security Policies](security-policies.md#usage). The `hubble` CLI reaches Relay
+through a port-forward:
 
 ```bash
 kubectl -n kube-system port-forward deploy/hubble-relay 4245:4245 &

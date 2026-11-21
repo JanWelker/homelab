@@ -98,9 +98,11 @@ k8sClientRateLimit:
   qps: 50
   burst: 200
 
+# Node-to-node too, workers only; see docs/platform/cilium.md
 encryption:
   enabled: true
   type: wireguard
+  nodeEncryption: true
 
 # Enforcing since the second audit reading; see docs/platform/security-policies.md#rollout
 policyAuditMode: false
