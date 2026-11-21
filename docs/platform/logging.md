@@ -61,7 +61,7 @@ in the line where `| json` can reach them. See
 | `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
 | `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
-| `rbac.rules` without `secrets` | The chart's ClusterRole reads every Secret for `remote.kubernetes.secret`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](#alerting) would show such a read, but a grant with no purpose is better not made |
+| `rbac.rules` without `secrets` and `configmaps` | The chart's ClusterRole reads every Secret and ConfigMap for `remote.kubernetes.*`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](#alerting) shows Secret reads, but an unused grant is better not made |
 
 ### Storage
 
