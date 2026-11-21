@@ -169,6 +169,27 @@ bao_revoke_root() {
   bao_cleanup
 }
 
+# Drops the dead root_token from the key file once the token is revoked, so
+# the file holds the unseal shares and nothing that looks like a credential.
+# Rewritten in place through a temporary file, mode 0600.
+strip_root_token() {
+  [ -f "$KEYFILE" ] || return 0
+  uv run python -c '
+import json, os, sys
+path = sys.argv[1]
+with open(path) as handle:
+    data = json.load(handle)
+if data.pop("root_token", None) is None:
+    sys.exit(0)
+tmp = path + ".tmp"
+fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as handle:
+    json.dump(data, handle, indent=2)
+    handle.write("\n")
+os.replace(tmp, path)
+' "$KEYFILE"
+}
+
 exists() {
   bao kv get -mount=kv "$1" >/dev/null 2>&1
 }
