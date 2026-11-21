@@ -26,9 +26,9 @@ all:
     k8s_nodes:
       vars:
         ansible_user: core
-        # accept-new pins a host key on first contact and refuses a changed
-        # one; make reinstall drops the old key, since a rebuilt node has a new one.
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
+        # Only the host keys make config generated and put in the Ignition
+        # configs; see docs/architecture/security.md#provisioning
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/../output/known_hosts"
       children:
         control_plane:
           vars:

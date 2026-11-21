@@ -35,7 +35,7 @@
       ansible.builtin.import_tasks: tasks/check_endpoint_host.yaml
       when: pxe_default == 'install' and control_plane_endpoint_host != control_plane_vip
 
-    # A reinstalled node has a new host key; see docs/operations/nodes.md
+    # Only for a node installed before its host key came from make config; see docs/operations/nodes.md
     - name: Forget the node's SSH host key
       ansible.builtin.command:
         cmd: ssh-keygen -R {{ ansible_host }}

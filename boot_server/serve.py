@@ -35,6 +35,8 @@ HTTP_DIR = None
 TFTP_DIR = None
 PXE_DIR = None
 INVENTORY = None
+# Lower-case host name -> ansible_host, from the inventory; who may fetch which Ignition config.
+NODE_ADDRESSES = {}
 
 
 OS_IMAGE = 'flatcar_production_image.bin.bz2'
@@ -44,6 +46,8 @@ INSTALL_SUFFIX = '-install'
 # other one. Both name the host; non-greedy so the suffix is not read as part
 # of it. See docs/architecture/boot-process.md#wiping-the-disk.
 IGNITION_NAME = re.compile(r'^ignition-(.+?)(?:' + INSTALL_SUFFIX + r')?\.json$')
+# Any config that is not an installer config carries the join credentials and the etcd key.
+NODE_CONFIG = re.compile(r'^ignition-(.+)\.json$', re.IGNORECASE)
 MENU_HOST = re.compile(r'ignition-([^/\s]+?)(?:' + INSTALL_SUFFIX + r')?\.json')
 
 # What a PXE client does on the way in that tftpy reports as a failure.
@@ -69,7 +73,27 @@ RESET = '\033[0m'
 WARNING_MARK = '\u26a0'
 
 
-def _boot_server_ip():
+def _read_inventory(required):
+    """The inventory that generated the menus, or an exit that names the problem.
+
+    Not required when --bind names the address: the server then runs without
+    node addresses and hands no node its Ignition config.
+    """
+    try:
+        with open(INVENTORY, encoding='utf-8') as handle:
+            inventory = yaml.safe_load(handle) or {}
+    except FileNotFoundError:
+        if not required:
+            return {}
+        sys.exit(
+            f'{INVENTORY} not found -- run make serve from the repository root, or pass --root'
+        )
+    except yaml.YAMLError as error:
+        sys.exit(f'{INVENTORY} is not valid YAML: {error}')
+    return inventory
+
+
+def _boot_server_ip(inventory):
     """The address to answer on, read from the inventory that generated the menus.
 
     Every kernel, initrd and Ignition URL under output/tftp was rendered from
@@ -77,20 +101,26 @@ def _boot_server_ip():
     second copy kept here would be one more thing to change on a new network,
     and the symptom of forgetting is a server answering where nobody is asking.
     """
-    try:
-        with open(INVENTORY, encoding='utf-8') as handle:
-            inventory = yaml.safe_load(handle) or {}
-    except FileNotFoundError:
-        sys.exit(
-            f'{INVENTORY} not found -- run make serve from the repository root, or pass --root'
-        )
-    except yaml.YAMLError as error:
-        sys.exit(f'{INVENTORY} is not valid YAML: {error}')
-
     address = (inventory.get('all', {}).get('vars', {}) or {}).get('boot_server_ip')
     if not address:
         sys.exit(f'boot_server_ip is not set under all.vars in {INVENTORY}')
     return str(address)
+
+
+def _node_addresses(group):
+    """Lower-case host name -> ansible_host for every host under an inventory group.
+
+    ansible_host is the address the node's DHCP reservation hands out, which is
+    the address its installer fetches from; see docs/quickstart.md.
+    """
+    found = {}
+    for name, host in (group.get('hosts') or {}).items():
+        address = (host or {}).get('ansible_host')
+        if address:
+            found[str(name).lower()] = str(address)
+    for child in (group.get('children') or {}).values():
+        found.update(_node_addresses(child or {}))
+    return found
 
 
 def configure(root, bind=None, http_port=None, tftp_port=None):
@@ -101,7 +131,8 @@ def configure(root, bind=None, http_port=None, tftp_port=None):
     boot_server_ip, the one every generated menu points at; a port left out
     keeps its well-known value.
     """
-    global BIND_IP, HTTP_DIR, TFTP_DIR, PXE_DIR, INVENTORY, HTTP_PORT, TFTP_PORT  # noqa: PLW0603
+    global BIND_IP, HTTP_DIR, TFTP_DIR, PXE_DIR, INVENTORY, NODE_ADDRESSES  # noqa: PLW0603
+    global HTTP_PORT, TFTP_PORT  # noqa: PLW0603
     HTTP_DIR = os.path.join(root, 'output', 'http')
     TFTP_DIR = os.path.join(root, 'output', 'tftp')
     PXE_DIR = os.path.join(TFTP_DIR, MENU_SUBDIR)
@@ -110,7 +141,9 @@ def configure(root, bind=None, http_port=None, tftp_port=None):
         HTTP_PORT = http_port
     if tftp_port is not None:
         TFTP_PORT = tftp_port
-    BIND_IP = bind or _boot_server_ip()
+    inventory = _read_inventory(required=not bind)
+    NODE_ADDRESSES = _node_addresses(inventory.get('all') or {})
+    BIND_IP = bind or _boot_server_ip(inventory)
 
 
 logger = logging.getLogger('bootserver')
@@ -351,11 +384,28 @@ def describe(name, path):
     return name
 
 
+def may_fetch(name, ip):
+    """Whether this address may have this file.
+
+    A node's own Ignition config goes to that node's ansible_host and nobody
+    else; a host the inventory does not name gets none. Matching ignores case,
+    since a case-insensitive filesystem would serve ignition-ODIN.json as well.
+    """
+    named = NODE_CONFIG.match(name)
+    if not named or named.group(1).lower().endswith(INSTALL_SUFFIX):
+        return True
+    return NODE_ADDRESSES.get(named.group(1).lower()) == ip
+
+
 class BootHandler(SimpleHTTPRequestHandler):
     """Serves output/http and narrates each request against the node that made it."""
 
+    # A client that stalls holds a thread and its file open; idle seconds, per read or write.
+    timeout = 60
+
     def __init__(self, *args, **kwargs):
         self.status = None
+        self.refused = False
         super().__init__(*args, directory=HTTP_DIR, **kwargs)
 
     def log_message(self, *args):
@@ -370,6 +420,15 @@ class BootHandler(SimpleHTTPRequestHandler):
         here carry the cluster's join credentials and etcd encryption key."""
         self.send_error(HTTPStatus.FORBIDDEN, 'Directory listing is off')
 
+    def send_head(self):
+        """GET and HEAD both pass here, so neither can read a config that is not theirs."""
+        name = os.path.basename(self.translate_path(self.path))
+        if not may_fetch(name, self.client_address[0]):
+            self.refused = True
+            self.send_error(HTTPStatus.FORBIDDEN, 'Not for this address')
+            return None
+        return super().send_head()
+
     def do_GET(self):
         # translate_path is what confines a request to output/http; going
         # around it to name the file would let a crafted URL stat anything.
@@ -377,14 +436,23 @@ class BootHandler(SimpleHTTPRequestHandler):
         name = '/' if os.path.isdir(served) else os.path.basename(served)
         ip = self.client_address[0]
         named = IGNITION_NAME.match(name)
-        if named:
+        allowed = may_fetch(name, ip)
+        if named and allowed:
             hosts_by_ip[ip] = named.group(1)
 
         self.status = 200
-        say(ip, 'collecting %s', describe(name, served))
+        if allowed:
+            say(ip, 'collecting %s', describe(name, served))
         super().do_GET()
 
-        if self.status == HTTPStatus.FORBIDDEN:
+        if self.refused:
+            say(
+                ip,
+                'asked for %s, which belongs to another address -- refused',
+                name,
+                level=logging.WARNING,
+            )
+        elif self.status == HTTPStatus.FORBIDDEN:
             say(
                 ip,
                 'asked for a directory listing -- refused; files are served by name only',

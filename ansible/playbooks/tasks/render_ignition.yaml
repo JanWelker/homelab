@@ -1,0 +1,38 @@
+---
+# One Ignition config of one host: config.template and config.suffix come from
+# ignition_configs in config.yaml.
+- name: Generate Butane Config
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/{{ config.template }}.yaml.j2" # noqa: no-relative-paths
+    dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ config.suffix }}.yaml"
+    mode: "0600"
+  no_log: true
+
+- name: Transpile Butane to Ignition
+  ansible.builtin.command:
+    cmd: >-
+      butane --pretty --strict
+      {{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}{{ config.suffix }}.yaml
+      -o {{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ config.suffix }}.json
+  changed_when: true
+
+# butane writes 0644 and keeps the mode of a file it overwrites. The boot
+# server runs as the same user, so nobody else needs to read them.
+- name: Restrict the Ignition config to its owner
+  ansible.builtin.file:
+    path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}{{ config.suffix }}.json"
+    mode: "0600"
+
+# The installer fetches the node config over HTTP; see
+# docs/architecture/boot-process.md#3-install-bootstrap
+- name: Checksum the node Ignition config for the installer config
+  ansible.builtin.stat:
+    path: "{{ output_dir }}/http/ignition-{{ inventory_hostname }}.json"
+    checksum_algorithm: sha512
+  register: node_ignition_stat
+  when: config.suffix == ""
+
+- name: Set the node Ignition checksum fact
+  ansible.builtin.set_fact:
+    node_ignition_sha512: "{{ node_ignition_stat.stat.checksum }}"
+  when: config.suffix == ""

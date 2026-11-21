@@ -37,7 +37,35 @@ def ignition(unit_contents):
     )
 
 
-CONFIGURED = ('BIND_IP', 'HTTP_DIR', 'TFTP_DIR', 'PXE_DIR', 'INVENTORY', 'HTTP_PORT', 'TFTP_PORT')
+CONFIGURED = (
+    'BIND_IP',
+    'HTTP_DIR',
+    'TFTP_DIR',
+    'PXE_DIR',
+    'INVENTORY',
+    'NODE_ADDRESSES',
+    'HTTP_PORT',
+    'TFTP_PORT',
+)
+
+INVENTORY = """all:
+  vars:
+    boot_server_ip: "10.0.0.5"
+  children:
+    k8s_nodes:
+      children:
+        control_plane:
+          hosts:
+            odin:
+              ansible_host: 127.0.0.1
+        workers:
+          hosts:
+            thor:
+              ansible_host: 127.0.0.1
+            freya:
+              ansible_host: 10.0.0.9
+            nameless: {}
+"""
 
 
 @pytest.fixture(autouse=True)
@@ -55,9 +83,7 @@ def pristine_module():
 def checkout(tmp_path):
     """A checkout the way make config leaves it: odin armed, thor on its disk."""
     (tmp_path / 'ansible').mkdir()
-    (tmp_path / 'ansible' / 'inventory.yaml').write_text(
-        'all:\n  vars:\n    boot_server_ip: "10.0.0.5"\n', encoding='utf-8'
-    )
+    (tmp_path / 'ansible' / 'inventory.yaml').write_text(INVENTORY, encoding='utf-8')
     http = tmp_path / 'output' / 'http'
     http.mkdir(parents=True)
     (http / 'ignition-odin.json').write_text(
@@ -66,6 +92,11 @@ def checkout(tmp_path):
     (http / 'ignition-thor.json').write_text(
         ignition('ExecStart=/usr/bin/kubeadm join 10.0.0.1:6443'), encoding='utf-8'
     )
+    (http / 'ignition-freya.json').write_text(
+        ignition('ExecStart=/usr/bin/kubeadm join 10.0.0.1:6443'), encoding='utf-8'
+    )
+    (http / 'ignition-freya-install.json').write_text('{}', encoding='utf-8')
+    (http / 'ignition-stranger.json').write_text('{}', encoding='utf-8')
     pxe = tmp_path / 'output' / 'tftp' / 'pxelinux.cfg'
     pxe.mkdir(parents=True)
     (pxe / ODIN_MENU).write_text(MENU.format(default='install', host='odin'), encoding='utf-8')
@@ -150,6 +181,11 @@ def test_configure_derives_every_path_from_root(checkout):
     assert serve.PXE_DIR == str(checkout / 'output' / 'tftp' / 'pxelinux.cfg')
     assert serve.INVENTORY == str(checkout / 'ansible' / 'inventory.yaml')
     assert serve.BIND_IP == '127.0.0.1'
+
+
+def test_configure_reads_every_node_address_from_the_inventory(checkout):
+    """Hosts at any depth of the group tree; one without ansible_host is left out."""
+    assert serve.NODE_ADDRESSES == {'odin': '127.0.0.1', 'thor': '127.0.0.1', 'freya': '10.0.0.9'}
 
 
 def test_configure_defaults_the_bind_address_to_the_inventory(checkout):
@@ -505,3 +541,63 @@ def test_http_stays_inside_the_http_directory(web, path):
     status, body = fetch(web, path)
     assert status == 404
     assert b'boot_server_ip' not in body
+
+
+# --- who may fetch which Ignition config -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ('name', 'ip', 'allowed'),
+    [
+        ('ignition-freya.json', '10.0.0.9', True),
+        ('ignition-freya.json', '10.0.0.10', False),
+        ('ignition-FREYA.json', '10.0.0.10', False),
+        ('Ignition-Freya.JSON', '10.0.0.9', True),
+        ('ignition-stranger.json', '10.0.0.9', False),
+        ('ignition-nameless.json', '10.0.0.9', False),
+        ('ignition-freya-install.json', '10.0.0.10', True),
+        ('flatcar_production_image.bin.bz2', '10.0.0.10', True),
+        ('kubernetes-v1.37.1-x86-64.raw', '10.0.0.10', True),
+    ],
+)
+def test_may_fetch_gives_a_node_config_to_its_own_address_only(checkout, name, ip, allowed):
+    """The installer config and the images stay public; the node config is not."""
+    assert serve.may_fetch(name, ip) is allowed
+
+
+def test_http_refuses_another_nodes_ignition_config(web, caplog):
+    """A client that is not freya's address gets 403, for GET and HEAD, in any case."""
+    caplog.set_level(logging.INFO, logger='bootserver')
+    for path in ('/ignition-freya.json', '/Ignition-Freya.json', '/ignition-stranger.json'):
+        status, body = fetch(web, path)
+        assert status == 403
+        assert b'kubeadm' not in body
+    connection = http.client.HTTPConnection(*web.server_address, timeout=5)
+    try:
+        connection.request('HEAD', '/ignition-freya.json')
+        assert connection.getresponse().status == 403
+    finally:
+        connection.close()
+    assert '127.0.0.1' not in serve.hosts_by_ip
+    assert not any('collecting' in r.getMessage() for r in caplog.records)
+    assert any('belongs to another address' in r.getMessage() for r in caplog.records)
+
+
+def test_http_still_gives_the_installer_config_to_anyone(web):
+    """The installer config holds no credentials, and PXE fetches it before anything else."""
+    status, body = fetch(web, '/ignition-freya-install.json')
+    assert status == 200
+    assert body == b'{}'
+
+
+def test_http_serves_a_node_its_own_config(web):
+    """thor sits at 127.0.0.1 here, so the same client is thor and gets its file."""
+    status, body = fetch(web, '/ignition-odin.json')
+    assert status == 200
+    assert b'kubeadm init' in body
+    assert serve.hosts_by_ip['127.0.0.1'] == 'odin'
+
+
+def test_http_handler_times_out_a_stalled_client():
+    """A bounded read keeps one silent connection from holding a thread for ever."""
+    assert 0 < serve.BootHandler.timeout <= 120
