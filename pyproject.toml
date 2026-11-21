@@ -19,6 +19,12 @@ boot-server = "boot_server.serve:main"
 requires = ["uv_build>=0.13.9,<0.14"]
 build-backend = "uv_build"
 
+[tool.uv]
+# Lock only releases at least 3 days old, the minimumReleaseAge of the shared
+# Renovate preset. Without it uv locks a newer release than the one Renovate
+# proposes, and Renovate rejects the lock file as an artifact failure.
+exclude-newer = "3 days"
+
 # The package sits at the repository root, not under src/.
 [tool.uv.build-backend]
 module-name = "boot_server"
@@ -26,7 +32,7 @@ module-root = ""
 
 [dependency-groups]
 dev = [
-    "zensical>=0.1.1",
+    "zensical>=0.1.2",
     "pytest>=9.2.0",
     "ruff>=0.17.5",
     "yamllint>=1.38.0",
