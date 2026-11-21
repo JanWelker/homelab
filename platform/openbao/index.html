@@ -3136,10 +3136,9 @@ a <code>bao kv put</code> replaces the whole path.</p>
 </tr>
 </tbody>
 </table>
-<p>The two <code>route53</code> leaves are separate IAM users on purpose: cert-manager
-only ever writes <code>_acme-challenge</code> TXT records, though its
-<a href="../cert-manager/#configuration">policy</a> still allows any record change, while
-external-dns creates and deletes A records by design, so stolen it can
+<p>The two <code>route53</code> leaves are separate IAM users on purpose: cert-manager's
+<a href="../cert-manager/#configuration">policy</a> allows only <code>_acme-challenge</code> TXT
+records, while external-dns creates and deletes A records by design, so stolen it can
 repoint hostnames. One shared key collapses both into "someone owns your
 domain".</p>
 <h3 id="generated-secrets">Generated secrets<a class="headerlink" href="#generated-secrets" title="Permanent link">&para;</a></h3>

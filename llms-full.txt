@@ -1826,15 +1826,45 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 | Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a Kured drain every Certificate and Issuer apply is refused — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week, a misconfigured solver retries until that is gone, and there is no appeals process |
 
-The IAM user needs at minimum:
+The IAM user's policy is cert-manager's [Route53 policy](<https://cert-manager.io/docs/configuration/acme/dns01/route53/#set-up-an-iam-policy>) narrowed to `_acme-challenge` TXT records in this account's zones, so a stolen key cannot repoint a hostname. `ListHostedZonesByName` stays because the issuers in `cluster-issuers.yaml` do not set `hostedZoneID`. The policy lives in AWS, so a change here is applied there by hand:
 
 ```json
 {
-  "Effect": "Allow",
-  "Action": ["route53:GetChange", "route53:ChangeResourceRecordSets", "route53:ListHostedZonesByName"],
-  "Resource": "*"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "route53:GetChange",
+      "Resource": "arn:aws:route53:::change/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ChangeResourceRecordSets",
+      "Resource": ["arn:aws:route53:::hostedzone/<zone-id>"],
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "route53:ChangeResourceRecordSetsRecordTypes": ["TXT"]
+        },
+        "ForAllValues:StringLike": {
+          "route53:ChangeResourceRecordSetsNormalizedRecordNames": ["_acme-challenge.*"]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ListResourceRecordSets",
+      "Resource": ["arn:aws:route53:::hostedzone/<zone-id>"]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ListHostedZonesByName",
+      "Resource": "*"
+    }
+  ]
 }
 ```
+
+List one `hostedzone/<zone-id>` ARN per zone a Certificate names.
 
 ## Usage
 
@@ -2307,7 +2337,7 @@ sequenceDiagram
     App->>K: mount / envFrom
 ```
 
-ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API, which the chart's controller ClusterRole allows in every namespace (`cluster-secret-store.yaml` binds its own `external-secrets-vault-token-creator` ClusterRole, scoped to that ServiceAccount name, beside it); OpenBao validates it against the TokenReview API and issues a token bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
+ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount through the TokenRequest API. The chart's controller ClusterRole allows that for any ServiceAccount in every namespace; `cluster-secret-store.yaml` keeps its own `external-secrets-vault-token-creator` ClusterRole beside it, scoped to that one name, because the chart's grant is broader than the stores need and a release may narrow it. OpenBao validates the ServiceAccount token against the TokenReview API and issues its own, bound to that store's policy. Platform namespaces use the `openbao` store and the ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its own, which confines it to `kv/<namespace>/` — see [Kubernetes auth](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>). No long-lived credential exists anywhere. The stores use ESO's `vault` provider unchanged against the in-cluster Service.
 
 In `application.yaml`'s `valuesObject`:
 
@@ -2845,7 +2875,7 @@ Alerts over logs live in `logging/loki-rules.yaml`, a ConfigMap labelled `loki_r
 | `KubernetesAuditSecretReadByUser` | A Secret read by a person, or by a ServiceAccount outside its own namespace that is not on the allowlist of platform controllers | A stolen token reads across namespaces; the allowlist is the ServiceAccounts RBAC grants Secrets to cluster-wide, plus the runner's in `arc-jobs` only, where its [container hook](<https://homelab.wlkr.ch/platform/github-runners/index.md#job-pods>) keeps each job's environment, and a ServiceAccount reading its own namespace is what its Role is for |
 | `KubernetesAuditRbacBindingChanged` | A ClusterRole or ClusterRoleBinding written by anything but the ArgoCD controller or a `kube-system` controller | Argo CD is the only intended writer; namespaced RoleBindings are left out because CloudNativePG reconciles one per database continuously |
 | `KubernetesAuditForbiddenBurst` | More than ten 403s from one identity in ten minutes | What RBAC probing from a compromised pod looks like |
-| `KubernetesAuditAnonymousRequest` | A successful anonymous request | The audit policy drops the health endpoints, the only legitimate anonymous paths |
+| `KubernetesAuditAnonymousRequest` | A successful anonymous request, except the read of `kube-public/cluster-info` | The health endpoints and kubeadm's bootstrap discovery ConfigMap are the only legitimate anonymous paths; the audit policy drops the first, the rule skips the second |
 | `KubernetesAuditEsoTokenMinted` | A successful `serviceaccounts/token` create for an `external-secrets-vault` ServiceAccount by anyone but ESO's controller, a kubelet starting a pod under that ServiceAccount included | OpenBao records the same role and ServiceAccount whoever minted the token, so only the audit log names the minter. A stolen controller token or a legacy token Secret does not trip it: neither shows a different user on this request |
 | `OpenBaoSecretReadOutsideEso` | A `kv/data/` read from OpenBao by any token whose display name is not `kubernetes-<namespace>-external-secrets-vault`, ESO's login for one of its [stores](<https://homelab.wlkr.ch/platform/openbao/index.md#kubernetes-auth>) | [OpenBao's audit device](<https://homelab.wlkr.ch/platform/openbao/index.md#audit-devices>) writes to stdout; ESO is the only day-to-day reader, every Kubernetes role is bound to that ServiceAccount name, and a token created by hand is prefixed `token-`, so it cannot borrow the name |
 | `TetragonSudoInContainer` | `sudo` executed in a container, except the `smartctl` and `nvme` calls `ceph-osd` makes once a day for its device health report | Only the exec event carries the binary and its parent |
@@ -3201,7 +3231,7 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a workloa
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>); changing it orphans every volume backup |
 | `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/#secrets>); written even when empty, so the job fails on its own rather than stalling the sync |
 
-The two `route53` leaves are separate IAM users on purpose: cert-manager only ever writes `_acme-challenge` TXT records, though its [policy](<https://homelab.wlkr.ch/platform/cert-manager/index.md#configuration>) still allows any record change, while external-dns creates and deletes A records by design, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
+The two `route53` leaves are separate IAM users on purpose: cert-manager's [policy](<https://homelab.wlkr.ch/platform/cert-manager/index.md#configuration>) allows only `_acme-challenge` TXT records, while external-dns creates and deletes A records by design, so stolen it can repoint hostnames. One shared key collapses both into "someone owns your domain".
 
 ### Generated secrets
 
@@ -3975,6 +4005,7 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 | Export to stdout | The chart runs a sidecar that tails Tetragon's JSON file to stdout, so [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) collects it as any container log: `{namespace="kube-system", container="export-stdout"}` |
 | `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export; they are the bulk of the volume and the least interesting. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
+| Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#the-handover>). The Prometheus egress rule in `payload/platform/security/network-policies/monitoring.yaml` names it too |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
 | Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](<https://homelab.wlkr.ch/platform/index.md#components>); the dashboard's first row shows the current worst node against it |
 
@@ -4776,12 +4807,6 @@ The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-v
 
 `adopt` and its writable hostPath stay after the handover, although on an adopted node they do nothing and every pod start still runs a container that can delete the control plane's static pod manifests. A reinstalled control-plane node gets the static manifest back from Ignition and needs adoption again, and forgetting to re-add it for that one reinstall leaves two kube-vips contending for the API VIP; the exposure is limited to the pinned image.
 
-> [!WARNING]
->
-> **Tetragon holds `:2112` on the control planes**
->
-> Tetragon serves its metrics on the same port, on the host network by its chart's default, so `adopt` waits for a port that is never released and gives up after its timeout on a reinstalled control plane, and the liveness probe is answered by Tetragon whether kube-vip is alive or not, as recorded in the [host firewall inventory](<https://homelab.wlkr.ch/operations/host-firewall-inventory-2026-10-30/index.md#findings>). Not fixed yet; move one of the two ports before the next control-plane reinstall.
-
 > [!CAUTION]
 >
 > **If the DaemonSet pods do not come up**
@@ -5011,7 +5036,7 @@ Store the new key with the rest of `output/credentials/` wherever the old one is
 | --- | --- |
 | Services bound to `*` answer on each node's global IPv6 address: `curl` on port 9100 from the workstation returned `200` | The firewall cannot filter IPv6 with `enable-ipv6: false`; it [drops it all](<https://homelab.wlkr.ch/platform/cilium/index.md#pitfalls>). No IPv6 connection other than loopback was established on any node; each node's second resolver is IPv6, used only after the first fails |
 | Prometheus's scrapes arrive from its node's address, not the pod's | Masquerading, see [Host firewall](<https://homelab.wlkr.ch/platform/security-policies/index.md#host-firewall>). Prometheus-only is held by the pod egress policies: besides the API server rules, only Prometheus, Hubble Relay and metrics-server name a node as a destination, each with its ports |
-| Tetragon holds 2112 on the control planes, the port kube-vip also wants | kube-vip logs `bind: address already in use`, and its liveness probe is answered by Tetragon |
+| Tetragon holds 2112 on the control planes, the port kube-vip also wants | kube-vip logs `bind: address already in use`, and its liveness probe is answered by Tetragon. Fixed since: Tetragon serves its metrics on [its own port](<https://homelab.wlkr.ch/platform/tetragon/index.md#configuration>) |
 | 6789 is Tetragon, not a Ceph monitor | Nothing on a node needs a Ceph rule |
 
 # Host Firewall Rollout 2026-11-18
