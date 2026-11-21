@@ -190,10 +190,9 @@ admitted. Signatures are not verified: few of the upstreams sign, so a
 verifier would exempt nearly everything. See
 [Security Policies](../platform/security-policies.md#admission-policies).
 
-**Both Gateways admit routes from every namespace**
-(`allowedRoutes.namespaces.from: All`). Any namespace can attach an `HTTPRoute`
-to either Gateway and claim a hostname inside its listener's pattern — see
-[Gateway API](../platform/gateway-api.md#configuration).
+**`apps-gateway` admits routes from every namespace**
+(`allowedRoutes.namespaces.from: All`), so a policy reserves the platform
+names — see [Route hostnames](../platform/gateway-api.md#route-hostnames).
 
 ## Exposed interfaces
 
@@ -229,8 +228,7 @@ Roughly in order of value against effort:
 
 1. Narrow `sourceRepos` on the AppProjects to this repository and the Helm
    repositories actually in use.
-2. Restrict `allowedRoutes` on `infra-gateway` to the platform namespaces, and
-   promote the registry allowlist to `Deny`.
+2. Promote the registry allowlist to `Deny`.
 3. Add a second Alertmanager receiver on a different transport, so a failure of
    the mail path is not itself unmonitored.
 4. Move etcd encryption to a KMS provider, removing the static

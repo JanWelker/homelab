@@ -453,3 +453,63 @@ metadata:
 spec:
   policyName: obc-backup-exempt
   validationActions: ["Deny"]
+---
+# Route hostnames the Gateways must not hand to a workload; see docs/platform/gateway-api.md#route-hostnames
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: route-hostnames-reserved
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["gateway.networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["httproutes", "grpcroutes", "tlsroutes"]
+  variables:
+    - name: hosts
+      expression: >-
+        has(object.spec.hostnames) ? object.spec.hostnames : []
+    # The namespaces the infra-gateway listener admits, kept in step with its allowedRoutes
+    - name: platform
+      expression: >-
+        ['argocd', 'kube-system', 'monitoring', 'openbao', 'opencloud', 'rook-ceph']
+    - name: owners
+      expression: >-
+        {'auth.k8s.wlkr.ch': 'authentik',
+         'advent.wollbi.ch': 'advent-wollbi',
+         'fest.wollbi.ch': 'fest-wollbi'}
+  validations:
+    - expression: >-
+        object.metadata.namespace in variables.platform ||
+        variables.hosts.all(h, !h.endsWith('.infra.k8s.wlkr.ch') && !h.startsWith('*'))
+      message: >-
+        Only the platform namespaces may claim a *.infra.k8s.wlkr.ch name or a
+        wildcard hostname.
+      reason: Forbidden
+    - expression: >-
+        object.metadata.namespace == 'claude-agents' ||
+        variables.hosts.all(h, !h.endsWith('.ssh.wlkr.ch'))
+      message: Only claude-agents may claim a *.ssh.wlkr.ch name.
+      reason: Forbidden
+    - expression: >-
+        variables.hosts.all(h, !(h in variables.owners) ||
+          variables.owners[h] == object.metadata.namespace)
+      message: >-
+        This hostname belongs to another namespace; see Route hostnames in
+        docs/platform/gateway-api.md.
+      reason: Forbidden
+    # A route without hostnames matches every name its listener serves
+    - expression: >-
+        object.metadata.namespace == 'kube-system' || size(variables.hosts) > 0
+      message: Only kube-system may attach a route without hostnames.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: route-hostnames-reserved
+spec:
+  policyName: route-hostnames-reserved
+  validationActions: ["Deny"]

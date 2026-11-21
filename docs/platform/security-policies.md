@@ -7,8 +7,7 @@ description: "Pod Security Admission levels per namespace and the first default-
 Five cluster-wide controls: Pod Security Admission, default-deny network
 policy in both directions, a host firewall on the nodes, no API token on the
 `default` ServiceAccount, and admission policies on image references, namespace
-labels and the `authentik` namespace. Each is easy to turn on and hard to
-turn on safely, so the pattern is the same for all of them: measure first,
+labels and the `authentik` namespace. The pattern is the same for all: measure first,
 enforce second, one namespace at a time.
 
 ## At a glance
@@ -41,9 +40,8 @@ Each namespace in `pod-security.yaml` carries three labels:
 | `audit` | Stricter | Records violations in the [API server audit log](../architecture/audit-logging.md) |
 | `warn` | Stricter | Warns whoever applies the manifest |
 
-Enforcement is set to what already works, so nothing running breaks, while
-`warn` and `audit` show what a stricter level would catch; tightening later is
-an informed change.
+Enforcement is set to what already works; `warn` and `audit` show what a
+stricter level would catch.
 
 The level per namespace is in `pod-security.yaml`; the rule behind it:
 
@@ -223,6 +221,7 @@ others close what RBAC and the `apps` project cannot express.
 | `cnpg-cluster-backed-up` | `Deny` | A CloudNativePG `Cluster` names the Barman Cloud plugin as its WAL archiver |
 | `cnpg-objectstore-offsite` | `Deny` | A Barman Cloud `ObjectStore` writes to `s3://offsite/<namespace>.<purpose>/`, the prefix TrueNAS pulls |
 | `obc-backup-exempt` | `Deny` | A new `ObjectBucketClaim` says why it needs no backup; nothing copies a bucket off the cluster |
+| `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](gateway-api.md#route-hostnames) |
 
 The last three [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
 each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason

@@ -46,12 +46,8 @@ listener:
 The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
 listener pins its hostname pattern, so a route can only claim a name inside
-its Gateway's tree. A wildcard is a suffix match, so `*.k8s.wlkr.ch` still
-admits an `infra` name; such a route gets no traffic, because the infra
-names resolve to the other Gateway and the apps certificate covers one label
-only. Port 80 is
-accepted from all namespaces only so the central rule in `http-redirect.yaml`
-can send it to HTTPS. `apps-gateway` carries the annotation that makes
+its Gateway's tree. Port 80 and `infra-gateway` admit named namespaces only; port 80 exists for
+the rule in `http-redirect.yaml`. `apps-gateway` carries the annotation that makes
 [external-dns](external-dns.md#configuration) publish the router's public
 address instead of the Gateway's LAN one; the router forwards ports 80 and
 443 to that LAN address.
@@ -109,6 +105,18 @@ spec:
 Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools,
 and the listener from the table above whose hostnames cover the name.
 
+### Route hostnames
+
+`apps-gateway` admits every namespace; the `route-hostnames-reserved`
+[policy](security-policies.md#admission-policies) reserves names:
+
+| Name | Only from |
+| --- | --- |
+| `*.infra.k8s.wlkr.ch`, wildcards | The namespaces `infra-gateway` admits; a new platform UI extends both lists |
+| `*.ssh.wlkr.ch` | `claude-agents` |
+| `auth.k8s.wlkr.ch`, `advent.wollbi.ch`, `fest.wollbi.ch` | `authentik`, `advent-wollbi`, `fest-wollbi`; a new owned name extends the policy's `owners` map |
+| No hostname | `kube-system` |
+
 ### SSH listener
 
 The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
@@ -145,7 +153,7 @@ kubectl get gateway infra-gateway -n kube-system \
 ## Pitfalls
 
 !!! danger "Always set `sectionName`"
-    A route that names no listener attaches to both, and on port 80 it beats the redirect: Gateway API resolves competing routes by hostname specificity, so a route naming a hostname wins over the catch-all redirect and serves the app in cleartext. Nothing reports it — every route is `Accepted`.
+    Port 80 admits only `kube-system`, so a route that names no listener fails to attach there; on `apps-gateway` it still attaches to every HTTPS listener it matches.
 
-!!! warning "Nothing stops two apps claiming the same hostname"
-    Both Gateways admit routes from every namespace, so a stray `HTTPRoute` can attach itself to either Gateway and claim a name inside its hostname pattern — see [Security Posture](../architecture/security.md).
+!!! warning "Two apps can claim the same hostname"
+    `apps-gateway` admits routes from every namespace, so a stray `HTTPRoute` can claim any name the policy above does not reserve — see [Security Posture](../architecture/security.md).

@@ -20,7 +20,10 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
     - name: https
       protocol: HTTPS
       port: 443
@@ -86,7 +89,10 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
     - name: https
       protocol: HTTPS
       port: 443
@@ -100,4 +106,10 @@ spec:
             namespace: kube-system
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchExpressions:
+              # Platform namespaces only; route-hostnames-reserved lists the same
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: [argocd, kube-system, monitoring, openbao, opencloud, rook-ceph]
