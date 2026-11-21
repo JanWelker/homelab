@@ -40,6 +40,16 @@ The images are the chart's: the operator from `registry.k8s.io` and `selinuxd`
 from `quay.io`, pinned by digest inside the chart, so Renovate sees only the
 chart version.
 
+### Policy store
+
+Flatcar's `/var/lib/selinux` is a symlink into the read-only `/usr`, where
+`selinuxd` cannot install anything. `selinux-policy-store.service` in
+`butane_node_config.yaml.j2` replaces it with a copy before the kubelet
+starts, and copies again when the Flatcar version changes, dropping the policy
+`selinuxd` compiled from the old base; the daemon installs its modules again
+when its pod starts. Until it has, a pod whose type comes from a profile
+cannot start on that node.
+
 ### Templates
 
 `selinuxd-templates.yaml` is the image's template set with three changes:
@@ -71,10 +81,6 @@ needs no module at all, is the `selinux-denials` skill.
 
 Known gaps:
 
-- **The policy store is read-only.** On Flatcar `/var/lib/selinux` is a symlink
-  to `/usr/lib/selinux/policy`, so `selinuxd` cannot install a module until the
-  node template provides a writable copy and re-copies it after each OS update.
-  Until then no `SelinuxProfile` reaches `Installed`.
 - **Two policy files.** `selinuxd` writes `policy.33`, the kernel's version,
   beside the shipped `policy.35`; a `semodule -B` with the host's tools
   rewrites only the latter, and the node then boots the stale one.
