@@ -261,16 +261,17 @@ spec:
               process_kprobe_policy_name="ptrace-in-container".
         - alert: TetragonPolicyNotLoaded
           expr: |
-            tetragon_tracingpolicy_loaded{state=~"error|load_error"} > 0
+            tetragon_tracingpolicy_loaded{state!="enabled"} > 0
           for: 10m
           labels:
             severity: warning
           annotations:
             summary: >-
-              A Tetragon TracingPolicy failed to load
+              A Tetragon TracingPolicy is not fully loaded
             description: >-
-              A policy in state {{ $labels.state }} watches nothing, silently.
-              kubectl get tracingpolicies -o wide names it.
+              A policy in state {{ $labels.state }} watches nothing or only
+              some of its hooks, silently. `tetra tracingpolicy list` in the
+              agent pod names it.
         - alert: TetragonEventsLost
           expr: |
             sum by (pod) (

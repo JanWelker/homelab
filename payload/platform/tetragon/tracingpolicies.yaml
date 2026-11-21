@@ -600,21 +600,22 @@ spec:
           matchActions:
             - action: Post
               rateLimit: 1m
-    - call: find_module_sections
+    - call: add_taint
       syscall: false
-      message: Kernel module loaded, with its signature status
+      message: Unsigned kernel module loaded
       tags:
         - observability.kernel
       args:
         - index: 0
-          type: nop
-        - index: 1
-          type: load_info
-      # Inlined on some kernels.
-      ignore:
-        callNotFound: true
+          type: int
       selectors:
-        - matchActions:
+        - matchArgs:
+            # 13 is TAINT_UNSIGNED_MODULE
+            - index: 0
+              operator: Equal
+              values:
+                - "13"
+          matchActions:
             - action: Post
               rateLimit: 1m
 ---

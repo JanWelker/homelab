@@ -199,7 +199,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(tetragon_tracingpolicy_loaded{state=~\"error|load_error\"})",
+              "expr": "sum(tetragon_tracingpolicy_loaded{state!=\"enabled\"})",
               "refId": "A",
               "instant": true,
               "range": false
