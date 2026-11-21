@@ -2943,8 +2943,8 @@ the mixin Grafana maintains, not rules written here.</p>
 </tr>
 <tr>
 <td><code>KubernetesAuditAnonymousRequest</code></td>
-<td>A successful anonymous request</td>
-<td>The audit policy drops the health endpoints, the only legitimate anonymous paths</td>
+<td>A successful anonymous request, except the read of <code>kube-public/cluster-info</code></td>
+<td>The health endpoints and kubeadm's bootstrap discovery ConfigMap are the only legitimate anonymous paths; the audit policy drops the first, the rule skips the second</td>
 </tr>
 <tr>
 <td><code>KubernetesAuditEsoTokenMinted</code></td>

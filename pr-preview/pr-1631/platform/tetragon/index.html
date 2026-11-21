@@ -2720,6 +2720,10 @@ and runs privileged on the host network by the chart's default.</p>
 <td>Capabilities and <code>privileges_changed</code> on every exec, so a setuid binary or a file-capability escalation is visible without a policy</td>
 </tr>
 <tr>
+<td>Agent metrics port</td>
+<td>Moved off the chart's default, which is the port kube-vip binds on the same host network; see <a href="../../operations/control-plane-vip/#the-handover">Control-plane VIP</a>. The Prometheus egress rule in <code>payload/platform/security/network-policies/monitoring.yaml</code> names it too</td>
+</tr>
+<tr>
 <td>Two <code>ServiceMonitor</code>s</td>
 <td><code>tetragon_policy_events_total</code> is what the alert reads; <code>tetragon_tracingpolicy_loaded</code> and the ring-buffer counters are its health</td>
 </tr>
