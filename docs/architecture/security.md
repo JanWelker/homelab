@@ -104,8 +104,8 @@ sensitive is committed to Git.
 - A Kubernetes `Secret` is base64, not encryption. Anyone with `get secrets` in
   a namespace can read what ESO materialised there. Encryption at rest protects
   the bytes in etcd, not the API.
-- Velero's resource backups hold every `Secret` as plain JSON in the `velero`
-  bucket, so its keys and RGW bypass encryption at rest; only the volume data
+- Velero's resource backups hold every `Secret` as plain JSON under the `offsite`
+  bucket's `backup.velero/` prefix, so its keys and RGW bypass encryption at rest; only the volume data
   is encrypted — see [Velero](../platform/velero.md#repository-password).
 
 ### Encryption at rest
@@ -193,11 +193,12 @@ to either Gateway and claim a hostname inside its listener's pattern — see
 
 ## Exposed interfaces
 
-Every platform UI on the infra gateway, and Flowscape and the Extractor admin
-UI on the apps gateway, is behind
+Every platform UI on the infra gateway is behind
 [Authentik](../platform/authentik.md), and only accounts in `infra-users` get
-past it. The wollbi editors also have Authentik accounts, so being logged in
-is not enough. The last two rows are not behind Authentik:
+past it. The applications on the apps gateway, some of them public and
+without Authentik, are listed with their authentication on the
+[applications repository's pages](https://homelab-apps.wlkr.ch/). The last two
+rows are not behind Authentik:
 
 | Service | Authentication | Group required |
 | --- | --- | --- |
@@ -207,7 +208,6 @@ is not enough. The last two rows are not behind Authentik:
 | Rook dashboard | Authentik proxy outpost | `infra-users` |
 | Prometheus | Authentik proxy outpost | `infra-users` |
 | Alertmanager | Authentik proxy outpost | `infra-users` |
-| Flowscape, Extractor admin UI | Authentik proxy outpost | `infra-users` |
 | OpenBao UI | Token or configured auth method — not behind Authentik | — |
 | Agent SSH, `*.ssh.wlkr.ch` | The `ssh` TLS-passthrough listener on `apps-gateway`, which external-dns publishes on the public address. Nothing in front authenticates it: `sshd` in each agent pod admits the user `agent` with public keys only — see [SSH listener](../platform/gateway-api.md#ssh-listener) and the workloads repository's [Claude agents](https://github.com/JanWelker/homelab-apps/blob/main/docs/claude-agents.md) page | — |
 
@@ -231,7 +231,7 @@ Roughly in order of value against effort:
    the mail path is not itself unmonitored.
 4. Move etcd encryption to a KMS provider, removing the static
    `encryption_key` in `output/credentials/`.
-5. Get the backups out of the cluster: Velero and the etcd snapshots write to
-   the Ceph object store they are backing up.
+5. Get a backup copy off the site: TrueNAS pulls the `offsite` bucket to the
+   LAN, which survives losing the cluster but not the site.
 
 See [Known Limitations](limitations.md) for the operational counterparts.
