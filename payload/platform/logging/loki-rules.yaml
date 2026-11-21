@@ -277,8 +277,7 @@ data:
               sum by (node) (
                 count_over_time(
                   {namespace="kube-system", container="export-stdout"}
-                    |= "find_module_sections"
-                    |~ `"signature_ok":\s*false`
+                    |~ `"function_name":\s*"add_taint"`
                   [10m]
                 )
               ) > 0

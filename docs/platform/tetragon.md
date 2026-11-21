@@ -33,6 +33,7 @@ and runs privileged on the host network by the chart's default.
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid binary or a file-capability escalation is visible without a policy |
 | Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](../operations/control-plane-vip.md#the-handover). The Prometheus egress rule in `payload/platform/security/network-policies/monitoring.yaml` names it too |
 | Two `ServiceMonitor`s | `tetragon_policy_events_total` is what the alert reads; `tetragon_tracingpolicy_loaded` and the ring-buffer counters are its health |
+| `ServerSideDiff=true` annotation | The `TracingPolicy` CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs one dry-run apply per resource per reconcile: the Argo CD controller's `dryRun=All` patches in the audit log, not changes |
 | Memory limit | 2.5x the measured working set of the busiest agent with the policy library loaded, per the [platform rule](index.md#components); the dashboard's first row shows the current worst node against it |
 
 ### Policies
@@ -41,9 +42,8 @@ and runs privileged on the host network by the chart's default.
 adapted from the [upstream policy library](https://tetragon.io/docs/policy-library/observability/).
 All post at most one event per minute per selector, and most watch containers
 only, since the host has the node journal; `sensitive-file-access` and the
-signature hook of `kernel-module-load` record the host too. Every hook carries a
-`message` and one of upstream's `observability.*` tags, so an event says
-what it is without a lookup here.
+taint hook of `kernel-module-load` record the host too. Every hook carries a
+`message` and an `observability.*` tag.
 
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ what it is without a lookup here.
 | `library-from-writable-path` | `security_mmap_file` | The same paths mapped with `PROT_EXEC`, which is how a dropped shared library loads, except the native libraries runtimes unpack under `/tmp` on every start: Alloy's Snowflake driver (`/tmp/gosnowflake-cgo*`) and zstd-jni in Dependency-Track (`/tmp/libzstd-jni-*`); the alert leaves out `go` in the `arc-jobs` workflow pods | Yes: `TetragonLibraryFromWritablePath` |
 | `privileges-raise`, `privileges-raise-gid`, `privileges-raise-gid-argocd` | The `__sys_set*uid` and `__sys_set*gid` family | Any setuid or setgid to root inside a container. A record: root re-asserting root is routine (`logrotate`), and a setuid binary that actually raises privileges is `TetragonPrivilegedExec`. `runc`, which sets the ids on every container start, is dropped in the kernel. The redis-ha busybox calls setgid on every applet, so the gid hooks leave out pods labelled `app: redis-ha` in `argocd` only; one `podSelector` cannot say "this label in that namespace", hence two gid policies | No |
 | `bpf-program-load` | `bpf_check` | Any BPF program load from a container; the alert leaves out `cilium` and `kube-system` | Yes: `TetragonBpfProgramLoaded` |
-| `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file`, `find_module_sections` | A module requested by name or read from a container, minus the `net-pf-2-proto-262` and `net-pf-10-proto-262` requests Go binaries and haproxy make when they probe MPTCP at start and the `net-pf-31` one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd` after a boot. The third hook records every load's signature check, host included: Flatcar signs its modules but does not enforce it (`CONFIG_MODULE_SIG` without `_FORCE`) | Yes: `TetragonKernelModuleLoaded`; `TetragonUnsignedKernelModule` from Loki |
+| `kernel-module-load` | `security_kernel_module_request`, `security_kernel_read_file`, `add_taint` | A module requested by name or read from a container, minus the `net-pf-2-proto-262` and `net-pf-10-proto-262` requests Go binaries and haproxy make when they probe MPTCP at start and the `net-pf-31` one Home Assistant makes when it looks for a Bluetooth adapter; the alert leaves out `rook-ceph`, whose CSI plugin loads `rbd`. The third hook fires on the unsigned-module taint, host included, because `module_sig_check` returns success for an unsigned module when Flatcar does not enforce signatures (`CONFIG_MODULE_SIG` without `_FORCE`) | Yes: `TetragonKernelModuleLoaded`; `TetragonUnsignedKernelModule` from Loki |
 | `dns-outside-cluster` | `ip_output` | A port 53 packet from a container to anything but the kube-dns ClusterIP or the pod range, which is a hard-coded resolver in an image, a tunnel or exfiltration. The pod range is left out because it holds each node's Cilium router address, the pod's default gateway, which Home Assistant's dhcp integration asks for PTR records at start. The hook sees TCP and UDP alike, so musl's unconnected sends count too; the alert leaves out `kube-system`, where CoreDNS forwards upstream, and `cert-manager`, whose DNS-01 propagation check asks the zone's authoritative servers | Yes: `TetragonDnsOutsideCluster` |
 | `mount-in-container` | `security_sb_mount` | Any mount from a container except by `runc`, which mounts the rootfs, proc and sysfs on every start. Escapes start with a mount of the host's disk, cgroup or proc; the alert leaves out `rook-ceph`, `cilium` and `kube-system`, which mount by design, and `/proc/self/exe` in the `arc-jobs` workflow pods, which is buildah mounting in its user namespace | Yes: `TetragonMountInContainer` |
 | `ptrace-in-container` | `security_ptrace_access_check` | An attach-mode access to another process from a container: ptrace, `process_vm_writev`, `/proc/<pid>/mem`. The read mode `ps` uses is left alone | Yes: `TetragonPtraceInContainer` |
@@ -67,15 +67,14 @@ confirming it in the export; a person running `cat` on a node is exactly what
 the policy is for. A binary path is only trusted together with the host
 network namespace: any image can ship `/usr/local/bin/etcd`, but only a
 privileged namespace can run it with `hostNetwork`. The exemption stays in the
-kernel rather than on pod labels, because the `podSelector` pitfall below would
-miss a pod that reads a key the moment it starts; exemptions by namespace and
-workload go in the alert instead.
+kernel because the `podSelector` pitfall below would miss a pod that reads a
+key at start; namespace and workload exemptions go in the alert.
 
 The third policy is the runtime half of an image check: nothing in an image
 lives on those paths, so a binary executing from one was written after the
 container started. An emptyDir can be mounted anywhere, so the policy names
 the mounts this cluster puts binaries into rather than every emptyDir;
-`kubectl get pods -A -o json` lists the rest. A `readOnlyRootFilesystem`
+A `readOnlyRootFilesystem`
 pod makes the check complete, since then a new binary has nowhere else to
 land. The offline half, every binary Tetragon saw executed diffed against
 the image's file list, needs no policy: query Loki by image and binary and
@@ -84,8 +83,7 @@ resolve each path in `crane export <image> - | tar t`.
 Four more detections from the same library need no policy, because the exec
 event already carries what they look for: `sudo`, a setuid or file-capability
 binary raising privileges, a fileless exec and a deleted binary. They are
-[Loki alerts](logging.md#alerting). Upstream's `sshd` policy is covered by
-`NodeSshLogin` from the node journal.
+[Loki alerts](logging.md#alerting).
 
 ## Usage
 
@@ -123,7 +121,7 @@ systemd's `PrivateUsers=` needs them. The one exception is `arc-jobs`,
 where buildah needs one for every image build; its `podSelector` excludes
 that namespace, at the price of the first seconds of every container
 (see Pitfalls), and a monitor-only twin records the events there.
-The limits, both checked on the running nodes: `Override` and enforcers
+The limits, checked on the nodes: `Override` and enforcers
 need `CONFIG_FUNCTION_ERROR_INJECTION`, which Flatcar's kernel does not
 set, and BPF LSM hooks need `bpf` in the `lsm=` boot argument, which
 Flatcar does not pass. That leaves `Sigkill`, which upstream warns does
