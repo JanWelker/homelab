@@ -71,7 +71,7 @@ by the `selinux-denials` skill, which also says when `spc_t` or a host-path
 label needs no profile.
 
 1. Merge the profile and wait for `kubectl get selinuxprofile <name>` to show `Installed`.
-2. Then set `seLinuxOptions.type: <name>.process` on the container, in a second merge: a pod whose type a node does not know cannot start.
+2. Then set `seLinuxOptions.type: <name>.process` on the pod, in a second merge: a pod whose type a node does not know cannot start, and a container with its own type gets its own level and loses the pod's volumes.
 
 ## Health check
 

@@ -22,13 +22,14 @@ spec:
           # The agent DaemonSet; see docs/platform/index.md#components
           priorityClassName: system-node-critical
 
-          tetragon:
-            # A host agent by design: BPF, perf events, tracefs and every
-            # process's /proc. See docs/platform/tetragon.md#configuration
-            securityContext:
-              seLinuxOptions:
-                type: spc_t
+          # A host agent by design: BPF, perf events, tracefs and every
+          # process's /proc. On the pod, so the export sidecar shares the level
+          # the agent writes its log at. See docs/platform/tetragon.md#configuration
+          podSecurityContext:
+            seLinuxOptions:
+              type: spc_t
 
+          tetragon:
             # Capabilities and privilege changes on exec and kprobe events.
             enableProcessCred: true
 
