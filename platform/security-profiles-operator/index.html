@@ -2697,8 +2697,8 @@ AppArmor and the log enricher are off.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>selinux.enable</code></td>
-<td>SELinux support is off outside OpenShift; the chart renders it onto the <code>spod</code> object</td>
+<td><code>selinux.enable: false</code></td>
+<td>On, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed 512Mi request at node-critical priority, preempting pods on a full node. Off until the <a href="#pitfalls">policy store</a> is writable</td>
 </tr>
 <tr>
 <td><code>customTemplatesConfigMap</code> left unset</td>
@@ -2762,18 +2762,18 @@ needs no module at all, is the <code>selinux-denials</code> skill.</p>
 </tbody>
 </table>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
-<p>Nothing here was run on the cluster. Known gaps:</p>
+<p>Known gaps:</p>
 <ul>
 <li><strong>The policy store is read-only.</strong> On Flatcar <code>/var/lib/selinux</code> is a symlink
   to <code>/usr/lib/selinux/policy</code>, so <code>selinuxd</code> cannot install a module until the
   node template provides a writable copy and re-copies it after each OS update.
-  That is separate work; until then no <code>SelinuxProfile</code> reaches <code>Installed</code>.</li>
+  Until then no <code>SelinuxProfile</code> reaches <code>Installed</code>.</li>
 <li><strong>No templates for Flatcar's policy.</strong> <code>customTemplatesConfigMap</code> is the
   documented answer, and the <code>.cil</code> files are still to be written.</li>
 <li><strong>Upstream does not test it.</strong> Its Flatcar end-to-end job runs with
   <code>E2E_TEST_SELINUX=false</code>.</li>
 <li><strong>A fresh node has no profiles</strong> until its <code>spod</code> pod runs; whatever a node
-  needs to boot belongs in the node template, not in a profile.</li>
+  needs to boot belongs in the node template.</li>
 </ul>
 
 
