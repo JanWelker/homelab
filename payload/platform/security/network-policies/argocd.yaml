@@ -43,7 +43,7 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: claude-agents
-            k8s:app.kubernetes.io/instance: claude-homelab
+            k8s:io.cilium.k8s.policy.serviceaccount: claude-reader
       toPorts:
         - ports:
             - port: "8080"
@@ -179,11 +179,12 @@ spec:
   description: >-
     The repo-server fetches the two Git repositories on GitHub, the
     Gateway API CRDs, and every Helm
-    repository an application.yaml names. Most of those are GitHub Pages
-    with tarballs served from githubusercontent.com; the OCI charts come
-    from ghcr.io, whose blobs are on githubusercontent.com too; the rest
-    are listed by name. A new chart repository needs a line here, or the Application
-    reads "ComparisonError" within a minute.
+    repository an application.yaml names, each by name. Most are GitHub
+    Pages with tarballs served from githubusercontent.com, the one
+    wildcard, since its CDN names are not stable; the OCI charts come from
+    ghcr.io, whose blobs are on githubusercontent.com too. A new chart
+    repository needs a line here, or the Application reads
+    "ComparisonError" within a minute.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argocd-repo-server
@@ -191,7 +192,18 @@ spec:
     - toFQDNs:
         - matchName: github.com
         - matchName: ghcr.io
-        - matchPattern: "**.github.io"
+        - matchName: prometheus-community.github.io
+        - matchName: cloudnative-pg.github.io
+        - matchName: vmware-tanzu.github.io
+        - matchName: postfinance.github.io
+        - matchName: openbao.github.io
+        - matchName: kubernetes-sigs.github.io
+        - matchName: kubereboot.github.io
+        - matchName: grafana.github.io
+        - matchName: grafana-community.github.io
+        - matchName: argoproj.github.io
+        - matchName: aquasecurity.github.io
+        - matchName: dependencytrack.github.io
         - matchPattern: "**.githubusercontent.com"
         - matchName: charts.goauthentik.io
         - matchName: charts.jetstack.io
