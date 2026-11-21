@@ -2697,8 +2697,8 @@ AppArmor and the log enricher are off.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>selinux.enable: false</code></td>
-<td>On, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed 512Mi request at node-critical priority, preempting pods on a full node. Off until the <a href="#pitfalls">policy store</a> is writable</td>
+<td><code>selinuxd-memory-request</code> in <code>admission-policies.yaml</code></td>
+<td>With <code>selinux.enable</code>, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed 512Mi request at node-critical priority, which preempts pods on a full node; the mutating policy halves it at pod creation</td>
 </tr>
 <tr>
 <td><code>customTemplatesConfigMap</code> left unset</td>
