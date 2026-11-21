@@ -45,7 +45,7 @@ flowchart LR
 
 Two, declared as `audit` stanzas in the server config in `application.yaml` (this OpenBao refuses `bao audit enable` over the API): a `file` device on the audit PVC, and a second `file` device on `stdout`, which [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) ships to Loki with the rest of the container's output. Without one, who read which secret is recorded nowhere; with only one, a full PVC would make OpenBao refuse every request, because a request no enabled device can log is refused. Values are HMACed in both; paths and identities are not. The config is read at start-up and the StatefulSet updates `OnDelete`, so a change lands at each pod's next restart — see [Unsealing after a restart](<#unsealing-after-a-restart>).
 
-`OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>) fires on a `kv/data/` read by anything but the External Secrets Operator's roles: the operator, a generated root token, or a token that should not exist. A standby audits a request before it resolves the token, so its `please forward to the active node` rejections carry no identity; the rule drops them, and every `ClusterSecretStore` targets the `openbao-active` Service so ESO never produces one.
+`OpenBaoSecretReadOutsideEso` in [`loki-rules.yaml`](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>) fires on a `kv/data/` read by anything but the External Secrets Operator's roles: the operator, a root token, or a token that should not exist. A standby audits a request before it resolves the token, so its `please forward to the active node` rejections carry no identity; the rule drops them, and every `ClusterSecretStore` targets `openbao-active`.
 
 ```text
 {namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
@@ -61,6 +61,7 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a workloa
 | `cert-manager/route53` | `access-key-id`, `secret-access-key` | The `certificates` Application |
 | `external-dns/route53` | `access-key-id`, `secret-access-key` | external-dns |
 | `monitoring/grafana-admin` (generated) | `password` | Grafana |
+| `cilium/bgp` | `password` | The BGP session's TCP MD5 password, also on the router — [BGP session password](<https://homelab.wlkr.ch/platform/cilium/index.md#bgp-session-password>) |
 | `monitoring/smtp` | `username`, `password`, `to` | Alertmanager |
 | `kneadtime/config` | `vapid-private-key` | The Knead Time reminder service — a P-256 key in PEM that signs every push; rotating it retires every subscription taken with the old one |
 | `claude-homelab/argocd` | `token` | The homelab session's Argo CD API token — [Agent account](<https://homelab.wlkr.ch/platform/argocd/index.md#agent-account>); empty until generated |
@@ -207,19 +208,19 @@ kubectl get externalsecret -A
 >
 > **Sealed after every restart, and Ready does not mean unsealed**
 >
-> OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (`sealedcode=204`), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys and a sealed pod is not restarted into another sealed pod; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
+> OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (`sealedcode=204`), deliberately, so a rollout does not stop at the first pod waiting for keys; the cost is that only `bao status`, not `kubectl get pods`, can tell you OpenBao is usable. While sealed no `ExternalSecret` resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See [Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
 
 > [!WARNING]
 >
 > **A `PushSecret` cannot add a key to a path `make bao-secrets` wrote**
 >
-> Paths written before their `PushSecret` existed carry no `managed-by` metadata, so a new key on one fails with `secret not managed by external-secrets` and the `PushSecret` goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: `bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets <path>`.
+> A path written before its `PushSecret` existed carries no `managed-by` metadata, so a new key on it fails with `secret not managed by external-secrets` and the `PushSecret` goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: `bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets <path>`.
 
 > [!WARNING]
 >
 > **`#` and `!` on a command line**
 >
-> Inside double quotes an interactive bash expands `!` from history before the quotes are considered, and an unquoted `#` truncates the line. Both are silent and store a plausible credential that does not work. Use single quotes, or write the secret as JSON and pass `@file` — a missing file then fails loudly.
+> Inside double quotes an interactive bash expands `!` from history before the quotes are considered, and an unquoted `#` truncates the line. Both are silent and store a credential that does not work. Use single quotes, or write the secret as JSON and pass `@file` — a missing file then fails loudly.
 
 ## Recovery
 

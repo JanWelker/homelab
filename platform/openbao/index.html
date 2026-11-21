@@ -3077,11 +3077,10 @@ Values are HMACed in both; paths and identities are not. The config is read at
 start-up and the StatefulSet updates <code>OnDelete</code>, so a change lands at each pod's next restart — see <a href="#unsealing-after-a-restart">Unsealing after a restart</a>.</p>
 <p><code>OpenBaoSecretReadOutsideEso</code> in <a href="../logging/#alerting"><code>loki-rules.yaml</code></a>
 fires on a <code>kv/data/</code> read by anything but the External Secrets Operator's
-roles: the operator, a generated root token, or a token that should not exist. A
+roles: the operator, a root token, or a token that should not exist. A
 standby audits a request before it resolves the token, so its
 <code>please forward to the active node</code> rejections carry no identity; the rule
-drops them, and every <code>ClusterSecretStore</code> targets the <code>openbao-active</code>
-Service so ESO never produces one.</p>
+drops them, and every <code>ClusterSecretStore</code> targets <code>openbao-active</code>.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>{namespace="openbao", container="openbao"} |= `"type":"response"` |= `kv/data/` | json | __error__=""
 </span></code></pre></div>
 <h3 id="kv-layout">KV layout<a class="headerlink" href="#kv-layout" title="Permanent link">&para;</a></h3>
@@ -3122,6 +3121,11 @@ a <code>bao kv put</code> replaces the whole path.</p>
 <td><code>monitoring/grafana-admin</code> (generated)</td>
 <td><code>password</code></td>
 <td>Grafana</td>
+</tr>
+<tr>
+<td><code>cilium/bgp</code></td>
+<td><code>password</code></td>
+<td>The BGP session's TCP MD5 password, also on the router — <a href="../cilium/#bgp-session-password">BGP session password</a></td>
 </tr>
 <tr>
 <td><code>monitoring/smtp</code></td>
@@ -3407,15 +3411,15 @@ scraped at all.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">Sealed after every restart, and Ready does not mean unsealed</p>
-<p>OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (<code>sealedcode=204</code>), deliberately, so a StatefulSet rollout does not stop at the first pod waiting for keys and a sealed pod is not restarted into another sealed pod; the cost is that only <code>bao status</code>, not <code>kubectl get pods</code>, can tell you OpenBao is usable. While sealed no <code>ExternalSecret</code> resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See <a href="../../architecture/limitations/">Limitations</a>.</p>
+<p>OpenBao seals itself on every pod restart — node reboot, chart bump, Kured — and no auto-unseal is configured, so it stays shut until someone with the key shares unseals it. The readiness and liveness probes answer healthy while sealed (<code>sealedcode=204</code>), deliberately, so a rollout does not stop at the first pod waiting for keys; the cost is that only <code>bao status</code>, not <code>kubectl get pods</code>, can tell you OpenBao is usable. While sealed no <code>ExternalSecret</code> resolves, so cert-manager loses its Route53 credentials and nothing breaks until a certificate expires up to sixty days later, with no obvious link to the reboot. See <a href="../../architecture/limitations/">Limitations</a>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">A <code>PushSecret</code> cannot add a key to a path <code>make bao-secrets</code> wrote</p>
-<p>Paths written before their <code>PushSecret</code> existed carry no <code>managed-by</code> metadata, so a new key on one fails with <code>secret not managed by external-secrets</code> and the <code>PushSecret</code> goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: <code>bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets &lt;path&gt;</code>.</p>
+<p>A path written before its <code>PushSecret</code> existed carries no <code>managed-by</code> metadata, so a new key on it fails with <code>secret not managed by external-secrets</code> and the <code>PushSecret</code> goes Degraded. The existing keys are unaffected. Mark the path as ESO's once, and the next reconcile adds the key: <code>bao kv metadata put -mount=kv -custom-metadata=managed-by=external-secrets &lt;path&gt;</code>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title"><code>#</code> and <code>!</code> on a command line</p>
-<p>Inside double quotes an interactive bash expands <code>!</code> from history before the quotes are considered, and an unquoted <code>#</code> truncates the line. Both are silent and store a plausible credential that does not work. Use single quotes, or write the secret as JSON and pass <code>@file</code> — a missing file then fails loudly.</p>
+<p>Inside double quotes an interactive bash expands <code>!</code> from history before the quotes are considered, and an unquoted <code>#</code> truncates the line. Both are silent and store a credential that does not work. Use single quotes, or write the secret as JSON and pass <code>@file</code> — a missing file then fails loudly.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="unsealing-after-a-restart">Unsealing after a restart<a class="headerlink" href="#unsealing-after-a-restart" title="Permanent link">&para;</a></h3>

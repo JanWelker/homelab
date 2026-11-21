@@ -1176,6 +1176,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#bgp-session-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BGP session password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2484,6 +2495,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#bgp-session-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        BGP session password
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2649,11 +2671,10 @@
 
 
 <h1 id="cilium">Cilium<a class="headerlink" href="#cilium" title="Permanent link">&para;</a></h1>
-<p>Cilium is the CNI, and on this cluster considerably more: it replaces
-<code>kube-proxy</code>, terminates ingress through Gateway API, hands out LoadBalancer
-addresses on a network with no cloud load balancer, encrypts node-to-node
-traffic, and shows what is talking to what. That consolidation is the argument
-for it on bare metal, and the reason a broken Cilium is never a small problem.</p>
+<p>Cilium is the CNI, and more: it replaces <code>kube-proxy</code>, terminates ingress
+through Gateway API, hands out LoadBalancer addresses on a network with no
+cloud load balancer, encrypts node-to-node traffic, and shows what is talking
+to what. A broken Cilium is never a small problem.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2716,7 +2737,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>bgp.yaml</code></td>
-<td>The same two addresses as <code>/32</code> routes over eBGP from every control-plane node to the router. The router forwards traffic it routes, from other VLANs, VPN clients and port forwards, to all three nodes at once and drops a dead one after the hold time, where L2 moves one lease. L2 stays because the addresses sit inside the flat LAN, whose hosts ARP for them and never ask the router. The ASNs and timers are in <code>bgp.yaml</code>. The router side is FRR on the UDM Pro: <code>make config</code> renders it from the inventory's <code>router_*</code> variables into <code>output/router/frr-bgp.conf</code>, so a firmware reset is recovered by pasting that file</td>
+<td>The same two addresses as <code>/32</code> routes over eBGP from every control-plane node to the router. The router sends traffic from other VLANs, VPN clients and port forwards to all three nodes and drops a dead one after the hold time, where L2 moves one lease. L2 stays because LAN hosts ARP for the addresses and never ask the router. The ASNs and timers are in <code>bgp.yaml</code>. The router side is FRR on the UDM Pro: <code>make config</code> renders it from the inventory's <code>router_*</code> variables into <code>output/router/frr-bgp.conf</code>, so a firmware reset is recovered by pasting that file with the <a href="#bgp-session-password">password</a> added</td>
 </tr>
 <tr>
 <td><code>encryption.type: wireguard</code></td>
@@ -2724,15 +2745,15 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td>Hubble, behind the <a href="../authentik/">Authentik</a> proxy outpost</td>
-<td>Hubble has no authentication of its own; the HTTPRoute points at the outpost and a ReferenceGrant in <code>payload/platform/authentik/</code> permits the cross-namespace reference</td>
+<td>Hubble has no authentication of its own; the HTTPRoute points at the outpost through a ReferenceGrant in <code>payload/platform/authentik/</code></td>
 </tr>
 <tr>
 <td>Hubble metrics labelled by namespace</td>
-<td>The chart's Hubble dashboards filter on source and destination namespace and show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for traffic Cilium proxies at L7, which is the Gateway.</td>
+<td>The chart's Hubble dashboards show nothing without them; namespace keeps the series count to the square of the namespace count. The HTTP metric adds workloads, but only for the Gateway's proxied traffic.</td>
 </tr>
 <tr>
 <td><code>hubble.export.static</code></td>
-<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line and drops the rest. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are not exported: thousands a second.</td>
+<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are thousands a second and not exported.</td>
 </tr>
 <tr>
 <td><code>hubble.redact</code></td>
@@ -2740,7 +2761,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>hostFirewall.enabled: true</code></td>
-<td>Filters traffic to the node's own addresses, which is every host-networked port, with <code>CiliumClusterwideNetworkPolicy</code> objects that select nodes. Nothing is denied on IPv4 until a policy selects the node; IPv6 differs, see <a href="#pitfalls">Pitfalls</a>. Rollout and policy in <a href="../security-policies/#host-firewall">Host firewall</a></td>
+<td>Filters traffic to the node's own addresses, which is every host-networked port, through <code>CiliumClusterwideNetworkPolicy</code> objects that select nodes. Nothing is denied on IPv4 until a policy selects the node; IPv6 differs, see <a href="#pitfalls">Pitfalls</a>. Rollout and policy in <a href="../security-policies/#host-firewall">Host firewall</a></td>
 </tr>
 <tr>
 <td><code>policyAuditMode: false</code></td>
@@ -2748,7 +2769,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>rollOutCiliumPods</code> and the four <code>rollOutPods</code></td>
-<td>The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, while someone is watching, not at the next unrelated restart. The price is that every change to <code>cilium-config</code> rolls the CNI on every node: running pods keep their networking, policy updates pause per node while its agent is down, and the <a href="#pitfalls"><code>k8sServiceHost</code> pitfall</a> bites at merge, not later</td>
+<td>The agent, Envoy, the operator, Relay and the UI read their ConfigMap once, at startup. With a checksum of it on the pod template, a merged value rolls the pods and is live within minutes, and a value the agent refuses fails at merge time, not at the next unrelated restart. The price is that every change to <code>cilium-config</code> rolls the CNI on every node: running pods keep their networking, policy updates pause per node while its agent is down, and the <a href="#pitfalls"><code>k8sServiceHost</code> pitfall</a> bites at merge, not later</td>
 </tr>
 <tr>
 <td><code>updateStrategy.rollingUpdate.maxUnavailable: 1</code></td>
@@ -2760,7 +2781,7 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td>The operator's cluster-wide Secret read</td>
-<td>The chart grants <code>get</code>, <code>list</code> and <code>watch</code> on all Secrets whenever Gateway API or <code>bgpControlPlane</code> is on, and has no value to narrow it, because the operator copies the certificate Secrets a Gateway names, in any namespace, into <code>cilium-secrets</code>. The alert <a href="../logging/#alerting">allowlists</a> it</td>
+<td>The chart grants <code>get</code>, <code>list</code> and <code>watch</code> on all Secrets whenever Gateway API or <code>bgpControlPlane</code> is on, with no value to narrow it: the operator copies the certificate Secrets a Gateway names, in any namespace, into <code>cilium-secrets</code>. The <a href="../logging/#alerting">log alert</a> allowlists it</td>
 </tr>
 <tr>
 <td><code>lb-pools.yaml</code> on <code>cilium.io/v2</code></td>
@@ -2768,11 +2789,11 @@ for it on bare metal, and the reason a broken Cilium is never a small problem.</
 </tr>
 <tr>
 <td><code>cilium-agent</code> memory limit</td>
-<td>It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, not a day, before the <a href="../">platform rule</a> applied</td>
+<td>It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, see the <a href="../">platform rule</a></td>
 </tr>
 <tr>
 <td><code>trustCRDsExist: true</code></td>
-<td>The chart otherwise refuses to render while <code>monitoring.coreos.com/v1</code> is missing: the bootstrap install, a render before <code>prometheus-operator-crds</code> has synced, and the diff preview's throwaway cluster</td>
+<td>The chart otherwise refuses to render while <code>monitoring.coreos.com/v1</code> is missing: at bootstrap, before <code>prometheus-operator-crds</code> has synced, and in the diff preview</td>
 </tr>
 </tbody>
 </table>
@@ -2789,40 +2810,56 @@ first because the operator checks for them once, at startup. The
 one difference is the three <code>serviceMonitor.enabled</code> flags, which <code>make</code> turns
 off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
 the monitors back on adoption, rolling the agent and operator once.</p>
+<h3 id="bgp-session-password">BGP session password<a class="headerlink" href="#bgp-session-password" title="Permanent link">&para;</a></h3>
+<p>The session is TCP MD5 authenticated with a typed password, since the router
+needs the same one. Setting or rotating it breaks BGP, and both Gateways with
+it, until both ends match; L2 still announces them to the flat LAN.</p>
+<ol>
+<li><code>make bao-secrets</code>, answering for <code>kv/cilium/bgp</code>.</li>
+<li>
+<p>On the router, in the live FRR and <code>output/router/frr-bgp.conf</code>, then
+   <code>clear bgp *</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>neighbor cilium password &lt;password&gt;
+</span></code></pre></div>
+</li>
+<li>
+<p>Check the session as in the <a href="#health-check">Health check</a>.</p>
+</li>
+</ol>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
 </span></code></pre></div>
 <p>The BGP session on each control-plane node, <code>established</code> with two routes
 advertised. <code>bgp.yaml</code> selects the control planes only, so ask that node's
 agent rather than whichever pod <code>ds/cilium</code> resolves to:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
 </span></code></pre></div>
 <p>Hubble answers <em>what did I just break?</em> during a network policy rollout — see
 <a href="../security-policies/#usage">Security Policies</a>. The <code>hubble</code> CLI talks to
 Relay through a port-forward on its default port:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>deploy/hubble-relay<span class="w"> </span><span class="m">4245</span>:4245<span class="w"> </span><span class="p">&amp;</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>deploy/hubble-relay<span class="w"> </span><span class="m">4245</span>:4245<span class="w"> </span><span class="p">&amp;</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--follow
 </span></code></pre></div>
 <p>The same verdicts, for the whole Loki retention window, in Grafana:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>{job="hubble", verdict="DROPPED"} | json | flow_drop_reason_desc="POLICY_DENIED"
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">
 <p class="admonition-title"><code>k8sServiceHost</code> pointed at an address that does not answer takes the cluster down</p>
-<p>Every Cilium pod loses the API server at once, and cluster networking goes with it — including whatever you were using to fix the problem. The change ordering is in <a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
+<p>Every Cilium pod loses the API server at once, and cluster networking goes with it. The change ordering is in <a href="../../operations/control-plane-vip/">Control Plane VIP</a>.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">An operator that starts without the API server leaves the Gateways without certificates</p>
-<p>cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and <code>cilium-secrets</code> empties. Envoy then resets the TLS handshake on every node without a cached copy, so some clients fail and others do not, depending on which node the router hashes them to. <code>CiliumGatewayCertificatesMissing</code> fires; <code>kubectl -n kube-system rollout restart deploy/cilium-operator</code> recovers it.</p>
+<p>cilium-operator checks for the Gateway API CRDs once at startup; if that check fails it runs without its Gateway controller until the next restart, and <code>cilium-secrets</code> empties. Envoy then resets the TLS handshake on every node without a cached copy, so clients fail depending on the node the router hashes them to. <code>CiliumGatewayCertificatesMissing</code> fires; <code>kubectl -n kube-system rollout restart deploy/cilium-operator</code> recovers it.</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">A chart default that disappears stays in <code>cilium-config</code></p>
-<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. When a chart release dropped the <code>envoy.xdsMode</code> default, the agents kept <code>envoy-xds-mode: ads</code> while Envoy's bootstrap switched to split xDS; Envoy got no listeners, and every Gateway and L7 policy stopped forwarding. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
+<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. Dropping the <code>envoy.xdsMode</code> default left the agents on <code>ads</code> while Envoy's bootstrap switched to split xDS, so no Gateway or L7 policy forwarded. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">The host firewall drops all node IPv6, with or without a policy</p>
-<p>With <code>enable-ipv6: false</code> the datapath has no IPv6 branch, so on the native device and <code>cilium_host</code> every IPv6 packet is dropped as <code>DROP_UNKNOWN_L3</code> in both directions, before any policy or audit mode (<a href="https://github.com/cilium/cilium/issues/47307">upstream</a>). A node keeps its SLAAC address until the lifetime runs out, and a client that does not fall back to IPv4 stalls until then. The drops reach Loki as <code>DROPPED</code> flows with a reason other than <code>POLICY_DENIED</code>, so <code>HubblePolicyDrops</code> and <code>HostFirewallDrops</code> stay quiet.</p>
+<p>With <code>enable-ipv6: false</code> the datapath has no IPv6 branch, so on the native device and <code>cilium_host</code> every IPv6 packet is dropped as <code>DROP_UNKNOWN_L3</code> in both directions, before any policy or audit mode (<a href="https://github.com/cilium/cilium/issues/47307">upstream</a>). A client that does not fall back to IPv4 stalls until the node's SLAAC address expires. The drops reach Loki as <code>DROPPED</code> flows with a reason other than <code>POLICY_DENIED</code>, so <code>HubblePolicyDrops</code> and <code>HostFirewallDrops</code> stay quiet.</p>
 </div>
 
 
