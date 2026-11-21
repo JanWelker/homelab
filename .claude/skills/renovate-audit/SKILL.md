@@ -49,8 +49,8 @@ excludes everything.
 
 The datasource is the project that owns the dependency in this repository,
 not the OSS upstream. Flatcar itself comes from the release channel's
-`version.txt`; Kubernetes from `flatcar/sysext-bakery` releases with the
-prefix stripped; syslinux from kernel.org. containerd has no pin: it is part
+`version.txt`; Kubernetes from `flatcar/sysext-bakery` release attachments, prefix
+kept in the tag; syslinux from kernel.org. containerd has no pin: it is part
 of the Flatcar image and must stay that way, so never add a bakery or
 upstream containerd pin. Never a mirror, fork or repackager. Ask before defaulting to an
 upstream when the owner is unclear.

@@ -43,9 +43,8 @@ are the sets below that must move together.
 - **Cluster-wide charts and workflow actions wait for a human.** Argo CD
     applies a merge within a minute and these charts hold cluster-wide
     rights, so no update of them automerges; the list is in `renovate.json`.
-- **A Kubernetes minor waits for a human.** A Flatcar minor
-    lands the same way a Grafana chart patch does, but `kubernetes_version` is
-    walked forward by hand in version-skew order; an automerged minor would
+- **A Kubernetes minor waits for a human.** `kubernetes_version` is walked
+    forward by hand in version-skew order; an automerged minor would
     provision a kubelet ahead of the API server — see [Upgrades](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
 - **Pairs that must move together are grouped into one PR:**
     `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs
@@ -54,8 +53,7 @@ are the sets below that must move together.
     the workflow with its pre-commit hook, because the two must lint alike;
     `gitleaks` likewise; the `external-snapshotter` tag with the
     `snapshot-controller` image it pins, because upstream's manifest at a tag
-    names the previous release's image (the image is a `registry.k8s.io` one,
-    so the pair waits for a human like every third-party image there); the
+    names the previous release's image (a third-party image, so the pair waits for a human); the
     two ARC charts, because the controller deletes a scale set whose chart
     version differs from its own; the OpenBao chart with the image the
     snapshot CronJob runs its CLI from, so the CLI never lags the server it
@@ -84,9 +82,11 @@ pre-commit hooks, the CI npm tools (`.github/tools`), plus custom regex managers
 `ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, any
 `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
 and the tool versions the workflows under `.github/workflows/` install by
-name rather than by action (the diff-preview image and Trivy). The `Makefile` is deliberately not
-tracked: the bootstrap targets read `targetRevision` out of the owning
-`application.yaml` — see [Version pins](../architecture/gitops.md#version-pins).
+name rather than by action (the diff-preview image and Trivy). The `Makefile` is not
+tracked; it reads `targetRevision` from the owning `application.yaml`
+([Version pins](../architecture/gitops.md#version-pins)). The Kubernetes
+sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before
+use and bumped with the version by the `github-release-attachments` datasource.
 
 ### Manager rules
 

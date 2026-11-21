@@ -10,6 +10,7 @@ chart_version = $(shell awk '/chart:/{f=1} f&&/targetRevision:/{print $$2; exit}
 CILIUM_VERSION      := $(call chart_version,payload/platform/cilium/application.yaml)
 ARGOCD_VERSION      := $(call chart_version,payload/argocd/application.yaml)
 GATEWAY_API_VERSION := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api-crds/application.yaml)
+GATEWAY_API_SHA256  := $(shell awk '/standard-install.yaml sha256:/{sub(/.*sha256:/,""); print; exit}' payload/platform/gateway-api-crds/application.yaml)
 
 require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
 
@@ -63,10 +64,13 @@ bootstrap: install-cilium install-argo bootstrap-apps
 # flags leave cilium-config untouched.
 install-cilium: check-context
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
+	$(call require,GATEWAY_API_SHA256,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
 	@echo "Installing Gateway API CRDs ($(GATEWAY_API_VERSION))..."
-	kubectl apply --server-side \
-		-f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	@mkdir -p output
+	curl -fsSL -o output/standard-install.yaml https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	echo "$(GATEWAY_API_SHA256)  output/standard-install.yaml" | shasum -a 256 -c -
+	kubectl apply --server-side -f output/standard-install.yaml
 	helm upgrade --install cilium cilium \
 		--repo https://helm.cilium.io/ \
 		--version $(CILIUM_VERSION) \
