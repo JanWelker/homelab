@@ -285,13 +285,12 @@ DNS and TLS need nothing further — see [Gateway API](../platform/gateway-api.m
 
 ### Putting a workload behind Authentik
 
-- **It speaks OIDC:** the `oauth2provider` blueprint lives in the workload's
-    directory; its client credentials come from a `PushSecret` in the same
-    directory writing `kv/<app>/config` — see
-    [Generated secrets](../platform/openbao.md#generated-secrets) — plus one
-    projected-volume source in
-    `payload/platform/authentik/application.yaml`; the discovery URI is
-    `auth.k8s.wlkr.ch`.
+- **It speaks OIDC:** the `oauth2provider` blueprint is a key of
+    `payload/platform/authentik/blueprints-workloads.yaml`; its client
+    credentials come from a `PushSecret` in the workload's directory writing
+    `kv/<app>/config` — see
+    [Generated secrets](../platform/openbao.md#generated-secrets); the
+    discovery URI is `auth.k8s.wlkr.ch`.
 - **It does not:** add a `proxyprovider` on the embedded outpost, point the
     `HTTPRoute` at `authentik-server` in the `authentik` namespace, add the
     namespace to `payload/platform/authentik/referencegrant.yaml`, and allow
