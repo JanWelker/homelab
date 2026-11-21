@@ -2773,15 +2773,19 @@ and runs privileged on the host network by the chart's default.</p>
 </tr>
 <tr>
 <td><code>exportDenyList</code></td>
-<td>Exec and exit events from the host and from the platform's own <code>kube-system</code> pods, selected by label, stay out of the export; they are the bulk of the volume and the least interesting. Any other pod in <code>kube-system</code> is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the <code>event_set</code> field</td>
+<td>Exec and exit events from the host and from the platform's own <code>kube-system</code> pods, selected by label, stay out of the export, being most of the volume. Any other pod in <code>kube-system</code> is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the <code>event_set</code> field</td>
+</tr>
+<tr>
+<td><code>seLinuxOptions.type: spc_t</code></td>
+<td>SELinux refuses <code>container_t</code> the agent's BPF loads, tracefs mount and other processes' <code>/proc</code></td>
 </tr>
 <tr>
 <td><code>enableProcessCred</code></td>
-<td>Capabilities and <code>privileges_changed</code> on every exec, so a setuid binary or a file-capability escalation is visible without a policy</td>
+<td>Capabilities and <code>privileges_changed</code> on every exec, so a setuid or file-capability escalation is visible without a policy</td>
 </tr>
 <tr>
 <td>Agent metrics port</td>
-<td>Moved off the chart's default, which is the port kube-vip binds on the same host network; see <a href="../../operations/control-plane-vip/#the-handover">Control-plane VIP</a>. The Prometheus egress rule in <code>payload/platform/security/network-policies/monitoring.yaml</code> names it too</td>
+<td>Moved off the chart's default, which is the port kube-vip binds on the same host network; see <a href="../../operations/control-plane-vip/#the-handover">Control-plane VIP</a>. The Prometheus egress rule in <code>monitoring.yaml</code> names it too</td>
 </tr>
 <tr>
 <td>Two <code>ServiceMonitor</code>s</td>
@@ -2789,11 +2793,11 @@ and runs privileged on the host network by the chart's default.</p>
 </tr>
 <tr>
 <td><code>ServerSideDiff=true</code> annotation</td>
-<td>The <code>TracingPolicy</code> CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs one dry-run apply per resource per reconcile: the Argo CD controller's <code>dryRun=All</code> patches in the audit log, not changes</td>
+<td>The <code>TracingPolicy</code> CRD defaults fields no manifest sets, which a client-side diff reads as drift. It costs a dry-run apply per resource per reconcile: the <code>dryRun=All</code> patches in the audit log</td>
 </tr>
 <tr>
 <td>Memory limit</td>
-<td>2.5x the measured working set of the busiest agent with the policy library loaded, per the <a href="../#components">platform rule</a>; the dashboard's first row shows the current worst node against it</td>
+<td>2.5x the measured working set of the busiest agent, per the <a href="../#components">platform rule</a>; the dashboard's first row shows the current worst node against it</td>
 </tr>
 </tbody>
 </table>

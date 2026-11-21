@@ -2806,13 +2806,13 @@ forbid the attribute. To test a change, run the <code>el9</code> image's
 <code>semodule -n -i</code> against a copy of a node's <code>/var/lib/selinux</code> and
 <code>/etc/selinux</code>: <code>-n</code> builds without loading.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>A profile is one entry in <code>profiles.yaml</code>, written from the denials Loki holds
+by the <code>selinux-denials</code> skill, which also says when <code>spc_t</code> or a host-path
+label needs no profile.</p>
 <ol>
-<li>Apply a <code>SelinuxProfile</code> in any namespace.</li>
-<li>Read its status: <code>kubectl get selinuxprofile &lt;name&gt; -o yaml</code>. <code>Installed</code> means every node's <code>selinuxd</code> loaded it.</li>
-<li>Set <code>seLinuxOptions.type</code> on the pod to the profile's usage string, shown in the status.</li>
+<li>Merge the profile and wait for <code>kubectl get selinuxprofile &lt;name&gt;</code> to show <code>Installed</code>.</li>
+<li>Then set <code>seLinuxOptions.type: &lt;name&gt;.process</code> on the container, in a second merge: a pod whose type a node does not know cannot start.</li>
 </ol>
-<p>Which denials a profile must cover, and when <code>spc_t</code> or a host-path label
-needs no module at all, is the <code>selinux-denials</code> skill.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
