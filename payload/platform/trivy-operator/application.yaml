@@ -126,6 +126,8 @@ spec:
               # The chart's defaults minus the CPU limit; null makes Helm drop
               # the inherited key. See docs/platform/index.md#components
               resources:
+                requests:
+                  memory: 192Mi
                 limits:
                   cpu: null
 
@@ -161,7 +163,7 @@ spec:
               cpu: 50m
               memory: 512Mi
             limits:
-              memory: 1536Mi
+              memory: 2560Mi
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/trivy-operator
