@@ -28,7 +28,7 @@ data:
           client_id: !Env DEPENDENCY_TRACK_CLIENT_ID
           redirect_uris:
             - matching_mode: strict
-              url: https://sbom.k8s.wlkr.ch/static/oidc-callback.html
+              url: https://sbom.infra.k8s.wlkr.ch/static/oidc-callback.html
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
@@ -48,7 +48,7 @@ data:
         attrs:
           name: Dependency-Track
           provider: !KeyOf dependency-track-provider
-          meta_launch_url: https://sbom.k8s.wlkr.ch
+          meta_launch_url: https://sbom.infra.k8s.wlkr.ch
           meta_description: Software bill of materials for every image the cluster runs
   opencloud.yaml: |
     version: 1
