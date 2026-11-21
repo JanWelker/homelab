@@ -24,6 +24,8 @@ kind: CiliumBGPPeerConfig
 metadata:
   name: router
 spec:
+  # Secret in kube-system, key `password`; see docs/platform/cilium.md#bgp-session-password
+  authSecretRef: bgp-router-password
   # A dead node's routes are gone after one hold time; the Cilium defaults
   # are 90s/30s. No graceful restart: it would keep them on the router longer.
   timers:

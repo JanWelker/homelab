@@ -8,7 +8,7 @@
 # the ExternalSecret that reads it, from a Password generator, and never
 # overwritten; see docs/platform/openbao.md#generated-secrets.
 #
-# Nine values belong to accounts outside this cluster and are prompted for,
+# Ten values belong to accounts outside this cluster and are prompted for,
 # one per line, with the input hidden:
 #
 #   CERT_MANAGER_KEY_ID / CERT_MANAGER_SECRET_KEY   Route53, TXT records only
@@ -16,6 +16,7 @@
 #   SMTP_USERNAME / SMTP_PASSWORD                   Alertmanager's mail account
 #   SMTP_TO                                         where alert mail is delivered
 #   SHOT_BRIDGE_LM_USERNAME / SHOT_BRIDGE_LM_PASSWORD  the shot bridge's La Marzocco account
+#   BGP_PASSWORD                                    the TCP MD5 password of the BGP session, also set on the router
 #
 # Eight more are optional, because what issues them runs on the cluster or
 # outside it and need not exist yet. Enter writes the path with an empty value
@@ -168,13 +169,14 @@ decide WRITE_SBOM_UPLOAD  dependency-track/sbom-upload
 decide WRITE_CLAUDE_ARGOCD claude-homelab/argocd
 decide WRITE_SHOT_BRIDGE  shot-bridge/accounts
 decide WRITE_ARC          arc-runners/github-app
+decide WRITE_BGP          cilium/bgp
 echo
 
 if [ "$WRITE_CERT_MANAGER" = "0" ] && [ "$WRITE_EXTERNAL_DNS" = "0" ] \
   && [ "$WRITE_MONITORING" = "0" ] && [ "$WRITE_KNEADTIME" = "0" ] \
   && [ "$WRITE_SBOM_UPLOAD" = "0" ] && [ "$WRITE_CLAUDE_ARGOCD" = "0" ] \
   && [ "$WRITE_SHOT_BRIDGE" = "0" ] \
-  && [ "$WRITE_ARC" = "0" ]; then
+  && [ "$WRITE_ARC" = "0" ] && [ "$WRITE_BGP" = "0" ]; then
   echo "Nothing to write -- every path exists and none was chosen for overwrite."
   exit 0
 fi
@@ -255,6 +257,9 @@ if [ "$WRITE_MONITORING" = "1" ]; then
   prompt_secret SMTP_PASSWORD           "  ...and its password"
   prompt_secret SMTP_TO                 "Address alerts are delivered to"
 fi
+if [ "$WRITE_BGP" = "1" ]; then
+  prompt_secret BGP_PASSWORD            "TCP MD5 password of the BGP session; the router needs the same one"
+fi
 if [ "$WRITE_SBOM_UPLOAD" = "1" ]; then
   prompt_optional SBOM_UPLOAD_API_KEY   "Dependency-Track API key for the SBOM upload job (Enter until it has issued one)"
 fi
@@ -301,6 +306,13 @@ if [ "$WRITE_MONITORING" = "1" ]; then
     "username=${SMTP_USERNAME}" \
     "password=${SMTP_PASSWORD}" \
     "to=${SMTP_TO}"
+fi
+
+# Typed on both ends: the router holds the same password, see
+# docs/platform/cilium.md#bgp-session-password
+if [ "$WRITE_BGP" = "1" ]; then
+  put cilium/bgp \
+    "password=${BGP_PASSWORD}"
 fi
 
 # A P-256 key in PEM, which py_vapid reads directly; the service derives the
