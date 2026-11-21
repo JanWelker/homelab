@@ -41,6 +41,9 @@ spec:
 
         toolbox:
           enabled: true
+          resources:
+            requests:
+              memory: 48Mi
 
         cephClusterSpec:
           monitoring:
@@ -132,6 +135,14 @@ spec:
                 memory: 1Gi
               limits:
                 memory: 2Gi
+            # One sidecar per Ceph daemon pod and one collector per node:
+            # the chart's requests are several times what they use.
+            logcollector:
+              requests:
+                memory: 16Mi
+            crashcollector:
+              requests:
+                memory: 32Mi
 
           placement:
             all:
