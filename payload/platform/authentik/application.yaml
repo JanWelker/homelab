@@ -134,23 +134,11 @@ spec:
               limits:
                 memory: 1Gi
 
-            # One optional source per workload; see docs/platform/authentik.md#chart-values
+            # From blueprints-workloads.yaml; see docs/platform/authentik.md#chart-values
             volumes:
               - name: blueprints-workloads
-                projected:
-                  sources:
-                    - configMap:
-                        name: authentik-blueprint-dependency-track
-                        optional: true
-                    - configMap:
-                        name: authentik-blueprint-opencloud
-                        optional: true
-                    - configMap:
-                        name: authentik-blueprint-advent-wollbi
-                        optional: true
-                    - configMap:
-                        name: authentik-blueprint-fest-wollbi
-                        optional: true
+                configMap:
+                  name: authentik-blueprints-workloads
             volumeMounts:
               - name: blueprints-workloads
                 mountPath: /blueprints/mounted/workloads
