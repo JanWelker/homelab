@@ -10,7 +10,8 @@ spec:
     traffic: peers within the namespace for Raft and request forwarding, the
     Gateway for the UI, Prometheus for the metrics endpoint on the active
     pod, the External Secrets controller for logins and kv reads, the
-    homelab agent session, which checks status while it diagnoses, and the
+    homelab agent session, picked by its ServiceAccount since the writer may
+    not run a pod as it, which checks status while it diagnoses, and the
     node for health probes. The API is plaintext behind the
     Gateway, so the callers inside the cluster are at L7: External Secrets logs in, checks and revokes its
     token, reads under kv/data and, for its PushSecrets, writes under
@@ -45,7 +46,7 @@ spec:
     - fromEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: claude-agents
-            k8s:app.kubernetes.io/instance: claude-homelab
+            k8s:io.cilium.k8s.policy.serviceaccount: claude-reader
       toPorts:
         - ports:
             - port: "8200"
