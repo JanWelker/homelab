@@ -44,7 +44,7 @@ A profile is one entry in `profiles.yaml`, written from the denials Loki holds b
 
 ### Seccomp
 
-`runtime-default-log` in `seccomp-profiles.yaml` is the runtime's default profile with the log flag: the same refusals, each now a `SECCOMP` record in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). A pod opts in with `localhostProfile: operator/runtime-default-log.json`, merged after the profile shows `Installed`.
+`runtime-default-log` in `seccomp-profiles.yaml` is the runtime's default profile with the log flag: the same refusals, each now a `SECCOMP` record in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). A pod opts in with `localhostProfile: operator/runtime-default-log.json`, merged after the profile shows `Installed`. Authentik's server and worker and [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) do.
 
 - **Only for containers that drop every capability**: the runtime adds syscalls per capability, this copy has none.
 - **It goes stale.** After a containerd update, regenerate it with the `selinux-denials` skill's `gen_seccomp_profile.py` from `.info.runtimeSpec.linux.seccomp` of such a container's `crictl inspect`.

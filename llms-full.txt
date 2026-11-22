@@ -2891,7 +2891,7 @@ The first three are on the root filesystem, so one `varlog: true` mount covers t
 | --- | --- |
 | Control-plane toleration | Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki |
 | `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
-| `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
+| `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and the [logging seccomp profile](<https://homelab.wlkr.ch/platform/security-profiles-operator/index.md#seccomp>) lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
 | `rbac.rules` without `secrets` and `configmaps` | The chart's ClusterRole reads every Secret and ConfigMap for `remote.kubernetes.*`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](<#alerting>) shows Secret reads, but an unused grant is better not made |
 
@@ -4086,7 +4086,7 @@ A profile is one entry in `profiles.yaml`, written from the denials Loki holds b
 
 ### Seccomp
 
-`runtime-default-log` in `seccomp-profiles.yaml` is the runtime's default profile with the log flag: the same refusals, each now a `SECCOMP` record in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). A pod opts in with `localhostProfile: operator/runtime-default-log.json`, merged after the profile shows `Installed`.
+`runtime-default-log` in `seccomp-profiles.yaml` is the runtime's default profile with the log flag: the same refusals, each now a `SECCOMP` record in [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>). A pod opts in with `localhostProfile: operator/runtime-default-log.json`, merged after the profile shows `Installed`. Authentik's server and worker and [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) do.
 
 - **Only for containers that drop every capability**: the runtime adds syscalls per capability, this copy has none.
 - **It goes stale.** After a containerd update, regenerate it with the `selinux-denials` skill's `gen_seccomp_profile.py` from `.info.runtimeSpec.linux.seccomp` of such a container's `crictl inspect`.
