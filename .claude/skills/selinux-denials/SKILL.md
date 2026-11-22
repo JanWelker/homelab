@@ -1,6 +1,6 @@
 ---
 name: selinux-denials
-description: Analyse the SELinux denials the nodes log in permissive mode and turn them into the smallest change that lets a workload run under enforcing, a pod label, a host path label, a boolean or a policy module. Use when the user says "analyse the selinux denials", "what would enforcing break", "generate the selinux rules for tetragon", "which pods need spc_t", "create the se linux rules from the logs", "can we turn selinux on now", "why is there no avc in the journal", or asks to move a node to enforcing. Covers reading the denials from Loki, the grouping script, the decision per denial, building and loading a module on Flatcar, managing SELinux through Kubernetes, and the trial before any node is switched. The node-by-node switch itself is node-rollout.
+description: Analyse the SELinux denials the nodes log in permissive mode and turn them into the smallest change that lets a workload run under enforcing, a pod label, a host path label, a boolean or a policy module. Use when the user says "analyse the selinux denials", "what would enforcing break", "generate the selinux rules for tetragon", "which pods need spc_t", "create the se linux rules from the logs", "can we turn selinux on now", "why is there no avc in the journal", or asks to move a node to enforcing. Covers reading the denials from Loki, the grouping script, the decision per denial, building and loading a module on Flatcar, managing SELinux through Kubernetes, and the trial before any node is switched. Also points to the seccomp logging profile ("which syscalls does seccomp refuse"). The node-by-node switch itself is node-rollout.
 ---
 
 # selinux-denials
@@ -138,6 +138,11 @@ when working on denials:
 | A label on a host path (`chcon -t container_file_t`) | A confined pod may use that directory |
 | `SelinuxProfile` in `profiles.yaml` | A type of its own for one workload |
 | `seLinuxChangePolicy` and the `SELinuxMount` gates | How a volume is relabelled for a pod; only matters once enforcing |
+
+Seccomp is not SELinux: it has no permissive mode, and the runtime's default
+profile refuses without a record. `runtime-default-log` makes the refusals of
+a workload visible; the opt-in, `gen_seccomp_profile.py` and where the records
+are is in `docs/platform/security-profiles-operator.md#seccomp`.
 
 ## 6. Trial before enforcing
 

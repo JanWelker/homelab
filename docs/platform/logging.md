@@ -53,6 +53,7 @@ in the line where `| json` can reach them. See
 | `discovery.kubernetes` with a `spec.nodeName` field selector | Each agent discovers only its own node's pods; without it every agent watches every pod and discards all but its own |
 | `stage.cri {}` on container logs | containerd writes `<timestamp> <stream> <flags> <message>`; without it the timestamp lands inside the line and Loki stamps everything at ingest time |
 | `discovery.relabel "journal"` sets `job` | `loki.source.journal` overwrites `job` with its component ID after applying `labels`; only relabel rules run after that |
+| `stage.drop` on the journal | A [logging seccomp profile](security-profiles-operator.md#seccomp) records every `clone3`, refused by design |
 | `stage.json`, `stage.labels`, `stage.timestamp` on audit events | Stamps each event with its `requestReceivedTimestamp` rather than when Alloy read the file |
 
 | Setting in `alloy/application.yaml` | Why |
