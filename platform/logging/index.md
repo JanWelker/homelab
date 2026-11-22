@@ -39,6 +39,7 @@ The first three are on the root filesystem, so one `varlog: true` mount covers t
 | `discovery.kubernetes` with a `spec.nodeName` field selector | Each agent discovers only its own node's pods; without it every agent watches every pod and discards all but its own |
 | `stage.cri {}` on container logs | containerd writes `<timestamp> <stream> <flags> <message>`; without it the timestamp lands inside the line and Loki stamps everything at ingest time |
 | `discovery.relabel "journal"` sets `job` | `loki.source.journal` overwrites `job` with its component ID after applying `labels`; only relabel rules run after that |
+| `stage.drop` on the journal | A [logging seccomp profile](<https://homelab.wlkr.ch/platform/security-profiles-operator/index.md#seccomp>) records every `clone3`, refused by design |
 | `stage.json`, `stage.labels`, `stage.timestamp` on audit events | Stamps each event with its `requestReceivedTimestamp` rather than when Alloy read the file |
 
 | Setting in `alloy/application.yaml` | Why |

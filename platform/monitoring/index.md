@@ -1,6 +1,6 @@
 # Monitoring
 
-[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)). The chart's default rules are good; its default routing swallows every alert.
+[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)), and as `spc_t`: SELinux refuses `container_t` the host's `/proc`. The chart's default rules are good; its default routing swallows every alert.
 
 ## At a glance
 

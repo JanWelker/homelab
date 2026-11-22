@@ -2535,8 +2535,14 @@ or work not yet done.</p>
 <tr>
 <td><strong>SELinux is permissive on every node</strong></td>
 <td>Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining</td>
-<td>Enforcing denies Tetragon's and the Ceph exporter's hostPath writes; both need <code>spc_t</code></td>
+<td>The denials are answered; enforce on one worker first</td>
 <td><a href="../security/#node-hardening">Node hardening</a></td>
+</tr>
+<tr>
+<td><strong>Ceph's daemons run privileged</strong></td>
+<td><code>hostpathRequiresPrivileged</code>, Rook's switch for SELinux hosts: <code>container_t</code> may not write their hostPath data. A privileged container has every capability and no seccomp filter</td>
+<td>Accepted until the paths carry a label</td>
+<td><a href="../../platform/rook-ceph/#selinux">Rook Ceph</a></td>
 </tr>
 <tr>
 <td><strong>The <code>infra</code> hostnames and the LAN address are in public DNS</strong></td>
