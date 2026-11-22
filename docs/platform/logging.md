@@ -59,7 +59,7 @@ in the line where `| json` can reach them. See
 | --- | --- |
 | Control-plane toleration | Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki |
 | `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
-| `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and `RuntimeDefault` seccomp lock the rest down |
+| `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and the [logging seccomp profile](security-profiles-operator.md#seccomp) lock the rest down |
 | `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
 | `rbac.rules` without `secrets` and `configmaps` | The chart's ClusterRole reads every Secret and ConfigMap for `remote.kubernetes.*`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](#alerting) shows Secret reads, but an unused grant is better not made |
 

@@ -93,7 +93,8 @@ spec:
               capabilities:
                 drop: ["ALL"]
               seccompProfile:
-                type: RuntimeDefault
+                type: Localhost
+                localhostProfile: operator/runtime-default-log.json
             # Both switches needed: serviceMonitor alone renders nothing.
             metrics:
               enabled: true
@@ -122,7 +123,8 @@ spec:
               capabilities:
                 drop: ["ALL"]
               seccompProfile:
-                type: RuntimeDefault
+                type: Localhost
+                localhostProfile: operator/runtime-default-log.json
 
             # Bump when authentik-secrets gains or loses a key; see docs/platform/authentik.md#pitfalls
             podAnnotations:
