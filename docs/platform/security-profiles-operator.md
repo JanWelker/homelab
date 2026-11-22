@@ -1,5 +1,5 @@
 ---
-description: "The Kubernetes Security Profiles Operator, installed to manage SELinux policy modules as SelinuxProfile objects; a draft that cannot install a profile on Flatcar yet."
+description: "The Kubernetes Security Profiles Operator: SELinux policy modules as SelinuxProfile objects, loaded on Flatcar through its own templates, and a seccomp profile that logs refusals."
 ---
 
 # Security Profiles Operator
@@ -21,17 +21,17 @@ installs a [seccomp profile](#seccomp); AppArmor and the log enricher are off.
 | Depends on | [cert-manager](cert-manager.md): the operator creates a self-signed Issuer and the webhook certificate itself |
 | If it is down | No profile is installed or changed; modules already loaded stay loaded |
 | Health check | `kubectl -n security-profiles-operator get spod,pods` |
-| Files | `payload/platform/security-profiles-operator/`, `payload/platform/security/network-policies/security-profiles-operator.yaml` |
+| Files | [`payload/platform/security-profiles-operator/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/security-profiles-operator), [`payload/platform/security/network-policies/security-profiles-operator.yaml`](https://github.com/JanWelker/homelab/blob/main/payload/platform/security/network-policies/security-profiles-operator.yaml) |
 
 ## Configuration
 
 | Setting | Why |
 | --- | --- |
-| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed 512Mi request at node-critical priority, preempting pods on a full node; the policy halves it at pod creation |
+| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation |
 | `customTemplatesConfigMap` | The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits `container` would load; see [Templates](#templates) |
 | `selinuxdImage.default` | The chart's `el9` image. Flatcar matches none of the operator's OS patterns and gets the default, whose RHEL 8 tooling fails on Flatcar's base policy; of the four images only `el9` builds it. The digest is a copy of the chart's |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
-| `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation |
+| `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation |
 | `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
 | `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](security-policies.md#pod-security-admission) |
 | Network policy | The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates |
@@ -92,7 +92,7 @@ Authentik's server and worker and [Alloy](logging.md) do.
   stays in the node's journal:
 
     ```bash
-    ssh <node> sudo journalctl _AUDIT_TYPE=1326 --since -1h
+    ssh core@<node> sudo journalctl _AUDIT_TYPE=1326 --since -1h
     ```
 
 ## Health check
@@ -104,8 +104,6 @@ Authentik's server and worker and [Alloy](logging.md) do.
 | `kubectl get selinuxprofile,seccompprofile` | every profile `Installed` |
 
 ## Pitfalls
-
-Known gaps:
 
 - **Two policy files.** `selinuxd` writes `policy.33`, the kernel's version,
   beside the shipped `policy.35`; a `semodule -B` with the host's tools

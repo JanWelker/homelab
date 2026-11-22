@@ -20,7 +20,7 @@ API is an aggregated Kubernetes API that core controllers read directly.
 | Depends on | kubelet-csr-approver, or the kubelet certificates it verifies are never issued; [cert-manager](cert-manager.md) for its own serving certificate |
 | If it is down | `kubectl top`, every HPA and the [descheduler](descheduler.md)'s node usage. Nothing else notices |
 | Health check | `kubectl top nodes` &rarr; a row per node |
-| Files | `payload/platform/metrics-server/`, `payload/platform/kubelet-csr-approver/` |
+| Files | [`payload/platform/metrics-server/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/metrics-server), [`payload/platform/kubelet-csr-approver/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/kubelet-csr-approver) |
 
 ## Configuration
 
@@ -28,7 +28,7 @@ API is an aggregated Kubernetes API that core controllers read directly.
 
 A kubelet serves a self-signed certificate by default, so the usual shortcut
 is `--kubelet-insecure-tls`, which makes the metrics path spoofable by anything
-that can occupy a kubelet's address. Kubernetes deliberately does not
+that can occupy a kubelet's address. Kubernetes does not
 auto-approve `kubernetes.io/kubelet-serving` CSRs, since a compromised node
 could request a certificate for any name, so doing it properly takes three
 pieces:
@@ -36,13 +36,13 @@ pieces:
 | Piece | Where | What it does |
 | --- | --- | --- |
 | `serverTLSBootstrap: true` | `ansible/templates/kubeadm.yaml.j2` | The kubelet requests a serving certificate from the cluster CA |
-| [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver) | `payload/platform/kubelet-csr-approver/application.yaml` | Approves those CSRs, constrained by `providerRegex` (only the inventory's node names; anything else is **denied**), `providerIpPrefixes` (the nodes' subnet), a one-day `maxExpirationSeconds`, and `bypassDnsResolution` because node names come from the Ansible inventory, not a resolver |
+| [kubelet-csr-approver](https://github.com/postfinance/kubelet-csr-approver) | `payload/platform/kubelet-csr-approver/application.yaml` | Approves those CSRs, constrained by `providerRegex` (only the inventory's node names; anything else is **denied**), `providerIpPrefixes` (the nodes' subnet), a short `maxExpirationSeconds`, and `bypassDnsResolution` because node names come from the Ansible inventory, not a resolver |
 | `--kubelet-certificate-authority` | `payload/platform/metrics-server/application.yaml` | metrics-server verifies against the cluster CA |
 
 | Setting in `metrics-server/application.yaml` | Why |
 | --- | --- |
 | Flags via `defaultArgs`, not `args` | The default list already sets `--kubelet-preferred-address-types`, and a flag passed twice leaves the winner to parsing order. It is `InternalIP` because node hostnames do not resolve here |
-| Two replicas and a PodDisruptionBudget | A node reboot does not take the resource metrics API down |
+| `replicas` above one and a PodDisruptionBudget | A node reboot does not take the resource metrics API down |
 | `tls.type: cert-manager` with `apiService.insecureSkipTLSVerify: false` | The other half of the path: the chart's self-signed `Issuer` signs the serving certificate and the cainjector copies its CA into the `APIService`, so kube-apiserver verifies metrics-server instead of trusting whatever answers at the Service |
 
 ## Health check

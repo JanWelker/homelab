@@ -4,11 +4,11 @@ description: "Gateway API resources: the apps and infra Gateways, HTTP to HTTPS 
 
 # Gateway API
 
-The [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) replaces the
-Ingress resource, implemented by Cilium for both load balancing and TLS
-termination. The improvement is the split in ownership: the cluster owns the
-`Gateway` — addresses, certificates, ports — and each app owns its own
-`HTTPRoute`.
+The [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/), implemented by
+Cilium for load balancing and TLS termination, is
+[used instead of Ingress](../architecture/decisions.md#gateway-api-not-ingress)
+for its split in ownership: the cluster owns the `Gateway` — addresses,
+certificates, ports — and each app its `HTTPRoute`.
 
 ## At a glance
 
@@ -18,12 +18,13 @@ termination. The improvement is the split in ownership: the cluster owns the
 | Depends on | [Cilium](cilium.md) to implement it, [cert-manager](cert-manager.md) for the wildcard certificates |
 | If it is down | Nothing reaches any hostname. Running pods keep running |
 | Health check | `kubectl -n kube-system get gateway` &rarr; both `PROGRAMMED=True` with an address |
-| Files | `payload/platform/gateway-api/`, `payload/platform/gateway-api-crds/` |
+| Files | [`payload/platform/gateway-api/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/gateway-api), [`payload/platform/gateway-api-crds/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/gateway-api-crds) |
 
 ## Configuration
 
-Two Gateways in `kube-system`, each with a dedicated address from the Cilium
-L2 pool, defined in `gateways.yaml`. `apps-gateway` serves user-facing
+Two Gateways in `kube-system`, defined in `gateways.yaml`, each with an
+address from its own Cilium pool, announced over L2 and BGP
+([Cilium](cilium.md#configuration)). `apps-gateway` serves user-facing
 workloads under the router's public address; `infra-gateway` serves the
 platform UIs, LAN only. A route names a listener by `sectionName`:
 
@@ -40,8 +41,8 @@ listener:
 
 1. A `Certificate` in `payload/platform/certificates/certificates.yaml`.
 2. An HTTPS listener in `gateways.yaml` referencing it.
-3. The zone in `domainFilters` in `payload/platform/external-dns/application.yaml`,
-   or its routes are silently ignored.
+3. The zone in external-dns's `domainFilters`; see
+   [external-dns](external-dns.md#configuration).
 
 The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
@@ -71,6 +72,29 @@ bundle `standard-install.yaml` before ArgoCD exists, and the
 `gateway-api-crds` Application applies `config/crd/standard`, the directory
 that bundle is generated from. The Makefile reads the tag out of the
 Application, so the two cannot drift apart.
+
+### SSH listener
+
+The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
+port 443, the only port the router forwards to `apps-gateway`. Each agent's
+chart ships a `TLSRoute` for `<session>.ssh.wlkr.ch` pointing at its SSH
+Service.
+
+| Setting | Why |
+| --- | --- |
+| `mode: Passthrough` | Cilium rejects a `TLS` listener in `Terminate` mode: the listener goes `Accepted=False` with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate |
+| No `Certificate` here | A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from `letsencrypt-prod` in the agent's namespace |
+| `allowedRoutes.kinds: TLSRoute` | The listener serves nothing else, and `HTTPRoute`s cannot attach to it by accident |
+| `TLSRoute` `v1` | Installed in the standard channel of the Gateway API CRDs; `v1alpha2` is no longer served. After the CRDs change, restart `cilium-operator` ([why](cilium.md#pitfalls)) |
+
+DNS needs no record by hand: [external-dns](external-dns.md#configuration)
+reads the `TLSRoute` hostnames and publishes the router's public address, as
+for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`,
+for example `openssl s_client -quiet -connect %h:443 -servername %h`.
+
+Envoy checks its egress against the backend like any Gateway traffic, so the
+agents' namespace must admit the `ingress` entity on the SSH port; see
+[Security Policies](security-policies.md#network-policies).
 
 ## Usage
 
@@ -102,8 +126,9 @@ spec:
           port: 80
 ```
 
-Use `infra-gateway` with a `*.infra.k8s.wlkr.ch` hostname for platform tools,
-and the listener from the table above whose hostnames cover the name.
+A platform UI uses `infra-gateway` and carries the security headers as a
+`ResponseHeaderModifier` filter; copy it from
+`payload/platform/cilium/httproute.yaml`.
 
 ### Route hostnames
 
@@ -117,37 +142,16 @@ and the listener from the table above whose hostnames cover the name.
 | `auth.k8s.wlkr.ch`, `advent.wollbi.ch`, `fest.wollbi.ch` | `authentik`, `advent-wollbi`, `fest-wollbi`; a new owned name extends the policy's `owners` map |
 | No hostname | `kube-system` |
 
-### SSH listener
-
-The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
-port 443, the only port the router forwards to `apps-gateway`. Each agent's
-chart ships a `TLSRoute` for `<session>.ssh.wlkr.ch` pointing at its SSH
-Service.
-
-| Setting | Why |
-| --- | --- |
-| `mode: Passthrough` | Cilium rejects a `TLS` listener in `Terminate` mode: the listener goes `Accepted=False` with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate |
-| No `Certificate` here | A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from `letsencrypt-prod` in the agent's namespace |
-| `allowedRoutes.kinds: TLSRoute` | The listener serves nothing else, and `HTTPRoute`s cannot attach to it by accident |
-| `TLSRoute` `v1` | Installed in the standard channel of the Gateway API CRDs; `v1alpha2` is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart `cilium-operator` |
-
-DNS needs no record by hand: [external-dns](external-dns.md#configuration)
-reads the `TLSRoute` hostnames and publishes the router's public address, as
-for an `HTTPRoute`. A client connects with a TLS tunnel as its `ProxyCommand`,
-for example `openssl s_client -quiet -connect %h:443 -servername %h`.
-
-Envoy checks its egress against the backend like any Gateway traffic, so the
-agents' namespace must admit the `ingress` entity on the SSH port; see
-[Security Policies](security-policies.md#network-policies).
-
 ## Health check
 
-Check that each HTTP listener carries only the redirect — `http` should show
-exactly `1`:
+Check that each Gateway's HTTP listener carries only the redirect — `http`
+should show exactly `1` on both:
 
 ```bash
-kubectl get gateway infra-gateway -n kube-system \
-  -o jsonpath='{range .status.listeners[*]}{.name}={.attachedRoutes}{"\n"}{end}'
+for gw in apps-gateway infra-gateway; do
+  kubectl get gateway "$gw" -n kube-system \
+    -o jsonpath='{.metadata.name}: {range .status.listeners[*]}{.name}={.attachedRoutes} {end}{"\n"}'
+done
 ```
 
 ## Pitfalls

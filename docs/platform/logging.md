@@ -21,10 +21,10 @@ journald and are reachable only over SSH to the node that is misbehaving.
 | If it is down | Logs stop being collected and are not backfilled. The [audit log](../architecture/audit-logging.md) loses its durable copy, and the [log alerts](#alerting) stop |
 | Health check | `kubectl -n logging get pods`, then a `{job="kubernetes-audit"}` query in Grafana |
 | Metrics | Loki and Alloy, each through its chart's `ServiceMonitor`; both sets of dashboards are listed under [Monitoring](monitoring.md#dashboards) |
-| Files | `payload/platform/loki/` and `payload/platform/alloy/`, one chart Application each (`loki`, `alloy`); `payload/platform/logging/`, the `logging` Application: the bucket claim in `bucket.yaml`, `loki-rules.yaml`, the Grafana datasource and the Alloy dashboards |
+| Files | [`payload/platform/loki/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/loki) and [`payload/platform/alloy/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/alloy), one chart Application each (`loki`, `alloy`); [`payload/platform/logging/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/logging), the `logging` Application: the bucket claim in `bucket.yaml`, `loki-rules.yaml`, the Grafana datasource and the Alloy dashboards |
 
 !!! note "Not Promtail, and not the `grafana/loki` chart"
-    Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from `grafana-community/loki`: the OSS chart moved to [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts) in March 2026, and what stayed in `grafana/loki` is maintained for Grafana Enterprise Logs customers, pins a `k8s-sidecar` several minor releases behind and closes open-source pull requests with a pointer to the community repository.
+    Promtail is end of life; Alloy is its supported replacement. Loki comes from `grafana-community/loki`, where the OSS chart is maintained now ([grafana-community/helm-charts](https://github.com/grafana-community/helm-charts)); `grafana/loki` serves Grafana Enterprise Logs customers and lags behind.
 
 ## Configuration
 
@@ -59,9 +59,9 @@ in the line where `| json` can reach them. See
 | Setting in `alloy/application.yaml` | Why |
 | --- | --- |
 | Control-plane toleration | Without it Alloy runs on the workers alone and neither the audit log nor the control-plane kubelets' journals reach Loki |
-| `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; the policy audit showed the call, and telemetry is off in every component here |
+| `enableReporting: false` | Alloy otherwise sends usage statistics to `stats.grafana.org`; telemetry is off in every component here |
 | `runAsUser: 0` | The log files are root-owned; a non-root Alloy does not fail, it silently collects nothing. Read-only root, no capabilities and the [logging seccomp profile](security-profiles-operator.md#seccomp) lock the rest down |
-| `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either |
+| `emptyDir` at `/tmp` | The chart's `storagePath` defaults to `/tmp/alloy`, unwritable on a read-only root; it holds tailing positions |
 | `rbac.rules` without `secrets` and `configmaps` | The chart's ClusterRole reads every Secret and ConfigMap for `remote.kubernetes.*`, which nothing here uses; [`KubernetesAuditSecretReadByUser`](#alerting) shows Secret reads, but an unused grant is better not made |
 
 ### Storage

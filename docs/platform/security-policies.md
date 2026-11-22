@@ -1,14 +1,14 @@
 ---
-description: "Pod Security Admission levels per namespace and the first default-deny network policies, with the reasoning for what is enforced and what is only audited."
+description: "Pod Security Admission levels per namespace, default-deny network policies, the host firewall, ServiceAccount tokens and admission policies, with the reasoning behind each."
 ---
 
 # Security Policies
 
 Five cluster-wide controls: Pod Security Admission, default-deny network
 policy in both directions, a host firewall on the nodes, no API token on the
-`default` ServiceAccount, and admission policies on image references, namespace
-labels and the `authentik` namespace. The pattern is the same for all: measure first,
-enforce second, one namespace at a time.
+`default` ServiceAccount, and admission policies. The pattern is the same for
+all: measure first, enforce second. All five are enforced; [Rollout](#rollout)
+is how a batch of new network policies gets there.
 
 ## At a glance
 
@@ -17,9 +17,9 @@ enforce second, one namespace at a time.
 | Namespace | `kube-system` for the Application; it owns Namespace objects across the cluster |
 | Depends on | [Cilium](cilium.md) to enforce the network policies |
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
-| Health check | `kubectl get ns -L pod-security.kubernetes.io/enforce`, `kubectl get validatingadmissionpolicy` |
-| Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Anything else removed from Git is pruned, so the Application does not sit OutOfSync on leftovers |
-| Files | `payload/platform/security/`, the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](index.md#components) |
+| Health check | See [Health check](#health-check) |
+| Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Pruning the rest keeps the Application from sitting OutOfSync on leftovers |
+| Files | [`payload/platform/security/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/security), the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](index.md#components) |
 
 ## Configuration
 
@@ -78,12 +78,10 @@ Envoy-proxied traffic, `host` and `remote-node` for the kubelet.
 #### Cluster-wide rules
 
 A rule that is word-for-word the same in every namespace file is lifted
-into `cluster-wide.yaml`, selecting every endpoint that has a namespace and
-with `enableDefaultDeny` off in both directions. The selector is not `{}`
-because that also takes the Gateway's `reserved:ingress` endpoint and the
-health endpoint. Default
-deny is off there, since a cluster-wide egress rule would otherwise close every
-pod of a namespace without policies. DNS is the only rule lifted; the
+into `cluster-wide.yaml`, selecting every endpoint that has a namespace, not
+`{}`, which also takes the Gateway's `reserved:ingress` and health endpoints.
+`enableDefaultDeny` is off in both directions, since a cluster-wide egress rule
+would otherwise close every pod of a namespace without policies. DNS is the only rule lifted; the
 intra-namespace and node-probe rules stay in the namespace files.
 
 The second policy there, `init`, is for the seconds before the agent has
@@ -128,8 +126,9 @@ that allows everything would silently override the default-deny.
 Pod policies cannot select a host-networked port. A `CiliumClusterwideNetworkPolicy`
 with a `nodeSelector` can, and Cilium's
 [host firewall](https://docs.cilium.io/en/stable/security/host-firewall/) enforces
-it on the native device and `cilium_host`. What each port is for is in
-[Host Firewall Inventory 2026-10-30](../operations/host-firewall-inventory-2026-10-30.md).
+it on the native device and `cilium_host`. What each port is for is the
+policy's `description`; [Host Firewall Inventory 2026-10-30](../operations/host-firewall-inventory-2026-10-30.md)
+is the evidence.
 
 | Behaviour | Why it matters |
 | --- | --- |
@@ -205,18 +204,18 @@ until someone adds it.
 
 Trivy reports a bad image after it is running; `admission-policies.yaml`
 refuses or records it at admission, with the built-in
-`ValidatingAdmissionPolicy` rather than a policy engine. The image policies
+`ValidatingAdmissionPolicy`, and one `MutatingAdmissionPolicy`, rather than a policy engine. The image policies
 match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is
 rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The
 others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
-| `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back |
+| `image-tag-pinned` | `Deny` | A tag other than `latest`, or a digest: an unpinned image is one Renovate can neither track nor roll back |
 | `image-registry-allowed` | `Deny` | The registries the cluster pulls from; a reference with no registry counts as `docker.io` |
 | `claude-writer-pod-limits` | `Deny` | Host access and borrowed ServiceAccounts from the agent writer, see [Agent RBAC](#agent-rbac) |
 | `namespace-privileged-allowed` | `Deny` | A Namespace may carry `enforce: privileged` only if it is in the policy's list, the `privileged` rows above. The `apps` project creates its own Namespaces and their labels, so without it a workload could opt out of Pod Security |
-| `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`. Blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds, so this is what keeps `apps` out; objects with no `argocd.argoproj.io/tracking-id` annotation, from controllers and `kubectl`, are not matched |
+| `authentik-foreign-objects` | `Deny` | In `authentik`, an object an Argo CD Application applied must come from `authentik` or `security`: blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds. Objects without a tracking annotation are not matched |
 | `namespace-name-guard` | `Deny` | A platform namespace, `kube-*`, `velero` or `claude-<session>` may be applied only by a platform Application: `apps` creates Namespaces, so a workload could otherwise relabel a platform one or take a name [OpenBao](openbao.md#kubernetes-auth) reaches by prefix |
 | `obc-bucket-owner` | `Deny` | Only `backup/offsite-bucket` may set `bucketOwner` on an `ObjectBucketClaim`, and only to `offsite-reader`. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see [Off-cluster reader](rook-ceph.md#off-cluster-reader) |
 | `object-store-user-scope` | `Deny` | Outside `rook-ceph`, a `CephObjectStoreUser` is named `<namespace>.<purpose>` and carries no admin `capabilities`. Its name is its S3 user ID, so a free choice would hand one namespace another's keys — see [Backup writers](rook-ceph.md#backup-writers) |
@@ -227,16 +226,18 @@ others close what RBAC and the `apps` project cannot express.
 | `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](cert-manager.md#issuer-scope) |
 | `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](cert-manager.md#pods-from-the-controllers) |
 | `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](gateway-api.md#route-hostnames) |
+| `selinuxd-memory-request` | Mutate | Lowers `selinuxd`'s fixed memory request, see [Security Profiles Operator](security-profiles-operator.md#configuration) |
 
 `cnpg-cluster-backed-up`, `cnpg-objectstore-offsite` and `obc-backup-exempt` [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
 each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason
 as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.
 
-All but two carry `failurePolicy: Ignore`: an expression that errors lets the
+All but three carry `failurePolicy: Ignore`: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation
 is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail
-closed, since they only ever match named identities.
+closed, since they only ever match named identities, and
+`selinuxd-memory-request` because a `selinuxd` pod at full request preempts others.
 
 ## Usage
 
@@ -255,7 +256,7 @@ intended, add it to the regular expression in `image-registry-allowed`.
       pod-security.kubernetes.io/enforce=restricted
     ```
 
-2. Catch what is not running right now — a nightly CronJob, say — from the
+2. Catch what is not running right now, such as a CronJob, from the
    `audit` label's records over the full Loki retention window, in Grafana:
 
     ```logql
@@ -330,9 +331,14 @@ kubectl -n kube-system exec <agent-on-node> -c cilium-agent -- \
   sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'
 ```
 
-Read what enforcement would refuse with the LogQL in the
-[rollout log](../operations/host-firewall-rollout-2026-11-18.md#method), then
-restart the agent to enforce again. `policyAuditMode` in the Cilium values is
+What enforcement would refuse: audit verdicts addressed to a host identity.
+Pods and nodes are admitted, so anything here came from the LAN.
+
+```logql
+{job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -> {{.dst}} {{.tcp}}{{.udp}}"
+```
+
+Then restart the agent to enforce again. `policyAuditMode` in the Cilium values is
 not the switch: it stops enforcing every pod policy too.
 
 ## Health check
@@ -341,13 +347,13 @@ not the switch: it stops enforcing every pod policy too.
 kubectl get ns -L pod-security.kubernetes.io/enforce
 kubectl get cnp -A
 kubectl get ccnp
-kubectl get validatingadmissionpolicy
+kubectl get validatingadmissionpolicy,mutatingadmissionpolicy
 ```
 
 ## Pitfalls
 
 !!! note "Audit mode stops at the proxy"
-    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity. The agents' `argocd` calls failed this way, `server: envoy` and `grpc-message: Access denied`, while their policy named the host but not the `argocd-server` pod; see [Agent account](argocd.md#agent-account).
+    `policyAuditMode` is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered `403 Access denied` on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with `hubble observe --http-status 403`; in Loki the denied request is a `DROPPED` flow of type `REQUEST` whose source carries the caller's namespace and the `ingress` identity. A gRPC caller sees `server: envoy` and `grpc-message: Access denied`.
 
 !!! note "A name rule audits one SYN in twenty"
     A `toFQDNs` rule admits the addresses the DNS proxy has seen for the name, and the proxy releases the answer after at most 100ms whether or not every datapath has the new address. About one connection in twenty to a CDN name is recorded `AUDIT` with a `world` destination; under enforcement that `SYN` drops and the retransmit a second later goes through. A run of drops on one source port is different: the application connected to an address it cached past the DNS TTL.
@@ -356,7 +362,7 @@ kubectl get validatingadmissionpolicy
     The mount is decided at admission, so existing pods keep their token until recreated. That makes the change safe to roll out, and means a posture scan will not agree it is fixed until things restart.
 
 !!! danger "A reboot can isolate a node a host policy selects"
-    [Upstream](https://github.com/cilium/cilium/issues/48070) reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here: all ten nodes passed a reboot while enforcing. A power cut would hit every node at once, and the [lockout runbook](#host-firewall-lockout) is the way back.
+    [Upstream](https://github.com/cilium/cilium/issues/48070) reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and has not reproduced here. A power cut would hit every node at once, and the [lockout runbook](#host-firewall-lockout) is the way back.
 
 ## Recovery
 
@@ -378,7 +384,7 @@ free a node that is already cut off.
    lasts until the agent restarts.
 
     ```bash
-    ssh <node> sudo bash -s <<'EOF'
+    ssh core@<node> sudo bash -s <<'EOF'
     id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)
     crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'
     EOF
@@ -390,7 +396,7 @@ free a node that is already cut off.
    again with `sudo systemctl unmask kubelet && sudo systemctl start kubelet`.
 
     ```bash
-    until ssh -o ConnectTimeout=2 <node> sudo systemctl mask --now kubelet; do sleep 1; done
+    until ssh -o ConnectTimeout=2 core@<node> sudo systemctl mask --now kubelet; do sleep 1; done
     ```
 
 4. Every control plane cut off: the API server needs no CNI, so it comes up
