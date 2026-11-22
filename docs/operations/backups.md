@@ -4,9 +4,6 @@ description: "What is backed up, what is not, how to take a backup by hand, and 
 
 # Backups & Recovery
 
-Every mechanism below is described by what it can get back, and by what it
-cannot.
-
 ## Current state
 
 | Data | Backed up | How |
@@ -17,7 +14,7 @@ cannot.
 | Grafana dashboards | Nightly | Its PVC is covered by the above |
 | etcd (raw) | Nightly | [CronJob](#etcd) to the object store |
 | OpenBao secrets | Nightly | [Raft snapshot CronJob](#openbao) to the object store |
-| OpenBao unseal keys | Manual, off-cluster | Printed once at `bao operator init` |
+| OpenBao unseal keys | Manual, off-cluster | Written once to `output/credentials/openbao-init.json` by `make bao-init` |
 | Prometheus metrics | **No** | Its PVC carries `velero.io/exclude-from-backup`; metrics live for the `retention` in `payload/platform/monitoring/application.yaml`, then are gone |
 | Trivy reports and vulnerability database | **No** | `trivy-system` is excluded; the operator rescans and the server downloads the database again |
 | Everything in `payload/` | Yes | It is in Git |
@@ -57,18 +54,25 @@ them here when they change on the NAS.
 
 **Every automated backup lands in the same cluster's Ceph first.** That
 protects against operator error (a deleted PVC, a bad `prune`, a corrupted
-database) and not against losing the cluster, so a TrueNAS box pulls the bucket
-every backup writes into nightly; see [Off-cluster copy](#off-cluster-copy). Disaster
-recovery is **Git, the OpenBao unseal keys, and that copy**. The NAS sits on
+database) and not against losing the cluster, so TrueNAS pulls a
+[copy](#off-cluster-copy) nightly. The NAS sits on
 the same LAN, so a fire or theft that takes the cluster can take the copy too;
 nothing leaves the house yet.
 
-Velero's `PrometheusRule` reports a backup that failed
-(`VeleroBackupFailures`, `VeleroBackupPartialFailures`); only
-`VeleroBackupTooOld` notices one that silently stopped, since a backup hung
-`InProgress` never fails ([Velero](../platform/velero.md#configuration)). All
-of them only reach whoever Alertmanager is configured to tell — see
-[Monitoring](../platform/monitoring.md).
+Nothing backs up the deployment host's `output/` either:
+
+| File | Holds | If lost |
+| --- | --- | --- |
+| `kubeconfig` | Admin credential | `make kubeconfig` |
+| `credentials/openbao-init.json` | Unseal key shares | Gone, hence the [password manager](../platform/openbao.md#bootstrap) |
+| `credentials/openbao-operator.json` | OpenBao operator login | Recreate with a [root token](../platform/openbao.md#generating-a-root-token) |
+| `credentials/encryption_key` | etcd's Secret encryption key | Base64-encoded in every control plane's `/etc/kubernetes/enc/encryption-config.yaml`; restore it before `make config` renders a new one, or [rotate](encryption-key-rotation.md) |
+| `credentials/kubeadm_token_*`, `credentials/certificate_key` | Join credentials | `make config` generates and installs new ones |
+| `credentials/ssh_host_<node>_ed25519` | Node SSH host key | Still in the node's `/etc/ssh/`; a new one from `make config` mismatches until the node is reinstalled |
+
+Only `VeleroBackupTooOld` notices a backup that silently stopped
+([Velero](../platform/velero.md#configuration)), and only whoever Alertmanager
+tells — see [Monitoring](../platform/monitoring.md).
 
 ## Velero
 
@@ -78,11 +82,11 @@ nightly. Chart values and why each is set are in
 
 | Property | Value |
 | --- | --- |
-| Schedule | The `schedules` block in `payload/platform/velero/application.yaml`: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires |
-| Scope | All namespaces except `kube-system` (rebuilt from Git, and large) and `trivy-system` (rescanned), minus `events` (they expire anyway) and any PVC labelled `velero.io/exclude-from-backup`, which is only Prometheus's: the chart's `volumeClaimTemplate.metadata.labels` carries it |
+| Schedule | The `schedules` block in `payload/platform/velero/application.yaml`: nightly, an hour after etcd so the two never contend for the object store, with a `ttl` long enough that a bad backup is noticed before the last good one expires |
+| Scope | All namespaces except `kube-system` (rebuilt from Git, and large) and `trivy-system` (rescanned), minus `events` (they expire anyway) and any PVC labelled `velero.io/exclude-from-backup`, which is only Prometheus's |
 | Destination | `offsite/backup.velero/` in the [Ceph object store](../platform/rook-ceph.md), written as its own [backup writer](../platform/rook-ceph.md#backup-writers) |
 | Volume data | CSI snapshot, streamed into the object store by the data mover (Kopia), snapshot deleted; the durable copy is the one in the object store |
-| Encryption | Volume data with the repository password generated into OpenBao at `velero/repository`, which a restore needs; resource backups, Secrets included, are plain JSON — see [Repository password](../platform/velero.md#repository-password) |
+| Encryption | Volume data only, with a password from OpenBao a restore needs; Secrets in the resource backups are plain JSON — see [Repository password](../platform/velero.md#repository-password) |
 
 The `velero` CLI defaults to the `velero` namespace; this install is in
 `backup`, so pass `-n backup` every time.
@@ -94,23 +98,17 @@ kubectl -n backup get backupstoragelocation     # should be Available
 velero -n backup backup create manual-$(date +%s) --include-namespaces my-app
 ```
 
-Backups in `PartiallyFailed` with no volume data mean Velero found no
-`VolumeSnapshotClass` labelled `velero.io/csi-volumesnapshot-class: "true"`
-and skipped the volumes silently — check
-`payload/platform/backup/volumesnapshotclass.yaml` is applied.
-
 ## etcd
 
 Velero restores *through* the API server, which is no use with no API server
-left (lost quorum, a corrupted data directory). For that a CronJob in
-`payload/platform/backup/etcd-backup.yaml` snapshots etcd nightly, an hour
-before Velero runs.
+left (lost quorum, a corrupted data directory). For that a CronJob snapshots
+etcd.
 
 | Property | Value |
 | --- | --- |
 | Schedule | `payload/platform/backup/etcd-backup.yaml`: nightly, before Velero |
 | Where it runs | Any control-plane node, on the host network: etcd listens on `127.0.0.1` and its client certs are on the node. It mounts the CA certificate and the healthcheck client pair, never the directory, which also holds the CA and server keys |
-| Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup (`etcdctl snapshot status` was removed in etcd 3.6) |
+| Verification | `etcdutl snapshot status` before upload, so a truncated snapshot fails the job instead of replacing a good backup |
 | Destination | `offsite/backup.etcd/`, separate from Velero's because it is restored by different means; the job keeps the newest snapshots and deletes the rest, the count is in the manifest |
 
 Two settings there are easy to undo by accident: the DNS policy for a
@@ -125,18 +123,17 @@ kubectl -n backup logs job/<most-recent-job> -c upload
 
 ### Defragmentation
 
-The API server compacts etcd's history every five minutes, but compaction
+The API server compacts etcd's history (`--etcd-compaction-interval`), but compaction
 only frees pages inside the database file; the file itself never shrinks until
 a member is defragmented, and once less than half of it is in use
 `etcdDatabaseHighFragmentationRatio` fires. A second CronJob in
 `payload/platform/backup/etcd-defrag.yaml` runs `etcdctl defrag --cluster`
-nightly from the same kind of host-network pod as the backup, one member after
-another, and prints `endpoint status` before and after so the log shows the
+nightly from the same kind of host-network pod as the backup and prints `endpoint status` before and after so the log shows the
 size reclaimed.
 
 | Property | Why |
 | --- | --- |
-| Nightly | This cluster's churn crosses the alert's ratio about a day and a half after a defrag, so the alert firing means a run failed or did not help, not that the next one is due |
+| Nightly | Sooner than this cluster's churn crosses the alert's ratio, so the alert firing means a run failed or did not help, not that the next one is due |
 | One member at a time | A member blocks for seconds while it rewrites its file; the other two keep quorum |
 | Fails when a member is unreachable | `endpoint status --cluster` exits non-zero, so a cluster already short of a member is not defragmented |
 
@@ -159,8 +156,8 @@ kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
   --key /etc/kubernetes/pki/etcd/server.key \
   snapshot save /var/lib/etcd/snapshot.db
 
-ssh <node> sudo cat /var/lib/etcd/snapshot.db > ./etcd-snapshot.db
-ssh <node> sudo rm /var/lib/etcd/snapshot.db
+ssh core@<node> sudo cat /var/lib/etcd/snapshot.db > ./etcd-snapshot.db
+ssh core@<node> sudo rm /var/lib/etcd/snapshot.db
 ```
 
 Keep the copy off the cluster, like the nightly ones below.
@@ -196,15 +193,13 @@ hold the unseal keys and is useless without them — see
 
 ## Off-cluster copy
 
-Every backup writes into its own prefix of one bucket, `offsite`, and a
-TrueNAS box on the LAN pulls that bucket into a ZFS dataset nightly. TrueNAS
-pulls rather than the cluster pushing, so nothing in the cluster holds a
-credential that could reach the NAS.
+TrueNAS pulls the [`offsite` bucket](#backup-chain) rather than the cluster
+pushing, so nothing in the cluster holds a credential that could reach the NAS.
 
 | Property | Why |
 | --- | --- |
-| One S3 user per backup | Each writes only `offsite/<user>/`, so a compromised workload reaches its own backups and nobody else's. A new database's user is part of its `backup.yaml` and gets its grant with nothing else edited — see [Backup writers](../platform/rook-ceph.md#backup-writers) |
-| Nothing is left out by default | Admission refuses a CloudNativePG `Cluster` without the Barman Cloud WAL archiver, an `ObjectStore` writing anywhere but its namespace's prefix of `offsite`, and any new `ObjectBucketClaim`, unless the object carries `homelab.wlkr.ch/backup-exempt` with the reason; see [Admission policies](../platform/security-policies.md#admission-policies). Velero takes every namespace its schedule does not exclude, and `CNPGBackupStale` fires for a database whose base backup never comes |
+| One S3 user per backup | Each writes only `offsite/<user>/`, so a compromised workload reaches its own backups and nobody else's. A new database's user comes with its `backup.yaml` — see [Backup writers](../platform/rook-ceph.md#backup-writers) |
+| Nothing is left out by default | [Admission](../platform/security-policies.md#admission-policies) refuses a database without WAL archiving, an object store outside its `offsite` prefix and any new bucket claim, unless it carries `homelab.wlkr.ch/backup-exempt` with the reason. Velero takes every namespace its schedule does not exclude, and `CNPGBackupStale` fires for a database whose base backup never comes |
 | Credentials | The [`offsite-reader`](../platform/rook-ceph.md#off-cluster-reader) S3 user owns `offsite` and reads every object in it; TrueNAS uses its keys. As the owner it can also delete, so the only copy that outlives those keys is the NAS's snapshots |
 | `BackupCronJobStale` in `payload/platform/backup/prometheusrule.yaml` | Fires when any CronJob in `backup` has not succeeded for a day and a half, which a run that never starts does not report as a failure |
 | One Cloud Sync task, `PULL` and `SYNC` | The dataset mirrors `offsite`, so the copy shrinks when a TTL or retention prunes a prefix, and a restore finds each writer under its own directory |
@@ -298,14 +293,18 @@ OpenBao restores take the file straight from the copy.
 
 PVCs are covered by [Velero](#velero). Ceph's own replication is not a backup:
 it spreads each block across OSDs, which survives a disk or node failing and
-nothing else. Almost every Application runs with `prune: true` (`kube-vip` and
-`security` are the deliberate exceptions), so removing a
+nothing else. Almost every Application runs with `prune: true` (`kube-vip` is
+[the exception](../architecture/gitops.md#sync-policy)), so removing a
 `PersistentVolumeClaim` from Git deletes the volume.
 
 ## Restoring
 
-The commands are the upstream-documented ones for the versions pinned in
-`payload/platform/`; the etcd sequence has not been exercised on this cluster.
+The commands follow upstream; the etcd sequence has not been exercised here.
+
+### Database restore
+
+A PostgreSQL database restores from its own archive:
+[Point-in-time restore](../platform/cloudnative-pg.md#point-in-time-restore).
 
 ### Velero restore
 
@@ -317,27 +316,30 @@ The commands are the upstream-documented ones for the versions pinned in
 
 2. Restore from it, scoped to what was lost; without `--include-namespaces`
    everything in the backup is restored, and existing objects are skipped, not
-   overwritten.
+   overwritten. A PVC Argo CD has already re-created empty from Git is skipped
+   too, and its data with it; step 3 shows whether that happened.
 
     ```bash
     velero -n backup restore create --from-backup velero-daily-<timestamp> \
       --include-namespaces my-app
     ```
 
-3. Watch it finish and read the warnings.
+3. Watch it finish, read the warnings, and confirm the volume data came back:
+   one `DataDownload` per restored volume, `Completed`.
 
     ```bash
     velero -n backup restore describe <restore-name>
     velero -n backup restore logs <restore-name>
+    kubectl -n backup get datadownloads.velero.io
     ```
 
 ### OpenBao snapshot restore
 
 Needs an initialised, unsealed cluster and a root token from
-[Generating a root token](../platform/openbao.md#generating-a-root-token). Afterwards
-the snapshot's own operator login applies, not the new cluster's. `-force` is what
-lets a snapshot from a *different* cluster (a fresh `bao operator init`) load;
-afterwards the pods seal and want the snapshot's keys, not the new cluster's.
+[Generating a root token](../platform/openbao.md#generating-a-root-token).
+`-force` lets a snapshot from a *different* cluster (a fresh `bao operator
+init`) load; afterwards its keys and operator login apply, not the new
+cluster's.
 
 1. Copy the snapshot in.
 

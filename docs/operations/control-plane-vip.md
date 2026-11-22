@@ -40,8 +40,7 @@ VIP here because the control-plane kubelets use their own node's API server
 so both start after a full power loss without the VIP or Cilium.
 `kube_vip_version` in the inventory is therefore the bootstrap version only,
 and the VIP settings in the inventory and `daemonset.yaml` must be kept in
-step. The first sync replaces all three static pods at once and drops the VIP
-for a few seconds; later updates roll one node at a time. kube-vip's
+step. kube-vip's
 ServiceAccount may only get and update its own Lease, and the Application does
 not prune and its objects carry `Delete=false`, because removing them takes
 the API away from the workers and from every kubeconfig.
@@ -61,16 +60,14 @@ the API away from the workers and from every kubeconfig.
 
 ### The `adopt` trade-off
 
-`adopt` and its writable hostPath stay after the handover, although on an
-adopted node they do nothing and every pod start still runs a container that
-can delete the control plane's static pod manifests. A reinstalled
-control-plane node gets the static manifest back from Ignition and needs
-adoption again, and forgetting to re-add it for that one reinstall leaves two
-kube-vips contending for the API VIP; the exposure is limited to the pinned
-image.
+`adopt` and its writable hostPath stay after the handover: they do nothing on
+an adopted node, but a reinstalled control plane gets the static manifest back
+from Ignition and needs adoption again, or two kube-vips contend for the VIP.
+The cost is a container on every pod start that can delete the static pod
+manifests, limited to the pinned image.
 
 !!! danger "If the DaemonSet pods do not come up"
-    The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node's `ansible_host` from `ansible/inventory.yaml` with `--server https://<address>:6443` (the node addresses are in the certificate SANs), write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
+    The static manifests are already gone, so nothing holds the VIP, and every kubeconfig and Cilium's `k8sServiceHost` point at it. Running pods keep their networking, but no Cilium agent sees the API server until the VIP is back. Point `kubectl` at a control-plane node's `ansible_host` from `ansible/inventory.yaml` with `--server https://<address>:6443`, write `/etc/kubernetes/manifests/kube-vip.yaml` back onto one control-plane node from `ansible/templates/butane_node_config.yaml.j2` so that the VIP answers again, then read `kubectl -n kube-system logs ds/kube-vip -c kube-vip` and fix the DaemonSet in Git. The static pod holds the VIP only while the broken DaemonSet pod merely restarts; if that pod is deleted or recreated, `adopt` removes the file again.
 
 !!! note
     Since Kubernetes 1.29, `admin.conf` is not usable until `kubeadm init` finishes, so the bootstrap unit points kube-vip's `hostPath` at `super-admin.conf` during init and moves it back afterwards. Inside the container the file stays at `/etc/kubernetes/admin.conf`.
@@ -102,7 +99,7 @@ To build with a name:
 2. Continue with the [Quickstart](../quickstart.md). Everything else follows
    from that variable.
 
-Check that nodes and the cluster agree once the first control plane is up.
+Once the first control plane is up, check the nodes and the cluster agree.
 
 ```bash
 kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig}' | grep server
@@ -117,9 +114,8 @@ and not others depending on whose ARP cache won.
 
 ## Migrating a cluster built without a VIP
 
-A cluster provisioned before the VIP has its first control-plane node's
-address baked into the API server certificates, so this is not a config change
-you can sync.
+A cluster provisioned before the VIP has its first control plane's address in
+the API server certificates, so this is no config change to sync.
 
 ### Rebuild (simplest)
 
@@ -144,14 +140,15 @@ because several steps can leave you unable to open a new one.
     kubectl -n kube-system edit configmap kubeadm-config
     ```
 
-3. Regenerate the API server certificate on **each** control-plane node.
+3. On **each** control-plane node, regenerate the API server certificate
+   from the config `make config` rendered for it, which carries the VIP and
+   the join token, hence the `rm`; kubeadm does not read the edited
+   ConfigMap. The SANs must list the VIP.
 
     ```bash
-    ssh core@<node>
-    sudo mv /etc/kubernetes/pki/apiserver.crt /etc/kubernetes/pki/apiserver.crt.bak
-    sudo mv /etc/kubernetes/pki/apiserver.key /etc/kubernetes/pki/apiserver.key.bak
-    sudo kubeadm init phase certs apiserver
-    sudo crictl ps | grep kube-apiserver   # confirm it restarted
+    scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm.yaml
+    ssh core@<node> 'cd /etc/kubernetes/pki && sudo mv apiserver.crt apiserver.crt.bak && sudo mv apiserver.key apiserver.key.bak && sudo kubeadm init phase certs apiserver --config /tmp/kubeadm.yaml; rm /tmp/kubeadm.yaml'
+    ssh core@<node> sudo cat /etc/kubernetes/pki/apiserver.crt | openssl x509 -noout -text | grep -A1 'Subject Alternative Name'
     ```
 
 4. Deploy the kube-vip static pod to each control-plane node, generated from
@@ -195,6 +192,6 @@ kubectl -n kube-system get pods -l app.kubernetes.io/name=kube-vip -o wide
 kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'; echo
 ```
 
-Test failover once, deliberately: reboot the leader per
+Test failover once: have Kured reboot the leader per
 [Rebooting a node](nodes.md#rebooting-a-node) and confirm `kubectl` keeps
 working after a few seconds.

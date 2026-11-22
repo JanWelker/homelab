@@ -20,8 +20,8 @@ see the [Quickstart](../quickstart.md).
 
     ---
 
-    Rebooting, adding, replacing and rebuilding a node, including the two
-    gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.
+    Rebooting, adding, replacing and rebuilding a node, and recovering from a
+    power loss.
 
 - **[Updates & Upgrades](upgrades.md)**
 
@@ -47,8 +47,7 @@ see the [Quickstart](../quickstart.md).
 
     ---
 
-    Swapping the key that encrypts Secrets in etcd, with no API server
-    restart and two rewrites of every Secret.
+    Swapping the key that encrypts Secrets in etcd.
 
 - **[Vulnerability Triage](vulnerabilities.md)**
 
@@ -60,6 +59,12 @@ see the [Quickstart](../quickstart.md).
 
 </div>
 
+Other dated logs: network-policy audits
+[2026-09-27](network-policy-audit-2026-09-27.md) and
+[2026-10-16](network-policy-audit-2026-10-16.md), host firewall
+[inventory](host-firewall-inventory-2026-10-30.md) and
+[rollout](host-firewall-rollout-2026-11-18.md).
+
 ## Routine health check
 
 | Command | Healthy looks like |
@@ -67,9 +72,9 @@ see the [Quickstart](../quickstart.md).
 | `kubectl get nodes` | Every node `Ready` |
 | `kubectl -n argocd get applications` | Every Application `Synced` *and* `Healthy` |
 | `kubectl get certificate -A` | Every certificate `READY=True` |
-| `ssh <control plane> sudo kubeadm certs check-expiration` | More than thirty days left on every line; less and the [yearly renewal](upgrades.md#control-plane-certificates) is due |
+| `ssh core@<control plane> sudo kubeadm certs check-expiration` | More than thirty days left on every line; less and the [yearly renewal](upgrades.md#control-plane-certificates) is due |
 | `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` | `HEALTH_OK`, and an OSD count matching your node count |
-| `kubectl -n openbao exec openbao-0 -- bao status` | `Sealed: false`; the one failure that looks like health, so run it after anything restarted |
+| `bao status` on [every OpenBao pod](../platform/openbao.md#health-check), each seals on its own | `Sealed: false`; the one failure that looks like health, so run it after anything restarted |
 
 The Rook toolbox pod is enabled, so `ceph status`, `ceph osd tree` and
 `ceph health detail` need nothing installed. Ceph metrics are scraped and
