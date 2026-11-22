@@ -10,10 +10,6 @@ A rack of machines and a pile of YAML: a bare metal Kubernetes cluster that
 provisions itself over PXE, keeps its entire state in Git, and is documented
 here so that nothing has to be re-derived at 02:00.
 
-It is a real cluster doing real work, built the way a production cluster is
-built, at a scale where breaking it is a learning experience rather than an
-incident review.
-
 ## Start here
 
 <div class="grid cards" markdown>
@@ -38,9 +34,10 @@ incident review.
 
     ---
 
-    [Core Concepts](concepts.md) covers the five ideas underneath this cluster —
-    immutable OS, first-boot provisioning, sysexts, network boot, GitOps — and
-    what each one costs.
+    These pages assume you can use `kubectl`; the
+    [Kubernetes basics tutorial](https://kubernetes.io/docs/tutorials/kubernetes-basics/)
+    gets you there. Then [Core Concepts](concepts.md) for the five ideas
+    underneath this cluster and the terms the other pages use.
 
 - **Something is broken**
 
@@ -77,7 +74,7 @@ reasoning and what each one costs is in
 | Secrets | [OpenBao](platform/openbao.md) | Nothing sensitive in Git, at the price of a manual unseal after every reboot |
 | Delivery | [ArgoCD](architecture/gitops.md) | If it is not in Git it is not real, and it will not survive the next reconcile |
 
-The sections follow the reader's journey: [Get Started](quickstart.md) to build
+The sections follow the reader's journey: [Get Started](adapting.md) to build
 it, [Architecture](architecture/index.md) to understand it,
 [Platform](platform/index.md) for each of the components,
 [Operations](operations/index.md) to run it, and

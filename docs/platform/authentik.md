@@ -16,7 +16,7 @@ every network flow in the cluster to anyone who could reach the hostname.
 | Home Assistant | Proxy outpost **in front of** its own login — see [Pitfalls](#pitfalls) |
 | Umami | Proxy outpost **in front of** its own login; the tracker paths pass through — see [Pitfalls](#pitfalls) |
 | Rook dashboard, Hubble UI, Prometheus, Alertmanager, Flowscape, Extractor admin UI | Proxy outpost |
-| Wollbi-Fescht, Wollbi Adventsfenster | Proxy outpost on the admin paths, with no `infra-users` binding, see [Groups and roles](#groups-and-roles) |
+| Wollbi-Fescht, Wollbi Adventsfenster | OIDC for the Payload editors, bound to `wollbi-editors` rather than `infra-users`, see [Groups and roles](#groups-and-roles) |
 
 ## At a glance
 
@@ -27,11 +27,11 @@ every network flow in the cluster to anyone who could reach the hostname.
 | If it is down | Every platform UI loses its only login — see [When Authentik is down](#when-authentik-is-down) |
 | Health check | `kubectl -n authentik get pods,clusters` &rarr; server and worker Ready, `authentik-db` healthy |
 | UI | `auth.k8s.wlkr.ch` |
-| Files | `payload/platform/authentik/` |
+| Files | [`payload/platform/authentik/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/authentik) |
 
 ## Configuration
 
-### Two integration styles
+### Integration styles
 
 **OIDC**, for applications that can do it themselves: ArgoCD and Grafana map
 group membership to a role. **Proxy**, for the rest: the hostname resolves to
@@ -54,15 +54,10 @@ Authentik answers on `auth.k8s.wlkr.ch` only, on `apps-gateway`, which the
 LAN reaches through the router's local record and the outside through
 Route53. Every OIDC client and the embedded outpost use that one name.
 
-The outpost is why there is only one. A proxied application's route points
-at `authentik-server`, but the login itself is an OAuth dance: the outpost
-sends the browser to the outpost's `authentik_host` to authenticate and gets
-it back on the application's own hostname. With Authentik on two names and
-`authentik_host` on the LAN-only one, an application on `apps-gateway`
-worked at home and redirected outside users to a name that does not
-resolve. `blueprints.yaml` pins `authentik_host` because the embedded
-outpost otherwise fills it from `web.base_url` on first start and never
-updates it.
+The outpost sends the browser to its `authentik_host` to authenticate, so
+that name must resolve wherever a proxied application is reached from.
+`blueprints.yaml` pins `authentik_host` because the embedded outpost otherwise
+fills it from `web.base_url` on first start and never updates it.
 
 !!! warning "A client must never mix names"
     The `iss` claim is the hostname the token was issued through. A discovery URI on one name and a redirect on another fails every login with an error that blames the token. Should a second hostname ever come back, pin each client to exactly one.
@@ -72,8 +67,7 @@ updates it.
 A proxied application's route lives with the application: Hubble's in
 `payload/platform/cilium/`, Rook's in `payload/platform/rook-ceph/`,
 Prometheus's and Alertmanager's in `payload/platform/monitoring/`, and Home
-Assistant's, Flowscape's, Umami's, Wollbi-Fescht's, Wollbi
-Adventsfenster's and the Extractor admin UI's in the
+Assistant's, Flowscape's, Umami's and the Extractor admin UI's in the
 [workloads repository](../development/add-workload.md),
 each with `authentik-server` as `backendRef`. Gateway API forbids a
 cross-namespace `backendRef` unless the target namespace grants it, so
@@ -84,8 +78,8 @@ authentication layer on its own.
 
 ### Database
 
-`database.yaml` is a CloudNativePG `Cluster` with replicas, the only one on
-the cluster that has any. Every login on every platform UI goes through
+`database.yaml` is a CloudNativePG `Cluster` with replicas, backed up as in
+[Backups](cloudnative-pg.md#backups). Every login on every platform UI goes through
 Authentik, so its database must survive a node drain: with one instance a
 reboot kills the database; with replicas, the operator's PodDisruptionBudgets
 hold the drain until it has switched the primary over, a few seconds without
@@ -106,7 +100,7 @@ placement](index.md#replica-placement).
 | `authentik.web.base_url` | Authentik builds e-mail links and outpost redirects from it and cannot infer it; unset, every admin page shows "The base URL has not been configured". |
 | `metrics.enabled` and `metrics.serviceMonitor.enabled` | The ServiceMonitor renders only when both are set; the switch alone produces nothing, silently. The worker is scraped too: tasks, outpost state and blueprint runs are measured there |
 | `postgresql.enabled: false`, `authentik.postgresql.host: authentik-db-rw` and the `global.env` entry | The database is the `Cluster` above. The password is the one CloudNativePG generated into `authentik-db-app`, read as `AUTHENTIK_POSTGRESQL__PASSWORD` from that Secret; it is never copied into OpenBao or Git |
-| `server.serviceAccountName` and `automountServiceAccountToken` | The server calls no Kubernetes API; the chart applies the switch only with a name set. The worker keeps its token for outposts |
+| `server.serviceAccountName` and `automountServiceAccountToken` | The chart applies the switch only with a name set; see [Default ServiceAccount tokens](security-policies.md#default-serviceaccount-tokens) |
 | `server.topologySpreadConstraints` | The chart's `podAntiAffinity` preset is `soft`, which is not enough to hold the replicas apart — see [Replica placement](index.md#replica-placement). The worker is not replicated and needs none |
 | `worker.podAnnotations` `homelab.wlkr.ch/secret-generation` | Bumped whenever `authentik-secrets` or a workload's `authentik-secrets-<workload>` gains a key, so ArgoCD restarts the worker in the same sync — see [Pitfalls](#pitfalls) |
 | `worker.volumes` `blueprints-workloads` | Authentik keys a blueprint instance by file path and name; `blueprints.configMaps` would mount the file under a second path and register it twice. The mount path stays `workloads` for that reason |
@@ -147,7 +141,7 @@ else uses the root path: every other provider is found under its slug.
 
 Dependency-Track keys its accounts on the `preferred_username`
 claim, so a user who could rename themselves could take over another's
-account. `05-user-settings.yaml` therefore gives the default brand its own
+account. The `05-user-settings.yaml` blueprint in `blueprints.yaml` therefore gives the default brand its own
 user settings flow with no username field; a username changes only under
 **Directory &rarr; Users**. It replaces the brand's flow instead of editing
 the default one because the default blueprint rewrites its own objects on
@@ -158,7 +152,7 @@ every upgrade, and because the **System &rarr; Settings** switch
 
 `auth.k8s.wlkr.ch` is reachable from the Internet, and the default
 authentication flow lets a user without a device in on a password alone.
-`06-authentication.yaml` gives the default brand its own flow out of the
+The `06-authentication.yaml` blueprint gives the default brand its own flow out of the
 default password and login stages, with three additions. It is
 an own flow for the same reason as the [user settings
 flow](#user-settings-flow): the default blueprint rewrites its own objects on
@@ -167,7 +161,7 @@ every upgrade.
 | Addition | Why |
 | --- | --- |
 | Authenticator validation with `not_configured_action: configure`; TOTP and WebAuthn as setup stages, static tokens accepted as a device class | A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under **Settings &rarr; MFA devices**, which is why they are not offered as the first device |
-| A deny stage after identification, selected by a reputation policy on the address and the username with threshold `-5` | Every failed login scores both `-1`, so after five an address or a username is refused for a day (`AUTHENTIK_REPUTATION__EXPIRY`); the password stage's own five-attempt cancel only ends the current attempt. The policy *passes* for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known |
+| A deny stage after identification, selected by a reputation policy on the address and the username | Every failed login lowers both scores, so an address or a username below the policy's `threshold` is refused until Authentik's reputation expiry clears it; the password stage's own five-attempt cancel only ends the current attempt. The policy *passes* for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known |
 | A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login | The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under **Settings &rarr; MFA devices** before it appears. Safari and Firefox do not autofill into the form's shadow DOM, so the identification stage's passwordless flow, `homelab-passkey`, offers the same validation stage behind a link as a modal prompt; it has no reputation stage, because a signature cannot be guessed |
 
 To lift a lockout early, delete the score under **Customization &rarr;
@@ -349,30 +343,34 @@ When every login fails, in this order:
 
 ### When Authentik is down
 
-Single sign-on is a single point of failure for logging in at all. The ArgoCD
-path needs a working `kubectl`, so keep a kubeconfig off-cluster.
+Single sign-on is a single point of failure for logging in at all. Every
+step needs a working `kubectl`, so keep a kubeconfig off-cluster; selfHeal
+reverts a `kubectl patch`, so each switch is a pull request, which ArgoCD
+syncs without a login. Revert them once Authentik is back.
 
-**ArgoCD** — re-enable the local admin account by merging a pull request
-that sets `admin.enabled` in `payload/argocd/values.yaml`; the `argocd`
-Application self-heals, so a `kubectl patch` on `argocd-cm` is reverted at
-the next reconcile. ArgoCD syncs the merge without a login. Then restart the
-server, which generates `argocd-initial-admin-secret`, and read the password
-as in [Quickstart](../quickstart.md#setup). Revert the pull request once
-Authentik is back.
+1. ArgoCD: merge `admin.enabled: "true"` in `payload/argocd/values.yaml`, restart the
+   server, which generates `argocd-initial-admin-secret`, and read the
+   password as in [Quickstart](../quickstart.md#setup).
 
-```bash
-kubectl -n argocd rollout restart deploy/argocd-server
-```
+    ```bash
+    kubectl -n argocd rollout restart deploy/argocd-server
+    ```
 
-**Grafana** — the login form is hidden, not removed: the admin account works
-through the API, and `GF_AUTH_DISABLE_LOGIN_FORM=false` brings the form back.
+2. Grafana: the admin account works through the API as it is. For the UI,
+   merge `auth.disable_login_form: false` under `grafana.ini` in
+   `payload/platform/monitoring/application.yaml` and log in as `admin` at
+   `/login?disableAutoLogin=true` with the password from OpenBao, see
+   [Resetting the Grafana admin password](monitoring.md#resetting-the-grafana-admin-password).
 
-**Proxied dashboards** have no bypass; port-forward instead:
+    ```bash
+    kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv -field=password monitoring/grafana-admin
+    ```
 
-```bash
-kubectl -n kube-system port-forward svc/hubble-ui 8080:80
-kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:9090
-```
+3. Proxied dashboards have no bypass; port-forward instead.
+
+    ```bash
+    kubectl -n kube-system port-forward svc/hubble-ui 8080:80
+    ```
 
 ### ArgoCD's API key account
 

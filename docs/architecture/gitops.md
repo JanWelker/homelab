@@ -1,5 +1,5 @@
 ---
-description: "The self-managing ArgoCD Application, the three ApplicationSets, the sync policy every Application shares, and why workloads live in their own repository."
+description: "The self-managing ArgoCD Application, the two ApplicationSets, the sync policy every Application shares, and why workloads live in their own repository."
 ---
 
 # GitOps Strategy
@@ -30,9 +30,8 @@ flowchart LR
 ApplicationSet it deploys then adopts it from `payload/argocd/application.yaml`,
 so a merged chart bump reaches the cluster like any other. It syncs the chart
 that runs ArgoCD and, through a second source, the `platform` ApplicationSet,
-so changes to the generator arrive through Git. Its chart values are described in
-[Platform &rarr; ArgoCD](../platform/argocd.md), along with the recovery
-commands for the day ArgoCD syncs a broken ArgoCD config.
+so changes to the generator arrive through Git. Its chart values and the
+recovery commands are in [Platform &rarr; ArgoCD](../platform/argocd.md).
 
 Everything else is a component directory with one `application.yaml`,
 including ArgoCD's own supporting resources:
@@ -54,8 +53,8 @@ labels, annotations, finalizers and `spec` unchanged.
 ## Sync policy
 
 Every Application, generated or not, carries the same `syncPolicy`: automated
-sync with `prune` and `selfHeal`, and a `retry` block of ten attempts with a
-backoff from 30s to 5m. That is the whole delivery contract:
+sync with `prune` and `selfHeal`, and a `retry` block. That is the whole
+delivery contract:
 
 - **A commit is live within one polling interval.** ArgoCD runs on a private
   address, so no GitHub webhook can reach it; the intervals are in
@@ -64,9 +63,9 @@ backoff from 30s to 5m. That is the whole delivery contract:
   the next reconcile, in the platform as much as in the workloads.
 - **A failed sync retries itself.** ArgoCD never re-attempts a failed sync of
   the same revision unless the Application has a `retry` block, which is why
-  every `application.yaml` carries one. The ten attempts span about forty
-  minutes; after that the Application stays OutOfSync until its revision
-  changes or it is synced by hand:
+  every `application.yaml` carries one. Once its attempts run out the
+  Application stays OutOfSync until its revision changes or it is synced by
+  hand:
 
     ```bash
     argocd app sync <application>
@@ -78,9 +77,7 @@ backoff from 30s to 5m. That is the whole delivery contract:
   [Rolling back a bad sync](../operations/troubleshooting.md#rolling-back-a-bad-sync).
 - **`argocd` carries no finalizer.** The ApplicationSet deletes a generated
   Application whose file or generator path goes away, and with the resources
-  finalizer that would delete ArgoCD itself; without it the objects stay. Its
-  sync restarts ArgoCD's own pods, and `retry` re-attempts one that was
-  interrupted; the `syncPolicy` is otherwise the shared one.
+  finalizer that would delete ArgoCD itself; without it the objects stay.
 - **One exception to `prune`, and one annotation.** `kube-vip` syncs with
   `prune: false`, because its objects are the only thing holding the API VIP;
   copy the `syncPolicy` from any other sibling. Elsewhere a resource whose
@@ -133,34 +130,33 @@ directory per application; the `apps` ApplicationSet generates an Application
 from each `*/application.yaml` there. The split keeps a platform change with a
 cluster-wide blast radius apart from a workload change with a one-app one.
 
-The dependency runs one way: workloads reference the platform (the
-`apps-gateway`, the `rook-ceph-block` StorageClass, the `openbao`
-`ClusterSecretStore`, the CloudNativePG operator), and the platform references
-the workloads repository exactly once — the `repoURL` in
-`payload/workloads/applicationset.yaml`.
+Workloads reference the platform: the `apps-gateway`, the `rook-ceph-block`
+StorageClass, the `openbao` `ClusterSecretStore`, the CloudNativePG operator.
+The platform names the workloads repository in the `apps` ApplicationSet and
+the `apps` project, and single workloads wherever it grants them something. A
+fork with other workloads edits these, in `payload/platform/` or `scripts/`;
+`git grep <namespace>` finds the rest:
+
+| File | Names |
+| --- | --- |
+| `openbao/cluster-secret-store.yaml`, `scripts/bao-policies.sh` | secret readers |
+| `authentik/` blueprints, secrets, `referencegrant.yaml` | login clients, proxied hostnames |
+| `gateway-api/gateways.yaml`, `security/admission-policies.yaml` | `infra-gateway` namespaces, reserved hostnames |
+| `security/` pod security, network policies, agent RBAC | labels, flows, agent access |
+| `scripts/bao-secrets.sh` | typed secrets |
 
 ### What the split costs
 
 - **Two repositories to clone**, and a change that spans both is two pull
   requests that cannot merge atomically; merge the platform half first.
-- **The diff preview covers only this repository**, so both ApplicationSets
-  carry `argocd-diff-preview/ignore`.
 - **A workload can reference a missing platform resource**; nothing catches
   it before the sync.
 
 ### Workloads sync alongside the platform
 
 The `apps` ApplicationSet ships inside the `workloads` Application, which the
-`platform` ApplicationSet generates like any component. That is why
-`payload/workloads/` is a sibling of `payload/platform/`, and why the
-`platform` ApplicationSet names it as a second generator path rather than
-a glob:
-
-```yaml
-        files:
-          - path: payload/platform/*/application.yaml
-          - path: payload/workloads/application.yaml
-```
+`platform` ApplicationSet generates like any component, from a second
+generator path beside the `payload/platform/` glob.
 
 On a fresh cluster the workloads therefore start syncing before the platform
 under them is Healthy and converge the same way: the `retry` block, an

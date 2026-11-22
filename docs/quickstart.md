@@ -6,18 +6,23 @@ description: "Bring up the bare metal Kubernetes cluster from scratch: provision
 
 ![Homelab Logo](assets/images/logo.png){ align=right width=150 }
 
-Bring up the bare metal Kubernetes cluster from scratch, using Flatcar
-Container Linux and Kubeadm. The steps are thirteen commands; set aside an
-afternoon anyway, because step 7 depends on your DHCP server behaving.
+Bring up the bare metal Kubernetes cluster from scratch, using
+[Flatcar Container Linux and Kubeadm](concepts.md). Set aside an afternoon:
+step 7 depends on your DHCP server behaving.
 
 !!! warning "Read this first if the cluster isn't mine"
     Node names, IP addresses, the `wlkr.ch` domain, and the Git repository URL are hardcoded throughout `payload/`. Following the steps below verbatim gives you a cluster whose ArgoCD syncs from **this** repository and whose certificates are issued for a domain you don't control. Work through [Adapting This for Your Cluster](adapting.md) **before** step 1.
 
 ## Hardware Requirements
 
-Each node must have:
+At least four machines: three workers, because Ceph keeps three copies on
+three different hosts and puts no OSD on a control plane, and one control
+plane, or three for an etcd that survives losing one — see
+[Cluster layout](architecture/index.md#cluster-layout). Size their memory by
+the [platform's limits rule](platform/index.md#components). Each node must have:
 
-- A NIC that supports PXE booting
+- A NIC that supports PXE booting, with network boot first in the firmware's
+  [boot order](architecture/boot-process.md#boot-order)
 - An NVMe drive, or a different `install_disk` in `inventory.yaml`
 - Enough disk for Flatcar and the root filesystem. On workers the root
   partition is capped (`size_mib` in
@@ -42,6 +47,7 @@ the same L2 network segment as the nodes.
 | `gpg` and `gpgv` | checking the signatures on the Flatcar and syslinux checksums in `make download` | `brew install gnupg` or your package manager |
 | `kubectl` | steps 8 onwards | [kubernetes.io](https://kubernetes.io/docs/tasks/tools/) |
 | `helm` | `make install-cilium`, `make install-argo` | [helm.sh](https://helm.sh/docs/intro/install/) |
+| `jq`; day 2 also `argocd`, `bao`, `velero`, `aws` | step 12; the runbooks in [Argo CD](platform/argocd.md#cli-access), [OpenBao](platform/openbao.md#authenticating-locally) and [Backups](operations/backups.md) | your package manager |
 
 ### Other requirements
 
@@ -55,6 +61,11 @@ the same L2 network segment as the nodes.
     server's `advertiseAddress`, the etcd peer URLs kubeadm derives from it and
     the metrics listeners are all rendered from `ansible_host`, so a node that
     leases a different address joins with the wrong one or not at all.
+- **Outside accounts**: `make bao-secrets` (step 11) asks for what the cluster
+  cannot generate: DNS provider keys for cert-manager and external-dns, an
+  SMTP login for alert mail, the BGP session password, and the logins some
+  workloads need. The list is at the top of `scripts/bao-secrets.sh`; what a
+  fork drops is in [Adapting](adapting.md).
 
 !!! tip "Consumer routers and PXE"
     Many home routers accept options 66 and 67 and then serve neither. If step 7 produces silence in the boot server log, prove the DHCP side first with `tcpdump -i <iface> port 67 or port 68`.
@@ -85,7 +96,7 @@ the same L2 network segment as the nodes.
     | `pod_subnet`, `service_subnet` | kubeadm's cluster networks; change only on a collision with your LAN | `make config` |
     | `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer the Gateway addresses are announced to; rendered into `output/router/frr-bgp.conf` for the router, and `payload/platform/cilium/bgp.yaml` must say the same; see [Cilium](platform/cilium.md#configuration) | `make config` |
     | `flatcar_channel`, `flatcar_version`, `syslinux_version` | The OS image and bootloader to fetch; `flatcar_version` also names the image the installer writes | `make download`; `flatcar_version` also `make config` |
-    | `kubernetes_version` | The sysext image to fetch, and the version kubeadm and sysupdate are rendered with | `make download`, `make config` |
+    | `kubernetes_version`, `kubernetes_sha256` | The sysext image to fetch and the checksum `make download` verifies it against, so both move together; the version is also what kubeadm and sysupdate are rendered with | `make download`, `make config` |
     | `kube_vip_version` | The bootstrap static pod only; the running image is pinned in `payload/platform/kube-vip/`; see [Inventory](architecture/ansible.md#inventory) | `make config` |
     | `bootstrap_cluster` (`control_plane` group) | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) | `make config`, `make reinstall` |
     | `control_plane` / `workers` membership | Decides the node role, and with it the partition layout and the kubeadm command | `make config` |
@@ -132,26 +143,19 @@ the same L2 network segment as the nodes.
     make serve
     ```
 
-    Leave this running through step 7 and keep the window visible: it names
-    each node and logs one line per request. Its opening lines say what each
-    node will do when powered on: a boxed `ARMED TO INSTALL` warning names the
-    nodes that will wipe and install, and a node under *booting from disk* will
-    not, however often you reboot it.
+    On a Linux deployment host, lower `net.ipv4.ip_unprivileged_port_start`
+    first, or TFTP cannot bind — see
+    [Boot server](architecture/boot-process.md#boot-server). Leave this
+    running through step 7 and keep the window visible: it names each node and
+    logs one line per request. Its opening lines say what each node will do
+    when powered on: a boxed `ARMED TO INSTALL` warning names the nodes that
+    will wipe and install, and a node under *booting from disk* will not,
+    however often you reboot it.
 
     ```console
       ⚠  ARMED TO INSTALL: odin, thor
-
-         Every disk above is wiped on boot -- the partition table, every
-         partition on it, and the Ceph OSD with them. No data survives, and
-         nothing asks for confirmation at the console.
-
-         To cancel, run:  make reinstall-cancel
-                          make reinstall-cancel LIMIT=<node>  for one
-
     20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie
     20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install
-    20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one
-    20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk
     ```
 
 7. **Arm the install, then boot the machines**:
@@ -174,18 +178,18 @@ the same L2 network segment as the nodes.
 
     - **Leave the boot server running until every node is up.** The sysexts
       are fetched on the first boot from disk.
-    - The cluster comes up `NotReady` because no CNI is installed. This is
-      correct; do not fix it yet.
+    - The nodes come up `NotReady`, as `kubectl get nodes` in step 8 shows,
+      because no CNI is installed. This is correct; do not fix it yet.
     - If a node stalls, see [Troubleshooting PXE boot](#troubleshooting-pxe-boot).
 
     !!! tip "Watching an install"
         `journalctl -u flatcar-install -f` as `core@<node>` (`flatcar-install-uefi` on UEFI firmware) shows the wipe and the write (so does a monitor on the node). A failed install does *not* reboot — the node stays in the PXE environment with the journal intact.
 
 8. **Retrieve Kubeconfig**:
-    Once the control plane node responds to SSH:
+    Once the first control plane has run `kubeadm init`, which this checks:
 
     ```bash
-    make kubeconfig
+    ssh core@<node> sudo test -f /etc/kubernetes/admin.conf && make kubeconfig
     ```
 
     Every `make` target that touches the cluster reads `output/kubeconfig`
@@ -198,12 +202,9 @@ the same L2 network segment as the nodes.
     kubectl get nodes
     ```
 
-    *Optional: install to the local machine (will not overwrite an existing config):*
-
-    ```bash
-    mkdir -p ~/.kube
-    cp -n output/kubeconfig ~/.kube/config
-    ```
+    Once every node is listed, set `bootstrap_cluster` back to `false` in
+    `ansible/inventory.yaml` and run `make config`; `make reinstall` refuses
+    to arm a node while it is `true` and the cluster answers.
 
 9. **Install Cilium** (CRITICAL):
 
@@ -238,15 +239,7 @@ the same L2 network segment as the nodes.
         `payload/argocd/values.yaml` and Authentik arrives later through
         GitOps. Follow the bootstrap with `kubectl` instead.
 
-        **Tip — the UI before Authentik exists:** re-enable the local admin
-        with a patch. It holds only until the next step: right now ArgoCD is
-        the plain Helm release `make install-argo` made, and
-        `make bootstrap-apps` hands it to the self-healing `argocd`
-        Application, whose first sync puts `admin.enabled` back to what
-        `payload/argocd/values.yaml` says. After that the only way in is the
-        pull request in
-        [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down).
-        The restart is what generates the password Secret:
+        **Tip — the UI before Authentik exists:** re-enable the local admin with a patch. It holds only until the next step: right now ArgoCD is the plain Helm release `make install-argo` made, and `make bootstrap-apps` hands it to the self-healing `argocd` Application, whose first sync puts `admin.enabled` back to what `payload/argocd/values.yaml` says. After that the only way in is the pull request in [Authentik &rarr; When Authentik is down](platform/authentik.md#when-authentik-is-down). The restart is what generates the password Secret:
 
         ```bash
         kubectl -n argocd patch cm argocd-cm --type merge \
@@ -321,15 +314,16 @@ the same L2 network segment as the nodes.
     [OpenBao &rarr; KV layout](platform/openbao.md#kv-layout). A required
     value has no skip; an optional one is issued by something that runs on
     the cluster and takes Enter until it exists. A fork without one of those
-    accounts removes its prompt from the script. Everything random — `kv/authentik/config` with the OIDC client
+    accounts replaces that path's `decide` line with `WRITE_<NAME>=0`, which
+    skips its prompt and its write; deleting the line fails the script, which
+    runs under `set -u` and reads every flag. Everything random — `kv/authentik/config` with the OIDC client
     credentials ArgoCD and Grafana read back, Grafana's break-glass admin
     password — is not prompted for: a `PushSecret` writes it once the store
     validates, see [Generated secrets](platform/openbao.md#generated-secrets).
     On a running cluster it asks per path before overwriting — see
     [Rotating a credential](platform/openbao.md#rotating-a-credential).
-
-    !!! tip "Paste them at the prompt, not onto a command line"
-        A secret containing `#` on a command line is truncated at it, and one containing `!` is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with **single** quotes.
+    Paste values at the prompt: on a command line a `#` or `!` in one is
+    silently mangled.
 
     Once the store validates, every `ExternalSecret` resolves, `certificates`
     issues the gateway certificates and the Gateways come up. The store is
@@ -339,19 +333,19 @@ the same L2 network segment as the nodes.
     Authentik ships the built-in `akadmin` account, and the blueprints switch
     it off as soon as it exists — see
     [Bootstrap credentials](platform/authentik.md#bootstrap-credentials).
-    Switch it on, and read its password back out of OpenBao (needs a token —
-    `bao login -method=userpass username=operator` inside the pod, or the port-forward in
-    [OpenBao &rarr; Authenticating locally](platform/openbao.md#authenticating-locally)):
+    Log in to OpenBao inside the pod with the operator password `make bao-init`
+    wrote, read the `akadmin` password, and switch the account on:
 
     ```bash
-    kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
-      'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'
+    jq -r .password output/credentials/openbao-operator.json | \
+      kubectl -n openbao exec -i openbao-0 -- bao login -method=userpass username=operator password=-
     kubectl -n openbao exec openbao-0 -- \
       bao kv get -mount=kv -field=bootstrap-password authentik/config
+    kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c \
+      'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'
     ```
 
-    Log in at [auth.k8s.wlkr.ch](https://auth.k8s.wlkr.ch) as
-    `akadmin`; the first login enrols a second factor. Create a personal
+    Log in at `https://auth.k8s.<your-domain>` as `akadmin`; the first login enrols a second factor. Create a personal
     account in *Directory &rarr; Users* and put it in `authentik Admins` and
     the groups listed in
     [Authentik &rarr; Groups and roles](platform/authentik.md#groups-and-roles)
@@ -365,25 +359,10 @@ the same L2 network segment as the nodes.
 
 ## Single-node clusters
 
-The [documented layout](architecture/index.md#cluster-layout) has dedicated
-workers, so the control-plane taint stays. On a single node:
-
-- Remove the taint once `make kubeconfig` has answered and **before
-  `make install-argo`**. Cilium tolerates the taint, but ArgoCD does not, so `make install-argo` would wait
-  on unschedulable pods until Helm's `--wait` times out:
-
-    ```bash
-    make untaint
-    ```
-
-- Set `redis-ha.enabled: false` in `payload/argocd/values.yaml`; its hard
-  per-host anti-affinity leaves pods Pending on one node whatever the taints
-  say.
-- Re-apply the taint when you later add worker nodes:
-
-    ```bash
-    make taint
-    ```
+One node does not run this platform: control planes get no Ceph OSD (see
+[Rook-Ceph &rarr; Disks](platform/rook-ceph.md#disks)) and the block pool
+wants three hosts, so no volume binds and OpenBao stays Pending at step 11.
+The minimum is under [Hardware Requirements](#hardware-requirements).
 
 ## Reprovisioned nodes
 
@@ -395,21 +374,11 @@ and `openbao-0` Pending on an unbound PVC at step 11 — see
 
 ## Verifying the result
 
-The five commands that answer "is it actually fine?":
-
-```bash
-kubectl get nodes                                  # all Ready
-kubectl -n argocd get applications                 # all Synced / Healthy
-kubectl get certificate -A                         # READY=True
-kubectl -n rook-ceph get cephcluster               # HEALTH_OK
-make storage-check                                 # a PVC actually binds
-```
-
-The last one earns its place: `cephcluster` reports `Ready` on a cluster with
-no OSDs and no CSI driver.
-
-Once DNS points at the gateway IPs, the platform UIs are reachable — see
-[Platform &rarr; HTTPRoute Locations](platform/index.md#httproute-locations).
+Run the [routine health check](operations/index.md#routine-health-check)
+and `make storage-check` once more. Once DNS points at the gateway
+addresses, the platform UIs answer — see
+[HTTPRoute Locations](platform/index.md#httproute-locations). Next:
+[Adding a Workload](development/add-workload.md).
 
 ## Troubleshooting PXE boot
 
@@ -420,7 +389,7 @@ Read the `make serve` log instead of the node and ask how far it got.
 | --- | --- |
 | Nothing after the startup lines; the node never appears | DHCP isn't handing out options 66/67, or the node isn't on the same L2 segment. Check the DHCP lease and that PXE is enabled in firmware. |
 | Node comes up on an address other than its `ansible_host` | No per-MAC DHCP reservation, or one for the wrong NIC. The join uses the rendered address, not the leased one. |
-| `PXE-E32: TFTP open timeout` | `make serve` isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall. |
+| `PXE-E32: TFTP open timeout` | `make serve` isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall; on Linux, lower the [unprivileged port start](architecture/boot-process.md#boot-server). |
 | Bootloader loads, then "Could not find kernel image" or a hang at the menu | `boot_server_ip` in `inventory.yaml` is wrong. It is baked into the menu's kernel/initrd URLs. Fix it, re-run `make config`, and reboot the node. |
 | `no generated menu has that MAC` in the boot server log | The node's `mac_address` in `inventory.yaml` doesn't match its actual NIC. The log prints the MAC the node actually asked for; put that in the inventory and re-run `make config`. |
 | `collecting its boot menu -- booting from its local disk` | The node is not armed. `make reinstall LIMIT=<node>` and boot it again. Expected after an install: the boot server disarms a node once it has the OS image. |
@@ -430,8 +399,5 @@ Read the `make serve` log instead of the node and ask how far it got.
 
 A machine with two NICs PXE boots from whichever it likes, and the MAC on the
 case is often not that one. A node that boots the menu and stalls right after
-is almost always a wrong `boot_server_ip`, not a broken image.
-
-The boot server serves `output/tftp` over TFTP and `output/http` over HTTP —
-see [Boot & Bootstrap Process](architecture/boot-process.md). If a file is
-missing from those directories, re-run `make artifacts`.
+is almost always a wrong `boot_server_ip`, not a broken image. A file missing
+from `output/` needs `make artifacts`.

@@ -20,12 +20,11 @@ place them where there is room.
 | Depends on | [metrics-server](metrics-server.md) for the node usage `LowNodeUtilization` compares |
 | If it is down | Nothing visible: pods stay where the last drain left them |
 | Health check | `kubectl -n descheduler get jobs` &rarr; the last run `Complete` |
-| Files | `payload/platform/descheduler/application.yaml` |
+| Files | [`payload/platform/descheduler/application.yaml`](https://github.com/JanWelker/homelab/blob/main/payload/platform/descheduler/application.yaml) |
 
 ## Configuration
 
-The values are in `payload/platform/descheduler/application.yaml`; the
-reasoning:
+The reasoning behind the values in `application.yaml`:
 
 | Setting | Why |
 | --- | --- |
@@ -42,11 +41,10 @@ reasoning:
 
 ## Usage
 
-Nothing to operate. To watch a pass:
+Nothing to operate. To run a pass now:
 
 ```bash
 kubectl -n descheduler create job --from=cronjob/descheduler manual-$(date +%s)
-kubectl -n descheduler logs -l app.kubernetes.io/name=descheduler --tail=100
 ```
 
 Every eviction is an event on the pod, so `kubectl get events -A
@@ -69,8 +67,8 @@ kubectl top nodes    # what LowNodeUtilization sees
   is refused. The single-instance [CloudNativePG](cloudnative-pg.md) clusters
   carry none, so that Kured can drain; `PodsWithPVC` is what keeps the
   descheduler off them.
-- **One pod per over-utilized node per pass** when usage comes from
-  metrics-server. A badly skewed cluster takes several passes, which is the
-  point of running it on a schedule rather than once.
+- **A capped number of evictions per node per pass**, the limits in
+  [Configuration](#configuration). A badly skewed cluster takes several
+  passes, which is the point of running it on a schedule rather than once.
 - **A move is a restart.** Anything without a second replica is briefly down
   when it is evicted; `nodeFit` guarantees a place to go, not zero downtime.

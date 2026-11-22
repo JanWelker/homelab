@@ -11,12 +11,8 @@ switched to enforcing by restarting its agent, then rebooted through Kured.
 
 ## Method
 
-What enforcement would have refused: audit verdicts addressed to a host
-identity. Pods and nodes are admitted, so anything here came from the LAN.
-
-```logql
-{job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -> {{.dst}} {{.tcp}}{{.udp}}"
-```
+The verdicts below were read with the query in
+[Changing the host firewall](../platform/security-policies.md#changing-the-host-firewall).
 
 ## Audit verdicts
 

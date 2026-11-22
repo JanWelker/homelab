@@ -16,13 +16,13 @@ stay on GitHub.
 
 | | |
 | --- | --- |
-| Scale sets | `homelab` and `homelab-wait` on `somuch-cloud/extractor.cafe` |
+| Scale sets | `homelab` and `homelab-wait` (`AutoscalingRunnerSet`), Helm releases `shotapp` and `shotapp-wait` |
 | Workflow label | `runs-on: homelab` |
 | Depends on | [OpenBao](openbao.md) for the GitHub App in `kv/arc-runners/github-app` |
 | If it is down | Jobs on `runs-on: homelab` queue on GitHub until a runner registers; nothing else notices |
 | Health check | `kubectl -n arc-systems get pods` &rarr; the controller and one listener per scale set Running |
 | Namespaces | `arc-systems` for the controller and the listeners, `arc-runners` for the runner pods, `arc-jobs` for the job pods the container hook starts |
-| Files | `payload/platform/arc-controller/`, `payload/platform/arc-runners/`, and the three namespaces' files under `payload/platform/security/` |
+| Files | [`payload/platform/arc-controller/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/arc-controller), [`payload/platform/arc-runners/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/arc-runners), and the three namespaces' files under `payload/platform/security/` |
 
 ## Configuration
 
@@ -62,7 +62,7 @@ and namespace per trust level, each with its own Role.
 
 ### Controller
 
-The `arc-controller` values, and why:
+The `arc-controller` values:
 
 | Setting | Why |
 | --- | --- |
@@ -72,7 +72,7 @@ The `arc-controller` values, and why:
 
 ### Metrics
 
-`metrics` in the controller values turns on `/metrics` on port 8080 of the
+`metrics` in the controller values turns on `/metrics` on the metrics port of the
 controller and of every listener it starts. The listener's are the scale
 set's view from GitHub (assigned jobs, desired, idle and registered runners,
 job start-up and run times), the controller's the runner pods it manages.
@@ -84,8 +84,7 @@ The **GitHub Actions Runners** dashboard in
 `payload/platform/arc-controller/grafana-dashboards.yaml` reads them. The job
 metrics carry no scale set label, so its job panels take the scale set from
 the listener pod's name. Upstream's sample dashboard is not vendored: it
-filters on `actions_github_com_scale_set_name`, which this version does not
-export, and most of its panels stay empty.
+filters on a scale set label this version does not export.
 
 ### Network policy
 
@@ -97,7 +96,7 @@ egress is every public address rather than a list of names.
 | --- | --- |
 | Ingress from the namespace and the node only | Runners and job pods serve nothing; the listener in `arc-systems` reaches GitHub, not the runners, and a runner reaches its job pod through the API server |
 | Egress to the API server, `homelab` runner pods only | The container hook creates the job pod and execs each step into it; the `homelab-wait` runners run no hook, and job pods carry no token |
-| Egress to `0.0.0.0/0` on 80 and 443, minus the private, carrier-grade and link-local ranges | A job downloads whatever its workflow names (actions, toolchains, packages), which no name list keeps up with. Cutting the private ranges keeps the LAN, the nodes and every in-cluster service out of reach |
+| Egress to `0.0.0.0/0` on the HTTP and HTTPS ports, minus the private, carrier-grade and link-local ranges | A job downloads whatever its workflow names (actions, toolchains, packages), which no name list keeps up with. Cutting the private ranges keeps the LAN, the nodes and every in-cluster service out of reach |
 
 The controller's and listeners' egress, GitHub's API and the Actions service
 only, and Prometheus' scrape of their metrics port, are in

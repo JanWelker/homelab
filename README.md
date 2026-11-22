@@ -4,13 +4,6 @@
 
 Welcome to the **Flatcar Homelab** project. This repository contains the configuration and automation for a fully automated, GitOps-driven Kubernetes cluster on bare metal, leveraging Flatcar Container Linux and Kubeadm.
 
-## Core Concepts
-
-- **Immutable Infrastructure**: Uses Flatcar Container Linux; updates stage automatically and are applied on a manual reboot.
-- **GitOps**: All cluster state is managed via ArgoCD.
-- **Networking**: Cilium for CNI, Gateway API, and WireGuard encryption.
-- **Storage**: Rook-Ceph for distributed block storage.
-
 ## Documentation
 
 The full project documentation is published to GitHub Pages at
@@ -18,8 +11,9 @@ The full project documentation is published to GitHub Pages at
 it as [llms.txt](https://homelab.wlkr.ch/llms.txt) or in full as
 [llms-full.txt](https://homelab.wlkr.ch/llms-full.txt).
 
-- **[Quickstart Guide](https://homelab.wlkr.ch/quickstart/)**: Instructions for bootstrapping the cluster.
+- **[Core Concepts](https://homelab.wlkr.ch/concepts/)**: The ideas the cluster is built on, and the terms the other pages use.
 - **[Adapting This for Your Cluster](https://homelab.wlkr.ch/adapting/)**: What to change before running this against your own hardware.
+- **[Quickstart Guide](https://homelab.wlkr.ch/quickstart/)**: Instructions for bootstrapping the cluster.
 - **[Platform](https://homelab.wlkr.ch/platform/)**: Details on core infrastructure components.
 - **[Adding a Workload](https://homelab.wlkr.ch/development/add-workload/)**: How to deploy an application onto the cluster.
 
@@ -35,8 +29,9 @@ it as [llms.txt](https://homelab.wlkr.ch/llms.txt) or in full as
   - `workloads/`: The ApplicationSet that hands over to the workloads repository.
 
 The applications the cluster runs live in a second repository,
-[JanWelker/homelab-apps](https://github.com/JanWelker/homelab-apps); this one
-references it once, from the `apps` ApplicationSet, and never reads it back.
+[JanWelker/homelab-apps](https://github.com/JanWelker/homelab-apps); the
+platform files that name it or its workloads are listed in
+[GitOps Strategy](https://homelab.wlkr.ch/architecture/gitops/#workloads-live-in-a-second-repository).
 
 ## Contributing
 

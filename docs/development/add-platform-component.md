@@ -31,8 +31,8 @@ Application on the next poll. Workloads go in the
    [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence).
    A resource whose CRD comes from another component gets
    `argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true`.
-   A component with an `ExternalSecret` needs its namespace in both lists
-   of `payload/platform/openbao/cluster-secret-store.yaml`, or the
+   A component with an `ExternalSecret` needs its namespace on the `openbao`
+   list in `payload/platform/openbao/cluster-secret-store.yaml`, or the
    ExternalSecret reads `denied by spec.condition`. A chart from a new
    repository needs that host in the repo-server's policy in
    `payload/platform/security/network-policies/argocd.yaml`, or the
@@ -71,7 +71,7 @@ Application on the next poll. Workloads go in the
 8. **Write the page** under `docs/platform/` with the shared skeleton — intro,
    At a glance, Configuration, Usage, Health check, Pitfalls, Recovery only
    with a real runbook — add it to the nav in `zensical.toml` and to the
-   [Components table](../platform/index.md#components). The strict docs build
+   [Components table](../platform/index.md#components). The strict build
    fails on a page the nav does not list.
 
 9. **Open the PR** and run the checks in [Contributing](contributing.md).

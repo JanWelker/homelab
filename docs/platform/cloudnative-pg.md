@@ -4,9 +4,8 @@ description: "The PostgreSQL operator every workload database runs on, why a dat
 
 # CloudNativePG
 
-Every chart that needs PostgreSQL ships its own, each upgraded by whoever
-maintains the chart that buried it. CloudNativePG is one operator in
-`cnpg-system` and a `Cluster` resource per database.
+CloudNativePG is one operator in `cnpg-system` and a `Cluster` resource per
+database, [instead of each chart's bundled PostgreSQL](../architecture/decisions.md#cloudnativepg-for-every-database-not-the-charts-bundled-one).
 
 ## At a glance
 
@@ -17,7 +16,7 @@ maintains the chart that buried it. CloudNativePG is one operator in
 | If it is down | Running databases keep running; failover, upgrades and new clusters stop |
 | Health check | `kubectl get clusters.postgresql.cnpg.io -A` &rarr; `Cluster in healthy state` |
 | Backups | Continuous WAL and a nightly base backup per database, to its own prefix of `offsite` |
-| Files | `payload/platform/cloudnative-pg/` |
+| Files | [`payload/platform/cloudnative-pg/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/cloudnative-pg) |
 
 ## Configuration
 
@@ -28,7 +27,6 @@ A `Cluster` is not a StatefulSet with a nicer name:
 | Primary election and failover between instances | A single pod that takes the database down with it |
 | `-rw` and `-ro` Services that follow the primary | Hardcoding a pod name and being wrong after a restart |
 | Rolling minor-version upgrades, replicas first | A `StatefulSet` image bump and hope |
-| Generated credentials in a `-app` Secret | A password in Git, or a manual `kubectl create secret` |
 | A PodMonitor and an upstream Grafana dashboard | No visibility until something is already wrong |
 
 Major-version upgrades are declarative too, but offline: ArgoCD reports
@@ -36,17 +34,18 @@ Degraded while one runs and the workload is down for its duration. Read
 [the upstream guide](https://cloudnative-pg.io/documentation/current/postgres_upgrades/)
 before merging one.
 
-Databases claim `rook-ceph-block`, so Ceph's three copies already sit under
+Databases claim `rook-ceph-block`, so Ceph's replicas already sit under
 every database and a single-instance `Cluster` is a defensible default: the
 data survives a node loss even when the process does not. Where a workload
-cannot tolerate the restart, `instances: 3` is the change, as
-[Authentik](authentik.md#database) shows.
+cannot tolerate the restart, more `instances` are the change, as
+[Authentik](authentik.md#database) and the workloads repository's
+`advent-wollbi` and `shot-bridge` show.
 
-The operator itself runs two replicas (`replicaCount` in `application.yaml`'s
-`valuesObject`), spread per [Replica placement](index.md#replica-placement): the same pod serves the
+The operator itself runs more than one replica (`replicaCount` in
+`application.yaml`'s `valuesObject`), spread per [Replica placement](index.md#replica-placement): the same pod serves the
 `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`,
 so a single replica rescheduling through a Kured drain refuses every apply,
-while leader election keeps one of the two reconciling. The chart ships no
+while leader election keeps one reconciling. The chart ships no
 PodDisruptionBudget.
 
 ### Backups
@@ -110,8 +109,8 @@ registry terms keep changing. The rule for the
    of a single instance and every failover; after 15 seconds the instance
    manager shuts down fast, rolling back open transactions, and the clients
    reconnect. The default update method restarts the primary in place on a
-   spec change, which with the default timeout kept Authentik's database
-   without a writer for three minutes; a switchover promotes a replica first.
+   spec change, leaving no writer for the whole shutdown; a switchover
+   promotes a replica first.
 6. Back it up with the [stanza below](#backing-up-a-database). Velero's
    nightly PVC snapshot is crash-consistent and restores only to the night it
    was taken; the WAL archive restores to any second.
@@ -146,7 +145,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  retentionPolicy: 14d
+  retentionPolicy: 14d   # Velero's schedules.ttl
   configuration:
     destinationPath: s3://offsite/<namespace>.db/
     endpointURL: https://s3.infra.k8s.wlkr.ch
@@ -164,7 +163,7 @@ metadata:
   name: <db>
   namespace: <namespace>
 spec:
-  schedule: "0 0 3 * * *"
+  schedule: "0 0 3 * * *"   # after Velero's daily schedule
   immediate: true
   backupOwnerReference: self
   cluster:
@@ -251,6 +250,9 @@ archiver. All four are warnings on the daily mail.
   `no free disk space for WALs` keeps its PVC size although `storage.size`
   grew; patch that PVC to the new size by hand, as
   [upstream documents](https://cloudnative-pg.io/documentation/current/instance_manager/) under "Disk full failure".
+- **The operator cannot create host-access pods.** The `controller-pod-limits`
+  [admission policy](security-policies.md#admission-policies) refuses any pod
+  it creates with host networking, PID, IPC, a `hostPath` or privilege.
 - **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from
   the archive; it never rewinds a running one. Give the new cluster its own
   `ObjectStore` destination, or its archive would mix with the one it was
