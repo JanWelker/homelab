@@ -1381,6 +1381,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#selinux" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SELinux
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2753,6 +2764,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#selinux" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SELinux
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3318,6 +3340,11 @@ security. In <code>rook-ceph-cluster/application.yaml</code>'s <code>valuesObjec
 </tr>
 </tbody>
 </table>
+<h3 id="selinux">SELinux<a class="headerlink" href="#selinux" title="Permanent link">&para;</a></h3>
+<p><code>hostpathRequiresPrivileged</code> in <code>rook-ceph-operator/application.yaml</code> runs
+every Ceph daemon privileged: <code>container_t</code> may not write their hostPath data
+or use another pod's admin socket. The cost is in
+<a href="../../architecture/limitations/">Limitations</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="requesting-a-volume">Requesting a volume<a class="headerlink" href="#requesting-a-volume" title="Permanent link">&para;</a></h3>
 <p>Any workload can claim the default class:</p>

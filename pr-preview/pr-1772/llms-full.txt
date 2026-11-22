@@ -1170,7 +1170,7 @@ Things this cluster does not do. None is a bug; each is an accepted tradeoff or 
 | **OpenBao speaks plain HTTP inside the cluster** | Secrets and tokens cross the pod network unencrypted; WireGuard covers node-to-node | Accepted: a certificate would sit in the unseal path | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) |
 | **OSDs are unencrypted, the Rook toolbox is on, Loki has no tenants** | A pulled disk is readable; the toolbox is a standing Ceph admin shell; any Grafana Viewer reads every log line, the audit log included | Accepted: disks stay on site, runbooks need the toolbox, one Grafana user | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>), [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) |
 | **SELinux is permissive on every node** | Flatcar's default: SELinux does not mediate a container escape, and Tetragon detects without confining | The denials are answered; enforce on one worker first | [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>) |
-| **Ceph's daemons run privileged** | `hostpathRequiresPrivileged`, Rook's switch for SELinux hosts: `container_t` may not write their hostPath data. A privileged container has every capability and no seccomp filter | Accepted until the paths carry a label | [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>) |
+| **Ceph's daemons run privileged** | `hostpathRequiresPrivileged`, Rook's switch for SELinux hosts: `container_t` may not write their hostPath data. A privileged container has every capability and no seccomp filter | Accepted until the paths carry a label | [Rook Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#selinux>) |
 | **The `infra` hostnames and the LAN address are in public DNS** | The infra names resolve publicly to a LAN address, so anyone can list them; they stay LAN-only | Accepted: no split DNS to run | [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) |
 | **Single region, site and rack** | No failure domain larger than a node: Ceph replicates across nodes on one power feed, and TrueNAS pulls the backups over the same LAN ([Off-cluster copy](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>)): a site-level event takes everything | Honest limit of a homelab: a copy off the site | — |
 | **Backup copies hold plaintext Secrets and one all-powerful key** | Velero's resource backups are plain JSON in the bucket, Secrets included, and the NAS's `offsite-reader` key owns the bucket with a full `opMask`, so a leak of either exposes every Secret or lets its holder delete the live backups | Excluding Secrets would lose those nothing else regenerates (Argo CD, CloudNativePG, Rook, cert-manager); a read-only `opMask` would stop Rook setting the bucket policy with the owner's keys. The NAS's snapshots outlive a deletion | [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>), [Off-cluster reader](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#off-cluster-reader>) |
@@ -3034,7 +3034,7 @@ kubectl top nodes
 
 # Monitoring
 
-[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)). The chart's default rules are good; its default routing swallows every alert.
+[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)), and as `spc_t`: SELinux refuses `container_t` the host's `/proc`. The chart's default rules are good; its default routing swallows every alert.
 
 ## At a glance
 
@@ -3649,6 +3649,10 @@ Ceph 20 warns about the legacy `aes` cipher, and every key here is deliberately 
 | `keyRotationPolicy: KeyGeneration` | Changing `keyType` alone never rotates existing keys while the policy is `Disabled` |
 | `keyGeneration` | Rotation only triggers on an increase, so a generation can never be lowered to undo one |
 | `healthCheck.muteHealthWarning` | The `AUTH_*` warnings would otherwise keep the Application `Degraded` while the data is healthy. Temporary: remove once RBD moves to the userspace `rbd-nbd` mounter and the keys can leave `aes` |
+
+### SELinux
+
+`hostpathRequiresPrivileged` in `rook-ceph-operator/application.yaml` runs every Ceph daemon privileged: `container_t` may not write their hostPath data or use another pod's admin socket. The cost is in [Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
 
 ## Usage
 

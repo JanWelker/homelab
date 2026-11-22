@@ -2852,7 +2852,8 @@
 Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics.
 node-exporter runs in its own <code>node-exporter</code> namespace so that only it is
 admitted at the <code>privileged</code> level
-(<a href="../security-policies/#pod-security-admission">security policies</a>). The
+(<a href="../security-policies/#pod-security-admission">security policies</a>), and as
+<code>spc_t</code>: SELinux refuses <code>container_t</code> the host's <code>/proc</code>. The
 chart's default rules are good; its default routing swallows every alert.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
