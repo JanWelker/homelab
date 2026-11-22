@@ -49,22 +49,24 @@ sequenceDiagram
     Node->>Server: 7. HTTP Ignition config
     Note over Node,Server: Only when armed with make reinstall
     Server-->>Node: 8. ignition-<host>-install.json
-    Node->>Server: 9. HTTP Flatcar image + signature
+    Node->>Server: 9. HTTP ignition-<host>.json, sha512-checked
+    Node->>Server: 10. HTTP Flatcar image + signature
     Note over Server: Server disarms the menu back to localboot
-    Node->>Node: 10. Wipe disk, flatcar-install, reboot
+    Node->>Node: 11. Wipe disk, flatcar-install, reboot
     Note over Node: Now booting from disk, not the network
-    Node->>Node: 11. Ignition partitions and writes /etc
-    Node->>Server: 12. HTTP sysext image
-    Server-->>Node: 13. kubernetes
-    Node->>Node: 14. systemd unit runs kubeadm
+    Node->>Node: 12. Ignition partitions and writes /etc
+    Node->>Server: 13. HTTP sysext image
+    Server-->>Node: 14. kubernetes
+    Node->>Node: 15. systemd unit runs kubeadm
+    Note over Node: init on the first control plane, join against the VIP elsewhere
     Note over Node: Node is NotReady - no CNI yet
 ```
 
-Between steps 9 and 10 the boot server rewrites the node's menu to `DEFAULT localboot` — see [Switching back to local boot](<#switching-back-to-local-boot>). From step 11 the node runs from disk and needs the boot server only for the sysexts in step 12, on this first boot. `NotReady` after step 14 is expected: there is no CNI until `make install-cilium`.
+Between steps 10 and 11 the boot server rewrites the node's menu to `DEFAULT localboot` — see [Switching back to local boot](<#switching-back-to-local-boot>). From step 12 the node runs from disk and needs the boot server only for the sysexts in step 13, on this first boot. Step 15 runs `kubeadm init` only on the first control plane while [`bootstrap_cluster`](<https://homelab.wlkr.ch/architecture/ansible/index.md#inventory>) is `true`. `NotReady` after it is expected: there is no CNI until `make install-cilium`.
 
 ### Wiping the disk
 
-Step 10 is the point of no return, and the wipe has three parts:
+Step 11 is the point of no return, and the wipe has three parts:
 
 | Wipe | Where | What it does |
 | --- | --- | --- |
@@ -128,7 +130,7 @@ The node boots from its own disk; the boot server should be off.
 >
 > **Two boot paths, and the menu picks the safe one**
 >
-> `PROMPT 0` boots whatever `DEFAULT` names, and the template always emits `DEFAULT localboot`, so a node that network-boots lands on its own disk. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
+> `PROMPT 0` boots whatever `DEFAULT` names. A new menu says `DEFAULT localboot`, so a node that network-boots lands on its own disk; `make config` keeps whatever a menu already says, so an armed node stays armed. `make reinstall` rewrites that one line to arm it; see [Rebuilding or repartitioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>). Holding Shift or Alt at boot forces the prompt, the escape hatch for a node armed by mistake.
 
 ## Boot server
 
@@ -149,18 +151,8 @@ Leave it in the foreground. It opens by naming what it serves and which nodes ar
 
   ⚠  ARMED TO INSTALL: odin, thor
 
-     Every disk above is wiped on boot -- the partition table, every
-     partition on it, and the Ceph OSD with them. No data survives, and
-     nothing asks for confirmation at the console.
-
-     To cancel, run:  make reinstall-cancel
-                      make reinstall-cancel LIMIT=<node>  for one
-
-20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie
 20:34:17  -             -        10.9.2.1        -                  collecting the bootloader (lpxelinux.0)
 20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install
-20:34:19  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the kernel
-20:34:21  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the initrd (391.2 MB)
 20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its Ignition config
 20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one
 20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk
@@ -185,4 +177,4 @@ Arming survives the boot server, because the menu is a file on disk. `Ctrl-C` th
 >
 > **Stop it when you are done**
 >
-> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires in 24 hours (`ttl` in `ansible/templates/kubeadm.yaml.j2`) and the certificate key in two; the real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#provisioning>).
+> While it runs, anything on the segment can fetch the Ignition configs, which embed the kubeadm bootstrap token and certificate key — together enough to join a control-plane node. The token expires by its `ttl` in `ansible/templates/kubeadm.yaml.j2`, the certificate key with kubeadm's uploaded certificates; `make config` re-arms both against a running cluster (`ansible/templates/renew_join_credentials.sh.j2`). The real mitigation is not leaving it running, and nothing needs it after a build. See [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#provisioning>).

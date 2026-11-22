@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Pod Security Admission levels per namespace and the first default-deny network policies, with the reasoning for what is enforced and what is only audited.">
+        <meta name="description" content="Pod Security Admission levels per namespace, default-deny network policies, the host firewall, ServiceAccount tokens and admission policies, with the reasoning behind each.">
       
       
       
@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -3028,9 +3028,9 @@
 <h1 id="security-policies">Security Policies<a class="headerlink" href="#security-policies" title="Permanent link">&para;</a></h1>
 <p>Five cluster-wide controls: Pod Security Admission, default-deny network
 policy in both directions, a host firewall on the nodes, no API token on the
-<code>default</code> ServiceAccount, and admission policies on image references, namespace
-labels and the <code>authentik</code> namespace. The pattern is the same for all: measure first,
-enforce second, one namespace at a time.</p>
+<code>default</code> ServiceAccount, and admission policies. The pattern is the same for
+all: measure first, enforce second. All five are enforced; <a href="#rollout">Rollout</a>
+is how a batch of new network policies gets there.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3054,15 +3054,15 @@ enforce second, one namespace at a time.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl get ns -L pod-security.kubernetes.io/enforce</code>, <code>kubectl get validatingadmissionpolicy</code></td>
+<td>See <a href="#health-check">Health check</a></td>
 </tr>
 <tr>
 <td>Pruning</td>
-<td>Enabled, except for the Namespaces: each carries <code>argocd.argoproj.io/sync-options: Prune=false</code>, because pruning a Namespace deletes everything inside it, PVCs included. Anything else removed from Git is pruned, so the Application does not sit OutOfSync on leftovers</td>
+<td>Enabled, except for the Namespaces: each carries <code>argocd.argoproj.io/sync-options: Prune=false</code>, because pruning a Namespace deletes everything inside it, PVCs included. Pruning the rest keeps the Application from sitting OutOfSync on leftovers</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/security/</code>, the network policies one file per namespace under <code>network-policies/</code>, plus the CoreDNS PodDisruptionBudget — see <a href="../#components">Components</a></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/security"><code>payload/platform/security/</code></a>, the network policies one file per namespace under <code>network-policies/</code>, plus the CoreDNS PodDisruptionBudget — see <a href="../#components">Components</a></td>
 </tr>
 </tbody>
 </table>
@@ -3153,12 +3153,10 @@ ingress <em>and</em> probes, and the pods restart forever. Cilium's <code>fromEn
 Envoy-proxied traffic, <code>host</code> and <code>remote-node</code> for the kubelet.</p>
 <h4 id="cluster-wide-rules">Cluster-wide rules<a class="headerlink" href="#cluster-wide-rules" title="Permanent link">&para;</a></h4>
 <p>A rule that is word-for-word the same in every namespace file is lifted
-into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace and
-with <code>enableDefaultDeny</code> off in both directions. The selector is not <code>{}</code>
-because that also takes the Gateway's <code>reserved:ingress</code> endpoint and the
-health endpoint. Default
-deny is off there, since a cluster-wide egress rule would otherwise close every
-pod of a namespace without policies. DNS is the only rule lifted; the
+into <code>cluster-wide.yaml</code>, selecting every endpoint that has a namespace, not
+<code>{}</code>, which also takes the Gateway's <code>reserved:ingress</code> and health endpoints.
+<code>enableDefaultDeny</code> is off in both directions, since a cluster-wide egress rule
+would otherwise close every pod of a namespace without policies. DNS is the only rule lifted; the
 intra-namespace and node-probe rules stay in the namespace files.</p>
 <p>The second policy there, <code>init</code>, is for the seconds before the agent has
 resolved a new pod's labels: the pod carries the reserved <code>init</code> identity,
@@ -3226,8 +3224,9 @@ that allows everything would silently override the default-deny.</p>
 <p>Pod policies cannot select a host-networked port. A <code>CiliumClusterwideNetworkPolicy</code>
 with a <code>nodeSelector</code> can, and Cilium's
 <a href="https://docs.cilium.io/en/stable/security/host-firewall/">host firewall</a> enforces
-it on the native device and <code>cilium_host</code>. What each port is for is in
-<a href="../../operations/host-firewall-inventory-2026-10-30/">Host Firewall Inventory 2026-10-30</a>.</p>
+it on the native device and <code>cilium_host</code>. What each port is for is the
+policy's <code>description</code>; <a href="../../operations/host-firewall-inventory-2026-10-30/">Host Firewall Inventory 2026-10-30</a>
+is the evidence.</p>
 <table>
 <thead>
 <tr>
@@ -3339,7 +3338,7 @@ until someone adds it.</p>
 <h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
 <p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
 refuses or records it at admission, with the built-in
-<code>ValidatingAdmissionPolicy</code> rather than a policy engine. The image policies
+<code>ValidatingAdmissionPolicy</code>, and one <code>MutatingAdmissionPolicy</code>, rather than a policy engine. The image policies
 match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is
 rejected at <code>kubectl apply</code> rather than failing quietly in its ReplicaSet. The
 others close what RBAC and the <code>apps</code> project cannot express.</p>
@@ -3355,7 +3354,7 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <tr>
 <td><code>image-tag-pinned</code></td>
 <td><code>Deny</code></td>
-<td>A tag other than <code>latest</code>, or a digest. Nothing running violates it, and an unpinned image is the one Renovate can neither track nor roll back</td>
+<td>A tag other than <code>latest</code>, or a digest: an unpinned image is one Renovate can neither track nor roll back</td>
 </tr>
 <tr>
 <td><code>image-registry-allowed</code></td>
@@ -3375,7 +3374,7 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <tr>
 <td><code>authentik-foreign-objects</code></td>
 <td><code>Deny</code></td>
-<td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>. Blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds, so this is what keeps <code>apps</code> out; objects with no <code>argocd.argoproj.io/tracking-id</code> annotation, from controllers and <code>kubectl</code>, are not matched</td>
+<td>In <code>authentik</code>, an object an Argo CD Application applied must come from <code>authentik</code> or <code>security</code>: blueprints run with full Authentik rights, and Argo CD cannot deny a project one namespace's kinds. Objects without a tracking annotation are not matched</td>
 </tr>
 <tr>
 <td><code>namespace-name-guard</code></td>
@@ -3427,16 +3426,22 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <td><code>Deny</code></td>
 <td>Who may claim the platform, <code>ssh</code> and wollbi names on a route, see <a href="../gateway-api/#route-hostnames">Route hostnames</a></td>
 </tr>
+<tr>
+<td><code>selinuxd-memory-request</code></td>
+<td>Mutate</td>
+<td>Lowers <code>selinuxd</code>'s fixed memory request, see <a href="../security-profiles-operator/#configuration">Security Profiles Operator</a></td>
+</tr>
 </tbody>
 </table>
 <p><code>cnpg-cluster-backed-up</code>, <code>cnpg-objectstore-offsite</code> and <code>obc-backup-exempt</code> <a href="../../operations/backups/#off-cluster-copy">keep a backup from being forgotten</a>:
 each yields to the annotation <code>homelab.wlkr.ch/backup-exempt</code> with the reason
 as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.</p>
-<p>All but two carry <code>failurePolicy: Ignore</code>: an expression that errors lets the
+<p>All but three carry <code>failurePolicy: Ignore</code>: an expression that errors lets the
 request through rather than stopping every pod in the cluster. A real violation
 is still refused. <code>claude-writer-pod-limits</code> and <code>controller-pod-limits</code> fail
-closed, since they only ever match named identities.</p>
+closed, since they only ever match named identities, and
+<code>selinuxd-memory-request</code> because a <code>selinuxd</code> pod at full request preempts others.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="adding-a-registry">Adding a registry<a class="headerlink" href="#adding-a-registry" title="Permanent link">&para;</a></h3>
 <p>A pod from a registry outside the list is refused. If the registry is
@@ -3451,7 +3456,7 @@ intended, add it to the regular expression in <code>image-registry-allowed</code
 </span></code></pre></div>
 </li>
 <li>
-<p>Catch what is not running right now — a nightly CronJob, say — from the
+<p>Catch what is not running right now, such as a CronJob, from the
    <code>audit</code> label's records over the full Loki retention window, in Grafana:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{job="kubernetes-audit"} |= "pod-security.kubernetes.io/audit-violations"
 </span></code></pre></div>
@@ -3514,20 +3519,22 @@ it, so set it per node and expect to set it again after any restart:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;agent-on-node&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>sh<span class="w"> </span>-c<span class="w"> </span><span class="s1">'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
 </span></code></pre></div>
-<p>Read what enforcement would refuse with the LogQL in the
-<a href="../../operations/host-firewall-rollout-2026-11-18/#method">rollout log</a>, then
-restart the agent to enforce again. <code>policyAuditMode</code> in the Cilium values is
+<p>What enforcement would refuse: audit verdicts addressed to a host identity.
+Pods and nodes are admitted, so anything here came from the LAN.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>{job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -&gt; {{.dst}} {{.tcp}}{{.udp}}"
+</span></code></pre></div>
+<p>Then restart the agent to enforce again. <code>policyAuditMode</code> in the Cilium values is
 not the switch: it stops enforcing every pod policy too.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ns<span class="w"> </span>-L<span class="w"> </span>pod-security.kubernetes.io/enforce
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>cnp<span class="w"> </span>-A
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>ccnp
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy,mutatingadmissionpolicy
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Audit mode stops at the proxy</p>
-<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity. The agents' <code>argocd</code> calls failed this way, <code>server: envoy</code> and <code>grpc-message: Access denied</code>, while their policy named the host but not the <code>argocd-server</code> pod; see <a href="../argocd/#agent-account">Agent account</a>.</p>
+<p><code>policyAuditMode</code> is a datapath setting. A request the Gateway's Envoy or an HTTP rule refuses is answered <code>403 Access denied</code> on the spot, and Hubble records it as a forwarded response, not an audited verdict. Look for it with <code>hubble observe --http-status 403</code>; in Loki the denied request is a <code>DROPPED</code> flow of type <code>REQUEST</code> whose source carries the caller's namespace and the <code>ingress</code> identity. A gRPC caller sees <code>server: envoy</code> and <code>grpc-message: Access denied</code>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">A name rule audits one SYN in twenty</p>
@@ -3539,7 +3546,7 @@ not the switch: it stops enforcing every pod policy too.</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">A reboot can isolate a node a host policy selects</p>
-<p><a href="https://github.com/cilium/cilium/issues/48070">Upstream</a> reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and unreproduced here: all ten nodes passed a reboot while enforcing. A power cut would hit every node at once, and the <a href="#host-firewall-lockout">lockout runbook</a> is the way back.</p>
+<p><a href="https://github.com/cilium/cilium/issues/48070">Upstream</a> reports a selected node on this same combination, tunnel, kube-proxy replacement and WireGuard, dropping everything after a cold boot or a runtime audit-off, until an out-of-band fix. It is open and has not reproduced here. A power cut would hit every node at once, and the <a href="#host-firewall-lockout">lockout runbook</a> is the way back.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="host-firewall-lockout">Host firewall lockout<a class="headerlink" href="#host-firewall-lockout" title="Permanent link">&para;</a></h3>
@@ -3551,16 +3558,16 @@ free a node that is already cut off.</p>
 <p>API server answering: take the node out of the policy. Argo CD does not own
    node labels, so nothing puts it back; remove the label once the cause is
    fixed. Use <code>--all</code> instead of a name for every node.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>host-firewall.wlkr.ch/exempt<span class="o">=</span><span class="nb">true</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>host-firewall.wlkr.ch/exempt<span class="o">=</span><span class="nb">true</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>SSH answering: put the node in audit mode, which needs no API server and
    lasts until the agent restarts.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="s">id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)</span>
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="s">crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s">EOF</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span><span class="s">&lt;&lt;'EOF'</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="s">id=$(crictl ps -q --label io.kubernetes.container.name=cilium-agent)</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="s">crictl exec "$id" sh -c 'cilium-dbg endpoint config $(cilium-dbg endpoint get -l reserved:host -o "jsonpath={\$[0].id}") PolicyAuditMode=Enabled'</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="s">EOF</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -3568,14 +3575,14 @@ free a node that is already cut off.</p>
    has started after boot, so stop the agent coming back. Run this from the
    workstation, then power-cycle the node, then do step 1 and start the kubelet
    again with <code>sudo systemctl unmask kubelet &amp;&amp; sudo systemctl start kubelet</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">ConnectTimeout</span><span class="o">=</span><span class="m">2</span><span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>mask<span class="w"> </span>--now<span class="w"> </span>kubelet<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">until</span><span class="w"> </span>ssh<span class="w"> </span>-o<span class="w"> </span><span class="nv">ConnectTimeout</span><span class="o">=</span><span class="m">2</span><span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>mask<span class="w"> </span>--now<span class="w"> </span>kubelet<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Every control plane cut off: the API server needs no CNI, so it comes up
    before the agent does. Power-cycle all three and exempt every node in that
    window.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">until</span><span class="w"> </span>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>host-firewall.wlkr.ch/exempt<span class="o">=</span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">until</span><span class="w"> </span>kubectl<span class="w"> </span>label<span class="w"> </span>node<span class="w"> </span>--all<span class="w"> </span>host-firewall.wlkr.ch/exempt<span class="o">=</span>true<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span><span class="k">done</span>
 </span></code></pre></div>
 </li>
 <li>

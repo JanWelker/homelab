@@ -1,6 +1,6 @@
 # Monitoring
 
-[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. node-exporter runs in its own `node-exporter` namespace so that only it is admitted at the `privileged` level ([security policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)), and as `spc_t`: SELinux refuses `container_t` the host's `/proc`. The chart's default rules are good; its default routing swallows every alert.
+[kube-prometheus-stack](<https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack>): Prometheus, Grafana, Alertmanager, node-exporter and kube-state-metrics. Prometheus evaluates the rules, Alertmanager mails what fires to one mailbox, and [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) reads the same alerts as its reboot gate; what that one mailbox leaves uncovered is in [Known limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>). The chart's default rules are good; its default routing swallows every alert.
 
 ## At a glance
 
@@ -11,7 +11,7 @@
 | If it is down | No alerts and no metrics — and [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) loses the alert gate it checks before rebooting a node |
 | Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
 | UI | `monitoring.infra.k8s.wlkr.ch` (Grafana), `prometheus.` and `alertmanager.` |
-| Files | `payload/platform/monitoring/`, `payload/platform/prometheus-operator-crds/` |
+| Files | [`payload/platform/monitoring/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/monitoring>), [`payload/platform/prometheus-operator-crds/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/prometheus-operator-crds>) |
 
 ## Configuration
 
@@ -31,9 +31,9 @@ Alertmanager routes to email. The chart's `config` is off (`alertmanagerSpec.use
 
 | Setting in `alertmanager-config.yaml` | Why |
 | --- | --- |
-| `smtp_smarthost` on port 465 | Implicit TLS, which Alertmanager selects from the port; `smtp_require_tls` stays on so a move back to 587 cannot fall to plaintext |
+| `smtp_smarthost` on the implicit-TLS port | Alertmanager selects TLS from the port; `smtp_require_tls` stays on so a move to the STARTTLS port cannot fall to plaintext |
 | `smtp_from` equals the login | mailbox.org refuses a sender the login does not own |
-| Grouping by `namespace`, with `group_interval` and `repeat_interval` in hours and a shorter pair for `critical`; resolved notifications sent | mailbox.org caps what an account may send. One mail per alert and namespace came to hundreds a day once a node was down and the account was refused. A namespace's alerts usually share a cause, so one mail lists them together |
+| Grouping by `namespace`, with `group_interval` and `repeat_interval` in hours and a shorter pair for `critical`; resolved notifications sent | mailbox.org caps what an account may send, and a namespace's alerts usually share a cause, so one mail lists them together |
 | `Watchdog` routed to `null` | It fires continuously as proof the pipeline is alive; mailing it would train the recipient to filter it |
 | `VeleroBackupInProgress` routed to `null` | It fires for every nightly backup as [Kured's gate](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>), not as a problem |
 | `KubeJobFailed` disabled in the chart (`defaultRules.disabled`) and redefined in `job-rules.yaml`, bound to Jobs started in the last day | The chart's rule fires for as long as a failed Job object exists, so one old failure reads as an outage for weeks. Failed Jobs carry no failure time, so the bound counts from the start |
@@ -41,13 +41,15 @@ Alertmanager routes to email. The chart's `config` is off (`alertmanagerSpec.use
 | Every templated value through `toJson` | A password containing `:`, `#` or a quote cannot break the rendered file |
 | `externalUrl` on both `prometheusSpec` and `alertmanagerSpec` in `application.yaml` | The "Source" and Alertmanager links in a mail are built from these; unset, they point at the in-cluster Service, which nothing outside can open |
 
-Rules written here, beside the chart's:
+Rules written here, beside the chart's; the thresholds are in each file:
 
 | Alert | Fires when |
 | --- | --- |
-| `CertificateNotReady`, `CertificateExpiringSoon` | A Certificate is not Ready for 30 minutes, or has under 14 days left (renewal starts at 30) |
-| `ArgoCDApplicationUnhealthy`, `ArgoCDApplicationOutOfSync` | An Application is Degraded or Missing for 15 minutes, or OutOfSync for an hour, longer than the [retries](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>) run |
-| `ExternalSecretNotReady`, `PushSecretNotReady` | One is not Ready for 15 minutes; after an OpenBao restart every one fires until it is unsealed |
+| `CertificateNotReady`, `CertificateExpiringSoon` | A Certificate is not Ready, or is close to expiry |
+| `ArgoCDApplicationUnhealthy`, `ArgoCDApplicationOutOfSync` | An Application stays Degraded, Missing or OutOfSync longer than the [retries](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>) run |
+| `ExternalSecretNotReady`, `PushSecretNotReady` | One is not Ready; after an OpenBao restart every one fires until it is unsealed |
+| `NodeRebootPending`, `NodeOsVersionDrift`, `NodeKubeletVersionDrift` | A staged update waits for its reboot, or the nodes disagree on Flatcar or kubelet version — see [OS updates](<https://homelab.wlkr.ch/operations/upgrades/index.md#os-updates>) |
+| `KubeClientCertificateExpiringSoon` | The control-plane client certificates come due — see [Control-plane certificates](<https://homelab.wlkr.ch/operations/upgrades/index.md#control-plane-certificates>) |
 
 The three values come from `kv/monitoring/smtp` (`username`, `password`, `to`); `make bao-secrets` prompts for them, or by hand:
 
@@ -65,30 +67,27 @@ Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*S
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
-| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the ServiceAccount token still authenticates; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
-| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP on 2381, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
+| node-exporter | Its own `node-exporter` namespace, running as `spc_t` | Only that namespace is admitted at `privileged` ([Pod Security Admission](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)); SELinux refuses `container_t` the host's `/proc` |
+| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
+| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#monitoring>) |  |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
 | CRD status fields: CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp; the rule that reads a kind sits with its component, in a namespace on the rule list above |
 | Pod labels: OpenBao's `openbao-sealed` | kube-state-metrics' `metricLabelsAllowlist` in the chart values | Exported as `label_<name>` on `kube_pod_labels`; only listed labels, since every one adds a series per pod |
-
-> [!NOTE]
->
-> A cluster provisioned before the kubeadm change keeps the old flags in its static pod manifests; until those nodes are reprovisioned the three control-plane targets stay down.
 
 ### Grafana
 
 | Setting | Why |
 | --- | --- |
 | `disable_login_form` and `oauth_auto_login` | The URL bounces straight to Authentik; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/index.md#groups-and-roles>) |
-| `analytics.*` off and `disable_gravatar` | Grafana otherwise reports usage to Grafana Labs, asks grafana.com for updates and fetches avatars from Gravatar; the network policy names none of those. Telemetry is off in every component here |
+| `analytics.*` off and `disable_gravatar` | Usage reports, update checks and Gravatar are switched off in config, not permitted by network policy, as in every component here |
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#client-secrets>) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
 | `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and Grafana restarts on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
 | `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so a ClusterRole bound by a RoleBinding in each `searchNamespace` namespace grants those alone, not the chart's cluster-wide ConfigMaps-and-Secrets pair; the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready |
 | Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/index.md#components>), not a budget |
-| Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto an 8 GB worker that swaps until the kubelet goes `NotReady`. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
+| Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto a small worker that swaps until the kubelet goes `NotReady`. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins; the size cap drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone does nothing |
 
@@ -101,23 +100,24 @@ Where a chart can render a dashboard, it does; only charts without one get a ven
 | [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | Cilium Metrics, Cilium Operator, four Hubble dashboards | Chart: `dashboards`, `operator.dashboards`, `hubble.metrics.dashboards` |
 | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) | OpenBao | Chart: `serverTelemetry.grafanaDashboard` |
 | [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) | External Secrets Operator | Chart: `grafanaDashboard` |
+| [CloudNativePG](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) | CloudNativePG | Chart: `monitoring.grafanaDashboard` |
 | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) | Ceph Cluster, Ceph - OSD (Single), Ceph - Pools | Vendored: `rook-ceph/grafana-dashboards.yaml` |
 | [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) | Alloy / Controller, Alloy / Loki Components, Alloy / Resources | Vendored: `logging/grafana-dashboards.yaml` |
-| [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>) | The Loki mixin: Reads, Writes, Operational, Chunks, Retention and the rest | Chart: `monitoring.dashboards`, with `monitoring.rules` for the recording rules they read |
+| [Loki](<https://homelab.wlkr.ch/platform/logging/index.md>) | The Loki mixin | Chart: `monitoring.dashboards`, with `monitoring.rules` for the recording rules they read |
 | ArgoCD | ArgoCD | Vendored: `argocd-config/grafana-dashboards.yaml` |
 | [Tetragon](<https://homelab.wlkr.ch/platform/tetragon/index.md>) | Tetragon | Written for this cluster: `tetragon/grafana-dashboards.yaml`; upstream ships none |
-| [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | GitHub Actions Runners | Written for this cluster: `arc-controller/grafana-dashboards.yaml`; upstream's sample filters on labels ARC 0.15 does not export |
+| [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | GitHub Actions Runners | Written for this cluster: `arc-controller/grafana-dashboards.yaml` |
 | [Trivy Operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | Trivy Operator | Written for this cluster: `trivy-operator/grafana-dashboards.yaml` |
 
 ## Usage
 
 ### Adding a dashboard
 
-Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named `<component>-grafana-dashboards`; a Secret carrying the label is not read. The sidecar watches only the platform namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload cannot replace a dashboard; a component in a new namespace adds it there and a RoleBinding in `grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy to it. Prefer the chart's own dashboard where it has one. A dashboard built in the UI survives restarts on the PVC but lives nowhere else: not in Git, not on a rebuilt cluster.
+Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named `<component>-grafana-dashboards`; a Secret carrying the label is not read. The sidecar watches only the platform namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload cannot replace a dashboard; a component in a new namespace adds it there and a RoleBinding in `grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy to it. A dashboard built in the UI survives restarts on the PVC but lives nowhere else: not in Git, not on a rebuilt cluster.
 
 ### Growing the Prometheus volume
 
-Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the request in `payload/platform/monitoring/application.yaml` does not resize the claim that already exists. The operator handles its half: it rebuilds the StatefulSet orphaned so the pod survives, logging `recreating StatefulSet because the update operation wasn't possible`. Only the claim is left behind.
+Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the request in `application.yaml` does not resize the existing claim. The operator rebuilds the StatefulSet orphaned so the pod survives, logging `recreating StatefulSet because the update operation wasn't possible`; only the claim is left behind.
 
 1. Merge the size bump and wait for the Application to sync.
 
@@ -170,7 +170,12 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 # then open http://localhost:9093 and check Status -> Config
 ```
 
-`Watchdog` proves the pipeline only as far as Alertmanager; SMTP auth and an expired password are unmonitored. Send yourself a test alert once.
+`Watchdog` proves the pipeline only as far as Alertmanager; SMTP auth and an expired password are unmonitored. With the port-forward above, send a test alert; it takes the default `email` route and arrives as one mail after `group_wait`:
+
+```bash
+curl -s -XPOST http://localhost:9093/api/v2/alerts -H 'Content-Type: application/json' \
+  -d '[{"labels":{"alertname":"TestAlert","namespace":"monitoring","severity":"warning"}}]'
+```
 
 ## Pitfalls
 

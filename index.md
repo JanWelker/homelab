@@ -4,8 +4,6 @@
 
 A rack of machines and a pile of YAML: a bare metal Kubernetes cluster that provisions itself over PXE, keeps its entire state in Git, and is documented here so that nothing has to be re-derived at 02:00.
 
-It is a real cluster doing real work, built the way a production cluster is built, at a scale where breaking it is a learning experience rather than an incident review.
-
 ## Start here
 
 - **I want to build this**
@@ -22,7 +20,7 @@ It is a real cluster doing real work, built the way a production cluster is buil
 
   ---
 
-  [Core Concepts](<https://homelab.wlkr.ch/concepts/index.md>) covers the five ideas underneath this cluster — immutable OS, first-boot provisioning, sysexts, network boot, GitOps — and what each one costs.
+  These pages assume you can use `kubectl`; the [Kubernetes basics tutorial](<https://kubernetes.io/docs/tutorials/kubernetes-basics/>) gets you there. Then [Core Concepts](<https://homelab.wlkr.ch/concepts/index.md>) for the five ideas underneath this cluster and the terms the other pages use.
 - **Something is broken**
 
   ---
@@ -47,4 +45,4 @@ Each choice had a simpler alternative that was rejected on purpose; the reasonin
 | Secrets | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) | Nothing sensitive in Git, at the price of a manual unseal after every reboot |
 | Delivery | [ArgoCD](<https://homelab.wlkr.ch/architecture/gitops/index.md>) | If it is not in Git it is not real, and it will not survive the next reconcile |
 
-The sections follow the reader's journey: [Get Started](<https://homelab.wlkr.ch/quickstart/index.md>) to build it, [Architecture](<https://homelab.wlkr.ch/architecture/index.md>) to understand it, [Platform](<https://homelab.wlkr.ch/platform/index.md>) for each of the components, [Operations](<https://homelab.wlkr.ch/operations/index.md>) to run it, and [Development](<https://homelab.wlkr.ch/development/index.md>) to work on the repository.
+The sections follow the reader's journey: [Get Started](<https://homelab.wlkr.ch/adapting/index.md>) to build it, [Architecture](<https://homelab.wlkr.ch/architecture/index.md>) to understand it, [Platform](<https://homelab.wlkr.ch/platform/index.md>) for each of the components, [Operations](<https://homelab.wlkr.ch/operations/index.md>) to run it, and [Development](<https://homelab.wlkr.ch/development/index.md>) to work on the repository.

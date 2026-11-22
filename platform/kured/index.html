@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2658,7 +2658,7 @@ without draining, on a cluster where every node is a storage node.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/kured/application.yaml</code></td>
+<td><a href="https://github.com/JanWelker/homelab/blob/main/payload/platform/kured/application.yaml"><code>payload/platform/kured/application.yaml</code></a>; <a href="https://github.com/JanWelker/homelab/blob/main/payload/platform/security/network-policies/kured.yaml"><code>payload/platform/security/network-policies/kured.yaml</code></a> for the Prometheus egress the alert gate needs</td>
 </tr>
 </tbody>
 </table>
@@ -2705,7 +2705,7 @@ marker clears itself on reboot.</p>
     UP --&gt; DONE["Uncordon, drop the annotation,&lt;br/&gt;release the lock after a delay"]
 
     style SEN stroke-width:3px</code></pre>
-<p>The values are in <code>payload/platform/kured/application.yaml</code>; the reasoning:</p>
+<p>The reasoning behind the values in <code>application.yaml</code>:</p>
 <table>
 <thead>
 <tr>
@@ -2728,7 +2728,7 @@ marker clears itself on reboot.</p>
 </tr>
 <tr>
 <td><code>drainTimeout</code></td>
-<td>Above the slowest successful drain, which <code>drainGracePeriod</code> caps at two minutes plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock</td>
+<td>Above the slowest successful drain, which is <code>drainGracePeriod</code> plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock</td>
 </tr>
 <tr>
 <td><code>forceReboot: false</code></td>
@@ -2748,13 +2748,13 @@ marker clears itself on reboot.</p>
 </tr>
 <tr>
 <td><code>alertFilterRegexp</code> with <code>alertFilterMatchOnly: true</code></td>
-<td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from <a href="../../operations/nodes/">Rebooting a node</a>: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from <a href="../monitoring/#scrape-targets">platform namespaces only</a></td>
+<td>Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is why <a href="../../operations/nodes/#rebooting-a-node">Rebooting a node</a> has no Ceph check of its own: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from <a href="../monitoring/#scrape-targets">platform namespaces only</a></td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="admonition-title">The regex means the opposite of what it looks like</p>
-<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no <code>PrometheusRule</code> defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under <a href="#health-check">Health check</a>.</p>
+<p><code>alertFilterRegexp</code> normally lists alerts to <strong>ignore</strong>. With <code>alertFilterMatchOnly: true</code> these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no <code>PrometheusRule</code> defines blocks nothing and fails silently. Check every entry against the rules that exist, with the last command under <a href="#health-check">Health check</a>.</p>
 </div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>To stop Kured rebooting anything without uninstalling it, take its cluster
@@ -2769,9 +2769,9 @@ is staged, and a DaemonSet cannot be scaled.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
 </span></code></pre></div>
 <p><code>NodeRebootPending</code> in <code>payload/platform/monitoring/node-update-rules.yaml</code>
-fires when the sentinel has been there for two days: Kured reboots one node
-at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is
-a blocked node, not a queued one.</p>
+fires when the sentinel outlasts the rule's <code>for</code>: Kured reboots one node at a
+time and refuses while Ceph or etcd is unhealthy, so a marker that old is a
+blocked node, not a queued one.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Which nodes want a reboot: kured_reboot_required is the sentinel's presence, per node</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090<span class="w"> </span><span class="p">&amp;</span>

@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2707,7 +2707,7 @@
 <p>Cilium is the CNI: it replaces <code>kube-proxy</code>, terminates ingress
 through Gateway API, hands out LoadBalancer addresses on a network with no
 cloud load balancer, encrypts node-to-node traffic, and shows what is talking
-to what. A broken Cilium is never a small problem.</p>
+to what; <a href="../../architecture/decisions/#cilium-as-cni-replacing-kube-proxy">why Cilium</a>.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2739,7 +2739,7 @@ to what. A broken Cilium is never a small problem.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/cilium/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/cilium"><code>payload/platform/cilium/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2786,7 +2786,7 @@ to what. A broken Cilium is never a small problem.</p>
 </tr>
 <tr>
 <td><code>hubble.export.static</code></td>
-<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are thousands a second and not exported.</td>
+<td>Every flow with a <code>DROPPED</code>, <code>ERROR</code> or <code>AUDIT</code> verdict, and every HTTP request a policy proxies at L7, goes to a file on the node that <a href="../logging/">Alloy</a> tails into Loki, with a field mask that keeps identities, ports and the request line. Hubble's own buffer is minutes deep; this is the record the L7 rules are tightened from. Other forwarded flows are too many to export.</td>
 </tr>
 <tr>
 <td><code>hubble.redact</code></td>
@@ -2822,7 +2822,7 @@ to what. A broken Cilium is never a small problem.</p>
 </tr>
 <tr>
 <td><code>cilium-agent</code> memory limit</td>
-<td>It is the one process whose death takes pod networking with it, so it was sized from a week of measurement, see the <a href="../">platform rule</a></td>
+<td>It is the one process whose death takes pod networking with it; sized by the <a href="../">platform rule</a></td>
 </tr>
 <tr>
 <td><code>trustCRDsExist: true</code></td>
@@ -2839,8 +2839,8 @@ adopts the release. The version comes from <code>targetRevision</code> in
 <p>The bootstrap install uses the same <code>values.yaml</code>, and has to: the pods roll
 whenever <code>cilium-config</code> changes, so a slimmer bootstrap config would restart
 every agent the moment ArgoCD adopts the release. The Gateway API CRDs go in
-first because the operator checks for them once, at startup. The
-one difference is the three <code>serviceMonitor.enabled</code> flags, which <code>make</code> turns
+first, see the <a href="#pitfalls">operator pitfall</a>. The one difference is the three
+<code>serviceMonitor.enabled</code> flags, which <code>make</code> turns
 off because the Prometheus operator CRDs arrive through ArgoCD; ArgoCD adds
 the monitors back on adoption, rolling the agent and operator once.</p>
 <h3 id="bgp-session-password">BGP session password<a class="headerlink" href="#bgp-session-password" title="Permanent link">&para;</a></h3>
@@ -2862,9 +2862,8 @@ it, until both ends match; L2 still announces them to the flat LAN.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
 </span></code></pre></div>
-<p>The BGP session on each control-plane node, <code>established</code> with two routes
-advertised. <code>bgp.yaml</code> selects the control planes only, so ask that node's
-agent rather than whichever pod <code>ds/cilium</code> resolves to:</p>
+<p>It prints <code>OK</code>. The BGP session on each control-plane node, <code>established</code>
+with two routes advertised; only the control planes peer, so ask that node's agent:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
 </span></code></pre></div>
@@ -2888,7 +2887,7 @@ Relay through a port-forward on its default port:</p>
 </div>
 <div class="admonition danger">
 <p class="admonition-title">A chart default that disappears stays in <code>cilium-config</code></p>
-<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering. Dropping the <code>envoy.xdsMode</code> default left the agents on <code>ads</code> while Envoy's bootstrap switched to split xDS, so no Gateway or L7 policy forwarded. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
+<p>The bootstrap install's <code>helm</code> field manager still co-owns every <code>cilium-config</code> key it wrote, so ArgoCD's server-side apply cannot delete one the chart stops rendering: the old value stays live while the rest of the chart assumes the new one. <code>envoy.xdsMode</code> is pinned for that reason. Pin such a value in <code>values.yaml</code> rather than relying on the default.</p>
 </div>
 <div class="admonition warning">
 <p class="admonition-title">The host firewall drops all node IPv6, with or without a policy</p>

@@ -4,11 +4,7 @@ The [host firewall](<https://homelab.wlkr.ch/platform/security-policies/index.md
 
 ## Method
 
-What enforcement would have refused: audit verdicts addressed to a host identity. Pods and nodes are admitted, so anything here came from the LAN.
-
-```text
-{job="hubble", verdict="AUDIT"} | json dst_id="flow.destination.identity", src="flow.IP.source", dst="flow.IP.destination", tcp="flow.l4.TCP.destination_port", udp="flow.l4.UDP.destination_port" | dst_id="1" | line_format "{{.src}} -> {{.dst}} {{.tcp}}{{.udp}}"
-```
+The verdicts below were read with the query in [Changing the host firewall](<https://homelab.wlkr.ch/platform/security-policies/index.md#changing-the-host-firewall>).
 
 ## Audit verdicts
 

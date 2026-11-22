@@ -11,7 +11,7 @@ Everything here assumes a cluster that is already up; for first provisioning see
 
   ---
 
-  Rebooting, adding, replacing and rebuilding a node, including the two gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.
+  Rebooting, adding, replacing and rebuilding a node, and recovering from a power loss.
 - **[Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>)**
 
   ---
@@ -31,12 +31,14 @@ Everything here assumes a cluster that is already up; for first provisioning see
 
   ---
 
-  Swapping the key that encrypts Secrets in etcd, with no API server restart and two rewrites of every Secret.
+  Swapping the key that encrypts Secrets in etcd.
 - **[Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md>)**
 
   ---
 
   How to read the Trivy findings and when to file upstream; logs: [2026-09-20](<https://homelab.wlkr.ch/operations/triage-2026-09-20/index.md>), [2026-09-29](<https://homelab.wlkr.ch/operations/triage-2026-09-29/index.md>), [2026-11-21](<https://homelab.wlkr.ch/operations/triage-2026-11-21/index.md>).
+
+Other dated logs: network-policy audits [2026-09-27](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-09-27/index.md>) and [2026-10-16](<https://homelab.wlkr.ch/operations/network-policy-audit-2026-10-16/index.md>), host firewall [inventory](<https://homelab.wlkr.ch/operations/host-firewall-inventory-2026-10-30/index.md>) and [rollout](<https://homelab.wlkr.ch/operations/host-firewall-rollout-2026-11-18/index.md>).
 
 ## Routine health check
 
@@ -45,8 +47,8 @@ Everything here assumes a cluster that is already up; for first provisioning see
 | `kubectl get nodes` | Every node `Ready` |
 | `kubectl -n argocd get applications` | Every Application `Synced` *and* `Healthy` |
 | `kubectl get certificate -A` | Every certificate `READY=True` |
-| `ssh <control plane> sudo kubeadm certs check-expiration` | More than thirty days left on every line; less and the [yearly renewal](<https://homelab.wlkr.ch/operations/upgrades/index.md#control-plane-certificates>) is due |
+| `ssh core@<control plane> sudo kubeadm certs check-expiration` | More than thirty days left on every line; less and the [yearly renewal](<https://homelab.wlkr.ch/operations/upgrades/index.md#control-plane-certificates>) is due |
 | `kubectl -n rook-ceph exec deploy/rook-ceph-tools -- ceph status` | `HEALTH_OK`, and an OSD count matching your node count |
-| `kubectl -n openbao exec openbao-0 -- bao status` | `Sealed: false`; the one failure that looks like health, so run it after anything restarted |
+| `bao status` on [every OpenBao pod](<https://homelab.wlkr.ch/platform/openbao/index.md#health-check>), each seals on its own | `Sealed: false`; the one failure that looks like health, so run it after anything restarted |
 
 The Rook toolbox pod is enabled, so `ceph status`, `ceph osd tree` and `ceph health detail` need nothing installed. Ceph metrics are scraped and Ceph's own alerting rules are loaded, so a degraded pool reaches Prometheus without anyone running `ceph status`; run it anyway, because it is the fastest way to see *why* — see [Rook-Ceph → Monitoring](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#monitoring>).

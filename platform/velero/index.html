@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2791,7 +2791,7 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/velero/</code>, <code>payload/platform/backup/</code>, <code>payload/platform/snapshot-controller/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/velero"><code>payload/platform/velero/</code></a>, <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/backup"><code>payload/platform/backup/</code></a>, <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/snapshot-controller"><code>payload/platform/snapshot-controller/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2815,7 +2815,7 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 </tr>
 <tr>
 <td><code>velero-plugin-for-aws</code> init container</td>
-<td>The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind</td>
+<td>The plugin minor must match the chart's Velero appVersion</td>
 </tr>
 <tr>
 <td><code>credentials.useSecret: false</code> with <code>extraEnvVars</code></td>
@@ -2835,7 +2835,7 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 </tr>
 <tr>
 <td><code>VolumeSnapshotClass</code> in <code>payload/platform/backup/volumesnapshotclass.yaml</code></td>
-<td>The <code>velero.io/csi-volumesnapshot-class</code> label is how Velero finds the class; without it volumes are skipped silently. <code>deletionPolicy: Delete</code>, because the durable copy is the data mover's</td>
+<td>The <code>velero.io/csi-volumesnapshot-class</code> label is how Velero finds the class; without it volumes are skipped silently. <code>deletionPolicy: Delete</code>, because the durable copy is the data mover's. A <code>PartiallyFailed</code> backup with no volume data means the label is missing</td>
 </tr>
 <tr>
 <td><code>snapshot-controller</code> Application</td>
@@ -2846,8 +2846,8 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 <td>A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a role or binding granting rights the caller lacks, so only cluster-admin restores everything</td>
 </tr>
 <tr>
-<td>No <code>runAsNonRoot</code> on the <code>velero</code> container</td>
-<td>Unverified for the plugin init container's copy into <code>/target</code></td>
+<td><code>schedules.daily</code></td>
+<td>Excludes what rebuilds from Git or a rescan, listed in <a href="../../operations/backups/#velero">Backups</a>. Its <code>ttl</code> is the window <a href="../cloudnative-pg/#backups">CloudNativePG</a>'s <code>retentionPolicy</code> mirrors</td>
 </tr>
 <tr>
 <td>Node agent <code>containerSecurityContext</code></td>
@@ -2906,10 +2906,6 @@ unreachable; see <a href="#re-initialising-the-repositories">Re-initialising the
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
-<p class="admonition-title">PartiallyFailed with no volume data</p>
-<p>Velero found no labelled <code>VolumeSnapshotClass</code> and skipped every volume without an error. Check the class above exists and carries the label.</p>
-</div>
-<div class="admonition warning">
 <p class="admonition-title">Every <code>BackupRepository</code> NotReady, <code>Access Denied</code> on <code>kopia.blobcfg</code></p>
 <p>Objects upload, volume data does not: RGW logs <code>PUT /offsite/backup.velero/kopia/...</code> from <code>minio-go</code> with no authenticated user while the AWS SDK's PUTs succeed. The S3 URL is plain HTTP again; see the <code>s3Url</code> row above.</p>
 </div>
@@ -2955,7 +2951,7 @@ unreachable snapshots never finishes deleting, so the prefix is emptied whole.</
 </span></code></pre></div>
 </li>
 <li>
-<p>Take a backup now rather than at the next schedule, and confirm it.</p>
+<p>Take a backup now and confirm it.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>--from-schedule<span class="w"> </span>velero-daily
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backups.velero.io<span class="w">               </span><span class="c1"># Completed</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>backuprepositories.velero.io<span class="w">    </span><span class="c1"># Ready</span>
@@ -2973,7 +2969,11 @@ bucket, which Velero never prunes.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>List, then remove, <code>offsite/backup.velero/kopia/&lt;namespace&gt;/</code> with the keys from step 3 of <a href="#re-initialising-the-repositories">Re-initialising the repositories</a>.</p>
+<p>List, then remove, its Kopia data, with the exports from step 3 of
+   <a href="#re-initialising-the-repositories">Re-initialising the repositories</a>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>ls<span class="w"> </span>s3://offsite/backup.velero/kopia/&lt;namespace&gt;/<span class="w"> </span>--recursive
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>aws<span class="w"> </span>--endpoint-url<span class="w"> </span>https://s3.infra.k8s.wlkr.ch<span class="w"> </span>--region<span class="w"> </span>eu-central-1<span class="w"> </span>s3<span class="w"> </span>rm<span class="w"> </span>s3://offsite/backup.velero/kopia/&lt;namespace&gt;/<span class="w"> </span>--recursive
+</span></code></pre></div>
 </li>
 </ol>
 

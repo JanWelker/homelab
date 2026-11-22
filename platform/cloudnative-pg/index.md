@@ -1,6 +1,6 @@
 # CloudNativePG
 
-Every chart that needs PostgreSQL ships its own, each upgraded by whoever maintains the chart that buried it. CloudNativePG is one operator in `cnpg-system` and a `Cluster` resource per database.
+CloudNativePG is one operator in `cnpg-system` and a `Cluster` resource per database, [instead of each chart's bundled PostgreSQL](<https://homelab.wlkr.ch/architecture/decisions/index.md#cloudnativepg-for-every-database-not-the-charts-bundled-one>).
 
 ## At a glance
 
@@ -11,7 +11,7 @@ Every chart that needs PostgreSQL ships its own, each upgraded by whoever mainta
 | If it is down | Running databases keep running; failover, upgrades and new clusters stop |
 | Health check | `kubectl get clusters.postgresql.cnpg.io -A` → `Cluster in healthy state` |
 | Backups | Continuous WAL and a nightly base backup per database, to its own prefix of `offsite` |
-| Files | `payload/platform/cloudnative-pg/` |
+| Files | [`payload/platform/cloudnative-pg/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/cloudnative-pg>) |
 
 ## Configuration
 
@@ -22,14 +22,13 @@ A `Cluster` is not a StatefulSet with a nicer name:
 | Primary election and failover between instances | A single pod that takes the database down with it |
 | `-rw` and `-ro` Services that follow the primary | Hardcoding a pod name and being wrong after a restart |
 | Rolling minor-version upgrades, replicas first | A `StatefulSet` image bump and hope |
-| Generated credentials in a `-app` Secret | A password in Git, or a manual `kubectl create secret` |
 | A PodMonitor and an upstream Grafana dashboard | No visibility until something is already wrong |
 
 Major-version upgrades are declarative too, but offline: ArgoCD reports Degraded while one runs and the workload is down for its duration. Read [the upstream guide](<https://cloudnative-pg.io/documentation/current/postgres_upgrades/>) before merging one.
 
-Databases claim `rook-ceph-block`, so Ceph's three copies already sit under every database and a single-instance `Cluster` is a defensible default: the data survives a node loss even when the process does not. Where a workload cannot tolerate the restart, `instances: 3` is the change, as [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#database>) shows.
+Databases claim `rook-ceph-block`, so Ceph's replicas already sit under every database and a single-instance `Cluster` is a defensible default: the data survives a node loss even when the process does not. Where a workload cannot tolerate the restart, more `instances` are the change, as [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#database>) and the workloads repository's `advent-wollbi` and `shot-bridge` show.
 
-The operator itself runs two replicas (`replicaCount` in `application.yaml`'s `valuesObject`), spread per [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>): the same pod serves the `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`, so a single replica rescheduling through a Kured drain refuses every apply, while leader election keeps one of the two reconciling. The chart ships no PodDisruptionBudget.
+The operator itself runs more than one replica (`replicaCount` in `application.yaml`'s `valuesObject`), spread per [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>): the same pod serves the `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`, so a single replica rescheduling through a Kured drain refuses every apply, while leader election keeps one reconciling. The chart ships no PodDisruptionBudget.
 
 ### Backups
 
@@ -56,7 +55,7 @@ The [Barman Cloud plugin](<https://cloudnative-pg.io/plugin-barman-cloud/>) runs
 2. Never copy the password. CloudNativePG writes `username`, `password`, `host`, `port`, `dbname` and a ready-made `uri` to `<cluster-name>-app`; charts take those through an `existingSecret` block, and applications without one read `uri` as an environment variable. Nothing goes into Git or OpenBao — nothing outside the cluster ever needs this secret.
 3. Put the `Cluster` in the workload's namespace, not `cnpg-system`, so the namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the namespace takes the database with it.
 4. Set `enablePDB: false` on a single-instance `Cluster` only. Its `<cluster>-primary` PodDisruptionBudget refuses the eviction outright, so a node drain hangs on it until [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) gives up and the node is never rebooted; without the budget the instance is down for the move to another node. A `Cluster` with replicas keeps the budgets: the operator sees the drain, switches the primary over to a replica in seconds, and the drain continues. Without them the drain deletes the primary, and the failover waits for its smart shutdown, up to `smartShutdownTimeout` while clients hold connections.
-5. Set `smartShutdownTimeout: 15`, and on a `Cluster` with replicas `primaryUpdateMethod: switchover`. A smart shutdown refuses new connections and waits for the open ones to close, and every application here holds a pool, so the default's 180 seconds only lengthen every restart, every move of a single instance and every failover; after 15 seconds the instance manager shuts down fast, rolling back open transactions, and the clients reconnect. The default update method restarts the primary in place on a spec change, which with the default timeout kept Authentik's database without a writer for three minutes; a switchover promotes a replica first.
+5. Set `smartShutdownTimeout: 15`, and on a `Cluster` with replicas `primaryUpdateMethod: switchover`. A smart shutdown refuses new connections and waits for the open ones to close, and every application here holds a pool, so the default's 180 seconds only lengthen every restart, every move of a single instance and every failover; after 15 seconds the instance manager shuts down fast, rolling back open transactions, and the clients reconnect. The default update method restarts the primary in place on a spec change, leaving no writer for the whole shutdown; a switchover promotes a replica first.
 6. Back it up with the [stanza below](<#backing-up-a-database>). Velero's nightly PVC snapshot is crash-consistent and restores only to the night it was taken; the WAL archive restores to any second.
 
 ### Backing up a database
@@ -86,7 +85,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "-2"
 spec:
-  retentionPolicy: 14d
+  retentionPolicy: 14d   # Velero's schedules.ttl
   configuration:
     destinationPath: s3://offsite/<namespace>.db/
     endpointURL: https://s3.infra.k8s.wlkr.ch
@@ -104,7 +103,7 @@ metadata:
   name: <db>
   namespace: <namespace>
 spec:
-  schedule: "0 0 3 * * *"
+  schedule: "0 0 3 * * *"   # after Velero's daily schedule
   immediate: true
   backupOwnerReference: self
   cluster:
@@ -152,6 +151,7 @@ kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecover
 - **An idle database archives nothing.** A segment is shipped only once it holds WAL, so an empty prefix is not proof the archiver works. Force one, without touching a table: `kubectl -n <namespace> exec <primary-pod> -c postgres -- psql -c "select pg_logical_emit_message(false,'probe','x')" -c "select pg_switch_wal()"`.
 - **A dead replica fills the primary.** Its replication slot holds WAL until the replica catches up, so every multi-instance `Cluster` caps it with `max_slot_wal_keep_size` at a quarter of the volume; past that the slot is invalidated and the replica restores from the WAL archive or must be recreated with `kubectl cnpg destroy <cluster> <instance>`.
 - **A full volume is not resized by the operator.** An instance stopped with `no free disk space for WALs` keeps its PVC size although `storage.size` grew; patch that PVC to the new size by hand, as [upstream documents](<https://cloudnative-pg.io/documentation/current/instance_manager/>) under "Disk full failure".
+- **The operator cannot create host-access pods.** The `controller-pod-limits` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) refuses any pod it creates with host networking, PID, IPC, a `hostPath` or privilege.
 - **A restore is a new `Cluster`.** Recovery bootstraps a fresh cluster from the archive; it never rewinds a running one. Give the new cluster its own `ObjectStore` destination, or its archive would mix with the one it was restored from.
 
 ## Recovery

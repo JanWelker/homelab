@@ -45,7 +45,7 @@ Every target in the `Makefile`, and the page that explains it. The ones that tou
 | `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
 | `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>), [Ansible](<https://homelab.wlkr.ch/architecture/ansible/index.md#playbooks>) |
 | `artifacts` | `download` then `config` | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
-| `serve` | Runs the DHCP-proxy, TFTP and HTTP boot server | [Boot server](<https://homelab.wlkr.ch/architecture/boot-process/index.md#boot-server>) |
+| `serve` | Runs the TFTP and HTTP boot server | [Boot server](<https://homelab.wlkr.ch/architecture/boot-process/index.md#boot-server>) |
 | `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>) |
 | `reinstall-cancel` | Disarms them again | [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
 | `kubeconfig` | Copies the admin kubeconfig to `output/kubeconfig` | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |

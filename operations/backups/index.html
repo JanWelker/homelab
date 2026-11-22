@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2062,6 +2062,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#database-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#velero-restore" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2804,6 +2815,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#database-restore" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Database restore
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#velero-restore" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2978,8 +3000,6 @@
 
 
 <h1 id="backups-recovery">Backups &amp; Recovery<a class="headerlink" href="#backups-recovery" title="Permanent link">&para;</a></h1>
-<p>Every mechanism below is described by what it can get back, and by what it
-cannot.</p>
 <h2 id="current-state">Current state<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3023,7 +3043,7 @@ cannot.</p>
 <tr>
 <td>OpenBao unseal keys</td>
 <td>Manual, off-cluster</td>
-<td>Printed once at <code>bao operator init</code></td>
+<td>Written once to <code>output/credentials/openbao-init.json</code> by <code>make bao-init</code></td>
 </tr>
 <tr>
 <td>Prometheus metrics</td>
@@ -3090,17 +3110,55 @@ them here when they change on the NAS.</p>
 <h2 id="what-is-not-covered">What is not covered<a class="headerlink" href="#what-is-not-covered" title="Permanent link">&para;</a></h2>
 <p><strong>Every automated backup lands in the same cluster's Ceph first.</strong> That
 protects against operator error (a deleted PVC, a bad <code>prune</code>, a corrupted
-database) and not against losing the cluster, so a TrueNAS box pulls the bucket
-every backup writes into nightly; see <a href="#off-cluster-copy">Off-cluster copy</a>. Disaster
-recovery is <strong>Git, the OpenBao unseal keys, and that copy</strong>. The NAS sits on
+database) and not against losing the cluster, so TrueNAS pulls a
+<a href="#off-cluster-copy">copy</a> nightly. The NAS sits on
 the same LAN, so a fire or theft that takes the cluster can take the copy too;
 nothing leaves the house yet.</p>
-<p>Velero's <code>PrometheusRule</code> reports a backup that failed
-(<code>VeleroBackupFailures</code>, <code>VeleroBackupPartialFailures</code>); only
-<code>VeleroBackupTooOld</code> notices one that silently stopped, since a backup hung
-<code>InProgress</code> never fails (<a href="../../platform/velero/#configuration">Velero</a>). All
-of them only reach whoever Alertmanager is configured to tell — see
-<a href="../../platform/monitoring/">Monitoring</a>.</p>
+<p>Nothing backs up the deployment host's <code>output/</code> either:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Holds</th>
+<th>If lost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kubeconfig</code></td>
+<td>Admin credential</td>
+<td><code>make kubeconfig</code></td>
+</tr>
+<tr>
+<td><code>credentials/openbao-init.json</code></td>
+<td>Unseal key shares</td>
+<td>Gone, hence the <a href="../../platform/openbao/#bootstrap">password manager</a></td>
+</tr>
+<tr>
+<td><code>credentials/openbao-operator.json</code></td>
+<td>OpenBao operator login</td>
+<td>Recreate with a <a href="../../platform/openbao/#generating-a-root-token">root token</a></td>
+</tr>
+<tr>
+<td><code>credentials/encryption_key</code></td>
+<td>etcd's Secret encryption key</td>
+<td>Base64-encoded in every control plane's <code>/etc/kubernetes/enc/encryption-config.yaml</code>; restore it before <code>make config</code> renders a new one, or <a href="../encryption-key-rotation/">rotate</a></td>
+</tr>
+<tr>
+<td><code>credentials/kubeadm_token_*</code>, <code>credentials/certificate_key</code></td>
+<td>Join credentials</td>
+<td><code>make config</code> generates and installs new ones</td>
+</tr>
+<tr>
+<td><code>credentials/ssh_host_&lt;node&gt;_ed25519</code></td>
+<td>Node SSH host key</td>
+<td>Still in the node's <code>/etc/ssh/</code>; a new one from <code>make config</code> mismatches until the node is reinstalled</td>
+</tr>
+</tbody>
+</table>
+<p>Only <code>VeleroBackupTooOld</code> notices a backup that silently stopped
+(<a href="../../platform/velero/#configuration">Velero</a>), and only whoever Alertmanager
+tells — see <a href="../../platform/monitoring/">Monitoring</a>.</p>
 <h2 id="velero">Velero<a class="headerlink" href="#velero" title="Permanent link">&para;</a></h2>
 <p><a href="https://velero.io/">Velero</a> backs up Kubernetes objects and volume data
 nightly. Chart values and why each is set are in
@@ -3115,11 +3173,11 @@ nightly. Chart values and why each is set are in
 <tbody>
 <tr>
 <td>Schedule</td>
-<td>The <code>schedules</code> block in <code>payload/platform/velero/application.yaml</code>: nightly, an hour after etcd so the two never contend for the object store, with a TTL of two weeks so a bad backup is noticed before the last good one expires</td>
+<td>The <code>schedules</code> block in <code>payload/platform/velero/application.yaml</code>: nightly, an hour after etcd so the two never contend for the object store, with a <code>ttl</code> long enough that a bad backup is noticed before the last good one expires</td>
 </tr>
 <tr>
 <td>Scope</td>
-<td>All namespaces except <code>kube-system</code> (rebuilt from Git, and large) and <code>trivy-system</code> (rescanned), minus <code>events</code> (they expire anyway) and any PVC labelled <code>velero.io/exclude-from-backup</code>, which is only Prometheus's: the chart's <code>volumeClaimTemplate.metadata.labels</code> carries it</td>
+<td>All namespaces except <code>kube-system</code> (rebuilt from Git, and large) and <code>trivy-system</code> (rescanned), minus <code>events</code> (they expire anyway) and any PVC labelled <code>velero.io/exclude-from-backup</code>, which is only Prometheus's</td>
 </tr>
 <tr>
 <td>Destination</td>
@@ -3131,7 +3189,7 @@ nightly. Chart values and why each is set are in
 </tr>
 <tr>
 <td>Encryption</td>
-<td>Volume data with the repository password generated into OpenBao at <code>velero/repository</code>, which a restore needs; resource backups, Secrets included, are plain JSON — see <a href="../../platform/velero/#repository-password">Repository password</a></td>
+<td>Volume data only, with a password from OpenBao a restore needs; Secrets in the resource backups are plain JSON — see <a href="../../platform/velero/#repository-password">Repository password</a></td>
 </tr>
 </tbody>
 </table>
@@ -3142,15 +3200,10 @@ nightly. Chart values and why each is set are in
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>backup<span class="w"> </span>create<span class="w"> </span>manual-<span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
-<p>Backups in <code>PartiallyFailed</code> with no volume data mean Velero found no
-<code>VolumeSnapshotClass</code> labelled <code>velero.io/csi-volumesnapshot-class: "true"</code>
-and skipped the volumes silently — check
-<code>payload/platform/backup/volumesnapshotclass.yaml</code> is applied.</p>
 <h2 id="etcd">etcd<a class="headerlink" href="#etcd" title="Permanent link">&para;</a></h2>
 <p>Velero restores <em>through</em> the API server, which is no use with no API server
-left (lost quorum, a corrupted data directory). For that a CronJob in
-<code>payload/platform/backup/etcd-backup.yaml</code> snapshots etcd nightly, an hour
-before Velero runs.</p>
+left (lost quorum, a corrupted data directory). For that a CronJob snapshots
+etcd.</p>
 <table>
 <thead>
 <tr>
@@ -3169,7 +3222,7 @@ before Velero runs.</p>
 </tr>
 <tr>
 <td>Verification</td>
-<td><code>etcdutl snapshot status</code> before upload, so a truncated snapshot fails the job instead of replacing a good backup (<code>etcdctl snapshot status</code> was removed in etcd 3.6)</td>
+<td><code>etcdutl snapshot status</code> before upload, so a truncated snapshot fails the job instead of replacing a good backup</td>
 </tr>
 <tr>
 <td>Destination</td>
@@ -3185,13 +3238,12 @@ variable sets it).</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>logs<span class="w"> </span>job/&lt;most-recent-job&gt;<span class="w"> </span>-c<span class="w"> </span>upload
 </span></code></pre></div>
 <h3 id="defragmentation">Defragmentation<a class="headerlink" href="#defragmentation" title="Permanent link">&para;</a></h3>
-<p>The API server compacts etcd's history every five minutes, but compaction
+<p>The API server compacts etcd's history (<code>--etcd-compaction-interval</code>), but compaction
 only frees pages inside the database file; the file itself never shrinks until
 a member is defragmented, and once less than half of it is in use
 <code>etcdDatabaseHighFragmentationRatio</code> fires. A second CronJob in
 <code>payload/platform/backup/etcd-defrag.yaml</code> runs <code>etcdctl defrag --cluster</code>
-nightly from the same kind of host-network pod as the backup, one member after
-another, and prints <code>endpoint status</code> before and after so the log shows the
+nightly from the same kind of host-network pod as the backup and prints <code>endpoint status</code> before and after so the log shows the
 size reclaimed.</p>
 <table>
 <thead>
@@ -3203,7 +3255,7 @@ size reclaimed.</p>
 <tbody>
 <tr>
 <td>Nightly</td>
-<td>This cluster's churn crosses the alert's ratio about a day and a half after a defrag, so the alert firing means a run failed or did not help, not that the next one is due</td>
+<td>Sooner than this cluster's churn crosses the alert's ratio, so the alert firing means a run failed or did not help, not that the next one is due</td>
 </tr>
 <tr>
 <td>One member at a time</td>
@@ -3229,8 +3281,8 @@ size reclaimed.</p>
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>snapshot<span class="w"> </span>save<span class="w"> </span>/var/lib/etcd/snapshot.db
 </span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>cat<span class="w"> </span>/var/lib/etcd/snapshot.db<span class="w"> </span>&gt;<span class="w"> </span>./etcd-snapshot.db
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>rm<span class="w"> </span>/var/lib/etcd/snapshot.db
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>cat<span class="w"> </span>/var/lib/etcd/snapshot.db<span class="w"> </span>&gt;<span class="w"> </span>./etcd-snapshot.db
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>rm<span class="w"> </span>/var/lib/etcd/snapshot.db
 </span></code></pre></div>
 <p>Keep the copy off the cluster, like the nightly ones below.</p>
 <h2 id="openbao">OpenBao<a class="headerlink" href="#openbao" title="Permanent link">&para;</a></h2>
@@ -3274,10 +3326,8 @@ snapshot nightly, between the etcd snapshot and Velero.</p>
 hold the unseal keys and is useless without them — see
 <a href="../../platform/openbao/">OpenBao</a>.</p>
 <h2 id="off-cluster-copy">Off-cluster copy<a class="headerlink" href="#off-cluster-copy" title="Permanent link">&para;</a></h2>
-<p>Every backup writes into its own prefix of one bucket, <code>offsite</code>, and a
-TrueNAS box on the LAN pulls that bucket into a ZFS dataset nightly. TrueNAS
-pulls rather than the cluster pushing, so nothing in the cluster holds a
-credential that could reach the NAS.</p>
+<p>TrueNAS pulls the <a href="#backup-chain"><code>offsite</code> bucket</a> rather than the cluster
+pushing, so nothing in the cluster holds a credential that could reach the NAS.</p>
 <table>
 <thead>
 <tr>
@@ -3288,11 +3338,11 @@ credential that could reach the NAS.</p>
 <tbody>
 <tr>
 <td>One S3 user per backup</td>
-<td>Each writes only <code>offsite/&lt;user&gt;/</code>, so a compromised workload reaches its own backups and nobody else's. A new database's user is part of its <code>backup.yaml</code> and gets its grant with nothing else edited — see <a href="../../platform/rook-ceph/#backup-writers">Backup writers</a></td>
+<td>Each writes only <code>offsite/&lt;user&gt;/</code>, so a compromised workload reaches its own backups and nobody else's. A new database's user comes with its <code>backup.yaml</code> — see <a href="../../platform/rook-ceph/#backup-writers">Backup writers</a></td>
 </tr>
 <tr>
 <td>Nothing is left out by default</td>
-<td>Admission refuses a CloudNativePG <code>Cluster</code> without the Barman Cloud WAL archiver, an <code>ObjectStore</code> writing anywhere but its namespace's prefix of <code>offsite</code>, and any new <code>ObjectBucketClaim</code>, unless the object carries <code>homelab.wlkr.ch/backup-exempt</code> with the reason; see <a href="../../platform/security-policies/#admission-policies">Admission policies</a>. Velero takes every namespace its schedule does not exclude, and <code>CNPGBackupStale</code> fires for a database whose base backup never comes</td>
+<td><a href="../../platform/security-policies/#admission-policies">Admission</a> refuses a database without WAL archiving, an object store outside its <code>offsite</code> prefix and any new bucket claim, unless it carries <code>homelab.wlkr.ch/backup-exempt</code> with the reason. Velero takes every namespace its schedule does not exclude, and <code>CNPGBackupStale</code> fires for a database whose base backup never comes</td>
 </tr>
 <tr>
 <td>Credentials</td>
@@ -3392,12 +3442,14 @@ OpenBao restores take the file straight from the copy.</p>
 <h2 id="ceph-volumes">Ceph volumes<a class="headerlink" href="#ceph-volumes" title="Permanent link">&para;</a></h2>
 <p>PVCs are covered by <a href="#velero">Velero</a>. Ceph's own replication is not a backup:
 it spreads each block across OSDs, which survives a disk or node failing and
-nothing else. Almost every Application runs with <code>prune: true</code> (<code>kube-vip</code> and
-<code>security</code> are the deliberate exceptions), so removing a
+nothing else. Almost every Application runs with <code>prune: true</code> (<code>kube-vip</code> is
+<a href="../../architecture/gitops/#sync-policy">the exception</a>), so removing a
 <code>PersistentVolumeClaim</code> from Git deletes the volume.</p>
 <h2 id="restoring">Restoring<a class="headerlink" href="#restoring" title="Permanent link">&para;</a></h2>
-<p>The commands are the upstream-documented ones for the versions pinned in
-<code>payload/platform/</code>; the etcd sequence has not been exercised on this cluster.</p>
+<p>The commands follow upstream; the etcd sequence has not been exercised here.</p>
+<h3 id="database-restore">Database restore<a class="headerlink" href="#database-restore" title="Permanent link">&para;</a></h3>
+<p>A PostgreSQL database restores from its own archive:
+<a href="../../platform/cloudnative-pg/#point-in-time-restore">Point-in-time restore</a>.</p>
 <h3 id="velero-restore">Velero restore<a class="headerlink" href="#velero-restore" title="Permanent link">&para;</a></h3>
 <ol>
 <li>
@@ -3408,24 +3460,27 @@ nothing else. Almost every Application runs with <code>prune: true</code> (<code
 <li>
 <p>Restore from it, scoped to what was lost; without <code>--include-namespaces</code>
    everything in the backup is restored, and existing objects are skipped, not
-   overwritten.</p>
+   overwritten. A PVC Argo CD has already re-created empty from Git is skipped
+   too, and its data with it; step 3 shows whether that happened.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>create<span class="w"> </span>--from-backup<span class="w"> </span>velero-daily-&lt;timestamp&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--include-namespaces<span class="w"> </span>my-app
 </span></code></pre></div>
 </li>
 <li>
-<p>Watch it finish and read the warnings.</p>
+<p>Watch it finish, read the warnings, and confirm the volume data came back:
+   one <code>DataDownload</code> per restored volume, <code>Completed</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>describe<span class="w"> </span>&lt;restore-name&gt;
 </span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>velero<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>restore<span class="w"> </span>logs<span class="w"> </span>&lt;restore-name&gt;
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>backup<span class="w"> </span>get<span class="w"> </span>datadownloads.velero.io
 </span></code></pre></div>
 </li>
 </ol>
 <h3 id="openbao-snapshot-restore">OpenBao snapshot restore<a class="headerlink" href="#openbao-snapshot-restore" title="Permanent link">&para;</a></h3>
 <p>Needs an initialised, unsealed cluster and a root token from
-<a href="../../platform/openbao/#generating-a-root-token">Generating a root token</a>. Afterwards
-the snapshot's own operator login applies, not the new cluster's. <code>-force</code> is what
-lets a snapshot from a <em>different</em> cluster (a fresh <code>bao operator init</code>) load;
-afterwards the pods seal and want the snapshot's keys, not the new cluster's.</p>
+<a href="../../platform/openbao/#generating-a-root-token">Generating a root token</a>.
+<code>-force</code> lets a snapshot from a <em>different</em> cluster (a fresh <code>bao operator
+init</code>) load; afterwards its keys and operator login apply, not the new
+cluster's.</p>
 <ol>
 <li>
 <p>Copy the snapshot in.</p>

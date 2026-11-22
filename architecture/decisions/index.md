@@ -1,6 +1,6 @@
 # Design Decisions
 
-The rest of this section describes *what* the cluster is. This page covers *why*, including what each choice gives up. Every one has a reasonable alternative; none is the only right answer.
+Why each choice, and what it gives up. Every one has a reasonable alternative.
 
 ## Flatcar Container Linux, not Talos or a general-purpose distro
 
@@ -20,7 +20,7 @@ The cost is that everything above the API server is this project's problem: CNI,
 
 Cilium replaces `kube-proxy` with eBPF, removing the iptables and IPVS service-routing path. It also supplies Gateway API, L2 announcements for LoadBalancer addresses, WireGuard transparent encryption and Hubble for flow visibility — four things that would otherwise be four components on bare metal.
 
-The cost is a hard bootstrap dependency: with no `kube-proxy`, Cilium needs a literal API server address in `k8sServiceHost`, which is the [control plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>); pointing it at one node would make that node a single point of failure for the CNI on every other node, and pointing it at an address that does not answer takes networking down everywhere.
+The cost is a hard bootstrap dependency: with no `kube-proxy`, Cilium needs a literal API server address in `k8sServiceHost`, the [control plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>) so no single node carries the CNI; an address that does not answer takes networking down everywhere.
 
 ## Gateway API, not Ingress
 
@@ -30,7 +30,7 @@ The cost is a smaller ecosystem and more moving parts: CRDs must be installed be
 
 ## Rook-Ceph, not Longhorn or local volumes
 
-Every worker contributes a raw partition (the control planes keep their disk for etcd, see [Disks](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#disks>)), and Ceph turns them into replicated block storage that survives a node failure. Local `hostPath` volumes would be simpler and faster, but a node reboot would take its workloads' data with it, and reboots are routine here because that is [how updates get applied](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster can later serve object and file storage.
+Every worker contributes a raw partition (the control planes keep their disk for etcd, see [Disks](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#disks>)), and Ceph turns them into replicated block storage that survives a node failure. Local volumes would be simpler and faster, but would go down with every [update reboot](<https://homelab.wlkr.ch/operations/upgrades/index.md>). Longhorn is the closer alternative and easier to operate; Ceph was chosen for its maturity and because the same cluster also serves the S3 buckets the backups and Loki write to — see [Object storage](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#object-storage>).
 
 The cost: Ceph is the heaviest component in the cluster, wants at least three nodes, and has its own failure modes and vocabulary. It also only provides `ReadWriteOnce` here, since CephFS is not deployed.
 
@@ -44,7 +44,7 @@ The cost is a manual unseal after every restart, taken deliberately over an auto
 
 Either would work. ArgoCD was chosen mainly for its UI, which makes sync state and drift legible at a glance — worth more in a homelab, where the operator is often re-learning the system after months away, than Flux's smaller footprint.
 
-Bootstrap is two `kubectl apply`s — the AppProjects and the self-managing `argocd` Application — and everything else is discovered from the repository by an ApplicationSet. See [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>).
+After a bootstrap of two `kubectl apply`s an ApplicationSet discovers everything else; see [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>).
 
 ## CloudNativePG for every database, not the chart's bundled one
 
@@ -54,4 +54,12 @@ The cost is a controller and a CRD to learn, and a major-version upgrade that is
 
 ## Trivy Operator, not Kubescape
 
-Trivy Operator stores every finding as a plain CRD and scans with the same Trivy that CI uses, so a number on the dashboard can be checked against an object with `kubectl`. Kubescape put results behind an aggregated API server on its own volume, silently reported zero findings for images whose SBOM exceeded a size ceiling, and needed its scanner image pinned ahead of the chart before scheduled scans ran. What was lost is relevancy: Kubescape's eBPF agent could mark a finding as loaded at runtime, and that argument now has to be made from the workload's configuration.
+Trivy Operator stores every finding as a plain CRD and scans with the same Trivy that CI uses, so a dashboard number can be checked with `kubectl`; the cost is Kubescape's runtime relevancy, which marked a finding as loaded.
+
+## ValidatingAdmissionPolicy, not Kyverno or Gatekeeper
+
+The admission rules are CEL that the API server evaluates itself, so nothing has to stay up for an apply to succeed; a policy engine is a webhook, and a `failurePolicy: Fail` webhook refuses every apply while its pods reschedule. The cost is CEL's reach: a rule sees the request and its namespace, and nothing generates resources — see [Admission policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>).
+
+## Tetragon, not Falco
+
+Both record syscalls through eBPF and alert. Tetragon can also act in the kernel, which the [enforcing policy](<https://homelab.wlkr.ch/platform/tetragon/index.md#enforcement>) uses to kill a container that creates a user namespace. The cost is a smaller rule library: every `TracingPolicy` here was written for this cluster.

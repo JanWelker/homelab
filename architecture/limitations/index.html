@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2474,15 +2474,21 @@ or work not yet done.</p>
 <tbody>
 <tr>
 <td><strong>The API endpoint address is fixed at <code>kubeadm init</code></strong></td>
-<td><code>controlPlaneEndpoint</code> is the kube-vip VIP, baked into the API server certificates, every node's kubeconfig and Cilium's <code>k8sServiceHost</code>; moving it regenerates certificates and rewrites kubeconfigs on every node</td>
+<td>The kube-vip VIP is baked into the API server certificates, every kubeconfig and Cilium's <code>k8sServiceHost</code>; moving it touches every node</td>
 <td>Choose it once, outside any DHCP range and the LoadBalancer pools; the next build <a href="../../operations/control-plane-vip/#endpoint-name">uses a name</a></td>
 <td><a href="../../operations/control-plane-vip/#choosing-the-address">Choosing the address</a>, <a href="../../operations/control-plane-vip/#in-place">migrating in place</a></td>
 </tr>
 <tr>
 <td><strong>OpenBao needs an operator to unseal it</strong></td>
-<td>Shamir seal, no auto-unseal: every restart seals each replica until the <a href="../../platform/openbao/#at-a-glance">threshold of key shares</a> is supplied. Sealed, no <code>ExternalSecret</code> resolves and cert-manager cannot renew; the cluster looks healthy until a certificate expires</td>
-<td>Check <code>bao status</code> after reboots; auto-unseal would add an external hard dependency</td>
+<td>Every restart seals it until the <a href="../../platform/openbao/#at-a-glance">threshold of key shares</a> is supplied; sealed, no <code>ExternalSecret</code> resolves and certificates silently stop renewing</td>
+<td>Check <code>bao status</code> after reboots; auto-unseal would add an external dependency</td>
 <td><a href="../../platform/openbao/#unsealing-after-a-restart">Unsealing after a restart</a>, <a href="../../operations/nodes/#after-any-node-reboot-unseal-openbao">after any node reboot</a></td>
+</tr>
+<tr>
+<td><strong>One operator holds every credential</strong></td>
+<td>The unseal key shares and <code>output/credentials/</code> sit with one person, on the deployment host</td>
+<td>Copy them to a password manager</td>
+<td><a href="../../platform/openbao/#bootstrap">Bootstrap</a>, <a href="../#repository-layout">Repository layout</a></td>
 </tr>
 <tr>
 <td><strong>Alerting reaches one mailbox</strong></td>
@@ -2492,7 +2498,7 @@ or work not yet done.</p>
 </tr>
 <tr>
 <td><strong>Automatic updates stop at patch releases</strong></td>
-<td>Sysupdate is pinned to the Kubernetes major.minor in <code>ansible/inventory.yaml</code>; Kured reboots one node at a time and refuses while Ceph or etcd is unhealthy. A minor upgrade is manual. Kured blocks only on the alerts named in its config</td>
+<td>Nodes follow the Kubernetes minor they were built with; a minor upgrade is manual</td>
 <td>By design</td>
 <td><a href="../../operations/upgrades/#nodes-are-pinned-to-a-minor-series">Nodes are pinned to a minor series</a>, <a href="../../operations/upgrades/#upgrading-a-minor-version-deliberately">upgrading a minor deliberately</a>, <a href="../../platform/kured/">Kured</a></td>
 </tr>
@@ -2504,14 +2510,14 @@ or work not yet done.</p>
 </tr>
 <tr>
 <td><strong>Reprovisioning needs the boot server on the segment</strong></td>
-<td>Rebuilding a node needs <code>make serve</code> on a machine on the nodes' L2 segment, the external DHCP pointing at it and a power cycle; there is no remote rebuild</td>
-<td>Only <em>re</em>provisioning: a running node reboots and rejoins without the boot server</td>
+<td>Rebuilding a node needs <code>make serve</code> on the nodes' L2 segment, the DHCP pointing at it and a power cycle; there is no remote rebuild</td>
+<td>A running node reboots and rejoins without it</td>
 <td><a href="../boot-process/#every-boot-after-the-first">Boot &amp; Bootstrap Process</a></td>
 </tr>
 <tr>
 <td><strong>The object store survives one host down, no more</strong></td>
 <td>During every Kured reboot the RGW data pool, which holds the backups and Loki chunks, has no redundancy left, while <code>rbd-pool</code> still has some</td>
-<td>Accepted: an existing pool's erasure profile cannot change, so it means a new pool and moving every bucket</td>
+<td>Accepted: a pool's erasure profile is fixed, so fixing it means a new pool and moving every bucket</td>
 <td><a href="../../platform/rook-ceph/#object-storage">Object storage</a></td>
 </tr>
 <tr>
@@ -2552,14 +2558,26 @@ or work not yet done.</p>
 </tr>
 <tr>
 <td><strong>Single region, site and rack</strong></td>
-<td>No failure domain larger than a node: Ceph replicates across nodes on one power feed, and TrueNAS pulls the backups over the same LAN (<a href="../../operations/backups/#off-cluster-copy">Off-cluster copy</a>): a site-level event takes everything</td>
+<td>Ceph replicates across nodes on one power feed and TrueNAS pulls the backups over the same LAN (<a href="../../operations/backups/#off-cluster-copy">Off-cluster copy</a>), so a site-level event takes everything</td>
 <td>Honest limit of a homelab: a copy off the site</td>
 <td>—</td>
 </tr>
 <tr>
+<td><strong>No staging cluster</strong></td>
+<td>A merge to <code>main</code> is a production deployment</td>
+<td>The pull request checks and diff preview</td>
+<td><a href="../../development/contributing/">Contributing</a></td>
+</tr>
+<tr>
+<td><strong>The router and Authentik stand alone</strong></td>
+<td>The router carries every Internet request and the BGP sessions; Authentik every UI login</td>
+<td>LAN clients still reach the Gateways over L2</td>
+<td><a href="../../platform/cilium/#configuration">Cilium</a>, <a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a></td>
+</tr>
+<tr>
 <td><strong>Backup copies hold plaintext Secrets and one all-powerful key</strong></td>
-<td>Velero's resource backups are plain JSON in the bucket, Secrets included, and the NAS's <code>offsite-reader</code> key owns the bucket with a full <code>opMask</code>, so a leak of either exposes every Secret or lets its holder delete the live backups</td>
-<td>Excluding Secrets would lose those nothing else regenerates (Argo CD, CloudNativePG, Rook, cert-manager); a read-only <code>opMask</code> would stop Rook setting the bucket policy with the owner's keys. The NAS's snapshots outlive a deletion</td>
+<td>Velero's resource backups keep Secrets as plain JSON, and the NAS's <code>offsite-reader</code> key owns the bucket, so a leak of either exposes every Secret or the backups themselves</td>
+<td>Accepted; the NAS's snapshots outlive a deletion</td>
 <td><a href="../../platform/velero/#repository-password">Repository password</a>, <a href="../../platform/rook-ceph/#off-cluster-reader">Off-cluster reader</a></td>
 </tr>
 </tbody>

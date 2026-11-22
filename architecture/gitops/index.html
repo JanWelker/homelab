@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The self-managing ArgoCD Application, the three ApplicationSets, the sync policy every Application shares, and why workloads live in their own repository.">
+        <meta name="description" content="The self-managing ArgoCD Application, the two ApplicationSets, the sync policy every Application shares, and why workloads live in their own repository.">
       
       
       
@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2753,9 +2753,8 @@ in the cluster, and if you put it there anyway the next reconcile puts it back.<
 ApplicationSet it deploys then adopts it from <code>payload/argocd/application.yaml</code>,
 so a merged chart bump reaches the cluster like any other. It syncs the chart
 that runs ArgoCD and, through a second source, the <code>platform</code> ApplicationSet,
-so changes to the generator arrive through Git. Its chart values are described in
-<a href="../../platform/argocd/">Platform &rarr; ArgoCD</a>, along with the recovery
-commands for the day ArgoCD syncs a broken ArgoCD config.</p>
+so changes to the generator arrive through Git. Its chart values and the
+recovery commands are in <a href="../../platform/argocd/">Platform &rarr; ArgoCD</a>.</p>
 <p>Everything else is a component directory with one <code>application.yaml</code>,
 including ArgoCD's own supporting resources:</p>
 <table>
@@ -2785,8 +2784,8 @@ adopts it on its first sync. A broken project definition is fixed with
 labels, annotations, finalizers and <code>spec</code> unchanged.</p>
 <h2 id="sync-policy">Sync policy<a class="headerlink" href="#sync-policy" title="Permanent link">&para;</a></h2>
 <p>Every Application, generated or not, carries the same <code>syncPolicy</code>: automated
-sync with <code>prune</code> and <code>selfHeal</code>, and a <code>retry</code> block of ten attempts with a
-backoff from 30s to 5m. That is the whole delivery contract:</p>
+sync with <code>prune</code> and <code>selfHeal</code>, and a <code>retry</code> block. That is the whole
+delivery contract:</p>
 <ul>
 <li><strong>A commit is live within one polling interval.</strong> ArgoCD runs on a private
   address, so no GitHub webhook can reach it; the intervals are in
@@ -2796,9 +2795,9 @@ backoff from 30s to 5m. That is the whole delivery contract:</p>
 <li>
 <p><strong>A failed sync retries itself.</strong> ArgoCD never re-attempts a failed sync of
   the same revision unless the Application has a <code>retry</code> block, which is why
-  every <code>application.yaml</code> carries one. The ten attempts span about forty
-  minutes; after that the Application stays OutOfSync until its revision
-  changes or it is synced by hand:</p>
+  every <code>application.yaml</code> carries one. Once its attempts run out the
+  Application stays OutOfSync until its revision changes or it is synced by
+  hand:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>argocd<span class="w"> </span>app<span class="w"> </span>sync<span class="w"> </span>&lt;application&gt;
 </span></code></pre></div>
 </li>
@@ -2810,9 +2809,7 @@ backoff from 30s to 5m. That is the whole delivery contract:</p>
 </li>
 <li><strong><code>argocd</code> carries no finalizer.</strong> The ApplicationSet deletes a generated
   Application whose file or generator path goes away, and with the resources
-  finalizer that would delete ArgoCD itself; without it the objects stay. Its
-  sync restarts ArgoCD's own pods, and <code>retry</code> re-attempts one that was
-  interrupted; the <code>syncPolicy</code> is otherwise the shared one.</li>
+  finalizer that would delete ArgoCD itself; without it the objects stay.</li>
 <li><strong>One exception to <code>prune</code>, and one annotation.</strong> <code>kube-vip</code> syncs with
   <code>prune: false</code>, because its objects are the only thing holding the API VIP;
   copy the <code>syncPolicy</code> from any other sibling. Elsewhere a resource whose
@@ -2882,30 +2879,53 @@ those resources applied cleanly and is waiting on status.</p>
 directory per application; the <code>apps</code> ApplicationSet generates an Application
 from each <code>*/application.yaml</code> there. The split keeps a platform change with a
 cluster-wide blast radius apart from a workload change with a one-app one.</p>
-<p>The dependency runs one way: workloads reference the platform (the
-<code>apps-gateway</code>, the <code>rook-ceph-block</code> StorageClass, the <code>openbao</code>
-<code>ClusterSecretStore</code>, the CloudNativePG operator), and the platform references
-the workloads repository exactly once — the <code>repoURL</code> in
-<code>payload/workloads/applicationset.yaml</code>.</p>
+<p>Workloads reference the platform: the <code>apps-gateway</code>, the <code>rook-ceph-block</code>
+StorageClass, the <code>openbao</code> <code>ClusterSecretStore</code>, the CloudNativePG operator.
+The platform names the workloads repository in the <code>apps</code> ApplicationSet and
+the <code>apps</code> project, and single workloads wherever it grants them something. A
+fork with other workloads edits these, in <code>payload/platform/</code> or <code>scripts/</code>;
+<code>git grep &lt;namespace&gt;</code> finds the rest:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Names</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>openbao/cluster-secret-store.yaml</code>, <code>scripts/bao-policies.sh</code></td>
+<td>secret readers</td>
+</tr>
+<tr>
+<td><code>authentik/</code> blueprints, secrets, <code>referencegrant.yaml</code></td>
+<td>login clients, proxied hostnames</td>
+</tr>
+<tr>
+<td><code>gateway-api/gateways.yaml</code>, <code>security/admission-policies.yaml</code></td>
+<td><code>infra-gateway</code> namespaces, reserved hostnames</td>
+</tr>
+<tr>
+<td><code>security/</code> pod security, network policies, agent RBAC</td>
+<td>labels, flows, agent access</td>
+</tr>
+<tr>
+<td><code>scripts/bao-secrets.sh</code></td>
+<td>typed secrets</td>
+</tr>
+</tbody>
+</table>
 <h3 id="what-the-split-costs">What the split costs<a class="headerlink" href="#what-the-split-costs" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Two repositories to clone</strong>, and a change that spans both is two pull
   requests that cannot merge atomically; merge the platform half first.</li>
-<li><strong>The diff preview covers only this repository</strong>, so both ApplicationSets
-  carry <code>argocd-diff-preview/ignore</code>.</li>
 <li><strong>A workload can reference a missing platform resource</strong>; nothing catches
   it before the sync.</li>
 </ul>
 <h3 id="workloads-sync-alongside-the-platform">Workloads sync alongside the platform<a class="headerlink" href="#workloads-sync-alongside-the-platform" title="Permanent link">&para;</a></h3>
 <p>The <code>apps</code> ApplicationSet ships inside the <code>workloads</code> Application, which the
-<code>platform</code> ApplicationSet generates like any component. That is why
-<code>payload/workloads/</code> is a sibling of <code>payload/platform/</code>, and why the
-<code>platform</code> ApplicationSet names it as a second generator path rather than
-a glob:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="w">        </span><span class="nt">files</span><span class="p">:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload/platform/*/application.yaml</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">payload/workloads/application.yaml</span>
-</span></code></pre></div>
+<code>platform</code> ApplicationSet generates like any component, from a second
+generator path beside the <code>payload/platform/</code> glob.</p>
 <p>On a fresh cluster the workloads therefore start syncing before the platform
 under them is Healthy and converge the same way: the <code>retry</code> block, an
 <code>HTTPRoute</code> waiting for the <code>apps-gateway</code>, volumes for Rook, secrets for
@@ -2923,9 +2943,9 @@ merges:</p>
 <ol>
 <li>
 <p>Annotate the resource where it is, and let that sync:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">argocd.argoproj.io/compare-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">IgnoreExtraneous</span>
 </span></code></pre></div>
 <p>Both are read off the <strong>live</strong> object. <code>Prune=false</code> stops whichever
 Application prunes first; <code>IgnoreExtraneous</code> keeps the old Application

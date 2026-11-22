@@ -19,7 +19,7 @@
         
       
       
-        <link rel="prev" href="../adapting/">
+        <link rel="prev" href="../quickstart/">
       
       
         <link rel="next" href="./boot-process/">
@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../adapting/" class="md-nav__link">
+      <a href="../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2515,8 +2515,7 @@ boot server that serves each step. Start here when an install stalls.</p>
 <li>
 <p><strong><a href="ansible/">Ansible</a></strong></p>
 <hr />
-<p>The playbooks that generate everything the boot server serves. Ansible
-never configures a node.</p>
+<p>The playbooks that generate everything the boot server serves.</p>
 </li>
 <li>
 <p><strong><a href="gitops/">GitOps Strategy</a></strong></p>
@@ -2571,7 +2570,9 @@ enforced, and what the API server records.</p>
 worst answer: twice the hardware and quorum still lost when one dies. The API
 server is reached through a kube-vip virtual IP rather than any single node —
 see <a href="../operations/control-plane-vip/">Control Plane VIP</a>. Addresses, the
-VIP and the pod and service subnets are in <code>ansible/inventory.yaml</code>.</p>
+VIP and the pod and service subnets are in <code>ansible/inventory.yaml</code>. How a
+request reaches a pod from the Internet, the LAN or another VLAN is drawn in
+<a href="../platform/#traffic-flow">Traffic Flow</a>.</p>
 <h2 id="repository-layout">Repository layout<a class="headerlink" href="#repository-layout" title="Permanent link">&para;</a></h2>
 <p><code>ansible/</code> describes the machines, <code>boot_server/</code> hands them their operating
 system, <code>payload/</code> is the platform the cluster runs on, and <code>output/</code> is
@@ -2607,9 +2608,7 @@ it. The applications the cluster exists to serve live in the separate
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>└── README.md
 </span></code></pre></div>
 <p><code>ansible/</code> and <code>boot_server/</code> matter only while a node is being built;
-<code>payload/</code> matters every day after that. The exception is
-<code>ansible/templates/kubeadm.yaml.j2</code>, which explains why half the control plane
-is configured the way it is.</p>
+<code>payload/</code> matters every day after that.</p>
 <p><code>output/credentials/</code> is generated once and read back on every later run;
 <code>make config</code> writes new values for anything missing, which a running cluster
 will not accept. <code>make clean</code> therefore prints that inventory and asks before
@@ -2677,7 +2676,7 @@ deleting, and refuses without a terminal.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../adapting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Adapt It to Your Cluster">
+          <a href="../quickstart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2687,7 +2686,7 @@ deleting, and refuses without a terminal.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Adapt It to Your Cluster
+                Quickstart
               </div>
             </div>
           </a>

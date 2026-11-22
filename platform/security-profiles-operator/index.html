@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="The Kubernetes Security Profiles Operator, installed to manage SELinux policy modules as SelinuxProfile objects; a draft that cannot install a profile on Flatcar yet.">
+        <meta name="description" content="The Kubernetes Security Profiles Operator: SELinux policy modules as SelinuxProfile objects, loaded on Flatcar through its own templates, and a seccomp profile that logs refusals.">
       
       
       
@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2773,7 +2773,7 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/security-profiles-operator/</code>, <code>payload/platform/security/network-policies/security-profiles-operator.yaml</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/security-profiles-operator"><code>payload/platform/security-profiles-operator/</code></a>, <a href="https://github.com/JanWelker/homelab/blob/main/payload/platform/security/network-policies/security-profiles-operator.yaml"><code>payload/platform/security/network-policies/security-profiles-operator.yaml</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2788,7 +2788,7 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 <tbody>
 <tr>
 <td><code>selinuxd-memory-request</code> in <code>admission-policies.yaml</code></td>
-<td>With <code>selinux.enable</code>, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed 512Mi request at node-critical priority, preempting pods on a full node; the policy halves it at pod creation</td>
+<td>With <code>selinux.enable</code>, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation</td>
 </tr>
 <tr>
 <td><code>customTemplatesConfigMap</code></td>
@@ -2804,7 +2804,7 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 <tr>
 <td><code>replicaCount</code></td>
-<td>The operator is a stateless Deployment with a PodDisruptionBudget; two replicas keep a drain from stopping reconciliation</td>
+<td>The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation</td>
 </tr>
 <tr>
 <td><code>resources</code></td>
@@ -2868,7 +2868,7 @@ Authentik's server and worker and <a href="../logging/">Alloy</a> do.</p>
 <p><strong><code>clone3</code> is missing from Loki.</strong> The profile refuses it so glibc falls
   back to <code>clone</code>, and <a href="../logging/">Alloy</a> drops those records. Every record
   stays in the node's journal:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>journalctl<span class="w"> </span><span class="nv">_AUDIT_TYPE</span><span class="o">=</span><span class="m">1326</span><span class="w"> </span>--since<span class="w"> </span>-1h
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>journalctl<span class="w"> </span><span class="nv">_AUDIT_TYPE</span><span class="o">=</span><span class="m">1326</span><span class="w"> </span>--since<span class="w"> </span>-1h
 </span></code></pre></div>
 </li>
 </ul>
@@ -2896,7 +2896,6 @@ Authentik's server and worker and <a href="../logging/">Alloy</a> do.</p>
 </tbody>
 </table>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
-<p>Known gaps:</p>
 <ul>
 <li><strong>Two policy files.</strong> <code>selinuxd</code> writes <code>policy.33</code>, the kernel's version,
   beside the shipped <code>policy.35</code>; a <code>semodule -B</code> with the host's tools

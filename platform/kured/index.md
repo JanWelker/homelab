@@ -10,7 +10,7 @@
 | Depends on | [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) for the alerts it gates on |
 | If it is down | Nothing visible: staged OS and sysext updates simply never get applied |
 | Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |
-| Files | `payload/platform/kured/application.yaml` |
+| Files | [`payload/platform/kured/application.yaml`](<https://github.com/JanWelker/homelab/blob/main/payload/platform/kured/application.yaml>); [`payload/platform/security/network-policies/kured.yaml`](<https://github.com/JanWelker/homelab/blob/main/payload/platform/security/network-policies/kured.yaml>) for the Prometheus egress the alert gate needs |
 
 ## Configuration
 
@@ -42,25 +42,25 @@ flowchart TD
     style SEN stroke-width:3px
 ```
 
-The values are in `payload/platform/kured/application.yaml`; the reasoning:
+The reasoning behind the values in `application.yaml`:
 
 | Setting | Why |
 | --- | --- |
 | No reboot window | Kured acts as soon as it sees a sentinel; the guards below make that safe, not the clock |
 | `concurrency` and `lockReleaseDelay` | One node down at a time. The rebooted node is uncordoned as soon as Kured's pod is back; the delay only holds the *next* node, long enough for the OSD to rejoin and the few minutes of backfill a reboot leaves, and as long as `CephOSDDown`'s `for`, so an OSD that did not come back is a firing alert before the next drain |
 | `period` | How often each node checks its sentinel and retries a blocked reboot. Every wait before a drain is a multiple of it, and the lock is handed on only at the next check after the hold, so it sets most of a rollout's length; a check is one file test and one Prometheus query per node |
-| `drainTimeout` | Above the slowest successful drain, which `drainGracePeriod` caps at two minutes plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock |
+| `drainTimeout` | Above the slowest successful drain, which is `drainGracePeriod` plus a CloudNativePG switchover; a drain that runs longer is blocked by a PodDisruptionBudget, usually Ceph's while another OSD is down, and is retried at the next check instead of holding the lock |
 | `forceReboot: false` | A node that will not drain is a node worth looking at |
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
 | `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a window longer than Velero's default limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for that long at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
-| `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is the automated "confirm Ceph has recovered" step from [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md>): a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>) |
+| `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is why [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) has no Ceph check of its own: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>) |
 
 > [!NOTE]
 >
 > **The regex means the opposite of what it looks like**
 >
-> `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no `PrometheusRule` defines blocks nothing and fails silently; the list once carried eight such names. Check every entry against the rules that exist, with the last command under [Health check](<#health-check>).
+> `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no `PrometheusRule` defines blocks nothing and fails silently. Check every entry against the rules that exist, with the last command under [Health check](<#health-check>).
 
 ## Usage
 
@@ -77,7 +77,7 @@ To force a node to reboot on the next pass:
 ssh core@<node> sudo touch /run/reboot-required
 ```
 
-`NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml` fires when the sentinel has been there for two days: Kured reboots one node at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is a blocked node, not a queued one.
+`NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml` fires when the sentinel outlasts the rule's `for`: Kured reboots one node at a time and refuses while Ceph or etcd is unhealthy, so a marker that old is a blocked node, not a queued one.
 
 ## Health check
 

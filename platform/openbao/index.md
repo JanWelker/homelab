@@ -1,11 +1,12 @@
 # OpenBao
 
-[OpenBao](<https://openbao.org/>) is the cluster's secret store, an open-source fork of HashiCorp Vault. It holds every secret the cluster consumes, surfaced as native `Secret` objects by the [External Secrets Operator](<https://homelab.wlkr.ch/platform/external-secrets/index.md>). Sealed, nothing that needs a credential works.
+[OpenBao](<https://openbao.org/>) is the cluster's secret store, an open-source fork of HashiCorp Vault, [chosen over sealed-secrets and SOPS](<https://homelab.wlkr.ch/architecture/decisions/index.md#openbao-not-sealed-secrets-or-sops>). It holds every secret the cluster consumes, surfaced as native `Secret` objects by the [External Secrets Operator](<https://homelab.wlkr.ch/platform/external-secrets/index.md>).
 
 ```
 flowchart LR
     Operator([Operator]) -->|bao CLI| Bao[(OpenBao<br/>KV v2)]
-    ESO[External Secrets<br/>Operator] -->|read, write once| Bao
+    ESO[External Secrets<br/>Operator] -->|read, write once| Store[ClusterSecretStore<br/>openbao / openbao-apps]
+    Store -->|Kubernetes auth<br/>kv/namespace/| Bao
     ESO -->|create/update| KSecret[K8s Secret]
     App[App Pod] -->|env / volume| KSecret
 
@@ -22,7 +23,7 @@ flowchart LR
 | If it is down — or merely sealed | No `ExternalSecret` resolves, so cert-manager cannot renew and pods that mount a materialised Secret will not start |
 | Health check | `bao status` on every pod → `Sealed: false`; see [Health check](<#health-check>) |
 | UI | `vault.infra.k8s.wlkr.ch` — the one platform UI *not* behind Authentik, deliberately |
-| Files | `payload/platform/openbao/` |
+| Files | [`payload/platform/openbao/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/openbao>) |
 
 ## Configuration
 
@@ -69,6 +70,7 @@ One KV v2 engine at `kv/`; every leaf is `<workload>/<purpose>`, where a workloa
 | `arc-runners/github-app` | `app-id`, `installation-id`, `private-key` | The GitHub App the Actions runners register with — [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md#github-app>); empty until the app is created |
 | `claude-<session>/github` | `token` | One agent session's GitHub PAT, for any session name: `make claude-session-pat SESSION=<session>` stores it, adding `DELETE=1` removes the path. Not part of `make bao-secrets`; write it before the session's first sync. Empty until typed in |
 | `velero/repository` (generated) | `password` | Velero, as the kopia password of every backup repository — [Repository password](<https://homelab.wlkr.ch/platform/velero/index.md#repository-password>); changing it orphans every volume backup |
+| `<app>/oidc`, `<app>/config` (generated) | The workload's OIDC client id or secret, beside its own keys | The workload, and Authentik's blueprint through `secrets-<app>.yaml` in `payload/platform/authentik/`; the workload's `PushSecret` writes it |
 | `dependency-track/sbom-upload` | `api-key` | The SBOM upload job, [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/#secrets>); written even when empty, so the job fails on its own rather than stalling the sync |
 
 The two `route53` leaves are separate IAM users on purpose: cert-manager's [policy](<https://homelab.wlkr.ch/platform/cert-manager/index.md#configuration>) allows only `_acme-challenge` TXT records, while a stolen external-dns key can repoint hostnames.
@@ -86,10 +88,10 @@ Every random value — session keys, break-glass admin passwords, OIDC client pa
 | One `Password` per path, its `secretKeys` the property names | A generator produces one map per call; one key per property keeps every value independent |
 | Sync wave `-2` in the workloads repository | Its `ExternalSecret`s sit at `-1`, and ArgoCD waits for a wave to be healthy before the next |
 
-ESO refuses to write into a path it did not create (`secret not managed by external-secrets`), which keeps it away from everything `make bao-secrets` wrote. Reading a generated value, such as the `akadmin` password:
+ESO refuses to write into a path it did not create (`secret not managed by external-secrets`), which keeps it away from everything `make bao-secrets` wrote. Reading a generated value, such as the `akadmin` password, after [Authenticating locally](<#authenticating-locally>):
 
 ```bash
-kubectl -n openbao exec openbao-0 -- bao kv get -mount=kv -field=bootstrap-password authentik/config
+bao kv get -mount=kv -field=bootstrap-password authentik/config
 ```
 
 ### Operator credential
@@ -110,7 +112,7 @@ ESO authenticates with a short-lived ServiceAccount JWT, which OpenBao validates
 
 | Store | Who may use it | Logs in as | Reaches |
 | --- | --- | --- | --- |
-| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | The platform's own prefixes and every `kv/<app>/oidc` and `kv/<app>/config`, where Authentik reads each workload's OIDC pair; writes only `authentik/`, `monitoring/` and `velero/`, where its `PushSecret`s are |
+| `openbao` | The platform namespaces | `external-secrets-vault` in `external-secrets` | The platform's own prefixes and every `kv/<app>/oidc` and `kv/<app>/config`; writes only `authentik/`, `monitoring/` and `velero/`, where its `PushSecret`s are |
 | `openbao-apps` | The workload and agent-session namespaces the store lists | `external-secrets-vault` in the `ExternalSecret`'s own namespace | `kv/<namespace>/`, with create, read and update |
 
 | Setting | Why |
@@ -176,16 +178,12 @@ A typed value is rotated with `make bao-secrets`, which asks per existing path w
    make bao-secrets
    ```
 
-   For a generated path, delete it. Every key in it changes, with the consequences the reading component's page lists — for `authentik/config` that is every session, token and platform OIDC client at once:
+   For a generated path, delete it, [authenticated locally](<#authenticating-locally>). Every key in it changes, with the consequences the reading component's page lists — for `authentik/config` that is every session, token and platform OIDC client at once:
 
    ```bash
-   kubectl -n openbao exec openbao-0 -- bao kv metadata delete -mount=kv <path>
+   bao kv metadata delete -mount=kv <path>
    ```
-2. Push the new value into the `Secret` now rather than at the next `refreshInterval` — see [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md#usage>):
-
-   ```bash
-   kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --overwrite
-   ```
+2. Push the new value into the `Secret` now rather than at the next `refreshInterval`: [force a sync](<https://homelab.wlkr.ch/platform/external-secrets/index.md#usage>) of each `ExternalSecret` that reads it.
 3. Restart whatever read the old value into an environment variable; a rotated `Secret` reaches a running pod only through a rollout.
 
 ## Health check
@@ -312,10 +310,4 @@ To recreate the operator login with that root token, put it as `root_token` into
 
 ### Backups
 
-Logged in as the operator through the `openbao-active` port-forward from [Authenticating locally](<#authenticating-locally>); its policy covers the snapshot, and a standby refuses it:
-
-```bash
-bao operator raft snapshot save snapshot.bao
-```
-
-The snapshot holds all KV data and OpenBao's own configuration; restore with `bao operator raft snapshot restore`. Store it off-cluster — it is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody. See [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
+A CronJob saves a Raft snapshot nightly; it, the snapshot by hand and the restore are in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>). A snapshot is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody.

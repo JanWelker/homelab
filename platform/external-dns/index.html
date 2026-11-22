@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2680,7 +2680,7 @@ record pointing at nothing when the workload goes.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/external-dns/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/external-dns"><code>payload/platform/external-dns/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2707,8 +2707,8 @@ record pointing at nothing when the workload goes.</p>
 <td>The agents' SSH hostnames are <code>TLSRoute</code>s, one per session. This version reads <code>TLSRoute</code> <code>v1</code>, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see <a href="../gateway-api/#ssh-listener">SSH listener</a></td>
 </tr>
 <tr>
-<td>Domain filter</td>
-<td>Nothing outside that subtree is touched</td>
+<td><code>domainFilters</code>, one entry per subtree a Gateway serves</td>
+<td>Nothing outside them is touched. A zone or subtree missing from the list has its routes ignored rather than refused, which reads as external-dns being down, so a new domain adds it here</td>
 </tr>
 <tr>
 <td>TXT registry with an owner id</td>
@@ -2721,14 +2721,6 @@ record pointing at nothing when the workload goes.</p>
 <tr>
 <td><code>--aws-zone-match-parent</code></td>
 <td>The records live in the <code>wlkr.ch</code> zone, not a zone of their own</td>
-</tr>
-<tr>
-<td>A second entry in <code>domainFilters</code></td>
-<td><code>wollbi.ch</code> is a zone of its own in the same account, for the neighbourhood sites. Without it their routes are ignored rather than refused, which reads as external-dns being down</td>
-</tr>
-<tr>
-<td><code>ssh.wlkr.ch</code> in <code>domainFilters</code></td>
-<td>Same zone as <code>k8s.wlkr.ch</code>, a different subtree</td>
 </tr>
 <tr>
 <td>Credentials as a file (<code>AWS_SHARED_CREDENTIALS_FILE</code>), not environment variables</td>
@@ -2753,9 +2745,10 @@ by <code>make bao-secrets</code> or by hand:</p>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>dig<span class="w"> </span>+short<span class="w"> </span>argo.infra.k8s.wlkr.ch
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>external-dns<span class="w"> </span>port-forward<span class="w"> </span>deploy/external-dns<span class="w"> </span><span class="m">7979</span>:7979
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>curl<span class="w"> </span>-s<span class="w"> </span>localhost:7979/metrics<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>endpoints_total
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># external_dns_source_endpoints_total   8   &lt;- hostnames it can see</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># external_dns_registry_endpoints_total 0   &lt;- records it owns</span>
 </span></code></pre></div>
+<p><code>external_dns_source_endpoints_total</code> counts the hostnames it sees and
+<code>external_dns_registry_endpoints_total</code> the records it owns; with the TXT
+registry, zero owned records while sources are non-zero means it writes nothing.</p>
 <p><code>All records are already up to date, there are no changes for the matching
 hosted zones</code> means it found no zone to change: sources fine, provider not,
 which on Route53 is usually zone matching.</p>

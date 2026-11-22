@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2794,9 +2794,8 @@
 
 
 <h1 id="cloudnativepg">CloudNativePG<a class="headerlink" href="#cloudnativepg" title="Permanent link">&para;</a></h1>
-<p>Every chart that needs PostgreSQL ships its own, each upgraded by whoever
-maintains the chart that buried it. CloudNativePG is one operator in
-<code>cnpg-system</code> and a <code>Cluster</code> resource per database.</p>
+<p>CloudNativePG is one operator in <code>cnpg-system</code> and a <code>Cluster</code> resource per
+database, <a href="../../architecture/decisions/#cloudnativepg-for-every-database-not-the-charts-bundled-one">instead of each chart's bundled PostgreSQL</a>.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2828,7 +2827,7 @@ maintains the chart that buried it. CloudNativePG is one operator in
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/cloudnative-pg/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/cloudnative-pg"><code>payload/platform/cloudnative-pg/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2855,10 +2854,6 @@ maintains the chart that buried it. CloudNativePG is one operator in
 <td>A <code>StatefulSet</code> image bump and hope</td>
 </tr>
 <tr>
-<td>Generated credentials in a <code>-app</code> Secret</td>
-<td>A password in Git, or a manual <code>kubectl create secret</code></td>
-</tr>
-<tr>
 <td>A PodMonitor and an upstream Grafana dashboard</td>
 <td>No visibility until something is already wrong</td>
 </tr>
@@ -2868,16 +2863,17 @@ maintains the chart that buried it. CloudNativePG is one operator in
 Degraded while one runs and the workload is down for its duration. Read
 <a href="https://cloudnative-pg.io/documentation/current/postgres_upgrades/">the upstream guide</a>
 before merging one.</p>
-<p>Databases claim <code>rook-ceph-block</code>, so Ceph's three copies already sit under
+<p>Databases claim <code>rook-ceph-block</code>, so Ceph's replicas already sit under
 every database and a single-instance <code>Cluster</code> is a defensible default: the
 data survives a node loss even when the process does not. Where a workload
-cannot tolerate the restart, <code>instances: 3</code> is the change, as
-<a href="../authentik/#database">Authentik</a> shows.</p>
-<p>The operator itself runs two replicas (<code>replicaCount</code> in <code>application.yaml</code>'s
-<code>valuesObject</code>), spread per <a href="../#replica-placement">Replica placement</a>: the same pod serves the
+cannot tolerate the restart, more <code>instances</code> are the change, as
+<a href="../authentik/#database">Authentik</a> and the workloads repository's
+<code>advent-wollbi</code> and <code>shot-bridge</code> show.</p>
+<p>The operator itself runs more than one replica (<code>replicaCount</code> in
+<code>application.yaml</code>'s <code>valuesObject</code>), spread per <a href="../#replica-placement">Replica placement</a>: the same pod serves the
 <code>Cluster</code> and <code>ScheduledBackup</code> admission webhooks with <code>failurePolicy: Fail</code>,
 so a single replica rescheduling through a Kured drain refuses every apply,
-while leader election keeps one of the two reconciling. The chart ships no
+while leader election keeps one reconciling. The chart ships no
 PodDisruptionBudget.</p>
 <h3 id="backups">Backups<a class="headerlink" href="#backups" title="Permanent link">&para;</a></h3>
 <p>The <a href="https://cloudnative-pg.io/plugin-barman-cloud/">Barman Cloud plugin</a>
@@ -2960,8 +2956,8 @@ registry terms keep changing. The rule for the
    of a single instance and every failover; after 15 seconds the instance
    manager shuts down fast, rolling back open transactions, and the clients
    reconnect. The default update method restarts the primary in place on a
-   spec change, which with the default timeout kept Authentik's database
-   without a writer for three minutes; a switchover promotes a replica first.</li>
+   spec change, leaving no writer for the whole shutdown; a switchover
+   promotes a replica first.</li>
 <li>Back it up with the <a href="#backing-up-a-database">stanza below</a>. Velero's
    nightly PVC snapshot is crash-consistent and restores only to the night it
    was taken; the WAL archive restores to any second.</li>
@@ -2993,7 +2989,7 @@ the user and the store ahead of the <code>Cluster</code> that names them.</p>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SkipDryRunOnMissingResource=true</span>
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
 </span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">retentionPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14d</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">retentionPolicy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14d</span><span class="w">   </span><span class="c1"># Velero's schedules.ttl</span>
 </span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="nt">configuration</span><span class="p">:</span>
 </span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="nt">destinationPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">s3://offsite/&lt;namespace&gt;.db/</span>
 </span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="nt">endpointURL</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://s3.infra.k8s.wlkr.ch</span>
@@ -3011,7 +3007,7 @@ the user and the store ahead of the <code>Cluster</code> that names them.</p>
 </span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;db&gt;</span>
 </span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;namespace&gt;</span>
 </span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">"0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">schedule</span><span class="p">:</span><span class="w"> </span><span class="s">"0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">3</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span><span class="w">   </span><span class="c1"># after Velero's daily schedule</span>
 </span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">immediate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">  </span><span class="nt">backupOwnerReference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">self</span>
 </span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="nt">cluster</span><span class="p">:</span>
@@ -3086,6 +3082,9 @@ archiver. All four are warnings on the daily mail.</p>
   <code>no free disk space for WALs</code> keeps its PVC size although <code>storage.size</code>
   grew; patch that PVC to the new size by hand, as
   <a href="https://cloudnative-pg.io/documentation/current/instance_manager/">upstream documents</a> under "Disk full failure".</li>
+<li><strong>The operator cannot create host-access pods.</strong> The <code>controller-pod-limits</code>
+  <a href="../security-policies/#admission-policies">admission policy</a> refuses any pod
+  it creates with host networking, PID, IPC, a <code>hostPath</code> or privilege.</li>
 <li><strong>A restore is a new <code>Cluster</code>.</strong> Recovery bootstraps a fresh cluster from
   the archive; it never rewinds a running one. Give the new cluster its own
   <code>ObjectStore</code> destination, or its archive would mix with the one it was

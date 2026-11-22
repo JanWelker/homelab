@@ -9,9 +9,9 @@
 | Namespace | `kube-system` |
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) for the events, [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
-| Health check | `tetra tracingpolicy list`; `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
+| Health check | See [Health check](<#health-check>); `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
 | Dashboard | [Tetragon](<https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview>): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
-| Files | `payload/platform/tetragon/`: the chart, the policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
+| Files | [`payload/platform/tetragon/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/tetragon>): the chart, the policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
 ## Configuration
 
@@ -34,7 +34,7 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 
 | Policy | Hook | Fires on | Alerted |
 | --- | --- | --- | --- |
-| `sensitive-file-access` | `security_file_permission` | A read of a control-plane or etcd key, the encryption config, an admin kubeconfig, etcd's data or a kubelet key, matched by the end of the path so a hostPath mounted anywhere counts, unless the reader is a control-plane binary, the kubelet, `kubeadm` or `kube-vip` on the host network, or the path is under `/run/cilium/state/`, where Cilium's route reconciler keeps its own `.wal`; the alert leaves out `etcdctl` in the etcd backup and defrag Jobs, by namespace and the `workload` label, which Tetragon sets to the CronJob's name, and `/proc/self/exe` in the `arc-jobs` workflow pods, which is buildah writing the account files of the image it builds; a read of `/etc/shadow` on the host by anything but PAM's `unix_chkpwd` and systemd's `systemd-userwork`, which every login and `sudo` runs, listed under the resolved `/usr/bin` path as well because `matchBinaries` compares that and Flatcar links `/sbin` and `/usr/sbin` there (in a container any read is PAM in the image, so only writes count there); any write, host or container, to `/etc/passwd`, `/etc/shadow`, `/etc/group`, `/etc/sudoers`, `/etc/ld.so.preload`, or under `/etc/sudoers.d/`, `/etc/cron.d/` and `/root/.ssh/` | Yes: `TetragonSensitiveFileAccess` |
+| `sensitive-file-access` | `security_file_permission` | A read of control-plane, etcd or kubelet key material, an admin kubeconfig or the encryption config, matched by the end of the path so a hostPath mounted anywhere counts; a read of `/etc/shadow` on the host; any write to the account, sudoers, cron, `ld.so.preload` or root SSH files. What touches these by design is exempted per selector in `tracingpolicies.yaml`, the backup Jobs and build pods in the alert, so what remains is someone reading secrets | Yes: `TetragonSensitiveFileAccess` |
 | `process-creds-changed` | `commit_creds` | A container process that moved into another mount, pid, network or user namespace after its exec, except `runc`; the alert leaves out the `cilium` DaemonSet in `kube-system` and all of `rook-ceph`, whose init containers and OSD prepare Jobs `nsenter` into the host by design, and `/proc/self/exe` in the `arc-jobs` workflow pods, which is buildah re-executing itself into [its user namespace](<https://homelab.wlkr.ch/platform/github-runners/index.md>). The hook runs on every execve and fork; the selector keeps the escape signal. Upstream's `matchCapabilityChanges` is not used: it matches a change in either direction, so every entrypoint that drops root fires it | Yes: `TetragonCredentialsEscalated` |
 | `exec-from-writable-path` | `security_bprm_check` | A container executing a file under `/tmp/`, `/var/tmp/`, `/dev/shm/`, `/run/`, `/var/run/`, `/shared/`, `/controller/` or `/plugins/`, except the two binaries an init container copies there and the scripts s6-overlay writes under `/run/s6*` and `/run/service/` at start; the alert leaves out `go` in the `arc-jobs` workflow pods, which runs the test binaries it builds under `/tmp` | Yes: `TetragonExecFromWritablePath` |
 | `library-from-writable-path` | `security_mmap_file` | The same paths mapped with `PROT_EXEC`, which is how a dropped shared library loads, except the native libraries runtimes unpack under `/tmp` on every start: Alloy's Snowflake driver (`/tmp/gosnowflake-cgo*`) and zstd-jni in Dependency-Track (`/tmp/libzstd-jni-*`); the alert leaves out `go` in the `arc-jobs` workflow pods | Yes: `TetragonLibraryFromWritablePath` |
@@ -52,7 +52,11 @@ The allow list in the first policy is the set of things that read key material i
 
 The third policy is the runtime half of an image check: nothing in an image lives on those paths, so a binary executing from one was written after the container started. An emptyDir can be mounted anywhere, so the policy names the mounts this cluster puts binaries into rather than every emptyDir; A `readOnlyRootFilesystem` pod makes the check complete, since then a new binary has nowhere else to land. The offline half, every binary Tetragon saw executed diffed against the image's file list, needs no policy: query Loki by image and binary and resolve each path in `crane export <image> - | tar t`.
 
-Four more detections from the same library need no policy, because the exec event already carries what they look for: `sudo`, a setuid or file-capability binary raising privileges, a fileless exec and a deleted binary. They are [Loki alerts](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
+Four more detections from the same library need no policy, because the exec event already carries what they look for; they are [Loki alerts](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
+
+### Enforcement
+
+Every policy but one only records. `kill-unprivileged-user-namespace` carries `policy-mode: enforce` and a `Sigkill`, because nothing here creates user namespaces and most kernel escalation chains start with one. It stays scoped to containers: a sysctl would cover the host too, where systemd's `PrivateUsers=` needs them. The one exception is `arc-jobs`, where buildah needs one for every image build; its `podSelector` excludes that namespace, at the price of the first seconds of every container (see Pitfalls), and a monitor-only twin records the events there. The limits, checked on the nodes: `Override` and enforcers need `CONFIG_FUNCTION_ERROR_INJECTION`, which Flatcar's kernel does not set, and BPF LSM hooks need `bpf` in the `lsm=` boot argument, which Flatcar does not pass. That leaves `Sigkill`, which upstream warns does not stop an operation already in flight. A policy without `policy-mode` loads in monitor mode and its kill actions are elided, so an enforcing policy has to say so.
 
 ## Usage
 
@@ -80,17 +84,13 @@ kubectl -n kube-system get ds tetragon
 kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra tracingpolicy list   # STATE: enabled
 ```
 
-### Enforcement
-
-Every policy but one only records. `kill-unprivileged-user-namespace` carries `policy-mode: enforce` and a `Sigkill`, because nothing here creates user namespaces and most kernel escalation chains start with one. It stays scoped to containers: a sysctl would cover the host too, where systemd's `PrivateUsers=` needs them. The one exception is `arc-jobs`, where buildah needs one for every image build; its `podSelector` excludes that namespace, at the price of the first seconds of every container (see Pitfalls), and a monitor-only twin records the events there. The limits, checked on the nodes: `Override` and enforcers need `CONFIG_FUNCTION_ERROR_INJECTION`, which Flatcar's kernel does not set, and BPF LSM hooks need `bpf` in the `lsm=` boot argument, which Flatcar does not pass. That leaves `Sigkill`, which upstream warns does not stop an operation already in flight. A policy without `policy-mode` loads in monitor mode and its kill actions are elided, so an enforcing policy has to say so.
-
 ## Pitfalls
 
 > [!WARNING]
 >
 > **A `podSelector` misses a pod's first seconds**
 >
-> The policy filter learns pods from the API and maps their cgroups; a process that runs the moment a container starts is not yet selected, and the test pod's `unshare` went unrecorded by the filtered policy while the unfiltered one killed it. Put the hook an alert depends on in a policy without a `podSelector`, and do exclusions in PromQL.
+> The policy filter learns pods from the API and maps their cgroups; a process that runs the moment a container starts is not yet selected, so a filtered policy misses it. Put the hook an alert depends on in a policy without a `podSelector`, and do exclusions in PromQL.
 
 > [!WARNING]
 >

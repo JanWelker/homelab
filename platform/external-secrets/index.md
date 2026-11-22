@@ -1,6 +1,6 @@
 # External Secrets Operator
 
-[External Secrets Operator (ESO)](<https://external-secrets.io/>) bridges [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) to native Kubernetes `Secret` objects. Workloads consume secrets the standard way — `envFrom`, `volumeMounts`, `imagePullSecrets` — with no sidecar, no init container and no code that knows what a Vault token is.
+[External Secrets Operator (ESO)](<https://external-secrets.io/>) bridges [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) to native Kubernetes `Secret` objects. Workloads consume secrets the standard way — `envFrom`, `volumeMounts`, `imagePullSecrets` — with no sidecar and no code that knows what a Vault token is.
 
 ## At a glance
 
@@ -9,8 +9,8 @@
 | Namespace | `external-secrets` |
 | Depends on | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) at runtime, though not to be installed |
 | If it is down | Secrets already materialised keep working. Nothing rotates, and nothing new resolves |
-| Health check | `kubectl get clustersecretstore` → `Valid` on all three |
-| Files | `payload/platform/external-secrets/`; the stores in `payload/platform/openbao/cluster-secret-store.yaml` |
+| Health check | `kubectl get clustersecretstore` → `Valid` on both |
+| Files | [`payload/platform/external-secrets/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/external-secrets>); the stores in [`payload/platform/openbao/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/openbao>) `cluster-secret-store.yaml` |
 
 ## Configuration
 
@@ -38,7 +38,7 @@ In `application.yaml`'s `valuesObject`:
 | --- | --- |
 | No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
 | Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`) |
-| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a single replica reschedules through a drain every `ExternalSecret`, `PushSecret` and store apply fails — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
+| More than one webhook replica, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a lone replica reschedules through a drain every `ExternalSecret`, `PushSecret` and store apply fails — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 
 ## Usage
 
@@ -124,7 +124,7 @@ kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
 | --- | --- |
 | OpenBao is sealed | [Unseal it](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>) |
 | Kubernetes auth role missing | `make bao-policies` writes all three roles; it needs a [root token](<https://homelab.wlkr.ch/platform/openbao/index.md#generating-a-root-token>) |
-| Wrong `serviceAccountRef` | `external-secrets-vault`, in `external-secrets` for `openbao` and without a namespace for the other two |
+| Wrong `serviceAccountRef` | `external-secrets-vault`, in `external-secrets` for `openbao` and without a namespace for `openbao-apps` |
 
 Then the individual object:
 

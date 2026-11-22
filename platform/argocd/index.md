@@ -1,6 +1,6 @@
 # ArgoCD
 
-ArgoCD is the delivery layer: everything in `payload/` and in the workloads repository reaches the cluster through it. How the Applications are generated and synced is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>); this page covers the chart values and the supporting resources around ArgoCD itself.
+ArgoCD is the delivery layer, [chosen over Flux](<https://homelab.wlkr.ch/architecture/decisions/index.md#argocd-with-an-applicationset-not-flux>): everything in `payload/` and in the workloads repository reaches the cluster through it. How the Applications are generated and synced is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>); this page covers the chart values and the supporting resources around ArgoCD itself.
 
 ## At a glance
 
@@ -10,7 +10,7 @@ ArgoCD is the delivery layer: everything in `payload/` and in the workloads repo
 | Depends on | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) for the OIDC client secret, [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) for its route, [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) for every login |
 | If it is down | Nothing syncs. Running workloads are unaffected |
 | Health check | `kubectl -n argocd get applications` → every one `Synced` and `Healthy` |
-| Files | `payload/argocd/` (Application, `platform` ApplicationSet, `values.yaml`), `payload/platform/argocd-config/` (OIDC `ExternalSecret`, Grafana dashboard), `payload/platform/argocd-projects/` (AppProjects) |
+| Files | [`payload/argocd/`](<https://github.com/JanWelker/homelab/tree/main/payload/argocd>) (Application, `platform` ApplicationSet, `values.yaml`), [`payload/platform/argocd-config/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/argocd-config>) (OIDC `ExternalSecret`, Grafana dashboard), [`payload/platform/argocd-projects/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/argocd-projects>) (AppProjects) |
 
 ## Configuration
 
@@ -18,13 +18,13 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 
 | Setting | Why |
 | --- | --- |
-| `redis-ha.haproxy` `maxSurge: 0` | Three replicas with hard per-host anti-affinity on three schedulable nodes. The default surges a fourth pod with nowhere to land and wedges every rollout; retiring first frees the node |
 | `redis-ha.image.tag`, `redis-ha.haproxy.image.tag` | Both run ahead of the chart, whose exact patch tags stop being rebuilt once the next one lands and so miss base-image security fixes. Renovate carries them forward; each bare `tag:` must be listed under the `pinDigests: false` rule in `renovate.json` |
 | Memory limits, no CPU limits | A CPU limit throttles even on an idle node; memory is not compressible. Sizing is in [Platform](<https://homelab.wlkr.ch/platform/index.md>) |
-| `metrics.enabled` on four components | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
+| `metrics.enabled` | Creates the `<component>-metrics` Services whose names are the `job` label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so `make install-argo` still works first |
 | `configs.params` `server.insecure: true` | TLS terminates at the Gateway. The chart reads this parameter, not `extraArgs`, to point its route at the plaintext port |
 | `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md#usage>) |
-| `resource.customizations` for `HTTPRoute` | The API server defaults `group`, `kind`, `weight` and a catch-all `matches` onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs |
+| `resource.customizations` for `HTTPRoute`, `GRPCRoute` and `PushSecret` | The API server defaults fields no manifest sets: a route's backend `group`, `kind`, `weight` and catch-all `matches`, a `PushSecret`'s `conversionStrategy`. Without the ignore list each object is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs |
+| `resource.exclusions` for the ARC runner CRs | The runner controller creates and deletes them per job; excluded, ArgoCD neither tracks nor diffs that churn |
 | `dex.enabled: false` | `oidc.config` talks to [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own `/auth/callback` either way |
 | `notifications.enabled: false` | Nothing is configured to notify, and the controller's ClusterRole reads every Secret in the cluster |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
@@ -54,11 +54,7 @@ The token has no expiry, so nothing breaks unattended and a leak lasts until rot
    argocd account generate-token --account claude
    ```
 2. Store it with `make bao-secrets`, at `kv/claude-homelab/argocd` (`token`).
-3. Pull it into the sessions now instead of at the next `refreshInterval`; the wrapper reads the mounted file on every call, so no pod restarts:
-
-   ```bash
-   kubectl -n claude-homelab annotate externalsecret claude-homelab-argocd force-sync=$(date +%s) --overwrite
-   ```
+3. [Force a sync](<https://homelab.wlkr.ch/platform/external-secrets/index.md#usage>) of the `claude-homelab-argocd` `ExternalSecret` in `claude-homelab`; the wrapper reads the mounted file on every call, so no pod restarts.
 4. Revoke the previous token; `argocd account get --account claude` lists the IDs with their expiry (a token showing none predates this policy):
 
    ```bash
@@ -91,7 +87,7 @@ argocd login argo-grpc.infra.k8s.wlkr.ch --sso --grpc-web
 kubectl -n argocd get applications
 ```
 
-Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync` has exhausted its retries and waits for a hand sync — see [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>).
+An Application stuck `OutOfSync` has exhausted its [retries](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>) and waits for a hand sync; `ArgoCDApplicationOutOfSync` in [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#alerting>) mails it.
 
 ## Pitfalls
 
@@ -105,4 +101,20 @@ Every Application should be `Synced` and `Healthy`. One that stays `OutOfSync` h
 
 ### Reinstalling the chart
 
-ArgoCD manages ArgoCD, and the ApplicationSet that deploys the cluster sits inside that same Application. When a broken ArgoCD config has been synced by ArgoCD, `make install-argo` reinstalls the chart from the deployment host, and `kubectl apply -f payload/argocd/applicationset-platform.yaml` re-applies the rollout itself.
+ArgoCD manages ArgoCD, and the ApplicationSet that deploys the cluster sits inside that same Application. When ArgoCD has synced a config that breaks it, from the deployment host:
+
+1. Reinstall the chart.
+
+   ```bash
+   make install-argo
+   ```
+2. Re-apply the ApplicationSet.
+
+   ```bash
+   kubectl apply -f payload/argocd/applicationset-platform.yaml
+   ```
+3. Check that the Applications come back.
+
+   ```bash
+   kubectl -n argocd get applications
+   ```

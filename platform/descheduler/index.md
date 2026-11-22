@@ -10,11 +10,11 @@ The scheduler places a pod once and never looks at it again. After [Kured](<http
 | Depends on | [metrics-server](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) for the node usage `LowNodeUtilization` compares |
 | If it is down | Nothing visible: pods stay where the last drain left them |
 | Health check | `kubectl -n descheduler get jobs` → the last run `Complete` |
-| Files | `payload/platform/descheduler/application.yaml` |
+| Files | [`payload/platform/descheduler/application.yaml`](<https://github.com/JanWelker/homelab/blob/main/payload/platform/descheduler/application.yaml>) |
 
 ## Configuration
 
-The values are in `payload/platform/descheduler/application.yaml`; the reasoning:
+The reasoning behind the values in `application.yaml`:
 
 | Setting | Why |
 | --- | --- |
@@ -31,11 +31,10 @@ The values are in `payload/platform/descheduler/application.yaml`; the reasoning
 
 ## Usage
 
-Nothing to operate. To watch a pass:
+Nothing to operate. To run a pass now:
 
 ```bash
 kubectl -n descheduler create job --from=cronjob/descheduler manual-$(date +%s)
-kubectl -n descheduler logs -l app.kubernetes.io/name=descheduler --tail=100
 ```
 
 Every eviction is an event on the pod, so `kubectl get events -A --field-selector reason=Descheduled` shows what moved and why.
@@ -52,5 +51,5 @@ kubectl top nodes    # what LowNodeUtilization sees
 
 - **It only evicts, never schedules.** Where a pod lands is the scheduler's decision; the descheduler assumes the scheduler will do better the second time, which holds after a drain and not much else.
 - **It honours PodDisruptionBudgets.** An eviction that would violate a PDB is refused. The single-instance [CloudNativePG](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) clusters carry none, so that Kured can drain; `PodsWithPVC` is what keeps the descheduler off them.
-- **One pod per over-utilized node per pass** when usage comes from metrics-server. A badly skewed cluster takes several passes, which is the point of running it on a schedule rather than once.
+- **A capped number of evictions per node per pass**, the limits in [Configuration](<#configuration>). A badly skewed cluster takes several passes, which is the point of running it on a schedule rather than once.
 - **A move is a restart.** Anything without a second replica is briefly down when it is evicted; `nodeFit` guarantees a place to go, not zero downtime.

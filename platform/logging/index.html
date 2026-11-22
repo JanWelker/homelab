@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2808,13 +2808,13 @@ journald and are reachable only over SSH to the node that is misbehaving.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/loki/</code> and <code>payload/platform/alloy/</code>, one chart Application each (<code>loki</code>, <code>alloy</code>); <code>payload/platform/logging/</code>, the <code>logging</code> Application: the bucket claim in <code>bucket.yaml</code>, <code>loki-rules.yaml</code>, the Grafana datasource and the Alloy dashboards</td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/loki"><code>payload/platform/loki/</code></a> and <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/alloy"><code>payload/platform/alloy/</code></a>, one chart Application each (<code>loki</code>, <code>alloy</code>); <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/logging"><code>payload/platform/logging/</code></a>, the <code>logging</code> Application: the bucket claim in <code>bucket.yaml</code>, <code>loki-rules.yaml</code>, the Grafana datasource and the Alloy dashboards</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="admonition-title">Not Promtail, and not the <code>grafana/loki</code> chart</p>
-<p>Promtail reached end of life in March 2026; Alloy is its supported replacement. Loki comes from <code>grafana-community/loki</code>: the OSS chart moved to <a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a> in March 2026, and what stayed in <code>grafana/loki</code> is maintained for Grafana Enterprise Logs customers, pins a <code>k8s-sidecar</code> several minor releases behind and closes open-source pull requests with a pointer to the community repository.</p>
+<p>Promtail is end of life; Alloy is its supported replacement. Loki comes from <code>grafana-community/loki</code>, where the OSS chart is maintained now (<a href="https://github.com/grafana-community/helm-charts">grafana-community/helm-charts</a>); <code>grafana/loki</code> serves Grafana Enterprise Logs customers and lags behind.</p>
 </div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="sources">Sources<a class="headerlink" href="#sources" title="Permanent link">&para;</a></h3>
@@ -2902,7 +2902,7 @@ in the line where <code>| json</code> can reach them. See
 </tr>
 <tr>
 <td><code>enableReporting: false</code></td>
-<td>Alloy otherwise sends usage statistics to <code>stats.grafana.org</code>; the policy audit showed the call, and telemetry is off in every component here</td>
+<td>Alloy otherwise sends usage statistics to <code>stats.grafana.org</code>; telemetry is off in every component here</td>
 </tr>
 <tr>
 <td><code>runAsUser: 0</code></td>
@@ -2910,7 +2910,7 @@ in the line where <code>| json</code> can reach them. See
 </tr>
 <tr>
 <td><code>emptyDir</code> at <code>/tmp</code></td>
-<td>The chart's <code>storagePath</code> defaults to <code>/tmp/alloy</code>, unwritable on a read-only root; it holds tailing positions, which did not survive a restart before either</td>
+<td>The chart's <code>storagePath</code> defaults to <code>/tmp/alloy</code>, unwritable on a read-only root; it holds tailing positions</td>
 </tr>
 <tr>
 <td><code>rbac.rules</code> without <code>secrets</code> and <code>configmaps</code></td>

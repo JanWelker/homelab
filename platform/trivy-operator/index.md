@@ -1,6 +1,6 @@
 # Trivy Operator
 
-Aqua Security's [Trivy Operator](<https://aquasecurity.github.io/trivy-operator/latest/>) scans everything the cluster runs and writes every result back as a Kubernetes object. Reading those objects is [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md>); this page is the operator itself.
+Aqua Security's [Trivy Operator](<https://aquasecurity.github.io/trivy-operator/latest/>) scans everything the cluster runs and writes every result back as a Kubernetes object. Reading those objects is [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md>); this page is the operator itself, chosen over Kubescape for the reasons in [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md#trivy-operator-not-kubescape>).
 
 ## At a glance
 
@@ -11,7 +11,7 @@ Aqua Security's [Trivy Operator](<https://aquasecurity.github.io/trivy-operator/
 | If it is down | Reports expire after `scannerReportTTL` and are not rebuilt; `TrivyContainerNotScanned` fires for every container |
 | Health check | `kubectl -n trivy-system get pods,jobs`, then the reconciliation below |
 | Dashboard | [Trivy Operator](<https://monitoring.infra.k8s.wlkr.ch/d/trivy-operator-overview>) |
-| Files | `payload/platform/trivy-operator/`: the chart, `prometheusrule.yaml`, the `findings-history` and `report-prune` CronJobs, the `sbom-readers.yaml` grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
+| Files | [`payload/platform/trivy-operator/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/trivy-operator>): the chart, `prometheusrule.yaml`, the `findings-history` and `report-prune` CronJobs, the `sbom-readers.yaml` grant and a dashboard written for this cluster. The namespace labels and the default-deny policy are in [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md>) |
 
 | Scanner | Produces | Answers |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ The values in `application.yaml` that are not defaults:
 | `ignoreUnfixed: false`, every severity | A finding with no fix is usually the signal that the base image is wrong, and a finding the scanner could not grade is worth reading |
 | `ignorePolicy.authentik` | The image carries thousands of unfixed Debian findings and its reports exceed the etcd request limit. The Rego (v0 syntax, `object.get` because `FixedVersion` is absent when there is no fix) drops only findings that have no fix *and* are below HIGH |
 | `skipFiles` | Debian's placeholder key in every CloudNativePG image, which serves TLS from certificates of its own, would otherwise sit in every Postgres report. Trivy's Rego input for a secret has no path, so an ignore policy could only drop the `private-key` rule and every real key with it; this skips one exact path |
-| `additionalVulnerabilityReportFields` without `Description` and `Links` | A report is one API write, capped at 2 MiB; `Links` alone is over half the payload. An oversized report is rejected with nothing but an operator log line |
+| `additionalVulnerabilityReportFields` without `Description` and `Links` | A report is one API write, capped at 2 MiB, and `Links` is most of it. An oversized report is rejected with nothing but an operator log line |
 | `operator.scanJobTimeout` and `trivy.timeout`, kept equal | The first is the Job's `activeDeadlineSeconds` and kills the pod whatever Trivy is doing; the second is Trivy's own flag and only fires if it is the shorter. Raising one alone does nothing |
 | `accessGlobalSecretsAndServiceAccount: false` | The default grants the operator read on every Secret in the cluster so scan jobs can borrow a workload's `imagePullSecrets`, and every image here is public. A private image would fail its scan and raise `TrivyContainerNotScanned`. The flag also drops `nodes/proxy`, which node-collector needs for the kubelet CIS checks, so `node-collector-rbac.yaml` grants it back. The Job runs as the operator's ServiceAccount, the chart has no other, so it cannot be narrower |
 | `clusterSbomCacheEnabled: false` | With the cache, every workload after the first to use an image gets an `SbomReport` from the cached SBOM and no `VulnerabilityReport`. Upstream: [trivy-operator\#1668](<https://github.com/aquasecurity/trivy-operator/issues/1668>) |
@@ -49,17 +49,17 @@ The values in `application.yaml` that are not defaults:
 
 ### Alerting
 
-The rules in `prometheusrule.yaml`. Reports expire and are rebuilt every `scannerReportTTL`, so a "new" finding is one absent from the reports two days ago rather than from the previous scrape, and every rule waits longer than a rebuild.
+The rules in `prometheusrule.yaml`. Reports expire and are rebuilt every `scannerReportTTL`, so a "new" finding is one absent from the reports an `offset` earlier rather than from the previous scrape, and every rule waits longer than a rebuild.
 
 | Alert | Fires when | Why this shape |
 | --- | --- | --- |
-| `TrivyContainerNotScanned` | A running container has had no `VulnerabilityReport` for 2h | A rejected report is never written, so it looks identical to a clean one; only reconciling against what runs finds it |
-| `TrivyExposedSecretNew` | A secret finding, by rule and path, was in no report two days ago, whichever container carried it | An accepted finding never clears, so an absolute rule would fire forever; and the same finding in a new pod is not new |
-| `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have two days ago | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#what-is-load-bearing>); what matters is a new one |
-| `TrivyConfigAuditCritical` | Any workload fails a critical config-audit check for 2h | Nothing does today, so the rule is absolute |
-| `TrivyComplianceRegression` | A framework has more failing controls than a day ago, for 12h | Compliance is recomputed every six hours; two runs above yesterday is drift, not a rebuild |
+| `TrivyContainerNotScanned` | A running container has no `VulnerabilityReport` | A rejected report is never written, so it looks identical to a clean one; only reconciling against what runs finds it |
+| `TrivyExposedSecretNew` | A secret finding, by rule and path, was in no report an `offset` earlier, whichever container carried it | An accepted finding never clears, so an absolute rule would fire forever; and the same finding in a new pod is not new |
+| `TrivyRbacCriticalNew` | A Role or ClusterRole gains a critical finding it did not have an `offset` earlier | Every critical ClusterRole is a chart's operator role or Kubernetes' own, see [Vulnerability Triage](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#what-is-load-bearing>); what matters is a new one |
+| `TrivyConfigAuditCritical` | Any workload fails a critical config-audit check | A critical misconfiguration is fixed, not accepted, so the rule is absolute |
+| `TrivyComplianceRegression` | A framework has more failing controls than an `offset` earlier | Compliance is recomputed on `compliance.cron`; a `for` spanning two runs makes it drift, not a rebuild |
 
-The two "new" rules also require the operator to have been reporting two days ago, so a fresh cluster does not page on every existing finding.
+The two "new" rules also require the operator to have been reporting at that offset, so a fresh cluster does not page on every existing finding.
 
 `TrivyContainerNotScanned` compares every running container against the containers that have a `VulnerabilityReport` and names the difference:
 
@@ -83,7 +83,7 @@ The dashboard's stat and by-severity panels take `max by (image_digest)` before 
 
 ### History
 
-Reports live for `scannerReportTTL` and Prometheus for its `retention`, so neither can answer whether a count went up over a quarter. The `findings-history` CronJob in `findings-history.yaml` lists every report kind once a day and prints one JSON line per namespace, and per compliance framework, to stdout; Alloy ships it like any container log and Loki keeps that one stream far longer than the rest (`retention_stream` in `loki/application.yaml`). The dashboard's last row reads it. Images are counted once per digest per namespace, the same rule the dashboard applies.
+Reports live for `scannerReportTTL` and Prometheus for its `retention`, so neither can answer whether a count went up over a quarter. The `findings-history` CronJob in `findings-history.yaml` lists every report kind on its schedule and prints one JSON line per namespace, and per compliance framework, to stdout; Alloy ships it like any container log and Loki keeps that one stream far longer than the rest (`retention_stream` in `loki/application.yaml`). The dashboard's last row reads it. Images are counted once per digest per namespace, the same rule the dashboard applies.
 
 ```text
 {namespace="trivy-system", container="findings-history"} | json | kind="vulnerabilities" | namespace="argocd"
@@ -91,11 +91,11 @@ Reports live for `scannerReportTTL` and Prometheus for its `retention`, so neith
 
 ### SBOM export
 
-`sbomGenerationEnabled` makes the operator write one CycloneDX `SbomReport` per container next to the `VulnerabilityReport`. Nothing here reads them; [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/>) in the workloads repository uploads every one of them nightly and keeps the history Trivy's 24h reports cannot. `sbom-readers.yaml` is the `ClusterRole` and binding that let its upload job list them, and the ReplicaSets and Jobs, so it can skip the reports of superseded revisions and finished Jobs: the `apps` project may not create cluster-scoped RBAC, and which workload reads the operator's findings is decided here.
+`sbomGenerationEnabled` makes the operator write one CycloneDX `SbomReport` per container next to the `VulnerabilityReport`. Nothing here reads them; [Dependency-Track](<https://homelab-apps.wlkr.ch/dependency-track/>) in the workloads repository uploads every one of them nightly and keeps the history Trivy's expiring reports cannot. `sbom-readers.yaml` is the `ClusterRole` and binding that let its upload job list them, and the ReplicaSets and Jobs, so it can skip the reports of superseded revisions and finished Jobs: the `apps` project may not create cluster-scoped RBAC, and which workload reads the operator's findings is decided here.
 
 ### Report pruning
 
-`SbomReport`s and `ExposedSecretReport`s carry no TTL, unlike the `VulnerabilityReport`s: they live as long as the scanned ReplicaSet, and Deployments keep ten superseded revisions scaled to zero. The reports are most of etcd's bytes, and each API server holds them decoded in its watch cache. The `report-prune` CronJob in `report-prune.yaml` deletes the two kinds hourly for every ReplicaSet scaled to zero; the Dependency-Track upload skips those anyway, and the two `ScanOnlyCurrentRevisions` settings keep the operator from writing them again. It also deletes ownerless reports, which garbage collection never reaches, the leftovers of the disabled cluster SBOM cache, and every report of a Job: `targetWorkloads` leaves `job` out, because the operator rescans a finished Job daily and the workload sharing its image is scanned. CronJobs stay.
+`SbomReport`s and `ExposedSecretReport`s carry no TTL, unlike the `VulnerabilityReport`s: they live as long as the scanned ReplicaSet, and Deployments keep ten superseded revisions scaled to zero. The reports are most of etcd's bytes, and each API server holds them decoded in its watch cache. The `report-prune` CronJob in `report-prune.yaml` deletes the two kinds on its schedule for every ReplicaSet scaled to zero; the Dependency-Track upload skips those anyway, and the two `ScanOnlyCurrentRevisions` settings keep the operator from writing them again. It also deletes ownerless reports, which garbage collection never reaches, the leftovers of the disabled cluster SBOM cache, and every report of a Job: `targetWorkloads` leaves `job` out, because the operator rescans a finished Job daily and the workload sharing its image is scanned. CronJobs stay.
 
 ## Usage
 
@@ -149,7 +149,7 @@ Four ways a workload ends up with no `VulnerabilityReport`, all silent from the 
 | --- | --- | --- |
 | No report, no `SbomReport`, operator logs `ResourceExhausted ... larger than max` or `etcdserver: request is too large` | The report exceeds the API write ceiling | Operator log. Fix: the fields and ignore policies above |
 | No report, Job events show `DeadlineExceeded` | `scanJobTimeout` elapsed on a large image | `kubectl -n trivy-system get events --field-selector reason=DeadlineExceeded`, before `scanJobTTL` deletes the Job |
-| Some containers of a multi-container workload missing; job succeeded; log has `failed to analyze layer ... unexpected EOF` | A scan container died reading the image and the operator keeps only containers that exited 0. Hits workloads with several containers on one image (Rook, Cilium). Not the shared cache: concurrent scans with it pass | Scan job pod logs |
+| Some containers of a multi-container workload missing; job succeeded; log has `failed to analyze layer ... unexpected EOF` | A scan container died reading the image and the operator keeps only containers that exited 0. Hits workloads with several containers on one image (Rook, Cilium) | Scan job pod logs |
 | Reports missing at random, operator restart count climbing, last state `OOMKilled` | The report cache outgrew the memory limit | `kubectl -n trivy-system get pod -l app.kubernetes.io/name=trivy-operator -o jsonpath='{..lastState}'`. Fix: `resources` in `application.yaml` |
 | `SbomReport` exists, no `VulnerabilityReport` | SBOM cache reuse path ran `trivy sbom` and produced nothing | Confirm `clusterSbomCacheEnabled` is off |
 

@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2694,7 +2694,7 @@ API is an aggregated Kubernetes API that core controllers read directly.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/metrics-server/</code>, <code>payload/platform/kubelet-csr-approver/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/metrics-server"><code>payload/platform/metrics-server/</code></a>, <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/kubelet-csr-approver"><code>payload/platform/kubelet-csr-approver/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2702,7 +2702,7 @@ API is an aggregated Kubernetes API that core controllers read directly.</p>
 <h3 id="verifying-the-kubelet-instead-of-trusting-it">Verifying the kubelet instead of trusting it<a class="headerlink" href="#verifying-the-kubelet-instead-of-trusting-it" title="Permanent link">&para;</a></h3>
 <p>A kubelet serves a self-signed certificate by default, so the usual shortcut
 is <code>--kubelet-insecure-tls</code>, which makes the metrics path spoofable by anything
-that can occupy a kubelet's address. Kubernetes deliberately does not
+that can occupy a kubelet's address. Kubernetes does not
 auto-approve <code>kubernetes.io/kubelet-serving</code> CSRs, since a compromised node
 could request a certificate for any name, so doing it properly takes three
 pieces:</p>
@@ -2723,7 +2723,7 @@ pieces:</p>
 <tr>
 <td><a href="https://github.com/postfinance/kubelet-csr-approver">kubelet-csr-approver</a></td>
 <td><code>payload/platform/kubelet-csr-approver/application.yaml</code></td>
-<td>Approves those CSRs, constrained by <code>providerRegex</code> (only the inventory's node names; anything else is <strong>denied</strong>), <code>providerIpPrefixes</code> (the nodes' subnet), a one-day <code>maxExpirationSeconds</code>, and <code>bypassDnsResolution</code> because node names come from the Ansible inventory, not a resolver</td>
+<td>Approves those CSRs, constrained by <code>providerRegex</code> (only the inventory's node names; anything else is <strong>denied</strong>), <code>providerIpPrefixes</code> (the nodes' subnet), a short <code>maxExpirationSeconds</code>, and <code>bypassDnsResolution</code> because node names come from the Ansible inventory, not a resolver</td>
 </tr>
 <tr>
 <td><code>--kubelet-certificate-authority</code></td>
@@ -2745,7 +2745,7 @@ pieces:</p>
 <td>The default list already sets <code>--kubelet-preferred-address-types</code>, and a flag passed twice leaves the winner to parsing order. It is <code>InternalIP</code> because node hostnames do not resolve here</td>
 </tr>
 <tr>
-<td>Two replicas and a PodDisruptionBudget</td>
+<td><code>replicas</code> above one and a PodDisruptionBudget</td>
 <td>A node reboot does not take the resource metrics API down</td>
 </tr>
 <tr>

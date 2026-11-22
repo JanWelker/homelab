@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -1223,6 +1223,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ssh-listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSH listener
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1245,17 +1256,6 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Route hostnames
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ssh-listener" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        SSH listener
       </span>
     </span>
   </a>
@@ -2532,6 +2532,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#ssh-listener" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        SSH listener
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2554,17 +2565,6 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Route hostnames
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ssh-listener" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        SSH listener
       </span>
     </span>
   </a>
@@ -2738,11 +2738,11 @@
 
 
 <h1 id="gateway-api">Gateway API<a class="headerlink" href="#gateway-api" title="Permanent link">&para;</a></h1>
-<p>The <a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a> replaces the
-Ingress resource, implemented by Cilium for both load balancing and TLS
-termination. The improvement is the split in ownership: the cluster owns the
-<code>Gateway</code> — addresses, certificates, ports — and each app owns its own
-<code>HTTPRoute</code>.</p>
+<p>The <a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a>, implemented by
+Cilium for load balancing and TLS termination, is
+<a href="../../architecture/decisions/#gateway-api-not-ingress">used instead of Ingress</a>
+for its split in ownership: the cluster owns the <code>Gateway</code> — addresses,
+certificates, ports — and each app its <code>HTTPRoute</code>.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2770,13 +2770,14 @@ termination. The improvement is the split in ownership: the cluster owns the
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/gateway-api/</code>, <code>payload/platform/gateway-api-crds/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/gateway-api"><code>payload/platform/gateway-api/</code></a>, <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/gateway-api-crds"><code>payload/platform/gateway-api-crds/</code></a></td>
 </tr>
 </tbody>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<p>Two Gateways in <code>kube-system</code>, each with a dedicated address from the Cilium
-L2 pool, defined in <code>gateways.yaml</code>. <code>apps-gateway</code> serves user-facing
+<p>Two Gateways in <code>kube-system</code>, defined in <code>gateways.yaml</code>, each with an
+address from its own Cilium pool, announced over L2 and BGP
+(<a href="../cilium/#configuration">Cilium</a>). <code>apps-gateway</code> serves user-facing
 workloads under the router's public address; <code>infra-gateway</code> serves the
 platform UIs, LAN only. A route names a listener by <code>sectionName</code>:</p>
 <table>
@@ -2821,8 +2822,8 @@ listener:</p>
 <ol>
 <li>A <code>Certificate</code> in <code>payload/platform/certificates/certificates.yaml</code>.</li>
 <li>An HTTPS listener in <code>gateways.yaml</code> referencing it.</li>
-<li>The zone in <code>domainFilters</code> in <code>payload/platform/external-dns/application.yaml</code>,
-   or its routes are silently ignored.</li>
+<li>The zone in external-dns's <code>domainFilters</code>; see
+   <a href="../external-dns/#configuration">external-dns</a>.</li>
 </ol>
 <p>The HTTPS listeners terminate TLS with cert-manager's wildcard certificates, so a new
 hostname needs no certificate of its own and nothing to renew. Each HTTPS
@@ -2848,6 +2849,44 @@ bundle <code>standard-install.yaml</code> before ArgoCD exists, and the
 <code>gateway-api-crds</code> Application applies <code>config/crd/standard</code>, the directory
 that bundle is generated from. The Makefile reads the tag out of the
 Application, so the two cannot drift apart.</p>
+<h3 id="ssh-listener">SSH listener<a class="headerlink" href="#ssh-listener" title="Permanent link">&para;</a></h3>
+<p>The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
+port 443, the only port the router forwards to <code>apps-gateway</code>. Each agent's
+chart ships a <code>TLSRoute</code> for <code>&lt;session&gt;.ssh.wlkr.ch</code> pointing at its SSH
+Service.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode: Passthrough</code></td>
+<td>Cilium rejects a <code>TLS</code> listener in <code>Terminate</code> mode: the listener goes <code>Accepted=False</code> with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate</td>
+</tr>
+<tr>
+<td>No <code>Certificate</code> here</td>
+<td>A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from <code>letsencrypt-prod</code> in the agent's namespace</td>
+</tr>
+<tr>
+<td><code>allowedRoutes.kinds: TLSRoute</code></td>
+<td>The listener serves nothing else, and <code>HTTPRoute</code>s cannot attach to it by accident</td>
+</tr>
+<tr>
+<td><code>TLSRoute</code> <code>v1</code></td>
+<td>Installed in the standard channel of the Gateway API CRDs; <code>v1alpha2</code> is no longer served. After the CRDs change, restart <code>cilium-operator</code> (<a href="../cilium/#pitfalls">why</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>DNS needs no record by hand: <a href="../external-dns/#configuration">external-dns</a>
+reads the <code>TLSRoute</code> hostnames and publishes the router's public address, as
+for an <code>HTTPRoute</code>. A client connects with a TLS tunnel as its <code>ProxyCommand</code>,
+for example <code>openssl s_client -quiet -connect %h:443 -servername %h</code>.</p>
+<p>Envoy checks its egress against the backend like any Gateway traffic, so the
+agents' namespace must admit the <code>ingress</code> entity on the SSH port; see
+<a href="../security-policies/#network-policies">Security Policies</a>.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>Where the chart renders an <code>HTTPRoute</code> (Argo CD, OpenBao, Grafana), enable
 it in the values; a route only becomes a file of its own when it targets
@@ -2874,8 +2913,9 @@ name:</p>
 </span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-svc</span>
 </span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">          </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
 </span></code></pre></div>
-<p>Use <code>infra-gateway</code> with a <code>*.infra.k8s.wlkr.ch</code> hostname for platform tools,
-and the listener from the table above whose hostnames cover the name.</p>
+<p>A platform UI uses <code>infra-gateway</code> and carries the security headers as a
+<code>ResponseHeaderModifier</code> filter; copy it from
+<code>payload/platform/cilium/httproute.yaml</code>.</p>
 <h3 id="route-hostnames">Route hostnames<a class="headerlink" href="#route-hostnames" title="Permanent link">&para;</a></h3>
 <p><code>apps-gateway</code> admits every namespace; the <code>route-hostnames-reserved</code>
 <a href="../security-policies/#admission-policies">policy</a> reserves names:</p>
@@ -2905,49 +2945,13 @@ and the listener from the table above whose hostnames cover the name.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="ssh-listener">SSH listener<a class="headerlink" href="#ssh-listener" title="Permanent link">&para;</a></h3>
-<p>The in-cluster Claude Code agents are reached over SSH tunnelled in TLS on
-port 443, the only port the router forwards to <code>apps-gateway</code>. Each agent's
-chart ships a <code>TLSRoute</code> for <code>&lt;session&gt;.ssh.wlkr.ch</code> pointing at its SSH
-Service.</p>
-<table>
-<thead>
-<tr>
-<th>Setting</th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mode: Passthrough</code></td>
-<td>Cilium rejects a <code>TLS</code> listener in <code>Terminate</code> mode: the listener goes <code>Accepted=False</code> with "Using TLSRoute with TLS.mode Terminate is unsupported", and no route attaches. The Gateway forwards the stream by SNI and the agent pod ends the TLS with its own certificate</td>
-</tr>
-<tr>
-<td>No <code>Certificate</code> here</td>
-<td>A Secret cannot be referenced across namespaces, and a passthrough listener has no use for one. The chart requests one per session from <code>letsencrypt-prod</code> in the agent's namespace</td>
-</tr>
-<tr>
-<td><code>allowedRoutes.kinds: TLSRoute</code></td>
-<td>The listener serves nothing else, and <code>HTTPRoute</code>s cannot attach to it by accident</td>
-</tr>
-<tr>
-<td><code>TLSRoute</code> <code>v1</code></td>
-<td>Installed in the standard channel of the Gateway API CRDs; <code>v1alpha2</code> is no longer served. Cilium reads the CRD once at operator start, so after the CRDs change, restart <code>cilium-operator</code></td>
-</tr>
-</tbody>
-</table>
-<p>DNS needs no record by hand: <a href="../external-dns/#configuration">external-dns</a>
-reads the <code>TLSRoute</code> hostnames and publishes the router's public address, as
-for an <code>HTTPRoute</code>. A client connects with a TLS tunnel as its <code>ProxyCommand</code>,
-for example <code>openssl s_client -quiet -connect %h:443 -servername %h</code>.</p>
-<p>Envoy checks its egress against the backend like any Gateway traffic, so the
-agents' namespace must admit the <code>ingress</code> entity on the SSH port; see
-<a href="../security-policies/#network-policies">Security Policies</a>.</p>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<p>Check that each HTTP listener carries only the redirect — <code>http</code> should show
-exactly <code>1</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>gateway<span class="w"> </span>infra-gateway<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .status.listeners[*]}{.name}={.attachedRoutes}{"\n"}{end}'</span>
+<p>Check that each Gateway's HTTP listener carries only the redirect — <code>http</code>
+should show exactly <code>1</code> on both:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">for</span><span class="w"> </span>gw<span class="w"> </span><span class="k">in</span><span class="w"> </span>apps-gateway<span class="w"> </span>infra-gateway<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>kubectl<span class="w"> </span>get<span class="w"> </span>gateway<span class="w"> </span><span class="s2">"</span><span class="nv">$gw</span><span class="s2">"</span><span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.metadata.name}: {range .status.listeners[*]}{.name}={.attachedRoutes} {end}{"\n"}'</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">done</span>
 </span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition danger">

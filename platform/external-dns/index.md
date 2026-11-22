@@ -10,7 +10,7 @@
 | Depends on | [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) for its Route53 credential, [Gateway API](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) for the HTTPRoutes it reads |
 | If it is down | New hostnames get no DNS record. Existing records are left alone |
 | Health check | `kubectl -n external-dns logs deploy/external-dns --tail=50` |
-| Files | `payload/platform/external-dns/` |
+| Files | [`payload/platform/external-dns/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/external-dns>) |
 
 ## Configuration
 
@@ -21,12 +21,10 @@ In `application.yaml`'s `valuesObject`:
 | Sources `gateway-httproute` and `gateway-grpcroute` | Every HTTP and gRPC hostname here is a route; the address comes from the route's parent `Gateway`, so nothing is written down twice. The `GRPCRoute` is Argo CD's, see [CLI access](<https://homelab.wlkr.ch/platform/argocd/index.md#cli-access>) |
 | `target` annotation on `apps-gateway` | The cluster sits behind NAT, so the Gateway's own address is a LAN one nobody outside can reach. external-dns reads the public address off the Gateway, not the routes, so every `*.k8s.wlkr.ch` record gets it once. `infra-gateway` has none: those names stay LAN-only on purpose |
 | Source `gateway-tlsroute` | The agents' SSH hostnames are `TLSRoute`s, one per session. This version reads `TLSRoute` `v1`, the version installed, so each session's record appears with its route and no wildcard record exists to maintain; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) |
-| Domain filter | Nothing outside that subtree is touched |
+| `domainFilters`, one entry per subtree a Gateway serves | Nothing outside them is touched. A zone or subtree missing from the list has its routes ignored rather than refused, which reads as external-dns being down, so a new domain adds it here |
 | TXT registry with an owner id | A companion `_externaldns.*` TXT record stamps every record it creates, and it only modifies or deletes records carrying that stamp. Hand-made records in the same zone are invisible to it |
 | Policy `sync` | Deleting an HTTPRoute removes its record. Safe only because of the registry; without it `sync` would happily delete your MX records |
 | `--aws-zone-match-parent` | The records live in the `wlkr.ch` zone, not a zone of their own |
-| A second entry in `domainFilters` | `wollbi.ch` is a zone of its own in the same account, for the neighbourhood sites. Without it their routes are ignored rather than refused, which reads as external-dns being down |
-| `ssh.wlkr.ch` in `domainFilters` | Same zone as `k8s.wlkr.ch`, a different subtree |
 | Credentials as a file (`AWS_SHARED_CREDENTIALS_FILE`), not environment variables | The environment puts a key that can repoint every hostname into `kubectl describe pod`, crash dumps and every child process. The `ExternalSecret` templates an INI `credentials` key, the only key mounted; the original keys stay in the Secret so nothing still reading them breaks |
 
 The credential is a separate IAM user and OpenBao path from cert-manager's — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#kv-layout>) for why. Its policy needs `route53:ChangeResourceRecordSets` on the hosted zone, plus `route53:ListHostedZones` and `route53:ListResourceRecordSets`.
@@ -48,9 +46,9 @@ kubectl -n external-dns logs deploy/external-dns --tail=50
 dig +short argo.infra.k8s.wlkr.ch
 kubectl -n external-dns port-forward deploy/external-dns 7979:7979
 curl -s localhost:7979/metrics | grep endpoints_total
-# external_dns_source_endpoints_total   8   <- hostnames it can see
-# external_dns_registry_endpoints_total 0   <- records it owns
 ```
+
+`external_dns_source_endpoints_total` counts the hostnames it sees and `external_dns_registry_endpoints_total` the records it owns; with the TXT registry, zero owned records while sources are non-zero means it writes nothing.
 
 `All records are already up to date, there are no changes for the matching hosted zones` means it found no zone to change: sources fine, provider not, which on Route53 is usually zone matching.
 

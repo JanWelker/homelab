@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -1520,6 +1520,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enforcement
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1544,23 +1555,6 @@
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Health check">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#enforcement" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Enforcement
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2521,6 +2515,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Enforcement
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2545,23 +2550,6 @@
       </span>
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Health check">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#enforcement" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Enforcement
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2744,7 +2732,7 @@ sees a shell spawned in a running container.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>tetra tracingpolicy list</code>; <code>TetragonPolicyNotLoaded</code> and <code>TetragonEventsLost</code> otherwise</td>
+<td>See <a href="#health-check">Health check</a>; <code>TetragonPolicyNotLoaded</code> and <code>TetragonEventsLost</code> otherwise</td>
 </tr>
 <tr>
 <td>Dashboard</td>
@@ -2752,7 +2740,7 @@ sees a shell spawned in a running container.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/tetragon/</code>: the chart, the policies, <code>prometheusrule.yaml</code> and a dashboard written for this cluster, since upstream ships none</td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/tetragon"><code>payload/platform/tetragon/</code></a>: the chart, the policies, <code>prometheusrule.yaml</code> and a dashboard written for this cluster, since upstream ships none</td>
 </tr>
 </tbody>
 </table>
@@ -2821,7 +2809,7 @@ taint hook of <code>kernel-module-load</code> record the host too. Every hook ca
 <tr>
 <td><code>sensitive-file-access</code></td>
 <td><code>security_file_permission</code></td>
-<td>A read of a control-plane or etcd key, the encryption config, an admin kubeconfig, etcd's data or a kubelet key, matched by the end of the path so a hostPath mounted anywhere counts, unless the reader is a control-plane binary, the kubelet, <code>kubeadm</code> or <code>kube-vip</code> on the host network, or the path is under <code>/run/cilium/state/</code>, where Cilium's route reconciler keeps its own <code>.wal</code>; the alert leaves out <code>etcdctl</code> in the etcd backup and defrag Jobs, by namespace and the <code>workload</code> label, which Tetragon sets to the CronJob's name, and <code>/proc/self/exe</code> in the <code>arc-jobs</code> workflow pods, which is buildah writing the account files of the image it builds; a read of <code>/etc/shadow</code> on the host by anything but PAM's <code>unix_chkpwd</code> and systemd's <code>systemd-userwork</code>, which every login and <code>sudo</code> runs, listed under the resolved <code>/usr/bin</code> path as well because <code>matchBinaries</code> compares that and Flatcar links <code>/sbin</code> and <code>/usr/sbin</code> there (in a container any read is PAM in the image, so only writes count there); any write, host or container, to <code>/etc/passwd</code>, <code>/etc/shadow</code>, <code>/etc/group</code>, <code>/etc/sudoers</code>, <code>/etc/ld.so.preload</code>, or under <code>/etc/sudoers.d/</code>, <code>/etc/cron.d/</code> and <code>/root/.ssh/</code></td>
+<td>A read of control-plane, etcd or kubelet key material, an admin kubeconfig or the encryption config, matched by the end of the path so a hostPath mounted anywhere counts; a read of <code>/etc/shadow</code> on the host; any write to the account, sudoers, cron, <code>ld.so.preload</code> or root SSH files. What touches these by design is exempted per selector in <code>tracingpolicies.yaml</code>, the backup Jobs and build pods in the alert, so what remains is someone reading secrets</td>
 <td>Yes: <code>TetragonSensitiveFileAccess</code></td>
 </tr>
 <tr>
@@ -2916,25 +2904,8 @@ land. The offline half, every binary Tetragon saw executed diffed against
 the image's file list, needs no policy: query Loki by image and binary and
 resolve each path in <code>crane export &lt;image&gt; - | tar t</code>.</p>
 <p>Four more detections from the same library need no policy, because the exec
-event already carries what they look for: <code>sudo</code>, a setuid or file-capability
-binary raising privileges, a fileless exec and a deleted binary. They are
+event already carries what they look for; they are
 <a href="../logging/#alerting">Loki alerts</a>.</p>
-<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>The dashboard is the summary; the queries below are what its Loki panels run.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Everything a policy caught
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{namespace="kube-system", container="export-stdout"} | json | process_kprobe_policy_name!=""
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a># Every exec in one namespace, with arguments
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>{namespace="kube-system", container="export-stdout"} | json | process_exec_process_pod_namespace="home-assistant"
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  | line_format "{{.process_exec_process_binary}} {{.process_exec_process_arguments}}"
-</span></code></pre></div>
-<p>The <code>tetra</code> CLI in the agent pod does the same live:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>getevents<span class="w"> </span>-o<span class="w"> </span>compact<span class="w"> </span>--namespaces<span class="w"> </span>home-assistant
-</span></code></pre></div>
-<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>ds<span class="w"> </span>tetragon
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>tracingpolicy<span class="w"> </span>list<span class="w">   </span><span class="c1"># STATE: enabled</span>
-</span></code></pre></div>
 <h3 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h3>
 <p>Every policy but one only records. <code>kill-unprivileged-user-namespace</code>
 carries <code>policy-mode: enforce</code> and a <code>Sigkill</code>, because nothing here
@@ -2951,13 +2922,28 @@ Flatcar does not pass. That leaves <code>Sigkill</code>, which upstream warns do
 not stop an operation already in flight. A policy without <code>policy-mode</code>
 loads in monitor mode and its kill actions are elided, so an enforcing
 policy has to say so.</p>
+<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
+<p>The dashboard is the summary; the queries below are what its Loki panels run.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a># Everything a policy caught
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>{namespace="kube-system", container="export-stdout"} | json | process_kprobe_policy_name!=""
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a># Every exec in one namespace, with arguments
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>{namespace="kube-system", container="export-stdout"} | json | process_exec_process_pod_namespace="home-assistant"
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  | line_format "{{.process_exec_process_binary}} {{.process_exec_process_arguments}}"
+</span></code></pre></div>
+<p>The <code>tetra</code> CLI in the agent pod does the same live:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>getevents<span class="w"> </span>-o<span class="w"> </span>compact<span class="w"> </span>--namespaces<span class="w"> </span>home-assistant
+</span></code></pre></div>
+<h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>ds<span class="w"> </span>tetragon
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/tetragon<span class="w"> </span>-c<span class="w"> </span>tetragon<span class="w"> </span>--<span class="w"> </span>tetra<span class="w"> </span>tracingpolicy<span class="w"> </span>list<span class="w">   </span><span class="c1"># STATE: enabled</span>
+</span></code></pre></div>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">A <code>podSelector</code> misses a pod's first seconds</p>
 <p>The policy filter learns pods from the API and maps their cgroups; a
 process that runs the moment a container starts is not yet selected,
-and the test pod's <code>unshare</code> went unrecorded by the filtered policy
-while the unfiltered one killed it. Put the hook an alert depends on in
+so a filtered policy misses it. Put the hook an alert depends on in
 a policy without a <code>podSelector</code>, and do exclusions in PromQL.</p>
 </div>
 <div class="admonition warning">

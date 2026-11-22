@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2599,7 +2599,7 @@ is what runs — see <a href="../../operations/control-plane-vip/">Control Plane
 </tr>
 <tr>
 <td><code>reinstall.yaml</code></td>
-<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. Arming refuses while <code>bootstrap_cluster</code> is <code>true</code> and the API VIP answers, or when an <a href="../../operations/control-plane-vip/#endpoint-name">endpoint name</a> is not the one the cluster publishes. It touches only <code>output/tftp/pxelinux.cfg/</code>, so the next <code>make config</code> regenerates the safe default. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
+<td>Rewrites <code>DEFAULT</code> in the generated PXE menus — <code>install</code> to arm, <code>localboot</code> to disarm. <code>make reinstall</code> and <code>make reinstall-cancel</code> are the two directions, both taking <code>LIMIT=&lt;host&gt;</code>. Arming refuses while <code>bootstrap_cluster</code> is <code>true</code> and the API VIP answers, or when an <a href="../../operations/control-plane-vip/#endpoint-name">endpoint name</a> is not the one the cluster publishes. <code>make config</code> keeps each menu's <code>DEFAULT</code>, so an armed node stays armed. See <a href="../boot-process/#switching-back-to-local-boot">Switching back to local boot</a></td>
 </tr>
 <tr>
 <td><code>kubeconfig.yaml</code></td>

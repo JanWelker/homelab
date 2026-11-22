@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2749,10 +2749,11 @@ from that. They are listed so a reader can tell a decision from an oversight.</p
 it is treated as friendly. There is no VPN requirement and no mutual TLS
 between components; inside the cluster, the default-deny network policies in
 <a href="#authorization">Authorization</a> are the segmentation.</p>
-<p>The published hostnames are a partial exception. Certificates come from Let's
-Encrypt through a DNS-01 challenge against a public zone, so
-<code>argo.infra.k8s.wlkr.ch</code> and its siblings are publicly resolvable and appear in
-Certificate Transparency logs, though they point at RFC1918 addresses.</p>
+<p>One surface faces the Internet: the router forwards ports 80 and 443 to
+<code>apps-gateway</code>, whose names external-dns publishes on the public address — see
+<a href="../../platform/gateway-api/#configuration">Gateway API</a>. The <code>infra</code> names
+resolve publicly too, since the DNS-01 challenge needs a public zone, and sit in
+Certificate Transparency logs, but point at a LAN address.</p>
 <h2 id="provisioning">Provisioning<a class="headerlink" href="#provisioning" title="Permanent link">&para;</a></h2>
 <p>Provisioning is the least protected phase: it runs before any of the cluster's
 own security exists.</p>
@@ -2858,7 +2859,7 @@ carry the settings below. They land at provisioning time and change only on
 </tr>
 <tr>
 <td><code>shutdownGracePeriod</code> and <code>shutdownGracePeriodCriticalPods</code></td>
-<td>A <code>systemctl reboot</code> without the <a href="../../operations/nodes/#rebooting-a-node">documented drain</a>, or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write</td>
+<td>A <code>systemctl reboot</code> outside <a href="../../operations/nodes/#rebooting-a-node">Kured's drain</a>, or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write</td>
 </tr>
 <tr>
 <td><code>protectKernelDefaults: true</code></td>
@@ -2918,8 +2919,8 @@ sensitive is committed to Git.</p>
 <ul>
 <li>OpenBao is sealed with Shamir and
   <a href="../../platform/openbao/#unsealing-after-a-restart">unsealed by hand</a>, so the
-  5 key shares are the root of trust for every other secret; losing all of them
-  loses everything, and nothing outside the cluster holds a copy.</li>
+  key shares are the root of trust for every other secret: keeping fewer than
+  the threshold loses everything.</li>
 <li>No root token is kept: <code>make bao-init</code> revokes it once it has created the
   <a href="../../platform/openbao/#operator-credential">operator login</a>, and one is
   generated from the shares when needed. The operator login reads and writes
@@ -2954,7 +2955,7 @@ stolen disk yields every credential the cluster holds.</p>
 </tr>
 <tr>
 <td>Key</td>
-<td>32 random letters and digits (about 190 bits), generated once by <code>make config</code> into <code>output/credentials/encryption_key</code> and base64-encoded into the config as the <code>secretbox</code> key</td>
+<td>Generated once by <code>make config</code> into <code>output/credentials/encryption_key</code> and base64-encoded into the config as the <code>secretbox</code> key</td>
 </tr>
 <tr>
 <td>Scope</td>
@@ -2981,8 +2982,9 @@ must reach before it can serve Secrets.</p>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
 <p><a href="../../platform/tetragon/">Tetragon</a> records every exec in every pod and
 alerts when anything but the control plane reads the cluster's key material.
-It is detection, not prevention: nothing is killed, and a policy that fails to
-load on a new kernel watches nothing until its alert fires.</p>
+It detects; the one exception kills a container that creates an unprivileged
+user namespace — see <a href="../../platform/tetragon/#enforcement">Enforcement</a>. A
+policy that fails to load on a new kernel watches nothing until its alert fires.</p>
 <h2 id="audit-logging">Audit logging<a class="headerlink" href="#audit-logging" title="Permanent link">&para;</a></h2>
 <p>The API server records who did what, to which object, and whether it was
 allowed; the <code>audit</code> labels of Pod Security Admission need it. Policy,
@@ -3005,9 +3007,9 @@ Cilium enforces them: <code>policyAuditMode</code> is off, so a flow no rule all
 dropped — see
 <a href="../../platform/security-policies/#network-policies">Security Policies</a> and
 <a href="../../platform/security-policies/#rollout">Rollout</a>.</p>
-<p><strong>Pod Security Admission is on, but mostly auditing.</strong> Every platform namespace
-carries <code>enforce</code> at the level it needs and <code>warn</code>/<code>audit</code> at a stricter one,
-so violations are visible without breaking what runs.</p>
+<p><strong>Pod Security Admission enforces in every namespace but <code>kube-system</code>.</strong> Each
+carries <code>enforce</code> at the level it needs and <code>warn</code>/<code>audit</code> at a stricter one —
+see <a href="../../platform/security-policies/#pod-security-admission">Pod Security Admission</a>.</p>
 <p><strong>Image references are checked at admission.</strong> An untagged or <code>latest</code> image
 is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a
 verifier would exempt nearly everything. See

@@ -19,10 +19,10 @@
         
       
       
-        <link rel="prev" href="../concepts/">
+        <link rel="prev" href="../adapting/">
       
       
-        <link rel="next" href="../adapting/">
+        <link rel="next" href="../architecture/">
       
       
         
@@ -631,6 +631,33 @@
                   
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../adapting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Adapt It to Your Cluster
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
     
   
   
@@ -801,33 +828,6 @@
   
 </nav>
       
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adapting/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Adapt It to Your Cluster
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2709,17 +2709,22 @@
 
 <h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Permanent link">&para;</a></h1>
 <p><img align="right" alt="Homelab Logo" src="../assets/images/logo.png" width="150" /></p>
-<p>Bring up the bare metal Kubernetes cluster from scratch, using Flatcar
-Container Linux and Kubeadm. The steps are thirteen commands; set aside an
-afternoon anyway, because step 7 depends on your DHCP server behaving.</p>
+<p>Bring up the bare metal Kubernetes cluster from scratch, using
+<a href="../concepts/">Flatcar Container Linux and Kubeadm</a>. Set aside an afternoon:
+step 7 depends on your DHCP server behaving.</p>
 <div class="admonition warning">
 <p class="admonition-title">Read this first if the cluster isn't mine</p>
 <p>Node names, IP addresses, the <code>wlkr.ch</code> domain, and the Git repository URL are hardcoded throughout <code>payload/</code>. Following the steps below verbatim gives you a cluster whose ArgoCD syncs from <strong>this</strong> repository and whose certificates are issued for a domain you don't control. Work through <a href="../adapting/">Adapting This for Your Cluster</a> <strong>before</strong> step 1.</p>
 </div>
 <h2 id="hardware-requirements">Hardware Requirements<a class="headerlink" href="#hardware-requirements" title="Permanent link">&para;</a></h2>
-<p>Each node must have:</p>
+<p>At least four machines: three workers, because Ceph keeps three copies on
+three different hosts and puts no OSD on a control plane, and one control
+plane, or three for an etcd that survives losing one — see
+<a href="../architecture/#cluster-layout">Cluster layout</a>. Size their memory by
+the <a href="../platform/#components">platform's limits rule</a>. Each node must have:</p>
 <ul>
-<li>A NIC that supports PXE booting</li>
+<li>A NIC that supports PXE booting, with network boot first in the firmware's
+  <a href="../architecture/boot-process/#boot-order">boot order</a></li>
 <li>An NVMe drive, or a different <code>install_disk</code> in <code>inventory.yaml</code></li>
 <li>Enough disk for Flatcar and the root filesystem. On workers the root
   partition is capped (<code>size_mib</code> in
@@ -2776,6 +2781,11 @@ the same L2 network segment as the nodes.</p>
 <td><code>make install-cilium</code>, <code>make install-argo</code></td>
 <td><a href="https://helm.sh/docs/intro/install/">helm.sh</a></td>
 </tr>
+<tr>
+<td><code>jq</code>; day 2 also <code>argocd</code>, <code>bao</code>, <code>velero</code>, <code>aws</code></td>
+<td>step 12; the runbooks in <a href="../platform/argocd/#cli-access">Argo CD</a>, <a href="../platform/openbao/#authenticating-locally">OpenBao</a> and <a href="../operations/backups/">Backups</a></td>
+<td>your package manager</td>
+</tr>
 </tbody>
 </table>
 <h3 id="other-requirements">Other requirements<a class="headerlink" href="#other-requirements" title="Permanent link">&para;</a></h3>
@@ -2790,6 +2800,11 @@ the same L2 network segment as the nodes.</p>
     server's <code>advertiseAddress</code>, the etcd peer URLs kubeadm derives from it and
     the metrics listeners are all rendered from <code>ansible_host</code>, so a node that
     leases a different address joins with the wrong one or not at all.</li>
+<li><strong>Outside accounts</strong>: <code>make bao-secrets</code> (step 11) asks for what the cluster
+  cannot generate: DNS provider keys for cert-manager and external-dns, an
+  SMTP login for alert mail, the BGP session password, and the logins some
+  workloads need. The list is at the top of <code>scripts/bao-secrets.sh</code>; what a
+  fork drops is in <a href="../adapting/">Adapting</a>.</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Consumer routers and PXE</p>
@@ -2863,8 +2878,8 @@ you know what to re-run after an edit:</p>
 <td><code>make download</code>; <code>flatcar_version</code> also <code>make config</code></td>
 </tr>
 <tr>
-<td><code>kubernetes_version</code></td>
-<td>The sysext image to fetch, and the version kubeadm and sysupdate are rendered with</td>
+<td><code>kubernetes_version</code>, <code>kubernetes_sha256</code></td>
+<td>The sysext image to fetch and the checksum <code>make download</code> verifies it against, so both move together; the version is also what kubeadm and sysupdate are rendered with</td>
 <td><code>make download</code>, <code>make config</code></td>
 </tr>
 <tr>
@@ -2922,24 +2937,17 @@ Check that one PXE menu was generated per node:</p>
 <p><strong>Start Boot Server</strong>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>serve
 </span></code></pre></div>
-<p>Leave this running through step 7 and keep the window visible: it names
-each node and logs one line per request. Its opening lines say what each
-node will do when powered on: a boxed <code>ARMED TO INSTALL</code> warning names the
-nodes that will wipe and install, and a node under <em>booting from disk</em> will
-not, however often you reboot it.</p>
+<p>On a Linux deployment host, lower <code>net.ipv4.ip_unprivileged_port_start</code>
+first, or TFTP cannot bind — see
+<a href="../architecture/boot-process/#boot-server">Boot server</a>. Leave this
+running through step 7 and keep the window visible: it names each node and
+logs one line per request. Its opening lines say what each node will do
+when powered on: a boxed <code>ARMED TO INSTALL</code> warning names the nodes that
+will wipe and install, and a node under <em>booting from disk</em> will not,
+however often you reboot it.</p>
 <div class="language-console highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">  ⚠  ARMED TO INSTALL: odin, thor</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">     Every disk above is wiped on boot -- the partition table, every</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">     partition on it, and the Ceph OSD with them. No data survives, and</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="go">     nothing asks for confirmation at the console.</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="go">     To cancel, run:  make reinstall-cancel</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="go">                      make reinstall-cancel LIMIT=&lt;node&gt;  for one</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="go">20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie</span>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="go">20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="go">20:34:48  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting the OS image (1.2 GB) -- this is the long one</span>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="go">20:36:12  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  OS image delivered -- switching to local boot, so the reboot lands on the disk</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">20:33:04  server                                                    booting from disk: freya, heimdall, loki, valkyrie</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">20:34:17  control-plane odin     10.9.2.1        fc:3f:db:0d:8f:5c  collecting its boot menu -- armed, so it will install</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2959,8 +2967,8 @@ menu the server recognises.</p>
 <ul>
 <li><strong>Leave the boot server running until every node is up.</strong> The sysexts
   are fetched on the first boot from disk.</li>
-<li>The cluster comes up <code>NotReady</code> because no CNI is installed. This is
-  correct; do not fix it yet.</li>
+<li>The nodes come up <code>NotReady</code>, as <code>kubectl get nodes</code> in step 8 shows,
+  because no CNI is installed. This is correct; do not fix it yet.</li>
 <li>If a node stalls, see <a href="#troubleshooting-pxe-boot">Troubleshooting PXE boot</a>.</li>
 </ul>
 <div class="admonition tip">
@@ -2970,8 +2978,8 @@ menu the server recognises.</p>
 </li>
 <li>
 <p><strong>Retrieve Kubeconfig</strong>:
-    Once the control plane node responds to SSH:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>kubeconfig
+    Once the first control plane has run <code>kubeadm init</code>, which this checks:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-f<span class="w"> </span>/etc/kubernetes/admin.conf<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 <p>Every <code>make</code> target that touches the cluster reads <code>output/kubeconfig</code>
 (<code>make KUBECONFIG=&lt;file&gt; &lt;target&gt;</code> picks another); only <code>kubectl</code> in
@@ -2980,14 +2988,13 @@ is expected at this point:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">KUBECONFIG</span><span class="o">=</span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/output/kubeconfig"</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes
 </span></code></pre></div>
-<p><em>Optional: install to the local machine (will not overwrite an existing config):</em></p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kube
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>cp<span class="w"> </span>-n<span class="w"> </span>output/kubeconfig<span class="w"> </span>~/.kube/config
-</span></code></pre></div>
+<p>Once every node is listed, set <code>bootstrap_cluster</code> back to <code>false</code> in
+<code>ansible/inventory.yaml</code> and run <code>make config</code>; <code>make reinstall</code> refuses
+to arm a node while it is <code>true</code> and the cluster answers.</p>
 </li>
 <li>
 <p><strong>Install Cilium</strong> (CRITICAL):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>install-cilium
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>make<span class="w"> </span>install-cilium
 </span></code></pre></div>
 <p>Installs the Gateway API CRDs, then Cilium via Helm — only what ArgoCD
 needs in order to run; everything else arrives through ArgoCD, at the
@@ -2997,8 +3004,8 @@ and <a href="../platform/cilium/#installation">Cilium &rarr; Installation</a>).
 <code>make bootstrap</code> runs this step, <code>make install-argo</code> and
 <code>make bootstrap-apps</code> in one go.</p>
 <p>Nodes reach <code>Ready</code> once Cilium is up:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                  </span><span class="c1"># all Ready</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>ds/cilium
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                  </span><span class="c1"># all Ready</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -3006,40 +3013,32 @@ and <a href="../platform/cilium/#installation">Cilium &rarr; Installation</a>).
 <ul>
 <li>
 <p><strong>Deploy ArgoCD</strong>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>make<span class="w"> </span>install-argo
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>make<span class="w"> </span>install-argo
 </span></code></pre></div>
 <p>There is no way into the UI yet: the local admin is disabled in
 <code>payload/argocd/values.yaml</code> and Authentik arrives later through
 GitOps. Follow the bootstrap with <code>kubectl</code> instead.</p>
-<p><strong>Tip — the UI before Authentik exists:</strong> re-enable the local admin
-with a patch. It holds only until the next step: right now ArgoCD is
-the plain Helm release <code>make install-argo</code> made, and
-<code>make bootstrap-apps</code> hands it to the self-healing <code>argocd</code>
-Application, whose first sync puts <code>admin.enabled</code> back to what
-<code>payload/argocd/values.yaml</code> says. After that the only way in is the
-pull request in
-<a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>.
-The restart is what generates the password Secret:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
-</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
-</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/argocd-server
-</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
-</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
-</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80<span class="w">   </span><span class="c1"># http://localhost:8080, user admin</span>
+<p><strong>Tip — the UI before Authentik exists:</strong> re-enable the local admin with a patch. It holds only until the next step: right now ArgoCD is the plain Helm release <code>make install-argo</code> made, and <code>make bootstrap-apps</code> hands it to the self-healing <code>argocd</code> Application, whose first sync puts <code>admin.enabled</code> back to what <code>payload/argocd/values.yaml</code> says. After that the only way in is the pull request in <a href="../platform/authentik/#when-authentik-is-down">Authentik &rarr; When Authentik is down</a>. The restart is what generates the password Secret:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>patch<span class="w"> </span>cm<span class="w"> </span>argocd-cm<span class="w"> </span>--type<span class="w"> </span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"data":{"admin.enabled":"true"}}'</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>status<span class="w"> </span>deploy/argocd-server
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>argocd-initial-admin-secret<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>port-forward<span class="w"> </span>svc/argocd-server<span class="w"> </span><span class="m">8080</span>:80<span class="w">   </span><span class="c1"># http://localhost:8080, user admin</span>
 </span></code></pre></div>
 <p>Nothing to undo: the handover reverts the patch.</p>
 </li>
 <li>
 <p><strong>Hand the cluster over to ArgoCD</strong>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>make<span class="w"> </span>bootstrap-apps
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>make<span class="w"> </span>bootstrap-apps
 </span></code></pre></div>
 <p>Applies the AppProjects, then the self-managing <code>argocd</code> Application, which brings the <code>platform</code>
 ApplicationSet and with it every component at once. They converge in
 the <a href="../platform/#rollout-order">order their dependencies allow</a>;
 watch them settle:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w"> </span>-w
 </span></code></pre></div>
 <p><strong>Everything that reads a secret stays Degraded, and that is
 expected.</strong> No <code>ExternalSecret</code> resolves until step 11 — see
@@ -3047,7 +3046,7 @@ expected.</strong> No <code>ExternalSecret</code> resolves until step 11 — see
 </li>
 <li>
 <p><strong>Gate on storage</strong> before trusting anything that mounts a volume:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>storage-check
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
 <p>A <code>StorageClass</code> exists whether or not a CSI driver registered for it,
 so <code>rook-ceph-cluster</code> can go Healthy with no working provisioner. This asks for
@@ -3061,7 +3060,7 @@ see <a href="../platform/rook-ceph/#is-storage-ready">Rook-Ceph &rarr; Is storag
     OpenBao starts uninitialised, sealed and empty; every <code>ExternalSecret</code>
     stays Degraded until it is unsealed and <code>certificates</code> until it is
     populated, then everything converges on its own.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>bao-init
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>make<span class="w"> </span>bao-init
 </span></code></pre></div>
 <p>Initialises and unseals OpenBao, enables the <code>kv</code> v2 engine and the
 Kubernetes auth method, and writes the policy and role External Secrets
@@ -3073,7 +3072,7 @@ in <code>openbao-operator.json</code> beside it.</p>
 <p>That file is a plaintext copy of the keys to every secret the cluster holds. Copy them into a password manager and delete it. Losing them means the data is unrecoverable. See <a href="../platform/openbao/#bootstrap">OpenBao &rarr; Bootstrap</a>.</p>
 </div>
 <p>Then populate the paths the cluster reads:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>make<span class="w"> </span>bao-secrets
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>make<span class="w"> </span>bao-secrets
 </span></code></pre></div>
 <p>It prompts, with input hidden, for every value that belongs to an
 account outside the cluster: the DNS, mail and other third-party logins
@@ -3081,16 +3080,16 @@ listed at the top of <code>scripts/bao-secrets.sh</code>, each against a path in
 <a href="../platform/openbao/#kv-layout">OpenBao &rarr; KV layout</a>. A required
 value has no skip; an optional one is issued by something that runs on
 the cluster and takes Enter until it exists. A fork without one of those
-accounts removes its prompt from the script. Everything random — <code>kv/authentik/config</code> with the OIDC client
+accounts replaces that path's <code>decide</code> line with <code>WRITE_&lt;NAME&gt;=0</code>, which
+skips its prompt and its write; deleting the line fails the script, which
+runs under <code>set -u</code> and reads every flag. Everything random — <code>kv/authentik/config</code> with the OIDC client
 credentials ArgoCD and Grafana read back, Grafana's break-glass admin
 password — is not prompted for: a <code>PushSecret</code> writes it once the store
 validates, see <a href="../platform/openbao/#generated-secrets">Generated secrets</a>.
 On a running cluster it asks per path before overwriting — see
-<a href="../platform/openbao/#rotating-a-credential">Rotating a credential</a>.</p>
-<div class="admonition tip">
-<p class="admonition-title">Paste them at the prompt, not onto a command line</p>
-<p>A secret containing <code>#</code> on a command line is truncated at it, and one containing <code>!</code> is mangled by history expansion — both silently. Non-interactively, the matching environment variables are honoured when already set; quote them with <strong>single</strong> quotes.</p>
-</div>
+<a href="../platform/openbao/#rotating-a-credential">Rotating a credential</a>.
+Paste values at the prompt: on a command line a <code>#</code> or <code>!</code> in one is
+silently mangled.</p>
 <p>Once the store validates, every <code>ExternalSecret</code> resolves, <code>certificates</code>
 issues the gateway certificates and the Gateways come up. The store is
 re-checked every few minutes, so that can take that long to start.</p>
@@ -3100,16 +3099,16 @@ re-checked every few minutes, so that can take that long to start.</p>
     Authentik ships the built-in <code>akadmin</code> account, and the blueprints switch
     it off as soon as it exists — see
     <a href="../platform/authentik/#bootstrap-credentials">Bootstrap credentials</a>.
-    Switch it on, and read its password back out of OpenBao (needs a token —
-    <code>bao login -method=userpass username=operator</code> inside the pod, or the port-forward in
-    <a href="../platform/openbao/#authenticating-locally">OpenBao &rarr; Authenticating locally</a>):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/authentik-server<span class="w"> </span>-c<span class="w"> </span>server<span class="w"> </span>--<span class="w"> </span>ak<span class="w"> </span>shell<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span><span class="s1">'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'</span>
-</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
+    Log in to OpenBao inside the pod with the operator password <code>make bao-init</code>
+    wrote, read the <code>akadmin</code> password, and switch the account on:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>jq<span class="w"> </span>-r<span class="w"> </span>.password<span class="w"> </span>output/credentials/openbao-operator.json<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-i<span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>login<span class="w"> </span>-method<span class="o">=</span>userpass<span class="w"> </span><span class="nv">username</span><span class="o">=</span>operator<span class="w"> </span><span class="nv">password</span><span class="o">=</span>-
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>bootstrap-password<span class="w"> </span>authentik/config
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>authentik<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>deploy/authentik-server<span class="w"> </span>-c<span class="w"> </span>server<span class="w"> </span>--<span class="w"> </span>ak<span class="w"> </span>shell<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span><span class="s1">'from authentik.core.models import User; User.objects.filter(username="akadmin").update(is_active=True)'</span>
 </span></code></pre></div>
-<p>Log in at <a href="https://auth.k8s.wlkr.ch">auth.k8s.wlkr.ch</a> as
-<code>akadmin</code>; the first login enrols a second factor. Create a personal
+<p>Log in at <code>https://auth.k8s.&lt;your-domain&gt;</code> as <code>akadmin</code>; the first login enrols a second factor. Create a personal
 account in <em>Directory &rarr; Users</em> and put it in <code>authentik Admins</code> and
 the groups listed in
 <a href="../platform/authentik/#groups-and-roles">Authentik &rarr; Groups and roles</a>
@@ -3122,27 +3121,10 @@ integration. Then switch <code>akadmin</code> off again with the same command an
 </li>
 </ol>
 <h2 id="single-node-clusters">Single-node clusters<a class="headerlink" href="#single-node-clusters" title="Permanent link">&para;</a></h2>
-<p>The <a href="../architecture/#cluster-layout">documented layout</a> has dedicated
-workers, so the control-plane taint stays. On a single node:</p>
-<ul>
-<li>
-<p>Remove the taint once <code>make kubeconfig</code> has answered and <strong>before
-  <code>make install-argo</code></strong>. Cilium tolerates the taint, but ArgoCD does not, so <code>make install-argo</code> would wait
-  on unschedulable pods until Helm's <code>--wait</code> times out:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>make<span class="w"> </span>untaint
-</span></code></pre></div>
-</li>
-<li>
-<p>Set <code>redis-ha.enabled: false</code> in <code>payload/argocd/values.yaml</code>; its hard
-  per-host anti-affinity leaves pods Pending on one node whatever the taints
-  say.</p>
-</li>
-<li>
-<p>Re-apply the taint when you later add worker nodes:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>make<span class="w"> </span>taint
-</span></code></pre></div>
-</li>
-</ul>
+<p>One node does not run this platform: control planes get no Ceph OSD (see
+<a href="../platform/rook-ceph/#disks">Rook-Ceph &rarr; Disks</a>) and the block pool
+wants three hosts, so no volume binds and OpenBao stays Pending at step 11.
+The minimum is under <a href="#hardware-requirements">Hardware Requirements</a>.</p>
 <h2 id="reprovisioned-nodes">Reprovisioned nodes<a class="headerlink" href="#reprovisioned-nodes" title="Permanent link">&para;</a></h2>
 <p>The installer wipes the disk before <code>flatcar-install</code> runs, so a node armed
 with <code>make reinstall</code> hands Ceph an empty disk. If that wipe ever fails, the
@@ -3150,17 +3132,11 @@ symptom is no <code>rook-ceph-osd</code> pods, a <code>CephCluster</code> still 
 and <code>openbao-0</code> Pending on an unbound PVC at step 11 — see
 <a href="../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after reprovisioning</a>.</p>
 <h2 id="verifying-the-result">Verifying the result<a class="headerlink" href="#verifying-the-result" title="Permanent link">&para;</a></h2>
-<p>The five commands that answer "is it actually fine?":</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w">                                  </span><span class="c1"># all Ready</span>
-</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications<span class="w">                 </span><span class="c1"># all Synced / Healthy</span>
-</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>certificate<span class="w"> </span>-A<span class="w">                         </span><span class="c1"># READY=True</span>
-</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>cephcluster<span class="w">               </span><span class="c1"># HEALTH_OK</span>
-</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>make<span class="w"> </span>storage-check<span class="w">                                 </span><span class="c1"># a PVC actually binds</span>
-</span></code></pre></div>
-<p>The last one earns its place: <code>cephcluster</code> reports <code>Ready</code> on a cluster with
-no OSDs and no CSI driver.</p>
-<p>Once DNS points at the gateway IPs, the platform UIs are reachable — see
-<a href="../platform/#httproute-locations">Platform &rarr; HTTPRoute Locations</a>.</p>
+<p>Run the <a href="../operations/#routine-health-check">routine health check</a>
+and <code>make storage-check</code> once more. Once DNS points at the gateway
+addresses, the platform UIs answer — see
+<a href="../platform/#httproute-locations">HTTPRoute Locations</a>. Next:
+<a href="../development/add-workload/">Adding a Workload</a>.</p>
 <h2 id="troubleshooting-pxe-boot">Troubleshooting PXE boot<a class="headerlink" href="#troubleshooting-pxe-boot" title="Permanent link">&para;</a></h2>
 <p>Step 7 fails as a black screen with a blinking cursor and no error message.
 Read the <code>make serve</code> log instead of the node and ask how far it got.</p>
@@ -3182,7 +3158,7 @@ Read the <code>make serve</code> log instead of the node and ask how far it got.
 </tr>
 <tr>
 <td><code>PXE-E32: TFTP open timeout</code></td>
-<td><code>make serve</code> isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall.</td>
+<td><code>make serve</code> isn't running, or a firewall is blocking UDP/69. On macOS, allow the Python interpreter through the firewall; on Linux, lower the <a href="../architecture/boot-process/#boot-server">unprivileged port start</a>.</td>
 </tr>
 <tr>
 <td>Bootloader loads, then "Could not find kernel image" or a hang at the menu</td>
@@ -3212,10 +3188,8 @@ Read the <code>make serve</code> log instead of the node and ask how far it got.
 </table>
 <p>A machine with two NICs PXE boots from whichever it likes, and the MAC on the
 case is often not that one. A node that boots the menu and stalls right after
-is almost always a wrong <code>boot_server_ip</code>, not a broken image.</p>
-<p>The boot server serves <code>output/tftp</code> over TFTP and <code>output/http</code> over HTTP —
-see <a href="../architecture/boot-process/">Boot &amp; Bootstrap Process</a>. If a file is
-missing from those directories, re-run <code>make artifacts</code>.</p>
+is almost always a wrong <code>boot_server_ip</code>, not a broken image. A file missing
+from <code>output/</code> needs <code>make artifacts</code>.</p>
 
 
 
@@ -3258,7 +3232,7 @@ missing from those directories, re-run <code>make artifacts</code>.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../concepts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Core Concepts">
+          <a href="../adapting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Adapt It to Your Cluster">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -3268,20 +3242,20 @@ missing from those directories, re-run <code>make artifacts</code>.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Core Concepts
+                Adapt It to Your Cluster
               </div>
             </div>
           </a>
         
         
           
-          <a href="../adapting/" class="md-footer__link md-footer__link--next" aria-label="Next: Adapt It to Your Cluster">
+          <a href="../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Adapt It to Your Cluster
+                Architecture
               </div>
             </div>
             <div class="md-footer__button md-icon">

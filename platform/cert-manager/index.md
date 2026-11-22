@@ -1,6 +1,6 @@
 # cert-manager
 
-TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that Let's Encrypt cannot reach, and because it is the only way to get a wildcard: one certificate per zone, in `payload/platform/certificates/certificates.yaml`, covers every Gateway hostname.
+TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that Let's Encrypt cannot reach, and because it is the only way to get a wildcard: one per Gateway listener, in `payload/platform/certificates/certificates.yaml`, covers every hostname that listener serves.
 
 ## At a glance
 
@@ -8,9 +8,9 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 | --- | --- |
 | Namespace | `cert-manager`; the wildcards land in `kube-system` beside the Gateways, the agent sessions' in their own namespace; see [SSH listener](<https://homelab.wlkr.ch/platform/gateway-api/index.md#ssh-listener>) |
 | Depends on | [External Secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) for the Route53 credential, so transitively on [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md>) |
-| If it is down | Nothing immediately. Certificates stop renewing; the consequence surfaces up to sixty days later |
+| If it is down | Nothing immediately. Certificates stop renewing, and the failure surfaces weeks later as an [expired certificate](<https://homelab.wlkr.ch/platform/openbao/index.md#pitfalls>) |
 | Health check | `kubectl get certificate -A` → all `READY=True` |
-| Files | `payload/platform/cert-manager/`, `payload/platform/certificates/` |
+| Files | [`payload/platform/cert-manager/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/cert-manager>), [`payload/platform/certificates/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/certificates>) |
 
 ## Configuration
 
@@ -18,9 +18,9 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 | --- | --- |
 | Issuers and certificates in their own `certificates` Application | Kept with cert-manager, the controller reads Degraded until OpenBao holds the Route53 credentials — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
 | Three sync waves inside `certificates`: `ExternalSecret`, then the ClusterIssuers, then the Certificates | One wave orders custom resources alphabetically, exactly backwards, and an issuer applied before its Secret stays `Ready=False` with `InvalidSolver` |
-| Sync `retry` on both Applications | Without one a failed apply, such as the ESO webhook being unreachable on a fresh CNI, ends the operation and leaves everything behind it unmade |
+| `enableGatewayAPI: true` in `values.yaml` | Turns on the shim that issues from `cert-manager.io` annotations on a Gateway. Nothing uses it: every certificate here is an explicit `Certificate` |
 | `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate `prometheus-operator-crds` Application — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
-| Two webhook replicas, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so a lone replica rescheduling through a drain refuses every apply — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
+| More than one webhook replica, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so a lone replica rescheduling through a drain refuses every apply — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week and a misconfigured solver retries until they are gone |
 
 The IAM policy is the [Route53 policy](<https://cert-manager.io/docs/configuration/acme/dns01/route53/#set-up-an-iam-policy>) cert-manager documents, narrowed to `_acme-challenge` TXT records so a stolen key cannot repoint a hostname. `ListHostedZonesByName` stays because the issuers do not set `hostedZoneID`. It lives in AWS, so a change is applied there by hand:
@@ -101,4 +101,4 @@ A `Challenge` stuck in `pending` is a DNS problem: the credentials cannot write 
 >
 > **A sealed OpenBao means no renewals**
 >
-> Until OpenBao is unsealed and the secret stored, nothing issues or renews, and the failure surfaces as an expired certificate two months later — see [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#pitfalls>).
+> Until OpenBao is unsealed and the secret stored, nothing issues or renews; how that surfaces is in [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#pitfalls>).

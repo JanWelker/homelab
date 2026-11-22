@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2288,21 +2288,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-the-platform-already-does-for-you" class="md-nav__link">
+  <a href="#rules-and-platform-side-changes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What the platform already does for you
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        The rules
+        Rules and platform-side changes
       </span>
     </span>
   </a>
@@ -2548,21 +2537,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-the-platform-already-does-for-you" class="md-nav__link">
+  <a href="#rules-and-platform-side-changes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What the platform already does for you
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        The rules
+        Rules and platform-side changes
       </span>
     </span>
   </a>
@@ -2807,83 +2785,29 @@ not here. The <code>apps</code> ApplicationSet generates one ArgoCD Application 
 <code>*/application.yaml</code> in that repository, so adding an application is creating a
 directory there and pushing it. Why the split exists is in
 <a href="../../architecture/gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>.</p>
-<h2 id="what-the-platform-already-does-for-you">What the platform already does for you<a class="headerlink" href="#what-the-platform-already-does-for-you" title="Permanent link">&para;</a></h2>
+<h2 id="rules-and-platform-side-changes">Rules and platform-side changes<a class="headerlink" href="#rules-and-platform-side-changes" title="Permanent link">&para;</a></h2>
+<p>Every directory follows the workloads repository's
+<a href="https://homelab-apps.wlkr.ch/conventions/">conventions</a>, which also list what
+the platform does without being asked. Two needs reach into this repository
+first:</p>
 <table>
 <thead>
 <tr>
-<th>You want</th>
-<th>You write</th>
-<th>The platform does</th>
+<th>A workload with</th>
+<th>Needs here first</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>A hostname</td>
-<td>An <code>HTTPRoute</code> with <code>hostnames: [app.k8s.wlkr.ch]</code></td>
-<td><a href="../../platform/external-dns/">external-dns</a> publishes the Route53 record</td>
+<td>A chart from a new repository</td>
+<td>The host in the <code>apps</code> project's <code>sourceRepos</code> (<code>payload/platform/argocd-projects/projects.yaml</code>) and in the repo-server's egress policy (<code>payload/platform/security/network-policies/argocd.yaml</code>), or the Application reads <code>ComparisonError</code></td>
 </tr>
 <tr>
-<td>HTTPS</td>
-<td>Nothing</td>
-<td><code>apps-gateway</code> terminates TLS with a <code>*.k8s.wlkr.ch</code> wildcard</td>
-</tr>
-<tr>
-<td>Storage</td>
-<td>A PVC with <code>storageClassName: rook-ceph-block</code></td>
-<td><a href="../../platform/rook-ceph/">Rook-Ceph</a> replicates it three ways, one copy per host</td>
-</tr>
-<tr>
-<td>A database</td>
-<td>A CloudNativePG <code>Cluster</code></td>
-<td><a href="../../platform/cloudnative-pg/">The operator</a> generates credentials and runs failover</td>
-</tr>
-<tr>
-<td>A secret from outside the cluster</td>
-<td>An <code>ExternalSecret</code> on the <code>openbao-apps</code> store, an <code>external-secrets-vault</code> ServiceAccount, and a line on that store's list here — see <a href="../../platform/external-secrets/#adding-a-secret">Adding a secret</a></td>
-<td><a href="../../platform/openbao/">OpenBao</a> holds it under <code>kv/&lt;namespace&gt;/</code>, the only prefix the namespace can reach; ESO renders a <code>Secret</code></td>
-</tr>
-<tr>
-<td>Metrics</td>
-<td>A <code>ServiceMonitor</code> or <code>PodMonitor</code></td>
-<td>Prometheus scrapes it</td>
-</tr>
-<tr>
-<td>Logs</td>
-<td>Nothing</td>
-<td>Alloy ships every container's stdout to Loki</td>
-</tr>
-<tr>
-<td>Backups</td>
-<td>Nothing, for a PVC</td>
-<td>Velero snapshots it nightly</td>
+<td>Secrets from OpenBao</td>
+<td>Its namespace on the <code>openbao-apps</code> list in <code>payload/platform/openbao/cluster-secret-store.yaml</code>, then <code>make bao-policies</code> — see <a href="../../platform/external-secrets/#adding-a-secret">Adding a secret</a></td>
 </tr>
 </tbody>
 </table>
-<h2 id="the-rules">The rules<a class="headerlink" href="#the-rules" title="Permanent link">&para;</a></h2>
-<p>Restated in the workloads repository's <code>CONVENTIONS.md</code>.</p>
-<ol>
-<li><strong>Exactly one <code>application.yaml</code> per directory</strong>, a complete ArgoCD
-   <code>Application</code>: the generator copies its labels, annotations, finalizers and
-   <code>spec</code> through unchanged.</li>
-<li><strong><code>project: apps</code>.</strong> Anything else fails the whole ApplicationSet. The
-   project, in <code>payload/platform/argocd-projects/projects.yaml</code>, lists the chart
-   repositories workloads may pull from; a new chart repository extends that
-   list first, in this repository, and the repo-server's egress policy in
-   <code>payload/platform/security/network-policies/argocd.yaml</code>, or the
-   Application reads <code>ComparisonError</code>.</li>
-<li><strong>The workload owns its namespace.</strong> Ship a <code>namespace.yaml</code> at sync wave
-   <code>-2</code> with the three Pod Security Admission labels, annotated <code>Prune=false</code>,
-   because pruning a <code>Namespace</code> deletes every PVC inside it. A namespace
-   created by <code>CreateNamespace=true</code> has no labels and enforces nothing.</li>
-<li><strong>PostgreSQL is a CloudNativePG <code>Cluster</code></strong>, never a chart's bundled
-   database — see <a href="../../platform/cloudnative-pg/#the-contract">the contract</a>.</li>
-<li><strong>Ship a <code>CiliumNetworkPolicy</code></strong> at sync wave <code>-2</code>, not a plain
-   <code>NetworkPolicy</code>, which blocks health probes — see
-   <a href="../../platform/security-policies/#why-ciliumnetworkpolicy-and-not-networkpolicy">Security Policies</a>.</li>
-<li><strong>Official upstream sources only</strong>: the vendor's chart or image, not a
-   repackager's.</li>
-<li><strong>Pin every version</strong> and let Renovate move it. No <code>latest</code>.</li>
-</ol>
 <h2 id="step-1-create-the-directory">Step 1: Create the directory<a class="headerlink" href="#step-1-create-the-directory" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:JanWelker/homelab-apps.git
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>homelab-apps
@@ -2936,10 +2860,11 @@ workload that referenced a platform resource a minute too early stays failed
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>├── application.yaml
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>├── namespace.yaml      # Pod Security labels, sync wave -2
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>├── database.yaml       # CloudNativePG Cluster, sync wave -1, if it needs one
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── deployment.yaml
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── service.yaml
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── httproute.yaml      # if you want it reachable
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>└── networkpolicy.yaml  # CiliumNetworkPolicy, sync wave -2
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>├── backup.yaml         # its backup stanza, sync wave -2, with the database
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>├── deployment.yaml
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>├── service.yaml
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>├── httproute.yaml      # if you want it reachable
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>└── networkpolicy.yaml  # CiliumNetworkPolicy, sync wave -2
 </span></code></pre></div>
 <h3 id="the-namespace">The namespace<a class="headerlink" href="#the-namespace" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nn">---</span>
@@ -2967,23 +2892,32 @@ stays visible.</p>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-db</span>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="c1"># Before the application: ArgoCD has a health check for this kind and</span>
-</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="c1"># waits for "Cluster in healthy state" before starting the next wave.</span>
-</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-1"</span>
-</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span><span class="nt">instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
-</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10Gi</span>
-</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">storageClass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
-</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
-</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">    </span><span class="nt">initdb</span><span class="p">:</span>
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-options</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Prune=false</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-1"</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">  </span><span class="nt">instances</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">  </span><span class="nt">smartShutdownTimeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">  </span><span class="nt">enablePDB</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">   </span><span class="c1"># one instance only</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">  </span><span class="nt">storage</span><span class="p">:</span>
+</span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10Gi</span>
+</span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="nt">storageClass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rook-ceph-block</span>
+</span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">  </span><span class="nt">bootstrap</span><span class="p">:</span>
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">    </span><span class="nt">initdb</span><span class="p">:</span>
+</span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">      </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-4-20"><a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">      </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-4-21"><a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">  </span><span class="nt">plugins</span><span class="p">:</span>
+</span><span id="__span-4-22"><a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barman-cloud.cloudnative-pg.io</span>
+</span><span id="__span-4-23"><a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-4-24"><a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">      </span><span class="nt">isWALArchiver</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-4-25"><a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">      </span><span class="nt">parameters</span><span class="p">:</span>
+</span><span id="__span-4-26"><a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">        </span><span class="nt">barmanObjectName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-db</span>
 </span></code></pre></div>
-<p>That produces a Secret <code>my-app-db-app</code> holding <code>username</code>, <code>password</code>, <code>host</code>,
-<code>port</code>, <code>dbname</code> and a ready-assembled <code>uri</code>; point the application at those
-keys. The operator polls each instance on port <code>8000</code> from <code>cnpg-system</code>, so
-the network policy below must admit it.</p>
+<p><code>backup.yaml</code> is the stanza in
+<a href="../../platform/cloudnative-pg/#backing-up-a-database">Backing up a database</a>
+with the names filled in; the <code>cnpg-cluster-backed-up</code> admission policy
+refuses a <code>Cluster</code> without the <code>plugins</code> entry. The operator polls each
+instance on port <code>8000</code> from <code>cnpg-system</code>, so the network policy below must
+admit it.</p>
 <h3 id="the-network-policy">The network policy<a class="headerlink" href="#the-network-policy" title="Permanent link">&para;</a></h3>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nn">---</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cilium.io/v2</span>
@@ -3045,21 +2979,22 @@ the network policy below must admit it.</p>
 </span><span id="__span-5-58"><a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="w">              </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TCP</span>
 </span><span id="__span-5-59"><a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="nn">---</span>
 </span><span id="__span-5-60"><a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a><span class="c1"># Only if a CloudNativePG Cluster is in this namespace: the instance</span>
-</span><span id="__span-5-61"><a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="c1"># manager reports to the API server.</span>
-</span><span id="__span-5-62"><a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cilium.io/v2</span>
-</span><span id="__span-5-63"><a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CiliumNetworkPolicy</span>
-</span><span id="__span-5-64"><a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="nt">metadata</span><span class="p">:</span>
-</span><span id="__span-5-65"><a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">database</span>
-</span><span id="__span-5-66"><a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
-</span><span id="__span-5-67"><a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
-</span><span id="__span-5-68"><a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
-</span><span id="__span-5-69"><a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="nt">spec</span><span class="p">:</span>
-</span><span id="__span-5-70"><a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="w">  </span><span class="nt">endpointSelector</span><span class="p">:</span>
-</span><span id="__span-5-71"><a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
-</span><span id="__span-5-72"><a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">      </span><span class="nt">cnpg.io/podRole</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">instance</span>
-</span><span id="__span-5-73"><a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">  </span><span class="nt">egress</span><span class="p">:</span>
-</span><span id="__span-5-74"><a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">toEntities</span><span class="p">:</span>
-</span><span id="__span-5-75"><a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-apiserver</span>
+</span><span id="__span-5-61"><a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a><span class="c1"># manager and the join and initdb Jobs, which lack the podRole label, read</span>
+</span><span id="__span-5-62"><a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a><span class="c1"># the API server.</span>
+</span><span id="__span-5-63"><a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cilium.io/v2</span>
+</span><span id="__span-5-64"><a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CiliumNetworkPolicy</span>
+</span><span id="__span-5-65"><a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-5-66"><a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">database</span>
+</span><span id="__span-5-67"><a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app</span>
+</span><span id="__span-5-68"><a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a><span class="w">  </span><span class="nt">annotations</span><span class="p">:</span>
+</span><span id="__span-5-69"><a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a><span class="w">    </span><span class="nt">argocd.argoproj.io/sync-wave</span><span class="p">:</span><span class="w"> </span><span class="s">"-2"</span>
+</span><span id="__span-5-70"><a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-5-71"><a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a><span class="w">  </span><span class="nt">endpointSelector</span><span class="p">:</span>
+</span><span id="__span-5-72"><a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
+</span><span id="__span-5-73"><a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a><span class="w">      </span><span class="nt">cnpg.io/cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-app-db</span>
+</span><span id="__span-5-74"><a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="w">  </span><span class="nt">egress</span><span class="p">:</span>
+</span><span id="__span-5-75"><a id="__codelineno-5-75" name="__codelineno-5-75" href="#__codelineno-5-75"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">toEntities</span><span class="p">:</span>
+</span><span id="__span-5-76"><a id="__codelineno-5-76" name="__codelineno-5-76" href="#__codelineno-5-76"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kube-apiserver</span>
 </span></code></pre></div>
 <p>Wave <code>-2</code> is load-bearing: at the default wave the policy is applied after the
 <code>Cluster</code> at <code>-1</code>, which cannot go Healthy until the <code>cnpg-system</code> rule exists,
@@ -3120,11 +3055,11 @@ or immediately after <strong>Refresh</strong> on the <code>apps</code> Applicati
 UI.</p>
 <h2 id="step-5-document-it">Step 5: Document it<a class="headerlink" href="#step-5-document-it" title="Permanent link">&para;</a></h2>
 <p>The page goes in the workloads repository at <code>docs/my-app.md</code>, registered in
-its <code>zensical.toml</code>, which publishes to
-<a href="https://homelab-apps.wlkr.ch/">homelab-apps.wlkr.ch</a>.
-Both sites build with <code>--strict</code>, so an unregistered page fails CI. Say what
-the application is for, which hostname it answers on, what it stores and
-where, and what surprised you while deploying it.</p>
+its <code>zensical.toml</code> under both <code>nav</code> and <code>plugins.llmstxt.sections</code>, and
+published to <a href="https://homelab-apps.wlkr.ch/">homelab-apps.wlkr.ch</a>; the
+<code>--strict</code> build fails on an unregistered page. It follows the shared
+skeleton: intro, At a glance, Configuration, Usage, Health check, Pitfalls,
+and Recovery where a real runbook exists.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3144,11 +3079,7 @@ where, and what surprised you while deploying it.</p>
 </tr>
 <tr>
 <td><code>Synced</code>, health <code>Unknown</code>, workload running fine</td>
-<td>A wave is waiting on a resource that will never go Healthy; with a database it is the missing <code>cnpg-system</code> rule (<code>kubectl get cluster</code> says <code>1/1</code>, status reads <code>Instance Status Extraction Error: HTTP communication issue</code>). Confirm with <code>kubectl -n argocd get application my-app -o jsonpath='{.status.operationState.message}'</code> and the Hubble check below</td>
-</tr>
-<tr>
-<td>Rule is in Git, still stuck</td>
-<td>The policy's sync wave is wrong: the applied list has no <code>CiliumNetworkPolicy</code> while <code>Cluster</code> reads <code>Running</code>. Fix the wave, then <code>argocd app terminate-op my-app</code>; a stuck operation does not pick up a new revision</td>
+<td>A wave is waiting on a resource that will never go Healthy, with a database usually the <code>cnpg-system</code> rule or its wave — see <a href="https://homelab-apps.wlkr.ch/conventions/#sync-stuck-on-the-database">Sync stuck on the database</a></td>
 </tr>
 <tr>
 <td>Pods will not start; events mention a security policy</td>
@@ -3162,14 +3093,6 @@ where, and what surprised you while deploying it.</p>
 </table>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Why an Application was not generated</span>
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>logs<span class="w"> </span>deploy/argocd-applicationset-controller<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-50
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Drops from the operator, on the node running the database</span>
-</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;cilium-pod-on-that-node&gt;<span class="w"> </span>-c<span class="w"> </span>cilium-agent<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>hubble<span class="w"> </span>observe<span class="w"> </span>--verdict<span class="w"> </span>DROPPED<span class="w"> </span>--from-namespace<span class="w"> </span>cnpg-system<span class="w"> </span>--last<span class="w"> </span><span class="m">20</span>
-</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># What the stuck sync has applied so far</span>
-</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>application<span class="w"> </span>my-app<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="se">\</span>
-</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="s1">'{range .status.operationState.syncResult.resources[*]}{.kind}{"\t"}{.hookPhase}{"\n"}{end}'</span>
 </span></code></pre></div>
 
 

@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../adapting/" class="md-nav__link">
+      <a href="../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2501,8 +2501,8 @@ things worse.</p>
 <li>
 <p><strong><a href="nodes/">Node Lifecycle</a></strong></p>
 <hr />
-<p>Rebooting, adding, replacing and rebuilding a node, including the two
-gates people skip: waiting for Ceph, and unsealing OpenBao afterwards.</p>
+<p>Rebooting, adding, replacing and rebuilding a node, and recovering from a
+power loss.</p>
 </li>
 <li>
 <p><strong><a href="upgrades/">Updates &amp; Upgrades</a></strong></p>
@@ -2524,8 +2524,7 @@ how to migrate a cluster built without it.</p>
 <li>
 <p><strong><a href="encryption-key-rotation/">Encryption Key Rotation</a></strong></p>
 <hr />
-<p>Swapping the key that encrypts Secrets in etcd, with no API server
-restart and two rewrites of every Secret.</p>
+<p>Swapping the key that encrypts Secrets in etcd.</p>
 </li>
 <li>
 <p><strong><a href="vulnerabilities/">Vulnerability Triage</a></strong></p>
@@ -2536,6 +2535,11 @@ restart and two rewrites of every Secret.</p>
 </li>
 </ul>
 </div>
+<p>Other dated logs: network-policy audits
+<a href="network-policy-audit-2026-09-27/">2026-09-27</a> and
+<a href="network-policy-audit-2026-10-16/">2026-10-16</a>, host firewall
+<a href="host-firewall-inventory-2026-10-30/">inventory</a> and
+<a href="host-firewall-rollout-2026-11-18/">rollout</a>.</p>
 <h2 id="routine-health-check">Routine health check<a class="headerlink" href="#routine-health-check" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2558,7 +2562,7 @@ restart and two rewrites of every Secret.</p>
 <td>Every certificate <code>READY=True</code></td>
 </tr>
 <tr>
-<td><code>ssh &lt;control plane&gt; sudo kubeadm certs check-expiration</code></td>
+<td><code>ssh core@&lt;control plane&gt; sudo kubeadm certs check-expiration</code></td>
 <td>More than thirty days left on every line; less and the <a href="upgrades/#control-plane-certificates">yearly renewal</a> is due</td>
 </tr>
 <tr>
@@ -2566,7 +2570,7 @@ restart and two rewrites of every Secret.</p>
 <td><code>HEALTH_OK</code>, and an OSD count matching your node count</td>
 </tr>
 <tr>
-<td><code>kubectl -n openbao exec openbao-0 -- bao status</code></td>
+<td><code>bao status</code> on <a href="../platform/openbao/#health-check">every OpenBao pod</a>, each seals on its own</td>
 <td><code>Sealed: false</code>; the one failure that looks like health, so run it after anything restarted</td>
 </tr>
 </tbody>

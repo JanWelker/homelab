@@ -15,7 +15,7 @@ This section assumes you know what Flatcar, Ignition, systemd sysexts, PXE and G
 
   ---
 
-  The playbooks that generate everything the boot server serves. Ansible never configures a node.
+  The playbooks that generate everything the boot server serves.
 - **[GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md>)**
 
   ---
@@ -46,7 +46,7 @@ The deployment host — the laptop running Ansible and the boot server — is **
 | Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph OSD |
 | Worker | freya, heimdall, valkyrie, baldur, tyr, frigg, bragi, idun | Everything else, and a Ceph OSD partition each |
 
-Three control-plane nodes because etcd needs an odd number, and two is the worst answer: twice the hardware and quorum still lost when one dies. The API server is reached through a kube-vip virtual IP rather than any single node — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>). Addresses, the VIP and the pod and service subnets are in `ansible/inventory.yaml`.
+Three control-plane nodes because etcd needs an odd number, and two is the worst answer: twice the hardware and quorum still lost when one dies. The API server is reached through a kube-vip virtual IP rather than any single node — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>). Addresses, the VIP and the pod and service subnets are in `ansible/inventory.yaml`. How a request reaches a pod from the Internet, the LAN or another VLAN is drawn in [Traffic Flow](<https://homelab.wlkr.ch/platform/index.md#traffic-flow>).
 
 ## Repository layout
 
@@ -81,7 +81,7 @@ Three control-plane nodes because etcd needs an odd number, and two is the worst
 └── README.md
 ```
 
-`ansible/` and `boot_server/` matter only while a node is being built; `payload/` matters every day after that. The exception is `ansible/templates/kubeadm.yaml.j2`, which explains why half the control plane is configured the way it is.
+`ansible/` and `boot_server/` matter only while a node is being built; `payload/` matters every day after that.
 
 `output/credentials/` is generated once and read back on every later run; `make config` writes new values for anything missing, which a running cluster will not accept. `make clean` therefore prints that inventory and asks before deleting, and refuses without a terminal.
 

@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -1006,6 +1006,28 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Trivy Operator, not Kubescape
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validatingadmissionpolicy-not-kyverno-or-gatekeeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ValidatingAdmissionPolicy, not Kyverno or Gatekeeper
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tetragon-not-falco" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tetragon, not Falco
       </span>
     </span>
   </a>
@@ -2596,6 +2618,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#validatingadmissionpolicy-not-kyverno-or-gatekeeper" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        ValidatingAdmissionPolicy, not Kyverno or Gatekeeper
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tetragon-not-falco" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Tetragon, not Falco
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2708,9 +2752,8 @@
 
 
 <h1 id="design-decisions">Design Decisions<a class="headerlink" href="#design-decisions" title="Permanent link">&para;</a></h1>
-<p>The rest of this section describes <em>what</em> the cluster is. This page covers
-<em>why</em>, including what each choice gives up. Every one has a reasonable
-alternative; none is the only right answer.</p>
+<p>Why each choice, and what it gives up. Every one has a reasonable
+alternative.</p>
 <h2 id="flatcar-container-linux-not-talos-or-a-general-purpose-distro">Flatcar Container Linux, not Talos or a general-purpose distro<a class="headerlink" href="#flatcar-container-linux-not-talos-or-a-general-purpose-distro" title="Permanent link">&para;</a></h2>
 <p>Flatcar is an immutable, minimal, container-focused OS with A/B updates and
 declarative first-boot provisioning through Ignition. Nothing is configured by
@@ -2738,11 +2781,10 @@ service-routing path. It also supplies Gateway API, L2 announcements for
 LoadBalancer addresses, WireGuard transparent encryption and Hubble for flow
 visibility — four things that would otherwise be four components on bare metal.</p>
 <p>The cost is a hard bootstrap dependency: with no <code>kube-proxy</code>, Cilium needs a
-literal API server address in <code>k8sServiceHost</code>, which is the
-<a href="../../operations/control-plane-vip/">control plane VIP</a>; pointing it at one
-node would make that node a single point of failure for the CNI on every
-other node, and pointing it at an address that does not answer takes
-networking down everywhere.</p>
+literal API server address in <code>k8sServiceHost</code>, the
+<a href="../../operations/control-plane-vip/">control plane VIP</a> so no single node
+carries the CNI; an address that does not answer takes networking down
+everywhere.</p>
 <h2 id="gateway-api-not-ingress">Gateway API, not Ingress<a class="headerlink" href="#gateway-api-not-ingress" title="Permanent link">&para;</a></h2>
 <p>Ingress is effectively frozen, and its per-controller annotations are why
 Ingress manifests are rarely portable. Gateway API separates the cluster-owned
@@ -2755,12 +2797,12 @@ that every consumer's sync retries against.</p>
 <h2 id="rook-ceph-not-longhorn-or-local-volumes">Rook-Ceph, not Longhorn or local volumes<a class="headerlink" href="#rook-ceph-not-longhorn-or-local-volumes" title="Permanent link">&para;</a></h2>
 <p>Every worker contributes a raw partition (the control planes keep their disk
 for etcd, see <a href="../../platform/rook-ceph/#disks">Disks</a>), and Ceph turns them
-into replicated block storage that survives a node failure. Local <code>hostPath</code> volumes would be
-simpler and faster, but a node reboot would take its workloads' data with it,
-and reboots are routine here because that is
-<a href="../../operations/upgrades/">how updates get applied</a>. Longhorn is the closer
+into replicated block storage that survives a node failure. Local volumes
+would be simpler and faster, but would go down with every
+<a href="../../operations/upgrades/">update reboot</a>. Longhorn is the closer
 alternative and easier to operate; Ceph was chosen for its maturity and because
-the same cluster can later serve object and file storage.</p>
+the same cluster also serves the S3 buckets the backups and Loki write to — see
+<a href="../../platform/rook-ceph/#object-storage">Object storage</a>.</p>
 <p>The cost: Ceph is the heaviest component in the cluster, wants at least three
 nodes, and has its own failure modes and vocabulary. It also only provides
 <code>ReadWriteOnce</code> here, since CephFS is not deployed.</p>
@@ -2776,9 +2818,8 @@ auto-unseal dependency outside the house — see
 <p>Either would work. ArgoCD was chosen mainly for its UI, which makes sync state
 and drift legible at a glance — worth more in a homelab, where the operator is
 often re-learning the system after months away, than Flux's smaller footprint.</p>
-<p>Bootstrap is two <code>kubectl apply</code>s — the AppProjects and the self-managing
-<code>argocd</code> Application — and everything else is discovered from the repository
-by an ApplicationSet. See <a href="../gitops/">GitOps Strategy</a>.</p>
+<p>After a bootstrap of two <code>kubectl apply</code>s an ApplicationSet discovers
+everything else; see <a href="../gitops/">GitOps Strategy</a>.</p>
 <h2 id="cloudnativepg-for-every-database-not-the-charts-bundled-one">CloudNativePG for every database, not the chart's bundled one<a class="headerlink" href="#cloudnativepg-for-every-database-not-the-charts-bundled-one" title="Permanent link">&para;</a></h2>
 <p>Accepting each chart's PostgreSQL subchart is how a cluster ends up running four
 Postgres versions from four maintainers, each upgraded on someone else's
@@ -2792,13 +2833,20 @@ is explicitly this project's problem rather than something arriving silently in
 a chart bump — see <a href="../../platform/cloudnative-pg/">CloudNativePG</a>.</p>
 <h2 id="trivy-operator-not-kubescape">Trivy Operator, not Kubescape<a class="headerlink" href="#trivy-operator-not-kubescape" title="Permanent link">&para;</a></h2>
 <p>Trivy Operator stores every finding as a plain CRD and scans with the same
-Trivy that CI uses, so a number on the dashboard can be checked against an
-object with <code>kubectl</code>. Kubescape put results behind an aggregated API server on
-its own volume, silently reported zero findings for images whose SBOM exceeded
-a size ceiling, and needed its scanner image pinned ahead of the chart before
-scheduled scans ran. What was lost is relevancy: Kubescape's eBPF agent could
-mark a finding as loaded at runtime, and that argument now has to be made from
-the workload's configuration.</p>
+Trivy that CI uses, so a dashboard number can be checked with <code>kubectl</code>; the
+cost is Kubescape's runtime relevancy, which marked a finding as loaded.</p>
+<h2 id="validatingadmissionpolicy-not-kyverno-or-gatekeeper">ValidatingAdmissionPolicy, not Kyverno or Gatekeeper<a class="headerlink" href="#validatingadmissionpolicy-not-kyverno-or-gatekeeper" title="Permanent link">&para;</a></h2>
+<p>The admission rules are CEL that the API server evaluates itself, so nothing
+has to stay up for an apply to succeed; a policy engine is a webhook, and a
+<code>failurePolicy: Fail</code> webhook refuses every apply while its pods reschedule.
+The cost is CEL's reach: a rule sees the request and its namespace, and
+nothing generates resources — see
+<a href="../../platform/security-policies/#admission-policies">Admission policies</a>.</p>
+<h2 id="tetragon-not-falco">Tetragon, not Falco<a class="headerlink" href="#tetragon-not-falco" title="Permanent link">&para;</a></h2>
+<p>Both record syscalls through eBPF and alert. Tetragon can also act in the
+kernel, which the <a href="../../platform/tetragon/#enforcement">enforcing policy</a> uses
+to kill a container that creates a user namespace. The cost is a smaller rule
+library: every <code>TracingPolicy</code> here was written for this cluster.</p>
 
 
 

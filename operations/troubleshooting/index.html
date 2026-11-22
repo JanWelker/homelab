@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2568,8 +2568,6 @@
 
 
 <h1 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h1>
-<p>The thing that looks broken is usually downstream of something duller. Start
-with the table.</p>
 <h2 id="where-to-look-first">Where to look first<a class="headerlink" href="#where-to-look-first" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2581,19 +2579,31 @@ with the table.</p>
 <tbody>
 <tr>
 <td>Secrets missing, certificates not renewing</td>
-<td>OpenBao sealed — <code>kubectl -n openbao exec openbao-0 -- bao status</code>; if so, <code>make bao-unseal</code></td>
+<td>OpenBao sealed: <code>bao status</code> on <a href="../../platform/openbao/#health-check">every pod</a>; if so, <a href="../../platform/openbao/#unsealing-after-a-restart">unseal</a></td>
 </tr>
 <tr>
 <td>An Application is Degraded, OutOfSync or stuck Progressing</td>
-<td><code>argocd app get &lt;app&gt;</code> for the failing resource; a failed sync <a href="../../architecture/gitops/#sync-policy">retries itself for about forty minutes</a>, after that <code>argocd app sync &lt;app&gt;</code> — see <a href="../../platform/argocd/#health-check">ArgoCD</a></td>
+<td><code>argocd app get &lt;app&gt;</code> (<a href="../../platform/argocd/#cli-access">login</a>), or <code>kubectl -n argocd get application &lt;app&gt; -o yaml</code> with Authentik down; a failed sync <a href="../../architecture/gitops/#sync-policy">retries itself</a>, then needs <code>argocd app sync &lt;app&gt;</code></td>
 </tr>
 <tr>
-<td>A node is down</td>
-<td><a href="../nodes/#rebooting-a-node">Rebooting a node</a>; if it does not come back, <a href="../nodes/#replacing-a-failed-node">Replacing a failed node</a></td>
+<td>Cannot log in anywhere</td>
+<td><a href="../../platform/authentik/#when-authentik-is-down">When Authentik is down</a></td>
 </tr>
 <tr>
-<td>Pods pending on a fresh node</td>
-<td>Node still <code>NotReady</code>; check Cilium is running on it</td>
+<td><code>kubectl</code> times out, API unreachable</td>
+<td><code>kubectl --server https://&lt;control plane&gt;:6443</code>, then <a href="../control-plane-vip/#verifying">who holds the VIP</a></td>
+</tr>
+<tr>
+<td><code>kubectl</code>: certificate expired</td>
+<td><a href="../upgrades/#control-plane-certificates">Control-plane certificates</a></td>
+</tr>
+<tr>
+<td>A node down or not rejoining</td>
+<td><code>ssh core@&lt;node&gt; journalctl -u kubelet</code>; dead for good: <a href="../nodes/#replacing-a-failed-node">Replacing a failed node</a></td>
+</tr>
+<tr>
+<td>Node unreachable after a host firewall change</td>
+<td><a href="../../platform/security-policies/#host-firewall-lockout">Host firewall lockout</a></td>
 </tr>
 <tr>
 <td><code>ExternalSecret</code> not syncing</td>
@@ -2604,12 +2614,20 @@ with the table.</p>
 <td><code>ceph status</code>, then the <a href="../../platform/rook-ceph/">Rook dashboard</a></td>
 </tr>
 <tr>
-<td>A hostname stopped resolving to the cluster</td>
-<td>Gateway lost its LoadBalancer IP; check the Cilium L2 pool</td>
+<td>Data deleted, or etcd lost quorum</td>
+<td><a href="../backups/#restoring">Restoring</a>, <a href="../backups/#etcd-restore">etcd restore</a></td>
 </tr>
 <tr>
-<td>Node not rejoining after reboot</td>
-<td><code>journalctl -u kubelet</code> on the node</td>
+<td>Velero backups failing, repositories NotReady</td>
+<td><a href="../../platform/velero/#recovery">Velero recovery</a></td>
+</tr>
+<tr>
+<td>The etcd encryption key leaked</td>
+<td><a href="../encryption-key-rotation/">Encryption Key Rotation</a></td>
+</tr>
+<tr>
+<td>A hostname stopped resolving to the cluster</td>
+<td>Gateway lost its LoadBalancer IP; check the Cilium L2 pool</td>
 </tr>
 <tr>
 <td>A node will not install, or hangs at a blinking cursor</td>
@@ -2617,26 +2635,23 @@ with the table.</p>
 </tr>
 <tr>
 <td>A node installs but comes up with no OSD</td>
-<td><a href="../../platform/rook-ceph/#no-osds-after-reprovisioning">Rook-Ceph &rarr; No OSDs after reprovisioning</a></td>
+<td><a href="../../platform/rook-ceph/#no-osds-after-reprovisioning">No OSDs after reprovisioning</a></td>
 </tr>
 </tbody>
 </table>
-<p>Alerts are mailed by Alertmanager — see
-<a href="../../platform/monitoring/#alerting">Monitoring &rarr; Alerting</a> — but the
-delivery path itself is not monitored, so an empty inbox does not prove
-anything.</p>
+<p>Alerts are <a href="../../platform/monitoring/#alerting">mailed by Alertmanager</a>, but
+nothing monitors the delivery path, so an empty inbox proves nothing.</p>
 <h2 id="rolling-back-a-bad-sync">Rolling back a bad sync<a class="headerlink" href="#rolling-back-a-bad-sync" title="Permanent link">&para;</a></h2>
-<p>The only fix is a revert commit. Every Application runs with automated sync,
-so ArgoCD refuses <code>argocd app rollback</code>, and a manual sync to an older revision
-is undone within one polling interval. Do not patch a generated Application's
-<code>spec</code> to switch automated sync off either; the next ApplicationSet reconcile
-copies the file back over it — see
+<p>The only fix is a revert commit. Under automated sync ArgoCD refuses
+<code>argocd app rollback</code>, a manual sync to an older revision is undone at the
+next poll, and a patched generated Application is overwritten by the next
+ApplicationSet reconcile — see
 <a href="../../architecture/gitops/#sync-policy">Sync policy</a>. The exception is
 <code>argocd</code> itself, which is not generated: <code>argocd app set argocd --sync-policy
 none</code> holds a rollback until <code>syncPolicy.automated</code> is restored.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Do not fix a broken workload with <code>kubectl edit</code>. <code>selfHeal</code> on every Application (<a href="../../architecture/gitops/#sync-policy">Sync policy</a>) puts the manifest back on the next reconcile, so the fix lasts minutes and leaves no trace of what it was. Change the manifest instead.</p>
+<p>Do not fix a broken workload with <code>kubectl edit</code>: <code>selfHeal</code> puts the manifest back on the next reconcile, leaving no trace of the fix. Change the manifest instead.</p>
 </div>
 
 

@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2685,8 +2685,7 @@
 <p><a href="https://external-secrets.io/">External Secrets Operator (ESO)</a> bridges
 <a href="../openbao/">OpenBao</a> to native Kubernetes <code>Secret</code> objects. Workloads consume
 secrets the standard way — <code>envFrom</code>, <code>volumeMounts</code>, <code>imagePullSecrets</code> —
-with no sidecar, no init container and no code that knows what a Vault token
-is.</p>
+with no sidecar and no code that knows what a Vault token is.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2710,11 +2709,11 @@ is.</p>
 </tr>
 <tr>
 <td>Health check</td>
-<td><code>kubectl get clustersecretstore</code> &rarr; <code>Valid</code> on all three</td>
+<td><code>kubectl get clustersecretstore</code> &rarr; <code>Valid</code> on both</td>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/external-secrets/</code>; the stores in <code>payload/platform/openbao/cluster-secret-store.yaml</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/external-secrets"><code>payload/platform/external-secrets/</code></a>; the stores in <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/openbao"><code>payload/platform/openbao/</code></a> <code>cluster-secret-store.yaml</code></td>
 </tr>
 </tbody>
 </table>
@@ -2761,8 +2760,8 @@ anywhere.</p>
 <td>The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (<code>unable to load in-cluster config</code>)</td>
 </tr>
 <tr>
-<td>Two webhook replicas, a PodDisruptionBudget and a hostname spread</td>
-<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a single replica reschedules through a drain every <code>ExternalSecret</code>, <code>PushSecret</code> and store apply fails — see <a href="../#replica-placement">Replica placement</a></td>
+<td>More than one webhook replica, a PodDisruptionBudget and a hostname spread</td>
+<td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so while a lone replica reschedules through a drain every <code>ExternalSecret</code>, <code>PushSecret</code> and store apply fails — see <a href="../#replica-placement">Replica placement</a></td>
 </tr>
 </tbody>
 </table>
@@ -2863,7 +2862,7 @@ so its auth failures show on the <code>ExternalSecret</code> instead:</p>
 </tr>
 <tr>
 <td>Wrong <code>serviceAccountRef</code></td>
-<td><code>external-secrets-vault</code>, in <code>external-secrets</code> for <code>openbao</code> and without a namespace for the other two</td>
+<td><code>external-secrets-vault</code>, in <code>external-secrets</code> for <code>openbao</code> and without a namespace for <code>openbao-apps</code></td>
 </tr>
 </tbody>
 </table>

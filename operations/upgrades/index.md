@@ -31,33 +31,40 @@ ssh core@<node> cat /etc/sysupdate.kubernetes.d/kubernetes.conf   # confirm the 
 
 **kubeadm allows one minor at a time.** v1.34 to v1.37 is three passes through this procedure, each with its release notes read. A newly provisioned node skips all of it: it installs `kubernetes_version` directly and gets the pinned sysupdate config from the boot server.
 
-The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The sysext swaps kubeadm and kubelet together at the reboot, so the sysupdate config goes to one group at a time: Kured (`concurrency` in `payload/platform/kured/application.yaml`) reboots one node at a time but in no particular order, and a config pushed to every node at once hands the workers a new kubelet before the API server has moved.
+The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The sysext swaps kubeadm and kubelet together at the reboot, so the sysupdate config goes to one group at a time: Kured reboots one node at a time but in no particular order, and a config pushed to every node at once hands the workers a new kubelet before the API server has moved.
 
-1. Update `kubernetes_version` in `ansible/inventory.yaml`.
+1. Update `kubernetes_version` in `ansible/inventory.yaml`, and `kubernetes_sha256` beside it to the new image's: `make download` refuses a file that does not match.
 2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
 
    ```bash
    make download && make config
    ```
-3. Stage the new sysext on the first control plane only. The sysupdate config was written once at install time and nothing rewrites it. The boot server is not needed: the node reboots from its own disk — see [Every boot after the first](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>).
+3. Stage the new sysext on the first control plane only. The sysupdate config was written once at install time and nothing rewrites it, and the boot server is not needed. The sentinel must exist afterwards; stop otherwise.
 
    ```bash
    scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.kubernetes.d/kubernetes.conf
    ssh core@<node> sudo systemctl start systemd-sysupdate
+   ssh core@<node> ls /run/reboot-required
    ```
-4. Reboot it to pick up the sysext — see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>). Kured would do it once sysupdate sets the sentinel, but by hand the next step follows at once.
-5. On that node, run the kubeadm upgrade; the sysext swapped the binaries and nothing else. Always pass `--skip-phases addon/kube-proxy`, because a cluster built before `proxy.disabled` was set in `kubeadm.yaml.j2` still has `proxy: {}` in its stored `kubeadm-config`, and without the flag the upgrade redeploys `kube-proxy` beside Cilium; the flag is harmless on a cluster built since. Always pass `--patches /etc/kubernetes/patches` too: the static pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the manifests without them otherwise.
+4. Let Kured reboot it, as in [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>). The node must come back `Ready` on the new kubelet version; stop otherwise.
+
+   ```bash
+   kubectl get node <node> -w
+   ```
+5. On that node, run the kubeadm upgrade; the sysext swapped the binaries and nothing else. Always pass `--skip-phases addon/kube-proxy`: a cluster built before `proxy.disabled` in `kubeadm.yaml.j2` keeps `proxy: {}` in its stored `kubeadm-config`, and the upgrade would redeploy `kube-proxy` beside Cilium. Always pass `--patches /etc/kubernetes/patches` too: the static pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the manifests without them otherwise.
 
    ```bash
    sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
    ```
-6. The other control planes, one at a time: step 3, then step 4, then `kubeadm upgrade node` with the same `--patches` flag. The reboot comes first because the sysext swaps the binaries only then, and `upgrade node` has to run the new kubeadm. It takes the version from the `kubeadm-config` that `upgrade apply` stored and rewrites the static pod manifests on this node.
+
+   It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
+6. Each other control plane in turn: steps 3 and 4, then `kubeadm upgrade node` with the same `--patches` flag, which has to run the new kubeadm the reboot swapped in and takes the version `upgrade apply` stored. `kubectl get nodes` must show the node `Ready` before the next one.
 
    ```bash
    sudo kubeadm upgrade node --patches /etc/kubernetes/patches
    ```
-7. The workers, one at a time: step 3, then step 4, then `kubeadm upgrade    node`, which only fetches the new kubelet configuration.
+7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
 
    ```bash
    sudo kubeadm upgrade node
@@ -80,17 +87,17 @@ kubeadm issues the control-plane certificates for one year and renews them only 
 1. Read the remaining lifetime; every line but the CA should have well over thirty days.
 
    ```bash
-   ssh <control plane> sudo kubeadm certs check-expiration
+   ssh core@<control plane> sudo kubeadm certs check-expiration
    ```
 2. Renew everything kubeadm issued on that node. The CA is not touched.
 
    ```bash
-   ssh <control plane> sudo kubeadm certs renew all
+   ssh core@<control plane> sudo kubeadm certs renew all
    ```
 3. Restart the static pods so they load the new certificates: move the manifests out, wait until `crictl` lists none of the four, move them back. One node at a time, since the API server and etcd on it are down in between.
 
    ```bash
-   ssh <control plane> 'sudo mkdir -p /root/manifests-stopped && sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ && until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done && sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'
+   ssh core@<control plane> 'sudo mkdir -p /root/manifests-stopped && sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ && until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done && sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'
    ```
 4. After the last node, refresh the admin kubeconfig: `admin.conf` was renewed too, and the copy in `output/kubeconfig` carries the old client certificate.
 

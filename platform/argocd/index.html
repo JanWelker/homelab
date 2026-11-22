@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2782,8 +2782,9 @@
 
 
 <h1 id="argocd">ArgoCD<a class="headerlink" href="#argocd" title="Permanent link">&para;</a></h1>
-<p>ArgoCD is the delivery layer: everything in <code>payload/</code> and in the workloads
-repository reaches the cluster through it. How the Applications are generated
+<p>ArgoCD is the delivery layer, <a href="../../architecture/decisions/#argocd-with-an-applicationset-not-flux">chosen over Flux</a>:
+everything in <code>payload/</code> and in the workloads repository reaches the cluster
+through it. How the Applications are generated
 and synced is in <a href="../../architecture/gitops/">GitOps Strategy</a>; this page covers
 the chart values and the supporting resources around ArgoCD itself.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2813,7 +2814,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/argocd/</code> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <code>payload/platform/argocd-config/</code> (OIDC <code>ExternalSecret</code>, Grafana dashboard), <code>payload/platform/argocd-projects/</code> (AppProjects)</td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/argocd"><code>payload/argocd/</code></a> (Application, <code>platform</code> ApplicationSet, <code>values.yaml</code>), <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/argocd-config"><code>payload/platform/argocd-config/</code></a> (OIDC <code>ExternalSecret</code>, Grafana dashboard), <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/argocd-projects"><code>payload/platform/argocd-projects/</code></a> (AppProjects)</td>
 </tr>
 </tbody>
 </table>
@@ -2828,10 +2829,6 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>redis-ha.haproxy</code> <code>maxSurge: 0</code></td>
-<td>Three replicas with hard per-host anti-affinity on three schedulable nodes. The default surges a fourth pod with nowhere to land and wedges every rollout; retiring first frees the node</td>
-</tr>
-<tr>
 <td><code>redis-ha.image.tag</code>, <code>redis-ha.haproxy.image.tag</code></td>
 <td>Both run ahead of the chart, whose exact patch tags stop being rebuilt once the next one lands and so miss base-image security fixes. Renovate carries them forward; each bare <code>tag:</code> must be listed under the <code>pinDigests: false</code> rule in <code>renovate.json</code></td>
 </tr>
@@ -2840,7 +2837,7 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>A CPU limit throttles even on an idle node; memory is not compressible. Sizing is in <a href="../">Platform</a></td>
 </tr>
 <tr>
-<td><code>metrics.enabled</code> on four components</td>
+<td><code>metrics.enabled</code></td>
 <td>Creates the <code>&lt;component&gt;-metrics</code> Services whose names are the <code>job</code> label the vendored dashboard filters on. The ServiceMonitors render only once the Prometheus operator CRDs exist, so <code>make install-argo</code> still works first</td>
 </tr>
 <tr>
@@ -2852,8 +2849,12 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>The chart renders the <code>HTTPRoute</code> to <code>argocd-server</code>, so it is not a file of its own; the response-header filters are the same every UI route carries — see <a href="../gateway-api/#usage">Gateway API</a></td>
 </tr>
 <tr>
-<td><code>resource.customizations</code> for <code>HTTPRoute</code></td>
-<td>The API server defaults <code>group</code>, <code>kind</code>, <code>weight</code> and a catch-all <code>matches</code> onto every route; without the ignore list each one is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs</td>
+<td><code>resource.customizations</code> for <code>HTTPRoute</code>, <code>GRPCRoute</code> and <code>PushSecret</code></td>
+<td>The API server defaults fields no manifest sets: a route's backend <code>group</code>, <code>kind</code>, <code>weight</code> and catch-all <code>matches</code>, a <code>PushSecret</code>'s <code>conversionStrategy</code>. Without the ignore list each object is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs</td>
+</tr>
+<tr>
+<td><code>resource.exclusions</code> for the ARC runner CRs</td>
+<td>The runner controller creates and deletes them per job; excluded, ArgoCD neither tracks nor diffs that churn</td>
 </tr>
 <tr>
 <td><code>dex.enabled: false</code></td>
@@ -2921,15 +2922,14 @@ until rotation. To rotate:</p>
    (<code>token</code>).</p>
 </li>
 <li>
-<p>Pull it into the sessions now instead of at the next <code>refreshInterval</code>; the
-   wrapper reads the mounted file on every call, so no pod restarts:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>claude-homelab<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>claude-homelab-argocd<span class="w"> </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
-</span></code></pre></div>
+<p><a href="../external-secrets/#usage">Force a sync</a> of the <code>claude-homelab-argocd</code>
+   <code>ExternalSecret</code> in <code>claude-homelab</code>; the wrapper reads the mounted file on
+   every call, so no pod restarts.</p>
 </li>
 <li>
 <p>Revoke the previous token; <code>argocd account get --account claude</code> lists the
    IDs with their expiry (a token showing none predates this policy):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>delete-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>&lt;id&gt;
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>argocd<span class="w"> </span>account<span class="w"> </span>delete-token<span class="w"> </span>--account<span class="w"> </span>claude<span class="w"> </span>&lt;id&gt;
 </span></code></pre></div>
 </li>
 </ol>
@@ -2967,15 +2967,15 @@ port (<code>http2</code>, 81) and a <code>GRPCRoute</code> on <code>argo-grpc.in
 hostname of its own so the browser route stays as it is.</p>
 <p>The Gateway offers no ALPN, and gRPC clients refuse TLS without it, so the CLI
 needs ALPN enforcement off:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GRPC_ENFORCE_ALPN_ENABLED</span><span class="o">=</span><span class="nb">false</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>argocd<span class="w"> </span>login<span class="w"> </span>argo-grpc.infra.k8s.wlkr.ch<span class="w"> </span>--sso<span class="w"> </span>--grpc-web
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
 </span></code></pre></div>
-<p>Every Application should be <code>Synced</code> and <code>Healthy</code>. One that stays <code>OutOfSync</code>
-has exhausted its retries and waits for a hand sync — see
-<a href="../../architecture/gitops/#sync-policy">Sync policy</a>.</p>
+<p>An Application stuck <code>OutOfSync</code> has exhausted its
+<a href="../../architecture/gitops/#sync-policy">retries</a> and waits for a hand sync;
+<code>ArgoCDApplicationOutOfSync</code> in <a href="../monitoring/#alerting">Monitoring</a> mails it.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
 <p class="admonition-title">The local admin is disabled; Authentik is the login</p>
@@ -2984,10 +2984,25 @@ has exhausted its retries and waits for a hand sync — see
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="reinstalling-the-chart">Reinstalling the chart<a class="headerlink" href="#reinstalling-the-chart" title="Permanent link">&para;</a></h3>
 <p>ArgoCD manages ArgoCD, and the ApplicationSet that deploys the cluster sits
-inside that same Application. When a broken ArgoCD config has been synced by
-ArgoCD, <code>make install-argo</code> reinstalls the chart from the deployment host, and
-<code>kubectl apply -f payload/argocd/applicationset-platform.yaml</code> re-applies the
-rollout itself.</p>
+inside that same Application. When ArgoCD has synced a config that breaks it,
+from the deployment host:</p>
+<ol>
+<li>
+<p>Reinstall the chart.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>install-argo
+</span></code></pre></div>
+</li>
+<li>
+<p>Re-apply the ApplicationSet.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>payload/argocd/applicationset-platform.yaml
+</span></code></pre></div>
+</li>
+<li>
+<p>Check that the Applications come back.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>get<span class="w"> </span>applications
+</span></code></pre></div>
+</li>
+</ol>
 
 
 

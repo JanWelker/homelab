@@ -21,7 +21,7 @@ flowchart LR
     APPS --> |"homelab-apps: */application.yaml"| WL[Every workload]
 ```
 
-`argocd` is applied by hand once, at bootstrap, and the `platform` ApplicationSet it deploys then adopts it from `payload/argocd/application.yaml`, so a merged chart bump reaches the cluster like any other. It syncs the chart that runs ArgoCD and, through a second source, the `platform` ApplicationSet, so changes to the generator arrive through Git. Its chart values are described in [Platform → ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>), along with the recovery commands for the day ArgoCD syncs a broken ArgoCD config.
+`argocd` is applied by hand once, at bootstrap, and the `platform` ApplicationSet it deploys then adopts it from `payload/argocd/application.yaml`, so a merged chart bump reaches the cluster like any other. It syncs the chart that runs ArgoCD and, through a second source, the `platform` ApplicationSet, so changes to the generator arrive through Git. Its chart values and the recovery commands are in [Platform → ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md>).
 
 Everything else is a component directory with one `application.yaml`, including ArgoCD's own supporting resources:
 
@@ -36,17 +36,17 @@ Each `application.yaml` is a complete Application: the generator copies its labe
 
 ## Sync policy
 
-Every Application, generated or not, carries the same `syncPolicy`: automated sync with `prune` and `selfHeal`, and a `retry` block of ten attempts with a backoff from 30s to 5m. That is the whole delivery contract:
+Every Application, generated or not, carries the same `syncPolicy`: automated sync with `prune` and `selfHeal`, and a `retry` block. That is the whole delivery contract:
 
 - **A commit is live within one polling interval.** ArgoCD runs on a private address, so no GitHub webhook can reach it; the intervals are in [Platform → ArgoCD](<https://homelab.wlkr.ch/platform/argocd/index.md#configuration>).
 - **Drift is reverted.** A resource edited or deleted by hand is put back on the next reconcile, in the platform as much as in the workloads.
-- **A failed sync retries itself.** ArgoCD never re-attempts a failed sync of the same revision unless the Application has a `retry` block, which is why every `application.yaml` carries one. The ten attempts span about forty minutes; after that the Application stays OutOfSync until its revision changes or it is synced by hand:
+- **A failed sync retries itself.** ArgoCD never re-attempts a failed sync of the same revision unless the Application has a `retry` block, which is why every `application.yaml` carries one. Once its attempts run out the Application stays OutOfSync until its revision changes or it is synced by hand:
 
   ```bash
   argocd app sync <application>
   ```
 - **Patching a generated Application's `spec` achieves nothing.** The next ApplicationSet reconcile copies the file back over it. That includes switching automated sync off: the only rollback is a revert commit — see [Rolling back a bad sync](<https://homelab.wlkr.ch/operations/troubleshooting/index.md#rolling-back-a-bad-sync>).
-- **`argocd` carries no finalizer.** The ApplicationSet deletes a generated Application whose file or generator path goes away, and with the resources finalizer that would delete ArgoCD itself; without it the objects stay. Its sync restarts ArgoCD's own pods, and `retry` re-attempts one that was interrupted; the `syncPolicy` is otherwise the shared one.
+- **`argocd` carries no finalizer.** The ApplicationSet deletes a generated Application whose file or generator path goes away, and with the resources finalizer that would delete ArgoCD itself; without it the objects stay.
 - **One exception to `prune`, and one annotation.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP; copy the `syncPolicy` from any other sibling. Elsewhere a resource whose deletion would take more than itself carries a per-resource `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace (everything in it), an AppProject (every Application in it is orphaned), a CloudNativePG `Cluster` and the bucket its backups land in. A removed policy or manifest still prunes; the container it lived in stays.
 
 ## Bootstrap convergence
@@ -70,23 +70,24 @@ A fresh cluster looks stuck at OpenBao by design. OpenBao's pods report Ready wh
 
 The applications the cluster exists to run are in [`JanWelker/homelab-apps`](<https://github.com/JanWelker/homelab-apps>), one directory per application; the `apps` ApplicationSet generates an Application from each `*/application.yaml` there. The split keeps a platform change with a cluster-wide blast radius apart from a workload change with a one-app one.
 
-The dependency runs one way: workloads reference the platform (the `apps-gateway`, the `rook-ceph-block` StorageClass, the `openbao` `ClusterSecretStore`, the CloudNativePG operator), and the platform references the workloads repository exactly once — the `repoURL` in `payload/workloads/applicationset.yaml`.
+Workloads reference the platform: the `apps-gateway`, the `rook-ceph-block` StorageClass, the `openbao` `ClusterSecretStore`, the CloudNativePG operator. The platform names the workloads repository in the `apps` ApplicationSet and the `apps` project, and single workloads wherever it grants them something. A fork with other workloads edits these, in `payload/platform/` or `scripts/`; `git grep <namespace>` finds the rest:
+
+| File | Names |
+| --- | --- |
+| `openbao/cluster-secret-store.yaml`, `scripts/bao-policies.sh` | secret readers |
+| `authentik/` blueprints, secrets, `referencegrant.yaml` | login clients, proxied hostnames |
+| `gateway-api/gateways.yaml`, `security/admission-policies.yaml` | `infra-gateway` namespaces, reserved hostnames |
+| `security/` pod security, network policies, agent RBAC | labels, flows, agent access |
+| `scripts/bao-secrets.sh` | typed secrets |
 
 ### What the split costs
 
 - **Two repositories to clone**, and a change that spans both is two pull requests that cannot merge atomically; merge the platform half first.
-- **The diff preview covers only this repository**, so both ApplicationSets carry `argocd-diff-preview/ignore`.
 - **A workload can reference a missing platform resource**; nothing catches it before the sync.
 
 ### Workloads sync alongside the platform
 
-The `apps` ApplicationSet ships inside the `workloads` Application, which the `platform` ApplicationSet generates like any component. That is why `payload/workloads/` is a sibling of `payload/platform/`, and why the `platform` ApplicationSet names it as a second generator path rather than a glob:
-
-```yaml
-        files:
-          - path: payload/platform/*/application.yaml
-          - path: payload/workloads/application.yaml
-```
+The `apps` ApplicationSet ships inside the `workloads` Application, which the `platform` ApplicationSet generates like any component, from a second generator path beside the `payload/platform/` glob.
 
 On a fresh cluster the workloads therefore start syncing before the platform under them is Healthy and converge the same way: the `retry` block, an `HTTPRoute` waiting for the `apps-gateway`, volumes for Rook, secrets for OpenBao. Ordering *within* a workload uses resource-level sync waves — the CloudNativePG `Cluster` is in an earlier wave, and ArgoCD's built-in health check for `postgresql.cnpg.io/Cluster` waits for it before applying the application.
 

@@ -1,8 +1,6 @@
 # Core Concepts
 
-Five ideas carry this cluster, and none of them is Kubernetes; Kubernetes is the ordinary part. What makes the project unusual is how the machines underneath it come to exist and stay current.
-
-Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>) if any of the names in the table are new. Skip it if none of them are.
+Five ideas carry this cluster besides Kubernetes itself. Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>) if any of the names below are new; the [Terms](<#terms>) table defines the words the other pages assume.
 
 | Concept | What it is | What it costs you |
 | --- | --- | --- |
@@ -16,7 +14,7 @@ Read this before the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 
 [Flatcar](<https://www.flatcar.org/>) is an immutable, minimal Linux distribution designed for running containers. The root filesystem is read-only — you cannot install packages or modify system files at runtime — which forces all configuration to happen declaratively, at first boot, through Ignition. A read-only `/usr` makes undocumented drift between "identical" nodes impossible rather than merely discouraged.
 
-Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. **Nothing here reboots itself**: this project masks `locksmithd`, the daemon that would normally coordinate that, and hands the job to [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), which drains the node first. See [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+Updates are downloaded in the background onto the passive half of an A/B partition pair, so a bad one can be rolled back and nothing changes until the machine restarts. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>), not Flatcar's `locksmithd`, drains and reboots one node at a time — see [Updates &amp; Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 
 ## Ignition and Butane
 
@@ -28,7 +26,7 @@ Updates are downloaded in the background onto the passive half of an A/B partiti
 >
 > **Ignition runs once, in the initramfs, before the real root is mounted**
 >
-> It is not a configuration management system and it converges nothing on the second boot. Change a template and the node has to be *reprovisioned* to care — which here means arming it with `make reinstall` and network-booting it, wiping the disk on the way in. The config is embedded into the OEM partition at install time, so an installed node reads it from its own disk rather than from the network.
+> Change a template and the node has to be *reprovisioned* to care — which here means arming it with `make reinstall` and network-booting it, wiping the disk on the way in. The config is embedded into the OEM partition at install time, so an installed node reads it from its own disk rather than from the network.
 
 ## Systemd sysexts
 
@@ -44,13 +42,24 @@ Upgrading Kubernetes on these nodes is therefore not `apt upgrade`; it is swappi
 2. TFTP serves the syslinux bootloader and a per-MAC boot menu.
 3. Syslinux fetches the Flatcar kernel and initrd over HTTP, passing the Ignition config URL as a kernel parameter.
 
-TFTP runs over UDP with no error correction worth the name, which is why everything larger than the bootloader moves to HTTP as fast as possible. The full sequence is in [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
+The full sequence is in [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
 
 ## GitOps
 
-Everything the cluster runs is described in this repository under `payload/`, and [ArgoCD](<https://argo-cd.readthedocs.io/>) continuously reconciles the cluster to match. If it is not in Git, it is not in the cluster — and if you put it in the cluster anyway, the next sync of the Application that owns it puts Git's version back.
+Everything the cluster runs is described in this repository under `payload/`, and [ArgoCD](<https://argo-cd.readthedocs.io/>) continuously reconciles the cluster to match; a change made by hand is put back on the next sync.
 
-Two terms recur throughout this site:
+## Terms
 
-- **ApplicationSet** — one ArgoCD object that generates an `Application` per matching file in the repository, so adding a component is adding a directory.
-- **Sync policy** — every `Application` syncs automatically, reverts drift and retries a failed sync, so nothing orders the platform: a fresh cluster converges as CRDs, storage and secrets appear. The order it settles in is in [Platform → Rollout order](<https://homelab.wlkr.ch/platform/index.md#rollout-order>); the policy itself is in [GitOps Strategy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>).
+| Term | Meaning |
+| --- | --- |
+| [ApplicationSet](<https://homelab.wlkr.ch/architecture/gitops/index.md#structure>) | An ArgoCD object that generates an `Application` per matching file, so a component is a directory |
+| [CNI](<https://homelab.wlkr.ch/platform/cilium/index.md>) | The plugin that gives pods their network; Cilium here |
+| [CRD](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) | A custom resource type a component adds to the Kubernetes API |
+| [eBGP](<https://homelab.wlkr.ch/platform/cilium/index.md#configuration>) | The routing protocol the control planes announce the Gateway addresses to the router with |
+| [ExternalSecret](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) | A resource that copies an OpenBao value into a Kubernetes `Secret` |
+| [Helm chart](<https://helm.sh/docs/>) | A packaged, templated set of manifests, rendered by ArgoCD |
+| [OSD](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#disks>) | The Ceph daemon that owns one disk partition |
+| [Seal, unseal](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>) | OpenBao starts locked and opens only with a threshold of key shares |
+| [Sync policy](<https://homelab.wlkr.ch/architecture/gitops/index.md#sync-policy>) | Every `Application` syncs automatically, reverts drift and retries |
+| [Sync wave](<https://homelab.wlkr.ch/architecture/gitops/index.md#workloads-sync-alongside-the-platform>) | An annotation that orders resources within one Application |
+| [VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>) | The floating address the API server answers on, whichever control plane holds it |

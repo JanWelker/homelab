@@ -10,7 +10,7 @@
 | Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for its S3 user and RBD snapshots |
 | If it is down | Nightly backups stop; `VeleroBackupTooOld` fires once the last success is older than the rule's threshold |
 | Health check | `kubectl -n backup get backupstoragelocation` reads `Available` |
-| Files | `payload/platform/velero/`, `payload/platform/backup/`, `payload/platform/snapshot-controller/` |
+| Files | [`payload/platform/velero/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/velero>), [`payload/platform/backup/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/backup>), [`payload/platform/snapshot-controller/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/snapshot-controller>) |
 
 ## Configuration
 
@@ -20,15 +20,15 @@ In `application.yaml`'s `valuesObject` unless a file is named:
 | --- | --- |
 | `checksumAlgorithm: ""` on the `BackupStorageLocation` | The AWS plugin's SDK sends a trailing checksum Ceph RGW rejects (`XAmzContentSHA256Mismatch`) |
 | `s3Url: https://s3.infra.k8s.wlkr.ch`, not the RGW Service | kopia signs plain-HTTP uploads with streaming SigV4, which Ceph RGW rejects since [CVE-2026-54330](<https://docs.ceph.com/en/latest/security/CVE-2026-54330/>); over TLS it sends `UNSIGNED-PAYLOAD` and RGW accepts it. The infra Gateway's Let's Encrypt wildcard means no CA has to reach Velero or the movers |
-| `velero-plugin-for-aws` init container | The plugin minor must match the chart's Velero appVersion; the chart's commented example is one line behind |
+| `velero-plugin-for-aws` init container | The plugin minor must match the chart's Velero appVersion |
 | `credentials.useSecret: false` with `extraEnvVars` | Keys come from the environment, fed by the `Secret` Rook writes for the `backup.velero` [backup writer](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#backup-writers>); nothing is rendered into a file or Git |
 | `bucket: offsite`, `prefix: backup.velero` | The writer's prefix, the only place its keys may write |
 | `defaultSnapshotMoveData`, `deployNodeAgent`, `uploaderType: kopia` | A CSI snapshot is a Ceph object in the same cluster; the data mover streams it into the bucket and deletes the snapshot |
 | `volumeSnapshotLocation: []` | The chart's placeholder renders a `VolumeSnapshotLocation` the CRD rejects, failing every sync; Helm replaces lists, so the empty list removes it |
-| `VolumeSnapshotClass` in `payload/platform/backup/volumesnapshotclass.yaml` | The `velero.io/csi-volumesnapshot-class` label is how Velero finds the class; without it volumes are skipped silently. `deletionPolicy: Delete`, because the durable copy is the data mover's |
+| `VolumeSnapshotClass` in `payload/platform/backup/volumesnapshotclass.yaml` | The `velero.io/csi-volumesnapshot-class` label is how Velero finds the class; without it volumes are skipped silently. `deletionPolicy: Delete`, because the durable copy is the data mover's. A `PartiallyFailed` backup with no volume data means the label is missing |
 | `snapshot-controller` Application | Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which must exist before the `VolumeSnapshotClass` applies. It applies the two kustomize directories [kubernetes-csi/external-snapshotter](<https://github.com/kubernetes-csi/external-snapshotter>) publishes at each tag, namespaced into `backup` with the hardening as a patch and the image pinned to the tag, because upstream's Deployment at a tag still names the previous image; Renovate moves the two together, see [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#automerge-policy>). `pdb.yaml` adds the PDB upstream lacks |
 | `rbac.clusterAdministrator` at the chart default | A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a role or binding granting rights the caller lacks, so only cluster-admin restores everything |
-| No `runAsNonRoot` on the `velero` container | Unverified for the plugin init container's copy into `/target` |
+| `schedules.daily` | Excludes what rebuilds from Git or a rescan, listed in [Backups](<https://homelab.wlkr.ch/operations/backups/index.md#velero>). Its `ttl` is the window [CloudNativePG](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#backups>)'s `retentionPolicy` mirrors |
 | Node agent `containerSecurityContext` | Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on |
 | `prometheusRule` | Four rules: `VeleroBackupFailures` (critical) and `VeleroBackupPartialFailures` (warning) on a schedule's outcome, `VeleroBackupTooOld` (critical), which alone catches a backup hanging `InProgress`, and `VeleroBackupInProgress` (info), which is [Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>)'s reboot gate rather than a problem to mail |
 
@@ -62,12 +62,6 @@ kubectl -n backup get externalsecret velero-repo-credentials   # SecretSynced
 ```
 
 ## Pitfalls
-
-> [!WARNING]
->
-> **PartiallyFailed with no volume data**
->
-> Velero found no labelled `VolumeSnapshotClass` and skipped every volume without an error. Check the class above exists and carries the label.
 
 > [!WARNING]
 >
@@ -123,7 +117,7 @@ Discards every Velero backup, resource backups included: a `Backup` with unreach
    ```bash
    kubectl -n backup rollout restart deployment/velero daemonset/node-agent
    ```
-5. Take a backup now rather than at the next schedule, and confirm it.
+5. Take a backup now and confirm it.
 
    ```bash
    velero -n backup backup create --from-schedule velero-daily
@@ -141,4 +135,9 @@ A removed namespace leaves its `BackupRepository` and its Kopia data in the buck
    kubectl -n backup delete backuprepositories.velero.io <namespace>-default-kopia
    kubectl -n backup delete jobs -l velero.io/repo-name=<namespace>-default-kopia
    ```
-2. List, then remove, `offsite/backup.velero/kopia/<namespace>/` with the keys from step 3 of [Re-initialising the repositories](<#re-initialising-the-repositories>).
+2. List, then remove, its Kopia data, with the exports from step 3 of [Re-initialising the repositories](<#re-initialising-the-repositories>).
+
+   ```bash
+   aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 ls s3://offsite/backup.velero/kopia/<namespace>/ --recursive
+   aws --endpoint-url https://s3.infra.k8s.wlkr.ch --region eu-central-1 s3 rm s3://offsite/backup.velero/kopia/<namespace>/ --recursive
+   ```

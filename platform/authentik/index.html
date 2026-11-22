@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -1429,10 +1429,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#two-integration-styles" class="md-nav__link">
+  <a href="#integration-styles" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Two integration styles
+        Integration styles
       </span>
     </span>
   </a>
@@ -2693,10 +2693,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#two-integration-styles" class="md-nav__link">
+  <a href="#integration-styles" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Two integration styles
+        Integration styles
       </span>
     </span>
   </a>
@@ -3114,7 +3114,7 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 </tr>
 <tr>
 <td>Wollbi-Fescht, Wollbi Adventsfenster</td>
-<td>Proxy outpost on the admin paths, with no <code>infra-users</code> binding, see <a href="#groups-and-roles">Groups and roles</a></td>
+<td>OIDC for the Payload editors, bound to <code>wollbi-editors</code> rather than <code>infra-users</code>, see <a href="#groups-and-roles">Groups and roles</a></td>
 </tr>
 </tbody>
 </table>
@@ -3149,12 +3149,12 @@ every network flow in the cluster to anyone who could reach the hostname.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/authentik/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/authentik"><code>payload/platform/authentik/</code></a></td>
 </tr>
 </tbody>
 </table>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<h3 id="two-integration-styles">Two integration styles<a class="headerlink" href="#two-integration-styles" title="Permanent link">&para;</a></h3>
+<h3 id="integration-styles">Integration styles<a class="headerlink" href="#integration-styles" title="Permanent link">&para;</a></h3>
 <p><strong>OIDC</strong>, for applications that can do it themselves: ArgoCD and Grafana map
 group membership to a role. <strong>Proxy</strong>, for the rest: the hostname resolves to
 Authentik's embedded outpost, a reverse proxy that authenticates the request
@@ -3170,15 +3170,10 @@ application and protects exactly as far as nothing else can reach the backend.</
 <p>Authentik answers on <code>auth.k8s.wlkr.ch</code> only, on <code>apps-gateway</code>, which the
 LAN reaches through the router's local record and the outside through
 Route53. Every OIDC client and the embedded outpost use that one name.</p>
-<p>The outpost is why there is only one. A proxied application's route points
-at <code>authentik-server</code>, but the login itself is an OAuth dance: the outpost
-sends the browser to the outpost's <code>authentik_host</code> to authenticate and gets
-it back on the application's own hostname. With Authentik on two names and
-<code>authentik_host</code> on the LAN-only one, an application on <code>apps-gateway</code>
-worked at home and redirected outside users to a name that does not
-resolve. <code>blueprints.yaml</code> pins <code>authentik_host</code> because the embedded
-outpost otherwise fills it from <code>web.base_url</code> on first start and never
-updates it.</p>
+<p>The outpost sends the browser to its <code>authentik_host</code> to authenticate, so
+that name must resolve wherever a proxied application is reached from.
+<code>blueprints.yaml</code> pins <code>authentik_host</code> because the embedded outpost otherwise
+fills it from <code>web.base_url</code> on first start and never updates it.</p>
 <div class="admonition warning">
 <p class="admonition-title">A client must never mix names</p>
 <p>The <code>iss</code> claim is the hostname the token was issued through. A discovery URI on one name and a redirect on another fails every login with an error that blames the token. Should a second hostname ever come back, pin each client to exactly one.</p>
@@ -3187,8 +3182,7 @@ updates it.</p>
 <p>A proxied application's route lives with the application: Hubble's in
 <code>payload/platform/cilium/</code>, Rook's in <code>payload/platform/rook-ceph/</code>,
 Prometheus's and Alertmanager's in <code>payload/platform/monitoring/</code>, and Home
-Assistant's, Flowscape's, Umami's, Wollbi-Fescht's, Wollbi
-Adventsfenster's and the Extractor admin UI's in the
+Assistant's, Flowscape's, Umami's and the Extractor admin UI's in the
 <a href="../../development/add-workload/">workloads repository</a>,
 each with <code>authentik-server</code> as <code>backendRef</code>. Gateway API forbids a
 cross-namespace <code>backendRef</code> unless the target namespace grants it, so
@@ -3197,8 +3191,8 @@ namespaces to that Service only. A proxied workload is therefore two pull
 requests, by design: a workload cannot take itself out from behind the
 authentication layer on its own.</p>
 <h3 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h3>
-<p><code>database.yaml</code> is a CloudNativePG <code>Cluster</code> with replicas, the only one on
-the cluster that has any. Every login on every platform UI goes through
+<p><code>database.yaml</code> is a CloudNativePG <code>Cluster</code> with replicas, backed up as in
+<a href="../cloudnative-pg/#backups">Backups</a>. Every login on every platform UI goes through
 Authentik, so its database must survive a node drain: with one instance a
 reboot kills the database; with replicas, the operator's PodDisruptionBudgets
 hold the drain until it has switched the primary over, a few seconds without
@@ -3236,7 +3230,7 @@ placement</a>.</p>
 </tr>
 <tr>
 <td><code>server.serviceAccountName</code> and <code>automountServiceAccountToken</code></td>
-<td>The server calls no Kubernetes API; the chart applies the switch only with a name set. The worker keeps its token for outposts</td>
+<td>The chart applies the switch only with a name set; see <a href="../security-policies/#default-serviceaccount-tokens">Default ServiceAccount tokens</a></td>
 </tr>
 <tr>
 <td><code>server.topologySpreadConstraints</code></td>
@@ -3315,7 +3309,7 @@ else uses the root path: every other provider is found under its slug.</p>
 <h3 id="user-settings-flow">User settings flow<a class="headerlink" href="#user-settings-flow" title="Permanent link">&para;</a></h3>
 <p>Dependency-Track keys its accounts on the <code>preferred_username</code>
 claim, so a user who could rename themselves could take over another's
-account. <code>05-user-settings.yaml</code> therefore gives the default brand its own
+account. The <code>05-user-settings.yaml</code> blueprint in <code>blueprints.yaml</code> therefore gives the default brand its own
 user settings flow with no username field; a username changes only under
 <strong>Directory &rarr; Users</strong>. It replaces the brand's flow instead of editing
 the default one because the default blueprint rewrites its own objects on
@@ -3324,7 +3318,7 @@ every upgrade, and because the <strong>System &rarr; Settings</strong> switch
 <h3 id="authentication-flow">Authentication flow<a class="headerlink" href="#authentication-flow" title="Permanent link">&para;</a></h3>
 <p><code>auth.k8s.wlkr.ch</code> is reachable from the Internet, and the default
 authentication flow lets a user without a device in on a password alone.
-<code>06-authentication.yaml</code> gives the default brand its own flow out of the
+The <code>06-authentication.yaml</code> blueprint gives the default brand its own flow out of the
 default password and login stages, with three additions. It is
 an own flow for the same reason as the <a href="#user-settings-flow">user settings
 flow</a>: the default blueprint rewrites its own objects on
@@ -3342,8 +3336,8 @@ every upgrade.</p>
 <td>A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under <strong>Settings &rarr; MFA devices</strong>, which is why they are not offered as the first device</td>
 </tr>
 <tr>
-<td>A deny stage after identification, selected by a reputation policy on the address and the username with threshold <code>-5</code></td>
-<td>Every failed login scores both <code>-1</code>, so after five an address or a username is refused for a day (<code>AUTHENTIK_REPUTATION__EXPIRY</code>); the password stage's own five-attempt cancel only ends the current attempt. The policy <em>passes</em> for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known</td>
+<td>A deny stage after identification, selected by a reputation policy on the address and the username</td>
+<td>Every failed login lowers both scores, so an address or a username below the policy's <code>threshold</code> is refused until Authentik's reputation expiry clears it; the password stage's own five-attempt cancel only ends the current attempt. The policy <em>passes</em> for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known</td>
 </tr>
 <tr>
 <td>A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login</td>
@@ -3567,36 +3561,46 @@ are in <a href="../../quickstart/#setup">Quickstart step 12</a>.</p>
 </div>
 <h2 id="recovery">Recovery<a class="headerlink" href="#recovery" title="Permanent link">&para;</a></h2>
 <h3 id="when-authentik-is-down">When Authentik is down<a class="headerlink" href="#when-authentik-is-down" title="Permanent link">&para;</a></h3>
-<p>Single sign-on is a single point of failure for logging in at all. The ArgoCD
-path needs a working <code>kubectl</code>, so keep a kubeconfig off-cluster.</p>
-<p><strong>ArgoCD</strong> — re-enable the local admin account by merging a pull request
-that sets <code>admin.enabled</code> in <code>payload/argocd/values.yaml</code>; the <code>argocd</code>
-Application self-heals, so a <code>kubectl patch</code> on <code>argocd-cm</code> is reverted at
-the next reconcile. ArgoCD syncs the merge without a login. Then restart the
-server, which generates <code>argocd-initial-admin-secret</code>, and read the password
-as in <a href="../../quickstart/#setup">Quickstart</a>. Revert the pull request once
-Authentik is back.</p>
+<p>Single sign-on is a single point of failure for logging in at all. Every
+step needs a working <code>kubectl</code>, so keep a kubeconfig off-cluster; selfHeal
+reverts a <code>kubectl patch</code>, so each switch is a pull request, which ArgoCD
+syncs without a login. Revert them once Authentik is back.</p>
+<ol>
+<li>
+<p>ArgoCD: merge <code>admin.enabled: "true"</code> in <code>payload/argocd/values.yaml</code>, restart the
+   server, which generates <code>argocd-initial-admin-secret</code>, and read the
+   password as in <a href="../../quickstart/#setup">Quickstart</a>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>argocd<span class="w"> </span>rollout<span class="w"> </span>restart<span class="w"> </span>deploy/argocd-server
 </span></code></pre></div>
-<p><strong>Grafana</strong> — the login form is hidden, not removed: the admin account works
-through the API, and <code>GF_AUTH_DISABLE_LOGIN_FORM=false</code> brings the form back.</p>
-<p><strong>Proxied dashboards</strong> have no bypass; port-forward instead:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>monitoring<span class="w"> </span>port-forward<span class="w"> </span>svc/kube-prometheus-stack-prometheus<span class="w"> </span><span class="m">9090</span>:9090
+</li>
+<li>
+<p>Grafana: the admin account works through the API as it is. For the UI,
+   merge <code>auth.disable_login_form: false</code> under <code>grafana.ini</code> in
+   <code>payload/platform/monitoring/application.yaml</code> and log in as <code>admin</code> at
+   <code>/login?disableAutoLogin=true</code> with the password from OpenBao, see
+   <a href="../monitoring/#resetting-the-grafana-admin-password">Resetting the Grafana admin password</a>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>openbao<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>openbao-0<span class="w"> </span>--<span class="w"> </span>bao<span class="w"> </span>kv<span class="w"> </span>get<span class="w"> </span>-mount<span class="o">=</span>kv<span class="w"> </span>-field<span class="o">=</span>password<span class="w"> </span>monitoring/grafana-admin
 </span></code></pre></div>
+</li>
+<li>
+<p>Proxied dashboards have no bypass; port-forward instead.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>port-forward<span class="w"> </span>svc/hubble-ui<span class="w"> </span><span class="m">8080</span>:80
+</span></code></pre></div>
+</li>
+</ol>
 <h3 id="argocds-api-key-account">ArgoCD's API key account<a class="headerlink" href="#argocds-api-key-account" title="Permanent link">&para;</a></h3>
 <p>Disabling the local admin also removes its <code>apiKey</code> capability. If a token is
 needed, add an account scoped to what the token is for rather than
 re-enabling admin:</p>
 <p>The <code>claude</code> account is one, for the in-cluster agents; see
 <a href="../argocd/#agent-account">Agent account</a>. The shape:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">configs</span><span class="p">:</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">configs</span><span class="p">:</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">cm</span><span class="p">:</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="nt">accounts.mcp</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apiKey</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span><span class="nt">rbac</span><span class="p">:</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="nt">policy.csv</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">      </span><span class="no">p, role:mcp, applications, get, */*, allow</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">      </span><span class="no">g, mcp, role:mcp</span>
 </span></code></pre></div>
 
 

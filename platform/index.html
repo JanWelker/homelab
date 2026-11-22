@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../adapting/" class="md-nav__link">
+      <a href="../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2612,7 +2612,7 @@ applications</code> shows — and the namespace it lands in.</p>
 <tr>
 <td>backup</td>
 <td><code>backup</code></td>
-<td>Velero's buckets, the <code>VolumeSnapshotClass</code> and an etcd snapshot CronJob — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
+<td>Velero's buckets and repository password, the <code>VolumeSnapshotClass</code>, the etcd snapshot and defrag and OpenBao snapshot CronJobs, the offsite bucket's policy job and writers, and the backup alerts — see <a href="../operations/backups/">Backups &amp; Recovery</a></td>
 </tr>
 <tr>
 <td><a href="cert-manager/">cert-manager</a></td>
@@ -2753,17 +2753,11 @@ applications</code> shows — and the namespace it lands in.</p>
 </table>
 <p>Across the platform, memory limits are set at roughly 2.5x the measured peak
 working set and requests at steady state; CPU is requested but never limited.
-The control-plane static pods get their memory requests through the kubeadm
-patches in <code>ansible/templates/butane_node_config.yaml.j2</code>, applied at
-<code>kubeadm init</code>, <code>join</code> and <code>upgrade</code>, so a running node picks them up at its
-next reinstall; they carry no limits, because a limit on the API server or
-etcd would OOM-kill the control plane and 2.5x their peak exceeds the node.
-The API server's patch also sets <code>GOMEMLIMIT</code>: with Go's default <code>GOGC=100</code>
-its heap grows to twice the live set before a collection, about 4 GiB
-resident for 2 GiB live, which kept the 8 GB control-plane nodes above
-<code>NodeMemoryHighUtilization</code>'s 90%. The limit makes it collect earlier; it is
-soft, so a larger live set costs GC CPU, not an OOM kill.
-CoreDNS is kubeadm's too: the same directory holds a patch spreading its
+The control-plane static pods take their requests, and the API server a soft
+<code>GOMEMLIMIT</code> so its heap collects before it fills the node, from the kubeadm
+patches in <code>ansible/templates/butane_node_config.yaml.j2</code>; they carry no
+limits, because a limit on the API server or etcd would OOM-kill the control
+plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its
 replicas one per node, which kubeadm applies at <code>init</code> and <code>upgrade apply</code>
 only, and its PodDisruptionBudget sits in the <code>security</code> component because
 nothing else owns a CoreDNS manifest.</p>
@@ -2775,18 +2769,26 @@ class, so under node pressure the kubelet evicts workloads first:
 <code>system-cluster-critical</code> for the rest.</p>
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
-    Client([Client]) --&gt; LB[Cilium LoadBalancer]
-    LB --&gt; GW[Gateway API]
-
-    subgraph Cluster
-        GW --&gt;|HTTPRoute| Svc[Service]
-        Svc --&gt; Pod[App Pod]
-    end
-
-    style Client fill:#f9f,stroke:#333</code></pre>
-<p>Four hops, and Cilium is three of them. When a hostname stops answering, ask
-which hop stopped, in this order: does the Gateway still hold its LoadBalancer
-IP, does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have
+    NET([Internet]) --&gt;|port-forward 80, 443| R[Router]
+    VLAN([Other VLANs, VPN]) --&gt; R
+    LAN([LAN]) --&gt;|L2 ARP| APPS[apps-gateway]
+    LAN --&gt;|L2 ARP| INFRA[infra-gateway]
+    R --&gt;|eBGP route| APPS
+    R --&gt;|eBGP route, VLANs only| INFRA
+    APPS --&gt;|HTTPRoute| SVC[Service]
+    INFRA --&gt;|HTTPRoute| SVC
+    APPS --&gt;|proxied app| AK[Authentik outpost]
+    INFRA --&gt;|proxied app| AK
+    AK --&gt;|authenticated| SVC
+    SVC --&gt; POD[Pod]</code></pre>
+<p>The Gateway addresses are announced twice, over L2 to the flat LAN and over
+eBGP from the control planes to the router — see
+<a href="cilium/#configuration">Cilium</a>; TLS ends at the Gateway, except on the
+<a href="gateway-api/#ssh-listener"><code>ssh</code> listener</a>, and a
+<a href="authentik/#integration-styles">proxied application</a> passes through
+Authentik first. When a hostname stops answering, ask which hop stopped: does
+the router still hold its BGP routes, does the Gateway still hold its address,
+does the <code>HTTPRoute</code> still say <code>Accepted</code>, does the Service still have
 endpoints.</p>
 <h2 id="httproute-locations">HTTPRoute Locations<a class="headerlink" href="#httproute-locations" title="Permanent link">&para;</a></h2>
 <p>Routes sit with the component they expose, as a manifest where the component
@@ -2870,8 +2872,8 @@ structure and the sync policy.</p>
 <h2 id="replica-placement">Replica placement<a class="headerlink" href="#replica-placement" title="Permanent link">&para;</a></h2>
 <p>Two replicas on one node are not redundancy. Every chart's default is a single
 <code>preferredDuringSchedulingIgnoredDuringExecution</code> anti-affinity term — one
-weight among the scheduler's scores, and on a cluster of one 16&nbsp;GB worker
-against two 8&nbsp;GB ones, free memory outscores it. So every component with
+weight among the scheduler's scores, which free memory on a larger node
+outscores. So every component with
 more than one replica carries an explicit rule:</p>
 <table>
 <thead>
@@ -2883,7 +2885,7 @@ more than one replica carries an explicit rule:</p>
 <tbody>
 <tr>
 <td><code>topologySpreadConstraints</code>, <code>maxSkew: 1</code>, <code>whenUnsatisfiable: ScheduleAnyway</code></td>
-<td>the component runs on the three workers only, where a hard rule would leave a replica <code>Pending</code> through a Kured drain</td>
+<td>the component runs on the workers only, where a hard rule would leave a replica <code>Pending</code> through a Kured drain</td>
 </tr>
 <tr>
 <td><code>podAntiAffinity</code> <code>requiredDuringSchedulingIgnoredDuringExecution</code></td>
@@ -2896,8 +2898,7 @@ nodes the pod can reach rather than over the tainted control planes. Where a
 component carries a PodDisruptionBudget it says <code>maxUnavailable: 1</code>, so a drain
 or the <a href="descheduler/">descheduler</a> evicts one replica at a time;
 <code>maxUnavailable</code> rather than <code>minAvailable</code>, so a component scaled down to one
-replica never blocks a drain. The CloudNativePG operator runs two replicas
-with no budget. Placement
+replica never blocks a drain. Placement
 is scored once, at scheduling time: pods already sharing a node stay there
 until something restarts them, and the <a href="descheduler/">descheduler</a> moves
 them back only if its evictor is allowed to touch them.</p>
@@ -2924,7 +2925,7 @@ while it is not yet Healthy.</p>
 <tr>
 <td>Network</td>
 <td><code>cilium</code>, <code>kube-vip</code></td>
-<td>the Gateway API CRDs Cilium's operator reads at startup</td>
+<td>the Gateway API CRDs, see <a href="cilium/#pitfalls">Cilium</a></td>
 </tr>
 <tr>
 <td>Controllers</td>

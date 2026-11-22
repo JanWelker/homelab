@@ -629,14 +629,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../adapting/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Quickstart
+  Adapt It to Your Cluster
 
     
   </span>
@@ -656,14 +656,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../adapting/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Adapt It to Your Cluster
+  Quickstart
 
     
   </span>
@@ -2707,8 +2707,8 @@
 <p>TLS certificate automation via Let's Encrypt, using DNS-01 challenges through
 AWS Route53. DNS-01 because these hostnames resolve to RFC1918 addresses that
 Let's Encrypt cannot reach, and because it is the only way to get a wildcard:
-one certificate per zone, in <code>payload/platform/certificates/certificates.yaml</code>,
-covers every Gateway hostname.</p>
+one per Gateway listener, in <code>payload/platform/certificates/certificates.yaml</code>,
+covers every hostname that listener serves.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2728,7 +2728,7 @@ covers every Gateway hostname.</p>
 </tr>
 <tr>
 <td>If it is down</td>
-<td>Nothing immediately. Certificates stop renewing; the consequence surfaces up to sixty days later</td>
+<td>Nothing immediately. Certificates stop renewing, and the failure surfaces weeks later as an <a href="../openbao/#pitfalls">expired certificate</a></td>
 </tr>
 <tr>
 <td>Health check</td>
@@ -2736,7 +2736,7 @@ covers every Gateway hostname.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><code>payload/platform/cert-manager/</code>, <code>payload/platform/certificates/</code></td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/cert-manager"><code>payload/platform/cert-manager/</code></a>, <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/certificates"><code>payload/platform/certificates/</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -2758,15 +2758,15 @@ covers every Gateway hostname.</p>
 <td>One wave orders custom resources alphabetically, exactly backwards, and an issuer applied before its Secret stays <code>Ready=False</code> with <code>InvalidSolver</code></td>
 </tr>
 <tr>
-<td>Sync <code>retry</code> on both Applications</td>
-<td>Without one a failed apply, such as the ESO webhook being unreachable on a fresh CNI, ends the operation and leaves everything behind it unmade</td>
+<td><code>enableGatewayAPI: true</code> in <code>values.yaml</code></td>
+<td>Turns on the shim that issues from <code>cert-manager.io</code> annotations on a Gateway. Nothing uses it: every certificate here is an explicit <code>Certificate</code></td>
 </tr>
 <tr>
 <td><code>ServiceMonitor</code> rendered unconditionally</td>
 <td>The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate <code>prometheus-operator-crds</code> Application — see <a href="../monitoring/#crds">Monitoring</a></td>
 </tr>
 <tr>
-<td>Two webhook replicas, a PodDisruptionBudget and a hostname spread</td>
+<td>More than one webhook replica, a PodDisruptionBudget and a hostname spread</td>
 <td>The webhook's <code>failurePolicy</code> is <code>Fail</code>, so a lone replica rescheduling through a drain refuses every apply — see <a href="../#replica-placement">Replica placement</a></td>
 </tr>
 <tr>
@@ -2843,7 +2843,7 @@ _acme-challenge.&lt;host&gt;</code> settles which.</p>
 <h2 id="pitfalls">Pitfalls<a class="headerlink" href="#pitfalls" title="Permanent link">&para;</a></h2>
 <div class="admonition note">
 <p class="admonition-title">A sealed OpenBao means no renewals</p>
-<p>Until OpenBao is unsealed and the secret stored, nothing issues or renews, and the failure surfaces as an expired certificate two months later — see <a href="../openbao/#pitfalls">OpenBao</a>.</p>
+<p>Until OpenBao is unsealed and the secret stored, nothing issues or renews; how that surfaces is in <a href="../openbao/#pitfalls">OpenBao</a>.</p>
 </div>
 
 

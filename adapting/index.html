@@ -19,10 +19,10 @@
         
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../concepts/">
       
       
-        <link rel="next" href="../architecture/">
+        <link rel="next" href="../quickstart/">
       
       
         
@@ -631,33 +631,6 @@
                   
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Quickstart
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
     
   
   
@@ -797,10 +770,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#checklist" class="md-nav__link">
+  <a href="#parts-tied-to-the-authors-accounts" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Checklist
+        Parts tied to the author's accounts
       </span>
     </span>
   </a>
@@ -811,6 +784,33 @@
   
 </nav>
       
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Quickstart
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2564,10 +2564,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#checklist" class="md-nav__link">
+  <a href="#parts-tied-to-the-authors-accounts" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Checklist
+        Parts tied to the author's accounts
       </span>
     </span>
   </a>
@@ -2674,41 +2674,35 @@
 
 
 <h1 id="adapting-this-for-your-cluster">Adapting This for Your Cluster<a class="headerlink" href="#adapting-this-for-your-cluster" title="Permanent link">&para;</a></h1>
-<p>This repository documents one specific homelab. Node names, addresses, the
-<code>wlkr.ch</code> domain, and the Git repository URL are hardcoded throughout
-<code>payload/</code> and <code>ansible/</code>. Run the <a href="../quickstart/">Quickstart</a> unchanged and you
-get a cluster that syncs from <em>this</em> repository and requests certificates for a
-domain you don't control.</p>
-<p>Everything below is a change you make in your own fork, before step 1 of the
-Quickstart.</p>
+<p>This repository documents one homelab, built from the pieces in
+<a href="../concepts/">Concepts</a>, with its node names, addresses, domain and Git URL
+hardcoded in <code>payload/</code> and <code>ansible/</code>. Make the changes below in your fork
+before step 1 of the <a href="../quickstart/">Quickstart</a>, and push them: ArgoCD reads
+Git, not your working tree.</p>
 <h2 id="1-fork-and-repoint-argocd">1. Fork and repoint ArgoCD<a class="headerlink" href="#1-fork-and-repoint-argocd" title="Permanent link">&para;</a></h2>
-<p>Every ArgoCD <code>Application</code> points at this repository by URL. Until you change
-them, your cluster pulls its desired state from here and your own commits have
-no effect.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-l<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab.git'</span><span class="w"> </span>--<span class="w"> </span>payload/
-</span></code></pre></div>
-<p>Rewrite them to your fork. The match ends in <code>.git</code>, so the workloads
-repository below is left alone:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab.git'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s1">'s|github.com/JanWelker/homelab.git|github.com/YOUR_USER/YOUR_REPO.git|g'</span>
+<p>Every ArgoCD <code>Application</code> points at this repository; until you change them,
+your own commits have no effect. The match ends in <code>.git</code>, so the workloads
+repository is left alone:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'github.com/JanWelker/homelab.git'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>perl<span class="w"> </span>-pi<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s|github\.com/JanWelker/homelab\.git|github.com/YOUR_USER/YOUR_REPO.git|g'</span>
 </span></code></pre></div>
 <p>The workloads repository is a second URL, in
 <code>payload/platform/argocd-projects/projects.yaml</code> (the <code>apps</code> project's
 <code>sourceRepos</code>) and <code>payload/workloads/applicationset.yaml</code>. Point both at your
-fork of
-<a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>sed -i ''</code> is the BSD/macOS form. On Linux use <code>sed -i</code> with no argument.</p>
-</div>
-<p>If your fork is private, ArgoCD also needs repository credentials — see the
-<a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories">ArgoCD private repository docs</a>.</p>
+fork of <a href="https://github.com/JanWelker/homelab-apps">homelab-apps</a>, and change
+the <code>repoURL</code> in every <code>*/application.yaml</code> of that fork too, or your cluster
+deploys the author's applications. Delete the application directories you
+will not run, with their prompts in <code>scripts/bao-secrets.sh</code>; what the
+platform names per workload is in
+<a href="../architecture/gitops/#workloads-live-in-a-second-repository">GitOps Strategy</a>.</p>
+<p>A private fork also needs
+<a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repositories">repository credentials</a>
+in ArgoCD.</p>
 <h2 id="2-choose-your-domain">2. Choose your domain<a class="headerlink" href="#2-choose-your-domain" title="Permanent link">&para;</a></h2>
-<p>Four hostname patterns carry traffic. Each is a listener in
-<code>payload/platform/gateway-api/gateways.yaml</code> and a zone in external-dns's
-<code>domainFilters</code> (<code>payload/platform/external-dns/application.yaml</code>); the HTTPS
-ones also have a wildcard <code>Certificate</code> in
-<code>payload/platform/certificates/certificates.yaml</code>:</p>
+<p>Four hostname patterns carry traffic, each a listener in
+<code>gateway-api/gateways.yaml</code>, a zone in external-dns's <code>domainFilters</code> and,
+for HTTPS, a wildcard <code>Certificate</code> in <code>certificates/certificates.yaml</code>, all
+under <code>payload/platform/</code>:</p>
 <table>
 <thead>
 <tr>
@@ -2736,24 +2730,23 @@ ones also have a wildcard <code>Certificate</code> in
 <tr>
 <td><code>*.wollbi.ch</code></td>
 <td>a second site family on <code>apps-gateway</code>, with its own listener and certificate</td>
-<td>delete or rename every file <code>git grep -l wollbi -- payload/</code> lists</td>
+<td>delete <code>payload/platform/authentik/secrets-*-wollbi.yaml</code>, and the <code>wollbi</code> entries in the other files <code>git grep -l wollbi -- payload/</code> lists</td>
 </tr>
 </tbody>
 </table>
-<p>Replace the first three in one pass; <code>wollbi.ch</code> does not match the pattern
-and is handled by hand:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lz<span class="w"> </span><span class="s1">'wlkr\.ch'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">''</span><span class="w"> </span><span class="s1">'s|wlkr\.ch|YOUR-DOMAIN.example|g'</span>
+<p>Replace the first three in one pass. It rewrites hostnames only, so label and
+annotation keys such as <code>homelab.wlkr.ch/backup-exempt</code> and
+<code>host-firewall.wlkr.ch/exempt</code> keep the names the workloads and the
+<a href="../platform/security-policies/#host-firewall-lockout">lockout runbook</a> use:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>grep<span class="w"> </span>-lzE<span class="w"> </span><span class="s1">'(k8s|ssh)\.wlkr\.ch'</span><span class="w"> </span>--<span class="w"> </span>payload/<span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="se">\</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>xargs<span class="w"> </span>-0<span class="w"> </span>perl<span class="w"> </span>-pi<span class="w"> </span>-e<span class="w"> </span><span class="s1">'s/\b(k8s|ssh)\.wlkr\.ch\b/$1.YOUR-DOMAIN.example/g'</span>
 </span></code></pre></div>
-<p>That covers the Gateway hostnames, the wildcard <code>Certificate</code> resources, every
-<code>HTTPRoute</code>, ArgoCD's <code>global.domain</code>, and the
-<code>link.argocd.argoproj.io/external-link</code> annotations.</p>
-<p>You must own this domain: the certificates are issued by Let's Encrypt through
-a DNS-01 challenge, which requires write access to the zone. <code>.local</code>, <code>.lan</code>
-and made-up TLDs will not work.</p>
+<p>You must own the domain: Let's Encrypt's DNS-01 challenge needs write access
+to its zone, so <code>.local</code>, <code>.lan</code> and made-up TLDs fail.</p>
 <h2 id="3-point-dns-at-the-gateway-ips">3. Point DNS at the gateway IPs<a class="headerlink" href="#3-point-dns-at-the-gateway-ips" title="Permanent link">&para;</a></h2>
-<p>The two Gateways take fixed addresses from the Cilium pools in
-<code>payload/platform/cilium/lb-pools.yaml</code>:</p>
+<p>Each Gateway asks for a fixed address in its <code>spec.addresses</code>, which must lie
+inside the Cilium pools in <code>payload/platform/cilium/lb-pools.yaml</code>, or the
+Gateway is never programmed:</p>
 <table>
 <thead>
 <tr>
@@ -2772,19 +2765,24 @@ and made-up TLDs will not work.</p>
 </tr>
 </tbody>
 </table>
-<p>Change both CIDRs to free addresses on your LAN, outside the DHCP range, or
-the router will eventually hand one to a laptop, then create the two wildcard
-<code>A</code> records. Two more things in the same component decide whether anything
-answers on those addresses:</p>
+<p>Change both pools and both <code>spec.addresses</code> to free LAN addresses outside the
+DHCP range, so the router never hands one out, then create the two wildcard
+<code>A</code> records. <code>apps-gateway</code> also carries an
+<code>external-dns.kubernetes.io/target</code> annotation, the public address
+external-dns publishes for its names: set your own, or delete it to publish
+the LAN address — see <a href="../platform/external-dns/#configuration">external-dns</a>
+and <a href="../platform/gateway-api/#configuration">Gateway API</a>. Two more things
+decide whether anything answers on those addresses:</p>
 <ul>
 <li>The <code>CiliumL2AnnouncementPolicy</code> in <code>lb-pools.yaml</code> answers ARP for them
-  from the control-plane nodes only, on interfaces matching a name pattern.
-  Change the <code>nodeSelector</code> if your control planes should not carry the
-  traffic and <code>interfaces</code> if the pattern does not match your NICs; L2 needs
-  the addresses in the nodes' subnet.</li>
+  from the control planes only, on interfaces matching a pattern: change its
+  <code>nodeSelector</code> and <code>interfaces</code> to fit. L2 needs the addresses in the
+  nodes' subnet.</li>
 <li><code>payload/platform/cilium/bgp.yaml</code> also announces them to the router over
   eBGP, and its peer and ASNs must match the inventory (step 5). With no BGP
-  router, delete the file.</li>
+  router, delete it and <code>bgp-secret.yaml</code> beside it, and skip the
+  <code>cilium/bgp</code> path in <code>scripts/bao-secrets.sh</code> as in
+  <a href="../quickstart/#setup">Quickstart step 11</a>.</li>
 </ul>
 <h2 id="4-set-up-the-dns-01-solver">4. Set up the DNS-01 solver<a class="headerlink" href="#4-set-up-the-dns-01-solver" title="Permanent link">&para;</a></h2>
 <p><code>payload/platform/certificates/cluster-issuers.yaml</code> is written for <strong>AWS
@@ -2793,17 +2791,19 @@ Route53</strong>. Update:</p>
 <li><code>email:</code> — your address, on both issuers. Let's Encrypt sends expiry notices here.</li>
 <li><code>region:</code> — the Route53 region.</li>
 </ul>
-<p>If your DNS is hosted elsewhere, replace the <code>dns01.route53</code> solver with the
-matching <a href="https://cert-manager.io/docs/configuration/acme/dns01/">cert-manager DNS-01 provider</a>
-and adjust the credential path in OpenBao accordingly.</p>
+<p>DNS hosted elsewhere means more than the matching
+<a href="https://cert-manager.io/docs/configuration/acme/dns01/">cert-manager DNS-01 provider</a>:
+external-dns is configured for AWS too, and the egress policies of both admit
+only that API. <code>git grep -il route53 -- payload/ scripts/</code> lists every file,
+the credential prompts included.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Switch <code>issuerRef</code> in <code>certificates.yaml</code> to <code>letsencrypt-staging</code> while you are still iterating. Production allows 5 duplicate certificates per week, and a misconfigured solver burns through that in minutes.</p>
+<p>Switch <code>issuerRef</code> in <code>certificates.yaml</code> to <code>letsencrypt-staging</code> while iterating: production allows 5 duplicate certificates per week, and a broken solver burns through that in minutes.</p>
 </div>
 <h2 id="5-describe-your-hardware">5. Describe your hardware<a class="headerlink" href="#5-describe-your-hardware" title="Permanent link">&para;</a></h2>
 <p>Edit <code>ansible/inventory.yaml</code>; every variable is listed under
 <a href="../quickstart/#setup">Quickstart &rarr; step 2</a>. The ones a fork must choose
-rather than copy:</p>
+rather than copy, and the payload settings that repeat them:</p>
 <table>
 <thead>
 <tr>
@@ -2818,7 +2818,7 @@ rather than copy:</p>
 </tr>
 <tr>
 <td><code>control_plane_vip_interface</code></td>
-<td>The NIC kube-vip advertises on; check <code>ip link</code> on a provisioned node.</td>
+<td>The NIC kube-vip advertises on; before provisioning, <code>ip -br link</code> on any live Linux booted on the machine usually shows the name Flatcar gives it.</td>
 </tr>
 <tr>
 <td><code>control_plane_endpoint_host</code></td>
@@ -2826,60 +2826,90 @@ rather than copy:</p>
 </tr>
 <tr>
 <td>host entries</td>
-<td>Replace the hosts with yours. Each needs <code>ansible_host</code> and <code>mac_address</code> (the NIC that PXE boots), and a DHCP reservation that pairs the two: the node takes its address from DHCP, and the kubeadm configs are rendered from <code>ansible_host</code> — see <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>.</td>
+<td>Each needs <code>ansible_host</code>, <code>mac_address</code> (the NIC that PXE boots) and a matching DHCP reservation — see <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>.</td>
 </tr>
 <tr>
 <td><code>router_ip</code>, <code>router_asn</code>, <code>cluster_asn</code></td>
-<td>The eBGP peer for the Gateway addresses; <code>payload/platform/cilium/bgp.yaml</code> must name the same values, since the payload cannot read the inventory — see <a href="../platform/cilium/#configuration">Cilium</a>.</td>
+<td><code>payload/platform/cilium/bgp.yaml</code> must name the same values, since the payload cannot read the inventory — see <a href="../platform/cilium/#configuration">Cilium</a>.</td>
+</tr>
+<tr>
+<td><code>providerRegex</code>, <code>providerIpPrefixes</code> in <code>payload/platform/kubelet-csr-approver/application.yaml</code></td>
+<td>Your node names and subnet, or every kubelet serving certificate is denied — see <a href="../platform/metrics-server/#verifying-the-kubelet-instead-of-trusting-it">metrics-server</a>.</td>
 </tr>
 </tbody>
 </table>
 <p>Then update <code>payload/platform/cilium/values.yaml</code>:</p>
 <ul>
-<li><code>k8sServiceHost</code> — a literal, reachable API server address, because Cilium
-  replaces <code>kube-proxy</code> and cannot reach the API through a Service — see
+<li><code>k8sServiceHost</code> — <code>control_plane_vip</code>, from the start on a new build,
+  where the bootstrap static pod holds it; a literal, because Cilium replaces
+  <code>kube-proxy</code> and cannot reach the API through a Service — see
   <a href="../architecture/decisions/#cilium-as-cni-replacing-kube-proxy">Design Decisions &rarr; Cilium</a>.</li>
-<li><code>devices</code> — the interface prefix Cilium binds to; check <code>ip link</code> on a
-  provisioned node.</li>
+<li><code>devices</code> — the interface prefix Cilium binds to, found the same way.</li>
 </ul>
-<p>And <code>payload/platform/kube-vip/daemonset.yaml</code>, which takes over from the
-bootstrap static pod once ArgoCD syncs and cannot read the inventory:</p>
+<p>And <code>payload/platform/kube-vip/daemonset.yaml</code>, which cannot read the
+inventory either:</p>
 <ul>
 <li><code>address</code> — the same value as <code>control_plane_vip</code>.</li>
 <li><code>vip_interface</code> — the same value as <code>control_plane_vip_interface</code>.</li>
 </ul>
-<p>A mismatch here does not fail at provisioning. It fails on the first sync, when
-the DaemonSet removes the static pods and starts advertising somewhere else.</p>
-<h2 id="6-provisioning-access">6. Provisioning access<a class="headerlink" href="#6-provisioning-access" title="Permanent link">&para;</a></h2>
-<p>Both Butane templates, <code>ansible/templates/butane_node_config.yaml.j2</code> and
-<code>butane_installer_config.yaml.j2</code>, inject <code>~/.ssh/id_ed25519.pub</code> as the
-authorized key for the <code>core</code> user. Point both at your own key if you use a
-different path or algorithm. There is no password,
-no console login, and no rescue path short of reprovisioning, so this is the
-only way into the nodes afterwards.</p>
-<h2 id="7-the-documentation-site">7. The documentation site<a class="headerlink" href="#7-the-documentation-site" title="Permanent link">&para;</a></h2>
-<p>If you want your fork to publish its own copy of these docs, update
-<code>zensical.toml</code>: <code>site_url</code>, <code>repo_url</code>, <code>repo_name</code>, and <code>copyright</code>, and
-<code>docs/CNAME</code>, which binds the Pages site to a custom domain; delete it if you
-have none. The <code>docs.yaml</code> workflow then publishes to your own GitHub Pages. Otherwise, delete
-<code>.github/workflows/docs.yaml</code> to stop the build from running.</p>
-<h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
-<p>Before <code>make config</code>:</p>
+<p>A mismatch fails only at the first sync, when the DaemonSet replaces the
+static pods and advertises somewhere else.</p>
+<p>Two more places carry the author's network and mail:</p>
 <ul>
-<li>[ ] <code>repoURL</code> points at your fork in all of <code>payload/</code>, and the workloads URLs at yours</li>
-<li>[ ] Domain replaced throughout <code>payload/</code>, <code>wollbi.ch</code> renamed or removed</li>
-<li>[ ] LoadBalancer IPs are free addresses on your subnet, and the L2 policy or BGP peer announces them</li>
-<li>[ ] Wildcard DNS records created for both gateways</li>
-<li>[ ] ACME email and DNS-01 provider match your setup</li>
-<li>[ ] <code>inventory.yaml</code> describes your nodes, with the right <code>boot_server_ip</code></li>
-<li>[ ] <code>control_plane_vip</code> is free, and <code>control_plane_vip_interface</code> matches the NIC</li>
-<li>[ ] <code>address</code> and <code>vip_interface</code> in the kube-vip DaemonSet match those two</li>
-<li>[ ] <code>k8sServiceHost</code> and <code>devices</code> match your control plane and NICs. On a new
-      build, point <code>k8sServiceHost</code> at <code>control_plane_vip</code> once the VIP answers —
-      see <a href="../operations/control-plane-vip/">Control Plane VIP</a></li>
-<li>[ ] SSH public key path is correct</li>
-<li>[ ] Changes committed and pushed — ArgoCD reads from Git, not your working tree</li>
+<li><code>git grep -nE '10\.[0-9]+\.[0-9]+\.[0-9]+' -- payload/</code> lists the address
+  literals, among them the etcd peers in the
+  <a href="../platform/security-policies/#host-firewall">host firewall</a> and the
+  subnets Tetragon's tracing policies treat as internal.</li>
+<li>The mail relay is <code>smtp_smarthost</code> in
+  <code>payload/platform/monitoring/alertmanager-config.yaml</code>, and its name a
+  <code>toFQDNs</code> entry in <code>network-policies/monitoring.yaml</code> — see
+  <a href="../platform/monitoring/#alerting">Alerting</a>.</li>
 </ul>
+<h2 id="6-provisioning-access">6. Provisioning access<a class="headerlink" href="#6-provisioning-access" title="Permanent link">&para;</a></h2>
+<p>The SSH key in <a href="../quickstart/#other-requirements">Quickstart &rarr; Other requirements</a>
+is the only way into the nodes: there is no password, no console login and no
+rescue path short of reprovisioning.</p>
+<h2 id="7-the-documentation-site">7. The documentation site<a class="headerlink" href="#7-the-documentation-site" title="Permanent link">&para;</a></h2>
+<p>To publish your own copy, set <code>site_url</code>, <code>repo_url</code>, <code>repo_name</code> and
+<code>copyright</code> in <code>zensical.toml</code> and your domain in <code>docs/CNAME</code> (delete it for
+none); <code>docs.yaml</code> then publishes to your GitHub Pages. Otherwise delete
+<code>.github/workflows/docs.yaml</code>.</p>
+<h2 id="parts-tied-to-the-authors-accounts">Parts tied to the author's accounts<a class="headerlink" href="#parts-tied-to-the-authors-accounts" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Why</th>
+<th>Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>arc-controller</code>, <code>arc-runners</code></td>
+<td><code>githubConfigUrl</code> names a repository of the author's, and the runners register with a GitHub App installed there</td>
+<td><a href="../platform/github-runners/#github-app">GitHub runners</a></td>
+</tr>
+<tr>
+<td><code>apps</code> project in <code>argocd-projects</code></td>
+<td><code>sourceRepos</code> lists the author's chart registries</td>
+<td><a href="../platform/argocd/#projects">ArgoCD &rarr; Projects</a></td>
+</tr>
+<tr>
+<td>Claude agents</td>
+<td><code>security/claude-agent-rbac.yaml</code>, the SSH listener and an Argo CD account serve the author's sessions</td>
+<td><a href="../platform/security-policies/#agent-rbac">Agent RBAC</a></td>
+</tr>
+<tr>
+<td>Repository settings</td>
+<td><code>.github/CODEOWNERS</code>, <code>reviewers</code> and the preset in <code>renovate.json</code>, and <code>ci-ok.yaml</code> name the author's account</td>
+<td><a href="../development/maintenance/">Maintenance</a></td>
+</tr>
+</tbody>
+</table>
+<p>To drop a component, delete its directory under <code>payload/platform/</code>, the
+lines <code>git grep -n &lt;namespace&gt; -- payload/</code> lists for each of its namespaces,
+and its path in <code>scripts/bao-secrets.sh</code> as in
+<a href="../quickstart/#setup">Quickstart step 11</a>.</p>
 
 
 
@@ -2922,7 +2952,7 @@ have none. The <code>docs.yaml</code> workflow then publishes to your own GitHub
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../quickstart/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
+          <a href="../concepts/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Core Concepts">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -2932,20 +2962,20 @@ have none. The <code>docs.yaml</code> workflow then publishes to your own GitHub
                 Previous
               </span>
               <div class="md-ellipsis">
-                Quickstart
+                Core Concepts
               </div>
             </div>
           </a>
         
         
           
-          <a href="../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture">
+          <a href="../quickstart/" class="md-footer__link md-footer__link--next" aria-label="Next: Quickstart">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Architecture
+                Quickstart
               </div>
             </div>
             <div class="md-footer__button md-icon">
