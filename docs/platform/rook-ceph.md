@@ -163,6 +163,13 @@ security. In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 | `keyGeneration` | Rotation only triggers on an increase, so a generation can never be lowered to undo one |
 | `healthCheck.muteHealthWarning` | The `AUTH_*` warnings would otherwise keep the Application `Degraded` while the data is healthy. Temporary: remove once RBD moves to the userspace `rbd-nbd` mounter and the keys can leave `aes` |
 
+### SELinux
+
+`hostpathRequiresPrivileged` in `rook-ceph-operator/application.yaml` runs
+every Ceph daemon privileged: `container_t` may not write their hostPath data
+or use another pod's admin socket. The cost is in
+[Limitations](../architecture/limitations.md).
+
 ## Usage
 
 ### Requesting a volume
