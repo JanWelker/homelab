@@ -200,7 +200,17 @@ spec:
                 path          = "/var/log/journal"
                 max_age       = "12h"
                 relabel_rules = discovery.relabel.journal.rules
-                forward_to    = [loki.write.default.receiver]
+                forward_to    = [loki.process.journal.receiver]
+              }
+
+              loki.process "journal" {
+                // clone3 (435) is refused by design so glibc falls back to clone.
+                stage.drop {
+                  expression          = "SECCOMP .* syscall=435 .* code=0x50000"
+                  drop_counter_reason = "seccomp_clone3"
+                }
+
+                forward_to = [loki.write.default.receiver]
               }
 
               // Control plane only; file_match finds nothing on workers.

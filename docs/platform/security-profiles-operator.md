@@ -87,6 +87,8 @@ Authentik's server and worker and [Alloy](logging.md) do.
   `selinux-denials` skill's `gen_seccomp_profile.py` from
   `.info.runtimeSpec.linux.seccomp` of such a container's `crictl inspect`.
 - **A record names no pod**: match `subj`'s category pair with `ps -eZ`.
+- **`clone3` is missing from Loki.** The profile refuses it so glibc falls
+  back to `clone`; [Alloy](logging.md) drops those records.
 
 ## Health check
 
