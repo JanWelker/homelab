@@ -10,8 +10,8 @@ The [Security Profiles Operator](https://github.com/kubernetes-sigs/security-pro
 uses `<profile>.process` as its `seLinuxOptions.type`. It is here to carry the
 workload-specific modules that moving the nodes from permissive to enforcing
 needs; the denials those modules answer are in
-[Node hardening](../architecture/security.md#node-hardening). Seccomp,
-AppArmor and the log enricher are off.
+[Node hardening](../architecture/security.md#node-hardening). It also
+installs a [seccomp profile](#seccomp); AppArmor and the log enricher are off.
 
 ## At a glance
 
@@ -73,13 +73,27 @@ label needs no profile.
 1. Merge the profile and wait for `kubectl get selinuxprofile <name>` to show `Installed`.
 2. Then set `seLinuxOptions.type: <name>.process` on the pod, in a second merge: a pod whose type a node does not know cannot start, and a container with its own type gets its own level and loses the pod's volumes.
 
+### Seccomp
+
+`runtime-default-log` in `seccomp-profiles.yaml` is the runtime's default
+profile with the log flag: the same refusals, each now a `SECCOMP` record in
+[Loki](logging.md). A pod opts in with `localhostProfile:
+operator/runtime-default-log.json`, merged after the profile shows `Installed`.
+
+- **Only for containers that drop every capability**: the runtime adds
+  syscalls per capability, this copy has none.
+- **It goes stale.** After a containerd update, regenerate it with the
+  `selinux-denials` skill's `gen_seccomp_profile.py` from
+  `.info.runtimeSpec.linux.seccomp` of such a container's `crictl inspect`.
+- **A record names no pod**: match `subj`'s category pair with `ps -eZ`.
+
 ## Health check
 
 | Check | Healthy |
 | --- | --- |
 | `kubectl -n security-profiles-operator get spod spod` | `STATE` is `RUNNING` |
 | `kubectl -n security-profiles-operator get ds spod` | one pod per node, including the control planes |
-| `kubectl get selinuxprofile -A` | every profile `Installed` |
+| `kubectl get selinuxprofile,seccompprofile` | every profile `Installed` |
 
 ## Pitfalls
 
