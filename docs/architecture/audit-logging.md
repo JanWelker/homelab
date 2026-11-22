@@ -19,7 +19,7 @@ without it, findings at the stricter audit level go nowhere.
 | Query it with | `{job="kubernetes-audit"}` in Grafana |
 | Worst-case disk | Bounded by the rotation flags in `ansible/templates/kubeadm.yaml.j2`, see [Where the log lives](#where-the-log-lives) |
 
-## The policy decides everything
+## Audit policy
 
 `--audit-log-path` on its own does nothing: without `--audit-policy-file` the
 API server declines to open a log, silently. Rules are evaluated top to bottom

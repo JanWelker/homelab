@@ -14,10 +14,11 @@ it is treated as friendly. There is no VPN requirement and no mutual TLS
 between components; inside the cluster, the default-deny network policies in
 [Authorization](#authorization) are the segmentation.
 
-The published hostnames are a partial exception. Certificates come from Let's
-Encrypt through a DNS-01 challenge against a public zone, so
-`argo.infra.k8s.wlkr.ch` and its siblings are publicly resolvable and appear in
-Certificate Transparency logs, though they point at RFC1918 addresses.
+One surface faces the Internet: the router forwards ports 80 and 443 to
+`apps-gateway`, whose names external-dns publishes on the public address — see
+[Gateway API](../platform/gateway-api.md#configuration). The `infra` names
+resolve publicly too, since the DNS-01 challenge needs a public zone, and sit in
+Certificate Transparency logs, but point at a LAN address.
 
 ## Provisioning
 
@@ -70,7 +71,7 @@ carry the settings below. They land at provisioning time and change only on
 | Metrics listeners on the node address | etcd's plain-HTTP metrics and the controller-manager and scheduler bind the node's own address, where Prometheus scrapes them, instead of every interface. The address differs per node, so it comes from per-node JSON patches in `/etc/kubernetes/patches`, which also move the probes; etcd keeps `127.0.0.1` for its own |
 | `DenyServiceExternalIPs` | `spec.externalIPs` lets whoever can create a Service claim traffic to any node address, unchecked. Nothing here uses it. `NodeRestriction` is repeated because the flag replaces kubeadm's default list |
 | `--tls-cipher-suites` and `--tls-min-version`, `tlsCipherSuites` and `tlsMinVersion` | Go's defaults include CBC and 3DES suites; the list keeps the ECDHE AEAD ones. TLS 1.3 ignores the list; the floor stops a downgrade. The kubelet's listener on 10250 gets the same |
-| `shutdownGracePeriod` and `shutdownGracePeriodCriticalPods` | A `systemctl reboot` without the [documented drain](../operations/nodes.md#rebooting-a-node), or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write |
+| `shutdownGracePeriod` and `shutdownGracePeriodCriticalPods` | A `systemctl reboot` outside [Kured's drain](../operations/nodes.md#rebooting-a-node), or an ACPI power-off, waits while pods get their SIGTERM window instead of dying mid-write |
 | `protectKernelDefaults: true` | The kubelet refuses to start unless `vm.overcommit_memory`, `vm.panic_on_oom`, `kernel.panic` and `kernel.panic_on_oops` are already right. `/etc/sysctl.d/k8s.conf` sets them; without the drop-in a fresh node never joins |
 | `kernel.panic` with `kernel.panic_on_oops` | An oops reboots the node within seconds instead of wedging it, so Ceph and etcd recover without a power-cycle |
 | `seccompDefault: true` | A pod without a seccomp profile runs `RuntimeDefault`, not unconfined; a privileged pod stays unconfined; a running node needs it in the `kubelet-config` ConfigMap too |
@@ -93,8 +94,8 @@ sensitive is committed to Git.
 
 - OpenBao is sealed with Shamir and
   [unsealed by hand](../platform/openbao.md#unsealing-after-a-restart), so the
-  5 key shares are the root of trust for every other secret; losing all of them
-  loses everything, and nothing outside the cluster holds a copy.
+  key shares are the root of trust for every other secret: keeping fewer than
+  the threshold loses everything.
 - No root token is kept: `make bao-init` revokes it once it has created the
   [operator login](../platform/openbao.md#operator-credential), and one is
   generated from the shares when needed. The operator login reads and writes
@@ -120,7 +121,7 @@ stolen disk yields every credential the cluster holds.
 | Property | Detail |
 | --- | --- |
 | Provider | `secretbox`, with `identity` listed after it |
-| Key | 32 random letters and digits (about 190 bits), generated once by `make config` into `output/credentials/encryption_key` and base64-encoded into the config as the `secretbox` key |
+| Key | Generated once by `make config` into `output/credentials/encryption_key` and base64-encoded into the config as the `secretbox` key |
 | Scope | `secrets` only; ConfigMaps and other resources are unencrypted |
 | Distribution | The same key on every control-plane node, written by Ignition to `/etc/kubernetes/enc/encryption-config.yaml` (mode `0600`) |
 
@@ -144,8 +145,9 @@ must reach before it can serve Secrets.
 
 [Tetragon](../platform/tetragon.md) records every exec in every pod and
 alerts when anything but the control plane reads the cluster's key material.
-It is detection, not prevention: nothing is killed, and a policy that fails to
-load on a new kernel watches nothing until its alert fires.
+It detects; the one exception kills a container that creates an unprivileged
+user namespace — see [Enforcement](../platform/tetragon.md#enforcement). A
+policy that fails to load on a new kernel watches nothing until its alert fires.
 
 ## Audit logging
 
@@ -174,9 +176,9 @@ dropped — see
 [Security Policies](../platform/security-policies.md#network-policies) and
 [Rollout](../platform/security-policies.md#rollout).
 
-**Pod Security Admission is on, but mostly auditing.** Every platform namespace
-carries `enforce` at the level it needs and `warn`/`audit` at a stricter one,
-so violations are visible without breaking what runs.
+**Pod Security Admission enforces in every namespace but `kube-system`.** Each
+carries `enforce` at the level it needs and `warn`/`audit` at a stricter one —
+see [Pod Security Admission](../platform/security-policies.md#pod-security-admission).
 
 **Image references are checked at admission.** An untagged or `latest` image
 is refused, and so is a registry outside the allowlist. Signatures are not verified: few of the upstreams sign, so a

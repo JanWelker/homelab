@@ -28,8 +28,7 @@ GitOps are; [Core Concepts](../concepts.md) covers all five.
 
     ---
 
-    The playbooks that generate everything the boot server serves. Ansible
-    never configures a node.
+    The playbooks that generate everything the boot server serves.
 
 - **[GitOps Strategy](gitops.md)**
 
@@ -74,7 +73,9 @@ Three control-plane nodes because etcd needs an odd number, and two is the
 worst answer: twice the hardware and quorum still lost when one dies. The API
 server is reached through a kube-vip virtual IP rather than any single node —
 see [Control Plane VIP](../operations/control-plane-vip.md). Addresses, the
-VIP and the pod and service subnets are in `ansible/inventory.yaml`.
+VIP and the pod and service subnets are in `ansible/inventory.yaml`. How a
+request reaches a pod from the Internet, the LAN or another VLAN is drawn in
+[Traffic Flow](../platform/index.md#traffic-flow).
 
 ## Repository layout
 
@@ -115,9 +116,7 @@ it. The applications the cluster exists to serve live in the separate
 ```
 
 `ansible/` and `boot_server/` matter only while a node is being built;
-`payload/` matters every day after that. The exception is
-`ansible/templates/kubeadm.yaml.j2`, which explains why half the control plane
-is configured the way it is.
+`payload/` matters every day after that.
 
 `output/credentials/` is generated once and read back on every later run;
 `make config` writes new values for anything missing, which a running cluster
