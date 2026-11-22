@@ -60,7 +60,7 @@ another).
 | `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](../quickstart.md#setup) |
 | `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](../quickstart.md#setup), [Ansible](../architecture/ansible.md#playbooks) |
 | `artifacts` | `download` then `config` | [Quickstart](../quickstart.md#setup) |
-| `serve` | Runs the DHCP-proxy, TFTP and HTTP boot server | [Boot server](../architecture/boot-process.md#boot-server) |
+| `serve` | Runs the TFTP and HTTP boot server | [Boot server](../architecture/boot-process.md#boot-server) |
 | `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](../operations/nodes.md#rebuilding-or-repartitioning-a-node) |
 | `reinstall-cancel` | Disarms them again | [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot) |
 | `kubeconfig` | Copies the admin kubeconfig to `output/kubeconfig` | [Quickstart](../quickstart.md#setup) |
