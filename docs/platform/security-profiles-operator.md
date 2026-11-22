@@ -88,7 +88,12 @@ Authentik's server and worker and [Alloy](logging.md) do.
   `.info.runtimeSpec.linux.seccomp` of such a container's `crictl inspect`.
 - **A record names no pod**: match `subj`'s category pair with `ps -eZ`.
 - **`clone3` is missing from Loki.** The profile refuses it so glibc falls
-  back to `clone`; [Alloy](logging.md) drops those records.
+  back to `clone`, and [Alloy](logging.md) drops those records. Every record
+  stays in the node's journal:
+
+    ```bash
+    ssh <node> sudo journalctl _AUDIT_TYPE=1326 --since -1h
+    ```
 
 ## Health check
 
