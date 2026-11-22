@@ -20,7 +20,8 @@ spec:
           # Pod-level; no runAsNonRoot, Alloy runs as root on purpose (below).
           podSecurityContext:
             seccompProfile:
-              type: RuntimeDefault
+              type: Localhost
+              localhostProfile: operator/runtime-default-log.json
             # The alloy SelinuxProfile, for the whole pod so its containers
             # and volumes share one level, and every category because the
             # files it reads carry their writers'. See
@@ -101,7 +102,8 @@ spec:
               drop:
                 - ALL
             seccompProfile:
-              type: RuntimeDefault
+              type: Localhost
+              localhostProfile: operator/runtime-default-log.json
 
           resources:
             requests:

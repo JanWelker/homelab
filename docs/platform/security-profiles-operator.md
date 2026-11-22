@@ -79,6 +79,7 @@ label needs no profile.
 profile with the log flag: the same refusals, each now a `SECCOMP` record in
 [Loki](logging.md). A pod opts in with `localhostProfile:
 operator/runtime-default-log.json`, merged after the profile shows `Installed`.
+Authentik's server and worker and [Alloy](logging.md) do.
 
 - **Only for containers that drop every capability**: the runtime adds
   syscalls per capability, this copy has none.
