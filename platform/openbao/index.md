@@ -310,4 +310,4 @@ To recreate the operator login with that root token, put it as `root_token` into
 
 ### Backups
 
-A CronJob saves a Raft snapshot nightly; it, the snapshot by hand and the restore are in [Backups &amp; Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>). A snapshot is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody.
+A CronJob saves a Raft snapshot nightly; it, the snapshot by hand and the restore are in [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>). A snapshot is encrypted with a key that exists only in the unseal shares, so it is exactly as recoverable as your key custody.

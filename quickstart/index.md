@@ -95,7 +95,7 @@ The deployment host (the machine running Ansible and the boot server) must be on
    make config
    ```
 
-   Writes Ignition configs to `output/http` and PXE menus to `output/tftp`. Each host gets `ignition-<host>-install.json`, which the PXE environment runs to wipe the disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds into the installed system — see [Boot &amp; Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
+   Writes Ignition configs to `output/http` and PXE menus to `output/tftp`. Each host gets `ignition-<host>-install.json`, which the PXE environment runs to wipe the disk and install, and `ignition-<host>.json`, which `flatcar-install` embeds into the installed system — see [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md>).
 
    Re-run this after **any** change to `inventory.yaml`; the values are baked into the generated files. `make artifacts` runs steps 4 and 5 together. Check that one PXE menu was generated per node:
 

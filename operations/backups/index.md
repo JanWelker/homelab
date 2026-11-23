@@ -1,4 +1,4 @@
-# Backups &amp; Recovery
+# Backups & Recovery
 
 ## Current state
 
