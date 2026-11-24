@@ -213,15 +213,15 @@ configs:
         groups:
           essential: true
 
-    resource.exclusions: |
+    resourceExclusionsAdditional:
       - apiGroups:
-        - actions.github.com
+          - actions.github.com
         kinds:
-        - AutoscalingListener
-        - EphemeralRunnerSet
-        - EphemeralRunner
+          - AutoscalingListener
+          - EphemeralRunnerSet
+          - EphemeralRunner
         clusters:
-        - "*"
+          - "*"
     # Restores Application health (dropped in 1.8), so parents report children.
     resource.customizations.health.argoproj.io_Application: |
       hs = {}

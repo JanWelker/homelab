@@ -32,7 +32,7 @@ The parts of `payload/argocd/values.yaml` that are not self-explanatory:
 | `configs.params` `server.insecure: true` | TLS terminates at the Gateway. The chart reads this parameter, not `extraArgs`, to point its route at the plaintext port |
 | `server.httproute` | The chart renders the `HTTPRoute` to `argocd-server`, so it is not a file of its own; the response-header filters are the same every UI route carries — see [Gateway API](gateway-api.md#usage) |
 | `resource.customizations` for `HTTPRoute`, `GRPCRoute` and `PushSecret` | The API server defaults fields no manifest sets: a route's backend `group`, `kind`, `weight` and catch-all `matches`, a `PushSecret`'s `conversionStrategy`. Without the ignore list each object is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs |
-| `resource.exclusions` for the ARC runner CRs | The runner controller creates and deletes them per job; excluded, ArgoCD neither tracks nor diffs that churn |
+| `resourceExclusionsAdditional` for the ARC runner CRs | The runner controller creates and deletes them per job; appended, so the chart's default exclusions stay too |
 | `dex.enabled: false` | `oidc.config` talks to [Authentik](authentik.md) directly, so the chart's bundled Dex would be a second login service with nothing behind it; the redirect URI is the server's own `/auth/callback` either way |
 | `notifications.enabled: false` | Nothing is configured to notify, and the controller's ClusterRole reads every Secret in the cluster |
 | `admin.enabled: "false"` | With SSO in front, a shared admin password would bypass it with no audit trail |
