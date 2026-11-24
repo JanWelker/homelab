@@ -1116,7 +1116,7 @@ Things this cluster does not do. None is a bug; each is an accepted tradeoff or 
 | **The API endpoint address is fixed at `kubeadm init`** | The kube-vip VIP is baked into the API server certificates, every kubeconfig and Cilium's `k8sServiceHost`; moving it touches every node | Choose it once, outside any DHCP range and the LoadBalancer pools; the next build [uses a name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) | [Choosing the address](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#choosing-the-address>), [migrating in place](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#in-place>) |
 | **OpenBao needs an operator to unseal it** | Every restart seals it until the [threshold of key shares](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) is supplied; sealed, no `ExternalSecret` resolves and certificates silently stop renewing | Check `bao status` after reboots; auto-unseal would add an external dependency | [Unsealing after a restart](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>), [after any node reboot](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) |
 | **One operator holds every credential** | The unseal key shares and `output/credentials/` sit with one person, on the deployment host | Copy them to a password manager | [Bootstrap](<https://homelab.wlkr.ch/platform/openbao/index.md#bootstrap>), [Repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>) |
-| **Alerting reaches one mailbox** | One receiver, one mailbox, one SMTP provider. If mail is rejected or the password expires, alerts stop silently; `Watchdog` proves only as far as Alertmanager | A second receiver on a different transport; meanwhile, the routine health check | [Alerting](<https://homelab.wlkr.ch/platform/monitoring/index.md#alerting>), [routine health check](<https://homelab.wlkr.ch/operations/index.md#routine-health-check>) |
+| **Alerting reaches one mailbox** | A rejected mail, an expired SMTP password or a Ceph outage ([Prometheus and Alertmanager](<https://homelab.wlkr.ch/platform/monitoring/index.md#at-a-glance>) sit on Ceph) stops alerts silently; `Watchdog` proves only as far as Alertmanager | An off-cluster `Watchdog` mail check; meanwhile, the routine health check | [Alerting](<https://homelab.wlkr.ch/platform/monitoring/index.md#alerting>), [routine health check](<https://homelab.wlkr.ch/operations/index.md#routine-health-check>) |
 | **Automatic updates stop at patch releases** | Nodes follow the Kubernetes minor they were built with; a minor upgrade is manual | By design | [Nodes are pinned to a minor series](<https://homelab.wlkr.ch/operations/upgrades/index.md#nodes-are-pinned-to-a-minor-series>), [upgrading a minor deliberately](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>), [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) |
 | **The `infra` AppProject is permissive** | The `infra` AppProject allows every kind in every namespace, so a platform `application.yaml` can deploy anything anywhere | Narrow the projects | [Security Posture](<https://homelab.wlkr.ch/architecture/security/index.md#authorization>) |
 | **Reprovisioning needs the boot server on the segment** | Rebuilding a node needs `make serve` on the nodes' L2 segment, the DHCP pointing at it and a power cycle; there is no remote rebuild | A running node reboots and rejoins without it | [Boot & Bootstrap Process](<https://homelab.wlkr.ch/architecture/boot-process/index.md#every-boot-after-the-first>) |
@@ -1634,7 +1634,7 @@ Dependency-Track keys its accounts on the `preferred_username` claim, so a user 
 | --- | --- |
 | Authenticator validation with `not_configured_action: configure`; TOTP and WebAuthn as setup stages, static tokens accepted as a device class | A password alone is one leak away from every application, so a user without a device enrols one at the next login instead of being let through. Static tokens are the recovery codes for a lost phone, enrolled afterwards under **Settings → MFA devices**, which is why they are not offered as the first device |
 | A deny stage after identification, selected by a reputation policy on the address and the username | Every failed login lowers both scores, so an address or a username below the policy's `threshold` is refused until Authentik's reputation expiry clears it; the password stage's own five-attempt cancel only ends the current attempt. The policy *passes* for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known |
-| A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login | The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under **Settings → MFA devices** before it appears. Safari and Firefox do not autofill into the form's shadow DOM, so the identification stage's passwordless flow, `homelab-passkey`, offers the same validation stage behind a link as a modal prompt; it has no reputation stage, because a signature cannot be guessed |
+| A passkey on the sign-in form: an own identification stage hiding whether the account exists and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login | The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under **Settings → MFA devices** before it appears. Safari and Firefox do not autofill into the form's shadow DOM, so the identification stage's passwordless flow, `homelab-passkey`, offers the same validation stage behind a link as a modal prompt; it has no reputation stage, because a signature cannot be guessed |
 
 To lift a lockout early, delete the score under **Customization → Policies → Reputation scores**.
 
@@ -1821,7 +1821,7 @@ TLS certificate automation via Let's Encrypt, using DNS-01 challenges through AW
 | --- | --- |
 | Issuers and certificates in their own `certificates` Application | Kept with cert-manager, the controller reads Degraded until OpenBao holds the Route53 credentials — see [Bootstrap convergence](<https://homelab.wlkr.ch/architecture/gitops/index.md#bootstrap-convergence>) |
 | Three sync waves inside `certificates`: `ExternalSecret`, then the ClusterIssuers, then the Certificates | One wave orders custom resources alphabetically, exactly backwards, and an issuer applied before its Secret stays `Ready=False` with `InvalidSolver` |
-| `enableGatewayAPI: true` in `values.yaml` | Turns on the shim that issues from `cert-manager.io` annotations on a Gateway. Nothing uses it: every certificate here is an explicit `Certificate` |
+| `gatewayAPI.enabled: true` in `values.yaml` | Turns on the shim that issues from `cert-manager.io` annotations on a Gateway. Nothing uses it: every certificate here is an explicit `Certificate` |
 | `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate `prometheus-operator-crds` Application — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
 | More than one webhook replica, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so a lone replica rescheduling through a drain refuses every apply — see [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week and a misconfigured solver retries until they are gone |
@@ -1971,11 +1971,11 @@ The session is TCP MD5 authenticated with a typed password, since the router nee
 kubectl -n kube-system exec ds/cilium -- cilium status --brief
 ```
 
-It prints `OK`. The BGP session on each control-plane node, `established` with two routes advertised; only the control planes peer, so ask that node's agent:
+It prints `OK`. The BGP session on each control-plane node, `established` with two routes advertised; only control planes peer, so ask that node's agent:
 
 ```bash
 kubectl -n kube-system exec "$(kubectl -n kube-system get pod -l k8s-app=cilium \
-  --field-selector spec.nodeName=<control-plane> -o name)" -- cilium bgp peers
+  --field-selector spec.nodeName=<control-plane> -o name)" -- cilium shell -- bgp/peers
 ```
 
 Hubble answers *what did I just break?* during a network policy rollout — see [Security Policies](<https://homelab.wlkr.ch/platform/security-policies/index.md#usage>). The `hubble` CLI talks to Relay through a port-forward on its default port:
@@ -3026,7 +3026,7 @@ kubectl top nodes
 |  |  |
 | --- | --- |
 | Namespace | `monitoring` |
-| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for Prometheus and Grafana volumes, [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) for the Grafana login |
+| Depends on | [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md>) for Prometheus, Alertmanager and Grafana volumes, [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md>) for Grafana login |
 | If it is down | No alerts and no metrics — and [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) loses the alert gate it checks before rebooting a node |
 | Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
 | UI | `monitoring.infra.k8s.wlkr.ch` (Grafana), `prometheus.` and `alertmanager.` |
@@ -3458,20 +3458,21 @@ kubectl -n openbao exec openbao-1 -- \
 
 ### Rolling out a new revision
 
-A chart or config change leaves the StatefulSet with a new `updateRevision` that `OnDelete` does not apply, and `KubeStatefulSetUpdateNotRolledOut` fires until every pod has restarted. Standbys first, the active replica last, so leadership moves once:
+`OnDelete` leaves a chart or config change's new `updateRevision` unapplied, and `KubeStatefulSetUpdateNotRolledOut` fires, until every pod restarts. Standbys first, the active replica last, so leadership moves once:
 
-1. Find the active replica and confirm all three are unsealed.
+1. For a version bump, take a [snapshot](<https://homelab.wlkr.ch/operations/backups/index.md#openbao>) first; downgrading does not undo a data-store change.
+2. Find the active replica and confirm all three are unsealed.
 
    ```bash
    for p in openbao-0 openbao-1 openbao-2; do echo "$p: $(kubectl -n openbao exec $p -c openbao -- bao status | grep -E '^(Sealed|HA Mode)' | tr -s ' ' | paste -sd ' ' -)"; done
    ```
-2. For each standby, one at a time: delete the pod, wait for it to come back, unseal it with `make bao-unseal`, and check it rejoined as a standby.
+3. Each standby in turn: delete the pod, wait for Ready, unseal it with `make bao-unseal`, and check it rejoined as a standby.
 
    ```bash
    kubectl -n openbao delete pod openbao-0 && kubectl -n openbao wait --for=condition=Ready pod/openbao-0 --timeout=5m
    ```
-3. The active replica last, the same way; a standby takes over the moment it goes.
-4. Confirm the rollout.
+4. The active replica last, the same way; a standby takes over.
+5. Confirm the rollout.
 
    ```bash
    kubectl -n openbao get sts openbao -o jsonpath='{.status.currentRevision} {.status.updateRevision}{"\n"}'
@@ -3581,7 +3582,7 @@ In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
-| `cephClusterSpec.monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
+| `monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
 | `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md#crds>) |
 | `monitoring.prometheusRuleOverrides` | `CephOSDDownHigh` gets a `for:` because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. `CephNodeDiskspaceWarning` and, under `cephConfig`, `mon_data_avail_warn` are lowered to the kubelet's image garbage-collection threshold: the mon store shares the root filesystem with the images, which the kubelet only prunes there |
 | `cephClusterSpec.dashboard.prometheusEndpoint` | The dashboard's Prometheus link. The operator owns `mgr/dashboard/PROMETHEUS_API_HOST` and writes it from this field whenever it restarts the dashboard module, so the same key under `cephConfig` is blanked at the next operator restart |
@@ -3592,7 +3593,7 @@ Rook's Grafana dashboards are vendored in `grafana-dashboards.yaml` — see [Mon
 
 ### CSI driver
 
-From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart, which deploys nothing until an `OperatorConfig` and a `Driver` CR tell it what to run. Neither chart ships them, so they live in `csi-driver.yaml`; without them every PVC stays `Pending` on `ExternalProvisioning`.
+The operator chart's ceph-csi-operator subchart deploys the RBD driver only once an `OperatorConfig` and a `Driver` CR tell it what to run; without them every PVC stays `Pending` on `ExternalProvisioning`. Rook's `ceph-csi-drivers` chart ships them, but its nodeplugin ClusterRole cannot drop the grants step 4 below cuts, so they live in `csi-driver.yaml`.
 
 | Setting | Why |
 | --- | --- |
@@ -3600,7 +3601,7 @@ From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart, wh
 | `OperatorConfig` pointing at the chart's image-set `ConfigMap` | A chart bump moves every sidecar and the cephcsi image together |
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |
 | More than one controller plugin replica, `RollingUpdate` without surge, a PodDisruptionBudget | A drain of the provisioner's node otherwise stalls every provision, attach, resize and snapshot until the pod reschedules. The operator already keeps the replicas on distinct nodes with required anti-affinity and runs every sidecar with leader election, so the `Driver` CR carries no spread constraint, and no field for one |
-| `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by `CSI_SERVICE_ACCOUNT_PREFIX` (empty here): `rbd-ctrlplugin-sa` and `rbd-nodeplugin-sa`. Without them the Deployment and DaemonSet exist but create no pods |
+| `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and `CSI_SERVICE_ACCOUNT_PREFIX` fixes their names. Without them the Deployment and DaemonSet create no pods |
 
 > [!WARNING]
 >
@@ -3876,7 +3877,7 @@ Kinds are listed, never wildcarded, so a new CRD is invisible to the agents unti
 
 ### Admission policies
 
-Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission, with the built-in `ValidatingAdmissionPolicy`, and one `MutatingAdmissionPolicy`, rather than a policy engine. The image policies match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The others close what RBAC and the `apps` project cannot express.
+Trivy reports a bad image after it is running; `admission-policies.yaml` refuses or records it at admission with built-in `ValidatingAdmissionPolicy`, and one `MutatingAdmissionPolicy`, not a policy engine. The image policies match Pods, ephemeral containers and every controller producing them, so a bad Deployment fails at `kubectl apply`, not in its ReplicaSet. The others close what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
@@ -3896,11 +3897,12 @@ Trivy reports a bad image after it is running; `admission-policies.yaml` refuses
 | `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](<https://homelab.wlkr.ch/platform/cert-manager/index.md#issuer-scope>) |
 | `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](<https://homelab.wlkr.ch/platform/cert-manager/index.md#pods-from-the-controllers>) |
 | `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](<https://homelab.wlkr.ch/platform/gateway-api/index.md#route-hostnames>) |
+| `gateway-namespace-scope` | `Deny` | Only `kube-system` holds Gateways: external-dns publishes a route at its [Gateway's](<https://homelab.wlkr.ch/platform/gateway-api/index.md>) target |
 | `selinuxd-memory-request` | Mutate | Lowers `selinuxd`'s fixed memory request, see [Security Profiles Operator](<https://homelab.wlkr.ch/platform/security-profiles-operator/index.md#configuration>) |
 
 `cnpg-cluster-backed-up`, `cnpg-objectstore-offsite` and `obc-backup-exempt` [keep a backup from being forgotten](<https://homelab.wlkr.ch/operations/backups/index.md#off-cluster-copy>): each yields to the annotation `homelab.wlkr.ch/backup-exempt` with the reason as its value, and none checks an object being deleted, so an operator's finalizer removal still goes through.
 
-All but three carry `failurePolicy: Ignore`: an expression that errors lets the request through rather than stopping every pod in the cluster. A real violation is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail closed, since they only ever match named identities, and `selinuxd-memory-request` because a `selinuxd` pod at full request preempts others.
+All but three carry `failurePolicy: Ignore`: an expression that errors lets the request through rather than stopping every pod. `claude-writer-pod-limits` and `controller-pod-limits` fail closed, since they match only named identities, and `selinuxd-memory-request` because a `selinuxd` pod at full request preempts others.
 
 ## Usage
 
@@ -4944,12 +4946,13 @@ The API server is reached through a virtual IP held by [kube-vip](<https://kube-
 | Running kube-vip | DaemonSet in `payload/platform/kube-vip/`, synced by ArgoCD; its image is tracked by Renovate |
 | Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join`, from `control_plane_endpoint_host` in `ansible/inventory.yaml` |
 | Cilium's API address | `k8sServiceHost` in `payload/platform/cilium/values.yaml` |
+| Kubelet node address | `--node-ip` in the kubelet drop-in of `ansible/templates/butane_node_config.yaml.j2`, so the kubelet never reports the VIP on the leader's interface as InternalIP |
 
 kube-vip runs in ARP mode with leader election, advertising a `/32`, with `svc_enable: "false"`: LoadBalancer services belong to Cilium's L2 announcements, and two components answering ARP for the same range produces intermittent, host-dependent failures.
 
 ## Design
 
-The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-vip/`, a DaemonSet takes over, so upgrading kube-vip is a merged PR rather than a file rewritten on each node. kube-vip publishes a chart; it is not used because the handover below needs the `adopt` init container, which the chart has no hook for. A DaemonSet can hold the VIP here because the control-plane kubelets use their own node's API server (`server:` in `/etc/kubernetes/kubelet.conf`) and so does kube-vip (`KUBERNETES_SERVICE_HOST` is the host IP, which is in the certificate SANs), so both start after a full power loss without the VIP or Cilium. `kube_vip_version` in the inventory is therefore the bootstrap version only, and the VIP settings in the inventory and `daemonset.yaml` must be kept in step. kube-vip's ServiceAccount may only get and update its own Lease, and the Application does not prune and its objects carry `Delete=false`, because removing them takes the API away from the workers and from every kubeconfig.
+The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-vip/`, a DaemonSet takes over, so upgrading kube-vip is a merged PR rather than a file rewritten on each node. kube-vip's chart is not used: it has no hook for the `adopt` init container below. A DaemonSet can hold the VIP here because the control-plane kubelets use their own node's API server (`server:` in `/etc/kubernetes/kubelet.conf`) and so does kube-vip (`KUBERNETES_SERVICE_HOST` is the host IP, which is in the certificate SANs), so both start after a full power loss without the VIP or Cilium. `kube_vip_version` in the inventory is therefore the bootstrap version only, and the VIP settings in the inventory and `daemonset.yaml` must be kept in step. kube-vip's ServiceAccount may only get and update its own Lease, and the Application does not prune and its objects carry `Delete=false`, because removing them takes the API away from the workers and from every kubeconfig.
 
 ### The handover
 
@@ -5006,7 +5009,7 @@ kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig
 
 ## Choosing the address
 
-A free address on the nodes' subnet, outside any DHCP range, and distinct from the Cilium LoadBalancer pools. Nothing validates this: a collision shows up as an API server unreachable after provisioning, or reachable from some machines and not others depending on whose ARP cache won.
+A free address on the nodes' subnet, outside any DHCP range, and distinct from the Cilium LoadBalancer pools. Nothing validates this: a collision leaves the API server unreachable, or reachable only from some machines.
 
 ## Migrating a cluster built without a VIP
 
@@ -5018,7 +5021,7 @@ Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 
 ### In place
 
-One node at a time, with a second terminal holding a working kubeconfig, because several steps can leave you unable to open a new one.
+One node at a time, with a second terminal holding a working kubeconfig, since several steps can lock you out.
 
 1. Confirm the address is free.
 
@@ -6183,7 +6186,7 @@ The site is built with [Zensical](<https://zensical.org/>) from `docs/`, configu
 | Stage | What happens |
 | --- | --- |
 | Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
-| Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes to `gh-pages`, leaving `pr-preview/` untouched |
+| Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes `gh-pages` without force, sparing `pr-preview/` |
 | Previews | `preview.yaml` builds every pull request matching the same paths, forks included, and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Only the publish step is skipped for fork PRs: they have no write access |
 
 Locally:
@@ -6248,11 +6251,11 @@ Configured in `renovate.json`, on top of the shared preset [JanWelker/renovate-c
 ### Automerge policy
 
 - **The preset's rules:** three days between a release and its PR, patch and minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a human, and security fixes skip both the wait and the schedule. The preset's README says why for each.
-- **Cluster-wide charts and workflow actions wait for a human.** Argo CD applies a merge within a minute and these charts hold cluster-wide rights, so no update of them automerges; the list is in `renovate.json`.
+- **Cluster-wide charts and workflow actions wait for a human.** Argo CD applies a merge within a minute and these charts hold cluster-wide rights, so no update of them automerges; the list is in `renovate.json`. Cilium's pending patch and each minor get separate PRs, merged in that order, the only [path upstream tests](<https://docs.cilium.io/en/stable/operations/upgrade/>).
 - **A Kubernetes minor waits for a human.** `kubernetes_version` is walked forward by hand in version-skew order; an automerged minor would provision a kubelet ahead of the API server — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>).
 - **Pairs that must move together are grouped into one PR:** `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because Rook requires both charts on the same version; and `markdownlint-cli2` in the workflow with its pre-commit hook, because the two must lint alike; `gitleaks` likewise; the `external-snapshotter` tag with the `snapshot-controller` image it pins, because upstream's manifest at a tag names the previous release's image (a third-party image, so the pair waits for a human); the two ARC charts, because the controller deletes a scale set whose chart version differs from its own; the OpenBao chart with the image the snapshot CronJob runs its CLI from, so the CLI never lags the server it snapshots; and every Python pin (`requires-python`, `.python-version`, the `python` images), because `uv sync` fails when they name different minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new release already satisfies; `rangeStrategy: bump` is what makes Renovate open a PR for the linters and the docs generator at all.
-- **Flatcar and Kubernetes bumps change what a newly provisioned node installs, not what a running node runs.** kubeadm cannot skip a minor, so a cluster that sits while two Kubernetes minors merge has to be walked forward one at a time — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
+- **Flatcar and Kubernetes bumps change what a newly provisioned node installs, not what a running node runs** — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
 - **A vendored-asset bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it and `ci-ok` waits for it — see [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>).
 - `config:best-practices` pins GitHub Actions to commit SHAs and container images to digests, and collects every pin into one shared `renovate/pin-dependencies` branch.
 
