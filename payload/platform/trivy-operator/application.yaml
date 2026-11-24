@@ -19,6 +19,7 @@ spec:
       helm:
         valuesObject:
           # Why each non-default value: docs/platform/trivy-operator.md#configuration
+          priorityClassName: observability
           targetNamespaces: ""
           excludeNamespaces: ""
           # The chart's list without job; see docs/platform/trivy-operator.md#report-pruning
@@ -75,12 +76,14 @@ spec:
               type: RuntimeDefault
 
           trivyOperator:
+            scanJobPodPriorityClassName: batch
             scanJobTolerations:
               - key: node-role.kubernetes.io/control-plane
                 operator: Exists
                 effect: NoSchedule
 
           trivy:
+            priorityClassName: observability
             # Implied by builtInTrivyServer; spelled out for readability.
             mode: ClientServer
 

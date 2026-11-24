@@ -16,6 +16,7 @@ spec:
     targetRevision: 12.2.5
     helm:
       valuesObject:
+        priorityClassName: observability
         initContainers:
           - name: velero-plugin-for-aws
             # Plugin minor must match the chart's Velero appVersion
@@ -177,6 +178,7 @@ spec:
             memory: 2Gi
 
         nodeAgent:
+          priorityClassName: observability
           # Root stays: kopia reads every pod volume; see docs/platform/velero.md
           containerSecurityContext:
             allowPrivilegeEscalation: false

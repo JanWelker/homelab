@@ -28,6 +28,7 @@ spec:
 
           grafana:
             enabled: true
+            priorityClassName: observability
 
             rbac:
               # The chart's ClusterRole reads Secrets; grafana-sidecar-rbac.yaml
@@ -151,6 +152,7 @@ spec:
             controlPlaneScrapeClass:
               enabled: true
             prometheusSpec:
+              priorityClassName: observability
               # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting
               externalUrl: https://prometheus.infra.k8s.wlkr.ch
               # `{}` alone still filters by release, see docs/platform/monitoring.md
@@ -222,6 +224,7 @@ spec:
               enabled: true
 
             alertmanagerSpec:
+              priorityClassName: observability
               replicas: 2
               # The operator sets the pod field and overrides the account's.
               automountServiceAccountToken: false
@@ -296,6 +299,7 @@ spec:
 
           # Limits ~2.5x measured peak, see docs/platform/monitoring.md
           prometheusOperator:
+            priorityClassName: observability
             resources:
               requests:
                 cpu: 10m
@@ -321,6 +325,7 @@ spec:
                     memory: 128Mi
 
           kube-state-metrics:
+            priorityClassName: observability
             resources:
               requests:
                 cpu: 10m
@@ -402,6 +407,7 @@ spec:
                               path: [metadata, creationTimestamp]
 
           prometheus-node-exporter:
+            priorityClassName: observability
             # Its own namespace, the only privileged one the stack needs.
             namespaceOverride: node-exporter
             # Reads the host's /proc, which SELinux labels as the kernel's own
