@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -154,6 +154,40 @@ reinstall:
 
 reinstall-cancel:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml -e pxe_default=localboot $(if $(LIMIT),--limit "$(LIMIT)")
+
+# Flatcar has no Python, so only the raw module works. LIMIT=<node|group>.
+NODES = ANSIBLE_DEPRECATION_WARNINGS=False uv run ansible $(if $(LIMIT),$(LIMIT),k8s_nodes) -i ansible/inventory.yaml -m ansible.builtin.raw
+# Folds the "<host> | CHANGED | rc=0 >>" header and its output into one line.
+ONELINE = awk '/^[a-z0-9-]+ \| [A-Z]+/{h=""; if ($$3=="CHANGED") h=$$1; else print $$1": "$$3; next} \
+	h&&NF{sub(/^ +/,""); print h": "$$0; h=""}' | sort -V
+
+# Sets the Kured sentinel everywhere; Kured's lock and alert gate decide the
+# order, one node at a time. See docs/platform/kured.md
+reboot-all:
+	@if [ -z "$(LIMIT)" ]; then \
+	  printf '%s\n' \
+	    '' \
+	    '  make reboot-all asks Kured to reboot EVERY node, one at a time. Each' \
+	    '  node that held an OpenBao pod waits for make bao-unseal before the next.' \
+	    ''; \
+	  if [ ! -t 0 ]; then \
+	    echo "  not a terminal -- pass LIMIT=<node>, or re-run interactively to confirm"; \
+	    exit 1; \
+	  fi; \
+	  printf '  Queue a reboot of all nodes? [y/N] '; \
+	  read -r reply; \
+	  case "$$reply" in \
+	    [yY]|[yY][eE][sS]) ;; \
+	    *) echo "  cancelled -- nothing queued."; exit 1;; \
+	  esac; \
+	fi
+	@$(NODES) -a 'sudo touch /run/reboot-required && echo sentinel set' | $(ONELINE)
+
+uptime:
+	@$(NODES) -a 'uptime' | $(ONELINE)
+
+os-release:
+	@$(NODES) -a '. /etc/os-release; echo "$$PRETTY_NAME, kernel $$(uname -r)"' | $(ONELINE)
 
 clean:
 	@printf '%s\n' \
