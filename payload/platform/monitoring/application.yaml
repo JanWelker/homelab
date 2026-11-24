@@ -78,6 +78,8 @@ spec:
                 check_for_plugin_updates: false
               security:
                 disable_gravatar: true
+                cookie_secure: true
+                content_security_policy: true
               auth:
                 # Admin stays reachable via the API, see docs/platform/authentik.md
                 disable_login_form: true
@@ -153,6 +155,10 @@ spec:
               enabled: true
             prometheusSpec:
               priorityClassName: platform-core
+              # No authorization: etcd's metrics listener is plain HTTP, see
+              # docs/platform/monitoring.md#scrape-targets
+              scrapeClasses:
+                - name: plain-http
               # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting
               externalUrl: https://prometheus.infra.k8s.wlkr.ch
               # `{}` alone still filters by release, see docs/platform/monitoring.md
@@ -264,12 +270,14 @@ spec:
             enabled: true
             serviceMonitor:
               https: true
-              insecureSkipVerify: true
+              tlsConfig:
+                insecureSkipVerify: true
           kubeScheduler:
             enabled: true
             serviceMonitor:
               https: true
-              insecureSkipVerify: true
+              tlsConfig:
+                insecureSkipVerify: true
           # Plain-HTTP metrics-only listener; client and peer APIs stay mTLS.
           kubeEtcd:
             enabled: true
@@ -278,6 +286,7 @@ spec:
               targetPort: 2381
             serviceMonitor:
               scheme: http
+              scrapeClass: plain-http
 
           # No kube-proxy: Cilium replaces it.
           kubeProxy:
@@ -420,6 +429,10 @@ spec:
                 memory: 32Mi
               limits:
                 memory: 128Mi
+        # valuesObject drops nulls; the chart's default token Secret is not created.
+        parameters:
+          - name: kubeEtcd.serviceMonitor.authorization
+            value: "null"
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/monitoring

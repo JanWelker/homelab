@@ -91,14 +91,14 @@ reaches. `enforcedNamespaceLabel` stays off: several monitors rely on
 deploy to, matched on the `kubernetes.io/metadata.name` label the API server
 sets. [Kured](kured.md#configuration) gates reboots on alert names, so a
 workload's rule named `CephHealthError` would otherwise stop OS updates
-cluster-wide. A rule in a new platform namespace loads only once that
-namespace is on the list in `ruleNamespaceSelector`.
+cluster-wide. A new platform namespace's rules load only once it is
+listed in `ruleNamespaceSelector`.
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
 | node-exporter | Its own `node-exporter` namespace, running as `spc_t` | Only that namespace is admitted at `privileged` ([Pod Security Admission](security-policies.md#pod-security-admission)); SELinux refuses `container_t` the host's `/proc` |
-| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
-| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
+| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, hence `insecureSkipVerify`; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
+| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP, serving only `/metrics` and `/health`, so its `plain-http` scrape class sends no token; client and peer APIs stay on mTLS |
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](rook-ceph.md#monitoring) | |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
 | CRD status fields: CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp; the rule that reads a kind sits with its component, in a namespace on the rule list above |
@@ -109,13 +109,14 @@ namespace is on the list in `ruleNamespaceSelector`.
 | Setting | Why |
 | --- | --- |
 | `disable_login_form` and `oauth_auto_login` | The URL bounces straight to Authentik; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](authentik.md#groups-and-roles) |
+| `cookie_secure` and `content_security_policy` | HTTPS-only: the session cookie never travels in clear; the shipped CSP limits what pages load |
 | `analytics.*` off and `disable_gravatar` | Usage reports, update checks and Gravatar are switched off in config, not permitted by network policy, as in every component here |
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](authentik.md#client-secrets) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
-| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and Grafana restarts on every sync. The admin account is the [break-glass path](authentik.md#when-authentik-is-down); never set `grafana.adminPassword` in Git |
+| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Unset, the chart regenerates the password on every render and Grafana restarts on every sync. The admin account is the [break-glass path](authentik.md#when-authentik-is-down); never set `grafana.adminPassword` in Git |
 | `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so a ClusterRole bound by a RoleBinding in each `searchNamespace` namespace grants those alone, not the chart's cluster-wide ConfigMaps-and-Secrets pair; the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready |
-| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](index.md#components), not a budget |
+| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit, sized by the [2.5x-peak rule](index.md#components), is a ceiling for a runaway |
 | Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto a small worker that swaps until the kubelet goes `NotReady`. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins; the size cap drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone does nothing |
@@ -151,16 +152,15 @@ sidecar watches only the platform namespaces listed in
 `sidecar.dashboards.searchNamespace`, so a workload cannot replace a
 dashboard; a component in a new namespace adds it there and a RoleBinding in
 `grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy
-to it. A dashboard built in the UI survives restarts on the PVC but
-lives nowhere else: not in Git, not on a rebuilt cluster.
+to it. A dashboard built in the UI lives only on the PVC: not in
+Git, not on a rebuilt cluster.
 
 ### Growing the Prometheus volume
 
 Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the
 request in `application.yaml` does not resize the existing claim. The
 operator rebuilds the StatefulSet orphaned so the pod survives, logging
-`recreating StatefulSet because the update operation wasn't possible`; only
-the claim is left behind.
+`recreating StatefulSet because the update operation wasn't possible`.
 
 1. Merge the size bump and wait for the Application to sync.
 
@@ -224,8 +224,7 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 
 `Watchdog` proves the pipeline only as far as Alertmanager; SMTP auth and an
 expired password are unmonitored. With the port-forward above, send a test
-alert; it takes the default `email` route and arrives as one mail after
-`group_wait`:
+alert; it takes the default `email` route and arrives after `group_wait`:
 
 ```bash
 curl -s -XPOST http://localhost:9093/api/v2/alerts -H 'Content-Type: application/json' \
