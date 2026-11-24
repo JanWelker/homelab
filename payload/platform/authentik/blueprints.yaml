@@ -260,7 +260,8 @@ data:
           target: !KeyOf passkey-flow
           stage: !Find [authentik_stages_user_login.userloginstage, [name, default-authentication-login]]
           order: 100
-      # The default identification stage's settings, plus the passkey; an own
+      # The default identification stage's settings without the matched user,
+      # which tells known and unknown names apart, plus the passkey; an own
       # stage because the default blueprint rewrites its objects on upgrade.
       - model: authentik_stages_identification.identificationstage
         state: present
@@ -272,7 +273,7 @@ data:
             - email
             - username
           case_insensitive_matching: true
-          show_matched_user: true
+          show_matched_user: false
           pretend_user_exists: true
           webauthn_stage: !KeyOf authentication-passkey
           passwordless_flow: !KeyOf passkey-flow
