@@ -30,7 +30,7 @@ spec:
           cnpg.io/cluster: authentik-db
           cnpg.io/podRole: instance
 
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-system-trixie@sha256:c437b7c6c00aa7e66f5d6de1dd83602391fdebd4ff776ffb1ab7aaba5e7351ad
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.7-standard-trixie@sha256:1abcfd1cac6d53cda5185706819aab36d66a4ed88e99fc2ae44ab0826aa99f00
 
   storage:
     size: 16Gi
@@ -62,6 +62,3 @@ spec:
       isWALArchiver: true
       parameters:
         barmanObjectName: authentik-db
-
-  monitoring:
-    enablePodMonitor: true
