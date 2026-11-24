@@ -16,15 +16,14 @@ without draining, on a cluster where every node is a storage node.
 | --- | --- |
 | Namespace | `kured` |
 | Depends on | [Monitoring](monitoring.md) for the alerts it gates on |
-| If it is down | Nothing visible: staged OS and sysext updates simply never get applied |
+| If it is down | Nothing visible: staged OS and sysext updates never get applied |
 | Health check | `kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50` |
 | Files | [`payload/platform/kured/application.yaml`](https://github.com/JanWelker/homelab/blob/main/payload/platform/kured/application.yaml); [`payload/platform/security/network-policies/kured.yaml`](https://github.com/JanWelker/homelab/blob/main/payload/platform/security/network-policies/kured.yaml) for the Prometheus egress the alert gate needs |
 
 ## Configuration
 
 An update stages on disk and signals it by touching `/run/reboot-required`,
-Kured's default sentinel. `/run` is tmpfs, so the
-marker clears itself on reboot.
+Kured's default sentinel, on tmpfs so a reboot clears it.
 
 | Mechanism | Stages | Signals by |
 | --- | --- | --- |
@@ -64,10 +63,10 @@ The reasoning behind the values in `application.yaml`:
 | `preferNoScheduleTaint` | A node pending reboot stops attracting pods about to be evicted again |
 | `annotateNodes: true` | `kubectl get node -o yaml` shows why a node is cordoned |
 | `VeleroBackupInProgress` on the alert list | Velero marks any backup it finds running at startup as Failed, and draining its node restarts it. The rule in `payload/platform/velero/application.yaml` compares attempts with outcomes per live Velero pod over a window longer than Velero's default limit on asynchronous operations; a backup that hangs drops out of the window, so it holds reboots for that long at most. A backup that starts in a Velero pod's first scrape interval has no zero sample to increase from and does not hold the gate. It routes to the `null` receiver because it fires every night |
-| `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node or API alert on the list fires. This is why [Rebooting a node](../operations/nodes.md#rebooting-a-node) has no Ceph check of its own: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](monitoring.md#scrape-targets) |
+| `alertFilterRegexp` with `alertFilterMatchOnly: true` | Kured asks Prometheus before taking a node down and refuses while any Ceph, etcd, node, API or OpenBao alert on the list fires. OpenBao unseals by hand, so a rollout waits for `make bao-unseal` after each node that held a pod; a second sealed pod loses the Raft quorum. This is why [Rebooting a node](../operations/nodes.md#rebooting-a-node) has no Ceph check of its own: a second reboot during a backfill can take a placement group below its minimum replica count. Kured matches the alert name only, so Prometheus loads rules from [platform namespaces only](monitoring.md#scrape-targets) |
 
 !!! note "The regex means the opposite of what it looks like"
-    `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot, so widen it if something turns out to matter — and read the flag twice before editing it. A name that no `PrometheusRule` defines blocks nothing and fails silently. Check every entry against the rules that exist, with the last command under [Health check](#health-check).
+    `alertFilterRegexp` normally lists alerts to **ignore**. With `alertFilterMatchOnly: true` these become the only alerts that block, because something is almost always firing in a homelab and blocking on any alert would mean never rebooting. An alert not on the list does not stop a reboot; read the flag twice before widening it. A name that no `PrometheusRule` defines blocks nothing and fails silently. Check every entry against the rules that exist, with the last command under [Health check](#health-check).
 
 ## Usage
 
@@ -89,9 +88,8 @@ ssh core@<node> sudo touch /run/reboot-required
 ```
 
 `NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml`
-fires when the sentinel outlasts the rule's `for`: Kured reboots one node at a
-time and refuses while Ceph or etcd is unhealthy, so a marker that old is a
-blocked node, not a queued one.
+fires when the sentinel outlasts the rule's `for`: a marker that old is a
+node blocked by the alert gate, not a queued one.
 
 ## Health check
 
@@ -110,5 +108,5 @@ ssh core@<node> 'ls -l /run/reboot-required; update_engine_client -status'
 kubectl -n kured logs -l app.kubernetes.io/name=kured --tail=50
 
 # The alert names the gate may use: every entry in alertFilterRegexp must be here
-kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI|VeleroBackupInProgress'
+kubectl get prometheusrule -A -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert) | .alert' | sort -u | grep -E 'Ceph|etcd|KubeNode|KubeAPI|OpenBao(Sealed|NoActiveNode)|VeleroBackupInProgress'
 ```
