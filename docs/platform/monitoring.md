@@ -16,7 +16,7 @@ The chart's default rules are good; its default routing swallows every alert.
 | | |
 | --- | --- |
 | Namespace | `monitoring` |
-| Depends on | [Rook-Ceph](rook-ceph.md) for Prometheus and Grafana volumes, [Authentik](authentik.md) for the Grafana login |
+| Depends on | [Rook-Ceph](rook-ceph.md) for Prometheus, Alertmanager and Grafana volumes, [Authentik](authentik.md) for Grafana login |
 | If it is down | No alerts and no metrics — and [Kured](kured.md) loses the alert gate it checks before rebooting a node |
 | Health check | `kubectl -n monitoring get prometheus,alertmanager`; the `Watchdog` alert should always be firing |
 | UI | `monitoring.infra.k8s.wlkr.ch` (Grafana), `prometheus.` and `alertmanager.` |
