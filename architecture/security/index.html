@@ -2882,8 +2882,8 @@ carry the settings below. They land at provisioning time and change only on
 <td>An escaped container cannot read the kernel log or load another kernel; <a href="../../platform/kured/">Kured</a> reboots with <code>systemctl reboot</code>, not kexec</td>
 </tr>
 <tr>
-<td><code>seLinuxOptions.type: spc_t</code> on <code>etcd</code> and <code>kube-apiserver</code></td>
-<td>Both read the unlabelled <code>/etc/kubernetes</code> and start before the <a href="../../platform/security-profiles-operator/">operator</a> can install a profile</td>
+<td><code>seLinuxOptions.type: spc_t</code> on kubeadm's static pods</td>
+<td>They read the unlabelled <code>/etc/kubernetes</code> and start before the <a href="../../platform/security-profiles-operator/">operator</a> can install a profile</td>
 </tr>
 <tr>
 <td><code>/etc/audit/rules.d/</code></td>
