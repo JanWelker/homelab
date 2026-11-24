@@ -2857,8 +2857,8 @@ the chart values and the supporting resources around ArgoCD itself.</p>
 <td>The API server defaults fields no manifest sets: a route's backend <code>group</code>, <code>kind</code>, <code>weight</code> and catch-all <code>matches</code>, a <code>PushSecret</code>'s <code>conversionStrategy</code>. Without the ignore list each object is permanently OutOfSync. Only the catch-all value is ignored, so a changed path still syncs</td>
 </tr>
 <tr>
-<td><code>resource.exclusions</code> for the ARC runner CRs</td>
-<td>The runner controller creates and deletes them per job; excluded, ArgoCD neither tracks nor diffs that churn</td>
+<td><code>resourceExclusionsAdditional</code> for the ARC runner CRs</td>
+<td>The runner controller creates and deletes them per job; appended, so the chart's default exclusions stay too</td>
 </tr>
 <tr>
 <td><code>dex.enabled: false</code></td>
