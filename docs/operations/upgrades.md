@@ -20,13 +20,14 @@ drains, reboots and uncordons, one node at a time and only while Ceph and etcd
 are healthy. To move sooner, see [Rebooting a node](nodes.md#rebooting-a-node).
 
 Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch
-that this actually happens, because Trivy scans containers and not the host:
+that this happens, because Trivy scans containers and not the host:
 `NodeRebootPending` when a node has carried the marker for longer than its
 `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have
 run different Flatcar or kubelet versions for longer than theirs.
 
 ```bash
-ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
+make os-release uptime
+ssh core@<node> systemctl status update-engine --no-pager
 ```
 
 ## Kubernetes

@@ -81,10 +81,10 @@ kubectl -n kured annotate ds kured weave.works/kured-node-lock='{"nodeID":"manua
 kubectl -n kured annotate ds kured weave.works/kured-node-lock-    # release it
 ```
 
-To force a node to reboot on the next pass:
+To reboot nodes on Kured's next pass:
 
 ```bash
-ssh core@<node> sudo touch /run/reboot-required
+make reboot-all LIMIT=<node>         # no LIMIT: all nodes
 ```
 
 `NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml`
