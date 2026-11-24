@@ -344,6 +344,48 @@ spec:
   policyName: namespace-name-guard
   validationActions: ["Deny"]
 ---
+# Outside the platform's namespaces a pod runs at 0 or below; see
+# docs/platform/index.md#priority-classes
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: priority-class-scope
+spec:
+  failurePolicy: Ignore
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        # The priority of a pod cannot change after it is created
+        operations: ["CREATE"]
+        resources: ["pods"]
+  variables:
+    # namespace-name-guard's reserved names, less the agent sessions
+    - name: platform
+      expression: >-
+        object.metadata.namespace in ['arc-jobs', 'arc-runners', 'arc-systems', 'argocd', 'authentik', 'backup',
+         'cert-manager', 'cilium-secrets', 'cnpg-system', 'default', 'descheduler',
+         'external-dns', 'external-secrets', 'gateway-system', 'kured', 'logging',
+         'monitoring', 'node-exporter', 'openbao', 'rook-ceph',
+         'security-profiles-operator', 'trivy-system', 'velero'] ||
+        object.metadata.namespace.startsWith('kube-')
+  validations:
+    - expression: >-
+        variables.platform ||
+        !has(object.spec.priorityClassName) ||
+        object.spec.priorityClassName in ['', 'batch']
+      messageExpression: >-
+        'Namespace ' + object.metadata.namespace + ' may run pods without a priority class or with batch only.'
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: priority-class-scope
+spec:
+  policyName: priority-class-scope
+  validationActions: ["Deny"]
+---
 # bucketOwner hands a claim the keys of the user it names; only the offsite
 # copy's bucket may use it. See docs/platform/security-policies.md#admission-policies
 apiVersion: admissionregistration.k8s.io/v1
