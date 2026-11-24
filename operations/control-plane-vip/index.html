@@ -2808,6 +2808,10 @@ the VIP is <a href="#migrating-a-cluster-built-without-a-vip">migrated in place<
 <td>Cilium's API address</td>
 <td><code>k8sServiceHost</code> in <code>payload/platform/cilium/values.yaml</code></td>
 </tr>
+<tr>
+<td>Kubelet node address</td>
+<td><code>--node-ip</code> in the kubelet drop-in of <code>ansible/templates/butane_node_config.yaml.j2</code>, so the kubelet never reports the VIP on the leader's interface as InternalIP</td>
+</tr>
 </tbody>
 </table>
 <p>kube-vip runs in ARP mode with leader election, advertising a <code>/32</code>, with
@@ -2817,10 +2821,9 @@ intermittent, host-dependent failures.</p>
 <h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">&para;</a></h2>
 <p>The static pod is only the bootstrap: once ArgoCD syncs
 <code>payload/platform/kube-vip/</code>, a DaemonSet takes over, so upgrading kube-vip is
-a merged PR rather than a file rewritten on each node. kube-vip publishes a
-chart; it is not used because the handover below needs the <code>adopt</code> init
-container, which the chart has no hook for. A DaemonSet can hold the
-VIP here because the control-plane kubelets use their own node's API server
+a merged PR rather than a file rewritten on each node. kube-vip's chart is
+not used: it has no hook for the <code>adopt</code> init container below. A DaemonSet
+can hold the VIP here because the control-plane kubelets use their own node's API server
 (<code>server:</code> in <code>/etc/kubernetes/kubelet.conf</code>) and so does kube-vip
 (<code>KUBERNETES_SERVICE_HOST</code> is the host IP, which is in the certificate SANs),
 so both start after a full power loss without the VIP or Cilium.
@@ -2942,9 +2945,8 @@ configuration do not carry a name.</p>
 </span></code></pre></div>
 <h2 id="choosing-the-address">Choosing the address<a class="headerlink" href="#choosing-the-address" title="Permanent link">&para;</a></h2>
 <p>A free address on the nodes' subnet, outside any DHCP range, and distinct from
-the Cilium LoadBalancer pools. Nothing validates this: a collision shows up as
-an API server unreachable after provisioning, or reachable from some machines
-and not others depending on whose ARP cache won.</p>
+the Cilium LoadBalancer pools. Nothing validates this: a collision leaves the
+API server unreachable, or reachable only from some machines.</p>
 <h2 id="migrating-a-cluster-built-without-a-vip">Migrating a cluster built without a VIP<a class="headerlink" href="#migrating-a-cluster-built-without-a-vip" title="Permanent link">&para;</a></h2>
 <p>A cluster provisioned before the VIP has its first control plane's address in
 the API server certificates, so this is no config change to sync.</p>
@@ -2953,7 +2955,7 @@ the API server certificates, so this is no config change to sync.</p>
 <code>kubeadm init</code> onwards. Restore state per <a href="../backups/">Backups &amp; Recovery</a>.</p>
 <h3 id="in-place">In place<a class="headerlink" href="#in-place" title="Permanent link">&para;</a></h3>
 <p>One node at a time, with a second terminal holding a working kubeconfig,
-because several steps can leave you unable to open a new one.</p>
+since several steps can lock you out.</p>
 <ol>
 <li>
 <p>Confirm the address is free.</p>
