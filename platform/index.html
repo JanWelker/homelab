@@ -2367,6 +2367,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#priority-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Priority classes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#traffic-flow" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -2765,12 +2776,63 @@ plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its
 replicas one per node, which kubeadm applies at <code>init</code> and <code>upgrade apply</code>
 only, and its PodDisruptionBudget sits in the <code>security</code> component because
 nothing else owns a CoreDNS manifest.</p>
-<p>Components the cluster cannot run without — the CNI and API VIP, the
-admission webhooks, the secret and certificate chain, the CSR approver, the
-storage daemons and the node security agents — carry a <code>system-*</code> priority
-class, so under node pressure the kubelet evicts workloads first:
-<code>system-node-critical</code> for the DaemonSets a node needs,
-<code>system-cluster-critical</code> for the rest.</p>
+<h2 id="priority-classes">Priority classes<a class="headerlink" href="#priority-classes" title="Permanent link">&para;</a></h2>
+<p>Under memory pressure the kubelet evicts pods over their request first, then
+the lowest priority; at scheduling, a pod may preempt lower ones unless its
+class says <code>Never</code>. The tiers, the three custom ones in
+<a href="https://github.com/JanWelker/homelab/blob/main/payload/platform/security/priority-classes.yaml"><code>priority-classes.yaml</code></a>:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Preempts</th>
+<th>Who</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>system-node-critical</code></td>
+<td>yes</td>
+<td>DaemonSets a node needs: CNI, API VIP, storage, Tetragon</td>
+<td>The node is useless without them</td>
+</tr>
+<tr>
+<td><code>system-cluster-critical</code></td>
+<td>yes</td>
+<td>Webhooks, the certificate and secret chain, the CSR approver, Ceph and Rook</td>
+<td>Nothing else starts without them</td>
+</tr>
+<tr>
+<td><code>platform-core</code></td>
+<td>yes</td>
+<td>OpenBao, Authentik and its database, Argo CD</td>
+<td>Every app loses its secrets, sign-in or deploys with them</td>
+</tr>
+<tr>
+<td>none (0)</td>
+<td>yes</td>
+<td>The apps</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>observability</code></td>
+<td>no</td>
+<td>Metrics, logs, backups, Kured, external-dns, the scanner and runner controllers</td>
+<td>The largest memory users go before an app, and come back without killing one</td>
+</tr>
+<tr>
+<td><code>batch</code></td>
+<td>no</td>
+<td>Scan jobs, CI runners, CronJobs, agent sessions</td>
+<td>Retried on the next run</td>
+</tr>
+</tbody>
+</table>
+<p>The kernel OOM killer ignores priority and goes by QoS class, so a request at
+steady state matters as much as the class. Outside the platform namespaces the
+<code>priority-class-scope</code> <a href="security-policies/#admission-policies">admission policy</a>
+allows <code>batch</code> or no class, so an app cannot outrank the platform.</p>
 <h2 id="traffic-flow">Traffic Flow<a class="headerlink" href="#traffic-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>flowchart LR
     NET([Internet]) --&gt;|port-forward 80, 443| R[Router]

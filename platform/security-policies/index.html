@@ -3386,6 +3386,11 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <td>A platform namespace, <code>kube-*</code>, <code>velero</code> or <code>claude-&lt;session&gt;</code> may be applied only by a platform Application: <code>apps</code> creates Namespaces, so a workload could otherwise relabel a platform one or take a name <a href="../openbao/#kubernetes-auth">OpenBao</a> reaches by prefix</td>
 </tr>
 <tr>
+<td><code>priority-class-scope</code></td>
+<td><code>Deny</code></td>
+<td>Outside the platform namespaces a pod takes <code>batch</code> or no <a href="../#priority-classes">priority class</a>, so a workload cannot have the platform evicted first</td>
+</tr>
+<tr>
 <td><code>obc-bucket-owner</code></td>
 <td><code>Deny</code></td>
 <td>Only <code>backup/offsite-bucket</code> may set <code>bucketOwner</code> on an <code>ObjectBucketClaim</code>, and only to <code>offsite-reader</code>. Rook hands a claim the keys of the user it names, so any other claim could take over any S3 user, Rook's internal ones included — see <a href="../rook-ceph/#off-cluster-reader">Off-cluster reader</a></td>

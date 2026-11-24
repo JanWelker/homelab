@@ -46,7 +46,20 @@ One row per directory under `payload/platform/`, with the Application name where
 
 Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods take their requests, and the API server a soft `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its replicas one per node, which kubeadm applies at `init` and `upgrade apply` only, and its PodDisruptionBudget sits in the `security` component because nothing else owns a CoreDNS manifest.
 
-Components the cluster cannot run without — the CNI and API VIP, the admission webhooks, the secret and certificate chain, the CSR approver, the storage daemons and the node security agents — carry a `system-*` priority class, so under node pressure the kubelet evicts workloads first: `system-node-critical` for the DaemonSets a node needs, `system-cluster-critical` for the rest.
+## Priority classes
+
+Under memory pressure the kubelet evicts pods over their request first, then the lowest priority; at scheduling, a pod may preempt lower ones unless its class says `Never`. The tiers, the three custom ones in [`priority-classes.yaml`](<https://github.com/JanWelker/homelab/blob/main/payload/platform/security/priority-classes.yaml>):
+
+| Class | Preempts | Who | Why |
+| --- | --- | --- | --- |
+| `system-node-critical` | yes | DaemonSets a node needs: CNI, API VIP, storage, Tetragon | The node is useless without them |
+| `system-cluster-critical` | yes | Webhooks, the certificate and secret chain, the CSR approver, Ceph and Rook | Nothing else starts without them |
+| `platform-core` | yes | OpenBao, Authentik and its database, Argo CD | Every app loses its secrets, sign-in or deploys with them |
+| none (0) | yes | The apps | — |
+| `observability` | no | Metrics, logs, backups, Kured, external-dns, the scanner and runner controllers | The largest memory users go before an app, and come back without killing one |
+| `batch` | no | Scan jobs, CI runners, CronJobs, agent sessions | Retried on the next run |
+
+The kernel OOM killer ignores priority and goes by QoS class, so a request at steady state matters as much as the class. Outside the platform namespaces the `priority-class-scope` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) allows `batch` or no class, so an app cannot outrank the platform.
 
 ## Traffic Flow
 
