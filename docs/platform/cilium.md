@@ -84,11 +84,11 @@ kubectl -n kube-system exec ds/cilium -- cilium status --brief
 ```
 
 It prints `OK`. The BGP session on each control-plane node, `established`
-with two routes advertised; only the control planes peer, so ask that node's agent:
+with two routes advertised; only control planes peer, so ask that node's agent:
 
 ```bash
 kubectl -n kube-system exec "$(kubectl -n kube-system get pod -l k8s-app=cilium \
-  --field-selector spec.nodeName=<control-plane> -o name)" -- cilium bgp peers
+  --field-selector spec.nodeName=<control-plane> -o name)" -- cilium shell -- bgp/peers
 ```
 
 Hubble answers *what did I just break?* during a network policy rollout — see

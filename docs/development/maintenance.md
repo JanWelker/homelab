@@ -43,6 +43,9 @@ are the sets below that must move together.
 - **Cluster-wide charts and workflow actions wait for a human.** Argo CD
     applies a merge within a minute and these charts hold cluster-wide
     rights, so no update of them automerges; the list is in `renovate.json`.
+    Cilium's pending patch and each minor get separate PRs, merged in that
+    order, the only
+    [path upstream tests](https://docs.cilium.io/en/stable/operations/upgrade/).
 - **A Kubernetes minor waits for a human.** `kubernetes_version` is walked
     forward by hand in version-skew order; an automerged minor would
     provision a kubelet ahead of the API server — see [Upgrades](../operations/upgrades.md#upgrading-a-minor-version-deliberately).
@@ -64,9 +67,8 @@ are the sets below that must move together.
     release already satisfies; `rangeStrategy: bump` is what makes Renovate
     open a PR for the linters and the docs generator at all.
 - **Flatcar and Kubernetes bumps change what a newly provisioned
-    node installs, not what a running node runs.** kubeadm cannot skip a minor,
-    so a cluster that sits while two Kubernetes minors merge has to be walked
-    forward one at a time — see [Upgrades](../operations/upgrades.md).
+    node installs, not what a running node runs** — see
+    [Upgrades](../operations/upgrades.md).
 - **A font bump cannot automerge without its second commit:**
     `fonts-check.yaml` fails on it and `ci-ok` waits for it — see
     [Fonts](contributing.md#fonts).

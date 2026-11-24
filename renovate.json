@@ -133,6 +133,20 @@
       ]
     },
     {
+      "description": "Cilium tests upgrades only between consecutive minors from the latest patch of the running one: a pending patch and each minor get their own PR, merged in that order -- see docs/development/maintenance.md",
+      "matchManagers": [
+        "argocd"
+      ],
+      "matchDatasources": [
+        "helm"
+      ],
+      "matchDepNames": [
+        "cilium"
+      ],
+      "separateMinorPatch": true,
+      "separateMultipleMinor": true
+    },
+    {
       "description": "The same rule for a cluster-wide chart served as an OCI artifact, whose datasource is docker and whose depName is the full path.",
       "matchManagers": [
         "argocd"
