@@ -130,6 +130,8 @@ def fixable_criticals(image):
             '--ignore-unfixed',
             '--scanners',
             'vuln',
+            '--disable-telemetry',
+            '--skip-version-check',
             '--format',
             'json',
             image,
