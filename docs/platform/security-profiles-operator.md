@@ -7,9 +7,8 @@ description: "The Kubernetes Security Profiles Operator: SELinux policy modules 
 The [Security Profiles Operator](https://github.com/kubernetes-sigs/security-profiles-operator)
 (SPO) turns a `SelinuxProfile` object into a policy module on every node: a
 `spod` DaemonSet runs `selinuxd` beside the host's policy store, and a pod then
-uses `<profile>.process` as its `seLinuxOptions.type`. It is here to carry the
-workload-specific modules that moving the nodes from permissive to enforcing
-needs; the denials those modules answer are in
+uses `<profile>.process` as its `seLinuxOptions.type`. It carries the modules
+the nodes need to move from permissive to enforcing; their denials are in
 [Node hardening](../architecture/security.md#node-hardening). It also
 installs a [seccomp profile](#seccomp); AppArmor and the log enricher are off.
 
@@ -27,14 +26,16 @@ installs a [seccomp profile](#seccomp); AppArmor and the log enricher are off.
 
 | Setting | Why |
 | --- | --- |
-| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation |
-| `customTemplatesConfigMap` | The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits `container` would load; see [Templates](#templates) |
-| `selinuxdImage.default` | The chart's `el9` image, digest copied. Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails on Flatcar's base policy |
+| `selinuxd-memory-request` in `admission-policies.yaml` | `selinuxd`'s fixed memory request at node-critical priority preempts pods on a full node; the policy lowers it at pod creation |
+| `customTemplatesConfigMap` | The bundled templates do not load on Flatcar; see [Templates](#templates) |
+| `selinux.options.deniedTypes` | Upstream's recommended kernel-memory types: profiles come from denials, so a logged kernel-memory access must not become a rule |
+| `daemonUpdateStrategy` | A daemon that fails on Flatcar, which [upstream does not test](#pitfalls), stops the rollout at its first node |
+| `selinuxdImage.default` | The chart's `el9` image: Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails there |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
-| `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation |
-| `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
+| `replicaCount` | A second replica keeps a drain from stopping reconciliation |
+| `resources` | Chart defaults, unmeasured; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
 | `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](security-policies.md#pod-security-admission) |
-| Network policy | The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates |
+| Network policy | Operator, daemon and webhook only reach the API server; Prometheus scrapes the daemon's ServiceMonitor |
 
 Both images are pinned by digest inside the chart, so Renovate sees only the
 chart version.
