@@ -24,9 +24,9 @@ it as [llms.txt](https://homelab.wlkr.ch/llms.txt) or in full as
 - `docs/`: Documentation sources, built with [Zensical](https://zensical.org/)
   (configured in `zensical.toml`) and published to GitHub Pages.
 - `payload/`: The "GitOps Payload" containing ArgoCD Applications and Kubernetes manifests.
-  - `platform/`: Core infrastructure (Cilium, Rook, etc.).
-  - `argocd/`: ArgoCD bootstrap configuration.
-  - `workloads/`: The ApplicationSet that hands over to the workloads repository.
+    - `platform/`: Core infrastructure (Cilium, Rook, etc.).
+    - `argocd/`: ArgoCD bootstrap configuration.
+    - `workloads/`: The ApplicationSet that hands over to the workloads repository.
 
 The applications the cluster runs live in a second repository,
 [JanWelker/homelab-apps](https://github.com/JanWelker/homelab-apps); the
