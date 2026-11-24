@@ -17,6 +17,7 @@ spec:
       backoffLimit: 2
       template:
         spec:
+          priorityClassName: batch
           restartPolicy: OnFailure
           # It never calls the Kubernetes API
           automountServiceAccountToken: false

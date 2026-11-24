@@ -160,6 +160,7 @@ spec:
             # Selected by the network policy; job-name alone is not stable.
             app.kubernetes.io/name: findings-history
         spec:
+          priorityClassName: batch
           serviceAccountName: findings-history
           automountServiceAccountToken: true
           restartPolicy: Never

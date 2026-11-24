@@ -49,6 +49,7 @@ spec:
 
           template:
             spec:
+              priorityClassName: batch
               # Own ServiceAccount, so the chart renders no Role with Secrets
               # in this namespace: job-pods-rbac.yaml.
               serviceAccountName: homelab-runner
@@ -107,6 +108,7 @@ spec:
 
           template:
             spec:
+              priorityClassName: batch
               securityContext:
                 seccompProfile:
                   type: RuntimeDefault

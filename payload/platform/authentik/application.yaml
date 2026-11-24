@@ -18,6 +18,7 @@ spec:
       helm:
         valuesObject:
           global:
+            priorityClassName: platform-core
             envFrom:
               # From secrets.yaml; the blueprints read it via !Env.
               - secretRef:

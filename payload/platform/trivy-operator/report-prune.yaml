@@ -159,6 +159,7 @@ spec:
             # Selected by the network policy; job-name alone is not stable.
             app.kubernetes.io/name: report-prune
         spec:
+          priorityClassName: batch
           serviceAccountName: report-prune
           automountServiceAccountToken: true
           restartPolicy: Never

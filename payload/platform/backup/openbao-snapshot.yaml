@@ -29,6 +29,7 @@ spec:
           labels:
             app.kubernetes.io/name: openbao-snapshot
         spec:
+          priorityClassName: batch
           serviceAccountName: openbao-snapshot
           restartPolicy: OnFailure
           securityContext:

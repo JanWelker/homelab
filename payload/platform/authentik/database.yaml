@@ -10,6 +10,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   instances: 3
+  priorityClassName: platform-core
   # The operator's PDBs stay on: a drain switches the primary over first.
   # See docs/platform/authentik.md#database
   # A spec change switches over too, and no shutdown waits on Authentik's pool.
