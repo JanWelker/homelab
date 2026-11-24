@@ -47,6 +47,8 @@ spec:
       max_connections: "200"
       # A quarter of the volume; see docs/platform/cloudnative-pg.md#pitfalls
       max_slot_wal_keep_size: 4GB
+      # No node reserves huge pages, and SELinux denies container_t the probe
+      huge_pages: "off"
 
   # Request at the measured median, limit at 2.5x the peak; see docs/platform/index.md#components
   resources:
