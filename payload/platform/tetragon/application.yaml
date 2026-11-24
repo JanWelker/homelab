@@ -39,6 +39,12 @@ spec:
               {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["","cilium"]}
               {"event_set":["PROCESS_EXEC","PROCESS_EXIT"],"namespace":["kube-system"],"labels":["tier=control-plane","app.kubernetes.io/part-of=cilium","k8s-app=kube-dns","app.kubernetes.io/name in (tetragon,tetragon-operator,kube-vip,metrics-server)"]}
 
+            # Secrets on a command line stay out of Loki; see docs/platform/tetragon.md#configuration
+            redactionFilters: |
+              {"redact": ["--password(?:\\s+|=)(\\S*)"], "redact_str": "<redacted:password>"}
+              {"redact": ["(?i)--private[-_]?key(?:\\s+|=)(\\S+)"], "redact_str": "<redacted:private-key>"}
+              {"redact": ["(?i)[a-z][a-z0-9+.-]*://[^\\s:/@]*:([^\\s@/]+)@"], "redact_str": "<redacted:url-credential>"}
+
             prometheus:
               # Off kube-vip's :2112; see docs/platform/tetragon.md#configuration
               port: 2114
