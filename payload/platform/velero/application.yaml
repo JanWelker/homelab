@@ -177,8 +177,18 @@ spec:
           limits:
             memory: 2Gi
 
+        # Data mover pods take their class from here, not from nodeAgent
+        configMaps:
+          node-agent-config:
+            data:
+              node-agent-config.json: |
+                {"priorityClassName": "observability"}
+
         nodeAgent:
           priorityClassName: observability
+          # The chart prefixes configMaps keys with the release name
+          extraArgs:
+            - --node-agent-configmap=velero-node-agent-config
           # Root stays: kopia reads every pod volume; see docs/platform/velero.md
           containerSecurityContext:
             allowPrivilegeEscalation: false
