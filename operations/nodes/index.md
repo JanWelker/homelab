@@ -15,7 +15,7 @@ Everything you do to one machine, and the cluster's way back after a power loss.
 1. Set the sentinel; Kured acts on it at its next `period` check.
 
    ```bash
-   ssh core@<node> sudo touch /run/reboot-required
+   make reboot-all LIMIT=<node>
    ```
 2. Watch it cordon, reboot and uncordon the node.
 

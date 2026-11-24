@@ -2802,10 +2802,10 @@ kubectl -n kured annotate ds kured weave.works/kured-node-lock='{"nodeID":"manua
 kubectl -n kured annotate ds kured weave.works/kured-node-lock-    # release it
 ```
 
-To force a node to reboot on the next pass:
+To reboot nodes on Kured's next pass:
 
 ```bash
-ssh core@<node> sudo touch /run/reboot-required
+make reboot-all LIMIT=<node>         # no LIMIT: all nodes
 ```
 
 `NodeRebootPending` in `payload/platform/monitoring/node-update-rules.yaml` fires when the sentinel outlasts the rule's `for`: a marker that old is a node blocked by the alert gate, not a queued one.
@@ -5314,7 +5314,7 @@ Everything you do to one machine, and the cluster's way back after a power loss.
 1. Set the sentinel; Kured acts on it at its next `period` check.
 
    ```bash
-   ssh core@<node> sudo touch /run/reboot-required
+   make reboot-all LIMIT=<node>
    ```
 2. Watch it cordon, reboot and uncordon the node.
 
@@ -5613,10 +5613,11 @@ Three mechanisms update a node, and all three land their changes on disk and wai
 
 Flatcar downloads OS updates in the background into the passive half of its A/B partition pair. `locksmithd`, which would normally coordinate the reboot, is masked in `ansible/templates/butane_node_config.yaml.j2`, because a reboot must drain the node first. In its place `flatcar-reboot-sentinel.timer` polls `update_engine_client -status` and touches `/run/reboot-required` once an update is staged. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) consumes that marker: it drains, reboots and uncordons, one node at a time and only while Ceph and etcd are healthy. To move sooner, see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>).
 
-Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch that this actually happens, because Trivy scans containers and not the host: `NodeRebootPending` when a node has carried the marker for longer than its `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have run different Flatcar or kubelet versions for longer than theirs.
+Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch that this happens, because Trivy scans containers and not the host: `NodeRebootPending` when a node has carried the marker for longer than its `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have run different Flatcar or kubelet versions for longer than theirs.
 
 ```bash
-ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
+make os-release uptime
+ssh core@<node> systemctl status update-engine --no-pager
 ```
 
 ## Kubernetes

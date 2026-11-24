@@ -2685,11 +2685,12 @@ update is staged. <a href="../../platform/kured/">Kured</a> consumes that marker
 drains, reboots and uncordons, one node at a time and only while Ceph and etcd
 are healthy. To move sooner, see <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
 <p>Three alerts in <code>payload/platform/monitoring/node-update-rules.yaml</code> watch
-that this actually happens, because Trivy scans containers and not the host:
+that this happens, because Trivy scans containers and not the host:
 <code>NodeRebootPending</code> when a node has carried the marker for longer than its
 <code>for</code>, <code>NodeOsVersionDrift</code> and <code>NodeKubeletVersionDrift</code> when the nodes have
 run different Flatcar or kubelet versions for longer than theirs.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'cat /etc/os-release; systemctl status update-engine --no-pager'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>os-release<span class="w"> </span>uptime
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>update-engine<span class="w"> </span>--no-pager
 </span></code></pre></div>
 <h2 id="kubernetes">Kubernetes<a class="headerlink" href="#kubernetes" title="Permanent link">&para;</a></h2>
 <p>Kubernetes is a <a href="../../concepts/#systemd-sysexts">systemd sysext</a>.

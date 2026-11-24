@@ -6,10 +6,11 @@ Three mechanisms update a node, and all three land their changes on disk and wai
 
 Flatcar downloads OS updates in the background into the passive half of its A/B partition pair. `locksmithd`, which would normally coordinate the reboot, is masked in `ansible/templates/butane_node_config.yaml.j2`, because a reboot must drain the node first. In its place `flatcar-reboot-sentinel.timer` polls `update_engine_client -status` and touches `/run/reboot-required` once an update is staged. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) consumes that marker: it drains, reboots and uncordons, one node at a time and only while Ceph and etcd are healthy. To move sooner, see [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>).
 
-Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch that this actually happens, because Trivy scans containers and not the host: `NodeRebootPending` when a node has carried the marker for longer than its `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have run different Flatcar or kubelet versions for longer than theirs.
+Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch that this happens, because Trivy scans containers and not the host: `NodeRebootPending` when a node has carried the marker for longer than its `for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have run different Flatcar or kubelet versions for longer than theirs.
 
 ```bash
-ssh core@<node> 'cat /etc/os-release; systemctl status update-engine --no-pager'
+make os-release uptime
+ssh core@<node> systemctl status update-engine --no-pager
 ```
 
 ## Kubernetes

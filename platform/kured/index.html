@@ -2768,8 +2768,8 @@ is staged, and a DaemonSet cannot be scaled.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>annotate<span class="w"> </span>ds<span class="w"> </span>kured<span class="w"> </span>weave.works/kured-node-lock<span class="o">=</span><span class="s1">'{"nodeID":"manual"}'</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kured<span class="w"> </span>annotate<span class="w"> </span>ds<span class="w"> </span>kured<span class="w"> </span>weave.works/kured-node-lock-<span class="w">    </span><span class="c1"># release it</span>
 </span></code></pre></div>
-<p>To force a node to reboot on the next pass:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>touch<span class="w"> </span>/run/reboot-required
+<p>To reboot nodes on Kured's next pass:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>reboot-all<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;<span class="w">         </span><span class="c1"># no LIMIT: all nodes</span>
 </span></code></pre></div>
 <p><code>NodeRebootPending</code> in <code>payload/platform/monitoring/node-update-rules.yaml</code>
 fires when the sentinel outlasts the rule's <code>for</code>: a marker that old is a
