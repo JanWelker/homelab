@@ -396,6 +396,17 @@ def test_describe_adds_the_size_when_the_file_is_there(tmp_path):
     assert serve.describe(path.name, str(path)) == ('the OS image (2.0 MB) -- this is the long one')
 
 
+def test_console_escapes_control_characters_a_client_sends(checkout, caplog):
+    """A file name is the client's; a raw ESC in it would drive the operator's terminal."""
+    caplog.set_level(logging.INFO, logger='bootserver')
+    serve.say('10.0.0.13', '%s is not in output/http', '\x1b]0;pwn\x07')
+    serve.banner('ARMED', 'line')
+    line, banner = (serve.Console().format(r) for r in caplog.records)
+    assert '\x1b' not in line
+    assert line.endswith(r'\x1b]0;pwn\x07 is not in output/http')
+    assert '\n' in banner
+
+
 def test_announce_tftp_ties_the_client_to_its_menu(checkout, caplog):
     """A menu request is where the server first learns which node an IP is."""
     caplog.set_level(logging.INFO, logger='bootserver')

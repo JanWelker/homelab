@@ -9,6 +9,7 @@ reboot at the end of an install boots the disk instead of the installer again.
 import argparse
 import contextlib
 import errno
+import itertools
 import json
 import logging
 import os
@@ -71,6 +72,10 @@ WHO_WIDTH = sum(COLUMNS) + len(COLUMNS) - 1
 COLOURS = {'ok': '\033[1;32m', 'warn': '\033[1;33m', 'error': '\033[1;31m'}
 RESET = '\033[0m'
 WARNING_MARK = '\u26a0'
+# File names in a line come from the client; the table http.server's own log_message uses.
+CONTROL_CHARS = str.maketrans(
+    {c: f'\\x{c:02x}' for c in itertools.chain(range(0x20), range(0x7F, 0xA0))}
+)
 
 
 def _read_inventory(required):
@@ -178,9 +183,8 @@ class Console(logging.Formatter):
             who = 'tftp' if record.name.startswith('tftpy') else 'server'
         if record.levelno > logging.INFO:
             message = f'{record.levelname.lower()}: {message}'
-        return self.paint(
-            record, f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}'
-        )
+        line = f'{self.formatTime(record, "%H:%M:%S")}  {who:<{WHO_WIDTH}}  {message}'
+        return self.paint(record, line.translate(CONTROL_CHARS))
 
     def paint(self, record, line):
         """Colour the line, or leave it alone if this is not going to a terminal."""
