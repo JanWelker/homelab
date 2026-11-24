@@ -18,7 +18,7 @@ sees a shell spawned in a running container.
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](logging.md) for the events, [Monitoring](monitoring.md) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
 | Health check | See [Health check](#health-check); `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
-| Dashboard | [Tetragon](https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
+| Dashboard | [Tetragon](https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview): agent health, event rates and the latest policy hits, shells and execs from Loki |
 | Files | [`payload/platform/tetragon/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/tetragon): the chart, the policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
 ## Configuration
@@ -30,6 +30,7 @@ and runs privileged on the host network by the chart's default.
 | --- | --- |
 | Export to stdout | The chart runs a sidecar that tails Tetragon's JSON file to stdout, so [Alloy](logging.md) collects it as any container log: `{namespace="kube-system", container="export-stdout"}` |
 | `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export, being most of the volume. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
+| `redactionFilters` | Passwords, private keys and URL credentials in exec arguments are replaced before the export, which puts every argument in Loki; Hubble's counterpart is [`hubble.redact`](cilium.md#configuration) |
 | `seLinuxOptions.type: spc_t` | SELinux refuses `container_t` the agent's BPF loads, tracefs mount and other processes' `/proc` |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid or file-capability escalation is visible without a policy |
 | Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](../operations/control-plane-vip.md#the-handover). The Prometheus egress rule in `monitoring.yaml` names it too |
@@ -62,8 +63,7 @@ taint hook of `kernel-module-load` record the host too. Every hook carries a
 | `unprivileged-user-namespace-arc-jobs` | `create_user_ns` | The same in `arc-jobs`, recorded: buildah builds the images there in a user namespace, see [GitHub runners](github-runners.md) | No; every image build would fire it |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
-The allow list in the first policy is the set of things that read key material
-in steady state, found by listing what fired. Add a binary there only after
+The first policy's allow list is what reads key material in steady state. Add a binary there only after
 confirming it in the export; a person running `cat` on a node is exactly what
 the policy is for. A binary path is only trusted together with the host
 network namespace: any image can ship `/usr/local/bin/etcd`, but only a
@@ -73,11 +73,9 @@ key at start; namespace and workload exemptions go in the alert.
 
 The third policy is the runtime half of an image check: nothing in an image
 lives on those paths, so a binary executing from one was written after the
-container started. An emptyDir can be mounted anywhere, so the policy names
-the mounts this cluster puts binaries into rather than every emptyDir;
-A `readOnlyRootFilesystem`
-pod makes the check complete, since then a new binary has nowhere else to
-land. The offline half, every binary Tetragon saw executed diffed against
+container started. The policy names the mounts this cluster puts binaries
+into, since an emptyDir can be mounted anywhere; a `readOnlyRootFilesystem`
+pod leaves a new binary nowhere else to land. The offline half, every binary Tetragon saw executed diffed against
 the image's file list, needs no policy: query Loki by image and binary and
 resolve each path in `crane export <image> - | tar t`.
 
@@ -145,8 +143,7 @@ kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra tracingpolicy list 
     `unless ... offset`, and holds with `keep_firing_for`, because the
     agent drops a pod's series when the pod
     exits and a one-shot pod would otherwise flap. Copy that shape for a
-    new alert, and test it with a pod that fires once, not with one that
-    keeps firing.
+    new alert and test it with a pod that fires once.
 
 !!! warning "An exclusion has to outlive the pod"
     `increase(...[10m])` still sees a pod's events for ten minutes after the
