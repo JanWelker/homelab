@@ -22,13 +22,13 @@ A `Cluster` is not a StatefulSet with a nicer name:
 | Primary election and failover between instances | A single pod that takes the database down with it |
 | `-rw` and `-ro` Services that follow the primary | Hardcoding a pod name and being wrong after a restart |
 | Rolling minor-version upgrades, replicas first | A `StatefulSet` image bump and hope |
-| A PodMonitor and an upstream Grafana dashboard | No visibility until something is already wrong |
+| A metrics exporter per instance and an upstream Grafana dashboard | No visibility until something is already wrong |
 
 Major-version upgrades are declarative too, but offline: ArgoCD reports Degraded while one runs and the workload is down for its duration. Read [the upstream guide](<https://cloudnative-pg.io/documentation/current/postgres_upgrades/>) before merging one.
 
 Databases claim `rook-ceph-block`, so Ceph's replicas already sit under every database and a single-instance `Cluster` is a defensible default: the data survives a node loss even when the process does not. Where a workload cannot tolerate the restart, more `instances` are the change, as [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#database>) and the workloads repository's `advent-wollbi` and `shot-bridge` show.
 
-The operator itself runs more than one replica (`replicaCount` in `application.yaml`'s `valuesObject`), spread per [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>): the same pod serves the `Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`, so a single replica rescheduling through a Kured drain refuses every apply, while leader election keeps one reconciling. The chart ships no PodDisruptionBudget.
+The operator and the backup plugin each run several replicas, spread per [Replica placement](<https://homelab.wlkr.ch/platform/index.md#replica-placement>), so a Kured drain stalls neither: the operator serves the `Cluster` and `ScheduledBackup` webhooks with `failurePolicy: Fail` and calls the plugin on every `Cluster` reconcile. Leader election keeps one of each reconciling; neither chart ships a PodDisruptionBudget.
 
 ### Backups
 
@@ -54,9 +54,10 @@ The [Barman Cloud plugin](<https://cloudnative-pg.io/plugin-barman-cloud/>) runs
 1. Disable the subchart (`postgresql.enabled: false` or `internalDatabase.enabled: false`) and point the chart at the `Cluster`.
 2. Never copy the password. CloudNativePG writes `username`, `password`, `host`, `port`, `dbname` and a ready-made `uri` to `<cluster-name>-app`; charts take those through an `existingSecret` block, and applications without one read `uri` as an environment variable. Nothing goes into Git or OpenBao — nothing outside the cluster ever needs this secret.
 3. Put the `Cluster` in the workload's namespace, not `cnpg-system`, so the namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the namespace takes the database with it.
-4. Set `enablePDB: false` on a single-instance `Cluster` only. Its `<cluster>-primary` PodDisruptionBudget refuses the eviction outright, so a node drain hangs on it until [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) gives up and the node is never rebooted; without the budget the instance is down for the move to another node. A `Cluster` with replicas keeps the budgets: the operator sees the drain, switches the primary over to a replica in seconds, and the drain continues. Without them the drain deletes the primary, and the failover waits for its smart shutdown, up to `smartShutdownTimeout` while clients hold connections.
-5. Set `smartShutdownTimeout: 15`, and on a `Cluster` with replicas `primaryUpdateMethod: switchover`. A smart shutdown refuses new connections and waits for the open ones to close, and every application here holds a pool, so the default's 180 seconds only lengthen every restart, every move of a single instance and every failover; after 15 seconds the instance manager shuts down fast, rolling back open transactions, and the clients reconnect. The default update method restarts the primary in place on a spec change, leaving no writer for the whole shutdown; a switchover promotes a replica first.
+4. Set `enablePDB: false` on a single-instance `Cluster` only. Its `<cluster>-primary` PodDisruptionBudget refuses the eviction, so a node drain hangs on it until [Kured](<https://homelab.wlkr.ch/platform/kured/index.md>) gives up and never reboots the node; without the budget the instance is down for the move to another node. A `Cluster` with replicas keeps the budgets: the operator sees the drain, switches the primary over to a replica in seconds, and the drain continues. Without them the drain deletes the primary, and the failover waits for its smart shutdown, up to `smartShutdownTimeout` while clients hold connections.
+5. Set `smartShutdownTimeout: 15`, and on a `Cluster` with replicas `primaryUpdateMethod: switchover`. A smart shutdown refuses new connections and waits for the open ones to close, and every application here holds a pool, so the default's 180 seconds only lengthen every restart, move and failover; after 15 seconds the instance manager shuts down fast, rolling back open transactions, and the clients reconnect. The default update method restarts the primary in place on a spec change, leaving no writer for the whole shutdown; a switchover promotes a replica first.
 6. Back it up with the [stanza below](<#backing-up-a-database>). Velero's nightly PVC snapshot is crash-consistent and restores only to the night it was taken; the WAL archive restores to any second.
+7. Scrape it with its own `PodMonitor`, like Authentik's `podmonitor.yaml`; upstream deprecated `enablePodMonitor`.
 
 ### Backing up a database
 
@@ -142,7 +143,7 @@ kubectl get clusters.postgresql.cnpg.io -A \
 kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecoveryWindow
 ```
 
-`ContinuousArchiving` `True` means the last WAL segment reached the object store; `False` means WAL is piling up on the instance's volume, which fills it. The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. WAL archiving is read from the instances' own exporter, whose `pg_stat_archiver` and `archive_status` figures stay accurate under the plugin: `CNPGWALArchivingFailing` when the last attempt failed and none succeeded since, `CNPGWALArchiveBacklog` when segments queue without a failure, a stuck archiver. All four are warnings on the daily mail.
+`ContinuousArchiving` `True` means the last WAL segment reached the object store; `False` means WAL is [piling up](<#pitfalls>). The recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay empty with a plugin, which upstream documents as deprecated under CNPG-I. `prometheusrule.yaml` therefore reads the `ObjectStore` and `Backup` objects through kube-state-metrics' [custom resource metrics](<https://homelab.wlkr.ch/platform/monitoring/index.md#scrape-targets>): `CNPGBackupStale` when a server's last successful base backup is older than the rule's threshold, `CNPGBackupFailed` when a recent Backup ended in `failed`. WAL archiving is read from the instances' own exporter, whose `pg_stat_archiver` and `archive_status` figures stay accurate under the plugin: `CNPGWALArchivingFailing` when the last attempt failed and none succeeded since, `CNPGWALArchiveBacklog` when segments queue without a failure, a stuck archiver. All four are warnings on the daily mail.
 
 ## Pitfalls
 
@@ -183,5 +184,5 @@ kubectl -n <namespace> get objectstore <db> -o jsonpath='{.status.serverRecovery
 
 Its own `plugins` entry keeps the same `barmanObjectName` with `serverName: <db>-restore`, so the new archive lands beside the old one.
 
-1. Merge and wait for `Cluster in healthy state`; both databases now run, and the application still reads the original.
-2. In a second PR, point the application at `<db>-restore-app`, set the `ScheduledBackup`'s `cluster.name` to `<db>-restore`, and delete the original `Cluster`; the sync prunes it.
+1. Merge and wait for `Cluster in healthy state`; both databases run, and the application reads the original.
+2. In a second PR, point the application at `<db>-restore-app`, rename the `ScheduledBackup` and its `cluster.name` to `<db>-restore`, and delete the original `Cluster`; the sync prunes it.
