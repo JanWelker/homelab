@@ -372,15 +372,25 @@ storage:
           store=/var/lib/selinux
           shipped=/usr/lib/selinux/policy
           compiled=/etc/selinux/mcs/policy
+          modules=mcs/active/modules
           . /etc/os-release
           if [ ! -L "$store" ] && [ "$(cat "$store/.flatcar-version" 2>/dev/null)" = "$VERSION" ]; then
             exit 0
           fi
           # First boot, or a Flatcar update shipped a new base policy: copy it, and drop
-          # what selinuxd compiled from the old one. selinuxd installs its modules again
-          # when its pod starts.
+          # what selinuxd compiled from the old one.
           rm -rf "$store.new"
           cp -a "$shipped" "$store.new"
+          # Keep the profiles' modules, at priorities Flatcar does not ship: selinuxd's
+          # datastore outlives the reboot and does not install them again. The spod
+          # init container rebuilds them against the new base.
+          if [ ! -L "$store" ]; then
+            for dir in "$store/$modules"/[0-9]*; do
+              if [ -e "$dir" ] && [ ! -e "$shipped/$modules/${dir##*/}" ]; then
+                cp -a "$dir" "$store.new/$modules/"
+              fi
+            done
+          fi
           echo "$VERSION" > "$store.new/.flatcar-version"
           if [ -L "$store" ]; then rm "$store"; else rm -rf "$store"; fi
           mv "$store.new" "$store"

@@ -29,15 +29,14 @@ installs a [seccomp profile](#seccomp); AppArmor and the log enricher are off.
 | --- | --- |
 | `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation |
 | `customTemplatesConfigMap` | The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits `container` would load; see [Templates](#templates) |
-| `selinuxdImage.default` | The chart's `el9` image. Flatcar matches none of the operator's OS patterns and gets the default, whose RHEL 8 tooling fails on Flatcar's base policy; of the four images only `el9` builds it. The digest is a copy of the chart's |
+| `selinuxdImage.default` | The chart's `el9` image, digest copied. Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails on Flatcar's base policy |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
 | `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation |
 | `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](index.md#components) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
 | `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](security-policies.md#pod-security-admission) |
 | Network policy | The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates |
 
-The images are the chart's: the operator from `registry.k8s.io` and `selinuxd`
-from `quay.io`, pinned by digest inside the chart, so Renovate sees only the
+Both images are pinned by digest inside the chart, so Renovate sees only the
 chart version.
 
 ### Policy store
@@ -45,10 +44,10 @@ chart version.
 Flatcar's `/var/lib/selinux` is a symlink into the read-only `/usr`, where
 `selinuxd` cannot install anything. `selinux-policy-store.service` in
 `butane_node_config.yaml.j2` replaces it with a copy before the kubelet
-starts, and copies again when the Flatcar version changes, dropping the policy
-`selinuxd` compiled from the old base; the daemon installs its modules again
-when its pod starts. Until it has, a pod whose type comes from a profile
-cannot start on that node.
+starts. After a Flatcar update it copies again but keeps the profiles'
+modules, at priorities Flatcar does not ship: `selinuxd`'s datastore survives
+the reboot and never reinstalls them. The `spod` init container rebuilds them
+against the new base.
 
 ### Templates
 
@@ -112,3 +111,6 @@ Authentik's server and worker and [Alloy](logging.md) do.
   `E2E_TEST_SELINUX=false`.
 - **A fresh node has no profiles** until its `spod` pod runs; whatever a node
   needs to boot belongs in the node template.
+- **`keycreate: invalid argument` at sandbox creation**: the node's store
+  lost a profile `selinuxd` records as installed; a new `spod` pod there
+  reinstalls them all.
