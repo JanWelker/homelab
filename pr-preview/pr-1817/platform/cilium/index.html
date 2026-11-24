@@ -2867,9 +2867,9 @@ it, until both ends match; L2 still announces them to the flat LAN.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>ds/cilium<span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>status<span class="w"> </span>--brief
 </span></code></pre></div>
 <p>It prints <code>OK</code>. The BGP session on each control-plane node, <code>established</code>
-with two routes advertised; only the control planes peer, so ask that node's agent:</p>
+with two routes advertised; only control planes peer, so ask that node's agent:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span><span class="s2">"</span><span class="k">$(</span>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span>k8s-app<span class="o">=</span>cilium<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>bgp<span class="w"> </span>peers
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--field-selector<span class="w"> </span>spec.nodeName<span class="o">=</span>&lt;control-plane&gt;<span class="w"> </span>-o<span class="w"> </span>name<span class="k">)</span><span class="s2">"</span><span class="w"> </span>--<span class="w"> </span>cilium<span class="w"> </span>shell<span class="w"> </span>--<span class="w"> </span>bgp/peers
 </span></code></pre></div>
 <p>Hubble answers <em>what did I just break?</em> during a network policy rollout — see
 <a href="../security-policies/#usage">Security Policies</a>. The <code>hubble</code> CLI talks to
@@ -3015,6 +3015,8 @@ Relay through a port-forward on its default port:</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

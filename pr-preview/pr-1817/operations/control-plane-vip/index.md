@@ -11,12 +11,13 @@ The API server is reached through a virtual IP held by [kube-vip](<https://kube-
 | Running kube-vip | DaemonSet in `payload/platform/kube-vip/`, synced by ArgoCD; its image is tracked by Renovate |
 | Cluster endpoint | `controlPlaneEndpoint` in the generated kubeadm config, and every `kubeadm join`, from `control_plane_endpoint_host` in `ansible/inventory.yaml` |
 | Cilium's API address | `k8sServiceHost` in `payload/platform/cilium/values.yaml` |
+| Kubelet node address | `--node-ip` in the kubelet drop-in of `ansible/templates/butane_node_config.yaml.j2`, so the kubelet never reports the VIP on the leader's interface as InternalIP |
 
 kube-vip runs in ARP mode with leader election, advertising a `/32`, with `svc_enable: "false"`: LoadBalancer services belong to Cilium's L2 announcements, and two components answering ARP for the same range produces intermittent, host-dependent failures.
 
 ## Design
 
-The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-vip/`, a DaemonSet takes over, so upgrading kube-vip is a merged PR rather than a file rewritten on each node. kube-vip publishes a chart; it is not used because the handover below needs the `adopt` init container, which the chart has no hook for. A DaemonSet can hold the VIP here because the control-plane kubelets use their own node's API server (`server:` in `/etc/kubernetes/kubelet.conf`) and so does kube-vip (`KUBERNETES_SERVICE_HOST` is the host IP, which is in the certificate SANs), so both start after a full power loss without the VIP or Cilium. `kube_vip_version` in the inventory is therefore the bootstrap version only, and the VIP settings in the inventory and `daemonset.yaml` must be kept in step. kube-vip's ServiceAccount may only get and update its own Lease, and the Application does not prune and its objects carry `Delete=false`, because removing them takes the API away from the workers and from every kubeconfig.
+The static pod is only the bootstrap: once ArgoCD syncs `payload/platform/kube-vip/`, a DaemonSet takes over, so upgrading kube-vip is a merged PR rather than a file rewritten on each node. kube-vip's chart is not used: it has no hook for the `adopt` init container below. A DaemonSet can hold the VIP here because the control-plane kubelets use their own node's API server (`server:` in `/etc/kubernetes/kubelet.conf`) and so does kube-vip (`KUBERNETES_SERVICE_HOST` is the host IP, which is in the certificate SANs), so both start after a full power loss without the VIP or Cilium. `kube_vip_version` in the inventory is therefore the bootstrap version only, and the VIP settings in the inventory and `daemonset.yaml` must be kept in step. kube-vip's ServiceAccount may only get and update its own Lease, and the Application does not prune and its objects carry `Delete=false`, because removing them takes the API away from the workers and from every kubeconfig.
 
 ### The handover
 
@@ -73,7 +74,7 @@ kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig
 
 ## Choosing the address
 
-A free address on the nodes' subnet, outside any DHCP range, and distinct from the Cilium LoadBalancer pools. Nothing validates this: a collision shows up as an API server unreachable after provisioning, or reachable from some machines and not others depending on whose ARP cache won.
+A free address on the nodes' subnet, outside any DHCP range, and distinct from the Cilium LoadBalancer pools. Nothing validates this: a collision leaves the API server unreachable, or reachable only from some machines.
 
 ## Migrating a cluster built without a VIP
 
@@ -85,7 +86,7 @@ Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>)
 
 ### In place
 
-One node at a time, with a second terminal holding a working kubeconfig, because several steps can leave you unable to open a new one.
+One node at a time, with a second terminal holding a working kubeconfig, since several steps can lock you out.
 
 1. Confirm the address is free.
 

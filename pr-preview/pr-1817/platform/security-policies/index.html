@@ -3341,11 +3341,11 @@ RBAC cannot come from the <code>apps</code> project.</p>
 until someone adds it.</p>
 <h3 id="admission-policies">Admission policies<a class="headerlink" href="#admission-policies" title="Permanent link">&para;</a></h3>
 <p>Trivy reports a bad image after it is running; <code>admission-policies.yaml</code>
-refuses or records it at admission, with the built-in
-<code>ValidatingAdmissionPolicy</code>, and one <code>MutatingAdmissionPolicy</code>, rather than a policy engine. The image policies
-match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is
-rejected at <code>kubectl apply</code> rather than failing quietly in its ReplicaSet. The
-others close what RBAC and the <code>apps</code> project cannot express.</p>
+refuses or records it at admission with built-in <code>ValidatingAdmissionPolicy</code>,
+and one <code>MutatingAdmissionPolicy</code>, not a policy engine. The image policies
+match Pods, ephemeral containers and every controller producing them, so a bad
+Deployment fails at <code>kubectl apply</code>, not in its ReplicaSet. The others close
+what RBAC and the <code>apps</code> project cannot express.</p>
 <table>
 <thead>
 <tr>
@@ -3436,6 +3436,11 @@ others close what RBAC and the <code>apps</code> project cannot express.</p>
 <td>Who may claim the platform, <code>ssh</code> and wollbi names on a route, see <a href="../gateway-api/#route-hostnames">Route hostnames</a></td>
 </tr>
 <tr>
+<td><code>gateway-namespace-scope</code></td>
+<td><code>Deny</code></td>
+<td>Only <code>kube-system</code> holds Gateways: external-dns publishes a route at its <a href="../gateway-api/">Gateway's</a> target</td>
+</tr>
+<tr>
 <td><code>selinuxd-memory-request</code></td>
 <td>Mutate</td>
 <td>Lowers <code>selinuxd</code>'s fixed memory request, see <a href="../security-profiles-operator/#configuration">Security Profiles Operator</a></td>
@@ -3447,9 +3452,8 @@ each yields to the annotation <code>homelab.wlkr.ch/backup-exempt</code> with th
 as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.</p>
 <p>All but three carry <code>failurePolicy: Ignore</code>: an expression that errors lets the
-request through rather than stopping every pod in the cluster. A real violation
-is still refused. <code>claude-writer-pod-limits</code> and <code>controller-pod-limits</code> fail
-closed, since they only ever match named identities, and
+request through rather than stopping every pod. <code>claude-writer-pod-limits</code> and
+<code>controller-pod-limits</code> fail closed, since they match only named identities, and
 <code>selinuxd-memory-request</code> because a <code>selinuxd</code> pod at full request preempts others.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <h3 id="adding-a-registry">Adding a registry<a class="headerlink" href="#adding-a-registry" title="Permanent link">&para;</a></h3>
@@ -3723,6 +3727,8 @@ free a node that is already cut off.</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>
