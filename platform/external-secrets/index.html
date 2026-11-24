@@ -2736,16 +2736,14 @@ with no sidecar and no code that knows what a Vault token is.</p>
     ESO-&gt;&gt;K: create/update Secret
     App-&gt;&gt;K: mount / envFrom</code></pre>
 <p>ESO mints a short-lived token for an <code>external-secrets-vault</code> ServiceAccount
-through the TokenRequest API. The chart's controller ClusterRole allows that
-for any ServiceAccount in every namespace; <code>cluster-secret-store.yaml</code> keeps its
-own <code>external-secrets-vault-token-creator</code> ClusterRole beside it, scoped to that
-one name, because the chart's grant is broader than the stores need. OpenBao
-validates the token against the TokenReview API and issues its own, bound to
-that store's policy. Platform namespaces use the <code>openbao</code> store and the
+through the TokenRequest API, granted only by
+<code>cluster-secret-store.yaml</code>'s ClusterRole for that one name. OpenBao
+validates it through TokenReview and issues its own, bound to that store's
+policy. Platform namespaces use the <code>openbao</code> store and the
 ServiceAccount in <code>external-secrets</code>; a workload uses <code>openbao-apps</code> and its
 own, which confines it to <code>kv/&lt;namespace&gt;/</code> — see
-<a href="../openbao/#kubernetes-auth">Kubernetes auth</a>. No long-lived credential exists
-anywhere.</p>
+<a href="../openbao/#kubernetes-auth">Kubernetes auth</a>. No long-lived credential
+exists.</p>
 <p>In <code>application.yaml</code>'s <code>valuesObject</code>:</p>
 <table>
 <thead>
@@ -2756,12 +2754,20 @@ anywhere.</p>
 </thead>
 <tbody>
 <tr>
+<td>Chart's token grant off</td>
+<td>It covers every ServiceAccount; a new <code>serviceAccountRef</code> needs its own grant</td>
+</tr>
+<tr>
+<td><code>SecretStore</code>, <code>ClusterExternalSecret</code>, <code>ClusterPushSecret</code> not reconciled</td>
+<td>Unused; no workload brings its own store, and the controller cannot write namespaces</td>
+</tr>
+<tr>
 <td>No <code>ClusterSecretStore</code> here</td>
 <td>A store only validates against a running, unsealed OpenBao, so it ships with <code>openbao</code>, whose readiness it reports — see <a href="../../architecture/gitops/#bootstrap-convergence">Bootstrap convergence</a></td>
 </tr>
 <tr>
 <td>Webhook ServiceAccount token stays mounted</td>
-<td>The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (<code>unable to load in-cluster config</code>)</td>
+<td>The webhook has no RoleBinding but builds an in-cluster client and exits without the token (<code>unable to load in-cluster config</code>)</td>
 </tr>
 <tr>
 <td>More than one webhook replica, a PodDisruptionBudget and a hostname spread</td>
@@ -2837,15 +2843,15 @@ anywhere.</p>
 </span></code></pre></div>
 </li>
 </ol>
-<p><code>refreshInterval</code> polls OpenBao; <code>0</code> disables polling and re-syncs only on
-resource changes. To sync now rather than wait:</p>
+<p><code>refreshInterval</code> polls OpenBao; <code>0</code> re-syncs only on resource changes. To
+sync now:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>annotate<span class="w"> </span>externalsecret<span class="w"> </span>-n<span class="w"> </span>&lt;namespace&gt;<span class="w"> </span>&lt;name&gt;<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>force-sync<span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%s<span class="k">)</span><span class="w"> </span>--overwrite
 </span></code></pre></div>
 <h2 id="health-check">Health check<a class="headerlink" href="#health-check" title="Permanent link">&para;</a></h2>
-<p>Start with the store; if it is not Ready, nothing downstream is either.
-<code>openbao-apps</code> reports <code>Valid</code> without logging in,
-so its auth failures show on the <code>ExternalSecret</code> instead:</p>
+<p>Start with the store; if it is not Ready, nothing downstream is.
+<code>openbao-apps</code> reports <code>Valid</code> without logging in, so its auth failures show
+on the <code>ExternalSecret</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>clustersecretstore<span class="w"> </span>openbao<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
 </span></code></pre></div>
 <table>
