@@ -22,19 +22,20 @@ In `application.yaml`'s `valuesObject` unless a file is named:
 | `s3Url: https://s3.infra.k8s.wlkr.ch`, not the RGW Service | kopia signs plain-HTTP uploads with streaming SigV4, which Ceph RGW rejects since [CVE-2026-54330](<https://docs.ceph.com/en/latest/security/CVE-2026-54330/>); over TLS it sends `UNSIGNED-PAYLOAD` and RGW accepts it. The infra Gateway's Let's Encrypt wildcard means no CA has to reach Velero or the movers |
 | `velero-plugin-for-aws` init container | The plugin minor must match the chart's Velero appVersion |
 | `credentials.useSecret: false` with `extraEnvVars` | Keys come from the environment, fed by the `Secret` Rook writes for the `backup.velero` [backup writer](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#backup-writers>); nothing is rendered into a file or Git |
-| `bucket: offsite`, `prefix: backup.velero` | The writer's prefix, the only place its keys may write |
-| `defaultSnapshotMoveData`, `deployNodeAgent`, `uploaderType: kopia` | A CSI snapshot is a Ceph object in the same cluster; the data mover streams it into the bucket and deletes the snapshot |
+| `bucket: offsite`, `prefix: backup.velero` | The only place the writer's keys may write |
+| `defaultSnapshotMoveData`, `deployNodeAgent`, `uploaderType: kopia` | A CSI snapshot lives in the same cluster; the data mover streams it into the bucket and deletes it |
 | `volumeSnapshotLocation: []` | The chart's placeholder renders a `VolumeSnapshotLocation` the CRD rejects, failing every sync; Helm replaces lists, so the empty list removes it |
 | `VolumeSnapshotClass` in `payload/platform/backup/volumesnapshotclass.yaml` | The `velero.io/csi-volumesnapshot-class` label is how Velero finds the class; without it volumes are skipped silently. `deletionPolicy: Delete`, because the durable copy is the data mover's. A `PartiallyFailed` backup with no volume data means the label is missing |
 | `snapshot-controller` Application | Neither kubeadm nor Rook installs the CSI snapshot controller or its CRDs, which the `VolumeSnapshotClass` needs. It applies the two kustomize directories of [kubernetes-csi/external-snapshotter](<https://github.com/kubernetes-csi/external-snapshotter>) at each tag in `backup`, patched with the hardening, a liveness probe restarting a leader that cannot renew its lease, and the tag's image, since upstream's Deployment names the previous image; Renovate moves the two together, see [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#automerge-policy>). `pdb.yaml` adds the PDB upstream lacks |
-| `rbac.clusterAdministrator` at the chart default | A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a role or binding granting rights the caller lacks, so only cluster-admin restores everything |
+| `rbac.clusterAdministrator` at the chart default | A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a binding granting rights the caller lacks |
 | `schedules.daily` | Excludes what rebuilds from Git or a rescan, listed in [Backups](<https://homelab.wlkr.ch/operations/backups/index.md#velero>). Its `ttl` is the window [CloudNativePG](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md#backups>)'s `retentionPolicy` mirrors |
 | Node agent `containerSecurityContext` | Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on |
+| `configMaps.node-agent-config`, `--node-agent-configmap` | Data mover pods ignore `nodeAgent.priorityClassName`; this puts them in the backup [tier](<https://homelab.wlkr.ch/platform/index.md#priority-classes>) |
 | `prometheusRule` | Four rules: `VeleroBackupFailures` (critical) and `VeleroBackupPartialFailures` (warning) on a schedule's outcome, `VeleroBackupTooOld` (critical), which alone catches a backup hanging `InProgress`, and `VeleroBackupInProgress` (info), which is [Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>)'s reboot gate rather than a problem to mail |
 
 ### Repository password
 
-Kopia encrypts the volume data in every repository with one password, read from the Secret `velero-repo-credentials` (key `repository-password`) in Velero's namespace. When that Secret is missing Velero creates it with a default compiled into the binary, which protects nothing, so `payload/platform/backup/velero-repo-credentials.yaml` supplies it.
+Kopia encrypts the volume data in every repository with one password, read from the Secret `velero-repo-credentials` (key `repository-password`) in Velero's namespace. When it is missing Velero creates it with a compiled-in default, which protects nothing, so `payload/platform/backup/velero-repo-credentials.yaml` supplies it.
 
 | Setting | Why |
 | --- | --- |

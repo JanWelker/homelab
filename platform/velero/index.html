@@ -2827,11 +2827,11 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 </tr>
 <tr>
 <td><code>bucket: offsite</code>, <code>prefix: backup.velero</code></td>
-<td>The writer's prefix, the only place its keys may write</td>
+<td>The only place the writer's keys may write</td>
 </tr>
 <tr>
 <td><code>defaultSnapshotMoveData</code>, <code>deployNodeAgent</code>, <code>uploaderType: kopia</code></td>
-<td>A CSI snapshot is a Ceph object in the same cluster; the data mover streams it into the bucket and deletes the snapshot</td>
+<td>A CSI snapshot lives in the same cluster; the data mover streams it into the bucket and deletes it</td>
 </tr>
 <tr>
 <td><code>volumeSnapshotLocation: []</code></td>
@@ -2847,7 +2847,7 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 </tr>
 <tr>
 <td><code>rbac.clusterAdministrator</code> at the chart default</td>
-<td>A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a role or binding granting rights the caller lacks, so only cluster-admin restores everything</td>
+<td>A restore re-creates arbitrary kinds, RBAC included, and the API server refuses a binding granting rights the caller lacks</td>
 </tr>
 <tr>
 <td><code>schedules.daily</code></td>
@@ -2858,6 +2858,10 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 <td>Root and capabilities stay because kopia reads every pod volume; escalation is off and seccomp is on</td>
 </tr>
 <tr>
+<td><code>configMaps.node-agent-config</code>, <code>--node-agent-configmap</code></td>
+<td>Data mover pods ignore <code>nodeAgent.priorityClassName</code>; this puts them in the backup <a href="../#priority-classes">tier</a></td>
+</tr>
+<tr>
 <td><code>prometheusRule</code></td>
 <td>Four rules: <code>VeleroBackupFailures</code> (critical) and <code>VeleroBackupPartialFailures</code> (warning) on a schedule's outcome, <code>VeleroBackupTooOld</code> (critical), which alone catches a backup hanging <code>InProgress</code>, and <code>VeleroBackupInProgress</code> (info), which is <a href="../kured/#configuration">Kured</a>'s reboot gate rather than a problem to mail</td>
 </tr>
@@ -2866,8 +2870,8 @@ snapshots and its data mover, every PVC, nightly into its prefix of the
 <h3 id="repository-password">Repository password<a class="headerlink" href="#repository-password" title="Permanent link">&para;</a></h3>
 <p>Kopia encrypts the volume data in every repository with one password, read
 from the Secret <code>velero-repo-credentials</code> (key <code>repository-password</code>) in
-Velero's namespace. When that Secret is missing Velero creates it with a
-default compiled into the binary, which protects nothing, so
+Velero's namespace. When it is missing Velero creates it with a
+compiled-in default, which protects nothing, so
 <code>payload/platform/backup/velero-repo-credentials.yaml</code> supplies it.</p>
 <table>
 <thead>
