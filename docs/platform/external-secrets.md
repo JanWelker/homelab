@@ -38,23 +38,23 @@ sequenceDiagram
 ```
 
 ESO mints a short-lived token for an `external-secrets-vault` ServiceAccount
-through the TokenRequest API. The chart's controller ClusterRole allows that
-for any ServiceAccount in every namespace; `cluster-secret-store.yaml` keeps its
-own `external-secrets-vault-token-creator` ClusterRole beside it, scoped to that
-one name, because the chart's grant is broader than the stores need. OpenBao
-validates the token against the TokenReview API and issues its own, bound to
-that store's policy. Platform namespaces use the `openbao` store and the
+through the TokenRequest API, granted only by
+`cluster-secret-store.yaml`'s ClusterRole for that one name. OpenBao
+validates it through TokenReview and issues its own, bound to that store's
+policy. Platform namespaces use the `openbao` store and the
 ServiceAccount in `external-secrets`; a workload uses `openbao-apps` and its
 own, which confines it to `kv/<namespace>/` — see
-[Kubernetes auth](openbao.md#kubernetes-auth). No long-lived credential exists
-anywhere.
+[Kubernetes auth](openbao.md#kubernetes-auth). No long-lived credential
+exists.
 
 In `application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
+| Chart's token grant off | It covers every ServiceAccount; a new `serviceAccountRef` needs its own grant |
+| `SecretStore`, `ClusterExternalSecret`, `ClusterPushSecret` not reconciled | Unused; no workload brings its own store, and the controller cannot write namespaces |
 | No `ClusterSecretStore` here | A store only validates against a running, unsealed OpenBao, so it ships with `openbao`, whose readiness it reports — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
-| Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client at startup and exits without the token (`unable to load in-cluster config`) |
+| Webhook ServiceAccount token stays mounted | The webhook has no RoleBinding but builds an in-cluster client and exits without the token (`unable to load in-cluster config`) |
 | More than one webhook replica, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so while a lone replica reschedules through a drain every `ExternalSecret`, `PushSecret` and store apply fails — see [Replica placement](index.md#replica-placement) |
 
 ## Usage
@@ -131,8 +131,8 @@ In `application.yaml`'s `valuesObject`:
                 name: my-app-credentials
     ```
 
-`refreshInterval` polls OpenBao; `0` disables polling and re-syncs only on
-resource changes. To sync now rather than wait:
+`refreshInterval` polls OpenBao; `0` re-syncs only on resource changes. To
+sync now:
 
 ```bash
 kubectl annotate externalsecret -n <namespace> <name> \
@@ -141,9 +141,9 @@ kubectl annotate externalsecret -n <namespace> <name> \
 
 ## Health check
 
-Start with the store; if it is not Ready, nothing downstream is either.
-`openbao-apps` reports `Valid` without logging in,
-so its auth failures show on the `ExternalSecret` instead:
+Start with the store; if it is not Ready, nothing downstream is.
+`openbao-apps` reports `Valid` without logging in, so its auth failures show
+on the `ExternalSecret`:
 
 ```bash
 kubectl get clustersecretstore openbao -o jsonpath='{.status}' | jq
