@@ -3219,7 +3219,7 @@ writers by hand.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>cephClusterSpec.monitoring.enabled</code></td>
+<td><code>monitoring.enabled</code></td>
 <td>Turns on the mgr <code>prometheus</code> module and lets the operator maintain a <code>ServiceMonitor</code>. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes</td>
 </tr>
 <tr>
@@ -3247,10 +3247,11 @@ writers by hand.</p>
 <p>Rook's Grafana dashboards are vendored in <code>grafana-dashboards.yaml</code> — see
 <a href="../monitoring/#dashboards">Monitoring &rarr; Dashboards</a>.</p>
 <h3 id="csi-driver">CSI driver<a class="headerlink" href="#csi-driver" title="Permanent link">&para;</a></h3>
-<p>From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart,
-which deploys nothing until an <code>OperatorConfig</code> and a <code>Driver</code> CR tell it what
-to run. Neither chart ships them, so they live in <code>csi-driver.yaml</code>; without
-them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.</p>
+<p>The operator chart's ceph-csi-operator subchart deploys the RBD driver only
+once an <code>OperatorConfig</code> and a <code>Driver</code> CR tell it what to run; without them
+every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>. Rook's <code>ceph-csi-drivers</code>
+chart ships them, but its nodeplugin ClusterRole cannot drop the grants step 4
+below cuts, so they live in <code>csi-driver.yaml</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3277,7 +3278,7 @@ them every PVC stays <code>Pending</code> on <code>ExternalProvisioning</code>.<
 </tr>
 <tr>
 <td><code>csi-rbac.yaml</code></td>
-<td>The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by <code>CSI_SERVICE_ACCOUNT_PREFIX</code> (empty here): <code>rbd-ctrlplugin-sa</code> and <code>rbd-nodeplugin-sa</code>. Without them the Deployment and DaemonSet exist but create no pods</td>
+<td>The ceph-csi-operator creates no ServiceAccounts, and <code>CSI_SERVICE_ACCOUNT_PREFIX</code> fixes their names. Without them the Deployment and DaemonSet create no pods</td>
 </tr>
 </tbody>
 </table>
@@ -3618,6 +3619,8 @@ PVC — <code>data-openbao-0</code> on a fresh bootstrap — stays <code>Pending
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

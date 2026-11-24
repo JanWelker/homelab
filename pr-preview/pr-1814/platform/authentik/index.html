@@ -3344,7 +3344,7 @@ every upgrade.</p>
 <td>Every failed login lowers both scores, so an address or a username below the policy's <code>threshold</code> is refused until Authentik's reputation expiry clears it; the password stage's own five-attempt cancel only ends the current attempt. The policy <em>passes</em> for a bad score, so it selects a deny stage rather than guarding the flow, and it is evaluated when the stage is reached because the flow's own policies see an anonymous request before the username is known</td>
 </tr>
 <tr>
-<td>A passkey on the sign-in form: an own identification stage with the default one's settings and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login</td>
+<td>A passkey on the sign-in form: an own identification stage hiding whether the account exists and a WebAuthn validation stage requiring user verification, and a policy on the password and second-factor bindings that skips both after a passkey login</td>
 <td>The device and its PIN or biometric are two factors already, so a passkey alone signs in; the username, password and second factor still work beside it. The browser offers only discoverable credentials, so a security key enrolled as a second factor may need enrolling again under <strong>Settings &rarr; MFA devices</strong> before it appears. Safari and Firefox do not autofill into the form's shadow DOM, so the identification stage's passwordless flow, <code>homelab-passkey</code>, offers the same validation stage behind a link as a modal prompt; it has no reputation stage, because a signature cannot be guessed</td>
 </tr>
 </tbody>
@@ -3724,6 +3724,8 @@ re-enabling admin:</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

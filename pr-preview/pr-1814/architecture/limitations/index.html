@@ -2496,8 +2496,8 @@ or work not yet done.</p>
 </tr>
 <tr>
 <td><strong>Alerting reaches one mailbox</strong></td>
-<td>One receiver, one mailbox, one SMTP provider. If mail is rejected or the password expires, alerts stop silently; <code>Watchdog</code> proves only as far as Alertmanager</td>
-<td>A second receiver on a different transport; meanwhile, the routine health check</td>
+<td>A rejected mail, an expired SMTP password or a Ceph outage (<a href="../../platform/monitoring/#at-a-glance">Prometheus and Alertmanager</a> sit on Ceph) stops alerts silently; <code>Watchdog</code> proves only as far as Alertmanager</td>
+<td>An off-cluster <code>Watchdog</code> mail check; meanwhile, the routine health check</td>
 <td><a href="../../platform/monitoring/#alerting">Alerting</a>, <a href="../../operations/#routine-health-check">routine health check</a></td>
 </tr>
 <tr>
@@ -2704,6 +2704,8 @@ or work not yet done.</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

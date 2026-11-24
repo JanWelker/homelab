@@ -2745,9 +2745,8 @@
 <p>The <a href="https://github.com/kubernetes-sigs/security-profiles-operator">Security Profiles Operator</a>
 (SPO) turns a <code>SelinuxProfile</code> object into a policy module on every node: a
 <code>spod</code> DaemonSet runs <code>selinuxd</code> beside the host's policy store, and a pod then
-uses <code>&lt;profile&gt;.process</code> as its <code>seLinuxOptions.type</code>. It is here to carry the
-workload-specific modules that moving the nodes from permissive to enforcing
-needs; the denials those modules answer are in
+uses <code>&lt;profile&gt;.process</code> as its <code>seLinuxOptions.type</code>. It carries the modules
+the nodes need to move from permissive to enforcing; their denials are in
 <a href="../../architecture/security/#node-hardening">Node hardening</a>. It also
 installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher are off.</p>
 <h2 id="at-a-glance">At a glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
@@ -2792,15 +2791,23 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 <tbody>
 <tr>
 <td><code>selinuxd-memory-request</code> in <code>admission-policies.yaml</code></td>
-<td>With <code>selinux.enable</code>, each <code>spod</code> pod gains a <code>selinuxd</code> container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation</td>
+<td><code>selinuxd</code>'s fixed memory request at node-critical priority preempts pods on a full node; the policy lowers it at pod creation</td>
 </tr>
 <tr>
 <td><code>customTemplatesConfigMap</code></td>
-<td>The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits <code>container</code> would load; see <a href="#templates">Templates</a></td>
+<td>The bundled templates do not load on Flatcar; see <a href="#templates">Templates</a></td>
+</tr>
+<tr>
+<td><code>selinux.options.deniedTypes</code></td>
+<td>Upstream's recommended kernel-memory types: profiles come from denials, so a logged kernel-memory access must not become a rule</td>
+</tr>
+<tr>
+<td><code>daemonUpdateStrategy</code></td>
+<td>A daemon that fails on Flatcar, which <a href="#pitfalls">upstream does not test</a>, stops the rollout at its first node</td>
 </tr>
 <tr>
 <td><code>selinuxdImage.default</code></td>
-<td>The chart's <code>el9</code> image, digest copied. Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails on Flatcar's base policy</td>
+<td>The chart's <code>el9</code> image: Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails there</td>
 </tr>
 <tr>
 <td>Enricher, AppArmor, BPF recorder left off</td>
@@ -2808,11 +2815,11 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 <tr>
 <td><code>replicaCount</code></td>
-<td>The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation</td>
+<td>A second replica keeps a drain from stopping reconciliation</td>
 </tr>
 <tr>
 <td><code>resources</code></td>
-<td>Chart defaults, never measured here; re-measure against the <a href="../#components">2.5x rule</a> once <code>SelinuxProfile</code> objects exist, since the manager caches every profile and pod</td>
+<td>Chart defaults, unmeasured; re-measure against the <a href="../#components">2.5x rule</a> once <code>SelinuxProfile</code> objects exist, since the manager caches every profile and pod</td>
 </tr>
 <tr>
 <td><code>enforce: privileged</code> on the namespace</td>
@@ -2820,7 +2827,7 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 <tr>
 <td>Network policy</td>
-<td>The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates</td>
+<td>Operator, daemon and webhook only reach the API server; Prometheus scrapes the daemon's ServiceMonitor</td>
 </tr>
 </tbody>
 </table>
@@ -3029,6 +3036,8 @@ Authentik's server and worker and <a href="../logging/">Alloy</a> do.</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>
