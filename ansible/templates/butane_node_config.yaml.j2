@@ -565,6 +565,8 @@ systemd:
       contents: |
         [Unit]
         Description=Bootstrap Kubernetes Cluster
+        Requires=containerd.service
+        After=containerd.service
         After=network-online.target
         Wants=network-online.target
         ConditionPathExists=!/etc/kubernetes/kubelet.conf
