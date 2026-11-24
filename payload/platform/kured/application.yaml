@@ -40,7 +40,7 @@ spec:
           # Names must exist in a PrometheusRule; see docs/platform/kured.md
           alertFilterMatchOnly: true
           # yamllint disable-line rule:line-length
-          alertFilterRegexp: '^(CephHealthError|CephHealthWarning|CephOSDDown|CephOSDHostDown|CephMonDown|CephMonDownQuorumAtRisk|CephPGsInactive|CephPGsUnclean|CephPGRecoveryAtRisk|CephPGBackfillAtRisk|CephPGUnavailableBlockingIO|etcdMembersDown|etcdInsufficientMembers|etcdNoLeader|KubeNodeNotReady|KubeNodeUnreachable|KubeAPIDown|VeleroBackupInProgress)$'
+          alertFilterRegexp: '^(CephHealthError|CephHealthWarning|CephOSDDown|CephOSDHostDown|CephMonDown|CephMonDownQuorumAtRisk|CephPGsInactive|CephPGsUnclean|CephPGRecoveryAtRisk|CephPGBackfillAtRisk|CephPGUnavailableBlockingIO|etcdMembersDown|etcdInsufficientMembers|etcdNoLeader|KubeNodeNotReady|KubeNodeUnreachable|KubeAPIDown|OpenBaoSealed|OpenBaoNoActiveNode|VeleroBackupInProgress)$'
 
           preferNoScheduleTaint: weave.works/kured-node-reboot
           annotateNodes: true

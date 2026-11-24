@@ -16,14 +16,16 @@ spec:
         - alert: OpenBaoSealed
           expr: |
             kube_pod_labels{namespace="openbao", label_openbao_sealed="true"} == 1
-          for: 5m
+          # Short: a sealed pod never unseals itself, and Kured must see it before
+          # it drains the next node. docs/platform/kured.md#configuration
+          for: 1m
           labels:
             severity: warning
           annotations:
             summary: OpenBao pod {{ $labels.pod }} is sealed
             description: >-
-              {{ $labels.pod }} has been sealed for five minutes, usually after
-              a restart. It serves nothing and does not count towards the Raft
+              {{ $labels.pod }} is sealed, usually after a restart, and holds
+              Kured's reboots. It serves nothing and does not count towards the Raft
               quorum until it is unsealed with make bao-unseal.
         - alert: OpenBaoNoActiveNode
           expr: |
