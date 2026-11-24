@@ -2800,7 +2800,7 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 <tr>
 <td><code>selinuxdImage.default</code></td>
-<td>The chart's <code>el9</code> image. Flatcar matches none of the operator's OS patterns and gets the default, whose RHEL 8 tooling fails on Flatcar's base policy; of the four images only <code>el9</code> builds it. The digest is a copy of the chart's</td>
+<td>The chart's <code>el9</code> image, digest copied. Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails on Flatcar's base policy</td>
 </tr>
 <tr>
 <td>Enricher, AppArmor, BPF recorder left off</td>
@@ -2824,17 +2824,16 @@ installs a <a href="#seccomp">seccomp profile</a>; AppArmor and the log enricher
 </tr>
 </tbody>
 </table>
-<p>The images are the chart's: the operator from <code>registry.k8s.io</code> and <code>selinuxd</code>
-from <code>quay.io</code>, pinned by digest inside the chart, so Renovate sees only the
+<p>Both images are pinned by digest inside the chart, so Renovate sees only the
 chart version.</p>
 <h3 id="policy-store">Policy store<a class="headerlink" href="#policy-store" title="Permanent link">&para;</a></h3>
 <p>Flatcar's <code>/var/lib/selinux</code> is a symlink into the read-only <code>/usr</code>, where
 <code>selinuxd</code> cannot install anything. <code>selinux-policy-store.service</code> in
 <code>butane_node_config.yaml.j2</code> replaces it with a copy before the kubelet
-starts, and copies again when the Flatcar version changes, dropping the policy
-<code>selinuxd</code> compiled from the old base; the daemon installs its modules again
-when its pod starts. Until it has, a pod whose type comes from a profile
-cannot start on that node.</p>
+starts. After a Flatcar update it copies again but keeps the profiles'
+modules, at priorities Flatcar does not ship: <code>selinuxd</code>'s datastore survives
+the reboot and never reinstalls them. The <code>spod</code> init container rebuilds them
+against the new base.</p>
 <h3 id="templates">Templates<a class="headerlink" href="#templates" title="Permanent link">&para;</a></h3>
 <p><code>selinuxd-templates.yaml</code> replaces the image's template set, which does not
 load on Flatcar: it names two Fedora attributes Flatcar lacks and a <code>proc_type</code>
@@ -2908,6 +2907,9 @@ Authentik's server and worker and <a href="../logging/">Alloy</a> do.</p>
   <code>E2E_TEST_SELINUX=false</code>.</li>
 <li><strong>A fresh node has no profiles</strong> until its <code>spod</code> pod runs; whatever a node
   needs to boot belongs in the node template.</li>
+<li><strong><code>keycreate: invalid argument</code> at sandbox creation</strong>: the node's store
+  lost a profile <code>selinuxd</code> records as installed; a new <code>spod</code> pod there
+  reinstalls them all.</li>
 </ul>
 
 
