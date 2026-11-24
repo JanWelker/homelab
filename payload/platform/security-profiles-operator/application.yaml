@@ -25,6 +25,11 @@ spec:
           selinux:
             enable: true
             customTemplatesConfigMap: selinuxd-templates-flatcar-2
+            options:
+              deniedTypes:
+                - device_node
+                - memory_device_t
+                - proc_kcore_t
 
           # Flatcar matches none of the operator's OS patterns and gets the
           # default image, whose RHEL 8 tooling cannot read Flatcar's policy;
@@ -34,6 +39,11 @@ spec:
             default:
               repository: security-profiles-operator/selinuxd-el9
               digest: sha256:cddbd306c48ee8d19b8fb07b2acda1ee99cb3f1d9c3988f828d24b4f2de5ad3c
+
+          spod:
+            spec:
+              daemonUpdateStrategy:
+                maxUnavailable: 1
 
           # Chart defaults, unmeasured; see docs/platform/security-profiles-operator.md#configuration
           resources:
