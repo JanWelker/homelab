@@ -2343,10 +2343,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fonts" class="md-nav__link">
+  <a href="#vendored-assets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Fonts
+        Vendored assets
       </span>
     </span>
   </a>
@@ -2575,10 +2575,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fonts" class="md-nav__link">
+  <a href="#vendored-assets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Fonts
+        Vendored assets
       </span>
     </span>
   </a>
@@ -2845,9 +2845,9 @@ another).</p>
 <td><a href="../../quickstart/#single-node-clusters">Single-node clusters</a></td>
 </tr>
 <tr>
-<td><code>fonts</code>, <code>fonts-check</code></td>
-<td>Downloads the pinned webfonts, or diffs them against what is committed</td>
-<td><a href="#fonts">Fonts</a></td>
+<td><code>fonts[-check]</code>, <code>mermaid[-check]</code></td>
+<td>Downloads the pinned webfonts or Mermaid, or diffs them against what is committed</td>
+<td><a href="#vendored-assets">Vendored assets</a></td>
 </tr>
 <tr>
 <td><code>clean-artifacts</code>, <code>clean</code></td>
@@ -2916,8 +2916,7 @@ section in <code>nav</code> needs an entry there too.</p>
 <li>Every page is registered in <code>nav</code>; cross-references are relative Markdown
     paths (<code>platform/openbao.md</code>, <code>../quickstart.md</code>) so they resolve on the
     site and on GitHub.</li>
-<li>Diagrams use Mermaid fences; Zensical loads the runtime on pages that contain
-    one.</li>
+<li>Diagrams use Mermaid fences; the runtime is a <a href="#vendored-assets">vendored asset</a>.</li>
 <li>Markdown is linted by <code>lint-markdown.yaml</code> and the <code>markdownlint-cli2</code>
     pre-commit hook. <code>MD046</code>: a blank line followed by an indented line reads as
     a code block, so keep <code>!!!</code> admonition bodies to a single paragraph.
@@ -2929,17 +2928,33 @@ section in <code>nav</code> needs an entry there too.</p>
     repository-facts call that 404s because this repository publishes no
     releases.</li>
 </ul>
-<h3 id="fonts">Fonts<a class="headerlink" href="#fonts" title="Permanent link">&para;</a></h3>
-<p>Fonts are self-hosted so the site makes no third-party requests:
-<code>theme.font = false</code> in <code>zensical.toml</code>, <code>docs/stylesheets/fonts.css</code> declares
-Inter and JetBrains Mono from the <code>woff2</code> files in <code>docs/assets/fonts/</code>, and
-each SIL OFL licence sits next to them. <code>scripts/update-fonts.sh</code> pins both
-upstream releases (<a href="https://github.com/rsms/inter/releases">Inter</a>,
-<a href="https://github.com/JetBrains/JetBrainsMono/releases">JetBrains Mono</a>) and
-Renovate tracks the pins.</p>
+<h3 id="vendored-assets">Vendored assets<a class="headerlink" href="#vendored-assets" title="Permanent link">&para;</a></h3>
+<p>The site serves fonts and Mermaid itself, making no third-party requests:</p>
+<table>
+<thead>
+<tr>
+<th>Asset</th>
+<th>Served from</th>
+<th>Pinned in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/rsms/inter/releases">Inter</a>, <a href="https://github.com/JetBrains/JetBrainsMono/releases">JetBrains Mono</a></td>
+<td><code>docs/assets/fonts/</code>, declared by <code>docs/stylesheets/fonts.css</code> (<code>theme.font = false</code>)</td>
+<td><code>scripts/update-fonts.sh</code></td>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/mermaid">Mermaid</a></td>
+<td><code>docs/assets/javascripts/</code>, loaded by <code>extra_javascript</code>, which stops the theme fetching it from unpkg.com</td>
+<td><code>scripts/update-mermaid.sh</code></td>
+</tr>
+</tbody>
+</table>
+<p>Licences sit next to the files; Renovate tracks the pins.</p>
 <div class="admonition warning">
-<p class="admonition-title">A font-pin PR needs a second commit</p>
-<p>Renovate can move the pin but cannot write the binaries, so its PR changes one line and the <code>woff2</code> files are still the old release. Check out the branch, run <code>make fonts</code> to download what the pin now names, and commit the result. <code>make fonts-check</code> (run by <code>fonts-check.yaml</code> on every such PR) diffs the downloads against what is committed and fails the branch until that commit arrives, which is what holds the automerge.</p>
+<p class="admonition-title">A vendored-asset PR needs a second commit</p>
+<p>Renovate moves the pin but cannot write the files. Check out the branch, run <code>make fonts</code> or <code>make mermaid</code>, and commit the result. <code>fonts-check.yaml</code> runs the matching <code>-check</code> target, which fails the branch until that commit arrives and so holds the automerge. Mermaid stays on the theme's major.</p>
 </div>
 
 
@@ -3059,6 +3074,8 @@ Renovate tracks the pins.</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

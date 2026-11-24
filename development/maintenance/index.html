@@ -2720,8 +2720,8 @@ everything, and Renovate, which chases dependencies.</p>
 </tr>
 <tr>
 <td><code>fonts-check.yaml</code></td>
-<td><code>scripts/update-fonts.sh</code>, <code>docs/assets/fonts/**</code></td>
-<td><code>make fonts-check</code>: the committed <code>woff2</code> files match the pinned releases — see <a href="../contributing/#fonts">Fonts</a></td>
+<td><code>scripts/update-{fonts,mermaid}.sh</code>, <code>docs/assets/{fonts,javascripts}/**</code></td>
+<td><code>make fonts-check</code>, <code>make mermaid-check</code>: the committed files match the pins — <a href="../contributing/#vendored-assets">Vendored assets</a></td>
 </tr>
 </tbody>
 </table>
@@ -2766,9 +2766,9 @@ are the sets below that must move together.</p>
 <li><strong>Flatcar and Kubernetes bumps change what a newly provisioned
     node installs, not what a running node runs</strong> — see
     <a href="../../operations/upgrades/">Upgrades</a>.</li>
-<li><strong>A font bump cannot automerge without its second commit:</strong>
+<li><strong>A vendored-asset bump cannot automerge without its second commit:</strong>
     <code>fonts-check.yaml</code> fails on it and <code>ci-ok</code> waits for it — see
-    <a href="../contributing/#fonts">Fonts</a>.</li>
+    <a href="../contributing/#vendored-assets">Vendored assets</a>.</li>
 <li><code>config:best-practices</code> pins GitHub Actions to commit SHAs and container
     images to digests, and collects every pin into one shared
     <code>renovate/pin-dependencies</code> branch.</li>
@@ -2777,7 +2777,7 @@ are the sets below that must move together.</p>
 <p>Python (<code>pyproject.toml</code>, <code>uv.lock</code>), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (<code>payload/**/values.yaml</code>) and
 pre-commit hooks, the CI npm tools (<code>.github/tools/package-lock.json</code>, from which <code>lint-markdown.yaml</code> and <code>renovate-validate.yaml</code> run theirs), plus custom regex managers for the versions in
-<code>ansible/inventory.yaml</code>, the font pins in <code>scripts/update-fonts.sh</code>, any
+<code>ansible/inventory.yaml</code>, the pins in <code>scripts/update-{fonts,mermaid}.sh</code>, any
 <code># renovate:</code> annotation and every CloudNativePG <code>imageName</code> under <code>payload/</code>,
 and the tool versions the workflows under <code>.github/workflows/</code> install by
 name rather than by action (the diff-preview image and Trivy). The <code>Makefile</code> is not
@@ -2932,6 +2932,8 @@ vendored dashboard added later needs its own line there.</p>
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

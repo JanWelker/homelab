@@ -3007,8 +3007,8 @@ reaches. <code>enforcedNamespaceLabel</code> stays off: several monitors rely on
 deploy to, matched on the <code>kubernetes.io/metadata.name</code> label the API server
 sets. <a href="../kured/#configuration">Kured</a> gates reboots on alert names, so a
 workload's rule named <code>CephHealthError</code> would otherwise stop OS updates
-cluster-wide. A rule in a new platform namespace loads only once that
-namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
+cluster-wide. A new platform namespace's rules load only once it is
+listed in <code>ruleNamespaceSelector</code>.</p>
 <table>
 <thead>
 <tr>
@@ -3026,12 +3026,12 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <tr>
 <td>kube-scheduler, kube-controller-manager</td>
 <td>A per-node <code>bind-address</code> patch in <code>ansible/templates/butane_node_config.yaml.j2</code> (kubeadm binds them to <code>127.0.0.1</code>)</td>
-<td>HTTPS with a self-signed certificate, so the ServiceMonitors set <code>insecureSkipVerify</code>; the control-plane monitors read the pod's projected token (<code>controlPlaneScrapeClass</code>), so no long-lived token Secret exists</td>
+<td>HTTPS with a self-signed certificate, hence <code>insecureSkipVerify</code>; the control-plane monitors read the pod's projected token (<code>controlPlaneScrapeClass</code>), so no long-lived token Secret exists</td>
 </tr>
 <tr>
 <td>etcd</td>
 <td>A per-node <code>listen-metrics-urls</code> patch in the same template (kubeadm listens on <code>127.0.0.1</code> only)</td>
-<td>Plain HTTP, serving only <code>/metrics</code> and <code>/health</code>; client and peer APIs stay on mTLS</td>
+<td>Plain HTTP, serving only <code>/metrics</code> and <code>/health</code>, so its <code>plain-http</code> scrape class sends no token; client and peer APIs stay on mTLS</td>
 </tr>
 <tr>
 <td>Ceph</td>
@@ -3069,6 +3069,10 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 <td>The URL bounces straight to Authentik; <code>role_attribute_path</code> with <code>role_attribute_strict</code> maps the three Grafana groups and refuses everyone else, see <a href="../authentik/#groups-and-roles">Groups and roles</a></td>
 </tr>
 <tr>
+<td><code>cookie_secure</code> and <code>content_security_policy</code></td>
+<td>HTTPS-only: the session cookie never travels in clear; the shipped CSP limits what pages load</td>
+</tr>
+<tr>
 <td><code>analytics.*</code> off and <code>disable_gravatar</code></td>
 <td>Usage reports, update checks and Gravatar are switched off in config, not permitted by network policy, as in every component here</td>
 </tr>
@@ -3082,7 +3086,7 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 </tr>
 <tr>
 <td><code>grafana.admin.existingSecret</code>, from <code>grafana-admin.yaml</code></td>
-<td>Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and Grafana restarts on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
+<td>Unset, the chart regenerates the password on every render and Grafana restarts on every sync. The admin account is the <a href="../authentik/#when-authentik-is-down">break-glass path</a>; never set <code>grafana.adminPassword</code> in Git</td>
 </tr>
 <tr>
 <td><code>grafana.rbac.create: false</code> with <code>grafana-sidecar-rbac.yaml</code>, and <code>sidecar.*.resource: configmap</code></td>
@@ -3094,7 +3098,7 @@ namespace is on the list in <code>ruleNamespaceSelector</code>.</p>
 </tr>
 <tr>
 <td>Prometheus and Grafana memory limits well above their requests</td>
-<td>Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the <a href="../#components">2.5x-peak rule</a>, not a budget</td>
+<td>Both grow with series count and dashboard load; the limit, sized by the <a href="../#components">2.5x-peak rule</a>, is a ceiling for a runaway</td>
 </tr>
 <tr>
 <td>Prometheus's memory request at its measured median working set</td>
@@ -3189,14 +3193,13 @@ sidecar watches only the platform namespaces listed in
 <code>sidecar.dashboards.searchNamespace</code>, so a workload cannot replace a
 dashboard; a component in a new namespace adds it there and a RoleBinding in
 <code>grafana-sidecar-rbac.yaml</code>, and the <code>apps</code> project must not be able to deploy
-to it. A dashboard built in the UI survives restarts on the PVC but
-lives nowhere else: not in Git, not on a rebuilt cluster.</p>
+to it. A dashboard built in the UI lives only on the PVC: not in
+Git, not on a rebuilt cluster.</p>
 <h3 id="growing-the-prometheus-volume">Growing the Prometheus volume<a class="headerlink" href="#growing-the-prometheus-volume" title="Permanent link">&para;</a></h3>
 <p>Kubernetes cannot expand a StatefulSet's <code>volumeClaimTemplate</code>, so raising the
 request in <code>application.yaml</code> does not resize the existing claim. The
 operator rebuilds the StatefulSet orphaned so the pod survives, logging
-<code>recreating StatefulSet because the update operation wasn't possible</code>; only
-the claim is left behind.</p>
+<code>recreating StatefulSet because the update operation wasn't possible</code>.</p>
 <ol>
 <li>
 <p>Merge the size bump and wait for the Application to sync.</p>
@@ -3247,8 +3250,7 @@ and a rebuilt Grafana starts from it.</p>
 </span></code></pre></div>
 <p><code>Watchdog</code> proves the pipeline only as far as Alertmanager; SMTP auth and an
 expired password are unmonitored. With the port-forward above, send a test
-alert; it takes the default <code>email</code> route and arrives as one mail after
-<code>group_wait</code>:</p>
+alert; it takes the default <code>email</code> route and arrives after <code>group_wait</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>curl<span class="w"> </span>-s<span class="w"> </span>-XPOST<span class="w"> </span>http://localhost:9093/api/v2/alerts<span class="w"> </span>-H<span class="w"> </span><span class="s1">'Content-Type: application/json'</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>-d<span class="w"> </span><span class="s1">'[{"labels":{"alertname":"TestAlert","namespace":"monitoring","severity":"warning"}}]'</span>
 </span></code></pre></div>
@@ -3375,6 +3377,8 @@ alert; it takes the default <code>email</code> route and arrives as one mail aft
     
       <script src="../../assets/javascripts/bundle.9e76c64c.min.js"></script>
       
+      
+        <script src="../../assets/javascripts/mermaid.min.js"></script>
       
     
   </body>

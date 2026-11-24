@@ -3084,13 +3084,13 @@ For another provider, change `smtp_smarthost` in the template and the three valu
 
 Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*SelectorNilUsesHelmValues: false` settings: the chart treats an empty selector as unset and renders `release: kube-prometheus-stack` in its place, which limits Prometheus to its own targets. `ScrapeConfig` and `Probe` load from `monitoring` only, as a workload could aim them anywhere Prometheus reaches. `enforcedNamespaceLabel` stays off: several monitors rely on `honorLabels`.
 
-`PrometheusRule`s load only from the namespaces the `apps` project cannot deploy to, matched on the `kubernetes.io/metadata.name` label the API server sets. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>) gates reboots on alert names, so a workload's rule named `CephHealthError` would otherwise stop OS updates cluster-wide. A rule in a new platform namespace loads only once that namespace is on the list in `ruleNamespaceSelector`.
+`PrometheusRule`s load only from the namespaces the `apps` project cannot deploy to, matched on the `kubernetes.io/metadata.name` label the API server sets. [Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>) gates reboots on alert names, so a workload's rule named `CephHealthError` would otherwise stop OS updates cluster-wide. A new platform namespace's rules load only once it is listed in `ruleNamespaceSelector`.
 
 | Target | Made scrapable by | Notes |
 | --- | --- | --- |
 | node-exporter | Its own `node-exporter` namespace, running as `spc_t` | Only that namespace is admitted at `privileged` ([Pod Security Admission](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>)); SELinux refuses `container_t` the host's `/proc` |
-| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, so the ServiceMonitors set `insecureSkipVerify`; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
-| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP, serving only `/metrics` and `/health`; client and peer APIs stay on mTLS |
+| kube-scheduler, kube-controller-manager | A per-node `bind-address` patch in `ansible/templates/butane_node_config.yaml.j2` (kubeadm binds them to `127.0.0.1`) | HTTPS with a self-signed certificate, hence `insecureSkipVerify`; the control-plane monitors read the pod's projected token (`controlPlaneScrapeClass`), so no long-lived token Secret exists |
+| etcd | A per-node `listen-metrics-urls` patch in the same template (kubeadm listens on `127.0.0.1` only) | Plain HTTP, serving only `/metrics` and `/health`, so its `plain-http` scrape class sends no token; client and peer APIs stay on mTLS |
 | Ceph | `monitoring.enabled` on the `CephCluster` — see [Rook-Ceph](<https://homelab.wlkr.ch/platform/rook-ceph/index.md#monitoring>) |  |
 | kube-proxy | Not scraped (`kubeProxy.enabled: false`) | Cilium replaces it; the default would keep `KubeProxyDown` firing forever |
 | CRD status fields: CloudNativePG's ObjectStores and Backups | kube-state-metrics' `customResourceState` config in the chart values, one `rbac.extraRules` entry per kind | A `StateSet` per enum field and a `Gauge` per timestamp; the rule that reads a kind sits with its component, in a namespace on the rule list above |
@@ -3101,13 +3101,14 @@ Every `ServiceMonitor` and `PodMonitor` in every namespace, through the five `*S
 | Setting | Why |
 | --- | --- |
 | `disable_login_form` and `oauth_auto_login` | The URL bounces straight to Authentik; `role_attribute_path` with `role_attribute_strict` maps the three Grafana groups and refuses everyone else, see [Groups and roles](<https://homelab.wlkr.ch/platform/authentik/index.md#groups-and-roles>) |
+| `cookie_secure` and `content_security_policy` | HTTPS-only: the session cookie never travels in clear; the shipped CSP limits what pages load |
 | `analytics.*` off and `disable_gravatar` | Usage reports, update checks and Gravatar are switched off in config, not permitted by network policy, as in every component here |
 | `grafana-oidc.yaml` | The OIDC client is generated into OpenBao and read by both sides — see [Authentik](<https://homelab.wlkr.ch/platform/authentik/index.md#client-secrets>) |
 | `grafana.route.main` | The chart renders Grafana's `HTTPRoute`. Prometheus and Alertmanager stay in `httproute.yaml`: their routes point at Authentik's outpost, which no chart template can express |
-| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Left unset, the chart generates a new password on every render, so the Secret is always OutOfSync and Grafana restarts on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
+| `grafana.admin.existingSecret`, from `grafana-admin.yaml` | Unset, the chart regenerates the password on every render and Grafana restarts on every sync. The admin account is the [break-glass path](<https://homelab.wlkr.ch/platform/authentik/index.md#when-authentik-is-down>); never set `grafana.adminPassword` in Git |
 | `grafana.rbac.create: false` with `grafana-sidecar-rbac.yaml`, and `sidecar.*.resource: configmap` | Dashboards and datasources are ConfigMaps, so a ClusterRole bound by a RoleBinding in each `searchNamespace` namespace grants those alone, not the chart's cluster-wide ConfigMaps-and-Secrets pair; the chart's binding is dropped rather than repointed because a `roleRef` is immutable |
 | `Recreate` strategy | The dashboard PVC is RWO; under `RollingUpdate` the new pod waits for a volume the old pod releases only once the new one is Ready |
-| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit is a ceiling for a runaway, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/index.md#components>), not a budget |
+| Prometheus and Grafana memory limits well above their requests | Both grow with series count and dashboard load; the limit, sized by the [2.5x-peak rule](<https://homelab.wlkr.ch/platform/index.md#components>), is a ceiling for a runaway |
 | Prometheus's memory request at its measured median working set | A request below real use lets a drain move it onto a small worker that swaps until the kubelet goes `NotReady`. 2.5x its peak exceeds every node, so the limit stays under the largest node's allocatable |
 | Prometheus `retention` and `retentionSize` | Whichever is hit first wins; the size cap drops the oldest blocks instead of filling the disk and crashlooping Prometheus |
 | Alertmanager `automountServiceAccountToken: false`, on the ServiceAccount and in `alertmanagerSpec` | Nothing binds a role to it — the operator talks to the API — so the token would only be a credential in a pod reachable from the Gateway. The operator sets the pod field itself, so the account's setting alone does nothing |
@@ -3134,11 +3135,11 @@ Where a chart can render a dashboard, it does; only charts without one get a ven
 
 ### Adding a dashboard
 
-Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named `<component>-grafana-dashboards`; a Secret carrying the label is not read. The sidecar watches only the platform namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload cannot replace a dashboard; a component in a new namespace adds it there and a RoleBinding in `grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy to it. A dashboard built in the UI survives restarts on the PVC but lives nowhere else: not in Git, not on a rebuilt cluster.
+Add a ConfigMap labelled `grafana_dashboard: "1"` next to the component it describes, in a file named `grafana-dashboards.yaml` and a ConfigMap named `<component>-grafana-dashboards`; a Secret carrying the label is not read. The sidecar watches only the platform namespaces listed in `sidecar.dashboards.searchNamespace`, so a workload cannot replace a dashboard; a component in a new namespace adds it there and a RoleBinding in `grafana-sidecar-rbac.yaml`, and the `apps` project must not be able to deploy to it. A dashboard built in the UI lives only on the PVC: not in Git, not on a rebuilt cluster.
 
 ### Growing the Prometheus volume
 
-Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the request in `application.yaml` does not resize the existing claim. The operator rebuilds the StatefulSet orphaned so the pod survives, logging `recreating StatefulSet because the update operation wasn't possible`; only the claim is left behind.
+Kubernetes cannot expand a StatefulSet's `volumeClaimTemplate`, so raising the request in `application.yaml` does not resize the existing claim. The operator rebuilds the StatefulSet orphaned so the pod survives, logging `recreating StatefulSet because the update operation wasn't possible`.
 
 1. Merge the size bump and wait for the Application to sync.
 
@@ -3191,7 +3192,7 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9
 # then open http://localhost:9093 and check Status -> Config
 ```
 
-`Watchdog` proves the pipeline only as far as Alertmanager; SMTP auth and an expired password are unmonitored. With the port-forward above, send a test alert; it takes the default `email` route and arrives as one mail after `group_wait`:
+`Watchdog` proves the pipeline only as far as Alertmanager; SMTP auth and an expired password are unmonitored. With the port-forward above, send a test alert; it takes the default `email` route and arrives after `group_wait`:
 
 ```bash
 curl -s -XPOST http://localhost:9093/api/v2/alerts -H 'Content-Type: application/json' \
@@ -4048,7 +4049,7 @@ Work down until the node answers. An agent that cannot reach the API server hear
 
 # Security Profiles Operator
 
-The [Security Profiles Operator](<https://github.com/kubernetes-sigs/security-profiles-operator>) (SPO) turns a `SelinuxProfile` object into a policy module on every node: a `spod` DaemonSet runs `selinuxd` beside the host's policy store, and a pod then uses `<profile>.process` as its `seLinuxOptions.type`. It is here to carry the workload-specific modules that moving the nodes from permissive to enforcing needs; the denials those modules answer are in [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It also installs a [seccomp profile](<#seccomp>); AppArmor and the log enricher are off.
+The [Security Profiles Operator](<https://github.com/kubernetes-sigs/security-profiles-operator>) (SPO) turns a `SelinuxProfile` object into a policy module on every node: a `spod` DaemonSet runs `selinuxd` beside the host's policy store, and a pod then uses `<profile>.process` as its `seLinuxOptions.type`. It carries the modules the nodes need to move from permissive to enforcing; their denials are in [Node hardening](<https://homelab.wlkr.ch/architecture/security/index.md#node-hardening>). It also installs a [seccomp profile](<#seccomp>); AppArmor and the log enricher are off.
 
 ## At a glance
 
@@ -4064,14 +4065,16 @@ The [Security Profiles Operator](<https://github.com/kubernetes-sigs/security-pr
 
 | Setting | Why |
 | --- | --- |
-| `selinuxd-memory-request` in `admission-policies.yaml` | With `selinux.enable`, each `spod` pod gains a `selinuxd` container with a fixed memory request at node-critical priority, preempting pods on a full node; the policy lowers it at pod creation |
-| `customTemplatesConfigMap` | The bundled templates name attributes Flatcar's policy lacks, so nothing that inherits `container` would load; see [Templates](<#templates>) |
-| `selinuxdImage.default` | The chart's `el9` image, digest copied. Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails on Flatcar's base policy |
+| `selinuxd-memory-request` in `admission-policies.yaml` | `selinuxd`'s fixed memory request at node-critical priority preempts pods on a full node; the policy lowers it at pod creation |
+| `customTemplatesConfigMap` | The bundled templates do not load on Flatcar; see [Templates](<#templates>) |
+| `selinux.options.deniedTypes` | Upstream's recommended kernel-memory types: profiles come from denials, so a logged kernel-memory access must not become a rule |
+| `daemonUpdateStrategy` | A daemon that fails on Flatcar, which [upstream does not test](<#pitfalls>), stops the rollout at its first node |
+| `selinuxdImage.default` | The chart's `el9` image: Flatcar matches none of the operator's OS patterns, and the default's RHEL 8 tooling fails there |
 | Enricher, AppArmor, BPF recorder left off | Recording needs `auditd` and a log file the nodes do not have; the denials are in Loki |
-| `replicaCount` | The operator is a stateless Deployment with a PodDisruptionBudget; a second replica keeps a drain from stopping reconciliation |
-| `resources` | Chart defaults, never measured here; re-measure against the [2.5x rule](<https://homelab.wlkr.ch/platform/index.md#components>) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
+| `replicaCount` | A second replica keeps a drain from stopping reconciliation |
+| `resources` | Chart defaults, unmeasured; re-measure against the [2.5x rule](<https://homelab.wlkr.ch/platform/index.md#components>) once `SelinuxProfile` objects exist, since the manager caches every profile and pod |
 | `enforce: privileged` on the namespace | `selinuxd` is privileged and mounts the host's SELinux directories; see [Pod Security](<https://homelab.wlkr.ch/platform/security-policies/index.md#pod-security-admission>) |
-| Network policy | The operator, daemon and webhook only talk to the API server; Prometheus scrapes the daemon through the ServiceMonitor the operator creates |
+| Network policy | Operator, daemon and webhook only reach the API server; Prometheus scrapes the daemon's ServiceMonitor |
 
 Both images are pinned by digest inside the chart, so Renovate sees only the chart version.
 
@@ -4130,7 +4133,7 @@ A profile is one entry in `profiles.yaml`, written from the denials Loki holds b
 | Depends on | Kernel BTF at `/sys/kernel/btf/vmlinux`, which Flatcar ships; [Logging](<https://homelab.wlkr.ch/platform/logging/index.md>) for the events, [Monitoring](<https://homelab.wlkr.ch/platform/monitoring/index.md>) for the alerts |
 | If it is down | No runtime record and no runtime alerts; nothing else notices |
 | Health check | See [Health check](<#health-check>); `TetragonPolicyNotLoaded` and `TetragonEventsLost` otherwise |
-| Dashboard | [Tetragon](<https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview>): agent health, event rates, policy hits by binary, and the latest policy hits, shells and execs read from Loki |
+| Dashboard | [Tetragon](<https://monitoring.infra.k8s.wlkr.ch/d/tetragon-overview>): agent health, event rates and the latest policy hits, shells and execs from Loki |
 | Files | [`payload/platform/tetragon/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/tetragon>): the chart, the policies, `prometheusrule.yaml` and a dashboard written for this cluster, since upstream ships none |
 
 ## Configuration
@@ -4141,6 +4144,7 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 | --- | --- |
 | Export to stdout | The chart runs a sidecar that tails Tetragon's JSON file to stdout, so [Alloy](<https://homelab.wlkr.ch/platform/logging/index.md>) collects it as any container log: `{namespace="kube-system", container="export-stdout"}` |
 | `exportDenyList` | Exec and exit events from the host and from the platform's own `kube-system` pods, selected by label, stay out of the export, being most of the volume. Any other pod in `kube-system` is exported, because a stolen write role lands its privileged pod there. Policy hits still pass, which is the point of the `event_set` field |
+| `redactionFilters` | Passwords, private keys and URL credentials in exec arguments are replaced before the export, which puts every argument in Loki; Hubble's counterpart is [`hubble.redact`](<https://homelab.wlkr.ch/platform/cilium/index.md#configuration>) |
 | `seLinuxOptions.type: spc_t` | SELinux refuses `container_t` the agent's BPF loads, tracefs mount and other processes' `/proc` |
 | `enableProcessCred` | Capabilities and `privileges_changed` on every exec, so a setuid or file-capability escalation is visible without a policy |
 | Agent metrics port | Moved off the chart's default, which is the port kube-vip binds on the same host network; see [Control-plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#the-handover>). The Prometheus egress rule in `monitoring.yaml` names it too |
@@ -4168,9 +4172,9 @@ Cilium's own chart, from `helm.cilium.io`; Tetragon does not depend on Cilium an
 | `unprivileged-user-namespace-arc-jobs` | `create_user_ns` | The same in `arc-jobs`, recorded: buildah builds the images there in a user namespace, see [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md>) | No; every image build would fire it |
 | `egress-outside-cluster` | `security_socket_connect` | An IPv4 `connect()`, TCP or UDP, from a container to anything outside the pod, service and site ranges | No; ACME, S3, the Trivy database and Home Assistant all do this routinely |
 
-The allow list in the first policy is the set of things that read key material in steady state, found by listing what fired. Add a binary there only after confirming it in the export; a person running `cat` on a node is exactly what the policy is for. A binary path is only trusted together with the host network namespace: any image can ship `/usr/local/bin/etcd`, but only a privileged namespace can run it with `hostNetwork`. The exemption stays in the kernel because the `podSelector` pitfall below would miss a pod that reads a key at start; namespace and workload exemptions go in the alert.
+The first policy's allow list is what reads key material in steady state. Add a binary there only after confirming it in the export; a person running `cat` on a node is exactly what the policy is for. A binary path is only trusted together with the host network namespace: any image can ship `/usr/local/bin/etcd`, but only a privileged namespace can run it with `hostNetwork`. The exemption stays in the kernel because the `podSelector` pitfall below would miss a pod that reads a key at start; namespace and workload exemptions go in the alert.
 
-The third policy is the runtime half of an image check: nothing in an image lives on those paths, so a binary executing from one was written after the container started. An emptyDir can be mounted anywhere, so the policy names the mounts this cluster puts binaries into rather than every emptyDir; A `readOnlyRootFilesystem` pod makes the check complete, since then a new binary has nowhere else to land. The offline half, every binary Tetragon saw executed diffed against the image's file list, needs no policy: query Loki by image and binary and resolve each path in `crane export <image> - | tar t`.
+The third policy is the runtime half of an image check: nothing in an image lives on those paths, so a binary executing from one was written after the container started. The policy names the mounts this cluster puts binaries into, since an emptyDir can be mounted anywhere; a `readOnlyRootFilesystem` pod leaves a new binary nowhere else to land. The offline half, every binary Tetragon saw executed diffed against the image's file list, needs no policy: query Loki by image and binary and resolve each path in `crane export <image> - | tar t`.
 
 Four more detections from the same library need no policy, because the exec event already carries what they look for; they are [Loki alerts](<https://homelab.wlkr.ch/platform/logging/index.md#alerting>).
 
@@ -4216,7 +4220,7 @@ kubectl -n kube-system exec ds/tetragon -c tetragon -- tetra tracingpolicy list 
 >
 > **A first hit is a new series, and `increase()` of one sample is zero**
 >
-> `tetragon_policy_events_total` has a pod label, so the first hit from a pod creates a counter series inside the alert window and `increase()` reports nothing until the second scrape moves it. Every policy alert therefore also matches a series absent one window earlier, with `unless ... offset`, and holds with `keep_firing_for`, because the agent drops a pod's series when the pod exits and a one-shot pod would otherwise flap. Copy that shape for a new alert, and test it with a pod that fires once, not with one that keeps firing.
+> `tetragon_policy_events_total` has a pod label, so the first hit from a pod creates a counter series inside the alert window and `increase()` reports nothing until the second scrape moves it. Every policy alert therefore also matches a series absent one window earlier, with `unless ... offset`, and holds with `keep_firing_for`, because the agent drops a pod's series when the pod exits and a one-shot pod would otherwise flap. Copy that shape for a new alert and test it with a pod that fires once.
 
 > [!WARNING]
 >
@@ -6154,7 +6158,7 @@ Every target in the `Makefile`, and the page that explains it. The ones that tou
 | `bao-rotate-root` | Replaces a kept root token with the operator login | [OpenBao](<https://homelab.wlkr.ch/platform/openbao/index.md#operator-credential>) |
 | `claude-session-pat` | Stores (`SESSION=<name>`) or removes (`DELETE=1`) one agent session's GitHub token | [Claude agents](<https://homelab-apps.wlkr.ch/claude-agents/>) |
 | `untaint`, `taint` | Removes and restores the control-plane taint | [Single-node clusters](<https://homelab.wlkr.ch/quickstart/index.md#single-node-clusters>) |
-| `fonts`, `fonts-check` | Downloads the pinned webfonts, or diffs them against what is committed | [Fonts](<#fonts>) |
+| `fonts[-check]`, `mermaid[-check]` | Downloads the pinned webfonts or Mermaid, or diffs them against what is committed | [Vendored assets](<#vendored-assets>) |
 | `clean-artifacts`, `clean` | Deletes the generated files, or everything under `output/` after asking | [Repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>) |
 
 ## Branches and commits
@@ -6201,20 +6205,27 @@ uv run zensical build   # one-off build into site/ (gitignored)
 ### Conventions
 
 - Every page is registered in `nav`; cross-references are relative Markdown paths (`platform/openbao.md`, `../quickstart.md`) so they resolve on the site and on GitHub.
-- Diagrams use Mermaid fences; Zensical loads the runtime on pages that contain one.
+- Diagrams use Mermaid fences; the runtime is a [vendored asset](<#vendored-assets>).
 - Markdown is linted by `lint-markdown.yaml` and the `markdownlint-cli2` pre-commit hook. `MD046`: a blank line followed by an indented line reads as a code block, so keep `!!!` admonition bodies to a single paragraph. `MD007`: nested lists indent by four spaces.
 - Inline HTML is limited to `<div>` (`MD033` in `.markdownlint-cli2.yaml`), which the card grids on hub pages need.
 - Theme templates are overridden by a same-named file under `overrides/` (`theme.custom_dir`). Currently only `partials/source.html`, which drops the repository-facts call that 404s because this repository publishes no releases.
 
-### Fonts
+### Vendored assets
 
-Fonts are self-hosted so the site makes no third-party requests: `theme.font = false` in `zensical.toml`, `docs/stylesheets/fonts.css` declares Inter and JetBrains Mono from the `woff2` files in `docs/assets/fonts/`, and each SIL OFL licence sits next to them. `scripts/update-fonts.sh` pins both upstream releases ([Inter](<https://github.com/rsms/inter/releases>), [JetBrains Mono](<https://github.com/JetBrains/JetBrainsMono/releases>)) and Renovate tracks the pins.
+The site serves fonts and Mermaid itself, making no third-party requests:
+
+| Asset | Served from | Pinned in |
+| --- | --- | --- |
+| [Inter](<https://github.com/rsms/inter/releases>), [JetBrains Mono](<https://github.com/JetBrains/JetBrainsMono/releases>) | `docs/assets/fonts/`, declared by `docs/stylesheets/fonts.css` (`theme.font = false`) | `scripts/update-fonts.sh` |
+| [Mermaid](<https://www.npmjs.com/package/mermaid>) | `docs/assets/javascripts/`, loaded by `extra_javascript`, which stops the theme fetching it from unpkg.com | `scripts/update-mermaid.sh` |
+
+Licences sit next to the files; Renovate tracks the pins.
 
 > [!WARNING]
 >
-> **A font-pin PR needs a second commit**
+> **A vendored-asset PR needs a second commit**
 >
-> Renovate can move the pin but cannot write the binaries, so its PR changes one line and the `woff2` files are still the old release. Check out the branch, run `make fonts` to download what the pin now names, and commit the result. `make fonts-check` (run by `fonts-check.yaml` on every such PR) diffs the downloads against what is committed and fails the branch until that commit arrives, which is what holds the automerge.
+> Renovate moves the pin but cannot write the files. Check out the branch, run `make fonts` or `make mermaid`, and commit the result. `fonts-check.yaml` runs the matching `-check` target, which fails the branch until that commit arrives and so holds the automerge. Mermaid stays on the theme's major.
 
 # Maintenance
 
@@ -6237,7 +6248,7 @@ All in `.github/workflows/`.
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
 | `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
-| `fonts-check.yaml` | `scripts/update-fonts.sh`, `docs/assets/fonts/**` | `make fonts-check`: the committed `woff2` files match the pinned releases — see [Fonts](<https://homelab.wlkr.ch/development/contributing/index.md#fonts>) |
+| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | `make fonts-check`, `make mermaid-check`: the committed files match the pins — [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>) |
 
 ## Renovate
 
@@ -6251,12 +6262,12 @@ Configured in `renovate.json`, on top of the shared preset [JanWelker/renovate-c
 - **Pairs that must move together are grouped into one PR:** `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because Rook requires both charts on the same version; and `markdownlint-cli2` in the workflow with its pre-commit hook, because the two must lint alike; `gitleaks` likewise; the `external-snapshotter` tag with the `snapshot-controller` image it pins, because upstream's manifest at a tag names the previous release's image (a third-party image, so the pair waits for a human); the two ARC charts, because the controller deletes a scale set whose chart version differs from its own; the OpenBao chart with the image the snapshot CronJob runs its CLI from, so the CLI never lags the server it snapshots; and every Python pin (`requires-python`, `.python-version`, the `python` images), because `uv sync` fails when they name different minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new release already satisfies; `rangeStrategy: bump` is what makes Renovate open a PR for the linters and the docs generator at all.
 - **Flatcar and Kubernetes bumps change what a newly provisioned node installs, not what a running node runs** — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
-- **A font bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it and `ci-ok` waits for it — see [Fonts](<https://homelab.wlkr.ch/development/contributing/index.md#fonts>).
+- **A vendored-asset bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it and `ci-ok` waits for it — see [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>).
 - `config:best-practices` pins GitHub Actions to commit SHAs and container images to digests, and collects every pin into one shared `renovate/pin-dependencies` branch.
 
 ### Scope
 
-Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from which `lint-markdown.yaml` and `renovate-validate.yaml` run theirs), plus custom regex managers for the versions in `ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, any `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`, and the tool versions the workflows under `.github/workflows/` install by name rather than by action (the diff-preview image and Trivy). The `Makefile` is not tracked; it reads `targetRevision` from the owning `application.yaml` ([Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>)). The Kubernetes sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before use and bumped with the version by the `github-release-attachments` datasource.
+Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from which `lint-markdown.yaml` and `renovate-validate.yaml` run theirs), plus custom regex managers for the versions in `ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`, and the tool versions the workflows under `.github/workflows/` install by name rather than by action (the diff-preview image and Trivy). The `Makefile` is not tracked; it reads `targetRevision` from the owning `application.yaml` ([Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>)). The Kubernetes sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before use and bumped with the version by the `github-release-attachments` datasource.
 
 ### Manager rules
 
