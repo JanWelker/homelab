@@ -343,10 +343,10 @@
       "datasourceTemplate": "github-releases"
     },
     {
-      "description": "Webfont releases vendored into docs/assets/fonts by scripts/update-fonts.sh",
+      "description": "Webfont releases and the Mermaid runtime vendored into docs/assets by scripts/update-fonts.sh and scripts/update-mermaid.sh",
       "customType": "regex",
       "managerFilePatterns": [
-        "/^scripts/update-fonts\\.sh$/"
+        "/^scripts/update-(fonts|mermaid)\\.sh$/"
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s+packageName=(?<packageName>\\S+)\\s+versioning=(?<versioning>\\S+)[^\\n]*\\n\\s*\\w+=\"(?<currentValue>[^\"]+)\""

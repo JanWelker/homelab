@@ -24,7 +24,7 @@ All in `.github/workflows/`.
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
 | `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
-| `fonts-check.yaml` | `scripts/update-fonts.sh`, `docs/assets/fonts/**` | `make fonts-check`: the committed `woff2` files match the pinned releases — see [Fonts](contributing.md#fonts) |
+| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | `make fonts-check`, `make mermaid-check`: the committed files match the pins — [Vendored assets](contributing.md#vendored-assets) |
 
 ## Renovate
 
@@ -69,9 +69,9 @@ are the sets below that must move together.
 - **Flatcar and Kubernetes bumps change what a newly provisioned
     node installs, not what a running node runs** — see
     [Upgrades](../operations/upgrades.md).
-- **A font bump cannot automerge without its second commit:**
+- **A vendored-asset bump cannot automerge without its second commit:**
     `fonts-check.yaml` fails on it and `ci-ok` waits for it — see
-    [Fonts](contributing.md#fonts).
+    [Vendored assets](contributing.md#vendored-assets).
 - `config:best-practices` pins GitHub Actions to commit SHAs and container
     images to digests, and collects every pin into one shared
     `renovate/pin-dependencies` branch.
@@ -81,7 +81,7 @@ are the sets below that must move together.
 Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and
 pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from which `lint-markdown.yaml` and `renovate-validate.yaml` run theirs), plus custom regex managers for the versions in
-`ansible/inventory.yaml`, the font pins in `scripts/update-fonts.sh`, any
+`ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any
 `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
 and the tool versions the workflows under `.github/workflows/` install by
 name rather than by action (the diff-preview image and Trivy). The `Makefile` is not

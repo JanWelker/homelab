@@ -77,7 +77,7 @@ another).
 | `bao-rotate-root` | Replaces a kept root token with the operator login | [OpenBao](../platform/openbao.md#operator-credential) |
 | `claude-session-pat` | Stores (`SESSION=<name>`) or removes (`DELETE=1`) one agent session's GitHub token | [Claude agents](https://homelab-apps.wlkr.ch/claude-agents/) |
 | `untaint`, `taint` | Removes and restores the control-plane taint | [Single-node clusters](../quickstart.md#single-node-clusters) |
-| `fonts`, `fonts-check` | Downloads the pinned webfonts, or diffs them against what is committed | [Fonts](#fonts) |
+| `fonts[-check]`, `mermaid[-check]` | Downloads the pinned webfonts or Mermaid, or diffs them against what is committed | [Vendored assets](#vendored-assets) |
 | `clean-artifacts`, `clean` | Deletes the generated files, or everything under `output/` after asking | [Repository layout](../architecture/index.md#repository-layout) |
 
 ## Branches and commits
@@ -136,8 +136,7 @@ uv run zensical build   # one-off build into site/ (gitignored)
 - Every page is registered in `nav`; cross-references are relative Markdown
     paths (`platform/openbao.md`, `../quickstart.md`) so they resolve on the
     site and on GitHub.
-- Diagrams use Mermaid fences; Zensical loads the runtime on pages that contain
-    one.
+- Diagrams use Mermaid fences; the runtime is a [vendored asset](#vendored-assets).
 - Markdown is linted by `lint-markdown.yaml` and the `markdownlint-cli2`
     pre-commit hook. `MD046`: a blank line followed by an indented line reads as
     a code block, so keep `!!!` admonition bodies to a single paragraph.
@@ -149,15 +148,16 @@ uv run zensical build   # one-off build into site/ (gitignored)
     repository-facts call that 404s because this repository publishes no
     releases.
 
-### Fonts
+### Vendored assets
 
-Fonts are self-hosted so the site makes no third-party requests:
-`theme.font = false` in `zensical.toml`, `docs/stylesheets/fonts.css` declares
-Inter and JetBrains Mono from the `woff2` files in `docs/assets/fonts/`, and
-each SIL OFL licence sits next to them. `scripts/update-fonts.sh` pins both
-upstream releases ([Inter](https://github.com/rsms/inter/releases),
-[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono/releases)) and
-Renovate tracks the pins.
+The site serves fonts and Mermaid itself, making no third-party requests:
 
-!!! warning "A font-pin PR needs a second commit"
-    Renovate can move the pin but cannot write the binaries, so its PR changes one line and the `woff2` files are still the old release. Check out the branch, run `make fonts` to download what the pin now names, and commit the result. `make fonts-check` (run by `fonts-check.yaml` on every such PR) diffs the downloads against what is committed and fails the branch until that commit arrives, which is what holds the automerge.
+| Asset | Served from | Pinned in |
+| --- | --- | --- |
+| [Inter](https://github.com/rsms/inter/releases), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono/releases) | `docs/assets/fonts/`, declared by `docs/stylesheets/fonts.css` (`theme.font = false`) | `scripts/update-fonts.sh` |
+| [Mermaid](https://www.npmjs.com/package/mermaid) | `docs/assets/javascripts/`, loaded by `extra_javascript`, which stops the theme fetching it from unpkg.com | `scripts/update-mermaid.sh` |
+
+Licences sit next to the files; Renovate tracks the pins.
+
+!!! warning "A vendored-asset PR needs a second commit"
+    Renovate moves the pin but cannot write the files. Check out the branch, run `make fonts` or `make mermaid`, and commit the result. `fonts-check.yaml` runs the matching `-check` target, which fails the branch until that commit arrives and so holds the automerge. Mermaid stays on the theme's major.
