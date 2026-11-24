@@ -226,6 +226,9 @@ storage:
       contents:
         inline: |
           spec:
+            securityContext:
+              seLinuxOptions:
+                type: spc_t
             containers:
               - name: kube-controller-manager
                 resources:
@@ -237,6 +240,9 @@ storage:
       contents:
         inline: |
           spec:
+            securityContext:
+              seLinuxOptions:
+                type: spc_t
             containers:
               - name: kube-scheduler
                 resources:
