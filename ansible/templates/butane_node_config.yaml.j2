@@ -523,6 +523,8 @@ systemd:
             [Service]
             # Re-apply the CIS file modes kubeadm resets.
             ExecStartPre=-/usr/bin/systemd-tmpfiles --create /etc/tmpfiles.d/kubernetes-cis.conf
+            # Never the kube-vip VIP; see docs/operations/control-plane-vip.md#how-it-is-wired
+            Environment="KUBELET_EXTRA_ARGS=--node-ip={{ ansible_host }}"
     - name: systemd-sysupdate.timer
       enabled: true
     # Would reboot behind Kured's back; see docs/architecture/security.md#node-hardening
