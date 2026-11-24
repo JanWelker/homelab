@@ -184,5 +184,5 @@ kubectl -n <namespace> get objectstore <db> -o jsonpath='{.status.serverRecovery
 
 Its own `plugins` entry keeps the same `barmanObjectName` with `serverName: <db>-restore`, so the new archive lands beside the old one.
 
-1. Merge and wait for `Cluster in healthy state`; both databases now run, and the application still reads the original.
-2. In a second PR, point the application at `<db>-restore-app`, set the `ScheduledBackup`'s `cluster.name` to `<db>-restore`, and delete the original `Cluster`; the sync prunes it.
+1. Merge and wait for `Cluster in healthy state`; both databases run, and the application reads the original.
+2. In a second PR, point the application at `<db>-restore-app`, rename the `ScheduledBackup` and its `cluster.name` to `<db>-restore`, and delete the original `Cluster`; the sync prunes it.
