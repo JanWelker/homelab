@@ -28,3 +28,17 @@ spec:
     unlabeled_t:
       dir: [getattr, search]
       file: [getattr, open, read]
+---
+# etcd-backup and etcd-defrag read the etcd client pair and CA certificate
+# from /etc/kubernetes/pki/etcd, which carries no label.
+apiVersion: security-profiles-operator.x-k8s.io/v1
+kind: SelinuxProfile
+metadata:
+  name: etcd-jobs
+spec:
+  inherit:
+    - kind: System
+      name: container
+  allow:
+    unlabeled_t:
+      file: [getattr, open, read]
