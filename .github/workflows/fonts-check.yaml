@@ -11,11 +11,15 @@ permissions:
     paths:
       - "scripts/update-fonts.sh"
       - "docs/assets/fonts/**"
+      - "scripts/update-mermaid.sh"
+      - "docs/assets/javascripts/**"
       - ".github/workflows/fonts-check.yaml"
   pull_request:
     paths:
       - "scripts/update-fonts.sh"
       - "docs/assets/fonts/**"
+      - "scripts/update-mermaid.sh"
+      - "docs/assets/javascripts/**"
       - ".github/workflows/fonts-check.yaml"
   workflow_dispatch:
 
@@ -30,3 +34,6 @@ jobs:
       # Renovate bumps pins, not woff2 files; see docs/development/maintenance.md
       - name: Check vendored fonts match the pinned releases
         run: make fonts-check
+
+      - name: Check vendored Mermaid matches the pinned release
+        run: make mermaid-check

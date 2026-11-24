@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -55,6 +55,12 @@ fonts:
 
 fonts-check:
 	scripts/update-fonts.sh --check
+
+mermaid:
+	scripts/update-mermaid.sh
+
+mermaid-check:
+	scripts/update-mermaid.sh --check
 
 # Everything ArgoCD needs to run, and nothing it can install itself.
 bootstrap: install-cilium install-argo bootstrap-apps
