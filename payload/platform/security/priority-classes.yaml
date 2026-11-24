@@ -1,0 +1,26 @@
+---
+# The tiers between the built-in system-* classes and the apps at 0; see
+# docs/platform/index.md#priority-classes
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: platform-core
+value: 1000000
+preemptionPolicy: PreemptLowerPriority
+description: Secrets, sign-in and deployment; every app fails with them.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: observability
+value: -1000
+preemptionPolicy: Never
+description: Metrics, logs, backups and node maintenance; evicted before the apps.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: batch
+value: -10000
+preemptionPolicy: Never
+description: Scans, CI runners and one-off jobs; evicted first.
