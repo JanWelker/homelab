@@ -36,6 +36,9 @@ spec:
             runAsUser: 0
             seccompProfile:
               type: RuntimeDefault
+            # The certificates carry no SELinux label; see profiles.yaml
+            seLinuxOptions:
+              type: etcd-jobs.process
           volumes:
             # The client pair and the CA certificate, not the directory: it
             # also holds the CA and server keys.
