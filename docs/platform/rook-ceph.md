@@ -97,7 +97,7 @@ In `rook-ceph-cluster/application.yaml`'s `valuesObject`:
 
 | Setting | Why |
 | --- | --- |
-| `cephClusterSpec.monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
+| `monitoring.enabled` | Turns on the mgr `prometheus` module and lets the operator maintain a `ServiceMonitor`. Without it a degraded pool, a down OSD or a near-full cluster is invisible to Prometheus, and a full Ceph cluster stops accepting writes |
 | `monitoring.createPrometheusRules` | Ships Ceph's own alerting rules as a `PrometheusRule`. Its CRD comes from the `prometheus-operator-crds` Application; a sync before it lands fails and is retried — see [Monitoring](monitoring.md#crds) |
 | `monitoring.prometheusRuleOverrides` | `CephOSDDownHigh` gets a `for:` because upstream fires it, as critical, on the first evaluation with one OSD of a small cluster down, which a Rook upgrade's rolling OSD restart always is; an OSD that stays down still pages after it. `CephNodeDiskspaceWarning` and, under `cephConfig`, `mon_data_avail_warn` are lowered to the kubelet's image garbage-collection threshold: the mon store shares the root filesystem with the images, which the kubelet only prunes there |
 | `cephClusterSpec.dashboard.prometheusEndpoint` | The dashboard's Prometheus link. The operator owns `mgr/dashboard/PROMETHEUS_API_HOST` and writes it from this field whenever it restarts the dashboard module, so the same key under `cephConfig` is blanked at the next operator restart |
@@ -109,10 +109,11 @@ Rook's Grafana dashboards are vendored in `grafana-dashboards.yaml` — see
 
 ### CSI driver
 
-From Rook v1.20 the RBD driver is deployed by the ceph-csi-operator subchart,
-which deploys nothing until an `OperatorConfig` and a `Driver` CR tell it what
-to run. Neither chart ships them, so they live in `csi-driver.yaml`; without
-them every PVC stays `Pending` on `ExternalProvisioning`.
+The operator chart's ceph-csi-operator subchart deploys the RBD driver only
+once an `OperatorConfig` and a `Driver` CR tell it what to run; without them
+every PVC stays `Pending` on `ExternalProvisioning`. Rook's `ceph-csi-drivers`
+chart ships them, but its nodeplugin ClusterRole cannot drop the grants step 4
+below cuts, so they live in `csi-driver.yaml`.
 
 | Setting | Why |
 | --- | --- |
@@ -120,7 +121,7 @@ them every PVC stays `Pending` on `ExternalProvisioning`.
 | `OperatorConfig` pointing at the chart's image-set `ConfigMap` | A chart bump moves every sidecar and the cephcsi image together |
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |
 | More than one controller plugin replica, `RollingUpdate` without surge, a PodDisruptionBudget | A drain of the provisioner's node otherwise stalls every provision, attach, resize and snapshot until the pod reschedules. The operator already keeps the replicas on distinct nodes with required anti-affinity and runs every sidecar with leader election, so the `Driver` CR carries no spread constraint, and no field for one |
-| `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and the names are fixed by `CSI_SERVICE_ACCOUNT_PREFIX` (empty here): `rbd-ctrlplugin-sa` and `rbd-nodeplugin-sa`. Without them the Deployment and DaemonSet exist but create no pods |
+| `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and `CSI_SERVICE_ACCOUNT_PREFIX` fixes their names. Without them the Deployment and DaemonSet create no pods |
 
 !!! warning "`csi` values on the operator chart do nothing"
     Helm accepts values a chart no longer reads. Driver settings go in `csi-driver.yaml`.
