@@ -27,7 +27,7 @@ A `Cluster` is not a StatefulSet with a nicer name:
 | Primary election and failover between instances | A single pod that takes the database down with it |
 | `-rw` and `-ro` Services that follow the primary | Hardcoding a pod name and being wrong after a restart |
 | Rolling minor-version upgrades, replicas first | A `StatefulSet` image bump and hope |
-| A PodMonitor and an upstream Grafana dashboard | No visibility until something is already wrong |
+| A metrics exporter per instance and an upstream Grafana dashboard | No visibility until something is already wrong |
 
 Major-version upgrades are declarative too, but offline: ArgoCD reports
 Degraded while one runs and the workload is down for its duration. Read
@@ -41,11 +41,11 @@ cannot tolerate the restart, more `instances` are the change, as
 [Authentik](authentik.md#database) and the workloads repository's
 `advent-wollbi` and `shot-bridge` show.
 
-The operator itself runs more than one replica (`replicaCount` in
-`application.yaml`'s `valuesObject`), spread per [Replica placement](index.md#replica-placement): the same pod serves the
-`Cluster` and `ScheduledBackup` admission webhooks with `failurePolicy: Fail`,
-so a single replica rescheduling through a Kured drain refuses every apply,
-while leader election keeps one reconciling. The chart ships no
+The operator and the backup plugin each run several replicas, spread per
+[Replica placement](index.md#replica-placement), so a Kured drain stalls
+neither: the operator serves the `Cluster` and `ScheduledBackup` webhooks with
+`failurePolicy: Fail` and calls the plugin on every `Cluster` reconcile.
+Leader election keeps one of each reconciling; neither chart ships a
 PodDisruptionBudget.
 
 ### Backups
@@ -94,10 +94,9 @@ registry terms keep changing. The rule for the
    namespace's `CiliumNetworkPolicy` governs port 5432 and deleting the
    namespace takes the database with it.
 4. Set `enablePDB: false` on a single-instance `Cluster` only. Its
-   `<cluster>-primary` PodDisruptionBudget refuses the eviction outright, so a
-   node drain hangs on it until [Kured](kured.md) gives up and the node is
-   never rebooted; without the budget the instance is down for the move to
-   another node. A `Cluster` with replicas keeps the budgets: the operator
+   `<cluster>-primary` PodDisruptionBudget refuses the eviction, so a node
+   drain hangs on it until [Kured](kured.md) gives up and never reboots the
+   node; without the budget the instance is down for the move to another node. A `Cluster` with replicas keeps the budgets: the operator
    sees the drain, switches the primary over to a replica in seconds, and the
    drain continues. Without them the drain deletes the primary, and the
    failover waits for its smart shutdown, up to `smartShutdownTimeout` while
@@ -105,8 +104,8 @@ registry terms keep changing. The rule for the
 5. Set `smartShutdownTimeout: 15`, and on a `Cluster` with replicas
    `primaryUpdateMethod: switchover`. A smart shutdown refuses new connections
    and waits for the open ones to close, and every application here holds a
-   pool, so the default's 180 seconds only lengthen every restart, every move
-   of a single instance and every failover; after 15 seconds the instance
+   pool, so the default's 180 seconds only lengthen every restart, move and
+   failover; after 15 seconds the instance
    manager shuts down fast, rolling back open transactions, and the clients
    reconnect. The default update method restarts the primary in place on a
    spec change, leaving no writer for the whole shutdown; a switchover
@@ -114,6 +113,8 @@ registry terms keep changing. The rule for the
 6. Back it up with the [stanza below](#backing-up-a-database). Velero's
    nightly PVC snapshot is crash-consistent and restores only to the night it
    was taken; the WAL archive restores to any second.
+7. Scrape it with its own `PodMonitor`, like Authentik's `podmonitor.yaml`;
+   upstream deprecated `enablePodMonitor`.
 
 ### Backing up a database
 
@@ -211,7 +212,7 @@ kubectl get objectstores.barmancloud.cnpg.io -A -o yaml | grep -A3 serverRecover
 ```
 
 `ContinuousArchiving` `True` means the last WAL segment reached the object store;
-`False` means WAL is piling up on the instance's volume, which fills it. The
+`False` means WAL is [piling up](#pitfalls). The
 recovery window lives on the `ObjectStore`, per server name: the `Cluster`'s
 own backup fields and the `cnpg_collector_*_backup_timestamp` metrics stay
 empty with a plugin, which upstream documents as deprecated under CNPG-I.
