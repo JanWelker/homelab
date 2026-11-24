@@ -121,7 +121,7 @@ section in `nav` needs an entry there too.
 | Stage | What happens |
 | --- | --- |
 | Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
-| Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes to `gh-pages`, leaving `pr-preview/` untouched |
+| Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes `gh-pages` without force, sparing `pr-preview/` |
 | Previews | `preview.yaml` builds every pull request matching the same paths, forks included, and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Only the publish step is skipped for fork PRs: they have no write access |
 
 Locally:

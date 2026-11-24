@@ -81,6 +81,8 @@ jobs:
         with:
           folder: site
           branch: gh-pages
+          # Rebase instead of force-pushing over concurrent preview deploys.
+          force: false
           clean: true
           # Preserve the PR previews published by preview.yaml.
           clean-exclude: |
