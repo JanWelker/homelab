@@ -198,7 +198,7 @@ kubectl get externalsecret -A
 
 `bao status` should show `Initialized: true`, `Sealed: false`, and `HA Mode: active` on one pod with `standby` on the others; it exits `0` unsealed, `2` sealed and `1` unreachable. Every `ClusterSecretStore` should report `Ready=True`.
 
-`prometheusrule.yaml` mails `OpenBaoSealed` for each pod sealed past the rule's `for`, read from the `openbao-sealed` pod label because a sealed pod still reports Ready, and `OpenBaoNoActiveNode` when no unsealed active pod is scraped at all.
+`prometheusrule.yaml` mails `OpenBaoSealed` per pod sealed past the rule's `for`, read from the `openbao-sealed` pod label, as a sealed pod reports Ready, and `OpenBaoNoActiveNode` when no unsealed active pod is scraped. Both [hold Kured](<https://homelab.wlkr.ch/platform/kured/index.md#configuration>).
 
 ## Pitfalls
 
