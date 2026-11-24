@@ -203,11 +203,11 @@ until someone adds it.
 ### Admission policies
 
 Trivy reports a bad image after it is running; `admission-policies.yaml`
-refuses or records it at admission, with the built-in
-`ValidatingAdmissionPolicy`, and one `MutatingAdmissionPolicy`, rather than a policy engine. The image policies
-match Pods, their ephemeral containers and every controller that produces them, so a bad Deployment is
-rejected at `kubectl apply` rather than failing quietly in its ReplicaSet. The
-others close what RBAC and the `apps` project cannot express.
+refuses or records it at admission with built-in `ValidatingAdmissionPolicy`,
+and one `MutatingAdmissionPolicy`, not a policy engine. The image policies
+match Pods, ephemeral containers and every controller producing them, so a bad
+Deployment fails at `kubectl apply`, not in its ReplicaSet. The others close
+what RBAC and the `apps` project cannot express.
 
 | Policy | Action | Why |
 | --- | --- | --- |
@@ -227,6 +227,7 @@ others close what RBAC and the `apps` project cannot express.
 | `certificate-issuer-scope` | `Deny` | Who may use a ClusterIssuer, see [Issuer scope](cert-manager.md#issuer-scope) |
 | `controller-pod-limits` | `Deny` | No pods from the cert-manager controller, no host access for CloudNativePG's, see [Pods from the controllers](cert-manager.md#pods-from-the-controllers) |
 | `route-hostnames-reserved` | `Deny` | Who may claim the platform, `ssh` and wollbi names on a route, see [Route hostnames](gateway-api.md#route-hostnames) |
+| `gateway-namespace-scope` | `Deny` | Only `kube-system` holds Gateways: external-dns publishes a route at its [Gateway's](gateway-api.md) target |
 | `selinuxd-memory-request` | Mutate | Lowers `selinuxd`'s fixed memory request, see [Security Profiles Operator](security-profiles-operator.md#configuration) |
 
 `cnpg-cluster-backed-up`, `cnpg-objectstore-offsite` and `obc-backup-exempt` [keep a backup from being forgotten](../operations/backups.md#off-cluster-copy):
@@ -235,9 +236,8 @@ as its value, and none checks an object being deleted, so an operator's
 finalizer removal still goes through.
 
 All but three carry `failurePolicy: Ignore`: an expression that errors lets the
-request through rather than stopping every pod in the cluster. A real violation
-is still refused. `claude-writer-pod-limits` and `controller-pod-limits` fail
-closed, since they only ever match named identities, and
+request through rather than stopping every pod. `claude-writer-pod-limits` and
+`controller-pod-limits` fail closed, since they match only named identities, and
 `selinuxd-memory-request` because a `selinuxd` pod at full request preempts others.
 
 ## Usage
