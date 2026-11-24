@@ -9,7 +9,8 @@ global:
 config:
   apiVersion: controller.config.cert-manager.io/v1alpha1
   kind: ControllerConfiguration
-  enableGatewayAPI: true
+  gatewayAPI:
+    enabled: true
 
 # Rendered unconditionally; waits for kube-prometheus-stack CRDs, see docs.
 prometheus:
