@@ -70,6 +70,25 @@ spec:
                     memory: 64Mi
                   limits:
                     memory: 256Mi
+              - op: add
+                path: /spec/template/spec/containers/0/args/-
+                value: "--http-endpoint=:8080"
+              - op: add
+                path: /spec/template/spec/containers/0/ports
+                value:
+                  - name: http
+                    containerPort: 8080
+                    protocol: TCP
+              - op: add
+                path: /spec/template/spec/containers/0/livenessProbe
+                value:
+                  httpGet:
+                    path: /healthz/leader-election
+                    port: http
+                  initialDelaySeconds: 10
+                  periodSeconds: 20
+                  timeoutSeconds: 10
+                  failureThreshold: 3
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/snapshot-controller
