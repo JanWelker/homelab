@@ -1,3 +1,5 @@
+minimum_pre_commit_version: "4.4.0"
+
 repos:
   # Local hooks run through uv so they use the versions in uv.lock and the
   # project's dependencies: the same tool, at the same version, as the
@@ -7,39 +9,39 @@ repos:
       - id: ansible-lint
         name: Ansible Lint
         entry: bash -c 'cd ansible && uv run ansible-lint'
-        language: system
+        language: unsupported
         files: ^ansible/
         pass_filenames: false
 
       - id: ruff-check
         name: Ruff check
         entry: uv run ruff check
-        language: system
+        language: unsupported
         files: ^(boot_server|scripts|tests)/.*\.py$
 
       - id: ruff-format
         name: Ruff format
         entry: uv run ruff format --check
-        language: system
+        language: unsupported
         files: ^(boot_server|scripts|tests)/.*\.py$
 
       - id: pytest
         name: Pytest
         entry: uv run pytest -q
-        language: system
+        language: unsupported
         files: ^(boot_server|scripts|tests)/.*\.py$
         pass_filenames: false
 
       - id: yamllint
         name: YAML Lint
-        entry: uv run yamllint -f github
-        language: system
+        entry: uv run yamllint --strict -f github
+        language: unsupported
         files: \.ya?ml$
 
       - id: zensical
         name: Docs build (strict)
         entry: uv run zensical build --clean --strict
-        language: system
+        language: unsupported
         files: ^(docs/|overrides/|zensical\.toml$)
         pass_filenames: false
 

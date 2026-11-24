@@ -75,7 +75,7 @@ regenerated identically.
 ## Checks before pushing
 
 ```bash
-uv run yamllint -f github .
+uv run yamllint --strict -f github .
 uv run zensical build --clean --strict        # docs site
 markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only

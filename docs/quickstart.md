@@ -54,13 +54,13 @@ the same L2 network segment as the nodes.
 - **SSH Key**: An Ed25519 key at `~/.ssh/id_ed25519.pub` (or edit `ansible/templates/butane_node_config.yaml.j2` and `butane_installer_config.yaml.j2` to use a different path/key)
 - **External DHCP Server**: Must point PXE clients at the deployment host and
   give every node a fixed address:
-  - Option 66 (`next-server`): IP of the machine running `make serve`
-  - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
-  - A reservation per `mac_address` handing out exactly that host's
-    `ansible_host`. Nothing in the node config sets a static address; the API
-    server's `advertiseAddress`, the etcd peer URLs kubeadm derives from it and
-    the metrics listeners are all rendered from `ansible_host`, so a node that
-    leases a different address joins with the wrong one or not at all.
+    - Option 66 (`next-server`): IP of the machine running `make serve`
+    - Option 67 (`filename`): `lpxelinux.0` for BIOS, `syslinux.efi` for UEFI
+    - A reservation per `mac_address` handing out exactly that host's
+      `ansible_host`. Nothing in the node config sets a static address; the API
+      server's `advertiseAddress`, the etcd peer URLs kubeadm derives from it and
+      the metrics listeners are all rendered from `ansible_host`, so a node that
+      leases a different address joins with the wrong one or not at all.
 - **Outside accounts**: `make bao-secrets` (step 11) asks for what the cluster
   cannot generate: DNS provider keys for cert-manager and external-dns, an
   SMTP login for alert mail, the BGP session password, and the logins some
