@@ -75,7 +75,7 @@ class says `Never`. The tiers, the three custom ones in
 | --- | --- | --- | --- |
 | `system-node-critical` | yes | DaemonSets a node needs: CNI, API VIP, storage, Tetragon | The node is useless without them |
 | `system-cluster-critical` | yes | Webhooks, the certificate and secret chain, the CSR approver, Ceph and Rook | Nothing else starts without them |
-| `platform-core` | yes | OpenBao, Authentik and its database, Argo CD | Every app loses its secrets, sign-in or deploys with them |
+| `platform-core` | yes | OpenBao, Authentik and its database, Argo CD, Prometheus, Alertmanager | Every app loses its secrets, sign-in or deploys with them; Kured reboots only while Prometheus answers, and alerts need both |
 | none (0) | yes | The apps | — |
 | `observability` | no | Metrics, logs, backups, Kured, external-dns, the scanner and runner controllers | The largest memory users go before an app, and come back without killing one |
 | `batch` | no | Scan jobs, CI runners, CronJobs, agent sessions | Retried on the next run |
