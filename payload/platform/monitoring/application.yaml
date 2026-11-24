@@ -152,7 +152,7 @@ spec:
             controlPlaneScrapeClass:
               enabled: true
             prometheusSpec:
-              priorityClassName: observability
+              priorityClassName: platform-core
               # Alert "Source" links in mails, see docs/platform/monitoring.md#alerting
               externalUrl: https://prometheus.infra.k8s.wlkr.ch
               # `{}` alone still filters by release, see docs/platform/monitoring.md
@@ -224,7 +224,7 @@ spec:
               enabled: true
 
             alertmanagerSpec:
-              priorityClassName: observability
+              priorityClassName: platform-core
               replicas: 2
               # The operator sets the pod field and overrides the account's.
               automountServiceAccountToken: false
