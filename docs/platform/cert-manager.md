@@ -26,7 +26,7 @@ covers every hostname that listener serves.
 | --- | --- |
 | Issuers and certificates in their own `certificates` Application | Kept with cert-manager, the controller reads Degraded until OpenBao holds the Route53 credentials — see [Bootstrap convergence](../architecture/gitops.md#bootstrap-convergence) |
 | Three sync waves inside `certificates`: `ExternalSecret`, then the ClusterIssuers, then the Certificates | One wave orders custom resources alphabetically, exactly backwards, and an issuer applied before its Secret stays `Ready=False` with `InvalidSolver` |
-| `enableGatewayAPI: true` in `values.yaml` | Turns on the shim that issues from `cert-manager.io` annotations on a Gateway. Nothing uses it: every certificate here is an explicit `Certificate` |
+| `gatewayAPI.enabled: true` in `values.yaml` | Turns on the shim that issues from `cert-manager.io` annotations on a Gateway. Nothing uses it: every certificate here is an explicit `Certificate` |
 | `ServiceMonitor` rendered unconditionally | The chart cannot sync until the Prometheus operator CRDs exist, which is why they are the separate `prometheus-operator-crds` Application — see [Monitoring](monitoring.md#crds) |
 | More than one webhook replica, a PodDisruptionBudget and a hostname spread | The webhook's `failurePolicy` is `Fail`, so a lone replica rescheduling through a drain refuses every apply — see [Replica placement](index.md#replica-placement) |
 | `letsencrypt-staging` and `letsencrypt-prod` | Use staging first: production allows five duplicate certificates per week and a misconfigured solver retries until they are gone |
