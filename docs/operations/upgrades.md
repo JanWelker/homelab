@@ -19,11 +19,11 @@ update is staged. [Kured](../platform/kured.md) consumes that marker: it
 drains, reboots and uncordons, one node at a time and only while Ceph and etcd
 are healthy. To move sooner, see [Rebooting a node](nodes.md#rebooting-a-node).
 
-Three alerts in `payload/platform/monitoring/node-update-rules.yaml` watch
+The alerts in `payload/platform/monitoring/node-update-rules.yaml` watch
 that this happens, because Trivy scans containers and not the host:
-`NodeRebootPending` when a node has carried the marker for longer than its
-`for`, `NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes have
-run different Flatcar or kubelet versions for longer than theirs.
+`NodeRebootPending` when a node carries the marker too long,
+`NodeOsVersionDrift` and `NodeKubeletVersionDrift` when the nodes disagree, and
+`ControlPlaneVersionLag` when the kubelets run a version no API server runs.
 
 ```bash
 make os-release uptime
@@ -46,12 +46,9 @@ the `@v` wildcard — see `ansible/templates/sysupdate_kubernetes.conf.j2`.
 
 Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
-that refuses to talk to them. sysext-bakery publishes a floating
-`kubernetes.conf` (`kubernetes-@v-%a.raw`) as well, which would stage a minor
-kubeadm cannot skip to, on whichever node checks first.
-`ansible/templates/sysupdate_kubernetes.conf.j2` renders the pinned file from
-the inventory and the Ignition config inlines it, so the source of every later
-sysext is reviewed in Git rather than fetched; `make config` also writes it to
+that refuses to talk to them. sysext-bakery's floating
+`kubernetes.conf` would stage that minor on whichever node checks first.
+The Ignition config inlines the rendered file and `make config` writes it to
 `output/http/kubernetes.conf` for running nodes.
 
 ```bash
@@ -59,19 +56,40 @@ ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'
 ssh core@<node> cat /etc/sysupdate.kubernetes.d/kubernetes.conf   # confirm the MatchPattern is pinned
 ```
 
+### Patch releases
+
+A patch sysext swaps only kubelet and kubeadm. The control-plane static pods
+and CoreDNS keep their images until kubeadm moves them; workers Kured reboots
+first run the newer kubelet meanwhile, which the skew policy allows within a minor.
+
+1. Wait until every control plane reports the new kubelet.
+
+    ```bash
+    kubectl get nodes -l node-role.kubernetes.io/control-plane
+    ```
+
+2. Upgrade the control plane. `ansible/playbooks/kube-upgrade.yaml` refuses a
+   minor or a control plane still on the old sysext, runs `upgrade apply` on
+   the first, `upgrade node` on the rest, and renews the control-plane
+   certificates on the way.
+
+    ```bash
+    make kube-upgrade
+    ```
+
+3. `kubectl version` must report the new server. Merge Renovate's
+   `kubernetes_version` bump, or a new node joins on the old patch.
+
 ## Upgrading a minor version deliberately
 
 **kubeadm allows one minor at a time.** v1.34 to v1.37 is three passes through
 this procedure, each with its release notes read. A newly provisioned node
-skips all of it: it installs `kubernetes_version` directly and gets the pinned
-sysupdate config from the boot server.
+installs `kubernetes_version` directly.
 
 The order is upstream's: the first control plane, the other control planes,
 then the workers, because a kubelet may run older than the API server but never
-newer. The sysext swaps kubeadm and kubelet together at the reboot, so the
-sysupdate config goes to one group at a time: Kured reboots one node at a
-time but in no particular order, and a config pushed to every node at once hands the
-workers a new kubelet before the API server has moved.
+newer. The sysupdate config goes to one group at a time, since Kured reboots
+in no particular order.
 
 1. Update `kubernetes_version` in `ansible/inventory.yaml`, and
    `kubernetes_sha256` beside it to the new image's: `make download` refuses
@@ -82,10 +100,8 @@ workers a new kubelet before the API server has moved.
     make download && make config
     ```
 
-3. Stage the new sysext on the first control plane only. The sysupdate config
-   was written once at install time and nothing rewrites it, and the
-   boot server is not needed. The sentinel must exist afterwards; stop
-   otherwise.
+3. Stage the new sysext on the first control plane only. The sentinel must
+   exist afterwards; stop otherwise.
 
     ```bash
     scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
@@ -101,13 +117,10 @@ workers a new kubelet before the API server has moved.
     kubectl get node <node> -w
     ```
 
-5. On that node, run the kubeadm upgrade; the sysext swapped the binaries and
-   nothing else. Always pass `--skip-phases addon/kube-proxy`: a cluster built
-   before `proxy.disabled` in `kubeadm.yaml.j2` keeps `proxy: {}` in its
-   stored `kubeadm-config`, and the upgrade would redeploy `kube-proxy` beside
-   Cilium. Always pass `--patches /etc/kubernetes/patches` too: the static
-   pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the
-   manifests without them otherwise.
+5. On that node, run the kubeadm upgrade. `--skip-phases addon/kube-proxy`
+   stops a cluster whose stored `kubeadm-config` predates `proxy.disabled`
+   from redeploying `kube-proxy` beside Cilium; `--patches` keeps the static
+   pods' memory requests and CoreDNS's spread constraint.
 
     ```bash
     sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
@@ -117,13 +130,13 @@ workers a new kubelet before the API server has moved.
     server; stop otherwise.
 
 6. Each other control plane in turn: steps 3 and 4, then
-   `kubeadm upgrade node` with the same `--patches` flag, which has to run
+   `kubeadm upgrade node` with the same flags, which has to run
    the new kubeadm the reboot swapped in and takes the version `upgrade apply`
    stored. `kubectl get nodes` must show the node `Ready`
    before the next one.
 
     ```bash
-    sudo kubeadm upgrade node --patches /etc/kubernetes/patches
+    sudo kubeadm upgrade node --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
     ```
 
 7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only
@@ -145,10 +158,9 @@ from the same `targetRevision` before ArgoCD exists — see [Version pins](../ar
 ## Control-plane certificates
 
 kubeadm issues the control-plane certificates for one year and renews them only
-during `kubeadm upgrade`. Patch updates arrive as a sysext and never run
-kubeadm, and a minor is [a manual procedure](#upgrading-a-minor-version-deliberately),
-so a year without one takes the API servers, the etcd peers and the front
-proxy down together. The kubelet certificates are the exception: the serving
+during `kubeadm upgrade`, so a year without a [patch](#patch-releases) or
+[minor](#upgrading-a-minor-version-deliberately) upgrade takes the API
+servers, the etcd peers and the front proxy down together. The kubelet certificates are the exception: the serving
 certificate is rotated through [kubelet-csr-approver](../platform/metrics-server.md)
 and the client certificate by the kubelet itself.
 
