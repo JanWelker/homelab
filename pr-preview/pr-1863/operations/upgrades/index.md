@@ -21,7 +21,7 @@ Kubernetes is a [systemd sysext](<https://homelab.wlkr.ch/concepts/index.md#syst
 
 The sysupdate config points at `https://extensions.flatcar.org/extensions/`, not at the boot server, and its `MatchPattern` names the major.minor from `kubernetes_version` in `ansible/inventory.yaml` with only the patch left as the `@v` wildcard — see `ansible/templates/sysupdate_kubernetes.conf.j2`.
 
-Patch releases inside the series are picked up automatically; the next minor is not, because an unattended minor jump leaves kubelets ahead of a control plane that refuses to talk to them. sysext-bakery's floating `kubernetes.conf` would stage that minor on whichever node checks first. The Ignition config inlines the rendered file and `make config` writes it to `output/http/kubernetes.conf` for running nodes.
+Patch releases inside the series are picked up automatically; the next minor is not, because an unattended minor jump leaves kubelets ahead of a control plane that refuses to talk to them. sysext-bakery's floating `kubernetes.conf` would stage that minor on whichever node checks first. The Ignition config inlines the rendered file; a running node gets a new one by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>).
 
 ```bash
 ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'
@@ -48,7 +48,7 @@ A patch sysext swaps only kubelet and kubeadm. The control-plane static pods kee
 
 **kubeadm allows one minor at a time.** v1.34 to v1.37 is three passes through this procedure, each with its release notes read. A newly provisioned node installs `kubernetes_version` directly.
 
-The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The sysupdate config goes to one group at a time, since Kured reboots in no particular order.
+The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The new sysupdate config goes to one node at a time, since Kured reboots in no particular order.
 
 1. Update `kubernetes_version` in `ansible/inventory.yaml`, and `kubernetes_sha256` beside it to the new image's: `make download` refuses a file that does not match.
 2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
@@ -56,32 +56,34 @@ The order is upstream's: the first control plane, the other control planes, then
    ```bash
    make download && make config
    ```
-3. Stage the new sysext on the first control plane only. The sentinel must exist afterwards; stop otherwise.
+3. Reprovision the first control plane, which carries the new minor's sysupdate config; `ALLOW_MINOR=1` is needed until step 6 has run. It must come back `current` in `make node-drift`.
 
    ```bash
-   scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
-   ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.kubernetes.d/kubernetes.conf
-   ssh core@<node> sudo systemctl start systemd-sysupdate
-   ssh core@<node> ls /run/reboot-required
+   make reprovision LIMIT=<node> ALLOW_MINOR=1
    ```
-4. Let Kured reboot it, as in [Rebooting a node](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>). The node must come back `Ready` on the new kubelet version; stop otherwise.
+4. Fetch the new sysext on it; the sentinel must exist afterwards.
+
+   ```bash
+   ssh core@<node> 'sudo systemctl start systemd-sysupdate && ls /run/reboot-required'
+   ```
+5. Let [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) reboot it. The node must come back `Ready` on the new kubelet version; stop otherwise.
 
    ```bash
    kubectl get node <node> -w
    ```
-5. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
+6. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
 
    ```bash
    sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
 
    It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
-6. Each other control plane in turn: steps 3 and 4, then `kubeadm upgrade node` with the same flags, which has to run the new kubeadm the reboot swapped in and takes the version `upgrade apply` stored. `kubectl get nodes` must show the node `Ready` before the next one.
+7. Each other control plane in turn: steps 3 to 5, then `kubeadm upgrade node` with the same flags, which takes the version `upgrade apply` stored. The node must be `Ready` before the next one.
 
    ```bash
    sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
-7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
+8. Each worker in turn: steps 3 to 5, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
 
    ```bash
    sudo kubeadm upgrade node
