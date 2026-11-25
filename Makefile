@@ -208,7 +208,7 @@ reprovision: config ## Re-run Ignition on nodes through flatcar-reset (LIMIT=, A
 
 # Compares the checksum Ignition wrote with a fresh render.
 node-drift: config ## List the nodes running an older Ignition config (LIMIT=)
-	@$(NODES) -a 'cat /etc/node-config.sha256 2>/dev/null || echo none' | $(ONELINE) | \
+	@$(NODES) -a 'cat /etc/node-config.sha256 2>/dev/null || printf none; echo' | $(ONELINE) | \
 	  while read -r host have; do host=$${host%:}; \
 	    want=$$(cat output/reprovision/$$host.sha256); \
 	    if [ "$$have" = "$$want" ]; then echo "$$host: current"; \
