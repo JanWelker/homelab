@@ -200,16 +200,6 @@
         loop_var: config
         label: "{{ inventory_hostname }}{{ config.suffix }}"
 
-    # The same file the Ignition configs inline, for pushing to running nodes;
-    # see docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
-    - name: Render the sysupdate config for running nodes
-      ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/sysupdate_kubernetes.conf.j2" # noqa: no-relative-paths
-        dest: "{{ output_dir }}/http/kubernetes.conf"
-        mode: "0644"
-      run_once: true # noqa: run-once
-      delegate_to: localhost
-
     # Keeps the DEFAULT install that make reinstall armed.
     - name: Check for an existing PXE menu
       ansible.builtin.stat:

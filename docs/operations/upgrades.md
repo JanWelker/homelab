@@ -48,8 +48,8 @@ Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
 that refuses to talk to them. sysext-bakery's floating
 `kubernetes.conf` would stage that minor on whichever node checks first.
-The Ignition config inlines the rendered file and `make config` writes it to
-`output/http/kubernetes.conf` for running nodes.
+The Ignition config inlines the rendered file; a running node gets a new one
+by [reprovision](nodes.md#reprovisioning-a-node).
 
 ```bash
 ssh core@<node> 'ls -l /etc/extensions/ /opt/extensions/kubernetes/'
@@ -88,8 +88,8 @@ installs `kubernetes_version` directly.
 
 The order is upstream's: the first control plane, the other control planes,
 then the workers, because a kubelet may run older than the API server but never
-newer. The sysupdate config goes to one group at a time, since Kured reboots
-in no particular order.
+newer. The new sysupdate config goes to one node at a time, since Kured
+reboots in no particular order.
 
 1. Update `kubernetes_version` in `ansible/inventory.yaml`, and
    `kubernetes_sha256` beside it to the new image's: `make download` refuses
@@ -100,24 +100,28 @@ in no particular order.
     make download && make config
     ```
 
-3. Stage the new sysext on the first control plane only. The sentinel must
-   exist afterwards; stop otherwise.
+3. Reprovision the first control plane, which carries the new minor's
+   sysupdate config; `ALLOW_MINOR=1` is needed until step 6 has run. It must
+   come back `current` in `make node-drift`.
 
     ```bash
-    scp output/http/kubernetes.conf core@<node>:/tmp/kubernetes.conf
-    ssh core@<node> sudo mv /tmp/kubernetes.conf /etc/sysupdate.kubernetes.d/kubernetes.conf
-    ssh core@<node> sudo systemctl start systemd-sysupdate
-    ssh core@<node> ls /run/reboot-required
+    make reprovision LIMIT=<node> ALLOW_MINOR=1
     ```
 
-4. Let Kured reboot it, as in [Rebooting a node](nodes.md#rebooting-a-node).
-   The node must come back `Ready` on the new kubelet version; stop otherwise.
+4. Fetch the new sysext on it; the sentinel must exist afterwards.
+
+    ```bash
+    ssh core@<node> 'sudo systemctl start systemd-sysupdate && ls /run/reboot-required'
+    ```
+
+5. Let [Kured](nodes.md#rebooting-a-node) reboot it. The node must come back
+   `Ready` on the new kubelet version; stop otherwise.
 
     ```bash
     kubectl get node <node> -w
     ```
 
-5. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy`
+6. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy`
    from returning beside Cilium on a cluster whose stored `kubeadm-config`
    predates `proxy.disabled`, and leaves [CoreDNS](../platform/coredns.md) to
    Argo CD; `--patches` keeps the static pods' memory requests.
@@ -129,17 +133,15 @@ in no particular order.
     It must end with `SUCCESS!` and `kubectl version` must report the new
     server; stop otherwise.
 
-6. Each other control plane in turn: steps 3 and 4, then
-   `kubeadm upgrade node` with the same flags, which has to run
-   the new kubeadm the reboot swapped in and takes the version `upgrade apply`
-   stored. `kubectl get nodes` must show the node `Ready`
-   before the next one.
+7. Each other control plane in turn: steps 3 to 5, then
+   `kubeadm upgrade node` with the same flags, which takes the version
+   `upgrade apply` stored. The node must be `Ready` before the next one.
 
     ```bash
     sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
     ```
 
-7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only
+8. Each worker in turn: steps 3 to 5, then `kubeadm upgrade node`, which only
    fetches the new kubelet configuration. Same check before the next.
 
     ```bash
