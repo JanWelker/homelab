@@ -64,7 +64,7 @@ Rules written here, beside the chart's; the thresholds are in each file:
 | `CertificateNotReady`, `CertificateExpiringSoon` | A Certificate is not Ready, or is close to expiry |
 | `ArgoCDApplicationUnhealthy`, `ArgoCDApplicationOutOfSync` | An Application stays Degraded, Missing or OutOfSync longer than the [retries](../architecture/gitops.md#sync-policy) run |
 | `ExternalSecretNotReady`, `PushSecretNotReady` | One is not Ready; after an OpenBao restart every one fires until it is unsealed |
-| `NodeRebootPending`, `NodeOsVersionDrift`, `NodeKubeletVersionDrift` | A staged update waits for its reboot, or the nodes disagree on Flatcar or kubelet version — see [OS updates](../operations/upgrades.md#os-updates) |
+| `NodeRebootPending`, `NodeOsVersionDrift`, `NodeKubeletVersionDrift`, `ControlPlaneVersionLag` | A staged update waits for its reboot, or nodes or API server disagree on versions — see [OS updates](../operations/upgrades.md#os-updates) |
 | `KubeClientCertificateExpiringSoon` | The control-plane client certificates come due — see [Control-plane certificates](../operations/upgrades.md#control-plane-certificates) |
 
 The three values come from `kv/monitoring/smtp` (`username`, `password`,

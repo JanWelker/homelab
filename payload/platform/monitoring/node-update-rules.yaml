@@ -48,3 +48,23 @@ spec:
               sysupdate keeps every node on the same Kubernetes patch; three
               days of mixed kubelets means a node missed its update or its
               reboot, or a deliberate minor upgrade stalled halfway.
+        # sysupdate moves the kubelets, only make kube-upgrade moves the API
+        # server; see docs/operations/upgrades.md#patch-releases
+        - alert: ControlPlaneVersionLag
+          expr: >-
+            count by (kubelet_version) (kube_node_info)
+            unless on (kubelet_version)
+            label_replace(count by (git_version) (kubernetes_build_info{job="apiserver"}),
+            "kubelet_version", "$1", "git_version", "(.*)")
+          for: 2d
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              {{ $value }} nodes run kubelet {{ $labels.kubelet_version }}, which
+              no API server runs
+            description: >-
+              The nodes booted a Kubernetes release the control plane has not
+              been upgraded to. After a patch, run make kube-upgrade once every
+              control plane has rebooted; during a minor, the manual upgrade
+              stalled.
