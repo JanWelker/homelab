@@ -3221,9 +3221,10 @@ namespaces with them are unchanged.</p>
 Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
 selected; to everything else they are <code>host</code> or <code>remote-node</code>. <code>kube-system</code>
 therefore covers only its pod-networked workloads, each selected by label.</p>
-<p>Where a chart ships <code>NetworkPolicy</code> objects of its own (<code>argocd</code>) they are
-switched off in its values: Cilium unions the two kinds, so a chart rule
-that allows everything would silently override the default-deny.</p>
+<p>A chart's own <code>NetworkPolicy</code> objects are switched off in its values
+(<code>argocd</code>), or deleted after rendering where no value does
+(<code>rook-ceph-operator</code>): Cilium unions them, so a chart rule allowing
+everything overrides the default-deny.</p>
 <h3 id="host-firewall">Host firewall<a class="headerlink" href="#host-firewall" title="Permanent link">&para;</a></h3>
 <p>Pod policies cannot select a host-networked port. A <code>CiliumClusterwideNetworkPolicy</code>
 with a <code>nodeSelector</code> can, and Cilium's

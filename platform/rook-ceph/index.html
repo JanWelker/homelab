@@ -3087,7 +3087,7 @@ Never ignore a <code>WARN</code>.</p>
 </tr>
 <tr>
 <td>Files</td>
-<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-operator"><code>payload/platform/rook-ceph-operator/</code></a>: the <code>rook-ceph</code> chart, the operator itself. <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-cluster"><code>payload/platform/rook-ceph-cluster/</code></a>: the <code>rook-ceph-cluster</code> chart, whose <code>valuesObject</code> holds the <code>CephCluster</code>, the object store and the storage classes. <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph"><code>payload/platform/rook-ceph/</code></a>: the CSI driver and its RBAC, the dashboards and the UI route</td>
+<td><a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-operator"><code>payload/platform/rook-ceph-operator/</code></a>: the operator's <code>rook-ceph</code> chart, in <code>kustomization.yaml</code>. <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-cluster"><code>payload/platform/rook-ceph-cluster/</code></a>: the <code>rook-ceph-cluster</code> chart, whose <code>valuesObject</code> holds the <code>CephCluster</code>, the object store and the storage classes. <a href="https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph"><code>payload/platform/rook-ceph/</code></a>: the CSI driver and its RBAC, the dashboards and the UI route</td>
 </tr>
 </tbody>
 </table>
@@ -3168,7 +3168,7 @@ writes into, so TrueNAS sees that bucket in its list.</p>
 <td>Rook creates an owned bucket and sets its policy with the owner's own keys</td>
 </tr>
 <tr>
-<td><code>obcAllowAdditionalConfigFields</code> in <code>rook-ceph-operator/application.yaml</code></td>
+<td><code>obcAllowAdditionalConfigFields</code> in <code>rook-ceph-operator/kustomization.yaml</code></td>
 <td>Rook ignores <code>bucketPolicy</code> and <code>bucketOwner</code> unless listed. <code>bucketOwner</code> hands a claim the keys of the user it names, so the <code>obc-bucket-owner</code> <a href="../security-policies/#admission-policies">admission policy</a> allows it on that one claim only</td>
 </tr>
 </tbody>
@@ -3280,6 +3280,10 @@ below cuts, so they live in <code>csi-driver.yaml</code>.</p>
 <td><code>csi-rbac.yaml</code></td>
 <td>The ceph-csi-operator creates no ServiceAccounts, and <code>CSI_SERVICE_ACCOUNT_PREFIX</code> fixes their names. Without them the Deployment and DaemonSet create no pods</td>
 </tr>
+<tr>
+<td><code>$patch: delete</code> in <code>rook-ceph-operator/kustomization.yaml</code></td>
+<td>The subchart's <code>NetworkPolicy</code> allows every egress, and no value turns it off (<a href="../security-policies/#network-policies">why that matters</a>); the one the operator creates for the controller plugin stays</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition warning">
@@ -3345,7 +3349,7 @@ security. In <code>rook-ceph-cluster/application.yaml</code>'s <code>valuesObjec
 </tbody>
 </table>
 <h3 id="selinux">SELinux<a class="headerlink" href="#selinux" title="Permanent link">&para;</a></h3>
-<p><code>hostpathRequiresPrivileged</code> in <code>rook-ceph-operator/application.yaml</code> runs
+<p><code>hostpathRequiresPrivileged</code> in <code>rook-ceph-operator/kustomization.yaml</code> runs
 every Ceph daemon privileged: <code>container_t</code> may not write their hostPath data
 or use another pod's admin socket. The cost is in
 <a href="../../architecture/limitations/">Limitations</a>.</p>
@@ -3394,8 +3398,7 @@ Loki's carries. A backup does not get a bucket: it is a
 <p>The dashboard sits behind Authentik for <code>infra-users</code>, then asks for its own
 login. The only user is <code>admin</code>, and its password is the
 <code>rook-ceph-dashboard-password</code> Secret, which the operator writes back to Ceph
-whenever it restarts: a password changed in the dashboard lasts until the
-next drain of the operator's node. For a password of your own, add a second
+whenever it restarts, undoing a password changed in the dashboard. For a password of your own, add a second
 user rather than changing <code>admin</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>rook-ceph<span class="w"> </span>get<span class="w"> </span>secret<span class="w"> </span>rook-ceph-dashboard-password<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.data.password}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="w"> </span>-d<span class="p">;</span><span class="w"> </span><span class="nb">echo</span>
 </span></code></pre></div>
@@ -3403,9 +3406,8 @@ user rather than changing <code>admin</code>.</p>
 <h3 id="is-storage-ready">Is storage ready?<a class="headerlink" href="#is-storage-ready" title="Permanent link">&para;</a></h3>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>storage-check
 </span></code></pre></div>
-<p>Run it after the GitOps handover, before trusting anything that mounts a
-volume: a <code>CephCluster</code> reports <code>Ready</code> with no OSDs. The script walks the
-chain in the order it breaks and stops at the first missing link:</p>
+<p>Run it after the GitOps handover: a <code>CephCluster</code> reports <code>Ready</code> with no
+OSDs. It stops at the first missing link:</p>
 <table>
 <thead>
 <tr>
@@ -3440,8 +3442,7 @@ chain in the order it breaks and stops at the first missing link:</p>
 </tr>
 </tbody>
 </table>
-<p>The last one asks for a volume the way a workload would and waits <code>TIMEOUT</code>
-seconds (default in <code>scripts/storage-check.sh</code>); <code>NAMESPACE</code> and <code>CLASS</code>
+<p>The PVC check waits <code>TIMEOUT</code> seconds (default in <code>scripts/storage-check.sh</code>); <code>NAMESPACE</code> and <code>CLASS</code>
 override where and what it asks for.</p>
 <p>Ceph's own view, from the script's toolbox: <code>HEALTH_OK</code>, every OSD <code>up</code> and
 <code>in</code>:</p>

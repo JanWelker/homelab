@@ -11,7 +11,7 @@ Distributed block storage using [Rook](<https://rook.io/>) as the Kubernetes ope
 | If it is down | Every pod with a volume — `openbao` first, which turns a storage problem into a cluster problem |
 | Health check | `make storage-check` — it binds a real PVC, which `ceph status` alone does not prove |
 | UI | `rook.infra.k8s.wlkr.ch` |
-| Files | [`payload/platform/rook-ceph-operator/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-operator>): the `rook-ceph` chart, the operator itself. [`payload/platform/rook-ceph-cluster/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-cluster>): the `rook-ceph-cluster` chart, whose `valuesObject` holds the `CephCluster`, the object store and the storage classes. [`payload/platform/rook-ceph/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph>): the CSI driver and its RBAC, the dashboards and the UI route |
+| Files | [`payload/platform/rook-ceph-operator/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-operator>): the operator's `rook-ceph` chart, in `kustomization.yaml`. [`payload/platform/rook-ceph-cluster/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph-cluster>): the `rook-ceph-cluster` chart, whose `valuesObject` holds the `CephCluster`, the object store and the storage classes. [`payload/platform/rook-ceph/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/rook-ceph>): the CSI driver and its RBAC, the dashboards and the UI route |
 
 ## Configuration
 
@@ -41,7 +41,7 @@ TrueNAS pulls the [off-cluster copy](<https://homelab.wlkr.ch/operations/backups
 | `CephObjectStoreUser` in `rook-ceph/offsite-reader.yaml` | One key pair for the pull, in the Secret `rook-ceph-object-user-object-store-offsite-reader` and, through `bucketOwner`, in the `offsite-bucket` claim's Secret |
 | `bucketOwner: offsite-reader` on `backup/offsite-bucket` | S3 lists only the buckets a user owns, and TrueNAS's Cloud Sync form picks the bucket from that list. A bucket has exactly one owner |
 | Full `opMask` | Rook creates an owned bucket and sets its policy with the owner's own keys |
-| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/application.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) allows it on that one claim only |
+| `obcAllowAdditionalConfigFields` in `rook-ceph-operator/kustomization.yaml` | Rook ignores `bucketPolicy` and `bucketOwner` unless listed. `bucketOwner` hands a claim the keys of the user it names, so the `obc-bucket-owner` [admission policy](<https://homelab.wlkr.ch/platform/security-policies/index.md#admission-policies>) allows it on that one claim only |
 
 ### Backup writers
 
@@ -81,6 +81,7 @@ The operator chart's ceph-csi-operator subchart deploys the RBD driver only once
 | Driver name `rook-ceph.rbd.csi.ceph.com` | Derived from the namespace and must match the StorageClasses' `provisioner`. RBD is the only driver; CephFS is not enabled |
 | More than one controller plugin replica, `RollingUpdate` without surge, a PodDisruptionBudget | A drain of the provisioner's node otherwise stalls every provision, attach, resize and snapshot until the pod reschedules. The operator already keeps the replicas on distinct nodes with required anti-affinity and runs every sidecar with leader election, so the `Driver` CR carries no spread constraint, and no field for one |
 | `csi-rbac.yaml` | The ceph-csi-operator creates no ServiceAccounts, and `CSI_SERVICE_ACCOUNT_PREFIX` fixes their names. Without them the Deployment and DaemonSet create no pods |
+| `$patch: delete` in `rook-ceph-operator/kustomization.yaml` | The subchart's `NetworkPolicy` allows every egress, and no value turns it off ([why that matters](<https://homelab.wlkr.ch/platform/security-policies/index.md#network-policies>)); the one the operator creates for the controller plugin stays |
 
 > [!WARNING]
 >
@@ -114,7 +115,7 @@ Ceph 20 warns about the legacy `aes` cipher, and every key here is deliberately 
 
 ### SELinux
 
-`hostpathRequiresPrivileged` in `rook-ceph-operator/application.yaml` runs every Ceph daemon privileged: `container_t` may not write their hostPath data or use another pod's admin socket. The cost is in [Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
+`hostpathRequiresPrivileged` in `rook-ceph-operator/kustomization.yaml` runs every Ceph daemon privileged: `container_t` may not write their hostPath data or use another pod's admin socket. The cost is in [Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
 
 ## Usage
 
@@ -161,7 +162,7 @@ A full object store stops every writer, so the `object-store-quota` [policy](<ht
 
 ### Dashboard login
 
-The dashboard sits behind Authentik for `infra-users`, then asks for its own login. The only user is `admin`, and its password is the `rook-ceph-dashboard-password` Secret, which the operator writes back to Ceph whenever it restarts: a password changed in the dashboard lasts until the next drain of the operator's node. For a password of your own, add a second user rather than changing `admin`.
+The dashboard sits behind Authentik for `infra-users`, then asks for its own login. The only user is `admin`, and its password is the `rook-ceph-dashboard-password` Secret, which the operator writes back to Ceph whenever it restarts, undoing a password changed in the dashboard. For a password of your own, add a second user rather than changing `admin`.
 
 ```bash
 kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath='{.data.password}' | base64 -d; echo
@@ -175,7 +176,7 @@ kubectl -n rook-ceph get secret rook-ceph-dashboard-password -o jsonpath='{.data
 make storage-check
 ```
 
-Run it after the GitOps handover, before trusting anything that mounts a volume: a `CephCluster` reports `Ready` with no OSDs. The script walks the chain in the order it breaks and stops at the first missing link:
+Run it after the GitOps handover: a `CephCluster` reports `Ready` with no OSDs. It stops at the first missing link:
 
 | Check | What its absence means |
 | --- | --- |
@@ -186,7 +187,7 @@ Run it after the GitOps handover, before trusting anything that mounts a volume:
 | node plugin and provisioner are up | usually a ServiceAccount the DaemonSet cannot find |
 | a 1 GiB PVC binds and is cleaned up | the only check that proves the other five |
 
-The last one asks for a volume the way a workload would and waits `TIMEOUT` seconds (default in `scripts/storage-check.sh`); `NAMESPACE` and `CLASS` override where and what it asks for.
+The PVC check waits `TIMEOUT` seconds (default in `scripts/storage-check.sh`); `NAMESPACE` and `CLASS` override where and what it asks for.
 
 Ceph's own view, from the script's toolbox: `HEALTH_OK`, every OSD `up` and `in`:
 

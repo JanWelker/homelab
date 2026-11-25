@@ -2788,8 +2788,7 @@ adopts it on its first sync. A broken project definition is fixed with
 labels, annotations, finalizers and <code>spec</code> unchanged.</p>
 <h2 id="sync-policy">Sync policy<a class="headerlink" href="#sync-policy" title="Permanent link">&para;</a></h2>
 <p>Every Application, generated or not, carries the same <code>syncPolicy</code>: automated
-sync with <code>prune</code> and <code>selfHeal</code>, and a <code>retry</code> block. That is the whole
-delivery contract:</p>
+sync with <code>prune</code> and <code>selfHeal</code>, and a <code>retry</code> block:</p>
 <ul>
 <li><strong>A commit is live within one polling interval.</strong> ArgoCD runs on a private
   address, so no GitHub webhook can reach it; the intervals are in
@@ -2931,10 +2930,8 @@ fork with other workloads edits these, in <code>payload/platform/</code> or <cod
 <code>platform</code> ApplicationSet generates like any component, from a second
 generator path beside the <code>payload/platform/</code> glob.</p>
 <p>On a fresh cluster the workloads therefore start syncing before the platform
-under them is Healthy and converge the same way: the <code>retry</code> block, an
-<code>HTTPRoute</code> waiting for the <code>apps-gateway</code>, volumes for Rook, secrets for
-OpenBao. Ordering
-<em>within</em> a workload uses resource-level sync waves — the CloudNativePG
+under them is Healthy and <a href="#bootstrap-convergence">converge the same way</a>.
+Ordering <em>within</em> a workload uses resource-level sync waves — the CloudNativePG
 <code>Cluster</code> is in an earlier wave, and ArgoCD's built-in health check for
 <code>postgresql.cnpg.io/Cluster</code> waits for it before applying the application.</p>
 <h2 id="moving-a-resource-to-another-application">Moving a resource to another Application<a class="headerlink" href="#moving-a-resource-to-another-application" title="Permanent link">&para;</a></h2>
@@ -2961,11 +2958,13 @@ Synced while it still sees the resource.
 <p>The annotations can go once the second change has synced.</p>
 <h2 id="version-pins">Version pins<a class="headerlink" href="#version-pins" title="Permanent link">&para;</a></h2>
 <p>Each chart version is pinned once, in the <code>application.yaml</code> that owns the
-component; the node-level versions (Flatcar, Kubernetes, syslinux) are pinned
-once in <code>ansible/inventory.yaml</code>. The <code>Makefile</code> reads <code>targetRevision</code> out
-of the manifests for the bootstrap installs (<code>make install-cilium</code>,
-<code>make install-argo</code>), so what bootstrap installs is what ArgoCD then
-reconciles. kube-vip is the one double pin: <code>kube_vip_version</code> in the
+component, or in the <code>kustomization.yaml</code> beside it for a chart that needs a
+post-render, which Argo CD's Helm source cannot do: Kustomize's <code>helmCharts</code>
+renders it, enabled by <code>kustomize.buildOptions</code> in <code>argocd-cm</code>. The
+node-level versions (Flatcar, Kubernetes, syslinux) are pinned once in
+<code>ansible/inventory.yaml</code>. The <code>Makefile</code> reads <code>targetRevision</code> for
+<code>make install-cilium</code> and <code>make install-argo</code>, so bootstrap installs what
+ArgoCD then reconciles. kube-vip is the one double pin: <code>kube_vip_version</code> in the
 inventory for the bootstrap static pod, and the image in
 <code>payload/platform/kube-vip/daemonset.yaml</code> for what runs after the first sync.
 Renovate tracks all of them; its automerge policy is in
