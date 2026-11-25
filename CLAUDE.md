@@ -79,8 +79,8 @@ uv run yamllint --strict -f github .
 uv run zensical build --clean --strict        # docs site
 markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only
-uv run pytest -q                              # python only
-cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/render-charts.py --out output/rendered   # payload only
+uv run pytest -q                              # python, payload conventions
+cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 ```
