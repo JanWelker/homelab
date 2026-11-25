@@ -2897,7 +2897,7 @@ stay on GitHub.</p>
 </tr>
 <tr>
 <td><code>arc-jobs</code> is exempt from the user-namespace kill</td>
-<td>buildah builds the images as root without <code>CAP_SYS_ADMIN</code>, which <code>baseline</code> forbids, so it re-executes itself in a user namespace; <a href="../tetragon/#enforcement">Tetragon</a> records those instead of killing them, and its <a href="../tetragon/#policies">alerts</a> leave out buildah's mounts and account-file writes and <code>go</code> running its test binaries in the job pods</td>
+<td>buildah builds the images as root without <code>CAP_SYS_ADMIN</code>, which <code>baseline</code> forbids, so it re-executes itself in a user namespace; <a href="../tetragon/#enforcement">Tetragon</a> records those instead of killing them, and its <a href="../tetragon/#policies">alerts</a> leave out buildah's and <code>go</code>'s expected events</td>
 </tr>
 <tr>
 <td>The runner image as a full reference with a digest</td>
@@ -2905,11 +2905,11 @@ stay on GitHub.</p>
 </tr>
 <tr>
 <td><code>resources</code></td>
-<td>Unmeasured; the request fits a test suite with a database beside it, and the limit stops a runaway build before it starves the node</td>
+<td>Unmeasured; the request fits a test suite beside a database, the limit stops a runaway build before it starves the node</td>
 </tr>
 <tr>
 <td>A second scale set, <code>homelab-wait</code>, for <code>ci-ok</code> alone</td>
-<td>The wait holds its runner until every other check on the commit has finished; on the shared set, as many open pull requests as <code>maxRunners</code> fill it with waits and the checks they wait for never start. It runs no build, so it has no container mode and a small request</td>
+<td>The wait holds its runner until every other check finishes; on the shared set, <code>maxRunners</code> open pull requests fill it with waits and their checks never start. It builds nothing: no container mode, a small request</td>
 </tr>
 </tbody>
 </table>
@@ -2936,11 +2936,15 @@ and a step without <code>container:</code> runs in the runner pod with that toke
 </tr>
 <tr>
 <td>The Role is the hook's <code>requiredPermissions</code>, Secret <code>get</code> and <code>list</code> included</td>
-<td>The hook checks every verb before each command and fails the job if one is missing; a step can still read the environment of another job running at the same time, from the same repository</td>
+<td>The hook checks every verb before each command and fails the job if one is missing; a step can read the environment of a concurrent job from the same repository</td>
 </tr>
 <tr>
 <td><code>default</code> ServiceAccount in <code>arc-jobs</code> without a token</td>
 <td>A job pod never calls the API server</td>
+</tr>
+<tr>
+<td>Hook template <code>job-pod-template.yaml</code></td>
+<td>The kubelet's <code>RuntimeDefault</code> refuses buildah its user namespace and <code>baseline</code> forbids <code>Unconfined</code>, so the job container runs the <a href="../security-profiles-operator/#seccomp"><code>arc-jobs</code> profile</a></td>
 </tr>
 </tbody>
 </table>
