@@ -1,0 +1,42 @@
+---
+name: Ignition Render
+
+"on":
+  push:
+    branches:
+      - "main"
+    paths:
+      - "ansible/**"
+      - "scripts/ignition-check.sh"
+      - ".github/workflows/ignition-render.yaml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "scripts/ignition-check.sh"
+      - ".github/workflows/ignition-render.yaml"
+  workflow_dispatch:
+
+jobs:
+  ignition-check:
+    name: Ignition
+    permissions:
+      contents: read
+    # On the host, not in a container: the check runs butane and
+    # ignition-validate through docker.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.9"
+
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
+
+      - name: Render and validate every host's Ignition configs
+        run: make ignition-check

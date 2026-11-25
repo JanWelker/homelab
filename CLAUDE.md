@@ -83,4 +83,5 @@ uv run scripts/render-charts.py --out output/rendered   # payload only
 uv run pytest -q                              # python, payload conventions
 cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
+make ignition-check                           # ansible only, not in pre-commit
 ```

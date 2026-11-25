@@ -14,6 +14,7 @@ All in `.github/workflows/`.
 | Workflow | Trigger | What it checks |
 | --- | --- | --- |
 | `lint-ansible.yaml` | `ansible/**` | `ansible-lint` |
+| `ignition-render.yaml` | `ansible/**`, `scripts/ignition-check.sh` | `make ignition-check`: every host's installer and node config through `butane --strict` and `ignition-validate`, and its kubeadm config through `kubeadm config validate` — [Checks](contributing.md#checks) |
 | `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check` and `pytest` on the boot server and the scripts |
 | `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |

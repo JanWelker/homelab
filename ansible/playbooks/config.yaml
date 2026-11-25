@@ -20,7 +20,7 @@
 
     - name: Ensure credentials directory exists
       ansible.builtin.file:
-        path: "{{ playbook_dir }}/../../output/credentials"
+        path: "{{ output_dir }}/credentials"
         state: directory
         mode: "0700"
       run_once: true # noqa: run-once
@@ -33,16 +33,16 @@
       ansible.builtin.set_fact:
         kubeadm_token: "{{ token_id }}.{{ token_secret }}"
       vars:
-        token_id: "{{ lookup('password', playbook_dir + '/../../output/credentials/kubeadm_token_id length=6 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}"
+        token_id: "{{ lookup('password', output_dir ~ '/credentials/kubeadm_token_id length=6 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}"
         token_secret: >-
-          {{ lookup('password', playbook_dir + '/../../output/credentials/kubeadm_token_secret length=16 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}
+          {{ lookup('password', output_dir ~ '/credentials/kubeadm_token_secret length=16 chars=abcdefghijklmnopqrstuvwxyz0123456789') }}
       run_once: true # noqa: run-once
       delegate_to: localhost
       no_log: true
 
     - name: Generate Certificate Key
       ansible.builtin.set_fact:
-        certificate_key: "{{ lookup('password', playbook_dir + '/../../output/credentials/certificate_key length=64 chars=0123456789abcdef') }}"
+        certificate_key: "{{ lookup('password', output_dir ~ '/credentials/certificate_key length=64 chars=0123456789abcdef') }}"
       run_once: true # noqa: run-once
       delegate_to: localhost
       no_log: true
@@ -51,7 +51,7 @@
     - name: Generate Secrets Encryption Key
       ansible.builtin.set_fact:
         encryption_key: >-
-          {{ lookup('password', playbook_dir + '/../../output/credentials/encryption_key length=32 chars=ascii_letters,digits') | b64encode }}
+          {{ lookup('password', output_dir ~ '/credentials/encryption_key length=32 chars=ascii_letters,digits') | b64encode }}
       run_once: true # noqa: run-once
       delegate_to: localhost
       no_log: true
@@ -197,6 +197,8 @@
   hosts: control_plane
   become: true
   gather_facts: false
+  # make ignition-check skips this play: it must never reach the cluster.
+  tags: renew_join_credentials
   tasks:
     - name: Check for a running cluster
       ansible.builtin.raw: test -e /etc/kubernetes/admin.conf && echo present || echo absent
