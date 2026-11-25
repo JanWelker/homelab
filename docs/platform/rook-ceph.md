@@ -26,9 +26,9 @@ Never ignore a `WARN`.
 
 Each worker has a raw partition labelled `rook-osd`, created by Ignition as the
 **last** partition with whatever the root leaves, which Rook adds as an OSD;
-block data is replicated across them. Control planes get none, and the
-CephCluster's OSD placement excludes them, because etcd's fsyncs and
-BlueStore's writes on one shared disk stall each other. Its contents are wherever Ceph last
+block data is replicated across them. `placement.all` leaves the
+control-plane taint untolerated, so no Ceph daemon runs beside etcd: their
+fsyncs on one disk stall each other. Its contents are wherever Ceph last
 wrote them, so inserting a partition ahead of it shifts its offset and takes
 the OSD data with it: changing the partition table is a
 [reinstall](../operations/nodes.md), not an edit.

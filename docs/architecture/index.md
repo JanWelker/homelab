@@ -66,7 +66,7 @@ The deployment host — the laptop running Ansible and the boot server — is
 
 | Role | Nodes | Purpose |
 | --- | --- | --- |
-| Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph OSD |
+| Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph |
 | Worker | freya, heimdall, valkyrie, baldur, tyr, frigg, bragi, idun | Everything else, and a Ceph OSD partition each |
 
 Three control-plane nodes because etcd needs an odd number, and two is the
