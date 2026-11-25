@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -25,6 +25,9 @@ download:
 
 config:
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
+
+ignition-check:
+	scripts/ignition-check.sh
 
 serve:
 	.venv/bin/boot-server

@@ -32,10 +32,13 @@ uv run scripts/render-charts.py --out output/rendered   # payload only
 uv run pytest -q                              # python, payload conventions
 cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
+make ignition-check                           # ansible only, not in pre-commit
 ```
 
 `pytest` holds the render to the documented conventions; the dry run writes
 CRDs and policies to its context, so it refuses all but a `kind-*` one.
+`make ignition-check` validates every host's Ignition configs, since a
+template error otherwise surfaces as a node that does not install.
 
 `--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
 fails the build, deliberately. On a pull request, the `argo-diff-preview`
@@ -55,6 +58,7 @@ another).
 | `setup` | Creates the virtualenv with every tool | [Setup](#setup) |
 | `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](../quickstart.md#setup) |
 | `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](../quickstart.md#setup), [Ansible](../architecture/ansible.md#playbooks) |
+| `ignition-check` | Renders and validates every host's Ignition and kubeadm configs with throwaway credentials | [Checks](#checks) |
 | `artifacts` | `download` then `config` | [Quickstart](../quickstart.md#setup) |
 | `serve` | Runs the TFTP and HTTP boot server | [Boot server](../architecture/boot-process.md#boot-server) |
 | `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](../operations/nodes.md#rebuilding-or-repartitioning-a-node) |

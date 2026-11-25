@@ -339,6 +339,19 @@
       "autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
     },
     {
+      "description": "The Butane and ignition-validate images scripts/ignition-check.sh runs, written as full references so the digest is pinned beside the tag.",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^scripts/ignition-check\\.sh$/"
+      ],
+      "matchStrings": [
+        "(?<depName>quay\\.io/coreos/[a-z-]+):(?<currentValue>v[0-9.]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker",
+      "autoReplaceStringTemplate": "{{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
+    },
+    {
       "description": "Trivy version installed by setup-trivy. The github-actions manager tracks the action's SHA, not its `version:` input.",
       "customType": "regex",
       "managerFilePatterns": [
