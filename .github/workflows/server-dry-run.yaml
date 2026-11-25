@@ -1,6 +1,7 @@
 ---
 # Sends every rendered object to a kind cluster at the nodes' Kubernetes
-# minor, so a refusal fails the pull request instead of the sync. See
+# minor, so a refusal fails the pull request instead of the sync, and checks
+# the render against the documented conventions. See
 # docs/development/maintenance.md
 name: Server Dry Run
 permissions:
@@ -13,6 +14,7 @@ permissions:
       - "ansible/inventory.yaml"
       - "scripts/render-charts.py"
       - "scripts/server-dry-run.py"
+      - "tests/test_conventions.py"
       - ".github/workflows/server-dry-run.yaml"
   workflow_dispatch:
 
@@ -67,7 +69,15 @@ jobs:
           docker cp dry-run-control-plane:/usr/bin/kubectl "$RUNNER_TEMP/bin/kubectl"
 
       - name: Render
+        id: render
         run: uv run --locked --no-dev python scripts/render-charts.py --out "$RUNNER_TEMP/rendered"
 
+      - name: Conventions
+        run: uv run --locked pytest -q tests/test_conventions.py
+        env:
+          RENDERED_DIR: ${{ runner.temp }}/rendered
+
+      # Both report, whichever fails first.
       - name: Dry run
+        if: ${{ !cancelled() && steps.render.outcome == 'success' }}
         run: uv run --locked --no-dev python scripts/server-dry-run.py "$RUNNER_TEMP/rendered"

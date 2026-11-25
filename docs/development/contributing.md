@@ -28,14 +28,14 @@ uv run yamllint --strict -f github .
 uv run zensical build --clean --strict        # docs site
 markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only
-uv run pytest -q                              # python only
-cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/render-charts.py --out output/rendered   # payload only
+uv run pytest -q                              # python, payload conventions
+cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 ```
 
-The render writes what Argo CD will apply; the dry run writes CRDs and
-policies to its context, so it refuses anything but a throwaway `kind-*` one.
+`pytest` holds the render to the documented conventions; the dry run writes
+CRDs and policies to its context, so it refuses all but a `kind-*` one.
 
 `--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
 fails the build, deliberately. On a pull request, the `argo-diff-preview`
