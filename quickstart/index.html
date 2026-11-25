@@ -2871,7 +2871,7 @@ you know what to re-run after an edit:</p>
 <tbody>
 <tr>
 <td><code>boot_server_ip</code></td>
-<td><strong>Most commonly missed.</strong> Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run <code>make serve</code>, nodes load the bootloader and then hang.</td>
+<td><strong>Most commonly missed.</strong> Baked into the PXE menu as the URL for the kernel, initrd and Ignition config; a wrong one hangs nodes after the bootloader.</td>
 <td><code>make config</code>, <code>make serve</code></td>
 </tr>
 <tr>
@@ -2905,6 +2905,11 @@ you know what to re-run after an edit:</p>
 <td><code>make config</code></td>
 </tr>
 <tr>
+<td><code>encryption_keys</code></td>
+<td>The etcd encryption keys, first one encrypting; changed only to <a href="../operations/encryption-key-rotation/">rotate</a></td>
+<td><code>make config</code>, <code>make reprovision</code></td>
+</tr>
+<tr>
 <td><code>router_ip</code>, <code>router_asn</code>, <code>cluster_asn</code></td>
 <td>The eBGP peer the Gateway addresses are announced to; rendered into <code>output/router/frr-bgp.conf</code> for the router, and <code>payload/platform/cilium/bgp.yaml</code> must say the same; see <a href="../platform/cilium/#configuration">Cilium</a></td>
 <td><code>make config</code></td>
@@ -2936,7 +2941,7 @@ you know what to re-run after an edit:</p>
 </tr>
 <tr>
 <td><code>ansible_user</code>, <code>ansible_ssh_common_args</code> (<code>k8s_nodes</code> group)</td>
-<td>How the playbooks reach a running node for the kubeconfig and the join-credential renewal</td>
+<td>How the playbooks reach a running node</td>
 <td><code>make kubeconfig</code>, <code>make config</code></td>
 </tr>
 </tbody>

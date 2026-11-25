@@ -192,20 +192,21 @@ The deployment host (the machine running Ansible and the boot server) must be on
 
    | Variable | Why it matters | Read by |
    | --- | --- | --- |
-   | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. | `make config`, `make serve` |
+   | `boot_server_ip` | **Most commonly missed.** Baked into the PXE menu as the URL for the kernel, initrd and Ignition config; a wrong one hangs nodes after the bootloader. | `make config`, `make serve` |
    | `mac_address` (per host) | Selects which generated PXE menu a node picks up | `make config`, `make reinstall`, `make serve` |
    | `ansible_host` (per host) | The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs | `make config`, `make reinstall` |
    | `install_disk` | Target disk for the Flatcar install, overridable per host for a node whose disk sits elsewhere. **Wiped completely** — partitions, GPT and a device-level discard — before the install | `make config` |
    | `control_plane_vip`, `control_plane_vip_interface` | The API endpoint kubeadm bakes into every certificate and kubeconfig, and the NIC kube-vip advertises it on; see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>) | `make config`; the VIP also `make kubeconfig`, `make reinstall` |
    | `control_plane_endpoint_host` | The name or address nodes join through; a name only on a fresh build, see [Endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) | `make config`, `make kubeconfig`, `make reinstall` |
    | `pod_subnet`, `service_subnet` | kubeadm's cluster networks; change only on a collision with your LAN | `make config` |
+   | `encryption_keys` | The etcd encryption keys, first one encrypting; changed only to [rotate](<https://homelab.wlkr.ch/operations/encryption-key-rotation/index.md>) | `make config`, `make reprovision` |
    | `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer the Gateway addresses are announced to; rendered into `output/router/frr-bgp.conf` for the router, and `payload/platform/cilium/bgp.yaml` must say the same; see [Cilium](<https://homelab.wlkr.ch/platform/cilium/index.md#configuration>) | `make config` |
    | `flatcar_channel`, `flatcar_version`, `syslinux_version` | The OS image and bootloader to fetch; `flatcar_version` also names the image the installer writes | `make download`; `flatcar_version` also `make config` |
    | `kubernetes_version`, `kubernetes_sha256` | The sysext image to fetch and the checksum `make download` verifies it against, so both move together; the version is also what kubeadm and sysupdate are rendered with | `make download`, `make config` |
    | `kube_vip_version` | The bootstrap static pod only; the running image is pinned in `payload/platform/kube-vip/`; see [Inventory](<https://homelab.wlkr.ch/architecture/ansible/index.md#inventory>) | `make config` |
    | `bootstrap_cluster` (`control_plane` group) | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](<https://homelab.wlkr.ch/architecture/ansible/index.md#inventory>) | `make config`, `make reinstall` |
    | `control_plane` / `workers` membership | Decides the node role, and with it the partition layout and the kubeadm command | `make config` |
-   | `ansible_user`, `ansible_ssh_common_args` (`k8s_nodes` group) | How the playbooks reach a running node for the kubeconfig and the join-credential renewal | `make kubeconfig`, `make config` |
+   | `ansible_user`, `ansible_ssh_common_args` (`k8s_nodes` group) | How the playbooks reach a running node | `make kubeconfig`, `make config` |
 3. **Initialize Environment**: Creates the `uv` virtual environment and installs dependencies:
 
    ```bash
@@ -626,7 +627,7 @@ Ansible never edits a node's files: it renders Ignition configs on the deploymen
 
 | Playbook | Does |
 | --- | --- |
-| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption key and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable kubeadm config copy into `output/tmp/` |
+| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption keys and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable kubeadm config copy into `output/tmp/` |
 | `download.yaml` | Fetches the Flatcar kernel, initrd and OS image, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext; and the syslinux files, checked against `sha256sums.asc`. The signing keys are trusted through fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) is not the one the cluster publishes. `make config` keeps each menu's `DEFAULT`, so an armed node stays armed. See [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
 | `reprovision.yaml` | Stages `flatcar-reset` with the node's reprovision config and sets Kured's sentinel; `make reprovision LIMIT=<host>`. See [Reprovisioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>) |
@@ -1194,7 +1195,7 @@ The API server encrypts `secrets` with `secretbox` before they reach etcd (`ansi
 | Property | Detail |
 | --- | --- |
 | Provider | `secretbox`, with `identity` listed after it |
-| Key | Generated once by `make config` into `output/credentials/encryption_key` and base64-encoded into the config as the `secretbox` key |
+| Key | Generated by `make config` into `output/credentials/` for each name in `encryption_keys`, base64-encoded into the config as `secretbox` keys |
 | Scope | `secrets` only; ConfigMaps and other resources are unencrypted |
 | Distribution | The same key on every control-plane node, written by Ignition to `/etc/kubernetes/enc/encryption-config.yaml` (mode `0600`) |
 
@@ -1204,7 +1205,7 @@ With `identity` last, new writes are encrypted and Secrets written before it was
 kubectl get secrets -A -o json | kubectl replace -f -
 ```
 
-The key lives in `output/credentials/` beside the kubeadm token and certificate key — that directory is what decrypts etcd. The API servers reload the file on change (`encryption-provider-config-automatic-reload`), so rotating it is a file edit and a rewrite of every Secret, by hand — see [Encryption Key Rotation](<https://homelab.wlkr.ch/operations/encryption-key-rotation/index.md>). A KMS provider would remove the key file, at the cost of a dependency the cluster must reach before it can serve Secrets.
+The key lives in `output/credentials/` beside the kubeadm token and certificate key — that directory is what decrypts etcd. Rotating it is three inventory changes and a rewrite of every Secret — see [Encryption Key Rotation](<https://homelab.wlkr.ch/operations/encryption-key-rotation/index.md>). A KMS provider would remove the key file, at the cost of a dependency the cluster must reach before it can serve Secrets.
 
 ## Runtime
 
@@ -5117,78 +5118,45 @@ Test failover once: have Kured reboot the leader per [Rebooting a node](<https:/
 
 # Encryption Key Rotation
 
-The API servers reload `/etc/kubernetes/enc/encryption-config.yaml` whenever it changes (`encryption-provider-config-automatic-reload` in `ansible/templates/kubeadm.yaml.j2`), so a rotation is a file edit on each control plane and one rewrite of every Secret; what the key protects and how it is generated is in [Encryption at rest](<https://homelab.wlkr.ch/architecture/security/index.md#encryption-at-rest>).
+`encryption_keys` in `ansible/inventory.yaml` lists the keys the control planes get: the first encrypts, every one decrypts, and a Secret's ciphertext names the key it was written with. A rotation is three versions of that list, each [reprovisioned](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>) onto every control plane; `make reprovision` refuses a list that drops a key one of them still encrypts with, or puts first a key one cannot decrypt yet. What the key protects is in [Encryption at rest](<https://homelab.wlkr.ch/architecture/security/index.md#encryption-at-rest>).
 
-The first key in the list encrypts, every key in the list decrypts, and a Secret's ciphertext names the key it was written with. Two things follow: the new key goes in *above* the old one, and the cluster has to end up with the new key under the name the Butane template renders (`key1` in `ansible/templates/butane_node_config.yaml.j2`), because a control plane provisioned later gets exactly that file and can read nothing written under another name. That is why the Secrets are rewritten twice.
-
-Reading or writing the file from a shell fires `TetragonSensitiveFileAccess`; that is the alert doing its job, not a problem to fix.
+`make config` creates a key's file the first time its name appears: `output/credentials/encryption_key` for `key1`, `encryption_key_<name>` for any other. Reading the rendered config from a shell fires `TetragonSensitiveFileAccess`; that is the alert doing its job.
 
 ## Runbook
 
-1. Generate the new key beside the old one, in the shape `config.yaml`'s `password` lookup produces: 32 letters and digits, stored in plain text, and base64-encoded where it goes into the config.
+Each step is one commit to `encryption_keys`, then the reprovision. Kured reboots the control planes one at a time; the step is done when all three are `Ready` and `current` in `make node-drift LIMIT=control_plane`.
 
-   ```bash
-   LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 > output/credentials/encryption_key.new
-   base64 < output/credentials/encryption_key.new    # the secret for key2 below
-   ```
-2. On every control plane, add the new key as `key2` **above** `key1` in `/etc/kubernetes/enc/encryption-config.yaml`; the rest of the file stays as it is.
+1. Add the new key second, so every API server can read it before any writes it.
 
    ```yaml
-   providers:
-     - secretbox:
-         keys:
-           - name: key2
-             secret: <new key, base64>
-           - name: key1
-             secret: <old key, base64>
-     - identity: {}
+   encryption_keys: [key1, key2]
    ```
-3. Wait for every API server to reload. Each reloads its own file, so ask each one by its `ansible_host` rather than through the VIP; a `status="failure"` count means the file did not parse and the old config is still in effect.
 
    ```bash
-   kubectl get --raw /metrics --server https://<control-plane address>:6443 | grep apiserver_encryption_config_controller_automatic_reloads_total
+   make reprovision LIMIT=control_plane
    ```
-4. Rewrite every Secret so it is encrypted with `key2`. A conflict on a Secret something updated mid-stream is harmless: run it again.
+2. Move it first, and reprovision the same way.
+
+   ```yaml
+   encryption_keys: [key2, key1]
+   ```
+3. Rewrite every Secret so it is encrypted with `key2`. A conflict on a Secret something updated mid-stream is harmless: run it again.
 
    ```bash
    kubectl get secrets -A -o json | kubectl replace -f -
    ```
-5. On every control plane, replace `key1`'s secret with the new key and move it back above `key2`; both entries now hold the new key. Wait for the reload as in step 3.
+4. Drop the old key, and reprovision the same way.
 
    ```yaml
-   keys:
-     - name: key1
-       secret: <new key, base64>
-     - name: key2
-       secret: <new key, base64>
+   encryption_keys: [key2]
    ```
-6. Rewrite every Secret again, so every ciphertext names `key1`.
-
-   ```bash
-   kubectl get secrets -A -o json | kubectl replace -f -
-   ```
-7. On every control plane, remove `key2`. The file now matches what Ignition writes for a new control plane, and nothing on any node holds the old key.
-
-   ```yaml
-   keys:
-     - name: key1
-       secret: <new key, base64>
-   ```
-8. Make the new key the one `make config` renders, and verify that the Butane config of every control plane carries it as `key1`; `config.yaml` reads the file back instead of generating a new value, so nothing else changes. The Ignition JSON cannot be grepped, since Butane gzips file contents, so the check reads the Butane YAML it was transpiled from in `output/tmp/`.
-
-   ```bash
-   mv output/credentials/encryption_key.new output/credentials/encryption_key
-   make config && grep -c "$(tr -d '\n' < output/credentials/encryption_key | base64)" output/tmp/butane/butane-*.yaml
-   ```
-
-   One match per control plane, none per worker or installer config.
-9. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/index.md#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key1:`.
+5. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/index.md#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key2:`.
 
    ```bash
    kubectl -n kube-system exec etcd-<node> -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get /registry/secrets/kube-system/ --prefix --limit 1 | head -c 120
    ```
 
-Store the new key with the rest of `output/credentials/` wherever the old one is kept, and keep the old one next to the etcd snapshots taken before the rotation: those restore only with the key they were written under.
+Keep the old key's file next to the etcd snapshots taken before the rotation: those restore only with the key they were written under.
 
 # Host Firewall Inventory 2026-10-30
 

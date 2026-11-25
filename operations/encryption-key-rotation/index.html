@@ -8,7 +8,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Rotating the key that encrypts Secrets in etcd, without restarting an API server.">
+        <meta name="description" content="Rotating the key that encrypts Secrets in etcd, one inventory change and one control-plane reprovision per stage.">
       
       
       
@@ -2581,49 +2581,33 @@
 
 
 <h1 id="encryption-key-rotation">Encryption Key Rotation<a class="headerlink" href="#encryption-key-rotation" title="Permanent link">&para;</a></h1>
-<p>The API servers reload <code>/etc/kubernetes/enc/encryption-config.yaml</code> whenever
-it changes (<code>encryption-provider-config-automatic-reload</code> in
-<code>ansible/templates/kubeadm.yaml.j2</code>), so a rotation is a file edit on each
-control plane and one rewrite of every Secret; what the key protects and how it
-is generated is in <a href="../../architecture/security/#encryption-at-rest">Encryption at rest</a>.</p>
-<p>The first key in the list encrypts, every key in the list decrypts, and a
-Secret's ciphertext names the key it was written with. Two things follow: the
-new key goes in <em>above</em> the old one, and the cluster has to end up with the new
-key under the name the Butane template renders (<code>key1</code> in
-<code>ansible/templates/butane_node_config.yaml.j2</code>), because a control plane
-provisioned later gets exactly that file and can read nothing written under
-another name. That is why the Secrets are rewritten twice.</p>
-<p>Reading or writing the file from a shell fires <code>TetragonSensitiveFileAccess</code>;
-that is the alert doing its job, not a problem to fix.</p>
+<p><code>encryption_keys</code> in <code>ansible/inventory.yaml</code> lists the keys the control
+planes get: the first encrypts, every one decrypts, and a Secret's ciphertext
+names the key it was written with. A rotation is three versions of that list,
+each <a href="../nodes/#reprovisioning-a-node">reprovisioned</a> onto every control plane;
+<code>make reprovision</code> refuses a list that drops a key one of them still encrypts
+with, or puts first a key one cannot decrypt yet. What the key protects is in
+<a href="../../architecture/security/#encryption-at-rest">Encryption at rest</a>.</p>
+<p><code>make config</code> creates a key's file the first time its name appears:
+<code>output/credentials/encryption_key</code> for <code>key1</code>, <code>encryption_key_&lt;name&gt;</code> for
+any other. Reading the rendered config from a shell fires
+<code>TetragonSensitiveFileAccess</code>; that is the alert doing its job.</p>
 <h2 id="runbook">Runbook<a class="headerlink" href="#runbook" title="Permanent link">&para;</a></h2>
+<p>Each step is one commit to <code>encryption_keys</code>, then the reprovision. Kured
+reboots the control planes one at a time; the step is done when all three are
+<code>Ready</code> and <code>current</code> in <code>make node-drift LIMIT=control_plane</code>.</p>
 <ol>
 <li>
-<p>Generate the new key beside the old one, in the shape <code>config.yaml</code>'s
-   <code>password</code> lookup produces: 32 letters and digits, stored in plain text, and
-   base64-encoded where it goes into the config.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">LC_ALL</span><span class="o">=</span>C<span class="w"> </span>tr<span class="w"> </span>-dc<span class="w"> </span><span class="s1">'A-Za-z0-9'</span><span class="w"> </span>&lt;/dev/urandom<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">32</span><span class="w"> </span>&gt;<span class="w"> </span>output/credentials/encryption_key.new
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>base64<span class="w"> </span>&lt;<span class="w"> </span>output/credentials/encryption_key.new<span class="w">    </span><span class="c1"># the secret for key2 below</span>
+<p>Add the new key second, so every API server can read it before any writes
+   it.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">encryption_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">key1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">key2</span><span class="p p-Indicator">]</span>
+</span></code></pre></div>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>reprovision<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>control_plane
 </span></code></pre></div>
 </li>
 <li>
-<p>On every control plane, add the new key as <code>key2</code> <strong>above</strong> <code>key1</code> in
-   <code>/etc/kubernetes/enc/encryption-config.yaml</code>; the rest of the file stays as
-   it is.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">providers</span><span class="p">:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">secretbox</span><span class="p">:</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">      </span><span class="nt">keys</span><span class="p">:</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key2</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">          </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;new key, base64&gt;</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">          </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;old key, base64&gt;</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">identity</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>Wait for every API server to reload. Each reloads its own file, so ask each
-   one by its <code>ansible_host</code> rather than through the VIP; a <code>status="failure"</code>
-   count means the file did not parse and the old config is still in effect.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>--raw<span class="w"> </span>/metrics<span class="w"> </span>--server<span class="w"> </span>https://&lt;control-plane<span class="w"> </span>address&gt;:6443<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>apiserver_encryption_config_controller_automatic_reloads_total
+<p>Move it first, and reprovision the same way.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">encryption_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">key2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">key1</span><span class="p p-Indicator">]</span>
 </span></code></pre></div>
 </li>
 <li>
@@ -2633,51 +2617,20 @@ that is the alert doing its job, not a problem to fix.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>On every control plane, replace <code>key1</code>'s secret with the new key and move
-   it back above <code>key2</code>; both entries now hold the new key. Wait for the reload
-   as in step 3.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">keys</span><span class="p">:</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;new key, base64&gt;</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key2</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;new key, base64&gt;</span>
+<p>Drop the old key, and reprovision the same way.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">encryption_keys</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">key2</span><span class="p p-Indicator">]</span>
 </span></code></pre></div>
-</li>
-<li>
-<p>Rewrite every Secret again, so every ciphertext names <code>key1</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>secrets<span class="w"> </span>-A<span class="w"> </span>-o<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>kubectl<span class="w"> </span>replace<span class="w"> </span>-f<span class="w"> </span>-
-</span></code></pre></div>
-</li>
-<li>
-<p>On every control plane, remove <code>key2</code>. The file now matches what Ignition
-   writes for a new control plane, and nothing on any node holds the old key.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">keys</span><span class="p">:</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">key1</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;new key, base64&gt;</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>Make the new key the one <code>make config</code> renders, and verify that the Butane
-   config of every control plane carries it as <code>key1</code>; <code>config.yaml</code> reads
-   the file back instead of generating a new value, so nothing else changes.
-   The Ignition JSON cannot be grepped, since Butane gzips file contents, so
-   the check reads the Butane YAML it was transpiled from in <code>output/tmp/</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mv<span class="w"> </span>output/credentials/encryption_key.new<span class="w"> </span>output/credentials/encryption_key
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>make<span class="w"> </span>config<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span><span class="k">$(</span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span>&lt;<span class="w"> </span>output/credentials/encryption_key<span class="w"> </span><span class="p">|</span><span class="w"> </span>base64<span class="k">)</span><span class="s2">"</span><span class="w"> </span>output/tmp/butane/butane-*.yaml
-</span></code></pre></div>
-<p>One match per control plane, none per worker or installer config.</p>
 </li>
 <li>
 <p>Confirm against etcd that a Secret's ciphertext names the new key, with the
    same <code>etcdctl</code> flags as <a href="../backups/#taking-one-by-hand">Taking one by hand</a>;
-   the value starts with <code>k8s:enc:secretbox:v1:key1:</code>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span>get<span class="w"> </span>/registry/secrets/kube-system/<span class="w"> </span>--prefix<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">120</span>
+   the value starts with <code>k8s:enc:secretbox:v1:key2:</code>.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span>get<span class="w"> </span>/registry/secrets/kube-system/<span class="w"> </span>--prefix<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">120</span>
 </span></code></pre></div>
 </li>
 </ol>
-<p>Store the new key with the rest of <code>output/credentials/</code> wherever the old one
-is kept, and keep the old one next to the etcd snapshots taken before the
-rotation: those restore only with the key they were written under.</p>
+<p>Keep the old key's file next to the etcd snapshots taken before the rotation:
+those restore only with the key they were written under.</p>
 
 
 
