@@ -1,4 +1,4 @@
-.PHONY: setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: help setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -12,66 +12,75 @@ ARGOCD_VERSION      := $(call chart_version,payload/argocd/application.yaml)
 GATEWAY_API_VERSION := $(shell awk '/repoURL:.*gateway-api/{f=1} f&&/targetRevision:/{print $$2; exit}' payload/platform/gateway-api-crds/application.yaml)
 GATEWAY_API_SHA256  := $(shell awk '/standard-install.yaml sha256:/{sub(/.*sha256:/,""); print; exit}' payload/platform/gateway-api-crds/application.yaml)
 
+.DEFAULT_GOAL := help
+
 require = @test -n "$($(1))" || { echo "ERROR: $(1) is empty -- could not read a version from $(2)"; exit 1; }
 
-setup:
+help: ## Show this list
+	@awk 'BEGIN{FS=":.*## "} /^##@ /{printf "\n%s\n", substr($$0,5)} /^[a-z0-9-]+:.*## /{printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+##@ Artifacts and boot server
+setup: ## Create the Python virtual environment
 	uv sync
 	@echo "Virtual environment created."
 
-artifacts: download config
+artifacts: download config ## Run download and config
 
-download:
+download: ## Download the Flatcar image, kernel, initrd and sysexts
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/download.yaml
 
-config:
+config: ## Render Ignition, PXE menus and credentials into output/
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/config.yaml
 
-ignition-check:
+ignition-check: ## Validate every host's Ignition and kubeadm configs
 	scripts/ignition-check.sh
 
-serve:
+serve: ## Run the PXE boot server
 	.venv/bin/boot-server
 
-kubeconfig:
+##@ Cluster access
+kubeconfig: ## Fetch the admin kubeconfig to output/kubeconfig
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kubeconfig.yaml
 	@echo "Kubeconfig saved to output/kubeconfig"
 
-check-context:
+check-context: ## Show which kubeconfig and context make uses
 	@test -f "$(KUBECONFIG)" || { echo "ERROR: $(KUBECONFIG) not found -- run make kubeconfig first, or pass KUBECONFIG=<file>"; exit 1; }
 	@echo "Using context $$(kubectl config current-context) from $(KUBECONFIG)"
 
-untaint: check-context
+untaint: check-context ## Allow workloads on control planes (single-node only)
 	@echo "WARNING: Only run this task in a single node cluster setup!"
 	kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 # --overwrite: without it this fails on any node that is already tainted, so
 # re-tainting a partly untainted cluster takes two tries and a reading of the
 # error message.
-taint: check-context
+taint: check-context ## Re-apply the control-plane taints
 	@echo "Re-applying control-plane taints..."
 	kubectl taint nodes --overwrite \
 		-l node-role.kubernetes.io/control-plane \
 		node-role.kubernetes.io/control-plane:NoSchedule
 
-fonts:
+##@ Docs assets
+fonts: ## Update the vendored docs fonts
 	scripts/update-fonts.sh
 
-fonts-check:
+fonts-check: ## Check the vendored docs fonts are current
 	scripts/update-fonts.sh --check
 
-mermaid:
+mermaid: ## Update the vendored mermaid.js
 	scripts/update-mermaid.sh
 
-mermaid-check:
+mermaid-check: ## Check the vendored mermaid.js is current
 	scripts/update-mermaid.sh --check
 
+##@ Bootstrap
 # Everything ArgoCD needs to run, and nothing it can install itself.
-bootstrap: install-cilium install-argo bootstrap-apps
+bootstrap: install-cilium install-argo bootstrap-apps ## Install Cilium and ArgoCD and hand over to ArgoCD
 
 # ServiceMonitors off: their CRDs arrive with the prometheus-operator-crds
 # Application, and ArgoCD adds the monitors when it adopts the release. The
 # flags leave cilium-config untouched.
-install-cilium: check-context
+install-cilium: check-context ## Install the Gateway API CRDs and Cilium
 	$(call require,GATEWAY_API_VERSION,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,GATEWAY_API_SHA256,payload/platform/gateway-api-crds/application.yaml)
 	$(call require,CILIUM_VERSION,payload/platform/cilium/application.yaml)
@@ -91,7 +100,7 @@ install-cilium: check-context
 	@echo "Waiting for Cilium to be ready..."
 	kubectl -n kube-system rollout status ds/cilium
 
-install-argo: check-context
+install-argo: check-context ## Install ArgoCD
 	$(call require,ARGOCD_VERSION,payload/argocd/application.yaml)
 	helm upgrade --install argocd argo-cd \
 		--repo https://argoproj.github.io/argo-helm \
@@ -103,7 +112,7 @@ install-argo: check-context
 
 # The AppProjects go first: an Application naming a project that does not
 # exist is rejected, and the argocd Application names one.
-bootstrap-apps: check-context
+bootstrap-apps: check-context ## Apply the AppProjects and the argocd Application
 	@echo "Handing the cluster over to ArgoCD..."
 	kubectl apply -f payload/platform/argocd-projects/projects.yaml
 	kubectl apply -f payload/argocd/application.yaml
@@ -111,34 +120,36 @@ bootstrap-apps: check-context
 	@echo "ArgoCD now syncs the platform ApplicationSet and everything under it."
 	@echo "Every ExternalSecret stays Degraded until make bao-init and make bao-unseal run."
 
-storage-check: check-context
+storage-check: check-context ## Provision a test PVC on Ceph and clean it up
 	scripts/storage-check.sh
 
-bao-init: check-context
+##@ OpenBao
+bao-init: check-context ## Initialise OpenBao and save the unseal keys
 	scripts/bao-init.sh
 
-bao-unseal: check-context
+bao-unseal: check-context ## Unseal every OpenBao pod
 	scripts/bao-unseal.sh
 
-bao-policies: check-context
+bao-policies: check-context ## Apply the OpenBao policies and auth roles
 	scripts/bao-policies.sh
 
-bao-secrets: check-context
+bao-secrets: check-context ## Write the typed secrets into OpenBao
 	scripts/bao-secrets.sh
 
 # Once, on a cluster initialised before bao-init revoked its root token.
-bao-rotate-root: check-context
+bao-rotate-root: check-context ## Replace an old bao-init's root token with the operator login
 	scripts/bao-rotate-root.sh
 
 # make claude-session-pat SESSION=homelab [DELETE=1]
-claude-session-pat: check-context
+claude-session-pat: check-context ## Store or delete a session's GitHub PAT (SESSION=, DELETE=1)
 	@test -n "$(SESSION)" || { echo "usage: make claude-session-pat SESSION=<session> [DELETE=1]"; exit 2; }
 	scripts/claude-session-pat.sh $(if $(DELETE),--delete) $(SESSION)
 
+##@ Nodes
 # Without LIMIT this arms every node, and the firmware boots network-first: a
 # power cut after that reinstalls all three control planes and every Ceph OSD.
 # make clean asks before deleting the credentials; this asks before that.
-reinstall:
+reinstall: ## Arm nodes to reinstall on next network boot (LIMIT=)
 	@if [ -z "$(LIMIT)" ]; then \
 	  printf '%s\n' \
 	    '' \
@@ -161,7 +172,7 @@ reinstall:
 	fi
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml $(if $(LIMIT),--limit "$(LIMIT)")
 
-reinstall-cancel:
+reinstall-cancel: ## Disarm a pending reinstall (LIMIT=)
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reinstall.yaml -e pxe_default=localboot $(if $(LIMIT),--limit "$(LIMIT)")
 
 # Flatcar has no Python, so only the raw module works. LIMIT=<node|group>.
@@ -172,7 +183,7 @@ ONELINE = awk '/^[a-z0-9-]+ \| [A-Z]+/{h=""; if ($$3=="CHANGED") h=$$1; else pri
 
 # Sets the Kured sentinel everywhere; Kured's lock and alert gate decide the
 # order, one node at a time. See docs/platform/kured.md
-reboot-all:
+reboot-all: ## Ask Kured to reboot nodes one at a time (LIMIT=)
 	@if [ -z "$(LIMIT)" ]; then \
 	  printf '%s\n' \
 	    '' \
@@ -192,13 +203,14 @@ reboot-all:
 	fi
 	@$(NODES) -a 'sudo touch /run/reboot-required && echo sentinel set' | $(ONELINE)
 
-uptime:
+uptime: ## Show each node's uptime (LIMIT=)
 	@$(NODES) -a 'uptime' | $(ONELINE)
 
-os-release:
+os-release: ## Show each node's Flatcar and kernel version (LIMIT=)
 	@$(NODES) -a '. /etc/os-release; echo "$$PRETTY_NAME, kernel $$(uname -r)"' | $(ONELINE)
 
-clean:
+##@ Cleanup
+clean: ## Delete everything under output/, credentials included
 	@printf '%s\n' \
 	  '' \
 	  '  make clean deletes everything under output/, including credentials that' \
@@ -237,6 +249,6 @@ clean:
 	  *) echo "  cancelled -- nothing deleted.";; \
 	esac
 
-clean-artifacts:
+clean-artifacts: ## Delete the regenerable output/, keep credentials
 	rm -rf output/http output/tftp output/tmp output/router
 	@echo "Downloaded and generated artifacts removed. output/credentials/ kept."
