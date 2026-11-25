@@ -2791,53 +2791,37 @@ by a person, RBAC writes, 403 bursts and anonymous requests also fire alerts
 from Loki's ruler, defined in <code>payload/platform/logging/loki-rules.yaml</code>; see
 <a href="../../platform/logging/#alerting">Logging</a>.</p>
 <h2 id="applying-it-to-a-running-cluster">Applying it to a running cluster<a class="headerlink" href="#applying-it-to-a-running-cluster" title="Permanent link">&para;</a></h2>
-<p>Changing the templates changes what a <strong>newly provisioned</strong> node gets. A
-running control-plane node keeps the <code>kube-apiserver.yaml</code> static pod manifest
-kubeadm rendered at init time, and nothing rewrites it on its own.</p>
+<p>The policy file reaches a running control plane by
+<a href="../../operations/nodes/#reprovisioning-a-node">reprovision</a>. The
+<code>kube-apiserver.yaml</code> manifest is kubeadm's, which the reprovision keeps, so a
+changed flag is re-rendered by hand, one node at a time.</p>
 <div class="admonition danger">
 <p class="admonition-title">Get the policy file there before you re-render the manifest</p>
-<p>An API server started with <code>--audit-policy-file</code> pointing at a missing file does not start. Step 3 before step 4, one node at a time, confirming the API server comes back before moving on.</p>
+<p>An API server started with <code>--audit-policy-file</code> pointing at a missing file does not start. Step 1 before step 2, confirming the API server comes back before the next node.</p>
 </div>
 <ol>
 <li>
-<p>Regenerate the Ignition configs so a rebuild gets this too:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>config
+<p>Reprovision the node; Ignition writes the policy and its directories.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>reprovision<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;
 </span></code></pre></div>
 </li>
 <li>
-<p>Create the directories on the node:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/kubernetes/audit<span class="w"> </span>/var/log/kubernetes/audit
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">0700</span><span class="w"> </span>/etc/kubernetes/audit<span class="w"> </span>/var/log/kubernetes/audit
-</span></code></pre></div>
-</li>
-<li>
-<p>Place the policy file. It is inline in the Butane template, so take it
-   from the rendered copy:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>yq<span class="w"> </span><span class="s1">'.storage.files[] | select(.path == "/etc/kubernetes/audit/policy.yaml") | .contents.inline'</span><span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>output/tmp/butane/butane-&lt;node&gt;.yaml<span class="w"> </span>&gt;<span class="w"> </span>/tmp/policy.yaml
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>scp<span class="w"> </span>/tmp/policy.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/policy.yaml
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/policy.yaml<span class="w"> </span>/etc/kubernetes/audit/policy.yaml
-</span></code></pre></div>
-</li>
-<li>
-<p>Place the regenerated kubeadm config on the node and re-render the API
-   server static pod from it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>scp<span class="w"> </span>output/tmp/kubeadm/kubeadm-config-&lt;node&gt;.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/kubeadm-config.yaml
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/tmp/kubeadm-config.yaml<span class="w"> </span>/opt/kubeadm-config.yaml
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>init<span class="w"> </span>phase<span class="w"> </span>control-plane<span class="w"> </span>apiserver<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--config<span class="w"> </span>/opt/kubeadm-config.yaml
+<p>Re-render the API server static pod from the regenerated kubeadm config,
+   with the patches the static pods take their requests from:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>scp<span class="w"> </span>output/tmp/kubeadm/kubeadm-config-&lt;node&gt;.yaml<span class="w"> </span>core@&lt;node&gt;:/tmp/kubeadm-config.yaml
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'sudo kubeadm init phase control-plane apiserver --config /tmp/kubeadm-config.yaml --patches /etc/kubernetes/patches; rm /tmp/kubeadm-config.yaml'</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>Watch the kubelet restart the static pod:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>kube-apiserver-&lt;node&gt;<span class="w"> </span>-w
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>kube-apiserver-&lt;node&gt;<span class="w"> </span>-w
 </span></code></pre></div>
 </li>
 <li>
 <p>Update the <code>kubeadm-config</code> ConfigMap in <code>kube-system</code> so the flags survive
    the next <code>kubeadm upgrade</code> or control-plane join — kubeadm reads the
    ConfigMap on those paths, not <code>/opt/kubeadm-config.yaml</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>edit<span class="w"> </span>configmap<span class="w"> </span>kubeadm-config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span>edit<span class="w"> </span>configmap<span class="w"> </span>kubeadm-config
 </span></code></pre></div>
 </li>
 </ol>
