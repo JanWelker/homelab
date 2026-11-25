@@ -33,6 +33,8 @@ uv run pytest -q                              # python, payload conventions
 cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 make ignition-check                           # ansible only, not in pre-commit
+shellcheck -x --severity=warning scripts/*.sh scripts/lib/*.sh   # shell only
+actionlint && uvx zizmor .github/workflows   # workflows only
 ```
 
 `pytest` holds the render to the documented conventions; the dry run writes

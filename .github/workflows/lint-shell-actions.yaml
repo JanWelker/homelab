@@ -1,0 +1,71 @@
+---
+# shellcheck, actionlint and zizmor, each the same version as its pre-commit
+# hook; renovate.json bumps both.
+name: Lint Shell and Actions
+permissions:
+  contents: read
+
+"on":
+  push:
+    branches:
+      - "main"
+    paths:
+      - "**/*.sh"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "**/*.sh"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # The alpine variant, because the plain image has no shell to expand a
+      # file list; the checkout holds only tracked files. -x follows the
+      # `source` of scripts/lib/bao.sh.
+      - name: Run shellcheck
+        uses: docker://koalaman/shellcheck-alpine:v0.11.0@sha256:9955be09ea7f0dbf7ae942ac1f2094355bb30d96fffba0ec09f5432207544002
+        with:
+          entrypoint: sh
+          args: -c "find . -name '*.sh' -print0 | xargs -0 shellcheck -x --severity=warning"
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+        with:
+          args: -color
+
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # The token enables the audits that ask GitHub whether a pinned SHA is a
+      # real commit of the action's repository and whether it is a known-bad
+      # release.
+      - name: Run zizmor
+        uses: docker://ghcr.io/zizmorcore/zizmor:1.33.1@sha256:ecd3ffe6158de1322e05a044ed43749bee12b1dccb7e1a7859bc6ac4b2a1c516
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --format=github .github/workflows
