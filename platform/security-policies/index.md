@@ -11,7 +11,7 @@ Five cluster-wide controls: Pod Security Admission, default-deny network policy 
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | See [Health check](<#health-check>) |
 | Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Pruning the rest keeps the Application from sitting OutOfSync on leftovers |
-| Files | [`payload/platform/security/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/security>), the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](<https://homelab.wlkr.ch/platform/index.md#components>) |
+| Files | [`payload/platform/security/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/security>), the network policies one file per namespace under `network-policies/` — see [Components](<https://homelab.wlkr.ch/platform/index.md#components>) |
 
 ## Configuration
 

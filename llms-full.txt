@@ -1326,7 +1326,7 @@ Under memory pressure the kubelet evicts pods over their request first, then the
 | Class | Preempts | Who | Why |
 | --- | --- | --- | --- |
 | `system-node-critical` | yes | DaemonSets a node needs: CNI, API VIP, storage, Tetragon | The node is useless without them |
-| `system-cluster-critical` | yes | Webhooks, the certificate and secret chain, the CSR approver, Ceph and Rook | Nothing else starts without them |
+| `system-cluster-critical` | yes | CoreDNS, webhooks, certificate and secret chain, the CSR approver, Ceph and Rook | Nothing else starts without them |
 | `platform-core` | yes | OpenBao, Authentik and its database, Argo CD, Prometheus, Alertmanager | Every app loses its secrets, sign-in or deploys with them; Kured reboots only while Prometheus answers, and alerts need both |
 | none (0) | yes | The apps | — |
 | `observability` | no | Metrics, logs, backups, Kured, external-dns, the scanner and runner controllers | The largest memory users go before an app, and come back without killing one |
@@ -2219,7 +2219,7 @@ Its own `plugins` entry keeps the same `barmanObjectName` with `serverName: <db>
 | Namespace | `kube-system` |
 | Depends on | Nothing; the nodes' `/etc/resolv.conf` for upstream names (`dnsPolicy: Default`) |
 | If it is down | Every in-cluster name lookup, so nearly every workload |
-| Health check | `kubectl -n kube-system get deploy coredns` → `2/2` on two different nodes |
+| Health check | `kubectl -n kube-system get deploy coredns` → `3/3` on three different nodes |
 | Files | [`payload/platform/coredns/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/coredns>) |
 
 ## Configuration
@@ -2228,9 +2228,9 @@ Its own `plugins` entry keeps the same `barmanObjectName` with `serverName: <db>
 | --- | --- |
 | Object names, labels and the selector as kubeadm creates them | The adoption patches the live objects instead of replacing them; a changed selector would recreate the Deployment |
 | `clusterIP` of `kube-dns` | The kubelets' `clusterDNS`, the tenth address of `service_subnet` |
-| `topologySpreadConstraints`, one replica per node | A drain or node loss takes at most half the resolvers; the PodDisruptionBudget keeps one up |
-| `Delete=false` on every object | Deleting the Application must not take DNS with it |
-| Image digest, human-merged | See [Pitfalls](<#pitfalls>) |
+| Three replicas, one per node, workers preferred | A drain plus a node failure still leaves a resolver; control planes only when no worker fits |
+| `Delete=false` on every object | Deleting the Application keeps DNS |
+| Human-merged image digest | See [Pitfalls](<#pitfalls>) |
 
 ## Usage
 
@@ -2240,7 +2240,7 @@ Change the Corefile in `configmap.yaml`; the `reload` plugin picks it up within 
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=kube-dns -o wide
-kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-dns   # two ready addresses
+kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-dns   # three ready addresses
 ```
 
 ## Pitfalls
@@ -3827,7 +3827,7 @@ Five cluster-wide controls: Pod Security Admission, default-deny network policy 
 | If it is down | Nothing at the time; the labels and policies stay applied and only stop being corrected |
 | Health check | See [Health check](<#health-check>) |
 | Pruning | Enabled, except for the Namespaces: each carries `argocd.argoproj.io/sync-options: Prune=false`, because pruning a Namespace deletes everything inside it, PVCs included. Pruning the rest keeps the Application from sitting OutOfSync on leftovers |
-| Files | [`payload/platform/security/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/security>), the network policies one file per namespace under `network-policies/`, plus the CoreDNS PodDisruptionBudget — see [Components](<https://homelab.wlkr.ch/platform/index.md#components>) |
+| Files | [`payload/platform/security/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/security>), the network policies one file per namespace under `network-policies/` — see [Components](<https://homelab.wlkr.ch/platform/index.md#components>) |
 
 ## Configuration
 
