@@ -18,7 +18,7 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # everything below, plus gitleaks
+uv run pre-commit run --all-files       # everything below but the payload lines, plus gitleaks
 ```
 
 The same checks, one at a time:
@@ -30,16 +30,12 @@ markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only
 uv run pytest -q                              # python only
 cd ansible && uv run ansible-lint             # ansible only
+uv run scripts/render-charts.py --out output/rendered   # payload only
+uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 ```
 
-Before touching `payload/`, render what Helm will actually apply; the
-`kubectl` line needs a kubeconfig, since even a client-side dry run asks the
-API server for its resource types.
-
-```bash
-helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
-kubectl apply --dry-run=client -f payload/platform/<component>/
-```
+The render writes what Argo CD will apply; the dry run writes CRDs and
+policies to its context, so it refuses anything but a throwaway `kind-*` one.
 
 `--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
 fails the build, deliberately. On a pull request, the `argo-diff-preview`

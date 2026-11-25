@@ -1,0 +1,73 @@
+---
+# Sends every rendered object to a kind cluster at the nodes' Kubernetes
+# minor, so a refusal fails the pull request instead of the sync. See
+# docs/development/maintenance.md
+name: Server Dry Run
+permissions:
+  contents: read
+
+"on":
+  pull_request:
+    paths:
+      - "payload/**"
+      - "ansible/inventory.yaml"
+      - "scripts/render-charts.py"
+      - "scripts/server-dry-run.py"
+      - ".github/workflows/server-dry-run.yaml"
+  workflow_dispatch:
+
+jobs:
+  dry-run:
+    name: kubectl apply --dry-run=server
+    runs-on: ubuntu-latest
+    env:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+      KIND_VERSION: v0.33.0
+      # The minor in ansible/inventory.yaml, from the images kind publishes.
+      KIND_NODE_IMAGE: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+      # The Helm the pinned Argo CD bundles.
+      # renovate: datasource=github-releases depName=helm/helm
+      HELM_VERSION: v4.3.2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # PyYAML comes from uv.lock, hash-checked, at the version Renovate tracks.
+      - name: Install uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          version: "0.13.9"
+
+      - name: Install kind and Helm
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP/bin"
+          kind=https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64
+          curl -fsSLo kind-linux-amd64 "$kind"
+          curl -fsSL "$kind.sha256sum" | sha256sum -c
+          install -m 0755 kind-linux-amd64 kind
+          helm=helm-$HELM_VERSION-linux-amd64.tar.gz
+          curl -fsSLO "https://get.helm.sh/$helm"
+          curl -fsSL "https://get.helm.sh/$helm.sha256sum" | sha256sum -c
+          tar -xzf "$helm" --strip-components=1 linux-amd64/helm
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Start the cluster
+        run: |
+          # The API server must serve what the nodes serve: same minor.
+          nodes=$(sed -n 's/^ *kubernetes_version: *"*v\([0-9]*\.[0-9]*\).*/\1/p' ansible/inventory.yaml)
+          image=${KIND_NODE_IMAGE#*:v}; image=${image%%@*}; image=${image%.*}
+          if [ "$nodes" != "$image" ]; then
+            echo "::error::the nodes run $nodes, $KIND_NODE_IMAGE is $image"
+            exit 1
+          fi
+          kind create cluster --name dry-run --image "$KIND_NODE_IMAGE" --wait 120s
+          # kubectl at the API server's version, and the kustomize it embeds.
+          docker cp dry-run-control-plane:/usr/bin/kubectl "$RUNNER_TEMP/bin/kubectl"
+
+      - name: Render
+        run: uv run --locked --no-dev python scripts/render-charts.py --out "$RUNNER_TEMP/rendered"
+
+      - name: Dry run
+        run: uv run --locked --no-dev python scripts/server-dry-run.py "$RUNNER_TEMP/rendered"
