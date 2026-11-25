@@ -9,13 +9,6 @@ permissions:
 
 "on":
   pull_request:
-    paths:
-      - "payload/**"
-      - "ansible/inventory.yaml"
-      - "scripts/render-charts.py"
-      - "scripts/server-dry-run.py"
-      - "tests/test_conventions.py"
-      - ".github/workflows/server-dry-run.yaml"
   workflow_dispatch:
 
 jobs:
@@ -36,13 +29,28 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Changed paths
+        id: paths
+        uses: ./.github/actions/changed  # zizmor: ignore[self-repository] actionlint rejects $/
+        with:
+          paths: |
+            payload/**
+            ansible/inventory.yaml
+            scripts/render-charts.py
+            scripts/server-dry-run.py
+            tests/test_conventions.py
+            .github/workflows/server-dry-run.yaml
+            .github/actions/changed/**
+
       # PyYAML comes from uv.lock, hash-checked, at the version Renovate tracks.
       - name: Install uv
+        if: steps.paths.outputs.match == 'true'
         uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: "0.13.9"
 
       - name: Install kind and Helm
+        if: steps.paths.outputs.match == 'true'
         run: |
           mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP/bin"
           kind=https://github.com/kubernetes-sigs/kind/releases/download/$KIND_VERSION/kind-linux-amd64
@@ -56,6 +64,7 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
       - name: Start the cluster
+        if: steps.paths.outputs.match == 'true'
         run: |
           # The API server must serve what the nodes serve: same minor.
           nodes=$(sed -n 's/^ *kubernetes_version: *"*v\([0-9]*\.[0-9]*\).*/\1/p' ansible/inventory.yaml)
@@ -69,15 +78,17 @@ jobs:
           docker cp dry-run-control-plane:/usr/bin/kubectl "$RUNNER_TEMP/bin/kubectl"
 
       - name: Render
+        if: steps.paths.outputs.match == 'true'
         id: render
         run: uv run --locked --no-dev python scripts/render-charts.py --out "$RUNNER_TEMP/rendered"
 
       - name: Conventions
+        if: steps.paths.outputs.match == 'true'
         run: uv run --locked pytest -q tests/test_conventions.py
         env:
           RENDERED_DIR: ${{ runner.temp }}/rendered
 
       # Both report, whichever fails first.
       - name: Dry run
-        if: ${{ !cancelled() && steps.render.outcome == 'success' }}
+        if: steps.paths.outputs.match == 'true' && (!cancelled() && steps.render.outcome == 'success')
         run: uv run --locked --no-dev python scripts/server-dry-run.py "$RUNNER_TEMP/rendered"

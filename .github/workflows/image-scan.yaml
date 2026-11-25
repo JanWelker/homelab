@@ -8,10 +8,6 @@ permissions:
 
 "on":
   pull_request:
-    paths:
-      - "payload/**"
-      - "scripts/image-scan-diff.py"
-      - ".github/workflows/image-scan.yaml"
   workflow_dispatch:
 
 jobs:
@@ -32,16 +28,29 @@ jobs:
           path: base
           persist-credentials: false
 
+      - name: Changed paths
+        id: paths
+        uses: ./head/.github/actions/changed  # zizmor: ignore[self-repository] actionlint rejects $/
+        with:
+          working-directory: head
+          paths: |
+            payload/**
+            scripts/image-scan-diff.py
+            .github/workflows/image-scan.yaml
+
       - name: Install Trivy
+        if: steps.paths.outputs.match == 'true'
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.76.2
 
       # PyYAML comes from uv.lock, hash-checked, at the version Renovate tracks.
       - name: Install uv
+        if: steps.paths.outputs.match == 'true'
         uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: "0.13.9"
 
       - name: Scan changed images
+        if: steps.paths.outputs.match == 'true'
         run: uv run --locked --no-dev --project head python head/scripts/image-scan-diff.py base head

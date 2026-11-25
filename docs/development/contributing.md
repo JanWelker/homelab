@@ -100,8 +100,8 @@ The body explains *why*; the diff already says what.
 
 `.github/CODEOWNERS` assigns every path to the repository owner, which requests
 that review; it is not required, because an author cannot approve their own
-pull request. What `main` requires is the `ci-ok` check; which Renovate PRs
-merge on it alone is in [Automerge policy](maintenance.md#automerge-policy).
+pull request. `main` requires every CI job by name;
+which Renovate PRs merge on them alone is in [Automerge policy](maintenance.md#automerge-policy).
 
 `.agent/rules/general-rules.md` holds the standing rules for AI coding agents
 working here: GitOps only, docs in `docs/`, no hand-edited versions. Keep it in

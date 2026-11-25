@@ -10,10 +10,6 @@ name: Ignition Render
       - "scripts/ignition-check.sh"
       - ".github/workflows/ignition-render.yaml"
   pull_request:
-    paths:
-      - "ansible/**"
-      - "scripts/ignition-check.sh"
-      - ".github/workflows/ignition-render.yaml"
   workflow_dispatch:
 
 jobs:
@@ -30,13 +26,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Changed paths
+        id: paths
+        uses: ./.github/actions/changed  # zizmor: ignore[self-repository] actionlint rejects $/
+        with:
+          paths: |
+            ansible/**
+            scripts/ignition-check.sh
+            .github/workflows/ignition-render.yaml
+
       - name: Install uv
+        if: steps.paths.outputs.match == 'true'
         uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: "0.13.9"
 
       - name: Install the project
+        if: steps.paths.outputs.match == 'true'
         run: uv sync --locked --all-extras --dev
 
       - name: Render and validate every host's Ignition configs
+        if: steps.paths.outputs.match == 'true'
         run: make ignition-check
