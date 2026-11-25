@@ -132,6 +132,16 @@
       ]
     },
     {
+      "description": "Every pod resolves through CoreDNS and a new release can need its Corefile migrated, which kubeadm used to do: a human merges every update -- see docs/platform/coredns.md",
+      "matchDepNames": [
+        "registry.k8s.io/coredns/coredns"
+      ],
+      "automerge": false,
+      "reviewers": [
+        "JanWelker"
+      ]
+    },
+    {
       "description": "These charts run with cluster-wide rights and Argo CD applies a merge to main within a minute, so a poisoned release must not reach the cluster unseen: a human merges every update, whatever its size. The chart names are those of the helm datasource, one per application.yaml, or per kustomization.yaml for a chart rendered through Kustomize -- see docs/development/maintenance.md",
       "matchManagers": [
         "argocd",
