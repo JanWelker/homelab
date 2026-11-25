@@ -4,27 +4,26 @@ GitHub Actions workflows lint everything; Renovate chases dependencies.
 
 ## CI workflows
 
-All in `.github/workflows/`.
+All in `.github/workflows/`, all on every pull request: the `main: CI` ruleset requires each job by name, and a workflow its trigger filtered out would never report. A new job joins the ruleset in the same change. Where the table names paths, `.github/actions/changed` skips the job's steps when none changed.
 
-| Workflow | Trigger | What it checks |
+| Workflow | Paths | What it checks |
 | --- | --- | --- |
-| `lint-ansible.yaml` | `ansible/**` | `ansible-lint` |
+| `lint-ansible.yaml` | — | `ansible-lint` |
 | `ignition-render.yaml` | `ansible/**` | `make ignition-check`: `butane --strict`, `ignition-validate` and `kubeadm config validate` on every host's configs |
-| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check`, `pytest` |
-| `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
-| `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
+| `lint-python.yaml` | — | `ruff check`, `ruff format --check`, `pytest` |
+| `lint-yaml.yaml` | — | `yamllint` |
+| `lint-markdown.yaml` | — | `markdownlint-cli2` |
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds and publishes the site — [Documentation](<https://homelab.wlkr.ch/development/contributing/index.md#documentation>). Only the deploy job, which runs no dependency code, can push |
-| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/`, same split as `docs.yaml` |
-| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered manifest diff against `main`. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral |
-| `server-dry-run.yaml` | pull requests under `payload/**` | Applies the rendered payload `--dry-run=server` to a kind cluster with our CRDs and admission policies; `tests/test_conventions.py` checks the documented rules |
-| `image-scan.yaml` | pull requests under `payload/**` | Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding [waiting on a release](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#filing-policy>) does not block the bump towards it |
-| `lint-shell-actions.yaml` | `**/*.sh`, `.github/workflows/**` | `shellcheck`, `actionlint`, `zizmor` |
-| `docs-length.yaml` | pull requests under `docs/**` | No existing page grows, dated logs aside; a new component takes the `docs-growth` label |
-| `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
-| `renovate-coverage.yaml` | every path that can hold a pin | Fails on a pin no Renovate manager extracts |
-| `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
-| `ci-ok.yaml` | every pull request | Waits for every other check and fails if one failed; the only required check, so the others keep their path filters |
-| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | The committed files match the pins — [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>) |
+| `preview.yaml` | the same paths | Publishes a preview under `pr-preview/`, same split as `docs.yaml` |
+| `argo-diff-preview.yaml` | `payload/**` | Comments the rendered manifest diff against `main`. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral |
+| `server-dry-run.yaml` | `payload/**` | Applies the rendered payload `--dry-run=server` to a kind cluster with our CRDs and admission policies; `tests/test_conventions.py` checks the documented rules |
+| `image-scan.yaml` | `payload/**` | Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding [waiting on a release](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#filing-policy>) does not block the bump towards it |
+| `lint-shell-actions.yaml` | — | `shellcheck`, `actionlint`, `zizmor` |
+| `docs-length.yaml` | — | No existing page grows, dated logs aside; a new component takes the `docs-growth` label |
+| `renovate-validate.yaml` | — | `renovate-config-validator` |
+| `renovate-coverage.yaml` | — | Fails on a pin no Renovate manager extracts |
+| `secret-scan.yaml` | — | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
+| `fonts-check.yaml` | — | The committed files match the pins — [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>) |
 
 ## Renovate
 
@@ -32,13 +31,13 @@ Configured in `renovate.json`, on top of the shared preset [JanWelker/renovate-c
 
 ### Automerge policy
 
-- **The preset's rules:** three days between a release and its PR, patch and minor automerge once `ci-ok` is green, majors open at 19:00 and wait for a human, and security fixes skip both the wait and the schedule. The preset's README says why for each.
+- **The preset's rules:** three days between a release and its PR, patch and minor automerge once the required checks are green, majors open at 19:00 and wait for a human, and security fixes skip both the wait and the schedule. The preset's README says why for each.
 - **Cluster-wide charts and workflow actions wait for a human.** Argo CD applies a merge within a minute and these charts hold cluster-wide rights, so no update of them automerges; the list is in `renovate.json`. Cilium's pending patch and each minor get separate PRs, merged in that order, the only [path upstream tests](<https://docs.cilium.io/en/stable/operations/upgrade/>).
 - **A Kubernetes minor waits for a human.** `kubernetes_version` is walked forward by hand in version-skew order; an automerged minor would provision a kubelet ahead of the API server — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>).
 - **Pairs that must move together are grouped into one PR:** `prometheus-operator-crds` with `kube-prometheus-stack`, because the CRDs must not lag the operator; `rook-ceph` with `rook-ceph-cluster`, because Rook requires both charts on the same version; and `markdownlint-cli2` in the workflow with its pre-commit hook, because the two must lint alike; `gitleaks` likewise; the `external-snapshotter` tag with the `snapshot-controller` image it pins, because upstream's manifest at a tag names the previous release's image (a third-party image, so the pair waits for a human); the two ARC charts, because the controller deletes a scale set whose chart version differs from its own; the OpenBao chart with the image the snapshot CronJob runs its CLI from, so the CLI never lags the server it snapshots; and every Python pin (`requires-python`, `.python-version`, the `python` images), because `uv sync` fails when they name different minors.
 - **Python ranges bump.** `pyproject.toml` declares `>=` ranges, which a new release already satisfies; `rangeStrategy: bump` is what makes Renovate open a PR for the linters and the docs generator at all.
 - **Flatcar and Kubernetes bumps change what a newly provisioned node installs, not what a running node runs** — see [Upgrades](<https://homelab.wlkr.ch/operations/upgrades/index.md>).
-- **A vendored-asset bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it and `ci-ok` waits for it — see [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>).
+- **A vendored-asset bump cannot automerge without its second commit:** `fonts-check.yaml` fails on it — see [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>).
 - `config:best-practices` pins GitHub Actions to commit SHAs and container images to digests, and collects every pin into one shared `renovate/pin-dependencies` branch.
 
 ### Scope

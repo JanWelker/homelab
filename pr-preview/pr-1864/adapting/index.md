@@ -107,6 +107,6 @@ To publish your own copy, set `site_url`, `repo_url`, `repo_name` and `copyright
 | `arc-controller`, `arc-runners` | `githubConfigUrl` names a repository of the author's, and the runners register with a GitHub App installed there | [GitHub runners](<https://homelab.wlkr.ch/platform/github-runners/index.md#github-app>) |
 | `apps` project in `argocd-projects` | `sourceRepos` lists the author's chart registries | [ArgoCD → Projects](<https://homelab.wlkr.ch/platform/argocd/index.md#projects>) |
 | Claude agents | `security/claude-agent-rbac.yaml`, the SSH listener and an Argo CD account serve the author's sessions | [Agent RBAC](<https://homelab.wlkr.ch/platform/security-policies/index.md#agent-rbac>) |
-| Repository settings | `.github/CODEOWNERS`, `reviewers` and the preset in `renovate.json`, and `ci-ok.yaml` name the author's account | [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md>) |
+| Repository settings | `.github/CODEOWNERS`, `reviewers` and the preset in `renovate.json` name the author's account | [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md>) |
 
 To drop a component, delete its directory under `payload/platform/`, the lines `git grep -n <namespace> -- payload/` lists for each of its namespaces, and its path in `scripts/bao-secrets.sh` as in [Quickstart step 11](<https://homelab.wlkr.ch/quickstart/index.md#setup>).
