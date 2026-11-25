@@ -13,21 +13,22 @@ All in `.github/workflows/`.
 | Workflow | Trigger | What it checks |
 | --- | --- | --- |
 | `lint-ansible.yaml` | `ansible/**` | `ansible-lint` |
-| `ignition-render.yaml` | `ansible/**`, `scripts/ignition-check.sh` | `make ignition-check`: every host's installer and node config through `butane --strict` and `ignition-validate`, and its kubeadm config through `kubeadm config validate` — [Checks](contributing.md#checks) |
-| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check` and `pytest` on the boot server and the scripts |
+| `ignition-render.yaml` | `ansible/**` | `make ignition-check`: `butane --strict`, `ignition-validate` and `kubeadm config validate` on every host's configs |
+| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check`, `pytest` |
 | `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
-| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
-| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
-| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral |
-| `server-dry-run.yaml` | pull requests under `payload/**`, `ansible/inventory.yaml`, the scripts and test it runs | Renders every Application as Argo CD would and sends it to a kind cluster at the nodes' minor: CRDs and admission policies for real, the rest `--dry-run=server`, so a refusal fails the PR, not the sync. `tests/test_conventions.py` checks the same render against the documented rules |
-| `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
-| `lint-shell-actions.yaml` | `**/*.sh`, `.github/workflows/**` | `shellcheck` at severity warning, `actionlint` and `zizmor`, the same versions as the pre-commit hooks; the local shellcheck hook uses the binary on `PATH` |
+| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds and publishes the site — [Documentation](contributing.md#documentation). Only the deploy job, which runs no dependency code, can push |
+| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/`, same split as `docs.yaml` |
+| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered manifest diff against `main`. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral |
+| `server-dry-run.yaml` | pull requests under `payload/**` | Applies the rendered payload `--dry-run=server` to a kind cluster with our CRDs and admission policies; `tests/test_conventions.py` checks the documented rules |
+| `image-scan.yaml` | pull requests under `payload/**` | Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump towards it |
+| `lint-shell-actions.yaml` | `**/*.sh`, `.github/workflows/**` | `shellcheck`, `actionlint`, `zizmor` |
+| `docs-length.yaml` | pull requests under `docs/**` | No existing page grows, dated logs aside; a new component takes the `docs-growth` label |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
-| `renovate-coverage.yaml` | pull requests on every path that can hold a pin | `scripts/renovate-coverage.py`: fails on a pin no manager extracts or lookup would drop; a line that is no pin goes in its commented ignore list |
+| `renovate-coverage.yaml` | every path that can hold a pin | Fails on a pin no Renovate manager extracts |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
-| `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
-| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | `make fonts-check`, `make mermaid-check`: the committed files match the pins — [Vendored assets](contributing.md#vendored-assets) |
+| `ci-ok.yaml` | every pull request | Waits for every other check and fails if one failed; the only required check, so the others keep their path filters |
+| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | The committed files match the pins — [Vendored assets](contributing.md#vendored-assets) |
 
 ## Renovate
 

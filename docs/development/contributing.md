@@ -18,7 +18,7 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # everything below but the payload lines, plus gitleaks
+uv run pre-commit run --all-files       # the fast offline checks below, plus gitleaks
 ```
 
 The same checks, one at a time:
@@ -35,19 +35,17 @@ uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 make ignition-check                           # ansible only, not in pre-commit
 shellcheck -x --severity=warning scripts/*.sh scripts/lib/*.sh   # shell only
 actionlint && uvx zizmor .github/workflows   # workflows only
+uv run scripts/docs-length.py origin/main   # docs only: no page grows
 ```
 
-`pytest` holds the render to the documented conventions; the dry run writes
-CRDs and policies to its context, so it refuses all but a `kind-*` one.
-`make ignition-check` validates every host's Ignition configs, since a
-template error otherwise surfaces as a node that does not install.
+The dry run writes CRDs and policies to its context, so it refuses any but
+`kind-*`.
 
 `--strict` is what CI uses. A page not registered in `nav` in `zensical.toml`
 fails the build, deliberately. On a pull request, the `argo-diff-preview`
-workflow comments the rendered ArgoCD manifest diff between `main` and your
-branch; read it, since a three-line values change can render as two hundred
-lines of different objects. The full list of workflows is in
-[Maintenance](maintenance.md#ci-workflows).
+workflow comments the rendered manifest diff; read it, since a three-line
+values change can render as two hundred lines of different objects. All
+workflows: [Maintenance](maintenance.md#ci-workflows).
 
 ## Make targets
 
@@ -60,7 +58,7 @@ another).
 | `setup` | Creates the virtualenv with every tool | [Setup](#setup) |
 | `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](../quickstart.md#setup) |
 | `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](../quickstart.md#setup), [Ansible](../architecture/ansible.md#playbooks) |
-| `ignition-check` | Renders and validates every host's Ignition and kubeadm configs with throwaway credentials | [Checks](#checks) |
+| `ignition-check` | Validates every host's rendered Ignition and kubeadm configs | [Checks](#checks) |
 | `artifacts` | `download` then `config` | [Quickstart](../quickstart.md#setup) |
 | `serve` | Runs the TFTP and HTTP boot server | [Boot server](../architecture/boot-process.md#boot-server) |
 | `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](../operations/nodes.md#rebuilding-or-repartitioning-a-node) |
@@ -122,9 +120,9 @@ section in `nav` needs an entry there too.
 
 | Stage | What happens |
 | --- | --- |
-| Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
+| Build | `docs.yaml` runs `zensical build --clean --strict` on push to `main` |
 | Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes `gh-pages` without force, sparing `pr-preview/` |
-| Previews | `preview.yaml` builds every pull request matching the same paths, forks included, and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Only the publish step is skipped for fork PRs: they have no write access |
+| Previews | `preview.yaml` publishes every pull request under `pr-preview/`; closing it removes the preview. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets |
 
 Locally:
 
