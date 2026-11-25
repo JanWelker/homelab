@@ -125,3 +125,45 @@ def test_generated_application_copies_the_file():
     assert generated['metadata']['namespace'] == 'argocd'
     assert generated['metadata']['finalizers'] == ['f']
     assert generated['spec'] == {'project': 'infra'}
+
+
+def test_helm_charts_are_read_from_the_kustomization(tmp_path):
+    assert render.kustomization(tmp_path) is None
+    assert render.helm_charts(tmp_path) == []
+    (tmp_path / 'kustomization.yaml').write_text('helmCharts:\n  - name: a\n    version: 1.0.0\n')
+    assert render.kustomization(tmp_path) == tmp_path / 'kustomization.yaml'
+    assert render.helm_charts(tmp_path) == [{'name': 'a', 'version': '1.0.0'}]
+
+
+def test_kustomize_inflates_helm_on_a_copy_with_the_cluster_versions(tmp_path, monkeypatch):
+    base = tmp_path / 'base'
+    base.mkdir()
+    (base / 'kustomization.yaml').write_text('helmCharts:\n  - name: a\n')
+    monkeypatch.setattr(render, 'kube_version', lambda: 'v1.37.0')
+    renderer = render.Renderer(tmp_path / 'work')
+    (tmp_path / 'work').mkdir()
+    renderer.api_versions = ['example.com/v1']
+    calls = []
+    monkeypatch.setattr(renderer, 'run', lambda args, cwd=None: calls.append(args) or '')
+    _, inflates = renderer.render_kustomize({}, base)
+    assert inflates
+    args = calls[0]
+    assert args[args.index('--helm-kube-version') + 1] == 'v1.37.0'
+    assert args[args.index('--helm-api-versions') + 1] == 'example.com/v1'
+    assert '--enable-helm' in args
+    overlay = pathlib.Path(args[2])
+    assert (overlay / 'base' / 'kustomization.yaml').is_file()
+    assert not (base / 'charts').exists()
+
+
+def test_plain_kustomize_does_not_enable_helm(tmp_path, monkeypatch):
+    base = tmp_path / 'base'
+    base.mkdir()
+    (base / 'kustomization.yaml').write_text('resources: []\n')
+    monkeypatch.setattr(render, 'kube_version', lambda: 'v1.37.0')
+    (tmp_path / 'work').mkdir()
+    renderer = render.Renderer(tmp_path / 'work')
+    calls = []
+    monkeypatch.setattr(renderer, 'run', lambda args, cwd=None: calls.append(args) or '')
+    assert renderer.render_kustomize({}, base) == ('', False)
+    assert calls == [['kubectl', 'kustomize', calls[0][2]]]

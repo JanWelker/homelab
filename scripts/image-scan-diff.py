@@ -26,6 +26,7 @@ import tempfile
 import yaml
 
 IMAGE_RE = re.compile(r"""^\s*(?:image|imageName):\s*["']?([^\s"'#]+)""", re.MULTILINE)
+KUSTOMIZATIONS = ('kustomization.yaml', 'kustomization.yml', 'Kustomization')
 DEFAULT_GLOBS = ('payload/platform/*/application.yaml', 'payload/argocd/application.yaml')
 
 
@@ -86,8 +87,26 @@ def render_chart(source, values_refs):
     return result.stdout
 
 
+def kustomize_charts(directory):
+    """The `helmCharts` of a kustomization in directory, as Application chart sources."""
+    path = next((directory / n for n in KUSTOMIZATIONS if (directory / n).is_file()), None)
+    if not path:
+        return []
+    charts = (yaml.safe_load(path.read_text(encoding='utf-8')) or {}).get('helmCharts') or []
+    return [
+        {
+            'repoURL': chart['repo'],
+            'chart': chart['name'],
+            'targetRevision': chart['version'],
+            'helm': {'valuesObject': chart.get('valuesInline') or {}},
+        }
+        for chart in charts
+    ]
+
+
 def images_of(root, app_path):
-    """Every image reference an Application deploys, from charts and files."""
+    """Every image reference an Application deploys, from charts, a kustomization's
+    `helmCharts` and files."""
     spec = yaml.safe_load(app_path.read_text(encoding='utf-8'))['spec']
     text = []
     refs = {s['ref']: str(root.resolve()) for s in sources(spec) if 'ref' in s}
@@ -96,6 +115,7 @@ def images_of(root, app_path):
             text.append(render_chart(source, refs))
         elif 'path' in source:
             directory = root / source['path']
+            text += [render_chart(chart, refs) for chart in kustomize_charts(directory)]
             exclude = source.get('directory', {}).get('exclude', '')
             for file in sorted(directory.glob('*.yaml')):
                 if not excluded(file.name, exclude):
