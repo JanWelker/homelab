@@ -1,14 +1,10 @@
 ---
-# The move annotations can go once this has synced; see
-# docs/architecture/gitops.md#moving-a-resource-to-another-application
+# Keeps one resolver up through a drain; see docs/platform/coredns.md
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: coredns
   namespace: kube-system
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false
-    argocd.argoproj.io/compare-options: IgnoreExtraneous
 spec:
   maxUnavailable: 1
   selector:
