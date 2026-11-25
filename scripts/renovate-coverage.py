@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fail on a version pin that no Renovate manager tracks.
 
-Runs Renovate's extraction (local platform, no token; the only request fetches
-the shared preset), scans the
+Runs Renovate's extraction (local platform; the only request fetches the
+shared preset, with RENOVATE_GITHUB_COM_TOKEN when set), scans the
 repository for pins on its own, and reports each pin the extraction did not
 produce, or produced with a value Renovate's versioning rejects: lookup drops
 those without a word. Prints GitHub `::error` annotations and exits 1 on any.
@@ -65,7 +65,7 @@ IGNORED: list[tuple[str, str, str]] = [
     ),
 ]
 
-# Skip reasons only the tokenless run produces; the hosted Renovate has a token.
+# Skip reasons only a run without a token produces; the hosted Renovate has one.
 OFFLINE_ONLY = {'github-token-required'}
 
 
