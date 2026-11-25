@@ -1,0 +1,20 @@
+---
+# The container hook's pod template for the homelab set's job pods; the hook
+# overwrites the pod's securityContext with this one, so fsGroup is the
+# hook's own. docs/platform/github-runners.md#job-pods
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: job-pod-template
+  namespace: arc-runners
+data:
+  template.yaml: |
+    spec:
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: $job
+          securityContext:
+            seccompProfile:
+              type: Localhost
+              localhostProfile: operator/arc-jobs.json

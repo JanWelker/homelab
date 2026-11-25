@@ -66,12 +66,22 @@ spec:
                     # The container hook starts job pods there, not here.
                     - name: ACTIONS_RUNNER_KUBERNETES_NAMESPACE
                       value: arc-jobs
+                    - name: ACTIONS_RUNNER_CONTAINER_HOOK_TEMPLATE
+                      value: /home/runner/hook/template.yaml
+                  volumeMounts:
+                    - name: hook-template
+                      mountPath: /home/runner/hook
+                      readOnly: true
                   resources:
                     requests:
                       cpu: 500m
                       memory: 1Gi
                     limits:
                       memory: 4Gi
+              volumes:
+                - name: hook-template
+                  configMap:
+                    name: job-pod-template
     # ci-ok's wait only: it holds a runner until every other check finished,
     # so on the shared set enough open pull requests deadlock it.
     # docs/platform/github-runners.md#configuration
