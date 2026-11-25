@@ -29,6 +29,7 @@ applications` shows — and the namespace it lands in.
 | certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](cert-manager.md) |
 | [cilium](cilium.md) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](cloudnative-pg.md) | `cnpg-system` | The PostgreSQL operator every workload database runs on |
+| [coredns](coredns.md) | `kube-system` | Cluster DNS; adopts the CoreDNS kubeadm deploys at init |
 | [descheduler](descheduler.md) | `descheduler` | Evicts pods a drain or reboot left piled on the surviving nodes |
 | [external-dns](external-dns.md) | `external-dns` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](external-secrets.md) | `external-secrets` | Bridges OpenBao to native Kubernetes Secrets |
@@ -59,10 +60,7 @@ The control-plane static pods take their requests, and the API server a soft
 `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm
 patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no
 limits, because a limit on the API server or etcd would OOM-kill the control
-plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its
-replicas one per node, which kubeadm applies at `init` and `upgrade apply`
-only, and its PodDisruptionBudget sits in the `security` component because
-nothing else owns a CoreDNS manifest.
+plane. CoreDNS is [its own component](coredns.md).
 
 ## Priority classes
 
