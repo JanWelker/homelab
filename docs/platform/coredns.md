@@ -17,7 +17,7 @@ manifests in Git are the only source of its spec.
 | Namespace | `kube-system` |
 | Depends on | Nothing; the nodes' `/etc/resolv.conf` for upstream names (`dnsPolicy: Default`) |
 | If it is down | Every in-cluster name lookup, so nearly every workload |
-| Health check | `kubectl -n kube-system get deploy coredns` &rarr; `2/2` on two different nodes |
+| Health check | `kubectl -n kube-system get deploy coredns` &rarr; `3/3` on three different nodes |
 | Files | [`payload/platform/coredns/`](https://github.com/JanWelker/homelab/tree/main/payload/platform/coredns) |
 
 ## Configuration
@@ -26,9 +26,9 @@ manifests in Git are the only source of its spec.
 | --- | --- |
 | Object names, labels and the selector as kubeadm creates them | The adoption patches the live objects instead of replacing them; a changed selector would recreate the Deployment |
 | `clusterIP` of `kube-dns` | The kubelets' `clusterDNS`, the tenth address of `service_subnet` |
-| `topologySpreadConstraints`, one replica per node | A drain or node loss takes at most half the resolvers; the PodDisruptionBudget keeps one up |
-| `Delete=false` on every object | Deleting the Application must not take DNS with it |
-| Image digest, human-merged | See [Pitfalls](#pitfalls) |
+| Three replicas, one per node, workers preferred | A drain plus a node failure still leaves a resolver; control planes only when no worker fits |
+| `Delete=false` on every object | Deleting the Application keeps DNS |
+| Human-merged image digest | See [Pitfalls](#pitfalls) |
 
 ## Usage
 
@@ -39,7 +39,7 @@ a minute without a restart.
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=kube-dns -o wide
-kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-dns   # two ready addresses
+kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-dns   # three ready addresses
 ```
 
 ## Pitfalls

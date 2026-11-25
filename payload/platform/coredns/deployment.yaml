@@ -11,7 +11,8 @@ metadata:
   labels:
     k8s-app: kube-dns
 spec:
-  replicas: 2
+  # Three, so a Kured drain plus a node failure still leaves a resolver.
+  replicas: 3
   selector:
     matchLabels:
       k8s-app: kube-dns
@@ -35,8 +36,16 @@ spec:
           operator: Exists
         - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
-      # One replica per node, so a node loss or drain costs half the resolvers
-      # at most; the PodDisruptionBudget is in payload/platform/security/.
+      # Workers first; the toleration above is the fallback when none fits.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+      # One replica per node, so a node loss or drain costs one resolver.
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
