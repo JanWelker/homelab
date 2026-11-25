@@ -132,9 +132,10 @@
       ]
     },
     {
-      "description": "These charts run with cluster-wide rights and Argo CD applies a merge to main within a minute, so a poisoned release must not reach the cluster unseen: a human merges every update, whatever its size. The chart names are those of the argocd manager's helm datasource, one per application.yaml -- see docs/development/maintenance.md",
+      "description": "These charts run with cluster-wide rights and Argo CD applies a merge to main within a minute, so a poisoned release must not reach the cluster unseen: a human merges every update, whatever its size. The chart names are those of the helm datasource, one per application.yaml, or per kustomization.yaml for a chart rendered through Kustomize -- see docs/development/maintenance.md",
       "matchManagers": [
-        "argocd"
+        "argocd",
+        "kustomize"
       ],
       "matchDatasources": [
         "helm"

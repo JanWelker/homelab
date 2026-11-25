@@ -117,9 +117,10 @@ Tetragon, the CSI node plugins) have no endpoint of their own and cannot be
 selected; to everything else they are `host` or `remote-node`. `kube-system`
 therefore covers only its pod-networked workloads, each selected by label.
 
-Where a chart ships `NetworkPolicy` objects of its own (`argocd`) they are
-switched off in its values: Cilium unions the two kinds, so a chart rule
-that allows everything would silently override the default-deny.
+A chart's own `NetworkPolicy` objects are switched off in its values
+(`argocd`), or deleted after rendering where no value does
+(`rook-ceph-operator`): Cilium unions them, so a chart rule allowing
+everything overrides the default-deny.
 
 ### Host firewall
 

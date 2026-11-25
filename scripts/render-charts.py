@@ -10,7 +10,8 @@ Application is rendered: Helm charts (`valuesObject`, `values`,
 `valueFiles` with `$<ref>` paths, `parameters`), plain `directory` sources
 (`recurse`, `include`, `exclude`) and `kustomize` sources (`namespace`,
 `images`, `patches` and the other overlay fields Argo CD writes into a
-kustomization). A source that points at this repository is read from the
+kustomization, and `helmCharts`, which the `--enable-helm` build option in
+argocd-cm inflates). A source that points at this repository is read from the
 working tree; any other git repository is cloned at its `targetRevision`.
 
 With --out, each Application's objects are written to
@@ -32,7 +33,9 @@ What is emulated, because a plain `helm template` differs from Argo CD:
 - `--include-crds`, the destination namespace and the release name, and
   `--kube-version` from `kubernetes_version` in `ansible/inventory.yaml`.
 - `--api-versions` for every CRD and APIService the rendered set serves, so a
-  chart that checks `.Capabilities.APIVersions` renders as on the cluster.
+  chart that checks `.Capabilities.APIVersions` renders as on the cluster;
+  Kustomize's `helmCharts` get both as `--helm-kube-version` and
+  `--helm-api-versions`, as Argo CD passes them.
 - A namespaced object without a namespace gets the destination namespace;
   scope comes from the built-in kinds and the rendered CRDs.
 - A Helm test hook is left out: Argo CD maps it to no sync phase and never
@@ -53,6 +56,7 @@ import fnmatch
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -200,6 +204,22 @@ def brace_match(name, pattern):
     )
 
 
+def kustomization(base):
+    """The kustomization file in a directory, or None."""
+    for name in ('kustomization.yaml', 'kustomization.yml', 'Kustomization'):
+        if (base / name).is_file():
+            return base / name
+    return None
+
+
+def helm_charts(base):
+    """The `helmCharts` entries of the kustomization in base, if any."""
+    path = kustomization(base)
+    if not path:
+        return []
+    return (yaml.safe_load(path.read_text()) or {}).get('helmCharts') or []
+
+
 def kube_version():
     match = re.search(r'kubernetes_version:\s*["\']?(v[0-9.]+)', INVENTORY.read_text())
     if not match:
@@ -254,6 +274,8 @@ class Renderer:
         self.clones = {}
         self.kube_version = kube_version()
         self.api_versions = []
+        # Applications whose kustomization inflates a Helm chart.
+        self.inflating = set()
 
     def run(self, args, cwd=None):
         result = subprocess.run(
@@ -370,11 +392,16 @@ class Renderer:
         return texts
 
     def render_kustomize(self, source, base):
+        """kustomize build of base under Argo CD's overlay; returns (text, inflated Helm)."""
         options = source.get('kustomize', {})
         unknown = set(options) - KUSTOMIZE_FIELDS
         if unknown:
             raise RenderError(f'unsupported kustomize fields {sorted(unknown)}')
         overlay = pathlib.Path(tempfile.mkdtemp(dir=self.workdir))
+        inflates = bool(helm_charts(base))
+        if inflates:
+            # Kustomize pulls the charts into <base>/charts; keep the tree clean.
+            base = pathlib.Path(shutil.copytree(base, overlay / 'base'))
         kustomization = {
             'apiVersion': 'kustomize.config.k8s.io/v1beta1',
             'kind': 'Kustomization',
@@ -405,7 +432,17 @@ class Renderer:
         if images:
             kustomization['images'] = images
         (overlay / 'kustomization.yaml').write_text(yaml.safe_dump(kustomization))
-        return self.run(['kubectl', 'kustomize', str(overlay)])
+        args = ['kubectl', 'kustomize', str(overlay)]
+        if inflates:
+            args += self.helm_build_options()
+        return self.run(args), inflates
+
+    def helm_build_options(self):
+        """What argocd-cm's --enable-helm makes Argo CD add to a kustomize build."""
+        args = ['--enable-helm', '--helm-kube-version', self.kube_version]
+        for api in self.api_versions:
+            args += ['--helm-api-versions', api]
+        return args
 
     def render(self, app):
         """Every object one Application deploys, in source order."""
@@ -427,11 +464,13 @@ class Renderer:
             base = self.checkout(source) / source['path']
             if not base.is_dir():
                 raise RenderError(f'{origin}: {source["path"]} is not a directory')
-            if 'kustomize' in source or (
-                'directory' not in source
-                and any((base / n).exists() for n in ('kustomization.yaml', 'kustomization.yml'))
-            ):
-                objects += load_all(self.render_kustomize(source, base), f'{origin} (kustomize)')
+            if 'kustomize' in source or ('directory' not in source and kustomization(base)):
+                text, inflates = self.render_kustomize(source, base)
+                if inflates:
+                    self.inflating.add(app['metadata']['name'])
+                objects += [
+                    obj for obj in load_all(text, f'{origin} (kustomize)') if not is_test_hook(obj)
+                ]
             elif 'directory' in source or not (base / 'Chart.yaml').exists():
                 for relative, text in self.render_directory(source, base):
                     objects += load_all(text, f'{origin} ({relative})', lenient=True)
@@ -526,7 +565,8 @@ def render_all(globs, workdir):
     for attempt in range(2):
         for _, app in apps:
             name = app['metadata']['name']
-            if attempt == 1 and not any(is_helm(s) for s in sources_of(app)):
+            helm = any(is_helm(s) for s in sources_of(app)) or name in renderer.inflating
+            if attempt == 1 and not helm:
                 continue
             try:
                 rendered[name] = renderer.render(app)

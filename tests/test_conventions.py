@@ -46,11 +46,7 @@ ALLOWED = {
             ' agent, so it goes with the next Cilium bump'
         ),
     },
-    'chart-network-policies': {
-        'rook-ceph-operator: NetworkPolicy rook-ceph/ceph-csi-ceph-csi-controller-manager': (
-            'the ceph-csi-operator subchart renders it unconditionally, no value turns it off'
-        ),
-    },
+    'chart-network-policies': {},
     'route-headers': {},
     'route-parents': {},
     'namespace-policies': {},
