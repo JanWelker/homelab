@@ -72,10 +72,13 @@ cp -R "$work/join/credentials" "$work/init/credentials"
 playbook -e "output_dir=$work/init" -e bootstrap_cluster=true --limit 'control_plane[0]'
 
 echo "== ignition-validate ($IGNITION_VALIDATE_IMAGE)"
-for config in "$work"/*/http/ignition-*.json; do
+for config in "$work"/*/http/ignition-*.json "$work"/join/reprovision/ignition-*.json; do
   echo "${config#"$work"/}"
   "$CONTAINER" "${run_flags[@]}" -v "$work:$work:ro" "$IGNITION_VALIDATE_IMAGE" "$config"
 done
+
+echo "== reprovision configs write no path flatcar-reset keeps"
+(cd "$repo" && uv run python scripts/reprovision-overlap.py ansible/playbooks/vars/reprovision.yaml "$work"/join/reprovision/ignition-*.json)
 
 echo "== kubeadm config validate ($kubernetes_version)"
 case "$(uname -m)" in

@@ -13,16 +13,23 @@ Flatcar is an immutable, minimal, container-focused OS with A/B updates and
 declarative first-boot provisioning through Ignition. Nothing is configured by
 hand on a node, so a node is disposable and reproducible from `inventory.yaml`.
 
-Talos goes further — no SSH, no shell, an API-driven machine config — and would
-remove a whole class of drift. Flatcar keeps a conventional Linux underneath:
-`ssh`, `systemd`, `journalctl` and `kubeadm` work the way the upstream
-Kubernetes documentation assumes, which matters more for a cluster that is
-also a learning environment than the extra hardening does.
+Talos goes further — no SSH, no shell, an API-driven machine config. Flatcar
+keeps a conventional Linux where `ssh`, `systemd` and `kubeadm` work as the
+upstream documentation assumes, which matters more for a learning environment
+than the extra hardening.
 
 The cost is that Flatcar's read-only `/usr` forces everything unusual into
 [sysexts](../concepts.md#systemd-sysexts), Kubernetes included,
 which is the source of the update behaviour in
 [Updates & Upgrades](../operations/upgrades.md).
+
+## flatcar-reset, not in-place sync
+
+A template change reaches a running node by `flatcar-reset`, Flatcar's
+reprovisioning: the root filesystem is wiped except the cluster state, and
+Ignition runs again, so the node holds exactly what Git renders. Pushing files
+onto nodes is configuration management Flatcar avoids; a reinstall wipes the
+OSD; Flatcar does not document confext. The cost is a reboot per change — see [Reprovisioning a node](../operations/nodes.md#reprovisioning-a-node).
 
 ## kubeadm, not k3s or a managed distribution
 
@@ -62,13 +69,12 @@ that every consumer's sync retries against.
 
 ## Rook-Ceph, not Longhorn or local volumes
 
-Every worker contributes a raw partition (the control planes keep their disk
-for etcd, see [Disks](../platform/rook-ceph.md#disks)), and Ceph turns them
-into replicated block storage that survives a node failure. Local volumes
-would be simpler and faster, but would go down with every
-[update reboot](../operations/upgrades.md). Longhorn is the closer
-alternative and easier to operate; Ceph was chosen for its maturity and because
-the same cluster also serves the S3 buckets the backups and Loki write to — see
+Every worker contributes a raw partition (control planes keep theirs for etcd,
+see [Disks](../platform/rook-ceph.md#disks)), and Ceph turns them into
+replicated block storage that survives a node failure. Local volumes would go
+down with every [update reboot](../operations/upgrades.md). Longhorn is easier
+to operate; Ceph won on maturity and because it also serves the S3 buckets the
+backups and Loki write to — see
 [Object storage](../platform/rook-ceph.md#object-storage).
 
 The cost: Ceph is the heaviest component in the cluster, wants at least three
@@ -88,22 +94,21 @@ auto-unseal dependency outside the house — see
 
 ## ArgoCD with an ApplicationSet, not Flux
 
-Either would work. ArgoCD was chosen mainly for its UI, which makes sync state
-and drift legible at a glance — worth more in a homelab, where the operator is
-often re-learning the system after months away, than Flux's smaller footprint.
+Either would work. ArgoCD's UI makes sync state and drift legible,
+worth more to an operator re-learning the system after months away than Flux's
+smaller footprint.
 
 After a bootstrap of two `kubectl apply`s an ApplicationSet discovers
 everything else; see [GitOps Strategy](gitops.md).
 
 ## CloudNativePG for every database, not the chart's bundled one
 
-Accepting each chart's PostgreSQL subchart is how a cluster ends up running four
-Postgres versions from four maintainers, each upgraded on someone else's
-schedule. The rule in the [workloads repository](../development/add-workload.md)
-is absolute: the subchart is disabled and the application points at a
-CloudNativePG `Cluster` in its own namespace. The operator generates the
-credentials into a Secret the chart consumes, so no database password is
-written down — not in Git, not in OpenBao.
+Each chart's PostgreSQL subchart would mean four Postgres versions from four
+maintainers, each upgraded on someone else's schedule. In the
+[workloads repository](../development/add-workload.md) the subchart is always
+disabled and the application points at a CloudNativePG `Cluster` in its own
+namespace, whose operator generates the credentials, so no database password is
+written down anywhere.
 
 The cost is a controller and a CRD to learn, and a major-version upgrade that
 is explicitly this project's problem rather than something arriving silently in
