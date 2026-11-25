@@ -2683,19 +2683,22 @@
 <h1 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h1>
 <p>GitHub Actions workflows lint everything; Renovate chases dependencies.</p>
 <h2 id="ci-workflows">CI workflows<a class="headerlink" href="#ci-workflows" title="Permanent link">&para;</a></h2>
-<p>All in <code>.github/workflows/</code>.</p>
+<p>All in <code>.github/workflows/</code>, all on every pull request: the <code>main: CI</code> ruleset
+requires each job by name, and a workflow its trigger filtered out would never
+report. A new job joins the ruleset in the same change. Where the table names
+paths, <code>.github/actions/changed</code> skips the job's steps when none changed.</p>
 <table>
 <thead>
 <tr>
 <th>Workflow</th>
-<th>Trigger</th>
+<th>Paths</th>
 <th>What it checks</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>lint-ansible.yaml</code></td>
-<td><code>ansible/**</code></td>
+<td>—</td>
 <td><code>ansible-lint</code></td>
 </tr>
 <tr>
@@ -2705,17 +2708,17 @@
 </tr>
 <tr>
 <td><code>lint-python.yaml</code></td>
-<td><code>boot_server/*.py</code>, <code>scripts/*.py</code>, <code>tests/*.py</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td>
+<td>—</td>
 <td><code>ruff check</code>, <code>ruff format --check</code>, <code>pytest</code></td>
 </tr>
 <tr>
 <td><code>lint-yaml.yaml</code></td>
-<td><code>**/*.yaml</code></td>
+<td>—</td>
 <td><code>yamllint</code></td>
 </tr>
 <tr>
 <td><code>lint-markdown.yaml</code></td>
-<td><code>**/*.md</code></td>
+<td>—</td>
 <td><code>markdownlint-cli2</code></td>
 </tr>
 <tr>
@@ -2725,57 +2728,52 @@
 </tr>
 <tr>
 <td><code>preview.yaml</code></td>
-<td>pull requests on the same paths</td>
+<td>the same paths</td>
 <td>Publishes a preview under <code>pr-preview/</code>, same split as <code>docs.yaml</code></td>
 </tr>
 <tr>
 <td><code>argo-diff-preview.yaml</code></td>
-<td>pull requests under <code>payload/**</code></td>
+<td><code>payload/**</code></td>
 <td>Comments the rendered manifest diff against <code>main</code>. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral</td>
 </tr>
 <tr>
 <td><code>server-dry-run.yaml</code></td>
-<td>pull requests under <code>payload/**</code></td>
+<td><code>payload/**</code></td>
 <td>Applies the rendered payload <code>--dry-run=server</code> to a kind cluster with our CRDs and admission policies; <code>tests/test_conventions.py</code> checks the documented rules</td>
 </tr>
 <tr>
 <td><code>image-scan.yaml</code></td>
-<td>pull requests under <code>payload/**</code></td>
+<td><code>payload/**</code></td>
 <td>Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding <a href="../../operations/vulnerabilities/#filing-policy">waiting on a release</a> does not block the bump towards it</td>
 </tr>
 <tr>
 <td><code>lint-shell-actions.yaml</code></td>
-<td><code>**/*.sh</code>, <code>.github/workflows/**</code></td>
+<td>—</td>
 <td><code>shellcheck</code>, <code>actionlint</code>, <code>zizmor</code></td>
 </tr>
 <tr>
 <td><code>docs-length.yaml</code></td>
-<td>pull requests under <code>docs/**</code></td>
+<td>—</td>
 <td>No existing page grows, dated logs aside; a new component takes the <code>docs-growth</code> label</td>
 </tr>
 <tr>
 <td><code>renovate-validate.yaml</code></td>
-<td><code>renovate.json</code></td>
+<td>—</td>
 <td><code>renovate-config-validator</code></td>
 </tr>
 <tr>
 <td><code>renovate-coverage.yaml</code></td>
-<td>every path that can hold a pin</td>
+<td>—</td>
 <td>Fails on a pin no Renovate manager extracts</td>
 </tr>
 <tr>
 <td><code>secret-scan.yaml</code></td>
-<td>every pull request</td>
+<td>—</td>
 <td><code>gitleaks</code> over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history</td>
 </tr>
 <tr>
-<td><code>ci-ok.yaml</code></td>
-<td>every pull request</td>
-<td>Waits for every other check and fails if one failed; the only required check, so the others keep their path filters</td>
-</tr>
-<tr>
 <td><code>fonts-check.yaml</code></td>
-<td><code>scripts/update-{fonts,mermaid}.sh</code>, <code>docs/assets/{fonts,javascripts}/**</code></td>
+<td>—</td>
 <td>The committed files match the pins — <a href="../contributing/#vendored-assets">Vendored assets</a></td>
 </tr>
 </tbody>
@@ -2789,7 +2787,7 @@ are the sets below that must move together.</p>
 <h3 id="automerge-policy">Automerge policy<a class="headerlink" href="#automerge-policy" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>The preset's rules:</strong> three days between a release and its PR, patch and
-    minor automerge once <code>ci-ok</code> is green, majors open at 19:00 and wait for a
+    minor automerge once the required checks are green, majors open at 19:00 and wait for a
     human, and security fixes skip both the wait and the schedule. The
     preset's README says why for each.</li>
 <li><strong>Cluster-wide charts and workflow actions wait for a human.</strong> Argo CD
@@ -2822,7 +2820,7 @@ are the sets below that must move together.</p>
     node installs, not what a running node runs</strong> — see
     <a href="../../operations/upgrades/">Upgrades</a>.</li>
 <li><strong>A vendored-asset bump cannot automerge without its second commit:</strong>
-    <code>fonts-check.yaml</code> fails on it and <code>ci-ok</code> waits for it — see
+    <code>fonts-check.yaml</code> fails on it — see
     <a href="../contributing/#vendored-assets">Vendored assets</a>.</li>
 <li><code>config:best-practices</code> pins GitHub Actions to commit SHAs and container
     images to digests, and collects every pin into one shared
