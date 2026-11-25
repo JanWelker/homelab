@@ -13,7 +13,7 @@
 set -euo pipefail
 
 # Renovate bumps these through the custom manager for this file in renovate.json.
-BUTANE_IMAGE="quay.io/coreos/butane:v0.29.0@sha256:13fec166cb47a8e053dcc23256c0ca41aaa1c61cab39793832aaf8894ca78c8f"
+BUTANE_IMAGE="quay.io/coreos/butane:v2.28.0@sha256:143e7efd568e46e6f2bcb6f4250d01b0b49227232cc21a7150f8d39e577b9ea5"
 IGNITION_VALIDATE_IMAGE="quay.io/coreos/ignition-validate:v2.28.0@sha256:3b21a2271b4cfe295bc5fea25f61ab732d0578654863971013fb47a528ca836a"
 
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
