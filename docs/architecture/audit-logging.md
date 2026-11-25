@@ -77,53 +77,35 @@ from Loki's ruler, defined in `payload/platform/logging/loki-rules.yaml`; see
 
 ## Applying it to a running cluster
 
-Changing the templates changes what a **newly provisioned** node gets. A
-running control-plane node keeps the `kube-apiserver.yaml` static pod manifest
-kubeadm rendered at init time, and nothing rewrites it on its own.
+The policy file reaches a running control plane by
+[reprovision](../operations/nodes.md#reprovisioning-a-node). The
+`kube-apiserver.yaml` manifest is kubeadm's, which the reprovision keeps, so a
+changed flag is re-rendered by hand, one node at a time.
 
 !!! danger "Get the policy file there before you re-render the manifest"
-    An API server started with `--audit-policy-file` pointing at a missing file does not start. Step 3 before step 4, one node at a time, confirming the API server comes back before moving on.
+    An API server started with `--audit-policy-file` pointing at a missing file does not start. Step 1 before step 2, confirming the API server comes back before the next node.
 
-1. Regenerate the Ignition configs so a rebuild gets this too:
-
-    ```bash
-    make config
-    ```
-
-2. Create the directories on the node:
+1. Reprovision the node; Ignition writes the policy and its directories.
 
     ```bash
-    ssh core@<node> sudo mkdir -p /etc/kubernetes/audit /var/log/kubernetes/audit
-    ssh core@<node> sudo chmod 0700 /etc/kubernetes/audit /var/log/kubernetes/audit
+    make reprovision LIMIT=<node>
     ```
 
-3. Place the policy file. It is inline in the Butane template, so take it
-   from the rendered copy:
-
-    ```bash
-    yq '.storage.files[] | select(.path == "/etc/kubernetes/audit/policy.yaml") | .contents.inline' \
-      output/tmp/butane/butane-<node>.yaml > /tmp/policy.yaml
-    scp /tmp/policy.yaml core@<node>:/tmp/policy.yaml
-    ssh core@<node> sudo install -m 0600 /tmp/policy.yaml /etc/kubernetes/audit/policy.yaml
-    ```
-
-4. Place the regenerated kubeadm config on the node and re-render the API
-   server static pod from it:
+2. Re-render the API server static pod from the regenerated kubeadm config,
+   with the patches the static pods take their requests from:
 
     ```bash
     scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
-    ssh core@<node> sudo install -m 0600 /tmp/kubeadm-config.yaml /opt/kubeadm-config.yaml
-    ssh core@<node> sudo kubeadm init phase control-plane apiserver \
-      --config /opt/kubeadm-config.yaml
+    ssh core@<node> 'sudo kubeadm init phase control-plane apiserver --config /tmp/kubeadm-config.yaml --patches /etc/kubernetes/patches; rm /tmp/kubeadm-config.yaml'
     ```
 
-5. Watch the kubelet restart the static pod:
+3. Watch the kubelet restart the static pod:
 
     ```bash
     kubectl -n kube-system get pod kube-apiserver-<node> -w
     ```
 
-6. Update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive
+4. Update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive
    the next `kubeadm upgrade` or control-plane join — kubeadm reads the
    ConfigMap on those paths, not `/opt/kubeadm-config.yaml`:
 
