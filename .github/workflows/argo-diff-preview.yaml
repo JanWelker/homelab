@@ -3,13 +3,10 @@ name: Argo CD Diff Preview
 
 "on":
   pull_request:
-    paths:
-      - "payload/**"
-      - ".github/workflows/argo-diff-preview.yaml"
-      - ".github/argo-diff-preview/**"
 
 jobs:
   build:
+    name: argo diff
     # Fork PRs get a read-only token, so the comment step would only fail.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -29,7 +26,18 @@ jobs:
           path: main
           persist-credentials: false
 
+      - name: Changed paths
+        id: paths
+        uses: ./pull-request/.github/actions/changed
+        with:
+          working-directory: pull-request
+          paths: |
+            payload/**
+            .github/workflows/argo-diff-preview.yaml
+            .github/argo-diff-preview/**
+
       - name: Generate Diff
+        if: steps.paths.outputs.match == 'true'
         run: |
           # The chart version the cluster runs, read the way the Makefile does.
           ARGOCD_CHART_VERSION=$(awk '/chart:/{f=1} f&&/targetRevision:/{print $2; exit}' \
@@ -54,6 +62,7 @@ jobs:
           REPO: ${{ github.repository }}
 
       - name: Post diff as comment
+        if: steps.paths.outputs.match == 'true'
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file output/diff.md --edit-last || \
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file output/diff.md

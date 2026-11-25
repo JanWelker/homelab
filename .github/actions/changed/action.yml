@@ -1,0 +1,35 @@
+---
+# Whether a pull request touches any of `paths`, for a job the ruleset
+# requires: a path filter on the trigger would leave its check unreported, a
+# gated step lets it pass. Anything but a pull request counts as a match.
+# See docs/development/maintenance.md#ci-workflows
+name: Changed paths
+description: Sets match=true when the pull request changes one of the paths.
+inputs:
+  paths:
+    description: Git glob pathspecs, one per line, such as payload/**
+    required: true
+  working-directory:
+    description: The checkout to diff
+    default: .
+outputs:
+  match:
+    description: "'true' or 'false'"
+    value: ${{ steps.diff.outputs.match }}
+runs:
+  using: composite
+  steps:
+    - id: diff
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        BASE: ${{ github.event.pull_request.base.sha }}
+        PATHS: ${{ inputs.paths }}
+      run: |
+        if [ -z "$BASE" ]; then echo "match=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+        git fetch --no-tags --depth=1 origin "$BASE"
+        mapfile -t specs < <(printf '%s\n' "$PATHS" | sed '/^[[:space:]]*$/d; s/^[[:space:]]*/:(glob)/')
+        changed=$(git diff --name-only "$BASE" HEAD -- "${specs[@]}")
+        if [ -n "$changed" ]; then match=true; else match=false; fi
+        printf 'match=%s\n%s\n' "$match" "$changed"
+        echo "match=$match" >> "$GITHUB_OUTPUT"
