@@ -1,115 +1,65 @@
 ---
-description: "Rotating the key that encrypts Secrets in etcd, without restarting an API server."
+description: "Rotating the key that encrypts Secrets in etcd, one inventory change and one control-plane reprovision per stage."
 ---
 
 # Encryption Key Rotation
 
-The API servers reload `/etc/kubernetes/enc/encryption-config.yaml` whenever
-it changes (`encryption-provider-config-automatic-reload` in
-`ansible/templates/kubeadm.yaml.j2`), so a rotation is a file edit on each
-control plane and one rewrite of every Secret; what the key protects and how it
-is generated is in [Encryption at rest](../architecture/security.md#encryption-at-rest).
+`encryption_keys` in `ansible/inventory.yaml` lists the keys the control
+planes get: the first encrypts, every one decrypts, and a Secret's ciphertext
+names the key it was written with. A rotation is three versions of that list,
+each [reprovisioned](nodes.md#reprovisioning-a-node) onto every control plane;
+`make reprovision` refuses a list that drops a key one of them still encrypts
+with, or puts first a key one cannot decrypt yet. What the key protects is in
+[Encryption at rest](../architecture/security.md#encryption-at-rest).
 
-The first key in the list encrypts, every key in the list decrypts, and a
-Secret's ciphertext names the key it was written with. Two things follow: the
-new key goes in *above* the old one, and the cluster has to end up with the new
-key under the name the Butane template renders (`key1` in
-`ansible/templates/butane_node_config.yaml.j2`), because a control plane
-provisioned later gets exactly that file and can read nothing written under
-another name. That is why the Secrets are rewritten twice.
-
-Reading or writing the file from a shell fires `TetragonSensitiveFileAccess`;
-that is the alert doing its job, not a problem to fix.
+`make config` creates a key's file the first time its name appears:
+`output/credentials/encryption_key` for `key1`, `encryption_key_<name>` for
+any other. Reading the rendered config from a shell fires
+`TetragonSensitiveFileAccess`; that is the alert doing its job.
 
 ## Runbook
 
-1. Generate the new key beside the old one, in the shape `config.yaml`'s
-   `password` lookup produces: 32 letters and digits, stored in plain text, and
-   base64-encoded where it goes into the config.
+Each step is one commit to `encryption_keys`, then the reprovision. Kured
+reboots the control planes one at a time; the step is done when all three are
+`Ready` and `current` in `make node-drift LIMIT=control_plane`.
 
-    ```bash
-    LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32 > output/credentials/encryption_key.new
-    base64 < output/credentials/encryption_key.new    # the secret for key2 below
-    ```
-
-2. On every control plane, add the new key as `key2` **above** `key1` in
-   `/etc/kubernetes/enc/encryption-config.yaml`; the rest of the file stays as
-   it is.
+1. Add the new key second, so every API server can read it before any writes
+   it.
 
     ```yaml
-    providers:
-      - secretbox:
-          keys:
-            - name: key2
-              secret: <new key, base64>
-            - name: key1
-              secret: <old key, base64>
-      - identity: {}
+    encryption_keys: [key1, key2]
     ```
-
-3. Wait for every API server to reload. Each reloads its own file, so ask each
-   one by its `ansible_host` rather than through the VIP; a `status="failure"`
-   count means the file did not parse and the old config is still in effect.
 
     ```bash
-    kubectl get --raw /metrics --server https://<control-plane address>:6443 | grep apiserver_encryption_config_controller_automatic_reloads_total
+    make reprovision LIMIT=control_plane
     ```
 
-4. Rewrite every Secret so it is encrypted with `key2`. A conflict on a Secret
+2. Move it first, and reprovision the same way.
+
+    ```yaml
+    encryption_keys: [key2, key1]
+    ```
+
+3. Rewrite every Secret so it is encrypted with `key2`. A conflict on a Secret
    something updated mid-stream is harmless: run it again.
 
     ```bash
     kubectl get secrets -A -o json | kubectl replace -f -
     ```
 
-5. On every control plane, replace `key1`'s secret with the new key and move
-   it back above `key2`; both entries now hold the new key. Wait for the reload
-   as in step 3.
+4. Drop the old key, and reprovision the same way.
 
     ```yaml
-    keys:
-      - name: key1
-        secret: <new key, base64>
-      - name: key2
-        secret: <new key, base64>
+    encryption_keys: [key2]
     ```
 
-6. Rewrite every Secret again, so every ciphertext names `key1`.
-
-    ```bash
-    kubectl get secrets -A -o json | kubectl replace -f -
-    ```
-
-7. On every control plane, remove `key2`. The file now matches what Ignition
-   writes for a new control plane, and nothing on any node holds the old key.
-
-    ```yaml
-    keys:
-      - name: key1
-        secret: <new key, base64>
-    ```
-
-8. Make the new key the one `make config` renders, and verify that the Butane
-   config of every control plane carries it as `key1`; `config.yaml` reads
-   the file back instead of generating a new value, so nothing else changes.
-   The Ignition JSON cannot be grepped, since Butane gzips file contents, so
-   the check reads the Butane YAML it was transpiled from in `output/tmp/`.
-
-    ```bash
-    mv output/credentials/encryption_key.new output/credentials/encryption_key
-    make config && grep -c "$(tr -d '\n' < output/credentials/encryption_key | base64)" output/tmp/butane/butane-*.yaml
-    ```
-
-    One match per control plane, none per worker or installer config.
-
-9. Confirm against etcd that a Secret's ciphertext names the new key, with the
+5. Confirm against etcd that a Secret's ciphertext names the new key, with the
    same `etcdctl` flags as [Taking one by hand](backups.md#taking-one-by-hand);
-   the value starts with `k8s:enc:secretbox:v1:key1:`.
+   the value starts with `k8s:enc:secretbox:v1:key2:`.
 
     ```bash
     kubectl -n kube-system exec etcd-<node> -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get /registry/secrets/kube-system/ --prefix --limit 1 | head -c 120
     ```
 
-Store the new key with the rest of `output/credentials/` wherever the old one
-is kept, and keep the old one next to the etcd snapshots taken before the
-rotation: those restore only with the key they were written under.
+Keep the old key's file next to the etcd snapshots taken before the rotation:
+those restore only with the key they were written under.

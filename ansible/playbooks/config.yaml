@@ -52,11 +52,16 @@
       delegate_to: localhost
       no_log: true
 
-    # The lookup re-reads the existing file, so re-running keeps etcd readable.
-    - name: Generate Secrets Encryption Key
+    # One file per name in encryption_keys, key1 under its original name. The
+    # lookup re-reads an existing file, so re-running keeps etcd readable.
+    - name: Generate the Secrets encryption keys
       ansible.builtin.set_fact:
-        encryption_key: >-
-          {{ lookup('password', output_dir ~ '/credentials/encryption_key length=32 chars=ascii_letters,digits') | b64encode }}
+        encryption_secrets: >-
+          {{ query('password', *(encryption_keys
+             | map('regex_replace', '^', output_dir ~ '/credentials/encryption_key_')
+             | map('regex_replace', '_key1$', '')
+             | map('regex_replace', '$', ' length=32 chars=ascii_letters,digits')))
+             | map('b64encode') | list }}
       run_once: true # noqa: run-once
       delegate_to: localhost
       no_log: true
@@ -65,7 +70,7 @@
       ansible.builtin.set_fact:
         kubeadm_token: "{{ kubeadm_token }}"
         certificate_key: "{{ certificate_key }}"
-        encryption_key: "{{ encryption_key }}"
+        encryption_secrets: "{{ encryption_secrets }}"
         control_plane_endpoint: "{{ control_plane_endpoint_host }}:6443"
       no_log: true
 

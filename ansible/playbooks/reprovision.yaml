@@ -47,6 +47,39 @@
         quiet: true
       run_once: true # noqa: run-once
 
+    # A control plane must read what every other one writes, and the others
+    # what it will write; see docs/operations/encryption-key-rotation.md
+    - name: Read each control plane's encryption keys, hashed
+      ansible.builtin.raw: >-
+        sudo awk '/secret:/{print $2}' /etc/kubernetes/enc/encryption-config.yaml
+        | while read -r s; do printf %s "$s" | sha256sum | cut -c1-64; done
+      register: live_keys
+      changed_when: false
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['control_plane'] }}"
+      run_once: true # noqa: run-once
+      when: groups['control_plane'] | intersect(ansible_play_hosts_all) | length > 0
+
+    - name: Refuse an encryption stage the other control planes cannot follow
+      vars:
+        files: >-
+          {{ encryption_keys
+             | map('regex_replace', '^', output_dir ~ '/credentials/encryption_key_')
+             | map('regex_replace', '_key1$', '') | list }}
+        rendered: "{{ query('file', *files) | map('b64encode') | map('hash', 'sha256') | list }}"
+        live: "{{ live_keys.results | map(attribute='stdout_lines') | list }}"
+      ansible.builtin.assert:
+        that:
+          - live | map('first') | difference(rendered) | length == 0
+          - live | select('contains', rendered | first) | list | length == live | length
+        fail_msg: >-
+          encryption_keys {{ encryption_keys }} drops a key another control plane
+          still encrypts with, or puts first a key one cannot decrypt yet. Finish
+          the previous stage on every control plane first.
+        quiet: true
+      run_once: true # noqa: run-once
+      when: groups['control_plane'] | intersect(ansible_play_hosts_all) | length > 0
+
     # The reprovision config links no sysext: the node keeps the one it runs.
     - name: Check the sysext the node runs is on its disk
       ansible.builtin.raw: test -e "$(readlink -f /etc/extensions/kubernetes.raw)"

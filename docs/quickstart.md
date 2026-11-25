@@ -87,20 +87,21 @@ the same L2 network segment as the nodes.
 
     | Variable | Why it matters | Read by |
     | --- | --- | --- |
-    | `boot_server_ip` | **Most commonly missed.** Baked into the generated PXE menu as the URL for the kernel, initrd, and Ignition config. If this isn't the IP of the machine that will run `make serve`, nodes load the bootloader and then hang. | `make config`, `make serve` |
+    | `boot_server_ip` | **Most commonly missed.** Baked into the PXE menu as the URL for the kernel, initrd and Ignition config; a wrong one hangs nodes after the bootloader. | `make config`, `make serve` |
     | `mac_address` (per host) | Selects which generated PXE menu a node picks up | `make config`, `make reinstall`, `make serve` |
     | `ansible_host` (per host) | The address the node's DHCP reservation hands out; rendered into the kubeadm and static pod configs | `make config`, `make reinstall` |
     | `install_disk` | Target disk for the Flatcar install, overridable per host for a node whose disk sits elsewhere. **Wiped completely** — partitions, GPT and a device-level discard — before the install | `make config` |
     | `control_plane_vip`, `control_plane_vip_interface` | The API endpoint kubeadm bakes into every certificate and kubeconfig, and the NIC kube-vip advertises it on; see [Control Plane VIP](operations/control-plane-vip.md) | `make config`; the VIP also `make kubeconfig`, `make reinstall` |
     | `control_plane_endpoint_host` | The name or address nodes join through; a name only on a fresh build, see [Endpoint name](operations/control-plane-vip.md#endpoint-name) | `make config`, `make kubeconfig`, `make reinstall` |
     | `pod_subnet`, `service_subnet` | kubeadm's cluster networks; change only on a collision with your LAN | `make config` |
+    | `encryption_keys` | The etcd encryption keys, first one encrypting; changed only to [rotate](operations/encryption-key-rotation.md) | `make config`, `make reprovision` |
     | `router_ip`, `router_asn`, `cluster_asn` | The eBGP peer the Gateway addresses are announced to; rendered into `output/router/frr-bgp.conf` for the router, and `payload/platform/cilium/bgp.yaml` must say the same; see [Cilium](platform/cilium.md#configuration) | `make config` |
     | `flatcar_channel`, `flatcar_version`, `syslinux_version` | The OS image and bootloader to fetch; `flatcar_version` also names the image the installer writes | `make download`; `flatcar_version` also `make config` |
     | `kubernetes_version`, `kubernetes_sha256` | The sysext image to fetch and the checksum `make download` verifies it against, so both move together; the version is also what kubeadm and sysupdate are rendered with | `make download`, `make config` |
     | `kube_vip_version` | The bootstrap static pod only; the running image is pinned in `payload/platform/kube-vip/`; see [Inventory](architecture/ansible.md#inventory) | `make config` |
     | `bootstrap_cluster` (`control_plane` group) | `true` for this first install, so the first control-plane node runs `kubeadm init`; back to `false` once the cluster is up — see [Inventory](architecture/ansible.md#inventory) | `make config`, `make reinstall` |
     | `control_plane` / `workers` membership | Decides the node role, and with it the partition layout and the kubeadm command | `make config` |
-    | `ansible_user`, `ansible_ssh_common_args` (`k8s_nodes` group) | How the playbooks reach a running node for the kubeconfig and the join-credential renewal | `make kubeconfig`, `make config` |
+    | `ansible_user`, `ansible_ssh_common_args` (`k8s_nodes` group) | How the playbooks reach a running node | `make kubeconfig`, `make config` |
 
 3. **Initialize Environment**:
     Creates the `uv` virtual environment and installs dependencies:

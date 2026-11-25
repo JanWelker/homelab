@@ -261,7 +261,7 @@ clean: ## Delete everything under output/, credentials included
 	  '                                          these every secret the cluster' \
 	  '                                          holds is unrecoverable.' \
 	  '    output/credentials/openbao-operator.json  the OpenBao operator login.' \
-	  '    output/credentials/encryption_key     decrypts the Secrets in etcd.' \
+	  '    output/credentials/encryption_key*    decrypts the Secrets in etcd.' \
 	  '    output/credentials/certificate_key    joins control-plane nodes.' \
 	  '    output/credentials/kubeadm_token_*    joins worker nodes.' \
 	  '    output/kubeconfig                     admin credential for the cluster.' \
