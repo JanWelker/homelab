@@ -172,7 +172,7 @@ none); `docs.yaml` then publishes to your GitHub Pages. Otherwise delete
 | `arc-controller`, `arc-runners` | `githubConfigUrl` names a repository of the author's, and the runners register with a GitHub App installed there | [GitHub runners](platform/github-runners.md#github-app) |
 | `apps` project in `argocd-projects` | `sourceRepos` lists the author's chart registries | [ArgoCD &rarr; Projects](platform/argocd.md#projects) |
 | Claude agents | `security/claude-agent-rbac.yaml`, the SSH listener and an Argo CD account serve the author's sessions | [Agent RBAC](platform/security-policies.md#agent-rbac) |
-| Repository settings | `.github/CODEOWNERS`, `reviewers` and the preset in `renovate.json`, and `ci-ok.yaml` name the author's account | [Maintenance](development/maintenance.md) |
+| Repository settings | `.github/CODEOWNERS`, `reviewers` and the preset in `renovate.json` name the author's account | [Maintenance](development/maintenance.md) |
 
 To drop a component, delete its directory under `payload/platform/`, the
 lines `git grep -n <namespace> -- payload/` lists for each of its namespaces,
