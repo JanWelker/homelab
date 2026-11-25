@@ -28,6 +28,17 @@ spec:
             path:
               type: ReplaceFullPath
               replaceFullPath: /application/o/opencloud/.well-known/openid-configuration
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Strict-Transport-Security
+                value: "max-age=31536000; includeSubDomains"
+              - name: X-Content-Type-Options
+                value: "nosniff"
+              - name: X-Frame-Options
+                value: "SAMEORIGIN"
+              - name: Referrer-Policy
+                value: "strict-origin-when-cross-origin"
       backendRefs:
         - name: authentik-server
           port: 80

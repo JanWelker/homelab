@@ -73,15 +73,17 @@ spec:
             prometheus:
               serviceMonitor:
                 enabled: true
-            # The chart's defaults minus its CPU limit; null makes Helm drop
-            # the inherited key. See docs/platform/index.md#components
             resources:
               requests:
                 cpu: 10m
                 memory: 64Mi
               limits:
-                cpu: null
                 memory: 128Mi
+        # valuesObject drops nulls, so the CPU limits are unset here; see
+        # docs/platform/index.md#components
+        parameters:
+          - name: tetragonOperator.resources.limits.cpu
+            value: "null"
     - repoURL: https://github.com/JanWelker/homelab.git
       targetRevision: HEAD
       path: payload/platform/tetragon

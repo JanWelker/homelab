@@ -52,6 +52,11 @@ spec:
             memory: 32Mi
           limits:
             memory: 128Mi
+      # valuesObject drops nulls, so the CPU limits are unset here; see
+      # docs/platform/index.md#components
+      parameters:
+        - name: resources.limits.cpu
+          value: "null"
   destination:
     server: https://kubernetes.default.svc
     namespace: kubelet-csr-approver
