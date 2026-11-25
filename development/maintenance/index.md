@@ -1,6 +1,6 @@
 # Maintenance
 
-Two things keep the repository from rotting: GitHub Actions workflows that lint everything, and Renovate, which chases dependencies.
+GitHub Actions workflows lint everything; Renovate chases dependencies.
 
 ## CI workflows
 
@@ -9,17 +9,22 @@ All in `.github/workflows/`.
 | Workflow | Trigger | What it checks |
 | --- | --- | --- |
 | `lint-ansible.yaml` | `ansible/**` | `ansible-lint` |
-| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check` and `pytest` on the boot server and the scripts |
+| `ignition-render.yaml` | `ansible/**` | `make ignition-check`: `butane --strict`, `ignition-validate` and `kubeadm config validate` on every host's configs |
+| `lint-python.yaml` | `boot_server/*.py`, `scripts/*.py`, `tests/*.py`, `pyproject.toml`, `uv.lock` | `ruff check`, `ruff format --check`, `pytest` |
 | `lint-yaml.yaml` | `**/*.yaml` | `yamllint` |
 | `lint-markdown.yaml` | `**/*.md` | `markdownlint-cli2` |
-| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](<https://homelab.wlkr.ch/development/contributing/index.md#documentation>). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
-| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
-| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral |
-| `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#filing-policy>) does not block the bump that gets closer to it |
+| `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds and publishes the site — [Documentation](<https://homelab.wlkr.ch/development/contributing/index.md#documentation>). Only the deploy job, which runs no dependency code, can push |
+| `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/`, same split as `docs.yaml` |
+| `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered manifest diff against `main`. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral |
+| `server-dry-run.yaml` | pull requests under `payload/**` | Applies the rendered payload `--dry-run=server` to a kind cluster with our CRDs and admission policies; `tests/test_conventions.py` checks the documented rules |
+| `image-scan.yaml` | pull requests under `payload/**` | Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding [waiting on a release](<https://homelab.wlkr.ch/operations/vulnerabilities/index.md#filing-policy>) does not block the bump towards it |
+| `lint-shell-actions.yaml` | `**/*.sh`, `.github/workflows/**` | `shellcheck`, `actionlint`, `zizmor` |
+| `docs-length.yaml` | pull requests under `docs/**` | No existing page grows, dated logs aside; a new component takes the `docs-growth` label |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
+| `renovate-coverage.yaml` | every path that can hold a pin | Fails on a pin no Renovate manager extracts |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
-| `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
-| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | `make fonts-check`, `make mermaid-check`: the committed files match the pins — [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>) |
+| `ci-ok.yaml` | every pull request | Waits for every other check and fails if one failed; the only required check, so the others keep their path filters |
+| `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | The committed files match the pins — [Vendored assets](<https://homelab.wlkr.ch/development/contributing/index.md#vendored-assets>) |
 
 ## Renovate
 
@@ -38,17 +43,17 @@ Configured in `renovate.json`, on top of the shared preset [JanWelker/renovate-c
 
 ### Scope
 
-Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from which `lint-markdown.yaml` and `renovate-validate.yaml` run theirs), plus custom regex managers for the versions in `ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`, and the tool versions the workflows under `.github/workflows/` install by name rather than by action (the diff-preview image and Trivy). The `Makefile` is not tracked; it reads `targetRevision` from the owning `application.yaml` ([Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>)). The Kubernetes sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before use and bumped with the version by the `github-release-attachments` datasource.
+Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`), plus custom regex managers for the versions in `ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any `# renovate:` annotation, every CloudNativePG `imageName` under `payload/`, the `selinuxd` image digest, and the tools workflows install by name (the diff-preview image, Trivy, kind, Helm). The `Makefile` is not tracked; it reads `targetRevision` from the owning `application.yaml` ([Version pins](<https://homelab.wlkr.ch/architecture/gitops/index.md#version-pins>)). The Kubernetes sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before use and bumped with the version by the `github-release-attachments` datasource.
 
 ### Manager rules
 
-A misconfigured manager fails silently: the run succeeds and nothing is checked. Prove a manager works by reading what it extracts:
+A misconfigured manager fails silently: the run succeeds and nothing is checked. `renovate-coverage.yaml` catches that; locally, after `npm ci --prefix .github/tools`:
 
 ```bash
-LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup
+uv run --no-project scripts/renovate-coverage.py
 ```
 
-It needs no credentials for a public repository and prints every dependency it found and why it skipped any. The rules, each in `renovate.json`:
+The rules, each in `renovate.json`:
 
 - **`pre-commit` must be enabled explicitly** (`"pre-commit": {"enabled": true}`); Renovate ships that manager disabled, and a `packageRules` entry for it does nothing on its own.
 - **The `helm-values` manager reads only real values files.** An image tag inline in an Application's `helm.valuesObject:` is invisible to it; put a `# renovate: datasource=... depName=...` comment on the line above so the annotation manager picks it up, or move the values into a `values.yaml`.

@@ -2650,8 +2650,7 @@
 
 
 <h1 id="maintenance">Maintenance<a class="headerlink" href="#maintenance" title="Permanent link">&para;</a></h1>
-<p>Two things keep the repository from rotting: GitHub Actions workflows that lint
-everything, and Renovate, which chases dependencies.</p>
+<p>GitHub Actions workflows lint everything; Renovate chases dependencies.</p>
 <h2 id="ci-workflows">CI workflows<a class="headerlink" href="#ci-workflows" title="Permanent link">&para;</a></h2>
 <p>All in <code>.github/workflows/</code>.</p>
 <table>
@@ -2669,9 +2668,14 @@ everything, and Renovate, which chases dependencies.</p>
 <td><code>ansible-lint</code></td>
 </tr>
 <tr>
+<td><code>ignition-render.yaml</code></td>
+<td><code>ansible/**</code></td>
+<td><code>make ignition-check</code>: <code>butane --strict</code>, <code>ignition-validate</code> and <code>kubeadm config validate</code> on every host's configs</td>
+</tr>
+<tr>
 <td><code>lint-python.yaml</code></td>
 <td><code>boot_server/*.py</code>, <code>scripts/*.py</code>, <code>tests/*.py</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td>
-<td><code>ruff check</code>, <code>ruff format --check</code> and <code>pytest</code> on the boot server and the scripts</td>
+<td><code>ruff check</code>, <code>ruff format --check</code>, <code>pytest</code></td>
 </tr>
 <tr>
 <td><code>lint-yaml.yaml</code></td>
@@ -2686,27 +2690,47 @@ everything, and Renovate, which chases dependencies.</p>
 <tr>
 <td><code>docs.yaml</code></td>
 <td>push to <code>main</code> under <code>docs/**</code>, <code>overrides/**</code>, <code>zensical.toml</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td>
-<td>Builds the site with <code>--strict</code> and publishes it — see <a href="../contributing/#documentation">Contributing</a>. The build runs with a read-only token; only the deploy job, which runs no dependency code, can push</td>
+<td>Builds and publishes the site — <a href="../contributing/#documentation">Documentation</a>. Only the deploy job, which runs no dependency code, can push</td>
 </tr>
 <tr>
 <td><code>preview.yaml</code></td>
 <td>pull requests on the same paths</td>
-<td>Publishes a preview under <code>pr-preview/</code> from the build job's artifact, same split as <code>docs.yaml</code>; fork PRs skipped</td>
+<td>Publishes a preview under <code>pr-preview/</code>, same split as <code>docs.yaml</code></td>
 </tr>
 <tr>
 <td><code>argo-diff-preview.yaml</code></td>
 <td>pull requests under <code>payload/**</code></td>
-<td>Comments the rendered ArgoCD manifest diff against <code>main</code>; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral</td>
+<td>Comments the rendered manifest diff against <code>main</code>. It mounts the Docker socket for kind; the token is read-only and the runner ephemeral</td>
+</tr>
+<tr>
+<td><code>server-dry-run.yaml</code></td>
+<td>pull requests under <code>payload/**</code></td>
+<td>Applies the rendered payload <code>--dry-run=server</code> to a kind cluster with our CRDs and admission policies; <code>tests/test_conventions.py</code> checks the documented rules</td>
 </tr>
 <tr>
 <td><code>image-scan.yaml</code></td>
 <td>pull requests under <code>payload/**</code></td>
-<td><code>scripts/image-scan-diff.py</code>: renders every Application on <code>main</code> and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already <a href="../../operations/vulnerabilities/#filing-policy">waiting on a release</a> does not block the bump that gets closer to it</td>
+<td>Trivy on the images the PR changes; fails on a fixable CRITICAL the replaced image did not carry, so a finding <a href="../../operations/vulnerabilities/#filing-policy">waiting on a release</a> does not block the bump towards it</td>
+</tr>
+<tr>
+<td><code>lint-shell-actions.yaml</code></td>
+<td><code>**/*.sh</code>, <code>.github/workflows/**</code></td>
+<td><code>shellcheck</code>, <code>actionlint</code>, <code>zizmor</code></td>
+</tr>
+<tr>
+<td><code>docs-length.yaml</code></td>
+<td>pull requests under <code>docs/**</code></td>
+<td>No existing page grows, dated logs aside; a new component takes the <code>docs-growth</code> label</td>
 </tr>
 <tr>
 <td><code>renovate-validate.yaml</code></td>
 <td><code>renovate.json</code></td>
 <td><code>renovate-config-validator</code></td>
+</tr>
+<tr>
+<td><code>renovate-coverage.yaml</code></td>
+<td>every path that can hold a pin</td>
+<td>Fails on a pin no Renovate manager extracts</td>
 </tr>
 <tr>
 <td><code>secret-scan.yaml</code></td>
@@ -2716,12 +2740,12 @@ everything, and Renovate, which chases dependencies.</p>
 <tr>
 <td><code>ci-ok.yaml</code></td>
 <td>every pull request</td>
-<td>Waits for every other check on the head commit and fails if one failed. The only check the ruleset on <code>main</code> requires, so the others keep their path filters</td>
+<td>Waits for every other check and fails if one failed; the only required check, so the others keep their path filters</td>
 </tr>
 <tr>
 <td><code>fonts-check.yaml</code></td>
 <td><code>scripts/update-{fonts,mermaid}.sh</code>, <code>docs/assets/{fonts,javascripts}/**</code></td>
-<td><code>make fonts-check</code>, <code>make mermaid-check</code>: the committed files match the pins — <a href="../contributing/#vendored-assets">Vendored assets</a></td>
+<td>The committed files match the pins — <a href="../contributing/#vendored-assets">Vendored assets</a></td>
 </tr>
 </tbody>
 </table>
@@ -2776,22 +2800,22 @@ are the sets below that must move together.</p>
 <h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
 <p>Python (<code>pyproject.toml</code>, <code>uv.lock</code>), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (<code>payload/**/values.yaml</code>) and
-pre-commit hooks, the CI npm tools (<code>.github/tools/package-lock.json</code>, from which <code>lint-markdown.yaml</code> and <code>renovate-validate.yaml</code> run theirs), plus custom regex managers for the versions in
-<code>ansible/inventory.yaml</code>, the pins in <code>scripts/update-{fonts,mermaid}.sh</code>, any
-<code># renovate:</code> annotation and every CloudNativePG <code>imageName</code> under <code>payload/</code>,
-and the tool versions the workflows under <code>.github/workflows/</code> install by
-name rather than by action (the diff-preview image and Trivy). The <code>Makefile</code> is not
+pre-commit hooks, the CI npm tools (<code>.github/tools/package-lock.json</code>), plus
+custom regex managers for the versions in <code>ansible/inventory.yaml</code>, the pins in
+<code>scripts/update-{fonts,mermaid}.sh</code>, any <code># renovate:</code> annotation, every
+CloudNativePG <code>imageName</code> under <code>payload/</code>, the <code>selinuxd</code> image digest, and the
+tools workflows install by name (the diff-preview image, Trivy, kind, Helm). The <code>Makefile</code> is not
 tracked; it reads <code>targetRevision</code> from the owning <code>application.yaml</code>
 (<a href="../../architecture/gitops/#version-pins">Version pins</a>). The Kubernetes
 sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before
 use and bumped with the version by the <code>github-release-attachments</code> datasource.</p>
 <h3 id="manager-rules">Manager rules<a class="headerlink" href="#manager-rules" title="Permanent link">&para;</a></h3>
 <p>A misconfigured manager fails silently: the run succeeds and nothing is
-checked. Prove a manager works by reading what it extracts:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">LOG_LEVEL</span><span class="o">=</span>debug<span class="w"> </span>npx<span class="w"> </span>--yes<span class="w"> </span>renovate@latest<span class="w"> </span>--platform<span class="o">=</span><span class="nb">local</span><span class="w"> </span>--dry-run<span class="o">=</span>lookup
+checked. <code>renovate-coverage.yaml</code> catches that; locally, after
+<code>npm ci --prefix .github/tools</code>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uv<span class="w"> </span>run<span class="w"> </span>--no-project<span class="w"> </span>scripts/renovate-coverage.py
 </span></code></pre></div>
-<p>It needs no credentials for a public repository and prints every dependency it
-found and why it skipped any. The rules, each in <code>renovate.json</code>:</p>
+<p>The rules, each in <code>renovate.json</code>:</p>
 <ul>
 <li><strong><code>pre-commit</code> must be enabled explicitly</strong> (<code>"pre-commit": {"enabled": true}</code>);
     Renovate ships that manager disabled, and a <code>packageRules</code> entry for it does

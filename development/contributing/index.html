@@ -2704,28 +2704,29 @@ routine.</p>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>install<span class="w">   </span><span class="c1"># the same linters CI runs</span>
 </span></code></pre></div>
 <h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files<span class="w">       </span><span class="c1"># everything below, plus gitleaks</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files<span class="w">       </span><span class="c1"># the fast offline checks below, plus gitleaks</span>
 </span></code></pre></div>
 <p>The same checks, one at a time:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>uv<span class="w"> </span>run<span class="w"> </span>yamllint<span class="w"> </span>--strict<span class="w"> </span>-f<span class="w"> </span>github<span class="w"> </span>.
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w"> </span>--clean<span class="w"> </span>--strict<span class="w">        </span><span class="c1"># docs site</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>markdownlint-cli2<span class="w"> </span><span class="s1">'**/*.md'</span><span class="w"> </span><span class="s1">'!**/.venv'</span><span class="w"> </span><span class="s1">'!.agent'</span>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>.<span class="w">   </span><span class="c1"># python only</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w">                              </span><span class="c1"># python only</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">cd</span><span class="w"> </span>ansible<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ansible-lint<span class="w">             </span><span class="c1"># ansible only</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>uv<span class="w"> </span>run<span class="w"> </span>scripts/render-charts.py<span class="w"> </span>--out<span class="w"> </span>output/rendered<span class="w">   </span><span class="c1"># payload only</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q<span class="w">                              </span><span class="c1"># python, payload conventions</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nb">cd</span><span class="w"> </span>ansible<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>ansible-lint<span class="w">             </span><span class="c1"># ansible only</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>uv<span class="w"> </span>run<span class="w"> </span>scripts/server-dry-run.py<span class="w"> </span>output/rendered<span class="w">        </span><span class="c1"># payload only, kind</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>make<span class="w"> </span>ignition-check<span class="w">                           </span><span class="c1"># ansible only, not in pre-commit</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>shellcheck<span class="w"> </span>-x<span class="w"> </span>--severity<span class="o">=</span>warning<span class="w"> </span>scripts/*.sh<span class="w"> </span>scripts/lib/*.sh<span class="w">   </span><span class="c1"># shell only</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>actionlint<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uvx<span class="w"> </span>zizmor<span class="w"> </span>.github/workflows<span class="w">   </span><span class="c1"># workflows only</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>uv<span class="w"> </span>run<span class="w"> </span>scripts/docs-length.py<span class="w"> </span>origin/main<span class="w">   </span><span class="c1"># docs only: no page grows</span>
 </span></code></pre></div>
-<p>Before touching <code>payload/</code>, render what Helm will actually apply; the
-<code>kubectl</code> line needs a kubeconfig, since even a client-side dry run asks the
-API server for its resource types.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>helm<span class="w"> </span>template<span class="w"> </span>&lt;name&gt;<span class="w"> </span>&lt;repo&gt;/&lt;chart&gt;<span class="w"> </span>--version<span class="w"> </span>&lt;targetRevision&gt;<span class="w"> </span>-f<span class="w"> </span>&lt;values&gt;
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>--dry-run<span class="o">=</span>client<span class="w"> </span>-f<span class="w"> </span>payload/platform/&lt;component&gt;/
-</span></code></pre></div>
+<p>The dry run writes CRDs and policies to its context, so it refuses any but
+<code>kind-*</code>.</p>
 <p><code>--strict</code> is what CI uses. A page not registered in <code>nav</code> in <code>zensical.toml</code>
 fails the build, deliberately. On a pull request, the <code>argo-diff-preview</code>
-workflow comments the rendered ArgoCD manifest diff between <code>main</code> and your
-branch; read it, since a three-line values change can render as two hundred
-lines of different objects. The full list of workflows is in
-<a href="../maintenance/#ci-workflows">Maintenance</a>.</p>
+workflow comments the rendered manifest diff; read it, since a three-line
+values change can render as two hundred lines of different objects. All
+workflows: <a href="../maintenance/#ci-workflows">Maintenance</a>.</p>
 <h2 id="make-targets">Make targets<a class="headerlink" href="#make-targets" title="Permanent link">&para;</a></h2>
 <p>Every target in the <code>Makefile</code>, and the page that explains it. The ones that
 touch the cluster read <code>output/kubeconfig</code> (<code>KUBECONFIG=&lt;file&gt;</code> picks
@@ -2753,6 +2754,11 @@ another).</p>
 <td><code>config</code></td>
 <td>Renders the Ignition configs, PXE menus and credentials from the inventory</td>
 <td><a href="../../quickstart/#setup">Quickstart</a>, <a href="../../architecture/ansible/#playbooks">Ansible</a></td>
+</tr>
+<tr>
+<td><code>ignition-check</code></td>
+<td>Validates every host's rendered Ignition and kubeadm configs</td>
+<td><a href="#checks">Checks</a></td>
 </tr>
 <tr>
 <td><code>artifacts</code></td>
@@ -2859,9 +2865,9 @@ another).</p>
 <h2 id="branches-and-commits">Branches and commits<a class="headerlink" href="#branches-and-commits" title="Permanent link">&para;</a></h2>
 <p>Branch names are prefixed by area: <code>docs/</code>, <code>feat/</code>, <code>fix/</code>, <code>chore/</code>. Commit
 messages follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>docs: explain the stack choices and collect the known limitations
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>fix(bootstrap): repoint the install targets at the files that exist
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>chore(deps): update helm release kube-prometheus-stack to v89
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docs: explain the stack choices and collect the known limitations
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>fix(bootstrap): repoint the install targets at the files that exist
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>chore(deps): update helm release kube-prometheus-stack to v89
 </span></code></pre></div>
 <p>The body explains <em>why</em>; the diff already says what.</p>
 <div class="admonition warning">
@@ -2895,7 +2901,7 @@ section in <code>nav</code> needs an entry there too.</p>
 <tbody>
 <tr>
 <td>Build</td>
-<td>On push to <code>main</code> touching <code>docs/**</code>, <code>overrides/**</code>, <code>zensical.toml</code>, <code>pyproject.toml</code> or <code>uv.lock</code>, <code>docs.yaml</code> runs <code>zensical build --clean --strict</code></td>
+<td><code>docs.yaml</code> runs <code>zensical build --clean --strict</code> on push to <code>main</code></td>
 </tr>
 <tr>
 <td>Deploy</td>
@@ -2903,13 +2909,13 @@ section in <code>nav</code> needs an entry there too.</p>
 </tr>
 <tr>
 <td>Previews</td>
-<td><code>preview.yaml</code> builds every pull request matching the same paths, forks included, and publishes it under <code>pr-preview/</code> on <code>gh-pages</code>; closing the PR removes it. Its path filter must match <code>docs.yaml</code>, because this is the only <code>--strict</code> build a PR gets. Only the publish step is skipped for fork PRs: they have no write access</td>
+<td><code>preview.yaml</code> publishes every pull request under <code>pr-preview/</code>; closing it removes the preview. Its path filter must match <code>docs.yaml</code>, because this is the only <code>--strict</code> build a PR gets</td>
 </tr>
 </tbody>
 </table>
 <p>Locally:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>serve<span class="w">   </span><span class="c1"># http://localhost:8000, rebuilds on save</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w">   </span><span class="c1"># one-off build into site/ (gitignored)</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>serve<span class="w">   </span><span class="c1"># http://localhost:8000, rebuilds on save</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>uv<span class="w"> </span>run<span class="w"> </span>zensical<span class="w"> </span>build<span class="w">   </span><span class="c1"># one-off build into site/ (gitignored)</span>
 </span></code></pre></div>
 <h3 id="conventions">Conventions<a class="headerlink" href="#conventions" title="Permanent link">&para;</a></h3>
 <ul>

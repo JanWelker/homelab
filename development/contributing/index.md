@@ -12,7 +12,7 @@ uv run pre-commit install   # the same linters CI runs
 ## Checks
 
 ```bash
-uv run pre-commit run --all-files       # everything below, plus gitleaks
+uv run pre-commit run --all-files       # the fast offline checks below, plus gitleaks
 ```
 
 The same checks, one at a time:
@@ -22,18 +22,19 @@ uv run yamllint --strict -f github .
 uv run zensical build --clean --strict        # docs site
 markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only
-uv run pytest -q                              # python only
+uv run scripts/render-charts.py --out output/rendered   # payload only
+uv run pytest -q                              # python, payload conventions
 cd ansible && uv run ansible-lint             # ansible only
+uv run scripts/server-dry-run.py output/rendered        # payload only, kind
+make ignition-check                           # ansible only, not in pre-commit
+shellcheck -x --severity=warning scripts/*.sh scripts/lib/*.sh   # shell only
+actionlint && uvx zizmor .github/workflows   # workflows only
+uv run scripts/docs-length.py origin/main   # docs only: no page grows
 ```
 
-Before touching `payload/`, render what Helm will actually apply; the `kubectl` line needs a kubeconfig, since even a client-side dry run asks the API server for its resource types.
+The dry run writes CRDs and policies to its context, so it refuses any but `kind-*`.
 
-```bash
-helm template <name> <repo>/<chart> --version <targetRevision> -f <values>
-kubectl apply --dry-run=client -f payload/platform/<component>/
-```
-
-`--strict` is what CI uses. A page not registered in `nav` in `zensical.toml` fails the build, deliberately. On a pull request, the `argo-diff-preview` workflow comments the rendered ArgoCD manifest diff between `main` and your branch; read it, since a three-line values change can render as two hundred lines of different objects. The full list of workflows is in [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#ci-workflows>).
+`--strict` is what CI uses. A page not registered in `nav` in `zensical.toml` fails the build, deliberately. On a pull request, the `argo-diff-preview` workflow comments the rendered manifest diff; read it, since a three-line values change can render as two hundred lines of different objects. All workflows: [Maintenance](<https://homelab.wlkr.ch/development/maintenance/index.md#ci-workflows>).
 
 ## Make targets
 
@@ -44,6 +45,7 @@ Every target in the `Makefile`, and the page that explains it. The ones that tou
 | `setup` | Creates the virtualenv with every tool | [Setup](<#setup>) |
 | `download` | Fetches and verifies the Flatcar image, syslinux and the sysexts | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
 | `config` | Renders the Ignition configs, PXE menus and credentials from the inventory | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>), [Ansible](<https://homelab.wlkr.ch/architecture/ansible/index.md#playbooks>) |
+| `ignition-check` | Validates every host's rendered Ignition and kubeadm configs | [Checks](<#checks>) |
 | `artifacts` | `download` then `config` | [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md#setup>) |
 | `serve` | Runs the TFTP and HTTP boot server | [Boot server](<https://homelab.wlkr.ch/architecture/boot-process/index.md#boot-server>) |
 | `reinstall` | Arms a node (`LIMIT=<node>`) or, after a typed confirmation, every node to wipe and install on its next network boot | [Node Lifecycle](<https://homelab.wlkr.ch/operations/nodes/index.md#rebuilding-or-repartitioning-a-node>) |
@@ -95,9 +97,9 @@ The site is built with [Zensical](<https://zensical.org/>) from `docs/`, configu
 
 | Stage | What happens |
 | --- | --- |
-| Build | On push to `main` touching `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml` or `uv.lock`, `docs.yaml` runs `zensical build --clean --strict` |
+| Build | `docs.yaml` runs `zensical build --clean --strict` on push to `main` |
 | Deploy | The workflow drops a `.nojekyll` marker into `site/` (otherwise Pages runs Jekyll, which drops paths it considers private) and pushes `gh-pages` without force, sparing `pr-preview/` |
-| Previews | `preview.yaml` builds every pull request matching the same paths, forks included, and publishes it under `pr-preview/` on `gh-pages`; closing the PR removes it. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets. Only the publish step is skipped for fork PRs: they have no write access |
+| Previews | `preview.yaml` publishes every pull request under `pr-preview/`; closing it removes the preview. Its path filter must match `docs.yaml`, because this is the only `--strict` build a PR gets |
 
 Locally:
 
