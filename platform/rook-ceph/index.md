@@ -17,7 +17,7 @@ Distributed block storage using [Rook](<https://rook.io/>) as the Kubernetes ope
 
 ### Disks
 
-Each worker has a raw partition labelled `rook-osd`, created by Ignition as the **last** partition with whatever the root leaves, which Rook adds as an OSD; block data is replicated across them. Control planes get none, and the CephCluster's OSD placement excludes them, because etcd's fsyncs and BlueStore's writes on one shared disk stall each other. Its contents are wherever Ceph last wrote them, so inserting a partition ahead of it shifts its offset and takes the OSD data with it: changing the partition table is a [reinstall](<https://homelab.wlkr.ch/operations/nodes/index.md>), not an edit.
+Each worker has a raw partition labelled `rook-osd`, created by Ignition as the **last** partition with whatever the root leaves, which Rook adds as an OSD; block data is replicated across them. `placement.all` leaves the control-plane taint untolerated, so no Ceph daemon runs beside etcd: their fsyncs on one disk stall each other. Its contents are wherever Ceph last wrote them, so inserting a partition ahead of it shifts its offset and takes the OSD data with it: changing the partition table is a [reinstall](<https://homelab.wlkr.ch/operations/nodes/index.md>), not an edit.
 
 Ignition declares it with `format: none` and `wipe_filesystem: true`, because `ceph-volume` reads the BlueStore *signature*, not the partition table, and a reinstalled node would present an OSD from a cluster that no longer exists. Ceph declines any device that already carries a filesystem; see [No OSDs after reprovisioning](<#no-osds-after-reprovisioning>).
 

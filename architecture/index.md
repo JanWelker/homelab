@@ -43,7 +43,7 @@ The deployment host — the laptop running Ansible and the boot server — is **
 
 | Role | Nodes | Purpose |
 | --- | --- | --- |
-| Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph OSD |
+| Control plane | odin, thor, loki | etcd and the API server; tainted, no workloads, no Ceph |
 | Worker | freya, heimdall, valkyrie, baldur, tyr, frigg, bragi, idun | Everything else, and a Ceph OSD partition each |
 
 Three control-plane nodes because etcd needs an odd number, and two is the worst answer: twice the hardware and quorum still lost when one dies. The API server is reached through a kube-vip virtual IP rather than any single node — see [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>). Addresses, the VIP and the pod and service subnets are in `ansible/inventory.yaml`. How a request reaches a pod from the Internet, the LAN or another VLAN is drawn in [Traffic Flow](<https://homelab.wlkr.ch/platform/index.md#traffic-flow>).
