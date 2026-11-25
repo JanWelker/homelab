@@ -147,3 +147,29 @@ spec:
     - action: SCMP_ACT_ERRNO
       errnoRet: 38
       names: [clone3]
+---
+# The job container of the runners' job pods: the runtime's default plus what
+# buildah needs to build as root without CAP_SYS_ADMIN, which it gets inside a
+# user namespace it creates. chroot is what the runtime adds for the default
+# CAP_SYS_CHROOT. docs/platform/github-runners.md#job-pods
+apiVersion: security-profiles-operator.x-k8s.io/v1
+kind: SeccompProfile
+metadata:
+  name: arc-jobs
+spec:
+  defaultAction: SCMP_ACT_ERRNO
+  baseProfileName: runtime-default-log
+  flags:
+    - SECCOMP_FILTER_FLAG_LOG
+  architectures:
+    - SCMP_ARCH_X86_64
+    - SCMP_ARCH_X86
+    - SCMP_ARCH_X32
+  syscalls:
+    - action: SCMP_ACT_ALLOW
+      names:
+        [
+          chroot, clone, fsconfig, fsmount, fsopen, fspick, mount,
+          mount_setattr, move_mount, open_tree, pivot_root, setdomainname,
+          sethostname, setns, umount, umount2, unshare,
+        ]
