@@ -37,6 +37,9 @@ jobs:
         with:
           version: "0.13.9"
 
-      # Extraction runs offline and without a token; only the shared preset is fetched.
+      # Extraction runs offline; the token only lifts the anonymous rate limit
+      # on the one request, the shared preset, that hosted runners share.
       - name: Check every pin is tracked
+        env:
+          RENOVATE_GITHUB_COM_TOKEN: ${{ github.token }}
         run: uv run --no-project scripts/renovate-coverage.py
