@@ -58,3 +58,24 @@ repos:
       - id: markdownlint-cli2
         files: \.md$
         exclude: ^(\.venv|\.agent)/
+
+  # The Lint Shell and Actions workflow runs the same checks over every pull
+  # request. The shellcheck hook uses the binary on PATH: the official hook
+  # runs the image through `docker`, which not every contributor has.
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: ShellCheck
+        entry: shellcheck -x --severity=warning
+        language: unsupported
+        types: [shell]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.33.1
+    hooks:
+      - id: zizmor

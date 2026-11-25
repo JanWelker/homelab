@@ -85,4 +85,6 @@ uv run --no-project scripts/renovate-coverage.py   # pins; after npm ci --prefix
 cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 make ignition-check                           # ansible only, not in pre-commit
+shellcheck -x --severity=warning scripts/*.sh scripts/lib/*.sh   # shell only
+actionlint && uvx zizmor .github/workflows   # workflows only
 ```

@@ -43,16 +43,21 @@ jobs:
             -v "$PWD"/pull-request:/target-branch \
             -v "$PWD"/output:/output \
             -v "$PWD"/main/.github/argo-diff-preview/values.yaml:/argocd-config/values.yaml \
-            -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
-            -e REPO=${{ github.repository }} \
+            -e TARGET_BRANCH="refs/pull/$PR_NUMBER/merge" \
+            -e REPO="$REPO" \
             dagandersen/argocd-diff-preview:v0.2.17@sha256:ea90848df29337b50d5058330210b38e39232360b78d9c60951fc92e454c6941 \
             --argocd-chart-version="$ARGOCD_CHART_VERSION" \
             --auto-detect-files-changed=true \
             --watch-if-no-watch-pattern-found=false
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          REPO: ${{ github.repository }}
 
       - name: Post diff as comment
         run: |
-          gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md --edit-last || \
-          gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file output/diff.md --edit-last || \
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file output/diff.md
         env:
+          PR_NUMBER: ${{ github.event.number }}
+          REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
