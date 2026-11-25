@@ -183,7 +183,7 @@ ONELINE = awk '/^[a-z0-9-]+ \| [A-Z]+/{h=""; if ($$3=="CHANGED") h=$$1; else pri
 
 # flatcar-reset with the current template, keeping etcd, Ceph and kubelet
 # state; Kured reboots. See docs/operations/nodes.md#reprovisioning-a-node
-reprovision: config ## Re-run Ignition on nodes through flatcar-reset (LIMIT=, ALLOW_MINOR=1, BACKUP=1)
+reprovision: config ## Re-run Ignition on nodes through flatcar-reset (LIMIT=, ALLOW_MINOR=1)
 	@if [ -z "$(LIMIT)" ]; then \
 	  printf '%s\n' \
 	    '' \
@@ -204,7 +204,7 @@ reprovision: config ## Re-run Ignition on nodes through flatcar-reset (LIMIT=, A
 	  esac; \
 	fi
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reprovision.yaml $(if $(LIMIT),--limit "$(LIMIT)") \
-	  -e allow_minor=$(if $(ALLOW_MINOR),true,false) -e backup=$(if $(BACKUP),true,false)
+	  -e allow_minor=$(if $(ALLOW_MINOR),true,false)
 
 # Compares the checksum Ignition wrote with a fresh render.
 node-drift: config ## List the nodes running an older Ignition config (LIMIT=)

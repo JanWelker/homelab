@@ -56,6 +56,13 @@ def test_regex_entries_get_no_contents_suffix():
     ]
 
 
+def test_keep_entries_all_keep_their_contents():
+    """reprovision.yaml's shell check appends /.* to every entry, as flatcar-reset
+    does only for entries not ending like a regex; the two agree while none does."""
+    entries = yaml.safe_load(KEEP.read_text())['reprovision_keep_paths']
+    assert [e for e in entries if e.rstrip('/').endswith(overlap.REGEX_ENDINGS)] == []
+
+
 def test_collisions_ignore_overwrite_and_unkept_paths():
     config = {
         'storage': {

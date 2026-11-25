@@ -12,7 +12,6 @@
     ignition_file: "{{ output_dir }}/reprovision/ignition-{{ inventory_hostname }}-reprovision.json"
     keep_args: "{{ reprovision_keep_paths | map('quote') | join(' ') }}"
     allow_minor: false
-    backup: false
   tasks:
     - name: Require the rendered reprovision config
       ansible.builtin.stat:
@@ -53,12 +52,16 @@
       ansible.builtin.raw: test -e "$(readlink -f /etc/extensions/kubernetes.raw)"
       changed_when: false
 
-    - name: Preview what flatcar-reset keeps
+    # The same match flatcar-reset's initrd step makes, each entry also keeping
+    # what is below it. Its own --preview-keep cannot unmount /etc on these
+    # nodes and prints nothing.
+    - name: Check the keep list covers the node's cluster state
       ansible.builtin.raw: >-
-        kept=$(sudo flatcar-reset --preview-keep --keep-paths {{ keep_args }}
-        | grep -xF{% for p in reprovision_must_keep %} -e {{ p | quote }}{% endfor %});
         for p in {{ reprovision_must_keep | map('quote') | join(' ') }}; do
-        if sudo test -e "$p" && ! printf '%s\n' "$kept" | grep -qxF "$p"; then echo "$p"; fi;
+        sudo test -e "$p" || continue; kept=;
+        for e in {{ keep_args }}; do
+        printf '%s\n' "$p" | grep -qxE -e "$e" -e "$e/.*" && kept=1;
+        done; [ -n "$kept" ] || echo "$p";
         done
       register: lost
       changed_when: false
@@ -87,7 +90,7 @@
     - name: Stage the reset
       ansible.builtin.raw: >-
         sudo flatcar-reset --ignition-file /tmp/reprovision.ign --keep-machine-id
-        {{ '--backup' if backup | bool else '' }} --keep-paths {{ keep_args }};
+        --keep-paths {{ keep_args }};
         rc=$?; rm -f /tmp/reprovision.ign; exit $rc
       changed_when: true
 

@@ -180,19 +180,16 @@ files: the node keeps its OSD and rejoins as itself, without the boot server —
 see [Design Decisions](../architecture/decisions.md#flatcar-reset-not-in-place-sync).
 
 1. Stage it; the playbook refuses a minor the API server does not run, and a
-   reset whose preview would delete cluster state.
+   keep list that misses the node's etcd, kubelet or kubeadm state.
+   `flatcar-reset --preview-keep` and `--backup` print and copy nothing on
+   these nodes, since they cannot unmount `/etc`.
 
     ```bash
-    make reprovision LIMIT=<node>   # BACKUP=1 copies what it deletes to /flatcar-backup/
+    make reprovision LIMIT=<node>
     ```
 
 2. Let [Kured](#rebooting-a-node) reboot it, one node at a time. It must come
    back `Ready` and `current` in `make node-drift`; stop otherwise.
-3. Delete a `BACKUP=1` copy once healthy: it holds the old keys.
-
-    ```bash
-    ssh <node> sudo flatcar-reset --delete-backup
-    ```
 
 ## Rebuilding or repartitioning a node
 
