@@ -81,8 +81,12 @@ spec:
             cpu: 10m
             memory: 64Mi
           limits:
-            cpu: null
             memory: 256Mi
+      # valuesObject drops nulls, so the CPU limits are unset here; see
+      # docs/platform/index.md#components
+      parameters:
+        - name: resources.limits.cpu
+          value: "null"
   destination:
     server: https://kubernetes.default.svc
     namespace: descheduler
