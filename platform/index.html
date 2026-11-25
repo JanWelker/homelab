@@ -358,6 +358,8 @@
       
         
       
+        
+      
     
     
     
@@ -1020,6 +1022,8 @@
       
         
       
+        
+      
     
     
     
@@ -1467,6 +1471,33 @@
     
   
   Metrics Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./coredns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CoreDNS
 
     
   </span>
@@ -2522,6 +2553,8 @@
       
         
       
+        
+      
     
     
     
@@ -2650,6 +2683,11 @@ applications</code> shows — and the namespace it lands in.</p>
 <td>The PostgreSQL operator every workload database runs on</td>
 </tr>
 <tr>
+<td><a href="coredns/">coredns</a></td>
+<td><code>kube-system</code></td>
+<td>Cluster DNS; adopts the CoreDNS kubeadm deploys at init</td>
+</tr>
+<tr>
 <td><a href="descheduler/">descheduler</a></td>
 <td><code>descheduler</code></td>
 <td>Evicts pods a drain or reboot left piled on the surviving nodes</td>
@@ -2772,10 +2810,7 @@ The control-plane static pods take their requests, and the API server a soft
 <code>GOMEMLIMIT</code> so its heap collects before it fills the node, from the kubeadm
 patches in <code>ansible/templates/butane_node_config.yaml.j2</code>; they carry no
 limits, because a limit on the API server or etcd would OOM-kill the control
-plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its
-replicas one per node, which kubeadm applies at <code>init</code> and <code>upgrade apply</code>
-only, and its PodDisruptionBudget sits in the <code>security</code> component because
-nothing else owns a CoreDNS manifest.</p>
+plane. CoreDNS is <a href="coredns/">its own component</a>.</p>
 <h2 id="priority-classes">Priority classes<a class="headerlink" href="#priority-classes" title="Permanent link">&para;</a></h2>
 <p>Under memory pressure the kubelet evicts pods over their request first, then
 the lowest priority; at scheduling, a pod may preempt lower ones unless its

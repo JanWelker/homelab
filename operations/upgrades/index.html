@@ -356,6 +356,8 @@
       
         
       
+        
+      
     
     
     
@@ -1018,6 +1020,8 @@
       
         
       
+        
+      
     
     
     
@@ -1462,6 +1466,33 @@
     
   
   Metrics Server
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../platform/coredns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  CoreDNS
 
     
   </span>
@@ -2735,7 +2766,7 @@ The Ignition config inlines the rendered file and <code>make config</code> write
 </span></code></pre></div>
 <h3 id="patch-releases">Patch releases<a class="headerlink" href="#patch-releases" title="Permanent link">&para;</a></h3>
 <p>A patch sysext swaps only kubelet and kubeadm. The control-plane static pods
-and CoreDNS keep their images until kubeadm moves them; workers Kured reboots
+keep their images until kubeadm moves them; workers Kured reboots
 first run the newer kubelet meanwhile, which the skew policy allows within a minor.</p>
 <ol>
 <li>
@@ -2789,11 +2820,11 @@ in no particular order.</p>
 </span></code></pre></div>
 </li>
 <li>
-<p>On that node, run the kubeadm upgrade. <code>--skip-phases addon/kube-proxy</code>
-   stops a cluster whose stored <code>kubeadm-config</code> predates <code>proxy.disabled</code>
-   from redeploying <code>kube-proxy</code> beside Cilium; <code>--patches</code> keeps the static
-   pods' memory requests and CoreDNS's spread constraint.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
+<p>On that node, run the kubeadm upgrade. <code>--skip-phases</code> keeps <code>kube-proxy</code>
+   from returning beside Cilium on a cluster whose stored <code>kubeadm-config</code>
+   predates <code>proxy.disabled</code>, and leaves <a href="../../platform/coredns/">CoreDNS</a> to
+   Argo CD; <code>--patches</code> keeps the static pods' memory requests.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy,addon/coredns<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 <p>It must end with <code>SUCCESS!</code> and <code>kubectl version</code> must report the new
 server; stop otherwise.</p>
@@ -2804,7 +2835,7 @@ server; stop otherwise.</p>
    the new kubeadm the reboot swapped in and takes the version <code>upgrade apply</code>
    stored. <code>kubectl get nodes</code> must show the node <code>Ready</code>
    before the next one.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy,addon/coredns<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 </li>
 <li>

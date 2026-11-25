@@ -1292,6 +1292,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
 | [cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) | `cnpg-system` | The PostgreSQL operator every workload database runs on |
+| [coredns](<https://homelab.wlkr.ch/platform/coredns/index.md>) | `kube-system` | Cluster DNS; adopts the CoreDNS kubeadm deploys at init |
 | [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) | `descheduler` | Evicts pods a drain or reboot left piled on the surviving nodes |
 | [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) | `external-dns` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) | `external-secrets` | Bridges OpenBao to native Kubernetes Secrets |
@@ -1316,7 +1317,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](<https://homelab.wlkr.ch/platform/velero/index.md>) | `backup` | Volume and resource backups to the Ceph object store |
 
-Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods take their requests, and the API server a soft `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its replicas one per node, which kubeadm applies at `init` and `upgrade apply` only, and its PodDisruptionBudget sits in the `security` component because nothing else owns a CoreDNS manifest.
+Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods take their requests, and the API server a soft `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane. CoreDNS is [its own component](<https://homelab.wlkr.ch/platform/coredns/index.md>).
 
 ## Priority classes
 
@@ -2206,6 +2207,46 @@ Its own `plugins` entry keeps the same `barmanObjectName` with `serverName: <db>
 
 1. Merge and wait for `Cluster in healthy state`; both databases run, and the application reads the original.
 2. In a second PR, point the application at `<db>-restore-app`, rename the `ScheduledBackup` and its `cluster.name` to `<db>-restore`, and delete the original `Cluster`; the sync prunes it.
+
+# CoreDNS
+
+[CoreDNS](<https://coredns.io/>) answers every pod's DNS lookups on the `kube-dns` Service. `kubeadm init` deploys it, because Argo CD cannot clone the repository before names resolve; the `coredns` Application then adopts the same objects by name, and every `kubeadm upgrade` here skips `addon/coredns`, so the manifests in Git are the only source of its spec.
+
+## At a glance
+
+|  |  |
+| --- | --- |
+| Namespace | `kube-system` |
+| Depends on | Nothing; the nodes' `/etc/resolv.conf` for upstream names (`dnsPolicy: Default`) |
+| If it is down | Every in-cluster name lookup, so nearly every workload |
+| Health check | `kubectl -n kube-system get deploy coredns` → `2/2` on two different nodes |
+| Files | [`payload/platform/coredns/`](<https://github.com/JanWelker/homelab/tree/main/payload/platform/coredns>) |
+
+## Configuration
+
+| Setting | Why |
+| --- | --- |
+| Object names, labels and the selector as kubeadm creates them | The adoption patches the live objects instead of replacing them; a changed selector would recreate the Deployment |
+| `clusterIP` of `kube-dns` | The kubelets' `clusterDNS`, the tenth address of `service_subnet` |
+| `topologySpreadConstraints`, one replica per node | A drain or node loss takes at most half the resolvers; the PodDisruptionBudget keeps one up |
+| `Delete=false` on every object | Deleting the Application must not take DNS with it |
+| Image digest, human-merged | See [Pitfalls](<#pitfalls>) |
+
+## Usage
+
+Change the Corefile in `configmap.yaml`; the `reload` plugin picks it up within a minute without a restart.
+
+## Health check
+
+```bash
+kubectl -n kube-system get pods -l k8s-app=kube-dns -o wide
+kubectl -n kube-system get endpointslices -l kubernetes.io/service-name=kube-dns   # two ready addresses
+```
+
+## Pitfalls
+
+- **A CoreDNS bump may need a Corefile change.** kubeadm migrated the Corefile between releases; now the Renovate PR waits for a human, who reads the release notes for removed or renamed plugins first.
+- **`kubeadm upgrade` without `addon/coredns` in `--skip-phases`** rewrites the Deployment to kubeadm's spec; Argo CD's self-heal reverts it, but the pods roll twice. `make kube-upgrade` and the [minor runbook](<https://homelab.wlkr.ch/operations/upgrades/index.md#upgrading-a-minor-version-deliberately>) pass it.
 
 # Descheduler
 
@@ -5649,7 +5690,7 @@ ssh core@<node> cat /etc/sysupdate.kubernetes.d/kubernetes.conf   # confirm the 
 
 ### Patch releases
 
-A patch sysext swaps only kubelet and kubeadm. The control-plane static pods and CoreDNS keep their images until kubeadm moves them; workers Kured reboots first run the newer kubelet meanwhile, which the skew policy allows within a minor.
+A patch sysext swaps only kubelet and kubeadm. The control-plane static pods keep their images until kubeadm moves them; workers Kured reboots first run the newer kubelet meanwhile, which the skew policy allows within a minor.
 
 1. Wait until every control plane reports the new kubelet.
 
@@ -5688,17 +5729,17 @@ The order is upstream's: the first control plane, the other control planes, then
    ```bash
    kubectl get node <node> -w
    ```
-5. On that node, run the kubeadm upgrade. `--skip-phases addon/kube-proxy` stops a cluster whose stored `kubeadm-config` predates `proxy.disabled` from redeploying `kube-proxy` beside Cilium; `--patches` keeps the static pods' memory requests and CoreDNS's spread constraint.
+5. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
 
    ```bash
-   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
+   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
 
    It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
 6. Each other control plane in turn: steps 3 and 4, then `kubeadm upgrade node` with the same flags, which has to run the new kubeadm the reboot swapped in and takes the version `upgrade apply` stored. `kubectl get nodes` must show the node `Ready` before the next one.
 
    ```bash
-   sudo kubeadm upgrade node --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
+   sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
 7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
 

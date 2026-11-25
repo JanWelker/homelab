@@ -30,7 +30,7 @@ ssh core@<node> cat /etc/sysupdate.kubernetes.d/kubernetes.conf   # confirm the 
 
 ### Patch releases
 
-A patch sysext swaps only kubelet and kubeadm. The control-plane static pods and CoreDNS keep their images until kubeadm moves them; workers Kured reboots first run the newer kubelet meanwhile, which the skew policy allows within a minor.
+A patch sysext swaps only kubelet and kubeadm. The control-plane static pods keep their images until kubeadm moves them; workers Kured reboots first run the newer kubelet meanwhile, which the skew policy allows within a minor.
 
 1. Wait until every control plane reports the new kubelet.
 
@@ -69,17 +69,17 @@ The order is upstream's: the first control plane, the other control planes, then
    ```bash
    kubectl get node <node> -w
    ```
-5. On that node, run the kubeadm upgrade. `--skip-phases addon/kube-proxy` stops a cluster whose stored `kubeadm-config` predates `proxy.disabled` from redeploying `kube-proxy` beside Cilium; `--patches` keeps the static pods' memory requests and CoreDNS's spread constraint.
+5. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
 
    ```bash
-   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
+   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
 
    It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
 6. Each other control plane in turn: steps 3 and 4, then `kubeadm upgrade node` with the same flags, which has to run the new kubeadm the reboot swapped in and takes the version `upgrade apply` stored. `kubectl get nodes` must show the node `Ready` before the next one.
 
    ```bash
-   sudo kubeadm upgrade node --skip-phases addon/kube-proxy --patches /etc/kubernetes/patches
+   sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
 7. Each worker in turn: steps 3 and 4, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
 

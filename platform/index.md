@@ -20,6 +20,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | certificates | `cert-manager` | The Let's Encrypt issuers and the Gateway wildcard certificates — see [cert-manager](<https://homelab.wlkr.ch/platform/cert-manager/index.md>) |
 | [cilium](<https://homelab.wlkr.ch/platform/cilium/index.md>) | `kube-system` | CNI, `kube-proxy` replacement, Gateway API, LoadBalancer addresses, WireGuard, Hubble |
 | [cloudnative-pg](<https://homelab.wlkr.ch/platform/cloudnative-pg/index.md>) | `cnpg-system` | The PostgreSQL operator every workload database runs on |
+| [coredns](<https://homelab.wlkr.ch/platform/coredns/index.md>) | `kube-system` | Cluster DNS; adopts the CoreDNS kubeadm deploys at init |
 | [descheduler](<https://homelab.wlkr.ch/platform/descheduler/index.md>) | `descheduler` | Evicts pods a drain or reboot left piled on the surviving nodes |
 | [external-dns](<https://homelab.wlkr.ch/platform/external-dns/index.md>) | `external-dns` | Publishes Route53 records from HTTPRoutes |
 | [external-secrets](<https://homelab.wlkr.ch/platform/external-secrets/index.md>) | `external-secrets` | Bridges OpenBao to native Kubernetes Secrets |
@@ -44,7 +45,7 @@ One row per directory under `payload/platform/`, with the Application name where
 | [trivy-operator](<https://homelab.wlkr.ch/platform/trivy-operator/index.md>) | `trivy-system` | Vulnerability, misconfiguration, secret, RBAC and CIS scanning, every finding a CRD |
 | [velero](<https://homelab.wlkr.ch/platform/velero/index.md>) | `backup` | Volume and resource backups to the Ceph object store |
 
-Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods take their requests, and the API server a soft `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane. CoreDNS is kubeadm's too: the same directory holds a patch spreading its replicas one per node, which kubeadm applies at `init` and `upgrade apply` only, and its PodDisruptionBudget sits in the `security` component because nothing else owns a CoreDNS manifest.
+Across the platform, memory limits are set at roughly 2.5x the measured peak working set and requests at steady state; CPU is requested but never limited. The control-plane static pods take their requests, and the API server a soft `GOMEMLIMIT` so its heap collects before it fills the node, from the kubeadm patches in `ansible/templates/butane_node_config.yaml.j2`; they carry no limits, because a limit on the API server or etcd would OOM-kill the control plane. CoreDNS is [its own component](<https://homelab.wlkr.ch/platform/coredns/index.md>).
 
 ## Priority classes
 
