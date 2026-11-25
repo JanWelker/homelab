@@ -6,13 +6,18 @@
   vars:
     output_dir: "{{ playbook_dir }}/../../output"
     pxe_menu: "{{ output_dir }}/tftp/pxelinux.cfg/01-{{ mac_address | replace(':', '-') }}"
-    # One template per environment, one Ignition config per template. The node
-    # config goes first: the installer config pins its sha512.
+    # One Ignition config per environment. The node config goes first: the
+    # installer config pins its sha512. The reprovision one is for flatcar-reset
+    # and never served; see docs/operations/nodes.md#reprovisioning-a-node
     ignition_configs:
       - template: butane_node_config
         suffix: ""
       - template: butane_installer_config
         suffix: "-install"
+      - template: butane_node_config
+        suffix: "-reprovision"
+        dir: reprovision
+        reprovision: true
   tasks:
     - name: Check the endpoint name against a running cluster
       ansible.builtin.import_tasks: tasks/check_endpoint_host.yaml
@@ -153,6 +158,40 @@
         mode: "0644"
       run_once: true # noqa: run-once
       delegate_to: localhost
+
+    # Written into every node config, so make node-drift can tell which nodes
+    # run an older template. Hashes the reprovision render, which holds no
+    # join credentials or Kubernetes patch version that change on their own.
+    - name: Render the reprovision Butane config for its checksum
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../templates/butane_node_config.yaml.j2" # noqa: no-relative-paths
+        dest: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}-checksum.yaml"
+        mode: "0600"
+      vars:
+        config: {reprovision: true}
+      no_log: true
+
+    - name: Checksum the reprovision Butane config
+      ansible.builtin.stat:
+        path: "{{ output_dir }}/tmp/butane/butane-{{ inventory_hostname }}-checksum.yaml"
+        checksum_algorithm: sha256
+      register: node_config_stat
+
+    - name: Set the node config checksum fact
+      ansible.builtin.set_fact:
+        node_config_sha256: "{{ node_config_stat.stat.checksum }}"
+
+    - name: Ensure the reprovision directory exists
+      ansible.builtin.file:
+        path: "{{ output_dir }}/reprovision"
+        state: directory
+        mode: "0700"
+
+    - name: Record the checksum make node-drift expects
+      ansible.builtin.copy:
+        content: "{{ node_config_sha256 }}\n"
+        dest: "{{ output_dir }}/reprovision/{{ inventory_hostname }}.sha256"
+        mode: "0600"
 
     - name: Render the Ignition configs, the node config first
       ansible.builtin.include_tasks: tasks/render_ignition.yaml

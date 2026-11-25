@@ -18,7 +18,7 @@ reboot skips both, so it is kept for a node being wiped or dead. Flatcar is
 installed to disk, so the node boots without the boot server and keeps
 `/etc/kubernetes`, `/var/lib/etcd` and `/var/lib/rook`. A change made with
 `make config` is *not* picked up by a reboot; that takes a
-[rebuild](#rebuilding-or-repartitioning-a-node).
+[reprovision](#reprovisioning-a-node).
 
 1. Set the sentinel; Kured acts on it at its next `period` check.
 
@@ -96,28 +96,23 @@ The nodes boot network-first, so the PXE menus decide every boot.
 ## Adding a node
 
 1. Compare `kubernetes_version` in `ansible/inventory.yaml` with
-   `kubectl version`: a node installs the inventory's version, and `kubeadm
-   join` refuses a kubelet newer than the API server, so a merged minor has to
-   be [walked onto the cluster](upgrades.md#upgrading-a-minor-version-deliberately)
-   first. Then add the host to the inventory and regenerate and serve the boot
-   files.
+   `kubectl version`: `kubeadm join` refuses a kubelet newer than the API
+   server, so a merged minor is
+   [walked onto the cluster](upgrades.md#upgrading-a-minor-version-deliberately)
+   first. Then add the host and regenerate and serve the boot files.
 
     ```bash
     make config && make serve
     ```
 
-    In the same commit, add the node name to `providerRegex` in
-    `payload/platform/kubelet-csr-approver/application.yaml`, and let that PR
-    merge and sync before the node boots: a node the regex does not name has
-    its kubelet certificate denied and
-    [silently drops out of `kubectl top`](../platform/metrics-server.md#pitfalls).
+    In the same commit, add the node to `providerRegex` in
+    `payload/platform/kubelet-csr-approver/application.yaml` and let it sync
+    first, or its kubelet certificate is denied and it
+    [drops out of `kubectl top`](../platform/metrics-server.md#pitfalls).
 
-    Against a running cluster, `make config` also re-creates the bootstrap
-    token baked into the Ignition configs (`ttl` in
-    `ansible/templates/renew_join_credentials.sh.j2`) and re-uploads the
-    control-plane certificates for kubeadm's shorter fixed window, on
-    [whichever control plane answers](../architecture/ansible.md#playbooks),
-    so the node joins on its own.
+    Against a running cluster, `make config` also
+    [renews the join credentials](../architecture/ansible.md#playbooks) for
+    a limited window (`ansible/templates/renew_join_credentials.sh.j2`).
 
 2. Arm the node: the generated menu defaults to the local disk, so an unarmed
    node never installs, per
@@ -127,10 +122,9 @@ The nodes boot network-first, so the PXE menus decide every boot.
     make reinstall LIMIT=<node>
     ```
 
-3. Network-boot it within those windows, the shorter one for a
-   **control-plane** node. `bootstrap-k8s.service` runs the join once and only
-   while `/etc/kubernetes/kubelet.conf` is absent, so it does not interfere
-   with a node that has joined.
+3. Network-boot it within that window, shorter for a **control-plane** node.
+   `bootstrap-k8s.service` joins only while `/etc/kubernetes/kubelet.conf`
+   is absent.
 
 4. If the window has passed, run `make config` again, then retry the join on
    the node.
@@ -170,12 +164,40 @@ The nodes boot network-first, so the PXE menus decide every boot.
 !!! danger
     On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
 
+## Configuration drift
+
+Ignition runs once, so a template change reaches a running node only through a
+[reprovision](#reprovisioning-a-node), never a hand edit. `make node-drift`
+compares the checksum each node config writes to `/etc/node-config.sha256`
+with a fresh render.
+
+## Reprovisioning a node
+
+`flatcar-reset` deletes the root filesystem except the state listed in
+`ansible/playbooks/vars/reprovision.yaml`, and Ignition writes the rest from
+the node's `-reprovision` config, which leaves out the disks and the bootstrap
+files: the node keeps its OSD and rejoins as itself, without the boot server —
+see [Design Decisions](../architecture/decisions.md#flatcar-reset-not-in-place-sync).
+
+1. Stage it; the playbook refuses a minor the API server does not run, and a
+   reset whose preview would delete cluster state.
+
+    ```bash
+    make reprovision LIMIT=<node>   # BACKUP=1 copies what it deletes to /flatcar-backup/
+    ```
+
+2. Let [Kured](#rebooting-a-node) reboot it, one node at a time. It must come
+   back `Ready` and `current` in `make node-drift`; stop otherwise.
+3. Delete a `BACKUP=1` copy once healthy: it holds the old keys.
+
+    ```bash
+    ssh <node> sudo flatcar-reset --delete-backup
+    ```
+
 ## Rebuilding or repartitioning a node
 
-The disk layout in `ansible/templates/butane_node_config.yaml.j2` is applied by
-Ignition once, on the first boot after install, and the Ignition config is
-embedded in the OEM partition at install time, so no change under `ansible/`
-reaches a running node. `rook-osd` is the last partition and deliberately raw:
+The disk layout is applied by Ignition at install only;
+[reprovisioning](#reprovisioning-a-node) leaves it alone. `rook-osd` is the last partition and deliberately raw:
 move its start by a sector, which any insert or resize above it does, and every
 OSD on that node is gone. Only the last partition can grow without a reinstall,
 and `rook-osd` cannot shrink in place because Ceph has already written across
@@ -193,34 +215,28 @@ the space.
     make config && make serve
     ```
 
-4. Drain the node by hand: [Kured](#rebooting-a-node) would reboot it into
-   the installer before it has left the cluster. A
+4. Drain the node by hand, not through [Kured](#rebooting-a-node). A
    **control-plane** node also leaves the cluster (steps 1 and 3 of
-   [Replacing a failed node](#replacing-a-failed-node)): it comes back with
-   an empty etcd under its old peer URL, which kubeadm treats as joined.
+   [Replacing a failed node](#replacing-a-failed-node)), or it returns with
+   an empty etcd kubeadm treats as joined.
 
     ```bash
     kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
     ```
 
-5. Arm the nodes you are rebuilding. Arming is the only way in (the menu shows
-   no prompt), a later `make config` keeps a node armed, and the boot server
-   disarms it once it has the image, so the reboot at the end of the install
-   does not start a second one — see
+5. Arm the nodes you are rebuilding; the boot server disarms each once it
+   has the image — see
    [Switching back to local boot](../architecture/boot-process.md#switching-back-to-local-boot).
 
     ```bash
     make reinstall LIMIT=odin   # `make reinstall` alone asks, then arms every host
     ```
 
-    Every control plane joins the running cluster; only
-    [`bootstrap_cluster`](../architecture/ansible.md#inventory) renders
-    `kubeadm init`, and arming refuses while it is set and the VIP answers.
+    Only [`bootstrap_cluster`](../architecture/ansible.md#inventory) renders
+    `kubeadm init`; arming refuses it while the VIP answers.
 
 6. Network-boot the node. The installer wipes the disk, runs `flatcar-install`,
-   and reboots into the installed system, which then runs `kubeadm`. The node
-   keeps the SSH host key `make config` generated, so `output/known_hosts`
-   still matches.
+   and reboots into the installed system, which then runs `kubeadm`.
 7. Leave the boot server up until the node is `Ready` (the sysext images are
    fetched from it on that first boot), then stop it.
 8. Wait for `ceph status` to report `HEALTH_OK` before the next node: the

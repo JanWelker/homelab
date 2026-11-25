@@ -1,5 +1,8 @@
 {#- Only the first install runs kubeadm init; see docs/architecture/ansible.md#inventory #}
 {%- set kubeadm_init = role == 'control-plane' and inventory_hostname == groups['control_plane'][0] and (bootstrap_cluster | default(false) | bool) %}
+{#- The flatcar-reset variant leaves out the disks, the bootstrap files and the
+    sysext state; see docs/operations/nodes.md#reprovisioning-a-node #}
+{%- set reprovision = (config | default({})).reprovision | default(false) %}
 variant: flatcar
 version: 1.0.0
 passwd:
@@ -8,6 +11,7 @@ passwd:
       ssh_authorized_keys:
         - "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
 storage:
+{% if not reprovision %}
   disks:
     # The installer wipes; see docs/architecture/boot-process.md#wiping-the-disk
     - device: {{ install_disk }}
@@ -33,6 +37,7 @@ storage:
       format: none
       wipe_filesystem: true
 {% endif %}
+{% endif %}
   directories:
     - path: /etc/kubernetes/manifests
       mode: 0755
@@ -55,6 +60,14 @@ storage:
       mode: 0644
       contents:
         inline: "{{ inventory_hostname }}"
+{% if node_config_sha256 | default('') %}
+
+    # What make node-drift compares; see docs/operations/nodes.md#configuration-drift
+    - path: /etc/node-config.sha256
+      mode: 0644
+      contents:
+        inline: "{{ node_config_sha256 }}"
+{% endif %}
 {% if control_plane_endpoint_host != control_plane_vip %}
 
     # So the API endpoint does not depend on LAN DNS; replaces the shipped file.
@@ -76,6 +89,7 @@ storage:
           z /var/lib/kubelet/config.yaml 0600 root root -
           z /etc/kubernetes/pki/ca.crt 0600 root root -
           z /opt/cni/bin 0700 root root -
+{% if not reprovision %}
 
     - path: /opt/kubeadm-config.yaml
       mode: 0600
@@ -92,6 +106,7 @@ storage:
           KUBEADM_TOKEN={{ kubeadm_token }}
 {% if role == 'control-plane' %}
           KUBEADM_CERTIFICATE_KEY={{ certificate_key }}
+{% endif %}
 {% endif %}
 {% endif %}
 {% if role == 'control-plane' %}
@@ -274,6 +289,7 @@ storage:
             value: {{ ansible_host }}
 {% endfor %}
 {% endfor %}
+{% if not reprovision %}
 
     # Bootstrap copy; the DaemonSet in payload/platform/kube-vip/ replaces it.
     # Keep the env in step with that DaemonSet.
@@ -337,6 +353,7 @@ storage:
               - name: kubeconfig
                 hostPath:
                   path: /etc/kubernetes/admin.conf
+{% endif %}
 {% endif %}
     # Flatcar's own drop-in appends ssh-rsa; the first value wins, so this one
     # sorts ahead of it. See docs/architecture/security.md#node-hardening
@@ -449,11 +466,14 @@ storage:
       contents:
         inline: |
           {{ lookup('template', '../templates/sysupdate_kubernetes.conf.j2') | indent(10) }}
+{% if not reprovision %}
+    # sysupdate owns both after the first boot, so a reprovision keeps them.
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
         verification:
           hash: sha256-{{ sysext_sha256.kubernetes }}
+{% endif %}
     # Keeps the default sysupdate component from failing; see
     # docs/architecture/security.md#node-hardening
     - path: /etc/sysupdate.d/noop.conf
@@ -465,9 +485,11 @@ storage:
     - path: /etc/extensions/docker-flatcar.raw
       target: /dev/null
       overwrite: true
+{% if not reprovision %}
     - path: /etc/extensions/kubernetes.raw
       target: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       overwrite: true
+{% endif %}
 
 systemd:
   units:
@@ -550,6 +572,7 @@ systemd:
 
         [Install]
         WantedBy=timers.target
+{% if not reprovision %}
     - name: bootstrap-k8s.service
       enabled: true
       contents: |
@@ -584,3 +607,4 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
+{% endif %}

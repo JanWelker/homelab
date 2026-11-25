@@ -1,0 +1,97 @@
+---
+# Stages flatcar-reset with the node's reprovision Ignition config and leaves
+# the reboot to Kured; see docs/operations/nodes.md#reprovisioning-a-node.
+# Flatcar has no Python, hence raw.
+- name: Stage a flatcar-reset reprovision
+  hosts: k8s_nodes
+  gather_facts: false
+  vars_files:
+    - vars/reprovision.yaml
+  vars:
+    output_dir: "{{ playbook_dir }}/../../output"
+    ignition_file: "{{ output_dir }}/reprovision/ignition-{{ inventory_hostname }}-reprovision.json"
+    keep_args: "{{ reprovision_keep_paths | map('quote') | join(' ') }}"
+    allow_minor: false
+    backup: false
+  tasks:
+    - name: Require the rendered reprovision config
+      ansible.builtin.stat:
+        path: "{{ ignition_file }}"
+      register: ignition_stat
+      delegate_to: localhost
+
+    - name: Refuse without make config
+      ansible.builtin.assert:
+        that: ignition_stat.stat.exists
+        fail_msg: "{{ ignition_file }} is missing; run make config first."
+        quiet: true
+
+    # The rendered sysupdate config names the inventory's minor. A node handed
+    # the next minor fetches a kubelet the API server may refuse.
+    - name: Read the API server version
+      ansible.builtin.raw: sudo kubectl --kubeconfig /etc/kubernetes/admin.conf version -o json
+      register: kubectl_version
+      changed_when: false
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      run_once: true # noqa: run-once
+
+    - name: Refuse a minor the cluster does not run yet
+      vars:
+        server: "{{ (kubectl_version.stdout | from_json).serverVersion.gitVersion }}"
+      ansible.builtin.assert:
+        that: allow_minor | bool or kubernetes_version.split('.')[:2] == server.split('.')[:2]
+        fail_msg: >-
+          ansible/inventory.yaml names {{ kubernetes_version }}, the cluster runs
+          {{ server }}. Only the first control plane of a minor upgrade is
+          reprovisioned ahead of the API server, with ALLOW_MINOR=1; see
+          docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
+        quiet: true
+      run_once: true # noqa: run-once
+
+    # The reprovision config links no sysext: the node keeps the one it runs.
+    - name: Check the sysext the node runs is on its disk
+      ansible.builtin.raw: test -e "$(readlink -f /etc/extensions/kubernetes.raw)"
+      changed_when: false
+
+    - name: Preview what flatcar-reset keeps
+      ansible.builtin.raw: >-
+        kept=$(sudo flatcar-reset --preview-keep --keep-paths {{ keep_args }}
+        | grep -xF{% for p in reprovision_must_keep %} -e {{ p | quote }}{% endfor %});
+        for p in {{ reprovision_must_keep | map('quote') | join(' ') }}; do
+        if sudo test -e "$p" && ! printf '%s\n' "$kept" | grep -qxF "$p"; then echo "$p"; fi;
+        done
+      register: lost
+      changed_when: false
+
+    - name: Stop if the reset would delete cluster state
+      ansible.builtin.assert:
+        that: lost.stdout | trim | length == 0
+        fail_msg: "flatcar-reset would delete: {{ lost.stdout_lines | join(', ') }}"
+        quiet: true
+
+    # Holds the node's secrets; scp keeps its 0600 and /tmp is a tmpfs.
+    - name: Copy the reprovision config to the node
+      ansible.builtin.command:
+        argv:
+          - scp
+          - -q
+          - -o
+          - StrictHostKeyChecking=yes
+          - -o
+          - UserKnownHostsFile={{ output_dir }}/known_hosts
+          - "{{ ignition_file }}"
+          - "{{ ansible_user }}@{{ ansible_host }}:/tmp/reprovision.ign"
+      delegate_to: localhost
+      changed_when: true
+
+    - name: Stage the reset
+      ansible.builtin.raw: >-
+        sudo flatcar-reset --ignition-file /tmp/reprovision.ign --keep-machine-id
+        {{ '--backup' if backup | bool else '' }} --keep-paths {{ keep_args }};
+        rc=$?; rm -f /tmp/reprovision.ign; exit $rc
+      changed_when: true
+
+    # Kured drains and reboots one node at a time; the reset runs in that boot.
+    - name: Ask Kured for the reboot
+      ansible.builtin.raw: sudo touch /run/reboot-required
+      changed_when: true

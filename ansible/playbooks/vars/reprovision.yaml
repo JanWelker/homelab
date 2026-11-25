@@ -1,0 +1,43 @@
+---
+# What flatcar-reset keeps on the root filesystem; everything else is deleted
+# and Ignition writes it again. Each entry is an egrep regex over the whole
+# path; a plain directory keeps its contents too. Nothing here may be a path
+# the reprovision Ignition config writes, or Ignition fails on the existing
+# file: make ignition-check runs scripts/reprovision-overlap.py against it.
+# See docs/operations/nodes.md#reprovisioning-a-node
+reprovision_keep_paths:
+  # etcd member data: the node rejoins as the same member.
+  - /var/lib/etcd
+  # Ceph mon and crash-collector state on the root filesystem.
+  - /var/lib/rook
+  # The kubelet's config, client certificate and pod volumes.
+  - /var/lib/kubelet
+  # Images, so the node does not pull everything again, and the CNI results
+  # containerd tears the old sandboxes down with.
+  - /var/lib/containerd
+  - /var/lib/cni
+  # selinuxd's datastore and the writable policy store.
+  - /var/lib/security-profiles-operator
+  - /var/lib/selinux
+  - /var/log
+  # What kubeadm wrote at join and upgrade: certificates, kubeconfigs and the
+  # control-plane static pods. Never kube-vip.yaml, the bootstrap copy.
+  - /etc/kubernetes/pki
+  - '/etc/kubernetes/[^/]+\.conf'
+  - '/etc/kubernetes/manifests/(etcd|kube-apiserver|kube-controller-manager|kube-scheduler)\.yaml'
+  # sysupdate's images and CurrentSymlink: the node keeps the patch it runs.
+  - /opt/extensions/kubernetes
+  - /etc/extensions/kubernetes.raw
+
+# Paths that must survive when they exist on the node; the playbook stops if
+# flatcar-reset's preview would delete one.
+reprovision_must_keep:
+  - /var/lib/etcd/member
+  - /var/lib/kubelet/config.yaml
+  - /var/lib/kubelet/pki/kubelet-client-current.pem
+  - /etc/kubernetes/kubelet.conf
+  - /etc/kubernetes/admin.conf
+  - /etc/kubernetes/pki/ca.crt
+  - /etc/kubernetes/manifests/etcd.yaml
+  - /etc/kubernetes/manifests/kube-apiserver.yaml
+  - /etc/extensions/kubernetes.raw

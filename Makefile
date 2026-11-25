@@ -1,4 +1,4 @@
-.PHONY: help setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reboot-all kube-upgrade uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: help setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reprovision node-drift reboot-all kube-upgrade uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -180,6 +180,42 @@ NODES = ANSIBLE_DEPRECATION_WARNINGS=False uv run ansible $(if $(LIMIT),$(LIMIT)
 # Folds the "<host> | CHANGED | rc=0 >>" header and its output into one line.
 ONELINE = awk '/^[a-z0-9-]+ \| [A-Z]+/{h=""; if ($$3=="CHANGED") h=$$1; else print $$1": "$$3; next} \
 	h&&NF{sub(/^ +/,""); print h": "$$0; h=""}' | sort -V
+
+# flatcar-reset with the current template, keeping etcd, Ceph and kubelet
+# state; Kured reboots. See docs/operations/nodes.md#reprovisioning-a-node
+reprovision: config ## Re-run Ignition on nodes through flatcar-reset (LIMIT=, ALLOW_MINOR=1, BACKUP=1)
+	@if [ -z "$(LIMIT)" ]; then \
+	  printf '%s\n' \
+	    '' \
+	    '  make reprovision without LIMIT stages a reset on EVERY node. Kured reboots' \
+	    '  them one at a time, and each runs Ignition again on that boot.' \
+	    '' \
+	    '  To reprovision one node:  make reprovision LIMIT=<node>' \
+	    ''; \
+	  if [ ! -t 0 ]; then \
+	    echo "  not a terminal -- pass LIMIT=<node>, or re-run interactively to confirm"; \
+	    exit 1; \
+	  fi; \
+	  printf '  Stage a reset on all nodes? [y/N] '; \
+	  read -r reply; \
+	  case "$$reply" in \
+	    [yY]|[yY][eE][sS]) ;; \
+	    *) echo "  cancelled -- nothing staged."; exit 1;; \
+	  esac; \
+	fi
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/reprovision.yaml $(if $(LIMIT),--limit "$(LIMIT)") \
+	  -e allow_minor=$(if $(ALLOW_MINOR),true,false) -e backup=$(if $(BACKUP),true,false)
+
+# Compares the checksum Ignition wrote with a fresh render.
+node-drift: config ## List the nodes running an older Ignition config (LIMIT=)
+	@$(NODES) -a 'cat /etc/node-config.sha256 2>/dev/null || echo none' | $(ONELINE) | \
+	  while read -r host have; do host=$${host%:}; \
+	    want=$$(cat output/reprovision/$$host.sha256); \
+	    if [ "$$have" = "$$want" ]; then echo "$$host: current"; \
+	    elif [ "$$have" = none ]; then echo "$$host: no checksum, reprovision"; \
+	    elif [ "$${have%%!*}" = UNREACHABLE ]; then echo "$$host: unreachable"; \
+	    else echo "$$host: drifted, reprovision"; fi; \
+	  done
 
 # Sets the Kured sentinel everywhere; Kured's lock and alert gate decide the
 # order, one node at a time. See docs/platform/kured.md
