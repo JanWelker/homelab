@@ -81,9 +81,8 @@ sync with `prune` and `selfHeal`, and a `retry` block:
   `prune: false`, because its objects are the only thing holding the API VIP;
   copy the `syncPolicy` from any other sibling. Elsewhere a resource whose
   deletion would take more than itself carries a per-resource
-  `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace
-  (everything in it), an AppProject (every Application in it is orphaned), a
-  CloudNativePG `Cluster` and the bucket its backups land in. A removed policy
+  `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace, an
+  AppProject, a CloudNativePG `Cluster` and its backup bucket. A removed policy
   or manifest still prunes; the container it lived in stays.
 
 ## Bootstrap convergence
@@ -113,9 +112,9 @@ elsewhere:** the budget covers a chart arriving minutes late, not a human.
 ### Bootstrap pauses at OpenBao
 
 A fresh cluster looks stuck at OpenBao by design. OpenBao's pods report Ready
-while sealed, but the `ClusterSecretStore` beside it stays
+while sealed, but its `ClusterSecretStore`, and every `ExternalSecret`, stays
 Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth
-role, and with it every `ExternalSecret` in the platform. `make bao-init`
+role. `make bao-init`
 clears that, and `make bao-unseal` after every later restart;
 `certificates` then waits for `make bao-secrets` to write the Route53
 credentials, and the Gateways for the certificates. Nothing fails: every one of
@@ -169,8 +168,7 @@ Moving a manifest between directories is not a move to ArgoCD: the old
 Application sees a tracked resource vanish and, with `prune: true`, deletes
 it; the new one recreates it, possibly seconds later. For a `ClusterSecretStore`
 that is an outage of every secret; for a child `Application` with the resources
-finalizer it deletes everything that Application deployed. A move takes two
-merges:
+finalizer, of everything it deployed. A move takes two merges:
 
 1. Annotate the resource where it is, and let that sync:
 
@@ -184,7 +182,9 @@ merges:
     Application prunes first; `IgnoreExtraneous` keeps the old Application
     Synced while it still sees the resource.
 2. Move the file, keeping the annotations. The new Application takes over the
-   tracking annotation.
+   tracking annotation. If the old one stays OutOfSync with a
+   `SharedResourceWarning`, it is rendering the file from its manifest cache;
+   hard-refresh it.
 
 The annotations can go once the second change has synced.
 
