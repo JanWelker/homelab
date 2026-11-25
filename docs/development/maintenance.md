@@ -4,8 +4,7 @@ description: "The CI workflows that lint this repository and the Renovate config
 
 # Maintenance
 
-Two things keep the repository from rotting: GitHub Actions workflows that lint
-everything, and Renovate, which chases dependencies.
+GitHub Actions workflows lint everything; Renovate chases dependencies.
 
 ## CI workflows
 
@@ -24,6 +23,7 @@ All in `.github/workflows/`.
 | `server-dry-run.yaml` | pull requests under `payload/**`, `ansible/inventory.yaml`, the scripts and test it runs | Renders every Application as Argo CD would and sends it to a kind cluster at the nodes' minor: CRDs and admission policies for real, the rest `--dry-run=server`, so a refusal fails the PR, not the sync. `tests/test_conventions.py` checks the same render against the documented rules |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
+| `renovate-coverage.yaml` | pull requests on every path that can hold a pin | `scripts/renovate-coverage.py`: fails on a pin no manager extracts or lookup would drop; a line that is no pin goes in its commented ignore list |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
 | `ci-ok.yaml` | every pull request | Waits for every other check on the head commit and fails if one failed. The only check the ruleset on `main` requires, so the others keep their path filters |
 | `fonts-check.yaml` | `scripts/update-{fonts,mermaid}.sh`, `docs/assets/{fonts,javascripts}/**` | `make fonts-check`, `make mermaid-check`: the committed files match the pins — [Vendored assets](contributing.md#vendored-assets) |
@@ -82,11 +82,11 @@ are the sets below that must move together.
 
 Python (`pyproject.toml`, `uv.lock`), Docker images, GitHub Actions, Kubernetes
 and ArgoCD manifests, Helm values files (`payload/**/values.yaml`) and
-pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from which `lint-markdown.yaml` and `renovate-validate.yaml` run theirs), plus custom regex managers for the versions in
-`ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any
-`# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
-and the tool versions the workflows under `.github/workflows/` install by
-name rather than by action (the diff-preview image, Trivy, kind and Helm). The `Makefile` is not
+pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`), plus
+custom regex managers for the versions in `ansible/inventory.yaml`, the pins in
+`scripts/update-{fonts,mermaid}.sh`, any `# renovate:` annotation, every
+CloudNativePG `imageName` under `payload/`, the `selinuxd` image digest, and the
+tools workflows install by name (the diff-preview image, Trivy, kind, Helm). The `Makefile` is not
 tracked; it reads `targetRevision` from the owning `application.yaml`
 ([Version pins](../architecture/gitops.md#version-pins)). The Kubernetes
 sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before
@@ -95,14 +95,14 @@ use and bumped with the version by the `github-release-attachments` datasource.
 ### Manager rules
 
 A misconfigured manager fails silently: the run succeeds and nothing is
-checked. Prove a manager works by reading what it extracts:
+checked. `renovate-coverage.yaml` catches that; locally, after
+`npm ci --prefix .github/tools`:
 
 ```bash
-LOG_LEVEL=debug npx --yes renovate@latest --platform=local --dry-run=lookup
+uv run --no-project scripts/renovate-coverage.py
 ```
 
-It needs no credentials for a public repository and prints every dependency it
-found and why it skipped any. The rules, each in `renovate.json`:
+The rules, each in `renovate.json`:
 
 - **`pre-commit` must be enabled explicitly** (`"pre-commit": {"enabled": true}`);
     Renovate ships that manager disabled, and a `packageRules` entry for it does

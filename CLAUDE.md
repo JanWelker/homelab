@@ -81,6 +81,7 @@ markdownlint-cli2 '**/*.md' '!**/.venv' '!.agent'
 uv run ruff check . && uv run ruff format --check .   # python only
 uv run scripts/render-charts.py --out output/rendered   # payload only
 uv run pytest -q                              # python, payload conventions
+uv run --no-project scripts/renovate-coverage.py   # pins; after npm ci --prefix .github/tools
 cd ansible && uv run ansible-lint             # ansible only
 uv run scripts/server-dry-run.py output/rendered        # payload only, kind
 make ignition-check                           # ansible only, not in pre-commit

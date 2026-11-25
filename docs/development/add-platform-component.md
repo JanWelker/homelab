@@ -64,9 +64,8 @@ Application on the next poll. Workloads go in the
    [Authentik](../platform/authentik.md). A route that crosses namespaces
    needs a `ReferenceGrant` in the target namespace.
 
-7. **Check Renovate sees the pin.** Chart versions are covered; an image tag
-   inside `valuesObject` needs a `# renovate:` comment — see
-   [Maintenance](maintenance.md).
+7. **Check Renovate sees the pin.** `renovate-coverage.yaml` fails on one it
+   does not; the fixes are in [Manager rules](maintenance.md#manager-rules).
 
 8. **Write the page** under `docs/platform/` with the shared skeleton — intro,
    At a glance, Configuration, Usage, Health check, Pitfalls, Recovery only
