@@ -79,7 +79,7 @@ spec:
           port: 80
 ```
 
-A platform UI uses `infra-gateway` and carries the security headers as a `ResponseHeaderModifier` filter; copy it from `payload/platform/cilium/httproute.yaml`.
+A platform route uses `infra-gateway` and always carries the security headers as a `ResponseHeaderModifier` filter; copy it from `payload/platform/cilium/httproute.yaml`.
 
 ### Route hostnames
 
