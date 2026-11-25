@@ -47,7 +47,7 @@ Every Application, generated or not, carries the same `syncPolicy`: automated sy
   ```
 - **Patching a generated Application's `spec` achieves nothing.** The next ApplicationSet reconcile copies the file back over it. That includes switching automated sync off: the only rollback is a revert commit — see [Rolling back a bad sync](<https://homelab.wlkr.ch/operations/troubleshooting/index.md#rolling-back-a-bad-sync>).
 - **`argocd` carries no finalizer.** The ApplicationSet deletes a generated Application whose file or generator path goes away, and with the resources finalizer that would delete ArgoCD itself; without it the objects stay.
-- **One exception to `prune`, and one annotation.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP; copy the `syncPolicy` from any other sibling. Elsewhere a resource whose deletion would take more than itself carries a per-resource `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace (everything in it), an AppProject (every Application in it is orphaned), a CloudNativePG `Cluster` and the bucket its backups land in. A removed policy or manifest still prunes; the container it lived in stays.
+- **One exception to `prune`, and one annotation.** `kube-vip` syncs with `prune: false`, because its objects are the only thing holding the API VIP; copy the `syncPolicy` from any other sibling. Elsewhere a resource whose deletion would take more than itself carries a per-resource `argocd.argoproj.io/sync-options: Prune=false` instead: a Namespace, an AppProject, a CloudNativePG `Cluster` and its backup bucket. A removed policy or manifest still prunes; the container it lived in stays.
 
 ## Bootstrap convergence
 
@@ -64,7 +64,7 @@ Two placement rules keep this convergence short. **A resource lives with what it
 
 ### Bootstrap pauses at OpenBao
 
-A fresh cluster looks stuck at OpenBao by design. OpenBao's pods report Ready while sealed, but the `ClusterSecretStore` beside it stays Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth role, and with it every `ExternalSecret` in the platform. `make bao-init` clears that, and `make bao-unseal` after every later restart; `certificates` then waits for `make bao-secrets` to write the Route53 credentials, and the Gateways for the certificates. Nothing fails: every one of those resources applied cleanly and is waiting on status.
+A fresh cluster looks stuck at OpenBao by design. OpenBao's pods report Ready while sealed, but its `ClusterSecretStore`, and every `ExternalSecret`, stays Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth role. `make bao-init` clears that, and `make bao-unseal` after every later restart; `certificates` then waits for `make bao-secrets` to write the Route53 credentials, and the Gateways for the certificates. Nothing fails: every one of those resources applied cleanly and is waiting on status.
 
 ## Workloads live in a second repository
 
@@ -93,7 +93,7 @@ On a fresh cluster the workloads therefore start syncing before the platform und
 
 ## Moving a resource to another Application
 
-Moving a manifest between directories is not a move to ArgoCD: the old Application sees a tracked resource vanish and, with `prune: true`, deletes it; the new one recreates it, possibly seconds later. For a `ClusterSecretStore` that is an outage of every secret; for a child `Application` with the resources finalizer it deletes everything that Application deployed. A move takes two merges:
+Moving a manifest between directories is not a move to ArgoCD: the old Application sees a tracked resource vanish and, with `prune: true`, deletes it; the new one recreates it, possibly seconds later. For a `ClusterSecretStore` that is an outage of every secret; for a child `Application` with the resources finalizer, of everything it deployed. A move takes two merges:
 
 1. Annotate the resource where it is, and let that sync:
 
@@ -103,7 +103,7 @@ Moving a manifest between directories is not a move to ArgoCD: the old Applicati
      argocd.argoproj.io/compare-options: IgnoreExtraneous
    ```
 
-   Both are read off the **live** object. `Prune=false` stops whichever Application prunes first; `IgnoreExtraneous` keeps the old Application Synced while it still sees the resource. 2. Move the file, keeping the annotations. The new Application takes over the tracking annotation.
+   Both are read off the **live** object. `Prune=false` stops whichever Application prunes first; `IgnoreExtraneous` keeps the old Application Synced while it still sees the resource. 2. Move the file, keeping the annotations. The new Application takes over the tracking annotation. If the old one stays OutOfSync with a `SharedResourceWarning`, it is rendering the file from its manifest cache; hard-refresh it.
 
 The annotations can go once the second change has synced.
 

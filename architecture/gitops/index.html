@@ -2848,9 +2848,8 @@ sync with <code>prune</code> and <code>selfHeal</code>, and a <code>retry</code>
   <code>prune: false</code>, because its objects are the only thing holding the API VIP;
   copy the <code>syncPolicy</code> from any other sibling. Elsewhere a resource whose
   deletion would take more than itself carries a per-resource
-  <code>argocd.argoproj.io/sync-options: Prune=false</code> instead: a Namespace
-  (everything in it), an AppProject (every Application in it is orphaned), a
-  CloudNativePG <code>Cluster</code> and the bucket its backups land in. A removed policy
+  <code>argocd.argoproj.io/sync-options: Prune=false</code> instead: a Namespace, an
+  AppProject, a CloudNativePG <code>Cluster</code> and its backup bucket. A removed policy
   or manifest still prunes; the container it lived in stays.</li>
 </ul>
 <h2 id="bootstrap-convergence">Bootstrap convergence<a class="headerlink" href="#bootstrap-convergence" title="Permanent link">&para;</a></h2>
@@ -2900,9 +2899,9 @@ their own and the resources that wait for OpenBao are the ones that say so.
 elsewhere:</strong> the budget covers a chart arriving minutes late, not a human.</p>
 <h3 id="bootstrap-pauses-at-openbao">Bootstrap pauses at OpenBao<a class="headerlink" href="#bootstrap-pauses-at-openbao" title="Permanent link">&para;</a></h3>
 <p>A fresh cluster looks stuck at OpenBao by design. OpenBao's pods report Ready
-while sealed, but the <code>ClusterSecretStore</code> beside it stays
+while sealed, but its <code>ClusterSecretStore</code>, and every <code>ExternalSecret</code>, stays
 Degraded until OpenBao is initialised, unsealed and has the Kubernetes auth
-role, and with it every <code>ExternalSecret</code> in the platform. <code>make bao-init</code>
+role. <code>make bao-init</code>
 clears that, and <code>make bao-unseal</code> after every later restart;
 <code>certificates</code> then waits for <code>make bao-secrets</code> to write the Route53
 credentials, and the Gateways for the certificates. Nothing fails: every one of
@@ -2970,8 +2969,7 @@ Ordering <em>within</em> a workload uses resource-level sync waves — the Cloud
 Application sees a tracked resource vanish and, with <code>prune: true</code>, deletes
 it; the new one recreates it, possibly seconds later. For a <code>ClusterSecretStore</code>
 that is an outage of every secret; for a child <code>Application</code> with the resources
-finalizer it deletes everything that Application deployed. A move takes two
-merges:</p>
+finalizer, of everything it deployed. A move takes two merges:</p>
 <ol>
 <li>
 <p>Annotate the resource where it is, and let that sync:</p>
@@ -2983,7 +2981,9 @@ merges:</p>
 Application prunes first; <code>IgnoreExtraneous</code> keeps the old Application
 Synced while it still sees the resource.
 2. Move the file, keeping the annotations. The new Application takes over the
-   tracking annotation.</p>
+   tracking annotation. If the old one stays OutOfSync with a
+   <code>SharedResourceWarning</code>, it is rendering the file from its manifest cache;
+   hard-refresh it.</p>
 </li>
 </ol>
 <p>The annotations can go once the second change has synced.</p>
