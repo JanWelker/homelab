@@ -12,6 +12,10 @@ any new rule there, not in a JSON comment.
 
 ## 1. Inventory the pins
 
+`scripts/renovate-coverage.py` (CI: `renovate-coverage.yaml`) does §1 and the
+extraction half of §2 on every PR; run it first and start from what it lists.
+The steps below are for what it cannot see: lookup results and pin branches.
+
 Everything that names a version, tag, digest, release or URL with a version
 in it:
 

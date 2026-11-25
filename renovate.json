@@ -398,6 +398,20 @@
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker",
       "autoReplaceStringTemplate": "imageName: {{{depName}}}{{#if newValue}}:{{{newValue}}}{{/if}}{{#if newDigest}}@{{{newDigest}}}{{/if}}"
+    },
+    {
+      "description": "The selinuxd image override names a quay.io repository and a digest only, as the chart itself does for the `latest` tag it follows; neither the helm-values manager nor a `# renovate:` comment can carry a bare digest -- see docs/platform/security-profiles-operator.md",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^payload/platform/security-profiles-operator/application\\.yaml$/"
+      ],
+      "matchStrings": [
+        "repository: (?<depName>security-profiles-operator/selinuxd[\\w-]*)\\n\\s*digest: (?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "packageNameTemplate": "quay.io/{{{depName}}}",
+      "currentValueTemplate": "latest",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
     }
   ]
 }
