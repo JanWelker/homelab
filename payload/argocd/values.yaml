@@ -197,6 +197,10 @@ configs:
     # Break-glass if Authentik is down: see docs/platform/argocd.md
     admin.enabled: "false"
 
+    # helmCharts in a kustomization, for a chart that needs a post-render; see
+    # docs/architecture/gitops.md#version-pins
+    kustomize.buildOptions: --enable-helm
+
     # The in-cluster Claude Code agents; see docs/platform/authentik.md#argocds-api-key-account
     accounts.claude: apiKey
 

@@ -5,3 +5,7 @@ redis:
     # Anonymous pulls from Public ECR are throttled on shared runner IPs;
     # Docker Hub serves the same official image without that limit.
     repository: docker.io/library/redis
+configs:
+  cm:
+    # As in payload/argocd/values.yaml, or a helmCharts kustomization fails to render.
+    kustomize.buildOptions: --enable-helm
