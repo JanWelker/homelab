@@ -10,6 +10,9 @@ all:
     # docs/operations/control-plane-vip.md#endpoint-name
     control_plane_endpoint_host: "{{ control_plane_vip }}"
     install_disk: "/dev/nvme0n1"
+    # Secrets encryption keys, the first encrypts; a rotation is a sequence of
+    # these lists. See docs/operations/encryption-key-rotation.md
+    encryption_keys: [key1]
     # eBGP peer; payload/platform/cilium/bgp.yaml must match. See docs/adapting.md
     router_ip: "10.9.0.1"
     router_asn: 65000

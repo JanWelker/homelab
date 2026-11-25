@@ -122,8 +122,10 @@ storage:
               providers:
                 - secretbox:
                     keys:
-                      - name: key1
-                        secret: {{ encryption_key }}
+{% for name, secret in encryption_keys | zip(encryption_secrets) %}
+                      - name: {{ name }}
+                        secret: {{ secret }}
+{% endfor %}
                 - identity: {}
 
     - path: /etc/kubernetes/audit/policy.yaml
