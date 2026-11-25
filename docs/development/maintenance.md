@@ -20,6 +20,7 @@ All in `.github/workflows/`.
 | `docs.yaml` | push to `main` under `docs/**`, `overrides/**`, `zensical.toml`, `pyproject.toml`, `uv.lock` | Builds the site with `--strict` and publishes it — see [Contributing](contributing.md#documentation). The build runs with a read-only token; only the deploy job, which runs no dependency code, can push |
 | `preview.yaml` | pull requests on the same paths | Publishes a preview under `pr-preview/` from the build job's artifact, same split as `docs.yaml`; fork PRs skipped |
 | `argo-diff-preview.yaml` | pull requests under `payload/**` | Comments the rendered ArgoCD manifest diff against `main`; fork PRs skipped. It mounts the Docker socket because the tool starts a kind cluster; accepted, since the token is read-only and the runner ephemeral |
+| `server-dry-run.yaml` | pull requests under `payload/**`, `ansible/inventory.yaml`, the two scripts | Renders every Application as Argo CD would and sends it to a kind cluster at the nodes' minor: CRDs and admission policies for real, the rest `--dry-run=server`, so a refusal fails the PR, not the sync |
 | `image-scan.yaml` | pull requests under `payload/**` | `scripts/image-scan-diff.py`: renders every Application on `main` and on the PR, scans with Trivy only the images that changed, and fails on a fixable CRITICAL the replaced image did not carry. A finding already [waiting on a release](../operations/vulnerabilities.md#filing-policy) does not block the bump that gets closer to it |
 | `renovate-validate.yaml` | `renovate.json` | `renovate-config-validator` |
 | `secret-scan.yaml` | every pull request | `gitleaks` over the PR's commits, the same version as the pre-commit hook; a manual run scans the whole history |
@@ -84,7 +85,7 @@ pre-commit hooks, the CI npm tools (`.github/tools/package-lock.json`, from whic
 `ansible/inventory.yaml`, the pins in `scripts/update-{fonts,mermaid}.sh`, any
 `# renovate:` annotation and every CloudNativePG `imageName` under `payload/`,
 and the tool versions the workflows under `.github/workflows/` install by
-name rather than by action (the diff-preview image and Trivy). The `Makefile` is not
+name rather than by action (the diff-preview image, Trivy, kind and Helm). The `Makefile` is not
 tracked; it reads `targetRevision` from the owning `application.yaml`
 ([Version pins](../architecture/gitops.md#version-pins)). The Kubernetes
 sysext and the Gateway API CRDs carry a sha256 beside the pin, checked before

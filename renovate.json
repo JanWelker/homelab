@@ -95,9 +95,18 @@
       "groupName": "gitleaks"
     },
     {
-      "description": "A Kubernetes minor is a manual kubeadm upgrade in version-skew order, and a node provisioned from an automerged minor would run a kubelet ahead of the API server and fail its kubeadm join. Patches still automerge: sysupdate picks those up on the running nodes by itself -- see docs/operations/upgrades.md",
+      "description": "kind supports only the node images built for its release: the binary and the node image move in one PR.",
       "matchDepNames": [
-        "kubernetes"
+        "kubernetes-sigs/kind",
+        "kindest/node"
+      ],
+      "groupName": "kind"
+    },
+    {
+      "description": "A Kubernetes minor is a manual kubeadm upgrade in version-skew order, which the server dry run's kind node follows, and a node provisioned from an automerged minor would run a kubelet ahead of the API server and fail its kubeadm join. Patches still automerge: sysupdate picks those up on the running nodes by itself -- see docs/operations/upgrades.md",
+      "matchDepNames": [
+        "kubernetes",
+        "kindest/node"
       ],
       "matchUpdateTypes": [
         "minor"
@@ -317,13 +326,13 @@
       "versioningTemplate": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)$"
     },
     {
-      "description": "Diff preview image. The Docker Hub namespace is `dagandersen`, without the hyphen the GitHub org `dag-andersen` has -- matching on the org spelling makes this manager find nothing at all.",
+      "description": "Images the workflows run by full reference: the diff-preview image and the server dry run's kind node. The Docker Hub namespace of the former is `dagandersen`, without the hyphen the GitHub org `dag-andersen` has -- matching on the org spelling makes this manager find nothing at all.",
       "customType": "regex",
       "managerFilePatterns": [
         "/^\\.github/workflows/.*\\.yaml$/"
       ],
       "matchStrings": [
-        "(?<depName>dagandersen/argocd-diff-preview):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
+        "(?<depName>dagandersen/argocd-diff-preview|kindest/node):(?<currentValue>[a-zA-Z0-9_.-]+)(?:@(?<currentDigest>sha256:[a-f0-9]+))?"
       ],
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker",
@@ -353,10 +362,11 @@
       ]
     },
     {
-      "description": "Track versions annotated with a `# renovate:` comment. Needed for image tags written inline in a Helm `valuesObject:`, which the helm-values manager only reads from real values files.",
+      "description": "Track versions annotated with a `# renovate:` comment. Needed for image tags written inline in a Helm `valuesObject:`, which the helm-values manager only reads from real values files, and for the tools a workflow downloads by version.",
       "customType": "regex",
       "managerFilePatterns": [
-        "/^payload/.+\\.yaml$/"
+        "/^payload/.+\\.yaml$/",
+        "/^\\.github/workflows/.+\\.yaml$/"
       ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?[^\\n]*\\n\\s*[\\w.-]+:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
