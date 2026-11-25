@@ -1,0 +1,40 @@
+---
+# Enforces the rule in CLAUDE.md that an edit to an existing page leaves it
+# the same length or shorter. The `docs-growth` label turns the failure into a
+# notice; labeling and unlabeling re-run the check.
+name: Docs Length
+permissions:
+  contents: read
+
+"on":
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+    paths:
+      - "docs/**"
+      - "scripts/docs-length.py"
+      - ".github/workflows/docs-length.yaml"
+
+jobs:
+  docs-length:
+    name: Docs length
+    runs-on: ubuntu-latest
+    steps:
+      # The full history, because the script compares the PR's head with the
+      # merge base, not with a base branch that has moved on.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare page lengths with the base branch
+        run: python3 scripts/docs-length.py "$BASE_SHA" "$HEAD_SHA" ${GROWTH_ALLOWED:+--allow-growth}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GROWTH_ALLOWED: ${{ contains(github.event.pull_request.labels.*.name, 'docs-growth') && 'true' || '' }}
