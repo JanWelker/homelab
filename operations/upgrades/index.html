@@ -1894,6 +1894,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#patch-releases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Patch releases
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2508,6 +2519,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#patch-releases" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Patch releases
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2684,11 +2706,11 @@ must drain the node first. In its place <code>flatcar-reboot-sentinel.timer</cod
 update is staged. <a href="../../platform/kured/">Kured</a> consumes that marker: it
 drains, reboots and uncordons, one node at a time and only while Ceph and etcd
 are healthy. To move sooner, see <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.</p>
-<p>Three alerts in <code>payload/platform/monitoring/node-update-rules.yaml</code> watch
+<p>The alerts in <code>payload/platform/monitoring/node-update-rules.yaml</code> watch
 that this happens, because Trivy scans containers and not the host:
-<code>NodeRebootPending</code> when a node has carried the marker for longer than its
-<code>for</code>, <code>NodeOsVersionDrift</code> and <code>NodeKubeletVersionDrift</code> when the nodes have
-run different Flatcar or kubelet versions for longer than theirs.</p>
+<code>NodeRebootPending</code> when a node carries the marker too long,
+<code>NodeOsVersionDrift</code> and <code>NodeKubeletVersionDrift</code> when the nodes disagree, and
+<code>ControlPlaneVersionLag</code> when the kubelets run a version no API server runs.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>os-release<span class="w"> </span>uptime
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>systemctl<span class="w"> </span>status<span class="w"> </span>update-engine<span class="w"> </span>--no-pager
 </span></code></pre></div>
@@ -2704,79 +2726,91 @@ not at the boot server, and its <code>MatchPattern</code> names the major.minor 
 the <code>@v</code> wildcard — see <code>ansible/templates/sysupdate_kubernetes.conf.j2</code>.</p>
 <p>Patch releases inside the series are picked up automatically; the next minor is
 not, because an unattended minor jump leaves kubelets ahead of a control plane
-that refuses to talk to them. sysext-bakery publishes a floating
-<code>kubernetes.conf</code> (<code>kubernetes-@v-%a.raw</code>) as well, which would stage a minor
-kubeadm cannot skip to, on whichever node checks first.
-<code>ansible/templates/sysupdate_kubernetes.conf.j2</code> renders the pinned file from
-the inventory and the Ignition config inlines it, so the source of every later
-sysext is reviewed in Git rather than fetched; <code>make config</code> also writes it to
+that refuses to talk to them. sysext-bakery's floating
+<code>kubernetes.conf</code> would stage that minor on whichever node checks first.
+The Ignition config inlines the rendered file and <code>make config</code> writes it to
 <code>output/http/kubernetes.conf</code> for running nodes.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'ls -l /etc/extensions/ /opt/extensions/kubernetes/'</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>cat<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf<span class="w">   </span><span class="c1"># confirm the MatchPattern is pinned</span>
 </span></code></pre></div>
+<h3 id="patch-releases">Patch releases<a class="headerlink" href="#patch-releases" title="Permanent link">&para;</a></h3>
+<p>A patch sysext swaps only kubelet and kubeadm. The control-plane static pods
+and CoreDNS keep their images until kubeadm moves them; workers Kured reboots
+first run the newer kubelet meanwhile, which the skew policy allows within a minor.</p>
+<ol>
+<li>
+<p>Wait until every control plane reports the new kubelet.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>nodes<span class="w"> </span>-l<span class="w"> </span>node-role.kubernetes.io/control-plane
+</span></code></pre></div>
+</li>
+<li>
+<p>Upgrade the control plane. <code>ansible/playbooks/kube-upgrade.yaml</code> refuses a
+   minor or a control plane still on the old sysext, runs <code>upgrade apply</code> on
+   the first, <code>upgrade node</code> on the rest, and renews the control-plane
+   certificates on the way.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>kube-upgrade
+</span></code></pre></div>
+</li>
+<li>
+<p><code>kubectl version</code> must report the new server. Merge Renovate's
+   <code>kubernetes_version</code> bump, or a new node joins on the old patch.</p>
+</li>
+</ol>
 <h2 id="upgrading-a-minor-version-deliberately">Upgrading a minor version deliberately<a class="headerlink" href="#upgrading-a-minor-version-deliberately" title="Permanent link">&para;</a></h2>
 <p><strong>kubeadm allows one minor at a time.</strong> v1.34 to v1.37 is three passes through
 this procedure, each with its release notes read. A newly provisioned node
-skips all of it: it installs <code>kubernetes_version</code> directly and gets the pinned
-sysupdate config from the boot server.</p>
+installs <code>kubernetes_version</code> directly.</p>
 <p>The order is upstream's: the first control plane, the other control planes,
 then the workers, because a kubelet may run older than the API server but never
-newer. The sysext swaps kubeadm and kubelet together at the reboot, so the
-sysupdate config goes to one group at a time: Kured reboots one node at a
-time but in no particular order, and a config pushed to every node at once hands the
-workers a new kubelet before the API server has moved.</p>
+newer. The sysupdate config goes to one group at a time, since Kured reboots
+in no particular order.</p>
 <ol>
 <li>Update <code>kubernetes_version</code> in <code>ansible/inventory.yaml</code>, and
    <code>kubernetes_sha256</code> beside it to the new image's: <code>make download</code> refuses
    a file that does not match.</li>
 <li>
 <p>Fetch the new sysext and regenerate the Ignition and sysupdate configs.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>download<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>config
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>download<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>config
 </span></code></pre></div>
 </li>
 <li>
-<p>Stage the new sysext on the first control plane only. The sysupdate config
-   was written once at install time and nothing rewrites it, and the
-   boot server is not needed. The sentinel must exist afterwards; stop
-   otherwise.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>ls<span class="w"> </span>/run/reboot-required
+<p>Stage the new sysext on the first control plane only. The sentinel must
+   exist afterwards; stop otherwise.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>scp<span class="w"> </span>output/http/kubernetes.conf<span class="w"> </span>core@&lt;node&gt;:/tmp/kubernetes.conf
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>mv<span class="w"> </span>/tmp/kubernetes.conf<span class="w"> </span>/etc/sysupdate.kubernetes.d/kubernetes.conf
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>sudo<span class="w"> </span>systemctl<span class="w"> </span>start<span class="w"> </span>systemd-sysupdate
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span>ls<span class="w"> </span>/run/reboot-required
 </span></code></pre></div>
 </li>
 <li>
 <p>Let Kured reboot it, as in <a href="../nodes/#rebooting-a-node">Rebooting a node</a>.
    The node must come back <code>Ready</code> on the new kubelet version; stop otherwise.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>-w
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>-w
 </span></code></pre></div>
 </li>
 <li>
-<p>On that node, run the kubeadm upgrade; the sysext swapped the binaries and
-   nothing else. Always pass <code>--skip-phases addon/kube-proxy</code>: a cluster built
-   before <code>proxy.disabled</code> in <code>kubeadm.yaml.j2</code> keeps <code>proxy: {}</code> in its
-   stored <code>kubeadm-config</code>, and the upgrade would redeploy <code>kube-proxy</code> beside
-   Cilium. Always pass <code>--patches /etc/kubernetes/patches</code> too: the static
-   pods' memory requests and CoreDNS's spread constraint come from that directory and an upgrade rewrites the
-   manifests without them otherwise.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
+<p>On that node, run the kubeadm upgrade. <code>--skip-phases addon/kube-proxy</code>
+   stops a cluster whose stored <code>kubeadm-config</code> predates <code>proxy.disabled</code>
+   from redeploying <code>kube-proxy</code> beside Cilium; <code>--patches</code> keeps the static
+   pods' memory requests and CoreDNS's spread constraint.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 <p>It must end with <code>SUCCESS!</code> and <code>kubectl version</code> must report the new
 server; stop otherwise.</p>
 </li>
 <li>
 <p>Each other control plane in turn: steps 3 and 4, then
-   <code>kubeadm upgrade node</code> with the same <code>--patches</code> flag, which has to run
+   <code>kubeadm upgrade node</code> with the same flags, which has to run
    the new kubeadm the reboot swapped in and takes the version <code>upgrade apply</code>
    stored. <code>kubectl get nodes</code> must show the node <code>Ready</code>
    before the next one.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 </li>
 <li>
 <p>Each worker in turn: steps 3 and 4, then <code>kubeadm upgrade node</code>, which only
    fetches the new kubelet configuration. Same check before the next.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node
 </span></code></pre></div>
 </li>
 </ol>
@@ -2790,10 +2824,9 @@ Renovate bump merges. Cilium, the Gateway API CRDs and ArgoCD are installed
 from the same <code>targetRevision</code> before ArgoCD exists — see <a href="../../architecture/gitops/#version-pins">Version pins</a>.</p>
 <h2 id="control-plane-certificates">Control-plane certificates<a class="headerlink" href="#control-plane-certificates" title="Permanent link">&para;</a></h2>
 <p>kubeadm issues the control-plane certificates for one year and renews them only
-during <code>kubeadm upgrade</code>. Patch updates arrive as a sysext and never run
-kubeadm, and a minor is <a href="#upgrading-a-minor-version-deliberately">a manual procedure</a>,
-so a year without one takes the API servers, the etcd peers and the front
-proxy down together. The kubelet certificates are the exception: the serving
+during <code>kubeadm upgrade</code>, so a year without a <a href="#patch-releases">patch</a> or
+<a href="#upgrading-a-minor-version-deliberately">minor</a> upgrade takes the API
+servers, the etcd peers and the front proxy down together. The kubelet certificates are the exception: the serving
 certificate is rotated through <a href="../../platform/metrics-server/">kubelet-csr-approver</a>
 and the client certificate by the kubelet itself.</p>
 <p><code>payload/platform/monitoring/control-plane-certificate-rules.yaml</code> warns thirty days ahead on
@@ -2805,12 +2838,12 @@ when the alert fires, on every control plane in turn:</p>
 <li>
 <p>Read the remaining lifetime; every line but the CA should have well over
    thirty days.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>check-expiration
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>check-expiration
 </span></code></pre></div>
 </li>
 <li>
 <p>Renew everything kubeadm issued on that node. The CA is not touched.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>renew<span class="w"> </span>all
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>renew<span class="w"> </span>all
 </span></code></pre></div>
 </li>
 <li>
@@ -2818,13 +2851,13 @@ when the alert fires, on every control plane in turn:</p>
    manifests out, wait until <code>crictl</code> lists none of the four, move them back.
    One node at a time, since the API server and etcd on it are down in
    between.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span><span class="s1">'sudo mkdir -p /root/manifests-stopped &amp;&amp; sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ &amp;&amp; until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done &amp;&amp; sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span><span class="s1">'sudo mkdir -p /root/manifests-stopped &amp;&amp; sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ &amp;&amp; until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done &amp;&amp; sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'</span>
 </span></code></pre></div>
 </li>
 <li>
 <p>After the last node, refresh the admin kubeconfig: <code>admin.conf</code> was renewed
    too, and the copy in <code>output/kubeconfig</code> carries the old client certificate.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>kubeconfig
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 </li>
 </ol>
