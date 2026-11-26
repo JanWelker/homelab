@@ -161,9 +161,6 @@ The nodes boot network-first, so the PXE menus decide every boot.
 4. Reprovision the replacement per [Adding a node](#adding-a-node): the
    inventory and regex change, then arm, then boot.
 
-!!! danger
-    On a cluster provisioned before the [Control Plane VIP](control-plane-vip.md), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
-
 ## Configuration drift
 
 Ignition runs once, so a template change reaches a running node only through a
