@@ -1,5 +1,5 @@
 ---
-description: "The kube-vip virtual IP that fronts the API servers, and how to migrate a cluster that was built without one."
+description: "The kube-vip virtual IP that fronts the API servers, how it is wired and how to check it."
 ---
 
 # Control Plane VIP
@@ -9,8 +9,7 @@ The API server is reached through a virtual IP held by
 control-plane node wins the leader election answers on `control_plane_vip`
 from `ansible/inventory.yaml`, and another takes over if it goes away. The
 address is fixed at `kubeadm init` — see
-[Known Limitations](../architecture/limitations.md); a cluster built before
-the VIP is [migrated in place](#migrating-a-cluster-built-without-a-vip).
+[Known Limitations](../architecture/limitations.md).
 
 ## How it is wired
 
@@ -110,75 +109,6 @@ kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig
 A free address on the nodes' subnet, outside any DHCP range, and distinct from
 the Cilium LoadBalancer pools. Nothing validates this: a collision leaves the
 API server unreachable, or reachable only from some machines.
-
-## Migrating a cluster built without a VIP
-
-A cluster provisioned before the VIP has its first control plane's address in
-the API server certificates, so this is no config change to sync.
-
-### Rebuild (simplest)
-
-Reprovision from the [Quickstart](../quickstart.md); the VIP is in place from
-`kubeadm init` onwards. Restore state per [Backups & Recovery](backups.md).
-
-### In place
-
-One node at a time, with a second terminal holding a working kubeconfig,
-since several steps can lock you out.
-
-1. Confirm the address is free.
-
-    ```bash
-    ping -c2 <vip>        # must not answer
-    arping -c2 <vip>      # from a node on the segment
-    ```
-
-2. Add the VIP under `apiServer.certSANs` in the stored `ClusterConfiguration`.
-
-    ```bash
-    kubectl -n kube-system edit configmap kubeadm-config
-    ```
-
-3. On **each** control-plane node, regenerate the API server certificate
-   from the config `make config` rendered for it, which carries the VIP and
-   the join token, hence the `rm`; kubeadm does not read the edited
-   ConfigMap. The SANs must list the VIP.
-
-    ```bash
-    scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm.yaml
-    ssh core@<node> 'cd /etc/kubernetes/pki && sudo mv apiserver.crt apiserver.crt.bak && sudo mv apiserver.key apiserver.key.bak && sudo kubeadm init phase certs apiserver --config /tmp/kubeadm.yaml; rm /tmp/kubeadm.yaml'
-    ssh core@<node> sudo cat /etc/kubernetes/pki/apiserver.crt | openssl x509 -noout -text | grep -A1 'Subject Alternative Name'
-    ```
-
-4. Deploy the kube-vip static pod to each control-plane node, generated from
-   the template's values or copied from a node provisioned with the new
-   configuration, and verify the VIP answers.
-
-    ```bash
-    curl -k https://<vip>:6443/healthz
-    ```
-
-5. Repoint the cluster: update `controlPlaneEndpoint` in the `kubeadm-config`
-   ConfigMap, then on every node rewrite the server address in
-   `/etc/kubernetes/*.conf` and `/var/lib/kubelet/kubeconfig` and restart the
-   kubelet.
-
-6. **Only now** change `k8sServiceHost` in `payload/platform/cilium/values.yaml`
-   to the VIP and commit. The merge rolls every agent, so the VIP must
-   answer before it lands; watch the rollout.
-
-    ```bash
-    kubectl -n kube-system rollout status ds/cilium
-    ```
-
-7. Re-fetch your kubeconfig so it uses the VIP.
-
-    ```bash
-    make kubeconfig
-    ```
-
-!!! danger
-    Cilium replaces kube-proxy, so if `k8sServiceHost` names an address that is not answering, every Cilium pod loses the API server and the cluster's networking goes with it, including the networking you would fix it through. Do not commit step 6 until `curl -k https://<vip>:6443/healthz` succeeds.
 
 ## Verifying
 

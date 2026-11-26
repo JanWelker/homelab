@@ -145,22 +145,15 @@ kubectl -n backup logs job/etcd-defrag-manual
 
 ### Taking one by hand
 
-The snapshot lands in the static pod's `/var/lib/etcd`, which is the node's;
-`kubectl cp` cannot fetch it, because the etcd image is distroless and has no
-`tar`.
+Run the nightly job now; it uploads to `backup.etcd/` like any other night,
+so nothing is left on a node. Fetch it from there with the reader's keys, per
+[Copying the backups off the cluster](#copying-the-backups-off-the-cluster).
 
 ```bash
-kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
-  --cacert /etc/kubernetes/pki/etcd/ca.crt \
-  --cert /etc/kubernetes/pki/etcd/server.crt \
-  --key /etc/kubernetes/pki/etcd/server.key \
-  snapshot save /var/lib/etcd/snapshot.db
-
-ssh core@<node> sudo cat /var/lib/etcd/snapshot.db > ./etcd-snapshot.db
-ssh core@<node> sudo rm /var/lib/etcd/snapshot.db
+kubectl -n backup create job --from=cronjob/etcd-backup etcd-backup-manual
+kubectl -n backup wait --for=condition=complete job/etcd-backup-manual --timeout=10m
+kubectl -n backup logs job/etcd-backup-manual -c upload
 ```
-
-Keep the copy off the cluster, like the nightly ones below.
 
 ## OpenBao
 
