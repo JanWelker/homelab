@@ -2864,32 +2864,22 @@ and the client certificate by the kubelet itself.</p>
 <p><code>payload/platform/monitoring/control-plane-certificate-rules.yaml</code> warns thirty days ahead on
 the client certificates the API server sees, which kubeadm issues together
 with the serving ones; the chart's own <code>KubeClientCertificateExpiration</code> takes
-over at seven days and one day. The renewal is done by hand, once a year or
-when the alert fires, on every control plane in turn:</p>
+over at seven days and one day. Without an upgrade in the year, renew them
+when the alert fires:</p>
 <ol>
 <li>
-<p>Read the remaining lifetime; every line but the CA should have well over
-   thirty days.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>check-expiration
+<p>Renew on every control plane in turn; the playbook prints the new expiry,
+   leaves the CA alone and sets the sentinel, so
+   <a href="../nodes/#rebooting-a-node">Kured</a> restarts the static pods one node at a
+   time.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>kube-certs
 </span></code></pre></div>
 </li>
 <li>
-<p>Renew everything kubeadm issued on that node. The CA is not touched.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span>sudo<span class="w"> </span>kubeadm<span class="w"> </span>certs<span class="w"> </span>renew<span class="w"> </span>all
-</span></code></pre></div>
-</li>
-<li>
-<p>Restart the static pods so they load the new certificates: move the
-   manifests out, wait until <code>crictl</code> lists none of the four, move them back.
-   One node at a time, since the API server and etcd on it are down in
-   between.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ssh<span class="w"> </span>core@&lt;control<span class="w"> </span>plane&gt;<span class="w"> </span><span class="s1">'sudo mkdir -p /root/manifests-stopped &amp;&amp; sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ &amp;&amp; until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done &amp;&amp; sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'</span>
-</span></code></pre></div>
-</li>
-<li>
-<p>After the last node, refresh the admin kubeconfig: <code>admin.conf</code> was renewed
-   too, and the copy in <code>output/kubeconfig</code> carries the old client certificate.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>make<span class="w"> </span>kubeconfig
+<p>After Kured has rebooted the last control plane, refresh the admin
+   kubeconfig: <code>admin.conf</code> was renewed too, and <code>output/kubeconfig</code> carries
+   the old client certificate.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 </li>
 </ol>
