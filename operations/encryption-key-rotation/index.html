@@ -2622,9 +2622,8 @@ reboots the control planes one at a time; the step is done when all three are
 </span></code></pre></div>
 </li>
 <li>
-<p>Confirm against etcd that a Secret's ciphertext names the new key, with the
-   same <code>etcdctl</code> flags as <a href="../backups/#taking-one-by-hand">Taking one by hand</a>;
-   the value starts with <code>k8s:enc:secretbox:v1:key2:</code>.</p>
+<p>Confirm against etcd that a Secret's ciphertext names the new key; the
+   value starts with <code>k8s:enc:secretbox:v1:key2:</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>-n<span class="w"> </span>kube-system<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>etcd-&lt;node&gt;<span class="w"> </span>--<span class="w"> </span>etcdctl<span class="w"> </span>--cacert<span class="w"> </span>/etc/kubernetes/pki/etcd/ca.crt<span class="w"> </span>--cert<span class="w"> </span>/etc/kubernetes/pki/etcd/server.crt<span class="w"> </span>--key<span class="w"> </span>/etc/kubernetes/pki/etcd/server.key<span class="w"> </span>get<span class="w"> </span>/registry/secrets/kube-system/<span class="w"> </span>--prefix<span class="w"> </span>--limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">120</span>
 </span></code></pre></div>
 </li>

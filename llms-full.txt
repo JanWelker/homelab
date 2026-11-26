@@ -1103,7 +1103,7 @@ Things this cluster does not do. None is a bug; each is an accepted tradeoff or 
 
 | Limitation | Consequence | Mitigation / plan | Where documented |
 | --- | --- | --- | --- |
-| **The API endpoint address is fixed at `kubeadm init`** | The kube-vip VIP is baked into the API server certificates, every kubeconfig and Cilium's `k8sServiceHost`; moving it touches every node | Choose it once, outside any DHCP range and the LoadBalancer pools; the next build [uses a name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) | [Choosing the address](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#choosing-the-address>), [migrating in place](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#in-place>) |
+| **The API endpoint address is fixed at `kubeadm init`** | The kube-vip VIP is baked into the API server certificates, every kubeconfig and Cilium's `k8sServiceHost`; moving it touches every node | Choose it once, outside any DHCP range and the LoadBalancer pools; the next build [uses a name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) | [Choosing the address](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#choosing-the-address>) |
 | **OpenBao needs an operator to unseal it** | Every restart seals it until the [threshold of key shares](<https://homelab.wlkr.ch/platform/openbao/index.md#at-a-glance>) is supplied; sealed, no `ExternalSecret` resolves and certificates silently stop renewing | Check `bao status` after reboots; auto-unseal would add an external dependency | [Unsealing after a restart](<https://homelab.wlkr.ch/platform/openbao/index.md#unsealing-after-a-restart>), [after any node reboot](<https://homelab.wlkr.ch/operations/nodes/index.md#after-any-node-reboot-unseal-openbao>) |
 | **One operator holds every credential** | The unseal key shares and `output/credentials/` sit with one person, on the deployment host | Copy them to a password manager | [Bootstrap](<https://homelab.wlkr.ch/platform/openbao/index.md#bootstrap>), [Repository layout](<https://homelab.wlkr.ch/architecture/index.md#repository-layout>) |
 | **Alerting reaches one mailbox** | A rejected mail, an expired SMTP password or a Ceph outage ([Prometheus and Alertmanager](<https://homelab.wlkr.ch/platform/monitoring/index.md#at-a-glance>) sit on Ceph) stops alerts silently; `Watchdog` proves only as far as Alertmanager | An off-cluster `Watchdog` mail check; meanwhile, the routine health check | [Alerting](<https://homelab.wlkr.ch/platform/monitoring/index.md#alerting>), [routine health check](<https://homelab.wlkr.ch/operations/index.md#routine-health-check>) |
@@ -4744,20 +4744,13 @@ kubectl -n backup logs job/etcd-defrag-manual
 
 ### Taking one by hand
 
-The snapshot lands in the static pod's `/var/lib/etcd`, which is the node's; `kubectl cp` cannot fetch it, because the etcd image is distroless and has no `tar`.
+Run the nightly job now; it uploads to `backup.etcd/` like any other night, so nothing is left on a node. Fetch it from there with the reader's keys, per [Copying the backups off the cluster](<#copying-the-backups-off-the-cluster>).
 
 ```bash
-kubectl -n kube-system exec -it etcd-<node> -- etcdctl \
-  --cacert /etc/kubernetes/pki/etcd/ca.crt \
-  --cert /etc/kubernetes/pki/etcd/server.crt \
-  --key /etc/kubernetes/pki/etcd/server.key \
-  snapshot save /var/lib/etcd/snapshot.db
-
-ssh core@<node> sudo cat /var/lib/etcd/snapshot.db > ./etcd-snapshot.db
-ssh core@<node> sudo rm /var/lib/etcd/snapshot.db
+kubectl -n backup create job --from=cronjob/etcd-backup etcd-backup-manual
+kubectl -n backup wait --for=condition=complete job/etcd-backup-manual --timeout=10m
+kubectl -n backup logs job/etcd-backup-manual -c upload
 ```
-
-Keep the copy off the cluster, like the nightly ones below.
 
 ## OpenBao
 
@@ -4974,7 +4967,7 @@ Every etcd member restores from the same snapshot, then all three static pods co
 
 # Control Plane VIP
 
-The API server is reached through a virtual IP held by [kube-vip](<https://kube-vip.io/>), not through one named node: whichever control-plane node wins the leader election answers on `control_plane_vip` from `ansible/inventory.yaml`, and another takes over if it goes away. The address is fixed at `kubeadm init` — see [Known Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>); a cluster built before the VIP is [migrated in place](<#migrating-a-cluster-built-without-a-vip>).
+The API server is reached through a virtual IP held by [kube-vip](<https://kube-vip.io/>), not through one named node: whichever control-plane node wins the leader election answers on `control_plane_vip` from `ansible/inventory.yaml`, and another takes over if it goes away. The address is fixed at `kubeadm init` — see [Known Limitations](<https://homelab.wlkr.ch/architecture/limitations/index.md>).
 
 ## How it is wired
 
@@ -5050,59 +5043,6 @@ kubectl -n kube-public get configmap cluster-info -o jsonpath='{.data.kubeconfig
 
 A free address on the nodes' subnet, outside any DHCP range, and distinct from the Cilium LoadBalancer pools. Nothing validates this: a collision leaves the API server unreachable, or reachable only from some machines.
 
-## Migrating a cluster built without a VIP
-
-A cluster provisioned before the VIP has its first control plane's address in the API server certificates, so this is no config change to sync.
-
-### Rebuild (simplest)
-
-Reprovision from the [Quickstart](<https://homelab.wlkr.ch/quickstart/index.md>); the VIP is in place from `kubeadm init` onwards. Restore state per [Backups & Recovery](<https://homelab.wlkr.ch/operations/backups/index.md>).
-
-### In place
-
-One node at a time, with a second terminal holding a working kubeconfig, since several steps can lock you out.
-
-1. Confirm the address is free.
-
-   ```bash
-   ping -c2 <vip>        # must not answer
-   arping -c2 <vip>      # from a node on the segment
-   ```
-2. Add the VIP under `apiServer.certSANs` in the stored `ClusterConfiguration`.
-
-   ```bash
-   kubectl -n kube-system edit configmap kubeadm-config
-   ```
-3. On **each** control-plane node, regenerate the API server certificate from the config `make config` rendered for it, which carries the VIP and the join token, hence the `rm`; kubeadm does not read the edited ConfigMap. The SANs must list the VIP.
-
-   ```bash
-   scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm.yaml
-   ssh core@<node> 'cd /etc/kubernetes/pki && sudo mv apiserver.crt apiserver.crt.bak && sudo mv apiserver.key apiserver.key.bak && sudo kubeadm init phase certs apiserver --config /tmp/kubeadm.yaml; rm /tmp/kubeadm.yaml'
-   ssh core@<node> sudo cat /etc/kubernetes/pki/apiserver.crt | openssl x509 -noout -text | grep -A1 'Subject Alternative Name'
-   ```
-4. Deploy the kube-vip static pod to each control-plane node, generated from the template's values or copied from a node provisioned with the new configuration, and verify the VIP answers.
-
-   ```bash
-   curl -k https://<vip>:6443/healthz
-   ```
-5. Repoint the cluster: update `controlPlaneEndpoint` in the `kubeadm-config` ConfigMap, then on every node rewrite the server address in `/etc/kubernetes/*.conf` and `/var/lib/kubelet/kubeconfig` and restart the kubelet.
-6. **Only now** change `k8sServiceHost` in `payload/platform/cilium/values.yaml` to the VIP and commit. The merge rolls every agent, so the VIP must answer before it lands; watch the rollout.
-
-   ```bash
-   kubectl -n kube-system rollout status ds/cilium
-   ```
-7. Re-fetch your kubeconfig so it uses the VIP.
-
-   ```bash
-   make kubeconfig
-   ```
-
-> [!CAUTION]
->
-> **Danger**
->
-> Cilium replaces kube-proxy, so if `k8sServiceHost` names an address that is not answering, every Cilium pod loses the API server and the cluster's networking goes with it, including the networking you would fix it through. Do not commit step 6 until `curl -k https://<vip>:6443/healthz` succeeds.
-
 ## Verifying
 
 ```bash
@@ -5150,7 +5090,7 @@ Each step is one commit to `encryption_keys`, then the reprovision. Kured reboot
    ```yaml
    encryption_keys: [key2]
    ```
-5. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/index.md#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key2:`.
+5. Confirm against etcd that a Secret's ciphertext names the new key; the value starts with `k8s:enc:secretbox:v1:key2:`.
 
    ```bash
    kubectl -n kube-system exec etcd-<node> -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get /registry/secrets/kube-system/ --prefix --limit 1 | head -c 120
@@ -5422,12 +5362,6 @@ The nodes boot network-first, so the PXE menus decide every boot.
    # then: member remove <id>
    ```
 4. Reprovision the replacement per [Adding a node](<#adding-a-node>): the inventory and regex change, then arm, then boot.
-
-> [!CAUTION]
->
-> **Danger**
->
-> On a cluster provisioned before the [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
 
 ## Configuration drift
 

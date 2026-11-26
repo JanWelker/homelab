@@ -2878,10 +2878,6 @@ a limited window (<code>ansible/templates/renew_join_credentials.sh.j2</code>).<
    inventory and regex change, then arm, then boot.</p>
 </li>
 </ol>
-<div class="admonition danger">
-<p class="admonition-title">Danger</p>
-<p>On a cluster provisioned before the <a href="../control-plane-vip/">Control Plane VIP</a>, <code>odin</code> is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's <code>k8sServiceHost</code>, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.</p>
-</div>
 <h2 id="configuration-drift">Configuration drift<a class="headerlink" href="#configuration-drift" title="Permanent link">&para;</a></h2>
 <p>Ignition runs once, so a template change reaches a running node only through a
 <a href="#reprovisioning-a-node">reprovision</a>, never a hand edit. <code>make node-drift</code>

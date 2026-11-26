@@ -32,7 +32,7 @@ Each step is one commit to `encryption_keys`, then the reprovision. Kured reboot
    ```yaml
    encryption_keys: [key2]
    ```
-5. Confirm against etcd that a Secret's ciphertext names the new key, with the same `etcdctl` flags as [Taking one by hand](<https://homelab.wlkr.ch/operations/backups/index.md#taking-one-by-hand>); the value starts with `k8s:enc:secretbox:v1:key2:`.
+5. Confirm against etcd that a Secret's ciphertext names the new key; the value starts with `k8s:enc:secretbox:v1:key2:`.
 
    ```bash
    kubectl -n kube-system exec etcd-<node> -- etcdctl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt --key /etc/kubernetes/pki/etcd/server.key get /registry/secrets/kube-system/ --prefix --limit 1 | head -c 120

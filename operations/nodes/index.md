@@ -115,12 +115,6 @@ The nodes boot network-first, so the PXE menus decide every boot.
    ```
 4. Reprovision the replacement per [Adding a node](<#adding-a-node>): the inventory and regex change, then arm, then boot.
 
-> [!CAUTION]
->
-> **Danger**
->
-> On a cluster provisioned before the [Control Plane VIP](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md>), `odin` is not an interchangeable control-plane node: its address is baked in as the API endpoint and as Cilium's `k8sServiceHost`, so losing it breaks node joins and Cilium's API connection everywhere. Check which endpoint your kubeconfig uses first.
-
 ## Configuration drift
 
 Ignition runs once, so a template change reaches a running node only through a [reprovision](<#reprovisioning-a-node>), never a hand edit. `make node-drift` compares the checksum each node config writes to `/etc/node-config.sha256` with a fresh render.
