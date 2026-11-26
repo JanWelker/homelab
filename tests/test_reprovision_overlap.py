@@ -33,6 +33,8 @@ PATTERNS = overlap.keep_patterns(yaml.safe_load(KEEP.read_text())['reprovision_k
         ('/etc/kubernetes/enc/encryption-config.yaml', False),
         ('/etc/kubernetes/patches/etcd+strategic.yaml', False),
         ('/etc/kubernetes/audit/policy.yaml', False),
+        ('/etc/kubernetes/kubeadm-reconcile.yaml', False),
+        ('/opt/bin/kubeadm-reconcile', False),
         ('/etc/ssh/ssh_host_ed25519_key', False),
         ('/etc/sysupdate.kubernetes.d/kubernetes.conf', False),
         ('/opt/extensions/kubernetes/kubernetes-v1.37.2-x86-64.raw', True),

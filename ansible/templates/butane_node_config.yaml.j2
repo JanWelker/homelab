@@ -109,6 +109,34 @@ storage:
 {% endif %}
 {% endif %}
 {% endif %}
+{% if reprovision and role == 'control-plane' %}
+
+    # The reprovision keeps kubeadm's static pods, so this re-renders them from
+    # the current template; see docs/operations/nodes.md#reprovisioning-a-node
+    - path: /etc/kubernetes/kubeadm-reconcile.yaml
+      mode: 0600
+      contents:
+        inline: |
+          {{ lookup('template', '../templates/kubeadm.yaml.j2') | indent(10) }}
+    - path: /opt/bin/kubeadm-reconcile
+      mode: 0700
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          config=/etc/kubernetes/kubeadm-reconcile.yaml
+          # The version the node runs, not the inventory's: moving it is kubeadm upgrade's job.
+          version=$(sed -n 's#^ *image: .*/kube-apiserver:\(v[^@[:space:]]*\).*#\1#p' /etc/kubernetes/manifests/kube-apiserver.yaml)
+          [ -n "$version" ] || { echo "no kube-apiserver image in the kept manifest" >&2; exit 1; }
+          sed -i "s#^kubernetesVersion: RUNNING\$#kubernetesVersion: $version#" "$config"
+          kubeadm init phase control-plane all --config "$config"
+{% if inventory_hostname == groups['control_plane'][0] %}
+          # kubeadm upgrade and join read the stored copy, not the node's files.
+          for _ in $(seq 60); do curl -fsk https://localhost:6443/readyz >/dev/null && break; sleep 5; done
+          kubeadm init phase upload-config kubeadm --config "$config"
+{% endif %}
+          rm -f "$config"
+{% endif %}
 {% if role == 'control-plane' %}
     - path: /etc/kubernetes/enc/encryption-config.yaml
       mode: 0600
@@ -553,6 +581,25 @@ systemd:
             ExecStartPost=/usr/bin/sh -c "if ! cmp --silent /tmp/kubernetes /tmp/kubernetes-new; then touch /run/reboot-required; fi"
     - name: locksmithd.service
       mask: true
+{% if reprovision and role == 'control-plane' %}
+    # Runs once per reprovision: it deletes its config on success, and a
+    # failure leaves it for the next boot.
+    - name: kubeadm-reconcile.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Re-render the control-plane static pods after a reprovision
+        ConditionPathExists=/etc/kubernetes/kubeadm-reconcile.yaml
+        After=systemd-sysext.service kubelet.service network-online.target
+        Wants=network-online.target
+
+        [Service]
+        Type=oneshot
+        ExecStart=/opt/bin/kubeadm-reconcile
+
+        [Install]
+        WantedBy=multi-user.target
+{% endif %}
     - name: flatcar-reboot-sentinel.service
       contents: |
         [Unit]
