@@ -1,4 +1,4 @@
-.PHONY: help setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reprovision node-drift reboot-all kube-upgrade uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
+.PHONY: help setup artifacts download config ignition-check serve clean clean-artifacts kubeconfig check-context untaint taint fonts fonts-check mermaid mermaid-check bootstrap install-cilium install-argo bootstrap-apps storage-check reinstall reinstall-cancel reprovision node-drift reboot-all kube-upgrade kube-certs uptime os-release bao-init bao-unseal bao-policies bao-secrets bao-rotate-root claude-session-pat
 
 # Every target that touches the cluster reads the kubeconfig make kubeconfig
 # wrote, so a bootstrap never lands in whatever ~/.kube/config points at.
@@ -243,6 +243,11 @@ reboot-all: ## Ask Kured to reboot nodes one at a time (LIMIT=)
 # docs/operations/upgrades.md#patch-releases
 kube-upgrade: ## Upgrade the control plane to the patch its nodes booted
 	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kube-upgrade.yaml
+
+# Once a year when no kube-upgrade ran; see
+# docs/operations/upgrades.md#control-plane-certificates
+kube-certs: ## Renew the control-plane certificates, then let Kured restart them
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kube-certs.yaml $(if $(LIMIT),--limit "$(LIMIT)")
 
 uptime: ## Show each node's uptime (LIMIT=)
 	@$(NODES) -a 'uptime' | $(ONELINE)

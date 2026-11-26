@@ -1,0 +1,28 @@
+---
+# Renews what kubeadm issued on each control plane and leaves the restart that
+# loads it to Kured; see docs/operations/upgrades.md#control-plane-certificates
+- name: Renew the control-plane certificates
+  hosts: control_plane
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    # The CA is not touched.
+    - name: Renew every certificate and kubeconfig kubeadm issued
+      ansible.builtin.raw: sudo kubeadm certs renew all
+      changed_when: true
+
+    - name: Read the new expiry
+      ansible.builtin.raw: sudo kubeadm certs check-expiration
+      register: expiration
+      changed_when: false
+
+    - name: Show the new expiry
+      ansible.builtin.debug:
+        var: expiration.stdout_lines
+
+    # The static pods read their certificates at start; Kured restarts them one
+    # node at a time while etcd is healthy.
+    - name: Ask Kured for the reboot
+      ansible.builtin.raw: sudo touch /run/reboot-required
+      changed_when: true
