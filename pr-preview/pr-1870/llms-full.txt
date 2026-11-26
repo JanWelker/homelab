@@ -631,7 +631,7 @@ Ansible never edits a node's files: it renders Ignition configs on the deploymen
 | `download.yaml` | Fetches the Flatcar kernel, initrd and OS image, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext; and the syslinux files, checked against `sha256sums.asc`. The signing keys are trusted through fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) is not the one the cluster publishes. `make config` keeps each menu's `DEFAULT`, so an armed node stays armed. See [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
 | `reprovision.yaml` | `make reprovision LIMIT=<host>`: stages [`flatcar-reset`](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>) with its reprovision config and sets Kured's sentinel |
-| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](<https://homelab.wlkr.ch/operations/upgrades/index.md#kubernetes>) after a new sysext |
+| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](<https://homelab.wlkr.ch/operations/upgrades/index.md#patch-releases>) after a patch sysext |
 | `kube-certs.yaml` | `make kube-certs`: [certificate renewal](<https://homelab.wlkr.ch/operations/upgrades/index.md#control-plane-certificates>) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |
 
@@ -704,17 +704,34 @@ The last query answers "what would break if I tightened `enforce` on this namesp
 
 ## Applying it to a running cluster
 
-A policy or flag change reaches the control planes by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>): Ignition writes the policy, then `kubeadm-reconcile` re-renders the static pods from the same config, so the file is always there before the flag that names it.
+The policy file reaches a running control plane by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>). The `kube-apiserver.yaml` manifest is kubeadm's, which the reprovision keeps, so a changed flag is re-rendered by hand, one node at a time.
 
-1. Reprovision the control planes; Kured reboots them one at a time.
+> [!CAUTION]
+>
+> **Get the policy file there before you re-render the manifest**
+>
+> An API server started with `--audit-policy-file` pointing at a missing file does not start. Step 1 before step 2, confirming the API server comes back before the next node.
+
+1. Reprovision the node; Ignition writes the policy and its directories.
 
    ```bash
-   make reprovision LIMIT=control_plane
+   make reprovision LIMIT=<node>
    ```
-2. Watch each API server come back. One that does not fires the alert that holds Kured's next reboot; the cause is in `journalctl -u kubeadm-reconcile` on that node.
+2. Re-render the API server static pod from the regenerated kubeadm config, with the patches the static pods take their requests from:
 
    ```bash
-   kubectl -n kube-system get pods -l component=kube-apiserver -w
+   scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
+   ssh core@<node> 'sudo kubeadm init phase control-plane apiserver --config /tmp/kubeadm-config.yaml --patches /etc/kubernetes/patches; rm /tmp/kubeadm-config.yaml'
+   ```
+3. Watch the kubelet restart the static pod:
+
+   ```bash
+   kubectl -n kube-system get pod kube-apiserver-<node> -w
+   ```
+4. Update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive the next `kubeadm upgrade` or control-plane join — kubeadm reads the ConfigMap on those paths, not `/opt/kubeadm-config.yaml`:
+
+   ```bash
+   kubectl -n kube-system edit configmap kubeadm-config
    ```
 
 # Boot & Bootstrap Process
@@ -5353,7 +5370,7 @@ Ignition runs once, so a template change reaches a running node only through a [
 
 ## Reprovisioning a node
 
-`flatcar-reset` deletes the root filesystem except the state listed in `ansible/playbooks/vars/reprovision.yaml`, and Ignition writes the rest from the node's `-reprovision` config, which leaves out the disks and the bootstrap files: the node keeps its OSD and rejoins as itself, without the boot server — see [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md#flatcar-reset-not-in-place-sync>). On a control plane, `kubeadm-reconcile.service` then re-renders the API server, controller manager and scheduler from the template at the version the node runs, and the first control plane uploads the `kubeadm-config` that `kubeadm upgrade` reads; etcd's manifest is kept as it is.
+`flatcar-reset` deletes the root filesystem except the state listed in `ansible/playbooks/vars/reprovision.yaml`, and Ignition writes the rest from the node's `-reprovision` config, which leaves out the disks and the bootstrap files: the node keeps its OSD and rejoins as itself, without the boot server — see [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md#flatcar-reset-not-in-place-sync>).
 
 1. Stage it; the playbook refuses a minor the API server does not run, and a keep list that misses the node's etcd, kubelet or kubeadm state. `flatcar-reset --preview-keep` and `--backup` print and copy nothing on these nodes, since they cannot unmount `/etc`.
 
@@ -5586,7 +5603,7 @@ A patch sysext swaps only kubelet and kubeadm. The control-plane static pods kee
    ```bash
    kubectl get nodes -l node-role.kubernetes.io/control-plane
    ```
-2. Upgrade the control plane. `ansible/playbooks/kube-upgrade.yaml` refuses a minor or a control plane still on the old sysext, runs `upgrade apply` on the first node ahead of the version stored in `kubeadm-config`, `upgrade node` on the rest, and renews the control-plane certificates on the way.
+2. Upgrade the control plane. `ansible/playbooks/kube-upgrade.yaml` refuses a minor or a control plane still on the old sysext, runs `upgrade apply` on the first, `upgrade node` on the rest, and renews the control-plane certificates on the way.
 
    ```bash
    make kube-upgrade
@@ -5600,27 +5617,43 @@ A patch sysext swaps only kubelet and kubeadm. The control-plane static pods kee
 The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The new sysupdate config goes to one node at a time, since Kured reboots in no particular order.
 
 1. Update `kubernetes_version` in `ansible/inventory.yaml`, and `kubernetes_sha256` beside it to the new image's: `make download` refuses a file that does not match.
-2. Fetch the new sysext for new nodes and regenerate the configs, including each node's `-reprovision-minor` variant.
+2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
 
    ```bash
    make download && make config
    ```
-3. Reprovision the first control plane with `ALLOW_MINOR=1`: Ignition writes the new minor's sysext and sysupdate config in place of the old ones, so one reboot brings the new kubelet.
+3. Reprovision the first control plane, which carries the new minor's sysupdate config; `ALLOW_MINOR=1` is needed until step 6 has run. It must come back `current` in `make node-drift`.
 
    ```bash
    make reprovision LIMIT=<node> ALLOW_MINOR=1
    ```
-4. Let [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) reboot it. The node must come back `Ready` on the new kubelet version and `current` in `make node-drift`; stop otherwise.
+4. Fetch the new sysext on it; the sentinel must exist afterwards.
+
+   ```bash
+   ssh core@<node> 'sudo systemctl start systemd-sysupdate && ls /run/reboot-required'
+   ```
+5. Let [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) reboot it. The node must come back `Ready` on the new kubelet version; stop otherwise.
 
    ```bash
    kubectl get node <node> -w
    ```
-5. Upgrade it. On the first control plane this is `kubeadm upgrade apply`, and `kubectl version` must then report the new server; on every later node it is `upgrade node`, which follows the stored version. Both skip the `kube-proxy` and CoreDNS addons, which Cilium and [Argo CD](<https://homelab.wlkr.ch/platform/coredns/index.md>) own.
+6. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
 
    ```bash
-   make kube-upgrade LIMIT=<node> ALLOW_MINOR=1
+   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
-6. Each other control plane, then each worker, in turn: steps 3 to 5. The node must be `Ready` before the next.
+
+   It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
+7. Each other control plane in turn: steps 3 to 5, then `kubeadm upgrade node` with the same flags, which takes the version `upgrade apply` stored. The node must be `Ready` before the next one.
+
+   ```bash
+   sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
+   ```
+8. Each worker in turn: steps 3 to 5, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
+
+   ```bash
+   sudo kubeadm upgrade node
+   ```
 
 > [!NOTE]
 >

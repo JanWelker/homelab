@@ -61,15 +61,32 @@ The last query answers "what would break if I tightened `enforce` on this namesp
 
 ## Applying it to a running cluster
 
-A policy or flag change reaches the control planes by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>): Ignition writes the policy, then `kubeadm-reconcile` re-renders the static pods from the same config, so the file is always there before the flag that names it.
+The policy file reaches a running control plane by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>). The `kube-apiserver.yaml` manifest is kubeadm's, which the reprovision keeps, so a changed flag is re-rendered by hand, one node at a time.
 
-1. Reprovision the control planes; Kured reboots them one at a time.
+> [!CAUTION]
+>
+> **Get the policy file there before you re-render the manifest**
+>
+> An API server started with `--audit-policy-file` pointing at a missing file does not start. Step 1 before step 2, confirming the API server comes back before the next node.
+
+1. Reprovision the node; Ignition writes the policy and its directories.
 
    ```bash
-   make reprovision LIMIT=control_plane
+   make reprovision LIMIT=<node>
    ```
-2. Watch each API server come back. One that does not fires the alert that holds Kured's next reboot; the cause is in `journalctl -u kubeadm-reconcile` on that node.
+2. Re-render the API server static pod from the regenerated kubeadm config, with the patches the static pods take their requests from:
 
    ```bash
-   kubectl -n kube-system get pods -l component=kube-apiserver -w
+   scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
+   ssh core@<node> 'sudo kubeadm init phase control-plane apiserver --config /tmp/kubeadm-config.yaml --patches /etc/kubernetes/patches; rm /tmp/kubeadm-config.yaml'
+   ```
+3. Watch the kubelet restart the static pod:
+
+   ```bash
+   kubectl -n kube-system get pod kube-apiserver-<node> -w
+   ```
+4. Update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive the next `kubeadm upgrade` or control-plane join — kubeadm reads the ConfigMap on those paths, not `/opt/kubeadm-config.yaml`:
+
+   ```bash
+   kubectl -n kube-system edit configmap kubeadm-config
    ```

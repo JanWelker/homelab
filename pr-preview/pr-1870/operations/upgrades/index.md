@@ -37,7 +37,7 @@ A patch sysext swaps only kubelet and kubeadm. The control-plane static pods kee
    ```bash
    kubectl get nodes -l node-role.kubernetes.io/control-plane
    ```
-2. Upgrade the control plane. `ansible/playbooks/kube-upgrade.yaml` refuses a minor or a control plane still on the old sysext, runs `upgrade apply` on the first node ahead of the version stored in `kubeadm-config`, `upgrade node` on the rest, and renews the control-plane certificates on the way.
+2. Upgrade the control plane. `ansible/playbooks/kube-upgrade.yaml` refuses a minor or a control plane still on the old sysext, runs `upgrade apply` on the first, `upgrade node` on the rest, and renews the control-plane certificates on the way.
 
    ```bash
    make kube-upgrade
@@ -51,27 +51,43 @@ A patch sysext swaps only kubelet and kubeadm. The control-plane static pods kee
 The order is upstream's: the first control plane, the other control planes, then the workers, because a kubelet may run older than the API server but never newer. The new sysupdate config goes to one node at a time, since Kured reboots in no particular order.
 
 1. Update `kubernetes_version` in `ansible/inventory.yaml`, and `kubernetes_sha256` beside it to the new image's: `make download` refuses a file that does not match.
-2. Fetch the new sysext for new nodes and regenerate the configs, including each node's `-reprovision-minor` variant.
+2. Fetch the new sysext and regenerate the Ignition and sysupdate configs.
 
    ```bash
    make download && make config
    ```
-3. Reprovision the first control plane with `ALLOW_MINOR=1`: Ignition writes the new minor's sysext and sysupdate config in place of the old ones, so one reboot brings the new kubelet.
+3. Reprovision the first control plane, which carries the new minor's sysupdate config; `ALLOW_MINOR=1` is needed until step 6 has run. It must come back `current` in `make node-drift`.
 
    ```bash
    make reprovision LIMIT=<node> ALLOW_MINOR=1
    ```
-4. Let [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) reboot it. The node must come back `Ready` on the new kubelet version and `current` in `make node-drift`; stop otherwise.
+4. Fetch the new sysext on it; the sentinel must exist afterwards.
+
+   ```bash
+   ssh core@<node> 'sudo systemctl start systemd-sysupdate && ls /run/reboot-required'
+   ```
+5. Let [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) reboot it. The node must come back `Ready` on the new kubelet version; stop otherwise.
 
    ```bash
    kubectl get node <node> -w
    ```
-5. Upgrade it. On the first control plane this is `kubeadm upgrade apply`, and `kubectl version` must then report the new server; on every later node it is `upgrade node`, which follows the stored version. Both skip the `kube-proxy` and CoreDNS addons, which Cilium and [Argo CD](<https://homelab.wlkr.ch/platform/coredns/index.md>) own.
+6. On that node, run the kubeadm upgrade. `--skip-phases` keeps `kube-proxy` from returning beside Cilium on a cluster whose stored `kubeadm-config` predates `proxy.disabled`, and leaves [CoreDNS](<https://homelab.wlkr.ch/platform/coredns/index.md>) to Argo CD; `--patches` keeps the static pods' memory requests.
 
    ```bash
-   make kube-upgrade LIMIT=<node> ALLOW_MINOR=1
+   sudo kubeadm upgrade apply <version> --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
    ```
-6. Each other control plane, then each worker, in turn: steps 3 to 5. The node must be `Ready` before the next.
+
+   It must end with `SUCCESS!` and `kubectl version` must report the new server; stop otherwise.
+7. Each other control plane in turn: steps 3 to 5, then `kubeadm upgrade node` with the same flags, which takes the version `upgrade apply` stored. The node must be `Ready` before the next one.
+
+   ```bash
+   sudo kubeadm upgrade node --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
+   ```
+8. Each worker in turn: steps 3 to 5, then `kubeadm upgrade node`, which only fetches the new kubelet configuration. Same check before the next.
+
+   ```bash
+   sudo kubeadm upgrade node
+   ```
 
 > [!NOTE]
 >

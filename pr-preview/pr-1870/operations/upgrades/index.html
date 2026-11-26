@@ -2777,9 +2777,8 @@ first run the newer kubelet meanwhile, which the skew policy allows within a min
 <li>
 <p>Upgrade the control plane. <code>ansible/playbooks/kube-upgrade.yaml</code> refuses a
    minor or a control plane still on the old sysext, runs <code>upgrade apply</code> on
-   the first node ahead of the version stored in <code>kubeadm-config</code>,
-   <code>upgrade node</code> on the rest, and renews the control-plane certificates on
-   the way.</p>
+   the first, <code>upgrade node</code> on the rest, and renews the control-plane
+   certificates on the way.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span>kube-upgrade
 </span></code></pre></div>
 </li>
@@ -2801,37 +2800,50 @@ reboots in no particular order.</p>
    <code>kubernetes_sha256</code> beside it to the new image's: <code>make download</code> refuses
    a file that does not match.</li>
 <li>
-<p>Fetch the new sysext for new nodes and regenerate the configs, including
-   each node's <code>-reprovision-minor</code> variant.</p>
+<p>Fetch the new sysext and regenerate the Ignition and sysupdate configs.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>download<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make<span class="w"> </span>config
 </span></code></pre></div>
 </li>
 <li>
-<p>Reprovision the first control plane with <code>ALLOW_MINOR=1</code>: Ignition writes
-   the new minor's sysext and sysupdate config in place of the old ones, so
-   one reboot brings the new kubelet.</p>
+<p>Reprovision the first control plane, which carries the new minor's
+   sysupdate config; <code>ALLOW_MINOR=1</code> is needed until step 6 has run. It must
+   come back <code>current</code> in <code>make node-drift</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>reprovision<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;<span class="w"> </span><span class="nv">ALLOW_MINOR</span><span class="o">=</span><span class="m">1</span>
 </span></code></pre></div>
 </li>
 <li>
+<p>Fetch the new sysext on it; the sentinel must exist afterwards.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ssh<span class="w"> </span>core@&lt;node&gt;<span class="w"> </span><span class="s1">'sudo systemctl start systemd-sysupdate &amp;&amp; ls /run/reboot-required'</span>
+</span></code></pre></div>
+</li>
+<li>
 <p>Let <a href="../nodes/#rebooting-a-node">Kured</a> reboot it. The node must come back
-   <code>Ready</code> on the new kubelet version and <code>current</code> in <code>make node-drift</code>;
-   stop otherwise.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>-w
+   <code>Ready</code> on the new kubelet version; stop otherwise.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>node<span class="w"> </span>&lt;node&gt;<span class="w"> </span>-w
 </span></code></pre></div>
 </li>
 <li>
-<p>Upgrade it. On the first control plane this is <code>kubeadm upgrade apply</code>,
-   and <code>kubectl version</code> must then report the new server; on every later
-   node it is <code>upgrade node</code>, which follows the stored version. Both skip
-   the <code>kube-proxy</code> and CoreDNS addons, which Cilium and
-   <a href="../../platform/coredns/">Argo CD</a> own.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>make<span class="w"> </span>kube-upgrade<span class="w"> </span><span class="nv">LIMIT</span><span class="o">=</span>&lt;node&gt;<span class="w"> </span><span class="nv">ALLOW_MINOR</span><span class="o">=</span><span class="m">1</span>
+<p>On that node, run the kubeadm upgrade. <code>--skip-phases</code> keeps <code>kube-proxy</code>
+   from returning beside Cilium on a cluster whose stored <code>kubeadm-config</code>
+   predates <code>proxy.disabled</code>, and leaves <a href="../../platform/coredns/">CoreDNS</a> to
+   Argo CD; <code>--patches</code> keeps the static pods' memory requests.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>apply<span class="w"> </span>&lt;version&gt;<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy,addon/coredns<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
+</span></code></pre></div>
+<p>It must end with <code>SUCCESS!</code> and <code>kubectl version</code> must report the new
+server; stop otherwise.</p>
+</li>
+<li>
+<p>Each other control plane in turn: steps 3 to 5, then
+   <code>kubeadm upgrade node</code> with the same flags, which takes the version
+   <code>upgrade apply</code> stored. The node must be <code>Ready</code> before the next one.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node<span class="w"> </span>--skip-phases<span class="w"> </span>addon/kube-proxy,addon/coredns<span class="w"> </span>--patches<span class="w"> </span>/etc/kubernetes/patches
 </span></code></pre></div>
 </li>
 <li>
-<p>Each other control plane, then each worker, in turn: steps 3 to 5. The
-   node must be <code>Ready</code> before the next.</p>
+<p>Each worker in turn: steps 3 to 5, then <code>kubeadm upgrade node</code>, which only
+   fetches the new kubelet configuration. Same check before the next.</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>sudo<span class="w"> </span>kubeadm<span class="w"> </span>upgrade<span class="w"> </span>node
+</span></code></pre></div>
 </li>
 </ol>
 <div class="admonition note">
@@ -2860,14 +2872,14 @@ when the alert fires:</p>
    leaves the CA alone and sets the sentinel, so
    <a href="../nodes/#rebooting-a-node">Kured</a> restarts the static pods one node at a
    time.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>make<span class="w"> </span>kube-certs
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>make<span class="w"> </span>kube-certs
 </span></code></pre></div>
 </li>
 <li>
 <p>After Kured has rebooted the last control plane, refresh the admin
    kubeconfig: <code>admin.conf</code> was renewed too, and <code>output/kubeconfig</code> carries
    the old client certificate.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>make<span class="w"> </span>kubeconfig
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>make<span class="w"> </span>kubeconfig
 </span></code></pre></div>
 </li>
 </ol>
