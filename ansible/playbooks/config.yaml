@@ -18,6 +18,13 @@
         suffix: "-reprovision"
         dir: reprovision
         reprovision: true
+      # Brings the next minor's sysext; see
+      # docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
+      - template: butane_node_config
+        suffix: "-reprovision-minor"
+        dir: reprovision
+        reprovision: true
+        minor: true
   tasks:
     - name: Check the endpoint name against a running cluster
       ansible.builtin.import_tasks: tasks/check_endpoint_host.yaml

@@ -90,3 +90,19 @@ def test_main_reports_a_collision(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr('sys.argv', ['x', str(KEEP), str(ign)])
     assert overlap.main() == 1
     assert '/var/log/x' in capsys.readouterr().out
+
+
+def test_minor_config_is_checked_without_the_sysext_entries(tmp_path, monkeypatch):
+    """The -minor config writes the sysext the normal keep list keeps."""
+    config = {
+        'storage': {
+            'files': [{'path': '/opt/extensions/kubernetes/kubernetes-v1.38.0-x86-64.raw'}],
+            'links': [{'path': '/etc/extensions/kubernetes.raw'}],
+        }
+    }
+    keep = yaml.safe_load(KEEP.read_text())
+    assert set(keep['reprovision_minor_drop']) <= set(keep['reprovision_keep_paths'])
+    for name, failed in (('odin-reprovision.json', 1), ('odin-reprovision-minor.json', 0)):
+        (tmp_path / name).write_text(json.dumps(config))
+        monkeypatch.setattr('sys.argv', ['reprovision-overlap.py', str(KEEP), str(tmp_path / name)])
+        assert overlap.main() == failed

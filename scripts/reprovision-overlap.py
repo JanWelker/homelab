@@ -42,11 +42,15 @@ def collisions(config: dict, patterns: list[re.Pattern]) -> list[str]:
 
 
 def main() -> int:
-    entries = yaml.safe_load(Path(sys.argv[1]).read_text())['reprovision_keep_paths']
+    keep = yaml.safe_load(Path(sys.argv[1]).read_text())
+    entries = keep['reprovision_keep_paths']
     patterns = keep_patterns(entries)
+    # ALLOW_MINOR=1 resets with the -minor config and without these entries.
+    minor = keep_patterns([e for e in entries if e not in keep.get('reprovision_minor_drop', [])])
     failed = False
     for name in sys.argv[2:]:
-        for path in collisions(json.loads(Path(name).read_text()), patterns):
+        checked = minor if name.endswith('-reprovision-minor.json') else patterns
+        for path in collisions(json.loads(Path(name).read_text()), checked):
             print(f'::error file={name}::{path} is kept by flatcar-reset and written by Ignition')
             failed = True
     return 1 if failed else 0

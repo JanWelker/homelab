@@ -42,7 +42,7 @@ is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
 | `download.yaml` | Fetches the Flatcar kernel, initrd and OS image, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext; and the syslinux files, checked against `sha256sums.asc`. The signing keys are trusted through fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](../operations/control-plane-vip.md#endpoint-name) is not the one the cluster publishes. `make config` keeps each menu's `DEFAULT`, so an armed node stays armed. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
 | `reprovision.yaml` | `make reprovision LIMIT=<host>`: stages [`flatcar-reset`](../operations/nodes.md#reprovisioning-a-node) with its reprovision config and sets Kured's sentinel |
-| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](../operations/upgrades.md#patch-releases) after a patch sysext |
+| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](../operations/upgrades.md#kubernetes) after a new sysext |
 | `kube-certs.yaml` | `make kube-certs`: [certificate renewal](../operations/upgrades.md#control-plane-certificates) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |
 

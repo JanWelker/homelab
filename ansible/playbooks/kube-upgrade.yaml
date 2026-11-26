@@ -1,39 +1,47 @@
 ---
-# The control-plane half of a Kubernetes patch release. sysupdate swaps the
-# kubelet and kubeadm binaries at a reboot; the static pods keep the old
-# images until kubeadm upgrades them. See
-# docs/operations/upgrades.md#patch-releases
-- name: Check that every control plane runs the same new patch
+# Moves the control plane to the Kubernetes version its nodes booted. sysupdate
+# or a minor reprovision swaps the kubelet and kubeadm binaries at a reboot;
+# the static pods keep the old images until kubeadm upgrades them. See
+# docs/operations/upgrades.md#patch-releases and
+# docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
+- name: Check the control planes against the stored cluster version
   hosts: control_plane
   gather_facts: false
   any_errors_fatal: true
+  vars:
+    allow_minor: false
   tasks:
     - name: Read the kubeadm version the sysext merged at boot
       ansible.builtin.raw: kubeadm version -o short
       register: kubeadm_version
       changed_when: false
 
-    - name: Read the API server version
-      ansible.builtin.raw: sudo kubectl --kubeconfig /etc/kubernetes/admin.conf version -o json
-      register: kubectl_version
+    - name: Read the version kubeadm upgrade apply stored
+      ansible.builtin.raw: >-
+        sudo kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system get configmap kubeadm-config
+        -o jsonpath='{.data.ClusterConfiguration}' | sed -n 's/^kubernetesVersion: //p'
+      register: stored_version
       changed_when: false
       run_once: true # noqa: run-once
 
-    - name: Refuse a minor, a stale node or a downgrade
+    - name: Refuse a skipped minor, a stale node or a downgrade
       vars:
-        versions: "{{ groups['control_plane'] | map('extract', hostvars, ['kubeadm_version', 'stdout']) | map('trim') | unique }}"
+        versions: "{{ ansible_play_hosts | map('extract', hostvars, ['kubeadm_version', 'stdout']) | map('trim') | unique }}"
         target: "{{ versions | first }}"
-        server: "{{ (kubectl_version.stdout | from_json).serverVersion.gitVersion }}"
+        stored: "{{ stored_version.stdout | trim }}"
+        next_minor: "{{ stored.split('.')[0] }}.{{ stored.split('.')[1] | int + 1 }}"
       ansible.builtin.assert:
         that:
           - versions | length == 1
-          - target.split('.')[:2] == server.split('.')[:2]
-          - target[1:] is version(server[1:], '>=')
+          - >-
+            target.split('.')[:2] == stored.split('.')[:2]
+            or (allow_minor | bool and target.split('.')[:2] | join('.') == next_minor)
+          - target[1:] is version(stored[1:], '>=')
         fail_msg: >-
-          The control planes run kubeadm {{ versions | join(', ') }} against an
-          API server on {{ server }}. Every control plane must have rebooted
-          onto the same patch of the server's minor first; a minor is the
-          manual procedure in docs/operations/upgrades.md.
+          The control planes run kubeadm {{ versions | join(', ') }} against a
+          cluster stored at {{ stored }}. Each must have rebooted onto the same
+          patch of that minor, or with ALLOW_MINOR=1 the next minor, first; see
+          docs/operations/upgrades.md.
         quiet: true
       run_once: true # noqa: run-once
 
@@ -41,26 +49,33 @@
       ansible.builtin.set_fact:
         kube_target: "{{ kubeadm_version.stdout | trim }}"
 
-# One node at a time and the first control plane first: upgrade apply moves
-# the cluster's stored version, upgrade node then follows it on the others.
+# One node at a time. The first node ahead of the stored version runs upgrade
+# apply, which moves it; the rest run upgrade node, which follows it.
 - name: Upgrade the control-plane components
   hosts: control_plane
   gather_facts: false
   serial: 1
   any_errors_fatal: true
   tasks:
-    - name: Run kubeadm upgrade apply on the first control plane
+    - name: Read the stored version again
+      ansible.builtin.raw: >-
+        sudo kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system get configmap kubeadm-config
+        -o jsonpath='{.data.ClusterConfiguration}' | sed -n 's/^kubernetesVersion: //p'
+      register: stored_now
+      changed_when: false
+
+    - name: Run kubeadm upgrade apply on the first control plane ahead of it
       ansible.builtin.raw: >-
         sudo kubeadm upgrade apply {{ kube_target }} --yes
         --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
-      when: inventory_hostname == groups['control_plane'][0]
+      when: kube_target[1:] is version((stored_now.stdout | trim)[1:], '>')
       changed_when: true
 
-    - name: Run kubeadm upgrade node on the other control planes
+    - name: Run kubeadm upgrade node on the others
       ansible.builtin.raw: >-
         sudo kubeadm upgrade node
         --skip-phases addon/kube-proxy,addon/coredns --patches /etc/kubernetes/patches
-      when: inventory_hostname != groups['control_plane'][0]
+      when: kube_target[1:] is version((stored_now.stdout | trim)[1:], '<=')
       changed_when: true
 
     - name: Wait for the API server on this node
@@ -69,8 +84,8 @@
         curl -fsk https://localhost:6443/readyz >/dev/null && exit 0; sleep 5; done; exit 1
       changed_when: false
 
-# Only fetches the kubelet configuration; a worker still on the old sysext is
-# left for the next run.
+# Only fetches the kubelet configuration; a worker whose kubeadm differs from
+# the stored version is left for the next run.
 - name: Refresh the kubelet configuration on the workers
   hosts: workers
   gather_facts: false
@@ -82,10 +97,19 @@
       changed_when: false
       ignore_unreachable: true
 
+    - name: Read the stored version
+      ansible.builtin.raw: >-
+        sudo kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system get configmap kubeadm-config
+        -o jsonpath='{.data.ClusterConfiguration}' | sed -n 's/^kubernetesVersion: //p'
+      register: stored_version
+      changed_when: false
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      run_once: true # noqa: run-once
+
     - name: Run kubeadm upgrade node
       ansible.builtin.raw: sudo kubeadm upgrade node
       when:
         - kubeadm_version is not unreachable
-        - kubeadm_version.stdout | trim == hostvars[groups['control_plane'][0]].kube_target
+        - kubeadm_version.stdout | trim == stored_version.stdout | trim
       changed_when: true
       ignore_unreachable: true

@@ -239,10 +239,11 @@ reboot-all: ## Ask Kured to reboot nodes one at a time (LIMIT=)
 	fi
 	@$(NODES) -a 'sudo touch /run/reboot-required && echo sentinel set' | $(ONELINE)
 
-# After every control plane has rebooted onto a new Kubernetes patch; see
-# docs/operations/upgrades.md#patch-releases
-kube-upgrade: ## Upgrade the control plane to the patch its nodes booted
-	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kube-upgrade.yaml
+# After the nodes have rebooted onto a new Kubernetes patch, or one node onto
+# the next minor; see docs/operations/upgrades.md
+kube-upgrade: ## Upgrade the control plane to the version its nodes booted (LIMIT=, ALLOW_MINOR=1)
+	uv run ansible-playbook -i ansible/inventory.yaml ansible/playbooks/kube-upgrade.yaml $(if $(LIMIT),--limit "$(LIMIT)") \
+	  -e allow_minor=$(if $(ALLOW_MINOR),true,false)
 
 # Once a year when no kube-upgrade ran; see
 # docs/operations/upgrades.md#control-plane-certificates

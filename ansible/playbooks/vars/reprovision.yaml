@@ -41,3 +41,9 @@ reprovision_must_keep:
   - /etc/kubernetes/manifests/etcd.yaml
   - /etc/kubernetes/manifests/kube-apiserver.yaml
   - /etc/extensions/kubernetes.raw
+
+# Dropped from both lists by ALLOW_MINOR=1, whose config writes the next
+# minor's sysext; see docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
+reprovision_minor_drop:
+  - /opt/extensions/kubernetes
+  - /etc/extensions/kubernetes.raw
