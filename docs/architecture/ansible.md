@@ -38,11 +38,12 @@ is what runs — see [Control Plane VIP](../operations/control-plane-vip.md).
 
 | Playbook | Does |
 | --- | --- |
-| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption keys and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable kubeadm config copy into `output/tmp/` |
+| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption keys and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a kubeadm config copy into `output/tmp/` |
 | `download.yaml` | Fetches the Flatcar kernel, initrd and OS image, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext; and the syslinux files, checked against `sha256sums.asc`. The signing keys are trusted through fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](../operations/control-plane-vip.md#endpoint-name) is not the one the cluster publishes. `make config` keeps each menu's `DEFAULT`, so an armed node stays armed. See [Switching back to local boot](boot-process.md#switching-back-to-local-boot) |
-| `reprovision.yaml` | Stages `flatcar-reset` with the node's reprovision config and sets Kured's sentinel; `make reprovision LIMIT=<host>`. See [Reprovisioning a node](../operations/nodes.md#reprovisioning-a-node) |
-| `kube-upgrade.yaml` | `kubeadm upgrade` after a patch sysext; `make kube-upgrade`. See [Patch releases](../operations/upgrades.md#patch-releases) |
+| `reprovision.yaml` | `make reprovision LIMIT=<host>`: stages [`flatcar-reset`](../operations/nodes.md#reprovisioning-a-node) with its reprovision config and sets Kured's sentinel |
+| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](../operations/upgrades.md#patch-releases) after a patch sysext |
+| `kube-certs.yaml` | `make kube-certs`: [certificate renewal](../operations/upgrades.md#control-plane-certificates) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |
 
 `config.yaml` is safe to re-run: the `password` lookup reads an existing
