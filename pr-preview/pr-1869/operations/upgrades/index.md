@@ -85,24 +85,14 @@ Everything in `payload/`, ArgoCD included, is upgraded by ArgoCD when a Renovate
 
 kubeadm issues the control-plane certificates for one year and renews them only during `kubeadm upgrade`, so a year without a [patch](<#patch-releases>) or [minor](<#upgrading-a-minor-version-deliberately>) upgrade takes the API servers, the etcd peers and the front proxy down together. The kubelet certificates are the exception: the serving certificate is rotated through [kubelet-csr-approver](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) and the client certificate by the kubelet itself.
 
-`payload/platform/monitoring/control-plane-certificate-rules.yaml` warns thirty days ahead on the client certificates the API server sees, which kubeadm issues together with the serving ones; the chart's own `KubeClientCertificateExpiration` takes over at seven days and one day. The renewal is done by hand, once a year or when the alert fires, on every control plane in turn:
+`payload/platform/monitoring/control-plane-certificate-rules.yaml` warns thirty days ahead on the client certificates the API server sees, which kubeadm issues together with the serving ones; the chart's own `KubeClientCertificateExpiration` takes over at seven days and one day. Without an upgrade in the year, renew them when the alert fires:
 
-1. Read the remaining lifetime; every line but the CA should have well over thirty days.
-
-   ```bash
-   ssh core@<control plane> sudo kubeadm certs check-expiration
-   ```
-2. Renew everything kubeadm issued on that node. The CA is not touched.
+1. Renew on every control plane in turn; the playbook prints the new expiry, leaves the CA alone and sets the sentinel, so [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) restarts the static pods one node at a time.
 
    ```bash
-   ssh core@<control plane> sudo kubeadm certs renew all
+   make kube-certs
    ```
-3. Restart the static pods so they load the new certificates: move the manifests out, wait until `crictl` lists none of the four, move them back. One node at a time, since the API server and etcd on it are down in between.
-
-   ```bash
-   ssh core@<control plane> 'sudo mkdir -p /root/manifests-stopped && sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ && until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done && sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'
-   ```
-4. After the last node, refresh the admin kubeconfig: `admin.conf` was renewed too, and the copy in `output/kubeconfig` carries the old client certificate.
+2. After Kured has rebooted the last control plane, refresh the admin kubeconfig: `admin.conf` was renewed too, and `output/kubeconfig` carries the old client certificate.
 
    ```bash
    make kubeconfig

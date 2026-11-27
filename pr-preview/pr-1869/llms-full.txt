@@ -627,11 +627,12 @@ Ansible never edits a node's files: it renders Ignition configs on the deploymen
 
 | Playbook | Does |
 | --- | --- |
-| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption keys and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a readable kubeadm config copy into `output/tmp/` |
+| `config.yaml` | Generates the bootstrap token, certificate key, etcd encryption keys and each node's SSH host key into `output/credentials/` (mode `0700`), and `output/known_hosts` from the host keys; renders the Ignition configs via Butane into `output/http` (mode `0600`, the node config first: the installer config pins its sha512) and the reprovision configs with each node's checksum into `output/reprovision`, the per-MAC PXE menus into `output/tftp/pxelinux.cfg/`, the router's FRR config into `output/router/frr-bgp.conf`, and a kubeadm config copy into `output/tmp/` |
 | `download.yaml` | Fetches the Flatcar kernel, initrd and OS image, checked against the `.DIGESTS.asc` that `gpgv` verifies; the Kubernetes sysext; and the syslinux files, checked against `sha256sums.asc`. The signing keys are trusted through fingerprints pinned in the playbook |
 | `reinstall.yaml` | Rewrites `DEFAULT` in the generated PXE menus — `install` to arm, `localboot` to disarm. `make reinstall` and `make reinstall-cancel` are the two directions, both taking `LIMIT=<host>`. Arming refuses while `bootstrap_cluster` is `true` and the API VIP answers, or when an [endpoint name](<https://homelab.wlkr.ch/operations/control-plane-vip/index.md#endpoint-name>) is not the one the cluster publishes. `make config` keeps each menu's `DEFAULT`, so an armed node stays armed. See [Switching back to local boot](<https://homelab.wlkr.ch/architecture/boot-process/index.md#switching-back-to-local-boot>) |
-| `reprovision.yaml` | Stages `flatcar-reset` with the node's reprovision config and sets Kured's sentinel; `make reprovision LIMIT=<host>`. See [Reprovisioning a node](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>) |
-| `kube-upgrade.yaml` | `kubeadm upgrade` after a new sysext; `make kube-upgrade`. See [Kubernetes](<https://homelab.wlkr.ch/operations/upgrades/index.md#kubernetes>) |
+| `reprovision.yaml` | `make reprovision LIMIT=<host>`: stages [`flatcar-reset`](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>) with its reprovision config and sets Kured's sentinel |
+| `kube-upgrade.yaml` | `make kube-upgrade`: [`kubeadm upgrade`](<https://homelab.wlkr.ch/operations/upgrades/index.md#kubernetes>) after a new sysext |
+| `kube-certs.yaml` | `make kube-certs`: [certificate renewal](<https://homelab.wlkr.ch/operations/upgrades/index.md#control-plane-certificates>) |
 | `kubeconfig.yaml` | Copies the admin kubeconfig over SSH to `output/kubeconfig`, mode `0600`, with the VIP as its `server` |
 
 `config.yaml` is safe to re-run: the `password` lookup reads an existing credential file back, so the encryption key every control-plane node shares stays the one etcd's Secrets were encrypted with.
@@ -5633,24 +5634,14 @@ Everything in `payload/`, ArgoCD included, is upgraded by ArgoCD when a Renovate
 
 kubeadm issues the control-plane certificates for one year and renews them only during `kubeadm upgrade`, so a year without a [patch](<#patch-releases>) or [minor](<#upgrading-a-minor-version-deliberately>) upgrade takes the API servers, the etcd peers and the front proxy down together. The kubelet certificates are the exception: the serving certificate is rotated through [kubelet-csr-approver](<https://homelab.wlkr.ch/platform/metrics-server/index.md>) and the client certificate by the kubelet itself.
 
-`payload/platform/monitoring/control-plane-certificate-rules.yaml` warns thirty days ahead on the client certificates the API server sees, which kubeadm issues together with the serving ones; the chart's own `KubeClientCertificateExpiration` takes over at seven days and one day. The renewal is done by hand, once a year or when the alert fires, on every control plane in turn:
+`payload/platform/monitoring/control-plane-certificate-rules.yaml` warns thirty days ahead on the client certificates the API server sees, which kubeadm issues together with the serving ones; the chart's own `KubeClientCertificateExpiration` takes over at seven days and one day. Without an upgrade in the year, renew them when the alert fires:
 
-1. Read the remaining lifetime; every line but the CA should have well over thirty days.
-
-   ```bash
-   ssh core@<control plane> sudo kubeadm certs check-expiration
-   ```
-2. Renew everything kubeadm issued on that node. The CA is not touched.
+1. Renew on every control plane in turn; the playbook prints the new expiry, leaves the CA alone and sets the sentinel, so [Kured](<https://homelab.wlkr.ch/operations/nodes/index.md#rebooting-a-node>) restarts the static pods one node at a time.
 
    ```bash
-   ssh core@<control plane> sudo kubeadm certs renew all
+   make kube-certs
    ```
-3. Restart the static pods so they load the new certificates: move the manifests out, wait until `crictl` lists none of the four, move them back. One node at a time, since the API server and etcd on it are down in between.
-
-   ```bash
-   ssh core@<control plane> 'sudo mkdir -p /root/manifests-stopped && sudo mv /etc/kubernetes/manifests/*.yaml /root/manifests-stopped/ && until [ -z "$(sudo crictl ps -q --name "kube-apiserver|kube-controller-manager|kube-scheduler|etcd")" ]; do sleep 2; done && sudo mv /root/manifests-stopped/*.yaml /etc/kubernetes/manifests/'
-   ```
-4. After the last node, refresh the admin kubeconfig: `admin.conf` was renewed too, and the copy in `output/kubeconfig` carries the old client certificate.
+2. After Kured has rebooted the last control plane, refresh the admin kubeconfig: `admin.conf` was renewed too, and `output/kubeconfig` carries the old client certificate.
 
    ```bash
    make kubeconfig
