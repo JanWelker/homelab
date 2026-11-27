@@ -97,6 +97,25 @@ if [ ! -x "$cache/kubeadm" ]; then
   chmod +x "$work/kubeadm"
   mv "$work/kubeadm" "$cache/kubeadm"
 fi
+# The copy kubeadm-reconcile re-renders the static pods from, at the version
+# it would read from the node.
+for ign in "$work"/join/reprovision/ignition-*.json; do
+  host=$(basename "$ign" -reprovision.json); host=${host#ignition-}
+  uv run --no-project python -I - "$ign" "$kubernetes_version" \
+    > "$work/join/tmp/kubeadm/kubeadm-config-$host-reconcile.yaml" <<'EOF'
+import base64, gzip, json, sys, urllib.parse
+files = json.load(open(sys.argv[1])).get('storage', {}).get('files', [])
+for f in files:
+    if f['path'] == '/etc/kubernetes/kubeadm-reconcile.yaml':
+        src = f['contents']['source']
+        head, data = src.split(',', 1)
+        raw = base64.b64decode(data) if head.endswith(';base64') else urllib.parse.unquote_to_bytes(data)
+        if f['contents'].get('compression') == 'gzip':
+            raw = gzip.decompress(raw)
+        sys.stdout.write(raw.decode().replace('kubernetesVersion: RUNNING', 'kubernetesVersion: ' + sys.argv[2]))
+EOF
+  [ -s "$work/join/tmp/kubeadm/kubeadm-config-$host-reconcile.yaml" ] || rm "$work/join/tmp/kubeadm/kubeadm-config-$host-reconcile.yaml"
+done
 for config in "$work"/*/tmp/kubeadm/kubeadm-config-*.yaml; do
   echo "${config#"$work"/}"
   if [ "$(uname -s)" = Linux ]; then

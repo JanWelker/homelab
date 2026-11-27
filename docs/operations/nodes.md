@@ -175,6 +175,10 @@ with a fresh render.
 the node's `-reprovision` config, which leaves out the disks and the bootstrap
 files: the node keeps its OSD and rejoins as itself, without the boot server —
 see [Design Decisions](../architecture/decisions.md#flatcar-reset-not-in-place-sync).
+On a control plane, `kubeadm-reconcile.service` then re-renders the API
+server, controller manager and scheduler from the template at the version the
+node runs, and the first control plane uploads the `kubeadm-config` that
+`kubeadm upgrade` reads; etcd's manifest is kept as it is.
 
 1. Stage it; the playbook refuses a minor the API server does not run, and a
    keep list that misses the node's etcd, kubelet or kubeadm state.
