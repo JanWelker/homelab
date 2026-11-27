@@ -99,7 +99,7 @@ if [ ! -x "$cache/kubeadm" ]; then
 fi
 # The copy kubeadm-reconcile re-renders the static pods from, at the version
 # it would read from the node.
-for ign in "$work"/join/reprovision/ignition-*.json; do
+for ign in "$work"/join/reprovision/ignition-*-reprovision.json; do
   host=$(basename "$ign" -reprovision.json); host=${host#ignition-}
   uv run --no-project python -I - "$ign" "$kubernetes_version" \
     > "$work/join/tmp/kubeadm/kubeadm-config-$host-reconcile.yaml" <<'EOF'

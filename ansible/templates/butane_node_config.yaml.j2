@@ -3,6 +3,9 @@
 {#- The flatcar-reset variant leaves out the disks, the bootstrap files and the
     sysext state; see docs/operations/nodes.md#reprovisioning-a-node #}
 {%- set reprovision = (config | default({})).reprovision | default(false) %}
+{#- The minor-upgrade variant replaces the sysext the node runs with the
+    inventory's; see docs/operations/upgrades.md#upgrading-a-minor-version-deliberately #}
+{%- set reprovision_minor = reprovision and (config | default({})).minor | default(false) %}
 variant: flatcar
 version: 1.0.0
 passwd:
@@ -496,13 +499,20 @@ storage:
       contents:
         inline: |
           {{ lookup('template', '../templates/sysupdate_kubernetes.conf.j2') | indent(10) }}
-{% if not reprovision %}
-    # sysupdate owns both after the first boot, so a reprovision keeps them.
+{% if not reprovision or reprovision_minor %}
+    # sysupdate owns both after the first boot, so a reprovision keeps them,
+    # except the one that moves the node to the next minor.
     - path: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       contents:
+{% if reprovision_minor %}
+        source: https://github.com/flatcar/sysext-bakery/releases/download/kubernetes-{{ kubernetes_version }}/kubernetes-{{ kubernetes_version }}-x86-64.raw
+        verification:
+          hash: sha256-{{ kubernetes_sha256 }}
+{% else %}
         source: http://{{ boot_server_ip }}:8000/kubernetes-{{ kubernetes_version }}-x86-64.raw
         verification:
           hash: sha256-{{ sysext_sha256.kubernetes }}
+{% endif %}
 {% endif %}
     # Keeps the default sysupdate component from failing; see
     # docs/architecture/security.md#node-hardening
@@ -515,7 +525,7 @@ storage:
     - path: /etc/extensions/docker-flatcar.raw
       target: /dev/null
       overwrite: true
-{% if not reprovision %}
+{% if not reprovision or reprovision_minor %}
     - path: /etc/extensions/kubernetes.raw
       target: /opt/extensions/kubernetes/kubernetes-{{ kubernetes_version }}-x86-64.raw
       overwrite: true

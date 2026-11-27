@@ -9,9 +9,13 @@
     - vars/reprovision.yaml
   vars:
     output_dir: "{{ playbook_dir }}/../../output"
-    ignition_file: "{{ output_dir }}/reprovision/ignition-{{ inventory_hostname }}-reprovision.json"
-    keep_args: "{{ reprovision_keep_paths | map('quote') | join(' ') }}"
     allow_minor: false
+    # ALLOW_MINOR=1 writes the inventory's sysext, so the old one is not kept.
+    ignition_file: >-
+      {{ output_dir }}/reprovision/ignition-{{ inventory_hostname }}-reprovision{{ '-minor' if allow_minor | bool else '' }}.json
+    keep_paths: "{{ reprovision_keep_paths | difference(reprovision_minor_drop if allow_minor | bool else []) }}"
+    must_keep: "{{ reprovision_must_keep | difference(reprovision_minor_drop if allow_minor | bool else []) }}"
+    keep_args: "{{ keep_paths | map('quote') | join(' ') }}"
   tasks:
     - name: Require the rendered reprovision config
       ansible.builtin.stat:
@@ -38,11 +42,14 @@
       vars:
         server: "{{ (kubectl_version.stdout | from_json).serverVersion.gitVersion }}"
       ansible.builtin.assert:
-        that: allow_minor | bool or kubernetes_version.split('.')[:2] == server.split('.')[:2]
+        that: >-
+          kubernetes_version.split('.')[:2] == server.split('.')[:2]
+          or (allow_minor | bool and kubernetes_version.split('.')[0] == server.split('.')[0]
+              and kubernetes_version.split('.')[1] | int == server.split('.')[1] | int + 1)
         fail_msg: >-
           ansible/inventory.yaml names {{ kubernetes_version }}, the cluster runs
-          {{ server }}. Only the first control plane of a minor upgrade is
-          reprovisioned ahead of the API server, with ALLOW_MINOR=1; see
+          {{ server }}. A minor upgrade moves one minor and reprovisions node by
+          node with ALLOW_MINOR=1; see
           docs/operations/upgrades.md#upgrading-a-minor-version-deliberately
         quiet: true
       run_once: true # noqa: run-once
@@ -84,13 +91,14 @@
     - name: Check the sysext the node runs is on its disk
       ansible.builtin.raw: test -e "$(readlink -f /etc/extensions/kubernetes.raw)"
       changed_when: false
+      when: not allow_minor | bool
 
     # The same match flatcar-reset's initrd step makes, each entry also keeping
     # what is below it. Its own --preview-keep cannot unmount /etc on these
     # nodes and prints nothing.
     - name: Check the keep list covers the node's cluster state
       ansible.builtin.raw: >-
-        for p in {{ reprovision_must_keep | map('quote') | join(' ') }}; do
+        for p in {{ must_keep | map('quote') | join(' ') }}; do
         sudo test -e "$p" || continue; kept=;
         for e in {{ keep_args }}; do
         printf '%s\n' "$p" | grep -qxE -e "$e" -e "$e/.*" && kept=1;
