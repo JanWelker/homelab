@@ -704,34 +704,17 @@ The last query answers "what would break if I tightened `enforce` on this namesp
 
 ## Applying it to a running cluster
 
-The policy file reaches a running control plane by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>). The `kube-apiserver.yaml` manifest is kubeadm's, which the reprovision keeps, so a changed flag is re-rendered by hand, one node at a time.
+A policy or flag change reaches the control planes by [reprovision](<https://homelab.wlkr.ch/operations/nodes/index.md#reprovisioning-a-node>): Ignition writes the policy, then `kubeadm-reconcile` re-renders the static pods from the same config, so the file is always there before the flag that names it.
 
-> [!CAUTION]
->
-> **Get the policy file there before you re-render the manifest**
->
-> An API server started with `--audit-policy-file` pointing at a missing file does not start. Step 1 before step 2, confirming the API server comes back before the next node.
-
-1. Reprovision the node; Ignition writes the policy and its directories.
+1. Reprovision the control planes; Kured reboots them one at a time.
 
    ```bash
-   make reprovision LIMIT=<node>
+   make reprovision LIMIT=control_plane
    ```
-2. Re-render the API server static pod from the regenerated kubeadm config, with the patches the static pods take their requests from:
+2. Watch each API server come back. One that does not fires the alert that holds Kured's next reboot; the cause is in `journalctl -u kubeadm-reconcile` on that node.
 
    ```bash
-   scp output/tmp/kubeadm/kubeadm-config-<node>.yaml core@<node>:/tmp/kubeadm-config.yaml
-   ssh core@<node> 'sudo kubeadm init phase control-plane apiserver --config /tmp/kubeadm-config.yaml --patches /etc/kubernetes/patches; rm /tmp/kubeadm-config.yaml'
-   ```
-3. Watch the kubelet restart the static pod:
-
-   ```bash
-   kubectl -n kube-system get pod kube-apiserver-<node> -w
-   ```
-4. Update the `kubeadm-config` ConfigMap in `kube-system` so the flags survive the next `kubeadm upgrade` or control-plane join — kubeadm reads the ConfigMap on those paths, not `/opt/kubeadm-config.yaml`:
-
-   ```bash
-   kubectl -n kube-system edit configmap kubeadm-config
+   kubectl -n kube-system get pods -l component=kube-apiserver -w
    ```
 
 # Boot & Bootstrap Process
@@ -5370,7 +5353,7 @@ Ignition runs once, so a template change reaches a running node only through a [
 
 ## Reprovisioning a node
 
-`flatcar-reset` deletes the root filesystem except the state listed in `ansible/playbooks/vars/reprovision.yaml`, and Ignition writes the rest from the node's `-reprovision` config, which leaves out the disks and the bootstrap files: the node keeps its OSD and rejoins as itself, without the boot server — see [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md#flatcar-reset-not-in-place-sync>).
+`flatcar-reset` deletes the root filesystem except the state listed in `ansible/playbooks/vars/reprovision.yaml`, and Ignition writes the rest from the node's `-reprovision` config, which leaves out the disks and the bootstrap files: the node keeps its OSD and rejoins as itself, without the boot server — see [Design Decisions](<https://homelab.wlkr.ch/architecture/decisions/index.md#flatcar-reset-not-in-place-sync>). On a control plane, `kubeadm-reconcile.service` then re-renders the API server, controller manager and scheduler from the template at the version the node runs, and the first control plane uploads the `kubeadm-config` that `kubeadm upgrade` reads; etcd's manifest is kept as it is.
 
 1. Stage it; the playbook refuses a minor the API server does not run, and a keep list that misses the node's etcd, kubelet or kubeadm state. `flatcar-reset --preview-keep` and `--backup` print and copy nothing on these nodes, since they cannot unmount `/etc`.
 
